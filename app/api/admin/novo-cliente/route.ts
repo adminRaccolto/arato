@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { seedOperacoesGerenciais } from "../../../../lib/seedOperacoesGerenciais";
 
 function corsHeaders(req: Request) {
   const origin = req.headers.get("origin") ?? "";
@@ -127,6 +128,13 @@ export async function POST(req: Request) {
       ativo:        true,
       grupo_id:     grupo?.id ?? null,
     });
+
+    // ── 8. Semear operações gerenciais padrão ──
+    try {
+      await seedOperacoesGerenciais(fazendaId, supabase);
+    } catch {
+      // Não bloqueia o onboarding — cliente pode importar manualmente
+    }
 
     return NextResponse.json({ ok: true, fazenda_id: fazendaId, user_email }, { headers: corsHeaders(req) });
   } catch (err) {
