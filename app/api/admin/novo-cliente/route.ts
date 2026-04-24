@@ -107,13 +107,21 @@ export async function POST(req: Request) {
     });
     if (perfErr) throw new Error("Perfil: " + perfErr.message);
 
-    // ── 6. Criar registro de usuário ──
+    // ── 6. Buscar grupo "Gerente" ──
+    const { data: grupo } = await supabase
+      .from("grupos_usuarios")
+      .select("id")
+      .ilike("nome", "gerente")
+      .single();
+
+    // ── 7. Criar registro de usuário ──
     await supabase.from("usuarios").insert({
       fazenda_id:   fazendaId,
       auth_user_id: authUserId,
       nome:         user_nome,
       email:        user_email,
       ativo:        true,
+      grupo_id:     grupo?.id ?? null,
     });
 
     return NextResponse.json({ ok: true, fazenda_id: fazendaId, user_email }, { headers: CORS });
