@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const CORS = {
-  "Access-Control-Allow-Origin":  "https://app.raccolto.com.br",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, x-admin-key",
-};
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allowed = ["https://app.raccolto.com.br", "https://raccolto.com.br"];
+  return {
+    "Access-Control-Allow-Origin":  allowed.includes(origin) ? origin : allowed[0],
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-admin-key",
+  };
+}
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS });
+export async function OPTIONS(req: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(req) });
 }
 
 function adminClient() {
@@ -27,7 +31,7 @@ function autorizado(req: Request): boolean {
 
 export async function POST(req: Request) {
   if (!autorizado(req)) {
-    return NextResponse.json({ error: "Chave de acesso inválida" }, { status: 401, headers: CORS });
+    return NextResponse.json({ error: "Chave de acesso inválida" }, { status: 401, headers: corsHeaders(req) });
   }
 
   try {
@@ -124,16 +128,16 @@ export async function POST(req: Request) {
       grupo_id:     grupo?.id ?? null,
     });
 
-    return NextResponse.json({ ok: true, fazenda_id: fazendaId, user_email }, { headers: CORS });
+    return NextResponse.json({ ok: true, fazenda_id: fazendaId, user_email }, { headers: corsHeaders(req) });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 400, headers: CORS });
+    return NextResponse.json({ ok: false, error: String(err) }, { status: 400, headers: corsHeaders(req) });
   }
 }
 
 // Endpoint para validar apenas a chave (GET)
 export async function GET(req: Request) {
   if (!autorizado(req)) {
-    return NextResponse.json({ ok: false }, { status: 401, headers: CORS });
+    return NextResponse.json({ ok: false }, { status: 401, headers: corsHeaders(req) });
   }
-  return NextResponse.json({ ok: true }, { headers: CORS });
+  return NextResponse.json({ ok: true }, { headers: corsHeaders(req) });
 }
