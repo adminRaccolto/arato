@@ -103,7 +103,6 @@ export async function POST(req: Request) {
       user_id:    authUserId,
       fazenda_id: fazendaId,
       nome:       user_nome,
-      email:      user_email,
       role:       "client",
     });
     if (perfErr) throw new Error("Perfil: " + perfErr.message);
