@@ -33,8 +33,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      tipo,             // "pf" | "pj"
-      nome,             // nome completo ou razão social
+      tipo,               // "pf" | "pj"
+      nome,
       cpf_cnpj,
       email_cliente,
       telefone,
@@ -51,72 +51,54 @@ export async function POST(req: Request) {
 
     const supabase = adminClient();
 
-    // ── 1. Criar produtor (PF) ou empresa (PJ) ──
-    let produtor_id: string | null = null;
-    let empresa_id:  string | null = null;
-
-    if (tipo === "pf") {
-      const { data, error } = await supabase
-        .from("produtores")
-        .insert({
-          nome,
-          cpf: cpf_cnpj,
-          email: email_cliente || null,
-          telefone: telefone || null,
-          municipio: municipio_cliente || null,
-          estado: estado_cliente || null,
-        })
-        .select("id")
-        .single();
-      if (error) throw new Error("Produtor: " + error.message);
-      produtor_id = data.id;
-    } else {
-      const { data, error } = await supabase
-        .from("empresas")
-        .insert({
-          razao_social: nome,
-          cnpj: cpf_cnpj,
-          email: email_cliente || null,
-          telefone: telefone || null,
-          municipio: municipio_cliente || null,
-          estado: estado_cliente || null,
-        })
-        .select("id")
-        .single();
-      if (error) throw new Error("Empresa: " + error.message);
-      empresa_id = data.id;
-    }
-
-    // ── 2. Criar fazenda ──
+    // ── 1. Criar fazenda (sem FK de produtor ainda) ──
     const { data: fazenda, error: fazErr } = await supabase
       .from("fazendas")
       .insert({
-        nome: fazenda_nome,
-        municipio: fazenda_municipio,
-        estado: fazenda_estado,
+        nome:          fazenda_nome,
+        municipio:     fazenda_municipio,
+        estado:        fazenda_estado,
         area_total_ha: parseFloat(fazenda_area) || 0,
-        produtor_id,
-        empresa_id,
       })
       .select("id")
       .single();
     if (fazErr) throw new Error("Fazenda: " + fazErr.message);
     const fazendaId = fazenda.id;
 
-    // ── 3. Criar usuário no Supabase Auth ──
+    // ── 2. Criar produtor vinculado à fazenda ──
+    const { data: produtor, error: prodErr } = await supabase
+      .from("produtores")
+      .insert({
+        fazenda_id: fazendaId,
+        nome,
+        tipo:       tipo === "pf" ? "pf" : "pj",
+        cpf_cnpj:   cpf_cnpj   || null,
+        email:      email_cliente || null,
+        telefone:   telefone   || null,
+        municipio:  municipio_cliente || null,
+        estado:     estado_cliente    || null,
+      })
+      .select("id")
+      .single();
+    if (prodErr) throw new Error("Produtor: " + prodErr.message);
+
+    // ── 3. Atualizar fazenda com produtor_id ──
+    await supabase
+      .from("fazendas")
+      .update({ produtor_id: produtor.id })
+      .eq("id", fazendaId);
+
+    // ── 4. Criar usuário no Supabase Auth ──
     const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
-      email: user_email,
-      password: user_senha,
-      email_confirm: true,          // confirma e-mail automaticamente
-      user_metadata: {
-        must_change_password: true,
-        nome: user_nome,
-      },
+      email:         user_email,
+      password:      user_senha,
+      email_confirm: true,
+      user_metadata: { must_change_password: true, nome: user_nome },
     });
     if (authErr) throw new Error("Auth: " + authErr.message);
     const authUserId = authData.user.id;
 
-    // ── 4. Criar perfil (vínculo auth → fazenda) ──
+    // ── 5. Criar perfil (auth → fazenda) ──
     const { error: perfErr } = await supabase.from("perfis").insert({
       user_id:    authUserId,
       fazenda_id: fazendaId,
@@ -126,7 +108,7 @@ export async function POST(req: Request) {
     });
     if (perfErr) throw new Error("Perfil: " + perfErr.message);
 
-    // ── 5. Criar registro de usuário (permissões) ──
+    // ── 6. Criar registro de usuário ──
     await supabase.from("usuarios").insert({
       fazenda_id:   fazendaId,
       auth_user_id: authUserId,
