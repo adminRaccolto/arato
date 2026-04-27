@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -152,7 +152,46 @@ export default function Configuracoes() {
   const [filtroContas, setFiltroContas] = useState<"todos" | "ativo" | "passivo" | "pl" | "receita" | "custo" | "despesa">("todos");
   const [produtores,     setProdutores]     = useState<Produtor[]>([]);
   const [certProdutorId, setCertProdutorId] = useState<string>("");
+  const [certFile,       setCertFile]       = useState<File | null>(null);
+  const [certSenha,      setCertSenha]      = useState("");
+  const [certArrastando, setCertArrastando] = useState(false);
+  const [certCarregando, setCertCarregando] = useState(false);
+  const [certSucesso,    setCertSucesso]    = useState(false);
+  const certInputRef = useRef<HTMLInputElement>(null);
   const [modalCert, setModalCert]   = useState(false);
+
+  function fecharModalCert() {
+    setModalCert(false);
+    setCertFile(null);
+    setCertSenha("");
+    setCertArrastando(false);
+    setCertCarregando(false);
+    setCertSucesso(false);
+  }
+
+  async function carregarCertificado() {
+    if (!certFile || !certSenha.trim()) return;
+    if (produtores.length > 1 && !certProdutorId) {
+      alert("Selecione o produtor titular do certificado.");
+      return;
+    }
+    setCertCarregando(true);
+    try {
+      // Salva no Supabase Storage — bucket "certificados" (privado)
+      const produtor = produtores.find(p => p.id === certProdutorId) ?? produtores[0];
+      const path = `${fazendaId}/${produtor?.id ?? "geral"}/${certFile.name}`;
+      const { error } = await supabase.storage
+        .from("certificados")
+        .upload(path, certFile, { upsert: true });
+      if (error) throw error;
+      setCertSucesso(true);
+      setTimeout(() => fecharModalCert(), 1800);
+    } catch (e: unknown) {
+      alert("Erro ao salvar certificado: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setCertCarregando(false);
+    }
+  }
   const [modalUsuario, setModalUsuario] = useState(false);
   const [novoUsuario, setNovoUsuario] = useState({ nome: "", email: "", perfil: "operador" as Usuario["perfil"] });
   const [modalConta, setModalConta] = useState(false);
@@ -860,11 +899,13 @@ export default function Configuracoes() {
       {/* ——— Modal Certificado ——— */}
       {modalCert && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalCert(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 420, maxWidth: "92vw" }}>
+          onClick={e => { if (e.target === e.currentTarget) fecharModalCert(); }}>
+          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 460, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Carregar certificado A1</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
+
             <div style={{ display: "grid", gap: 14 }}>
+              {/* Seletor de produtor */}
               {produtores.length > 1 && (
                 <div>
                   <label style={labelStyle}>Produtor / Titular do certificado *</label>
@@ -891,25 +932,120 @@ export default function Configuracoes() {
                   </span>
                 </div>
               )}
+
+              {/* Área de upload */}
               <div>
-                <label style={labelStyle}>Arquivo do certificado (.pfx / .p12)</label>
-                <div style={{ border: "0.5px dashed #1A4870", borderRadius: 8, padding: "20px", textAlign: "center", background: "#F7FDFA", cursor: "pointer" }}>
-                  <div style={{ fontSize: 22, marginBottom: 4 }}>◉</div>
-                  <div style={{ fontSize: 12, color: "#555" }}>Clique ou arraste o arquivo aqui</div>
-                </div>
+                <label style={labelStyle}>Arquivo do certificado (.pfx / .p12) *</label>
+
+                {/* Input oculto */}
+                <input
+                  ref={certInputRef}
+                  type="file"
+                  accept=".pfx,.p12"
+                  style={{ display: "none" }}
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) setCertFile(f);
+                    e.target.value = "";
+                  }}
+                />
+
+                {certFile ? (
+                  /* Arquivo selecionado */
+                  <div style={{
+                    border: "0.5px solid #28a745", borderRadius: 8, padding: "14px 16px",
+                    background: "#D4EDDA", display: "flex", alignItems: "center", gap: 10,
+                  }}>
+                    <span style={{ fontSize: 20 }}>📄</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#155724", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {certFile.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#155724" }}>
+                        {(certFile.size / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setCertFile(null)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#155724", fontSize: 16, padding: "2px 6px", flexShrink: 0 }}
+                      title="Remover arquivo"
+                    >×</button>
+                  </div>
+                ) : (
+                  /* Área de drop */
+                  <div
+                    onClick={() => certInputRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); setCertArrastando(true); }}
+                    onDragLeave={() => setCertArrastando(false)}
+                    onDrop={e => {
+                      e.preventDefault();
+                      setCertArrastando(false);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f && (f.name.endsWith(".pfx") || f.name.endsWith(".p12"))) {
+                        setCertFile(f);
+                      } else if (f) {
+                        alert("Selecione um arquivo .pfx ou .p12");
+                      }
+                    }}
+                    style={{
+                      border: `0.5px dashed ${certArrastando ? "#1A4870" : "#aab"}`,
+                      borderRadius: 8, padding: "28px 20px", textAlign: "center",
+                      background: certArrastando ? "#EEF4FF" : "#F7FDFA",
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>📂</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>
+                      {certArrastando ? "Solte o arquivo aqui" : "Clique para selecionar"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#888" }}>ou arraste o arquivo .pfx / .p12 aqui</div>
+                  </div>
+                )}
               </div>
+
+              {/* Senha */}
               <div>
                 <label style={labelStyle}>Senha do certificado *</label>
-                <input style={inputStyle} type="password" placeholder="Senha do arquivo .pfx" />
+                <input
+                  style={inputStyle}
+                  type="password"
+                  placeholder="Senha do arquivo .pfx"
+                  value={certSenha}
+                  onChange={e => setCertSenha(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && certFile && certSenha.trim()) carregarCertificado(); }}
+                />
               </div>
             </div>
-            <div style={{ marginTop: 14, background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
-              ⟳ O certificado é armazenado com criptografia e usado apenas para assinar NF-e automaticamente.
-            </div>
+
+            {certSucesso && (
+              <div style={{ marginTop: 14, background: "#D4EDDA", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#155724", fontWeight: 600 }}>
+                ✓ Certificado carregado com sucesso!
+              </div>
+            )}
+
+            {!certSucesso && (
+              <div style={{ marginTop: 14, background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
+                🔒 O certificado é armazenado de forma segura e usado apenas para assinar NF-e automaticamente.
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button onClick={() => setModalCert(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={() => setModalCert(false)} style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                ⟳ Carregar certificado
+              <button
+                onClick={fecharModalCert}
+                style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={carregarCertificado}
+                disabled={!certFile || !certSenha.trim() || certCarregando || certSucesso}
+                style={{
+                  padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none",
+                  borderRadius: 8, fontWeight: 600, cursor: (!certFile || !certSenha.trim() || certCarregando) ? "not-allowed" : "pointer",
+                  fontSize: 13, opacity: (!certFile || !certSenha.trim() || certCarregando) ? 0.5 : 1,
+                }}
+              >
+                {certCarregando ? "Carregando..." : "🔒 Carregar certificado"}
               </button>
             </div>
           </div>
