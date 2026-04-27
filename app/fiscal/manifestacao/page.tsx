@@ -565,7 +565,7 @@ export default function ManifestacaoPage() {
                               </button>
                             </>
                           )}
-                          {(n.situacao === "confirmado" || n.situacao === "ciencia") && n.situacao !== "importada" && (
+                          {(n.situacao === "confirmado" || n.situacao === "ciencia") && (
                             <button
                               onClick={() => setNotaImportar(n)}
                               title="Importar para o sistema"
