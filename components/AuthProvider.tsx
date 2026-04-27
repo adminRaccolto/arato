@@ -36,16 +36,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const selectFazenda = useCallback((id: string, nome: string) => {
-    sessionStorage.setItem("raccotlo_fazenda_id",   id);
-    sessionStorage.setItem("raccotlo_fazenda_nome", nome);
+    localStorage.setItem("raccotlo_fazenda_id",   id);
+    localStorage.setItem("raccotlo_fazenda_nome", nome);
     setFazendaId(id);
     setNomeFazendaSelecionada(nome);
     router.push("/");
   }, [router]);
 
   const clearFazenda = useCallback(() => {
-    sessionStorage.removeItem("raccotlo_fazenda_id");
-    sessionStorage.removeItem("raccotlo_fazenda_nome");
+    localStorage.removeItem("raccotlo_fazenda_id");
+    localStorage.removeItem("raccotlo_fazenda_nome");
     setFazendaId(null);
     setNomeFazendaSelecionada(null);
     router.push("/seletor-cliente");
@@ -84,9 +84,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(role);
 
       if (role === "raccotlo") {
-        // Usuário interno — usa fazenda salva na sessão do browser
-        const savedId   = sessionStorage.getItem("raccotlo_fazenda_id");
-        const savedNome = sessionStorage.getItem("raccotlo_fazenda_nome");
+        // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
+        const savedId   = localStorage.getItem("raccotlo_fazenda_id");
+        const savedNome = localStorage.getItem("raccotlo_fazenda_nome");
         if (savedId) {
           setFazendaId(savedId);
           setNomeFazendaSelecionada(savedNome);
@@ -121,8 +121,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        sessionStorage.removeItem("raccotlo_fazenda_id");
-        sessionStorage.removeItem("raccotlo_fazenda_nome");
+        // Mantém a seleção de fazenda no localStorage — só é limpa pelo signOut() explícito
         setFazendaId(null);
         setNomeUsuario(null);
         setEmailUsuario(null);
@@ -137,8 +136,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signOut() {
-    sessionStorage.removeItem("raccotlo_fazenda_id");
-    sessionStorage.removeItem("raccotlo_fazenda_nome");
+    localStorage.removeItem("raccotlo_fazenda_id");
+    localStorage.removeItem("raccotlo_fazenda_nome");
     await supabase.auth.signOut();
   }
 
