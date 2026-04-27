@@ -123,7 +123,10 @@ export default function SuportePage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Erro na API");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(errJson.error ?? `HTTP ${res.status}`);
+      }
       const { resposta } = await res.json() as { resposta: string };
 
       // Salva resposta da IA
@@ -134,13 +137,17 @@ export default function SuportePage() {
         content: resposta,
       });
       setMensagens(prev => [...prev, msgAI]);
-    } catch (_) {
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const isApiKey = msg.includes("ANTHROPIC_API_KEY") || msg.includes("401") || msg.includes("Authentication");
       setMensagens(prev => [...prev, {
         id: "err-" + Date.now(),
         conversa_id: conversaAtiva.id,
         fazenda_id: fazendaId ?? "",
         role: "assistant",
-        content: "Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.",
+        content: isApiKey
+          ? "⚠️ Chave da API de IA não configurada. Acesse Vercel → Project → Settings → Environment Variables e adicione ANTHROPIC_API_KEY."
+          : `⚠️ Erro: ${msg}`,
       }]);
     } finally { setEnviando(false); }
   }
