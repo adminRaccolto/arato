@@ -142,6 +142,12 @@ const NAV: NavItem[] = [
         ],
       },
       {
+        type: "subgroup", id: "sg-notas-entrada", label: "Notas de Entrada",
+        children: [
+          { id: "fiscal-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
+        ],
+      },
+      {
         type: "subgroup", id: "sg-obrigacoes", label: "Obrigações Acessórias",
         children: [
           { id: "fiscal-lcdpr",        label: "LCDPR",               path: "/lcdpr"                },
