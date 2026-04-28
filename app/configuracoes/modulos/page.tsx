@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -338,7 +338,7 @@ const NCM_MODAL_VAZIO: Omit<NcmTributacao, "id"> = {
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function ParametrosSistema() {
+function ParametrosSistemaContent() {
   const { fazendaId } = useAuth();
   const searchParams = useSearchParams();
   const [aba, setAba] = useState(() => searchParams.get("aba") ?? "fiscal");
@@ -1384,5 +1384,14 @@ export default function ParametrosSistema() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function ParametrosSistema() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando...</div>}>
+      <ParametrosSistemaContent />
+    </Suspense>
   );
 }
