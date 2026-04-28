@@ -350,7 +350,7 @@ function FiscalInner() {
       setFVenda({ destinatario: "", cnpj: "", ncm: "1201.10.00", cfop: "6.101", quantidade: "", unidade: "sc", valorUnitario: "", observacao: NATUREZAS_VENDA[0].obs });
       setModalVenda(false);
       await carregar();
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : "Erro"); }
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
     finally { setSalvando(false); }
   };
 
@@ -376,7 +376,7 @@ function FiscalInner() {
       setFDev({ remetente: "", cnpj: "", ncm: "1201.10.00", cfop: "2.201", quantidade: "", unidade: "sc", valorUnitario: "", nfe_ref: "", chave_ref: "", observacao: NATUREZAS_DEVOLUCAO[0].obs });
       setModalDevolucao(false);
       await carregar();
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : "Erro"); }
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
     finally { setSalvando(false); }
   };
 
@@ -389,7 +389,7 @@ function FiscalInner() {
       alert(`Cancelamento solicitado para NF-e ${modalCancelamento.numero}.\nProtocolo será gerado após autorização SEFAZ.`);
       setMotivoCancelamento("");
       setModalCancelamento(null);
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : "Erro"); }
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
     finally { setSalvando(false); }
   };
 
@@ -417,7 +417,7 @@ function FiscalInner() {
       setFComp({ valorComplemento: "", quantidade: "", unidade: "sc", motivo: "diferenca_peso", observacao: "" });
       setModalComplemento(null);
       await carregar();
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : "Erro"); }
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
     finally { setSalvando(false); }
   };
 

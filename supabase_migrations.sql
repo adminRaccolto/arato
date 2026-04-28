@@ -2613,3 +2613,45 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_op_fiscais_fazenda ON operacoes_fiscais(fazenda_id);
 CREATE INDEX IF NOT EXISTS idx_op_fiscais_cfop    ON operacoes_fiscais(fazenda_id, cfop_interno);
+
+-- ────────────────────────────────────────────────────────────
+-- Notas Fiscais (NF-e emitidas)
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS notas_fiscais (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  numero              TEXT NOT NULL,
+  serie               TEXT NOT NULL DEFAULT '1',
+  tipo                TEXT NOT NULL CHECK (tipo IN ('saida','entrada')),
+  cfop                TEXT NOT NULL,
+  natureza            TEXT NOT NULL,
+  destinatario        TEXT NOT NULL,
+  cnpj_destinatario   TEXT,
+  valor_total         NUMERIC(14,2) NOT NULL DEFAULT 0,
+  data_emissao        DATE NOT NULL,
+  status              TEXT NOT NULL DEFAULT 'em_digitacao'
+                        CHECK (status IN ('autorizada','cancelada','rejeitada','denegada','em_digitacao')),
+  chave_acesso        TEXT,
+  xml_url             TEXT,
+  danfe_url           TEXT,
+  observacao          TEXT,
+  auto                BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at          TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE notas_fiscais ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename='notas_fiscais'
+    AND policyname='allow_all_notas_fiscais'
+  ) THEN
+    CREATE POLICY "allow_all_notas_fiscais"
+    ON notas_fiscais FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_nf_fazenda       ON notas_fiscais(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_nf_data_emissao  ON notas_fiscais(fazenda_id, data_emissao);
+CREATE INDEX IF NOT EXISTS idx_nf_status        ON notas_fiscais(fazenda_id, status);
