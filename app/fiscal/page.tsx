@@ -62,6 +62,98 @@ const inputSt: React.CSSProperties = {
 };
 const labelSt: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
 
+// ── Impressão DANFE simplificado ──────────────────────────────────────────────
+function imprimirDanfe(nota: NotaFiscal) {
+  const dataFmt = new Date(nota.data_emissao + "T12:00:00").toLocaleDateString("pt-BR");
+  const valorFmt = nota.valor_total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const chaveBlocks = nota.chave_acesso
+    ? nota.chave_acesso.replace(/(.{4})/g, "$1 ").trim()
+    : "— aguardando SEFAZ —";
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>DANFE NF-e ${nota.numero}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:9pt;margin:0;padding:12mm;color:#000}
+  .box{border:1px solid #000;padding:4px 6px;margin-bottom:4px}
+  .row{display:flex;gap:4px;margin-bottom:4px}
+  .row>.box{flex:1;margin-bottom:0}
+  .title{font-size:11pt;font-weight:bold;text-align:center;margin:6px 0 2px}
+  .sub{font-size:8pt;text-align:center;color:#444;margin-bottom:4px}
+  .label{font-size:7pt;color:#555;display:block;margin-bottom:1px}
+  .value{font-size:9pt;font-weight:bold}
+  .chave{font-family:monospace;font-size:8pt;word-break:break-all;letter-spacing:.05em}
+  .total{font-size:14pt;font-weight:bold;text-align:right;border-top:1px solid #000;padding-top:6px;margin-top:6px}
+  .obs{font-size:8pt;color:#333;margin-top:8px;border-top:1px dashed #999;padding-top:6px}
+  .danfe-header{display:flex;align-items:center;border:1px solid #000;padding:8px;margin-bottom:4px;gap:12px}
+  .danfe-header .logo{font-size:14pt;font-weight:900;color:#1A4870;min-width:80px}
+  .danfe-header .center{flex:1;text-align:center}
+  .danfe-header .nfe{border:1px solid #000;padding:6px 12px;text-align:center;min-width:80px}
+  table{width:100%;border-collapse:collapse;margin:4px 0}
+  table th{background:#e8e8e8;font-size:8pt;padding:3px 6px;text-align:left;border:1px solid #ccc}
+  table td{font-size:8.5pt;padding:3px 6px;border:1px solid #ccc}
+  @media print{body{padding:0}@page{margin:10mm;size:A4}}
+</style></head><body>
+<div class="danfe-header">
+  <div class="logo">RacTech</div>
+  <div class="center">
+    <div class="title">DANFE — Documento Auxiliar da Nota Fiscal Eletrônica</div>
+    <div class="sub">Nota Fiscal Eletrônica · Entrada/Saída</div>
+    <div class="sub">Homologação — SEM VALOR FISCAL</div>
+  </div>
+  <div class="nfe">
+    <div style="font-size:7pt;color:#555">NF-e</div>
+    <div style="font-size:16pt;font-weight:900">${String(nota.numero).replace(/^(\d+)\.(\d+)$/, "$1.$2")}</div>
+    <div style="font-size:8pt">Série ${nota.serie}</div>
+  </div>
+</div>
+
+<div class="box">
+  <span class="label">Chave de Acesso</span>
+  <span class="chave value">${chaveBlocks}</span>
+</div>
+
+<div class="row">
+  <div class="box"><span class="label">Natureza da Operação</span><span class="value">${nota.natureza}</span></div>
+  <div class="box" style="max-width:80px"><span class="label">CFOP</span><span class="value">${nota.cfop}</span></div>
+  <div class="box" style="max-width:100px"><span class="label">Data de Emissão</span><span class="value">${dataFmt}</span></div>
+</div>
+
+<div class="row">
+  <div class="box"><span class="label">Destinatário / Remetente</span><span class="value">${nota.destinatario}</span></div>
+  <div class="box" style="max-width:180px"><span class="label">CNPJ / CPF</span><span class="value">${nota.cnpj_destinatario ?? "—"}</span></div>
+</div>
+
+<table>
+  <thead><tr>
+    <th style="width:14%">NCM</th><th>Descrição</th>
+    <th style="width:10%;text-align:center">Qtd</th>
+    <th style="width:10%;text-align:center">Un</th>
+    <th style="width:14%;text-align:right">Valor Unit.</th>
+    <th style="width:14%;text-align:right">Valor Total</th>
+  </tr></thead>
+  <tbody><tr>
+    <td>—</td><td>${nota.natureza}</td>
+    <td style="text-align:center">—</td><td style="text-align:center">sc</td>
+    <td style="text-align:right">—</td>
+    <td style="text-align:right;font-weight:bold">${valorFmt}</td>
+  </tr></tbody>
+</table>
+
+<div class="total">Total NF-e: ${valorFmt}</div>
+
+${nota.observacao ? `<div class="obs"><strong>Informações Complementares (infCpl):</strong><br>${nota.observacao}</div>` : ""}
+
+<div style="text-align:center;font-size:7pt;color:#777;margin-top:16px;border-top:1px dashed #ccc;padding-top:6px">
+  Documento gerado pelo sistema RacTech · ${new Date().toLocaleString("pt-BR")} · HOMOLOGAÇÃO — SEM VALOR FISCAL
+</div>
+
+<script>window.onload=()=>{window.print();}</script>
+</body></html>`;
+
+  const w = window.open("", "_blank", "width=900,height=700");
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
 function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz }: {
   notas: NotaFiscal[];
@@ -142,9 +234,11 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz }: {
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       {nota.status === "autorizada" && (
                         <>
-                          {nota.danfe_url && (
-                            <button style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ DANFE</button>
-                          )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); imprimirDanfe(nota); }}
+                            style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+                            🖨 Imprimir DANFE
+                          </button>
                           {nota.xml_url && (
                             <button style={{ padding: "5px 12px", border: "0.5px solid #378ADD", borderRadius: 6, background: "#E6F1FB", color: "#0C447C", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>↓ XML</button>
                           )}
