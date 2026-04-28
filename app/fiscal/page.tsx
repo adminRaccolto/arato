@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, listarProdutores } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor } from "../../lib/supabase";
@@ -63,10 +63,11 @@ const inputSt: React.CSSProperties = {
 const labelSt: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
+  onConsultarSefaz?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -171,8 +172,8 @@ function TabelaNFe({ notas, onCancelar, onComplementar }: {
                           <button style={{ padding: "5px 12px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", fontSize: 11 }}>Ver XML de retorno</button>
                         </>
                       )}
-                      {nota.status === "em_digitacao" && (
-                        <button style={{ padding: "5px 12px", border: "0.5px solid #EF9F27", borderRadius: 6, background: "#FAEEDA", color: "#633806", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>⟳ Consultar SEFAZ</button>
+                      {nota.status === "em_digitacao" && onConsultarSefaz && (
+                        <button onClick={(e) => { e.stopPropagation(); onConsultarSefaz(nota); }} style={{ padding: "5px 12px", border: "0.5px solid #EF9F27", borderRadius: 6, background: "#FAEEDA", color: "#633806", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>⟳ Consultar SEFAZ</button>
                       )}
                     </div>
                   </td>
@@ -201,6 +202,9 @@ function FiscalInner() {
   useEffect(() => {
     if (abaParam) setAba(abaParam);
   }, [abaParam]);
+
+  // Filtro de status — aba Notas de Venda
+  const [filtroStatusVenda, setFiltroStatusVenda] = useState<string | null>(null);
 
   // Modais
   const [modalVenda, setModalVenda] = useState(false);
@@ -421,6 +425,15 @@ function FiscalInner() {
     finally { setSalvando(false); }
   };
 
+  const consultarSefaz = async (nota: NotaFiscal) => {
+    // Simulação: em homologação autoriza automaticamente.
+    // Com integração real, chamaria a API SEFAZ aqui.
+    try {
+      await atualizarStatusNFe(nota.id, "autorizada");
+      await carregar();
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
+  };
+
   const ABAS: { key: Aba; label: string; count?: number }[] = [
     { key: "venda",        label: "Notas de Venda",      count: notasVenda.length },
     { key: "devolucao",    label: "Nota de Devolução",    count: notasDevolucao.length },
@@ -516,17 +529,22 @@ function FiscalInner() {
                       { label: "Autorizadas", count: totalAutorizadas, filter: "autorizada" },
                       { label: "Rejeitadas", count: totalRejeitadas, filter: "rejeitada" },
                       { label: "Processando", count: totalProcessando, filter: "em_digitacao" },
-                    ].map(f => (
-                      <span key={f.label} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid #D4DCE8", fontSize: 12, color: "#666", cursor: "default" }}>
-                        {f.label} {f.count > 0 && <span style={{ fontSize: 10, background: "#DEE5EE", color: "#555", padding: "1px 5px", borderRadius: 8 }}>{f.count}</span>}
-                      </span>
-                    ))}
+                    ].map(f => {
+                      const ativo = filtroStatusVenda === f.filter;
+                      return (
+                        <button key={f.label} onClick={() => setFiltroStatusVenda(ativo ? null : f.filter)}
+                          style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${ativo ? "#1A4870" : "#D4DCE8"}`, fontSize: 12, color: ativo ? "#fff" : "#666", background: ativo ? "#1A4870" : "transparent", cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
+                          {f.label} {(f.count ?? 0) > 0 && <span style={{ fontSize: 10, background: ativo ? "rgba(255,255,255,0.25)" : "#DEE5EE", color: ativo ? "#fff" : "#555", padding: "1px 5px", borderRadius: 8 }}>{f.count}</span>}
+                        </button>
+                      );
+                    })}
                     <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{notas.filter(n => n.auto).length}/{notasVenda.length} emitidas automaticamente</span>
                   </div>
                   <TabelaNFe
-                    notas={notasVenda}
+                    notas={filtroStatusVenda ? notasVenda.filter(n => n.status === filtroStatusVenda || (filtroStatusVenda === "rejeitada" && n.status === "denegada")) : notasVenda}
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
+                    onConsultarSefaz={consultarSefaz}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>
