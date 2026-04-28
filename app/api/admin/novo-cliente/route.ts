@@ -112,6 +112,11 @@ export async function POST(req: Request) {
     });
     if (perfErr) throw new Error("Perfil: " + perfErr.message);
 
+    // ── 5b. Vincular owner_user_id na fazenda ao usuário criado ──
+    await supabase.from("fazendas")
+      .update({ owner_user_id: authUserId })
+      .eq("id", fazendaId);
+
     // ── 6. Buscar grupo "Gerente" ──
     const { data: grupo } = await supabase
       .from("grupos_usuarios")

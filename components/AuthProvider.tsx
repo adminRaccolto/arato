@@ -97,23 +97,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Usuário cliente normal
-      let fid: string | null = perfil?.fazenda_id ?? null;
-
-      if (!fid) {
-        const { data: fazendas } = await supabase
-          .from("fazendas")
-          .select("id")
-          .order("created_at", { ascending: true })
-          .limit(1);
-        if (fazendas && fazendas.length > 0) {
-          fid = fazendas[0].id;
-          await supabase.from("perfis").upsert(
-            { user_id: user.id, fazenda_id: fid, nome: nome ?? user.email },
-            { onConflict: "user_id" }
-          );
-        }
-      }
-
+      const fid: string | null = perfil?.fazenda_id ?? null;
       setFazendaId(fid);
     }
 

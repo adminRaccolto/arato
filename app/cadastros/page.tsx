@@ -183,7 +183,7 @@ function TH({ cols }: { cols: string[] }) {
 // ══════════════════════════════════════════════════════
 function CadastrosInner() {
   const params = useSearchParams();
-  const { fazendaId } = useAuth();
+  const { fazendaId, userRole } = useAuth();
   const [aba, setAba] = useState<TabCad>((params.get("tab") as TabCad) ?? "produtores");
 
   // Sincroniza a aba sempre que o query param ?tab= mudar na URL
@@ -284,7 +284,7 @@ function CadastrosInner() {
   const [contas, setContas]           = useState<ContaBancaria[]>([]);
   const [modalConta, setModalConta]   = useState(false);
   const [editConta, setEditConta]     = useState<ContaBancaria | null>(null);
-  const [fConta, setFConta]           = useState({ nome: "", banco: "", agencia: "", conta: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "" });
+  const [fConta, setFConta]           = useState({ nome: "", banco: "", agencia: "", conta: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"investimento"|"caixa"|"transitoria", saldo_inicial: "" });
 
   // ── Insumos ──
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
@@ -391,9 +391,24 @@ function CadastrosInner() {
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
     }
     if (aba === "fazendas") {
-      listarFazendas(fazendaId).then(setFazendas).catch(e => setErro(e.message));
+      if (userRole === "raccotlo" && fazendaId) {
+        // Raccotlo admin: busca todas as fazendas do mesmo cliente (mesmo owner_user_id)
+        supabase.from("fazendas").select("owner_user_id").eq("id", fazendaId).single()
+          .then(({ data: af }) => {
+            const q = af?.owner_user_id
+              ? supabase.from("fazendas").select("*").eq("owner_user_id", af.owner_user_id).order("nome")
+              : supabase.from("fazendas").select("*").eq("id", fazendaId);
+            q.then(({ data, error }) => {
+              if (error) setErro(error.message);
+              else setFazendas(data ?? []);
+            });
+          });
+      } else {
+        listarFazendas().then(setFazendas).catch(e => setErro(e.message));
+      }
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarEmpresas(fazendaId).then(setEmpresas).catch(() => {});
+      listarPessoas(fazendaId).then(setPessoas).catch(() => {});
     }
     if (aba === "pessoas")     listarPessoas(fazendaId).then(setPessoas).catch(e => setErro(e.message));
     if (aba === "safras")      listarAnosSafra(fazendaId).then(setAnosSafra).catch(e => setErro(e.message));
@@ -614,6 +629,20 @@ function CadastrosInner() {
 
   const salvarFaz = () => salvar(async () => {
     if (!fFaz.nome.trim() || !fFaz.area) return;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Se raccotlo admin está gerenciando um cliente, owner_user_id = user_id do cliente
+    // Se cliente comum está criando sua fazenda, owner_user_id = próprio user_id
+    let ownerUserId = user?.id;
+    if (userRole === "raccotlo" && fazendaId) {
+      const { data: clientPerfil } = await supabase
+        .from("perfis").select("user_id")
+        .eq("fazenda_id", fazendaId)
+        .neq("role", "raccotlo")
+        .limit(1).maybeSingle();
+      if (clientPerfil?.user_id) ownerUserId = clientPerfil.user_id;
+    }
+
     const payload: Omit<FazendaDB, "id" | "created_at"> = {
       nome: fFaz.nome.trim(), municipio: fFaz.municipio.trim(), estado: fFaz.estado,
       area_total_ha: Number(fFaz.area), cnpj: fFaz.cnpj || undefined,
@@ -625,6 +654,7 @@ function CadastrosInner() {
       cep: fFaz.cep || undefined, logradouro: fFaz.logradouro || undefined,
       numero_end: fFaz.numero_end || undefined, complemento: fFaz.complemento || undefined,
       bairro: fFaz.bairro || undefined,
+      owner_user_id: ownerUserId,
     };
     let fazId: string;
     if (editFaz) {
@@ -637,7 +667,6 @@ function CadastrosInner() {
       fazId = n.id;
       // Bootstrap: se ainda não há fazendaId no contexto, vincular esta fazenda ao perfil do usuário
       if (!fazendaId) {
-        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase.from("perfis").upsert(
             { user_id: user.id, fazenda_id: fazId, nome: user.email },
@@ -2733,7 +2762,7 @@ function CadastrosInner() {
                   <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Contas Bancárias <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({contas.filter(c => c.ativa).length} ativas)</span></div>
                   <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Contas utilizadas no Fluxo de Caixa, CP/CR e LCDPR</div>
                 </div>
-                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco: "", agencia: "", conta: "", moeda: "BRL", ativa: true, empresa_id: "" }); setModalConta(true); }}>+ Nova Conta</button>
+                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco: "", agencia: "", conta: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "" }); setModalConta(true); }}>+ Nova Conta</button>
               </div>
               {contas.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0", color: "#888", fontSize: 13 }}>Nenhuma conta bancária cadastrada</div>
@@ -2742,18 +2771,31 @@ function CadastrosInner() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "#F4F6FA" }}>
-                        {["Nome / Apelido", "Banco", "Agência", "Conta", "Moeda", "Status", ""].map(h => (
-                          <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                        {["Nome / Apelido", "Tipo", "Banco", "Conta", "Saldo Inicial", "Moeda", "Status", ""].map(h => (
+                          <th key={h} style={{ padding: "10px 14px", textAlign: h === "Saldo Inicial" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {contas.map((c, i) => (
+                      {contas.map((c, i) => {
+                        const tipoCor: Record<string, { bg: string; color: string; label: string }> = {
+                          corrente:    { bg: "#D5E8F5", color: "#0B2D50", label: "Corrente" },
+                          investimento:{ bg: "#DCF5E8", color: "#14532D", label: "Investimento" },
+                          caixa:       { bg: "#FBF3E0", color: "#7A5A12", label: "Caixa" },
+                          transitoria: { bg: "#F4F6FA", color: "#555",    label: "Transitória" },
+                        };
+                        const tp = tipoCor[c.tipo_conta ?? "corrente"] ?? tipoCor.corrente;
+                        return (
                         <tr key={c.id} style={{ borderBottom: i < contas.length - 1 ? "0.5px solid #EEF1F7" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                           <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1a1a1a" }}>{c.nome}</td>
-                          <td style={{ padding: "10px 14px", color: "#555" }}>{c.banco || "—"}</td>
-                          <td style={{ padding: "10px 14px", color: "#555" }}>{c.agencia || "—"}</td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <span style={{ background: tp.bg, color: tp.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{tp.label}</span>
+                          </td>
+                          <td style={{ padding: "10px 14px", color: "#555" }}>{c.banco ? `${c.banco}${c.agencia ? ` · ${c.agencia}` : ""}` : "—"}</td>
                           <td style={{ padding: "10px 14px", color: "#555" }}>{c.conta || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", color: (c.saldo_inicial ?? 0) >= 0 ? "#1A4870" : "#E24B4A", fontWeight: 600, fontSize: 12 }}>
+                            {(c.saldo_inicial ?? 0) !== 0 ? (c.saldo_inicial! < 0 ? "− " : "") + Math.abs(c.saldo_inicial!).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
+                          </td>
                           <td style={{ padding: "10px 14px" }}>
                             <span style={{ background: c.moeda === "USD" ? "#FBF3E0" : "#D5E8F5", color: c.moeda === "USD" ? "#7A5A12" : "#0B2D50", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.moeda}</span>
                           </td>
@@ -2761,11 +2803,12 @@ function CadastrosInner() {
                             <span style={{ background: c.ativa ? "#DCF5E8" : "#F4F6FA", color: c.ativa ? "#14532D" : "#888", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.ativa ? "Ativa" : "Inativa"}</span>
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco: c.banco ?? "", agencia: c.agencia ?? "", conta: c.conta ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "" }); setModalConta(true); }}>Editar</button>
+                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco: c.banco ?? "", agencia: c.agencia ?? "", conta: c.conta ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? "") }); setModalConta(true); }}>Editar</button>
                             <button style={{ ...btnX, marginLeft: 6, color: "#E24B4A" }} onClick={async () => { if (!confirm("Excluir esta conta?")) return; await excluirConta(c.id); setContas(x => x.filter(r => r.id !== c.id)); }}>Excluir</button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2808,6 +2851,19 @@ function CadastrosInner() {
               <input style={inp} placeholder="00000-0" value={fConta.conta} onChange={e => setFConta(p => ({ ...p, conta: e.target.value }))} />
             </div>
             <div>
+              <label style={lbl}>Tipo de Conta *</label>
+              <select style={inp} value={fConta.tipo_conta} onChange={e => setFConta(p => ({ ...p, tipo_conta: e.target.value as "corrente"|"investimento"|"caixa"|"transitoria" }))}>
+                <option value="corrente">Conta Corrente</option>
+                <option value="investimento">Conta Investimento</option>
+                <option value="caixa">Conta Caixa</option>
+                <option value="transitoria">Conta Transitória</option>
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Saldo Inicial (R$)</label>
+              <input style={inp} type="number" step="0.01" placeholder="0,00" value={fConta.saldo_inicial} onChange={e => setFConta(p => ({ ...p, saldo_inicial: e.target.value }))} />
+            </div>
+            <div>
               <label style={lbl}>Moeda</label>
               <select style={inp} value={fConta.moeda} onChange={e => setFConta(p => ({ ...p, moeda: e.target.value as "BRL"|"USD" }))}>
                 <option value="BRL">BRL — Real</option>
@@ -2819,6 +2875,9 @@ function CadastrosInner() {
               <label htmlFor="contaAtiva" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Conta ativa</label>
             </div>
           </div>
+          <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>
+            Contas do tipo <strong>Caixa</strong> e <strong>Transitória</strong> são excluídas automaticamente do Fluxo de Caixa.
+          </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
             <button style={btnR} onClick={() => setModalConta(false)}>Cancelar</button>
             <button style={{ ...btnV, opacity: salvando || !fConta.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fConta.nome.trim()}
@@ -2826,7 +2885,8 @@ function CadastrosInner() {
                 if (!fazendaId) return;
                 setSalvando(true);
                 try {
-                  const payload = { fazenda_id: fazendaId, empresa_id: fConta.empresa_id || empresas[0]?.id || null, nome: fConta.nome.trim(), banco: fConta.banco || undefined, agencia: fConta.agencia || undefined, conta: fConta.conta || undefined, moeda: fConta.moeda, ativa: fConta.ativa };
+                  const saldoIni = fConta.saldo_inicial !== "" ? parseFloat(fConta.saldo_inicial) : 0;
+                  const payload = { fazenda_id: fazendaId, empresa_id: fConta.empresa_id || empresas[0]?.id || null, nome: fConta.nome.trim(), banco: fConta.banco || undefined, agencia: fConta.agencia || undefined, conta: fConta.conta || undefined, moeda: fConta.moeda, ativa: fConta.ativa, tipo_conta: fConta.tipo_conta, saldo_inicial: isNaN(saldoIni) ? 0 : saldoIni };
                   if (editConta) {
                     await atualizarConta(editConta.id, payload);
                     setContas(x => x.map(r => r.id === editConta.id ? { ...r, ...payload } : r));

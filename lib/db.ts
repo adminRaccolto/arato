@@ -13,7 +13,14 @@ import type { Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lan
 
 export async function listarFazendas(id?: string): Promise<Fazenda[]> {
   let q = supabase.from("fazendas").select("*").order("nome");
-  if (id) q = q.eq("id", id);
+  if (id) {
+    q = q.eq("id", id);
+  } else {
+    // Isolamento por tenant: retorna apenas fazendas do usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    q = q.eq("owner_user_id", user.id);
+  }
   const { data, error } = await q;
   if (error) throw error;
   return data ?? [];

@@ -869,11 +869,12 @@ export default function Financeiro() {
                                   crVal?: number; cpVal?: number; simVal?: number;
                                   badge: string; bgBadge: string; colorBadge: string;
                                   extra?: React.ReactNode;
+                                  subMoeda?: string;
                                 };
 
                                 const linhas: ItemLinha[] = [
-                                  ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, crVal: paraBRL(l), badge: "CR", bgBadge: "#D5E8F5", colorBadge: "#0B2D50", extra: <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
-                                  ...lDia.filter(l => l.tipo === "pagar").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, cpVal: paraBRL(l), badge: "CP", bgBadge: "#FCEBEB", colorBadge: "#791F1F", extra: <span style={{ fontSize: 9, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
+                                  ...lDia.filter(l => l.tipo === "receber").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, crVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CR", bgBadge: "#D5E8F5", colorBadge: "#0B2D50", extra: <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
+                                  ...lDia.filter(l => l.tipo === "pagar").map(l => ({ key: l.id, label: l.descricao, sub: l.categoria, cpVal: paraBRL(l), subMoeda: l.moeda === "USD" ? `${fmtUSD(l.valor)} @ R$${(l.cotacao_usd ?? COTACAO_USD).toFixed(2)}` : undefined, badge: "CP", bgBadge: "#FCEBEB", colorBadge: "#791F1F", extra: <span style={{ fontSize: 9, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5 }}>{corStatus(l.status).label}</span> })),
                                   ...pDia.filter(p => p.tipo === "receber").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, crVal: p.valor, badge: "prev", bgBadge: "#1A4870", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "#888", cursor: "pointer" }}>✕</button></> })),
                                   ...pDia.filter(p => p.tipo === "pagar").map(p => ({ key: p.id, label: p.descricao, sub: p.categoria, cpVal: p.valor, badge: "prev", bgBadge: "#1A4870", colorBadge: "#fff", extra: <><button onClick={() => setModalConverterPrev(p)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", borderRadius: 5, cursor: "pointer" }}>→ CP</button><button onClick={() => setPrevisoes(prev => prev.filter(x => x.id !== p.id))} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "#888", cursor: "pointer" }}>✕</button></> })),
                                   ...sDia.map(s => ({ key: s.id, label: s.descricao, sub: "", simVal: s.tipo === "receber" ? s.valor : -s.valor, badge: "sim", bgBadge: "#C9921B", colorBadge: "#fff", extra: <><button onClick={() => handleToggleSim(s.id, false)} style={{ fontSize: 10, padding: "2px 7px", border: "0.5px solid #ccc", background: "transparent", color: "#444", borderRadius: 5, cursor: "pointer" }}>pausar</button><button onClick={() => handleExcluirSim(s.id)} style={{ fontSize: 10, padding: "2px 5px", border: "none", background: "transparent", color: "#888", cursor: "pointer" }}>✕</button></> })),
@@ -944,12 +945,14 @@ export default function Financeiro() {
                                               {item.extra}
                                             </div>
                                             {/* CR */}
-                                            <div style={{ textAlign: "right", paddingRight: 6, fontSize: 11, fontWeight: 600, color: "#1A4870" }}>
-                                              {item.crVal !== undefined ? `+ ${fmtBRL(item.crVal)}` : ""}
+                                            <div style={{ textAlign: "right", paddingRight: 6 }}>
+                                              {item.crVal !== undefined && <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870" }}>{`+ ${fmtBRL(item.crVal)}`}</div>}
+                                              {item.crVal !== undefined && item.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{item.subMoeda}</div>}
                                             </div>
                                             {/* CP */}
-                                            <div style={{ textAlign: "right", paddingRight: 6, fontSize: 11, fontWeight: 600, color: "#E24B4A" }}>
-                                              {item.cpVal !== undefined ? `− ${fmtBRL(item.cpVal)}` : ""}
+                                            <div style={{ textAlign: "right", paddingRight: 6 }}>
+                                              {item.cpVal !== undefined && <div style={{ fontSize: 11, fontWeight: 600, color: "#E24B4A" }}>{`− ${fmtBRL(item.cpVal)}`}</div>}
+                                              {item.cpVal !== undefined && item.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{item.subMoeda}</div>}
                                             </div>
                                             {/* Sim */}
                                             <div style={{ textAlign: "right", paddingRight: 6, fontSize: 11, fontWeight: 600, color: "#C9921B" }}>

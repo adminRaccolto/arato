@@ -2655,3 +2655,84 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_nf_fazenda       ON notas_fiscais(fazenda_id);
 CREATE INDEX IF NOT EXISTS idx_nf_data_emissao  ON notas_fiscais(fazenda_id, data_emissao);
 CREATE INDEX IF NOT EXISTS idx_nf_status        ON notas_fiscais(fazenda_id, status);
+
+-- ═══════════════════════════════════════════════════════════════
+-- Migration: Classificação e Saldo Inicial em Contas Bancárias
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE contas_bancarias
+  ADD COLUMN IF NOT EXISTS tipo_conta   TEXT NOT NULL DEFAULT 'corrente'
+    CHECK (tipo_conta IN ('corrente','investimento','caixa','transitoria')),
+  ADD COLUMN IF NOT EXISTS saldo_inicial NUMERIC(15,2) NOT NULL DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- Migration: Isolamento de Fazendas por Usuário v4 (DEFINITIVO)
+-- Corrige farms criadas por raccotlo admin com owner errado.
+-- Raccotlo admin tem bypass total (é admin do sistema).
+-- ═══════════════════════════════════════════════════════════════
+
+-- 1. Adiciona coluna owner_user_id (se não existir)
+ALTER TABLE fazendas
+  ADD COLUMN IF NOT EXISTS owner_user_id UUID REFERENCES auth.users(id);
+
+-- 2. Backfill principal: usa o user_id do cliente (role='client') vinculado via perfis
+--    Sobrescreve qualquer owner_user_id incorreto (ex: id do raccotlo admin)
+UPDATE fazendas f
+SET owner_user_id = p.user_id
+FROM perfis p
+WHERE p.fazenda_id = f.id
+  AND (p.role = 'client' OR p.role IS NULL OR p.role = '');
+
+-- 3. Backfill secundário: farms sem entrada em perfis mantêm owner_user_id existente
+--    (farms novas do API sem perfis ainda — deixa NULL, API vai corrigir no próximo cadastro)
+
+-- 4. Garante que RLS está ATIVO
+ALTER TABLE fazendas ENABLE ROW LEVEL SECURITY;
+
+-- 5. Remove TODAS as políticas existentes (por nome E pelo loop — cobertura total)
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+-- 6. Cria políticas:
+--    - Clientes veem apenas suas fazendas (owner_user_id = auth.uid())
+--    - Raccotlo admin vê todas as fazendas (bypass total — é admin do sistema)
+CREATE POLICY "fazendas_select"
+  ON fazendas FOR SELECT
+  USING (
+    owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "fazendas_insert"
+  ON fazendas FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "fazendas_update"
+  ON fazendas FOR UPDATE
+  USING (
+    owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "fazendas_delete"
+  ON fazendas FOR DELETE
+  USING (
+    owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+-- 7. Verificação — execute e confira:
+--    Cada fazenda deve ter owner_user_id = user_id do cliente que a possui
+SELECT f.nome, f.owner_user_id, p.user_id as perfis_user_id, p.role
+FROM fazendas f
+LEFT JOIN perfis p ON p.fazenda_id = f.id
+ORDER BY f.nome;
+
+NOTIFY pgrst, 'reload schema';

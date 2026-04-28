@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
-import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais } from "../../../lib/db";
+import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial } from "../../../lib/supabase";
+import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor } from "../../../lib/supabase";
 
-type AbaFin = "fluxo" | "dfc";
+type AbaFin = "fluxo" | "dfc" | "posicao" | "cpcr";
 
 interface SimEntry {
   id: string;
@@ -24,18 +24,27 @@ interface FlowRow {
   tipo_row: "real" | "previsao" | "simulacao";
   entrada: number;
   saida: number;
+  subMoeda?: string;
+  origem_lancamento?: string;
 }
 
 type FiltroFluxo = {
-  empresasSel: string[];
-  contasSel:   string[];
-  inicio:      string;
-  fim:         string;
-  moedaExib:   "BRL" | "USD";
-  visao:       "ambos" | "realizado" | "projetado";
+  empresasSel:   string[];
+  contasSel:     string[];
+  produtoresSel: string[];
+  inicio:        string;
+  fim:           string;
+  moedaExib:     "BRL" | "USD";
+  visao:         "ambos" | "realizado" | "projetado";
 };
 
 // ─── Helpers ──────────────────────────────────────────────────
+const fmtUSDRel = (v: number) => `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const paraBRLRel = (l: any, fallback: number) => l.moeda === "USD" ? l.valor * (l.cotacao_usd ?? fallback) : l.valor;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const subMoedaRel = (l: any, fallback: number): string | undefined => l.moeda === "USD" ? `${fmtUSDRel(l.valor)} @ R$${(l.cotacao_usd ?? fallback).toFixed(2)}` : undefined;
+
 const fmtBRL = (v: number, decimais = 0) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: decimais, maximumFractionDigits: decimais });
 
@@ -65,18 +74,22 @@ export default function FinanceiroRelatorios() {
   const [lancamentos,  setLancamentos]  = useState<Lancamento[]>([]);
   const [empresas,     setEmpresas]     = useState<Empresa[]>([]);
   const [contas,       setContas]       = useState<ContaBancaria[]>([]);
+  const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [operacoesGer, setOperacoesGer] = useState<OperacaoGerencial[]>([]);
   const [carregando,  setCarregando]  = useState(true);
+  const [cotacaoUSD,  setCotacaoUSD]  = useState<number>(5.90);
+  const [filtroAberto, setFiltroAberto] = useState(false);
   const [aba,         setAba]         = useState<AbaFin>("fluxo");
 
   const anoAtual = new Date().getFullYear();
   const [filtro, setFiltro] = useState<FiltroFluxo>({
-    empresasSel: [],
-    contasSel:   [],
-    inicio:      `${anoAtual}-01-01`,
-    fim:         `${anoAtual}-12-31`,
-    moedaExib:   "BRL",
-    visao:       "ambos",
+    empresasSel:   [],
+    contasSel:     [],
+    produtoresSel: [],
+    inicio:        `${anoAtual}-01-01`,
+    fim:           `${anoAtual}-12-31`,
+    moedaExib:     "BRL",
+    visao:         "ambos",
   });
   const [mesesExpandidos,   setMesesExpandidos]   = useState<Set<string>>(new Set());
   const [simEntries,        setSimEntries]        = useState<SimEntry[]>([]);
@@ -104,6 +117,11 @@ export default function FinanceiroRelatorios() {
       .finally(() => setCarregando(false));
     listarEmpresas(fazendaId).then(setEmpresas).catch(() => setEmpresas([]));
     listarContas(fazendaId).then(setContas).catch(() => setContas([]));
+    listarProdutores(fazendaId).then(setProdutores).catch(() => setProdutores([]));
+    fetch("/api/precos").then(r => r.json()).then(d => {
+      const taxa = d?.usdPtax ?? d?.usdBrl;
+      if (taxa && taxa > 0) setCotacaoUSD(taxa);
+    }).catch(() => {});
   }, [fazendaId]);
 
   // localStorage simulações
@@ -229,8 +247,10 @@ export default function FinanceiroRelatorios() {
               {/* Abas */}
               <div style={{ display: "flex", background: "#fff", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
                 {([
-                  { key: "fluxo", label: "Fluxo de Caixa" },
-                  { key: "dfc",   label: "DFC — Demonstrativo de Fluxo de Caixa" },
+                  { key: "fluxo",   label: "Fluxo de Caixa" },
+                  { key: "cpcr",    label: "CP / CR — Contas" },
+                  { key: "dfc",     label: "DFC — Demonstrativo" },
+                  { key: "posicao", label: "Posição por Conta" },
                 ] as { key: AbaFin; label: string }[]).map(a => (
                   <button key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 20px", border: "none", background: "transparent", cursor: "pointer",
@@ -245,11 +265,36 @@ export default function FinanceiroRelatorios() {
 
               {/* ═══════ ABA: FLUXO DE CAIXA ═══════ */}
               {aba === "fluxo" && (() => {
+                // Contas que entram no fluxo: corrente e investimento (excluir caixa e transitoria)
+                const contasFluxo = contas.filter(c => c.ativa && (c.tipo_conta === "corrente" || c.tipo_conta === "investimento" || !c.tipo_conta));
+
+                // Contas filtradas por produtor selecionado
+                const contasFiltProd = filtro.produtoresSel.length > 0
+                  ? contasFluxo.filter(c => c.produtor_id && filtro.produtoresSel.includes(c.produtor_id))
+                  : contasFluxo;
+
+                // Contas efetivamente selecionadas (produtores + contas checkbox)
+                const contasEfetivas = filtro.contasSel.length > 0
+                  ? contasFiltProd.filter(c => filtro.contasSel.includes(c.id))
+                  : contasFiltProd;
+                const contasEfetivasIds = new Set(contasEfetivas.map(c => c.id));
+                const contasFluxoIds    = new Set(contasFluxo.map(c => c.id));
+
+                // Saldo inicial: soma dos saldos das contas efetivas
+                const saldoInicial = contasEfetivas.reduce((s, c) => s + (c.saldo_inicial ?? 0), 0);
+
                 const lansFiltrados = lancamentos.filter(l => {
                   const dt = l.data_vencimento ?? l.data_lancamento ?? "";
                   if (filtro.inicio && dt < filtro.inicio) return false;
                   if (filtro.fim   && dt > filtro.fim)   return false;
-                  if (filtro.contasSel.length > 0 && l.conta_bancaria && !filtro.contasSel.includes(l.conta_bancaria)) return false;
+                  // filtro de produtor no lançamento
+                  if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
+                  // filtro de conta
+                  if (filtro.contasSel.length > 0 || filtro.produtoresSel.length > 0) {
+                    if (l.conta_bancaria && !contasEfetivasIds.has(l.conta_bancaria)) return false;
+                  } else {
+                    if (l.conta_bancaria && !contasFluxoIds.has(l.conta_bancaria)) return false;
+                  }
                   return true;
                 });
 
@@ -258,11 +303,13 @@ export default function FinanceiroRelatorios() {
 
                 const rows: FlowRow[] = [];
                 for (const l of lanRealizados) {
-                  rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "real", entrada: l.tipo === "receber" ? l.valor : 0, saida: l.tipo === "pagar" ? l.valor : 0 });
+                  const brl = paraBRLRel(l, cotacaoUSD);
+                  rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "real", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
                 }
                 if (incluirPrevisoes) {
                   for (const l of lanPrevisoes) {
-                    rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "previsao", entrada: l.tipo === "receber" ? l.valor : 0, saida: l.tipo === "pagar" ? l.valor : 0 });
+                    const brl = paraBRLRel(l, cotacaoUSD);
+                    rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "previsao", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
                   }
                 }
                 const simsAtivas = simulacoesAtivas ? simEntries.filter(s => s.ativo) : [];
@@ -271,7 +318,7 @@ export default function FinanceiroRelatorios() {
                 }
                 rows.sort((a, b) => a.data.localeCompare(b.data));
 
-                let saldoAcc = 0;
+                let saldoAcc = saldoInicial;
                 const rowsComSaldo = rows.map(r => {
                   const simEntry = r.tipo_row === "simulacao" ? simEntries.find(s => s.fornecedor === r.fornecedor && s.descricao === r.descricao && s.data === r.data) : null;
                   const simVal = simEntry ? (simEntry.tipo === "entrada" ? simEntry.valor : -simEntry.valor) : 0;
@@ -290,7 +337,7 @@ export default function FinanceiroRelatorios() {
                 const totalEntradas = rowsComSaldo.reduce((s, r) => s + r.entrada, 0);
                 const totalSaidas   = rowsComSaldo.reduce((s, r) => s + r.saida, 0);
                 const totalSimLiq   = simsAtivas.reduce((s, e) => s + (e.tipo === "entrada" ? e.valor : -e.valor), 0);
-                const saldoFinal    = totalEntradas - totalSaidas + totalSimLiq;
+                const saldoFinal    = saldoInicial + totalEntradas - totalSaidas + totalSimLiq;
 
                 const fmtDia = (dt: string) => dt ? new Date(dt + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
@@ -456,13 +503,21 @@ export default function FinanceiroRelatorios() {
                           <label style={labelStyle}>Fim</label>
                           <input type="date" value={filtro.fim} onChange={e => setFiltro(f => ({ ...f, fim: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <label style={labelStyle}>Conta</label>
-                          <select value={filtro.contasSel[0] ?? ""} onChange={e => setFiltro(f => ({ ...f, contasSel: e.target.value ? [e.target.value] : [] }))} style={{ ...inputStyle, width: 160 }}>
-                            <option value="">Todas</option>
-                            {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                          </select>
+                        {/* Botão filtros avançados + badge de ativos */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end" }}>
+                          <label style={labelStyle}>&nbsp;</label>
+                          <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#1A4870" : "#D4DCE8"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#D5E8F5" : "#fff", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0B2D50" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                            ⊞ Produtores / Contas {filtro.produtoresSel.length + filtro.contasSel.length > 0 ? `(${filtro.produtoresSel.length + filtro.contasSel.length} selecionados)` : ""}
+                          </button>
                         </div>
+                        {saldoInicial !== 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 2, justifyContent: "flex-end" }}>
+                            <label style={labelStyle}>Saldo Inicial</label>
+                            <div style={{ padding: "7px 12px", background: saldoInicial >= 0 ? "#D5E8F5" : "#FCEBEB", borderRadius: 8, fontSize: 13, fontWeight: 700, color: saldoInicial >= 0 ? "#0B2D50" : "#E24B4A", whiteSpace: "nowrap" }}>
+                              {fmtBRL(saldoInicial)}
+                            </div>
+                          </div>
+                        )}
                         <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
                           <button onClick={() => setIncluirPrevisoes(v => !v)}
                             style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${incluirPrevisoes ? "#16A34A" : "#D4DCE8"}`, background: incluirPrevisoes ? "#F0FDF4" : "#fff", color: incluirPrevisoes ? "#16A34A" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -479,9 +534,56 @@ export default function FinanceiroRelatorios() {
                         </div>
                       </div>
 
+                      {/* Painel de checkboxes Produtores / Contas */}
+                      {filtroAberto && (
+                        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFC", display: "flex", gap: 32, flexWrap: "wrap" }}>
+                          {/* Produtores */}
+                          {produtores.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Produtores</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {produtores.map(p => (
+                                  <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
+                                    <input type="checkbox" checked={filtro.produtoresSel.includes(p.id)}
+                                      onChange={e => setFiltro(f => ({ ...f, produtoresSel: e.target.checked ? [...f.produtoresSel, p.id] : f.produtoresSel.filter(x => x !== p.id), contasSel: [] }))} />
+                                    {p.nome} {p.cpf_cnpj && <span style={{ color: "#888", fontSize: 10 }}>{p.cpf_cnpj}</span>}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Contas */}
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>
+                              Contas Bancárias
+                              {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "#888", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                              {(filtro.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => {
+                                const tp = { corrente: "Corrente", investimento: "Invest.", caixa: "Caixa", transitoria: "Transit." }[c.tipo_conta ?? "corrente"] ?? "Corrente";
+                                return (
+                                  <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
+                                    <input type="checkbox" checked={filtro.contasSel.includes(c.id)}
+                                      onChange={e => setFiltro(f => ({ ...f, contasSel: e.target.checked ? [...f.contasSel, c.id] : f.contasSel.filter(x => x !== c.id) }))} />
+                                    {c.nome} <span style={{ fontSize: 10, color: "#888" }}>{tp}{c.banco ? ` · ${c.banco}` : ""}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end" }}>
+                            <button onClick={() => setFiltro(f => ({ ...f, produtoresSel: [], contasSel: [] }))}
+                              style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                              Limpar seleção
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* KPIs */}
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid #DEE5EE" }}>
                         {[
+                          ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "#555" : "#E24B4A" }] : []),
                           { label: "Total Entradas",           valor: fmtBRL(totalEntradas), cor: "#16A34A" },
                           { label: "Total Saídas",             valor: fmtBRL(totalSaidas),   cor: "#E24B4A" },
                           { label: `Saldo Final${simsAtivas.length > 0 ? " (c/ sim)" : ""}`, valor: fmtBRL(saldoFinal), cor: saldoFinal >= 0 ? "#1A4870" : "#E24B4A" },
@@ -523,7 +625,7 @@ export default function FinanceiroRelatorios() {
                                 const diaUltSaldo = diaRows[diaRows.length - 1].saldo;
                                 const expandido  = mesesExpandidos.has(dia);
                                 const temSim     = diaRows.some(r => r.tipo_row === "simulacao");
-                                const temPrev    = diaRows.some(r => r.tipo_row === "previsao");
+                                const temPrev    = diaRows.some(r => r.tipo_row === "previsao" && !r.origem_lancamento);
                                 return (
                                   <React.Fragment key={dia}>
                                     <tr
@@ -555,11 +657,24 @@ export default function FinanceiroRelatorios() {
                                           <td style={{ padding: "6px 14px", color: "#444", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao || "—"}</td>
                                           <td style={{ padding: "6px 14px" }}>
                                             {isSim  && <span style={{ fontSize: 10, background: "#EDE9FE", color: "#7C3AED", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Simulação</span>}
-                                            {isPrev && <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>}
+                                            {isPrev && (() => {
+                                              const orig = r.origem_lancamento;
+                                              if (orig === "pedido_compra")   return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Pedido de Compra</span>;
+                                              if (orig === "contrato")        return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Contrato</span>;
+                                              if (orig === "arrendamento")    return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Arrendamento</span>;
+                                              if (orig === "nf_entrada")      return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>NF Entrada</span>;
+                                              return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>;
+                                            })()}
                                             {!isSim && !isPrev && <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
                                           </td>
-                                          <td style={{ padding: "6px 14px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{r.entrada > 0 ? fmtBRL(r.entrada) : ""}</td>
-                                          <td style={{ padding: "6px 14px", textAlign: "right", color: "#E24B4A", fontWeight: 600 }}>{r.saida > 0 ? fmtBRL(r.saida) : ""}</td>
+                                          <td style={{ padding: "6px 14px", textAlign: "right" }}>
+                                            {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada)}</div>}
+                                            {r.entrada > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{r.subMoeda}</div>}
+                                          </td>
+                                          <td style={{ padding: "6px 14px", textAlign: "right" }}>
+                                            {r.saida > 0 && <div style={{ color: "#E24B4A", fontWeight: 600 }}>{fmtBRL(r.saida)}</div>}
+                                            {r.saida > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{r.subMoeda}</div>}
+                                          </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 700 }}>
                                             {isSim ? ((r.simEntrada > 0 ? "+" : "−") + " " + fmtBRL(Math.max(r.simEntrada, r.simSaida))) : ""}
                                           </td>
@@ -576,6 +691,151 @@ export default function FinanceiroRelatorios() {
                       )}
                     </div>
                   </>
+                );
+              })()}
+
+              {/* ═══════ ABA: CP / CR ═══════ */}
+              {aba === "cpcr" && (() => {
+                const [tipoCPCR, setTipoCPCR] = React.useState<"todos"|"receber"|"pagar">("todos");
+                const [statusCPCR, setStatusCPCR] = React.useState<"todos"|"em_aberto"|"vencido"|"baixado">("todos");
+                const [catCPCR, setCatCPCR] = React.useState("");
+                const [inicioCPCR, setInicioCPCR] = React.useState(`${anoAtual}-01-01`);
+                const [fimCPCR, setFimCPCR] = React.useState(`${anoAtual}-12-31`);
+
+                const lancsCPCR = lancamentos.filter(l => {
+                  if (l.moeda === "barter") return false;
+                  const dt = l.data_vencimento ?? l.data_lancamento ?? "";
+                  if (inicioCPCR && dt < inicioCPCR) return false;
+                  if (fimCPCR   && dt > fimCPCR)   return false;
+                  if (tipoCPCR !== "todos" && l.tipo !== tipoCPCR) return false;
+                  if (statusCPCR !== "todos" && l.status !== statusCPCR) return false;
+                  if (catCPCR && l.categoria !== catCPCR) return false;
+                  return true;
+                });
+
+                const categorias = [...new Set(lancamentos.filter(l => l.moeda !== "barter").map(l => l.categoria).filter(Boolean))].sort();
+
+                const totalCR    = lancsCPCR.filter(l => l.tipo === "receber").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const totalCP    = lancsCPCR.filter(l => l.tipo === "pagar").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const totalVenc  = lancsCPCR.filter(l => l.status === "vencido").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const totalBaixado = lancsCPCR.filter(l => l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+
+                const corStatus: Record<string, { bg: string; color: string; label: string }> = {
+                  em_aberto: { bg: "#D5E8F5", color: "#0B2D50", label: "Em Aberto" },
+                  vencido:   { bg: "#FCEBEB", color: "#791F1F", label: "Vencido" },
+                  vencendo:  { bg: "#FBF3E0", color: "#7A5A12", label: "Vencendo" },
+                  baixado:   { bg: "#DCF5E8", color: "#14532D", label: "Baixado" },
+                };
+
+                return (
+                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px" }}>
+                    {/* Filtros CP/CR */}
+                    <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label style={labelStyle}>Início</label>
+                        <input type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label style={labelStyle}>Fim</label>
+                        <input type="date" value={fimCPCR} onChange={e => setFimCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label style={labelStyle}>Tipo</label>
+                        <select value={tipoCPCR} onChange={e => setTipoCPCR(e.target.value as typeof tipoCPCR)} style={{ ...inputStyle, width: 150 }}>
+                          <option value="todos">Todos (CR + CP)</option>
+                          <option value="receber">Contas a Receber (CR)</option>
+                          <option value="pagar">Contas a Pagar (CP)</option>
+                        </select>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label style={labelStyle}>Status</label>
+                        <select value={statusCPCR} onChange={e => setStatusCPCR(e.target.value as typeof statusCPCR)} style={{ ...inputStyle, width: 140 }}>
+                          <option value="todos">Todos</option>
+                          <option value="em_aberto">Em Aberto</option>
+                          <option value="vencido">Vencido</option>
+                          <option value="baixado">Baixado / Pago</option>
+                        </select>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <label style={labelStyle}>Categoria</label>
+                        <select value={catCPCR} onChange={e => setCatCPCR(e.target.value)} style={{ ...inputStyle, width: 160 }}>
+                          <option value="">Todas</option>
+                          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* KPIs */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0, borderBottom: "0.5px solid #DEE5EE" }}>
+                      {[
+                        { label: "Total a Receber (CR)", valor: fmtBRL(totalCR), cor: "#16A34A" },
+                        { label: "Total a Pagar (CP)",   valor: fmtBRL(totalCP), cor: "#E24B4A" },
+                        { label: "Vencidos",             valor: fmtBRL(totalVenc), cor: "#E24B4A" },
+                        { label: "Já Baixados / Pagos",  valor: fmtBRL(totalBaixado), cor: "#555" },
+                      ].map((k, i) => (
+                        <div key={i} style={{ padding: "12px 20px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none" }}>
+                          <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{k.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Tabela */}
+                    {lancsCPCR.length === 0 ? (
+                      <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhum lançamento no período com os filtros selecionados.</div>
+                    ) : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "#F4F6FA" }}>
+                              {["Tipo", "Vencimento", "Descrição", "Categoria", "Conta Bancária", "Status", "Valor (BRL)", ""].map(h => (
+                                <th key={h} style={{ padding: "8px 12px", textAlign: h === "Valor (BRL)" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lancsCPCR.map((l, i) => {
+                              const st = corStatus[l.status] ?? corStatus.em_aberto;
+                              const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome;
+                              const brl = paraBRLRel(l, cotacaoUSD);
+                              return (
+                                <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                                  <td style={{ padding: "9px 12px" }}>
+                                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#D5E8F5" : "#FCEBEB", color: l.tipo === "receber" ? "#0B2D50" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
+                                  </td>
+                                  <td style={{ padding: "9px 12px", color: l.status === "vencido" ? "#E24B4A" : "#555", whiteSpace: "nowrap" }}>
+                                    {l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}
+                                  </td>
+                                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "#1a1a1a", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "#555" }}>{l.categoria || "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "#555" }}>{contaNome || "—"}</td>
+                                  <td style={{ padding: "9px 12px" }}><span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>
+                                    <div>{fmtBRL(brl)}</div>
+                                    {l.moeda === "USD" && <div style={{ fontSize: 9, color: "#888" }}>{subMoedaRel(l, cotacaoUSD)}</div>}
+                                  </td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                                    {l.auto && <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 4 }}>auto</span>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid #D4DCE8" }}>
+                              <td colSpan={6} style={{ padding: "10px 12px" }}>{lancsCPCR.length} lançamentos</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                                <div style={{ color: "#16A34A" }}>+ {fmtBRL(totalCR)}</div>
+                                <div style={{ color: "#E24B4A" }}>− {fmtBRL(totalCP)}</div>
+                                <div style={{ fontWeight: 800, color: totalCR - totalCP >= 0 ? "#1A4870" : "#E24B4A", borderTop: "0.5px solid #ccc", paddingTop: 2, marginTop: 2 }}>{fmtBRL(totalCR - totalCP)}</div>
+                              </td>
+                              <td />
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 );
               })()}
 
@@ -779,6 +1039,96 @@ export default function FinanceiroRelatorios() {
                     <div style={{ padding: "10px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
                       Inclui apenas lançamentos com status "Baixado" vinculados a uma Operação Gerencial via <em>operacao_id</em>.
                       Lançamentos sem operação vinculada não são classificados. Grupos 4 e 5 (movimentos econômicos/estoque) são excluídos do DFC.
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ═══════ ABA: POSIÇÃO POR CONTA ═══════ */}
+              {aba === "posicao" && (() => {
+                const tipoCor: Record<string, { bg: string; color: string; label: string }> = {
+                  corrente:    { bg: "#D5E8F5", color: "#0B2D50", label: "Corrente" },
+                  investimento:{ bg: "#DCF5E8", color: "#14532D", label: "Investimento" },
+                  caixa:       { bg: "#FBF3E0", color: "#7A5A12", label: "Caixa" },
+                  transitoria: { bg: "#F4F6FA", color: "#555",    label: "Transitória" },
+                };
+                const contasAtivas = contas.filter(c => c.ativa);
+
+                const posicoes = contasAtivas.map(c => {
+                  const lans = lancamentos.filter(l => l.conta_bancaria === c.id && l.moeda !== "barter");
+                  const entradasReal = lans.filter(l => l.tipo === "receber" && l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                  const saidasReal   = lans.filter(l => l.tipo === "pagar"   && l.status === "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                  const entradasProj = lans.filter(l => l.tipo === "receber" && l.status !== "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                  const saidasProj   = lans.filter(l => l.tipo === "pagar"   && l.status !== "baixado").reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                  const saldoAtual   = (c.saldo_inicial ?? 0) + entradasReal - saidasReal;
+                  const saldoProj    = saldoAtual + entradasProj - saidasProj;
+                  return { conta: c, entradasReal, saidasReal, entradasProj, saidasProj, saldoAtual, saldoProj };
+                });
+
+                const totalAtual = posicoes.reduce((s, p) => s + p.saldoAtual, 0);
+                const totalProj  = posicoes.reduce((s, p) => s + p.saldoProj, 0);
+
+                return (
+                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 20 }}>
+                    {/* KPIs */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+                      {[
+                        { label: "Saldo Atual (realizados)", valor: fmtBRL(totalAtual), cor: totalAtual >= 0 ? "#1A4870" : "#E24B4A" },
+                        { label: "Entradas Projetadas",      valor: fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0)), cor: "#16A34A" },
+                        { label: "Saldo Projetado",          valor: fmtBRL(totalProj), cor: totalProj >= 0 ? "#1A4870" : "#E24B4A" },
+                      ].map(k => (
+                        <div key={k.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DEE5EE" }}>
+                          <div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>{k.label}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.valor}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Tabela por conta */}
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#F4F6FA" }}>
+                            {["Conta", "Tipo", "Banco", "Saldo Inicial", "Entradas Realizadas", "Saídas Realizadas", "Saldo Atual", "Entradas Proj.", "Saídas Proj.", "Saldo Projetado"].map(h => (
+                              <th key={h} style={{ padding: "8px 12px", textAlign: h === "Conta" || h === "Tipo" || h === "Banco" ? "left" : "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {posicoes.map((p, i) => {
+                            const tp = tipoCor[p.conta.tipo_conta ?? "corrente"] ?? tipoCor.corrente;
+                            return (
+                              <tr key={p.conta.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                                <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1a1a1a", whiteSpace: "nowrap" }}>{p.conta.nome}</td>
+                                <td style={{ padding: "10px 12px" }}><span style={{ background: tp.bg, color: tp.color, borderRadius: 6, padding: "2px 7px", fontSize: 10, fontWeight: 600 }}>{tp.label}</span></td>
+                                <td style={{ padding: "10px 12px", color: "#555" }}>{p.conta.banco || "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", color: "#555" }}>{(p.conta.saldo_inicial ?? 0) !== 0 ? fmtBRL(p.conta.saldo_inicial!) : "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{p.entradasReal > 0 ? fmtBRL(p.entradasReal) : "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 600 }}>{p.saidasReal > 0 ? fmtBRL(p.saidasReal) : "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoAtual >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(p.saldoAtual)}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{p.entradasProj > 0 ? fmtBRL(p.entradasProj) : "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A" }}>{p.saidasProj > 0 ? fmtBRL(p.saidasProj) : "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoProj >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(p.saldoProj)}</td>
+                              </tr>
+                            );
+                          })}
+                          {/* Totalizador */}
+                          <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid #D4DCE8" }}>
+                            <td colSpan={3} style={{ padding: "10px 12px", fontWeight: 700, fontSize: 12 }}>TOTAL ({posicoes.length} contas)</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtBRL(posicoes.reduce((s, p) => s + (p.conta.saldo_inicial ?? 0), 0))}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.entradasReal, 0))}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.saidasReal, 0))}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: totalAtual >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(totalAtual)}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0))}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.saidasProj, 0))}</td>
+                            <td style={{ padding: "10px 12px", textAlign: "right", color: totalProj >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(totalProj)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div style={{ marginTop: 10, fontSize: 10, color: "#888" }}>
+                      Saldo Atual = Saldo Inicial + Entradas Realizadas − Saídas Realizadas (lançamentos baixados).
+                      Saldo Projetado inclui também lançamentos em aberto/vencidos.
                     </div>
                   </div>
                 );

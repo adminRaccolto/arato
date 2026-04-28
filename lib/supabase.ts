@@ -43,6 +43,7 @@ export type Fazenda = {
   arrendamento_inicio?: string;
   arrendamento_vencimento?: string;
   arrendamento_renovacao_auto?: boolean;
+  owner_user_id?: string;
   created_at?: string;
 };
 
@@ -583,6 +584,8 @@ export type ContaBancaria = {
   conta?: string;
   moeda: "BRL" | "USD";
   ativa: boolean;
+  tipo_conta: "corrente" | "investimento" | "caixa" | "transitoria";
+  saldo_inicial?: number;
   produtor_id?: string | null;  // FK produtores — conta pertence a este produtor (LCDPR)
   created_at?: string;
 };

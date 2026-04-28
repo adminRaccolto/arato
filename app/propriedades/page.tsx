@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import { listarFazendas, listarTalhoes } from "../../lib/db";
+import { useAuth } from "../../components/AuthProvider";
 import type { Fazenda as FazendaDB, Talhao as TalhaoDB } from "../../lib/supabase";
 
 interface TalhaoVM extends TalhaoDB { safraAtiva?: string | null }
@@ -17,17 +18,18 @@ const corSafra = (s: string | null | undefined) => {
 };
 
 export default function Propriedades() {
+  const { fazendaId } = useAuth();
   const [fazendas, setFazendas]     = useState<FazendaVM[]>([]);
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
   const [loading, setLoading]       = useState(true);
   const [erro, setErro]             = useState<string | null>(null);
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); }, [fazendaId]);
 
   async function carregar() {
     try {
       setLoading(true); setErro(null);
-      const lista = await listarFazendas();
+      const lista = await listarFazendas(fazendaId || undefined);
       const comTalhoes: FazendaVM[] = await Promise.all(
         lista.map(async f => ({ ...f, talhoes: await listarTalhoes(f.id) }))
       );

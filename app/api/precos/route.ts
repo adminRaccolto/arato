@@ -124,15 +124,20 @@ export async function GET() {
       fetchPtax(),
     ]);
 
-    // Dólar Spot (taxa comercial)
-    let usdBrl = usdFallback;
-    if (cambioRes.status === "fulfilled") {
-      const bid = (cambioRes.value as { USDBRL?: { bid?: string } })?.USDBRL?.bid;
-      if (bid) usdBrl = Math.round(parseFloat(bid) * 100) / 100;
-    }
-
     // Dólar PTAX (Banco Central)
     const usdPtax: number | null = ptaxRes.status === "fulfilled" ? ptaxRes.value : null;
+
+    // Dólar Spot (taxa comercial) — fallback em cascata: AwesomeAPI → PTAX → hardcoded
+    let usdBrl = usdFallback;
+    let usdBrlFonte = "fallback";
+    if (cambioRes.status === "fulfilled") {
+      const bid = (cambioRes.value as { USDBRL?: { bid?: string } })?.USDBRL?.bid;
+      if (bid && parseFloat(bid) > 0) { usdBrl = Math.round(parseFloat(bid) * 100) / 100; usdBrlFonte = "awesomeapi"; }
+    }
+    if (usdBrlFonte === "fallback" && usdPtax && usdPtax > 0) {
+      usdBrl = usdPtax;
+      usdBrlFonte = "ptax";
+    }
 
     // Commodities
     const sojaPrices      = sojaRes.status      === "fulfilled" ? yahooPrice(sojaRes.value)      : { last: 0, prev: 0 };
@@ -172,6 +177,7 @@ export async function GET() {
         fonte:    "CBOT",
       },
       atualizadoEm: new Date().toISOString(),
+      erro: usdBrlFonte === "fallback" ? "Dólar: usando valor fixo (APIs indisponíveis)" : usdBrlFonte === "ptax" ? "Dólar Spot indisponível — usando PTAX" : undefined,
     };
 
     cache = { data, ts: Date.now() };
