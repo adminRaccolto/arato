@@ -303,21 +303,24 @@ export default function ComprasPage() {
         }));
       await salvarPedidoCompraItens(pedidoId, fazendaId, itensSalvar);
 
-      // Se aprovado com data de vencimento e sem lancamento já criado, gera CP
+      // Gera CP em Contas a Pagar quando pedido é aprovado
       const pedidoExistente = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit) : null;
-      if (f.status === "aprovado" && f.data_vencimento && totalItens > 0 && !pedidoExistente?.lancamento_id) {
+      const deveGerarCP = f.status === "aprovado" && totalItens > 0 && !pedidoExistente?.lancamento_id;
+      if (deveGerarCP) {
         const isUSD = f.cotacao_moeda === "USD";
         const fornecedorNome = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
+        // Usa data_vencimento se informada; caso contrário, previsão de entrega ou data de registro
+        const vencimento = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
         try {
           const lanc = await criarLancamento({
-            fazenda_id:        fazendaId,
+            fazenda_id:        fazendaId!,
             tipo:              "pagar",
             moeda:             isUSD ? "USD" : "BRL",
             cotacao_usd:       isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
-            descricao:         `Pedido de Compra — ${fornecedorNome}`,
+            descricao:         `Pedido de Compra nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fornecedorNome}`,
             categoria:         "Insumos",
             data_lancamento:   f.data_registro,
-            data_vencimento:   f.data_vencimento,
+            data_vencimento:   vencimento,
             valor:             totalItens,
             status:            "em_aberto",
             auto:              true,
@@ -327,7 +330,8 @@ export default function ComprasPage() {
           });
           await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
         } catch (lancErr: unknown) {
-          console.error("Erro ao criar lançamento do pedido:", lancErr);
+          const msg = (lancErr as { message?: string })?.message ?? String(lancErr);
+          setErro(`Pedido salvo, mas erro ao gerar CP: ${msg}. Execute a migration de rastreabilidade no Supabase.`);
         }
       }
 
