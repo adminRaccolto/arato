@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/alertas-vencimento",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/backup",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

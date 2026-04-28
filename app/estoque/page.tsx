@@ -261,7 +261,11 @@ export default function Estoque() {
 
   // ── Helpers ──
   async function salvar(fn: () => Promise<void>) {
-    try { setSalvando(true); await fn(); } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
+    try { setSalvando(true); await fn(); } catch (e) {
+      const err = e as { message?: string; details?: string; hint?: string; code?: string };
+      const msg = [err.message, err.details, err.hint].filter(Boolean).join("\n");
+      alert(msg || JSON.stringify(e));
+    } finally { setSalvando(false); }
   }
 
   // ── Movimentação manual ──
@@ -335,9 +339,8 @@ export default function Estoque() {
         const insumoMatch = autoMatchInsumo(item.descricao_produto, insumos);
         if (insumoMatch) matched++;
         return {
-          ...item,
+          ...item,                           // preserva tipo_apropiacao detectado pelo CFOP
           insumo_id: insumoMatch?.id ?? "",
-          tipo_apropiacao: "estoque" as const,
           deposito_id: "", bomba_id: "", maquina_id: "",
           alerta_preco: false,
         } as ItemRascunho;
@@ -1146,9 +1149,10 @@ export default function Estoque() {
                   </div>
                 </div>
 
-                {/* linha 1: descrição, qtd, valor uni */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                {/* linha 1: descrição, cfop, qtd, valor uni */}
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 0.7fr 0.7fr 0.9fr 0.9fr", gap: 10, marginBottom: 10 }}>
                   <div><label style={lbl}>Descrição *</label><input style={inp} value={item.descricao_produto} onChange={e => atualizarItem(item.key, { descricao_produto: e.target.value })} /></div>
+                  <div><label style={lbl}>CFOP</label><input style={{ ...inp, textAlign: "center" }} placeholder="1102" value={item.cfop} onChange={e => atualizarItem(item.key, { cfop: e.target.value })} /></div>
                   <div><label style={lbl}>Unidade</label><input style={{ ...inp, textAlign: "center" }} value={item.unidade} onChange={e => atualizarItem(item.key, { unidade: e.target.value })} /></div>
                   <div><label style={lbl}>Quantidade</label><input style={{ ...inp, textAlign: "right" }} type="number" step="0.001" value={item.quantidade} onChange={e => atualizarItem(item.key, { quantidade: parseFloat(e.target.value) || 0 })} /></div>
                   <div><label style={lbl}>Vl. Unitário (R$)</label><input style={{ ...inp, textAlign: "right" }} type="number" step="0.01" value={item.valor_unitario} onChange={e => atualizarItem(item.key, { valor_unitario: parseFloat(e.target.value) || 0 })} /></div>

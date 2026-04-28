@@ -6,6 +6,8 @@ import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento
 import type { Lancamento, AnoSafra, Produtor, Pessoa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
+interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
+
 // ── Tipos ────────────────────────────────────────────────────
 type Moeda  = "BRL" | "USD" | "barter";
 type Filtro = "aberto" | "vencido" | "baixado" | "barter" | "previsao" | "todos";
@@ -24,10 +26,12 @@ const CATS_CR = [
   "Captação de Custeio",
   "Captação de Financiamento",
   "Captação de Empréstimo",
+  "Sinistro de Seguro",
+  "Consórcio — Carta de Crédito",
   "Outros recebimentos",
 ];
 
-const CONTAS = ["BB Conta Corrente", "Bradesco PJ", "Caixa Econômica", "Sicredi"];
+const FORMAS_RECEBIMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
 
 // ── Helpers ───────────────────────────────────────────────────
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -41,6 +45,23 @@ const exibirValor = (l: Lancamento) => {
   if (l.moeda === "USD")    return fmtUSD(l.valor);
   if (l.moeda === "barter") return `${(l.sacas ?? 0).toLocaleString("pt-BR")} sc ${l.cultura_barter ?? "soja"}`;
   return fmtBRL(l.valor);
+};
+
+type OrigemLanc = "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "manual";
+const ORIGEM_META: Record<OrigemLanc | "auto", { label: string; bg: string; cl: string; border: string }> = {
+  nf_entrada:          { label: "NF Entrada",      bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+  nf_saida:            { label: "NF Saída",        bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+  pedido_compra:       { label: "Pedido Compra",   bg: "#FBF3E0", cl: "#7A4300",  border: "#C9921B" },
+  arrendamento:        { label: "Arrendamento",    bg: "#FEF3E2", cl: "#7A4800",  border: "#EF9F27" },
+  tesouraria:          { label: "Tesouraria",      bg: "#EEE6F8", cl: "#4A1A7A",  border: "#8B5CF6" },
+  plantio:             { label: "Plantio",         bg: "#DCFCE7", cl: "#166534",  border: "#16A34A" },
+  contrato_financeiro: { label: "Contrato",        bg: "#E6F1FB", cl: "#0C447C",  border: "#378ADD" },
+  manual:              { label: "Manual",          bg: "#F1EFE8", cl: "#555",     border: "#DDE2EE" },
+  auto:                { label: "Automático",      bg: "#D5E8F5", cl: "#0B2D50",  border: "#1A4870" },
+};
+const origemMeta = (l: { origem_lancamento?: string; auto?: boolean }) => {
+  const k = (l.origem_lancamento as OrigemLanc | undefined) ?? (l.auto ? "auto" : "manual");
+  return ORIGEM_META[k] ?? ORIGEM_META.manual;
 };
 
 // Extrai somente o nome do fornecedor/cliente, removendo prefixo "Arrendamento Soja/Milho — "
@@ -88,6 +109,7 @@ export default function ContasReceber() {
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
   const [produtores,  setProdutores]  = useState<Produtor[]>([]);
   const [pessoas,     setPessoas]     = useState<Pessoa[]>([]);
+  const [contas,      setContas]      = useState<ContaBancariaMin[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
@@ -100,12 +122,12 @@ export default function ContasReceber() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalLote,    setModalLote]    = useState(false);
   const [loteData,     setLoteData]     = useState(TODAY);
-  const [loteConta,    setLoteConta]    = useState(CONTAS[0]);
+  const [loteConta,    setLoteConta]    = useState("");
   const [loteDesc,     setLoteDesc]     = useState("");
   const [loteSalvando, setLoteSalvando] = useState(false);
   const [loteErro,     setLoteErro]     = useState("");
 
-  const [baixa, setBaixa] = useState({ valorMask: "", data: TODAY, conta: CONTAS[0], obs: "" });
+  const [baixa, setBaixa] = useState({ valorMask: "", data: TODAY, conta: "", obs: "" });
   const [form, setForm] = useState({
     moeda: "BRL" as Moeda,
     pessoa_id: "", descricao: "", categoria: CATS_CR[0], vencimento: "",
@@ -113,6 +135,8 @@ export default function ContasReceber() {
     sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "",
     parcelar: false, totalParcelas: "1", intervaloMeses: "1",
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
+    forma_recebimento: "PIX",
+    conta_recebimento: "",
     chave_xml: "", centro_custo: "",
     ano_safra_id: "", produtor_id: "",
     natureza: "real" as "real" | "previsao",
@@ -137,6 +161,7 @@ export default function ContasReceber() {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+      supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
     }
   }, [fazendaId]);
 
@@ -216,7 +241,7 @@ export default function ContasReceber() {
 
   const abrirBaixa = (l: Lancamento) => {
     setModalBaixa(l);
-    setBaixa({ valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)), data: TODAY, conta: CONTAS[0], obs: "" });
+    setBaixa({ valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)), data: TODAY, conta: "", obs: "" });
   };
 
   const confirmarBaixa = async () => {
@@ -296,6 +321,7 @@ export default function ContasReceber() {
       cultura_barter: form.moeda === "barter" ? form.culturaBarter : undefined,
       preco_saca_barter: form.moeda === "barter" ? precoSaca : undefined,
       tipo_documento_lcdpr: form.tipo_documento_lcdpr || undefined,
+      conta_bancaria: form.conta_recebimento || undefined,
       chave_xml:     form.chave_xml     || undefined,
       centro_custo:  form.centro_custo  || undefined,
       observacao:    form.obs           || undefined,
@@ -316,7 +342,7 @@ export default function ContasReceber() {
         criados = [await criarLancamento(base)];
       }
       setLancamentos(prev => [...criados, ...prev]);
-      setForm(f => ({ ...f, pessoa_id: "", descricao: "", vencimento: "", valorMask: "", sacasMask: "", obs: "", parcelar: false, totalParcelas: "1" }));
+      setForm(f => ({ ...f, pessoa_id: "", descricao: "", vencimento: "", valorMask: "", sacasMask: "", obs: "", parcelar: false, totalParcelas: "1", conta_recebimento: "", forma_recebimento: "PIX" }));
       setModalNovo(false);
     } catch (e: unknown) {
       alert("Erro ao salvar: " + (e instanceof Error ? e.message : e));
@@ -454,6 +480,7 @@ export default function ContasReceber() {
                           />
                         </th>
                         <th style={thS(200, "left")}>Fornecedor / Cliente</th>
+                        <th style={thS(110, "center")}>Origem</th>
                         <th style={thS(160, "left")}>Operação</th>
                         <th style={thS(120, "left")}>Safra</th>
                         <th style={thS(100, "center")}>Vencimento ↑</th>
@@ -473,6 +500,7 @@ export default function ContasReceber() {
                         <td style={{ padding: "3px 8px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} />
                         </td>
+                        <td></td>
                         <td style={{ padding: "3px 8px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} />
                         </td>
@@ -515,7 +543,7 @@ export default function ContasReceber() {
                     <tbody>
                       {filtrados.length === 0 ? (
                         <tr>
-                          <td colSpan={14} style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 12 }}>
+                          <td colSpan={15} style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 12 }}>
                             Nenhum resultado para os filtros aplicados.
                           </td>
                         </tr>
@@ -529,8 +557,9 @@ export default function ContasReceber() {
                         const pessoaNome = pessoas.find(p => p.id === l.pessoa_id)?.nome;
                         const fornNome  = pessoaNome ?? exibirFornecedor(l.descricao);
                         const obsExibir = obsArrendamento(l, safra);
+                        const om = origemMeta(l);
                         return (
-                          <tr key={l.id} style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid #DEE5EE" : "none", background: isPrevisao ? "#EFF6FF" : l.moeda === "barter" ? "#FEF8ED" : "transparent", borderLeft: isPrevisao ? "3px dashed #1A5CB8" : undefined }}>
+                          <tr key={l.id} style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid #DEE5EE" : "none", background: isPrevisao ? "#EFF6FF" : l.moeda === "barter" ? "#FEF8ED" : "transparent", borderLeft: isPrevisao ? "3px dashed #1A5CB8" : `3px solid ${om.border}` }}>
                             {/* ● Sinalizador / Checkbox */}
                             <td style={{ padding: "10px 4px", textAlign: "center" }}>
                               {l.status !== "baixado" ? (
@@ -557,6 +586,10 @@ export default function ContasReceber() {
                                   {l.num_parcela}/{l.total_parcelas}
                                 </span>
                               )}
+                            </td>
+                            {/* Origem */}
+                            <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                              <span style={{ fontSize: 10, background: om.bg, color: om.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{om.label}</span>
                             </td>
                             {/* Operação */}
                             <td style={{ padding: "10px 10px" }}>
@@ -658,7 +691,7 @@ export default function ContasReceber() {
             <strong>{fmtBRL(totalLote)}</strong>
           </span>
           <button
-            onClick={() => { setLoteData(TODAY); setLoteConta(CONTAS[0]); setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
+            onClick={() => { setLoteData(TODAY); setLoteConta(""); setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
             style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
           >
             Receber em Lote ›
@@ -718,7 +751,12 @@ export default function ContasReceber() {
                 <div>
                   <label style={lbl}>Conta bancária</label>
                   <select style={inp} value={baixa.conta} onChange={e => setBaixa(p => ({ ...p, conta: e.target.value }))}>
-                    {CONTAS.map(c => <option key={c}>{c}</option>)}
+                    <option value="">— Selecionar conta —</option>
+                    {contas.map(c => {
+                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                      return <option key={c.id} value={label}>{label}</option>;
+                    })}
+                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
                   </select>
                 </div>
                 <div style={{ gridColumn: "1/-1" }}>
@@ -763,7 +801,12 @@ export default function ContasReceber() {
                 <div>
                   <label style={{ fontSize: 11, color: "#555", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
                   <select style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", boxSizing: "border-box" as const, outline: "none" }} value={loteConta} onChange={e => setLoteConta(e.target.value)}>
-                    {CONTAS.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="">— Selecionar conta —</option>
+                    {contas.map(c => {
+                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                      return <option key={c.id} value={label}>{label}</option>;
+                    })}
+                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
                   </select>
                 </div>
                 <div style={{ gridColumn: "1/-1" }}>
@@ -857,7 +900,9 @@ export default function ContasReceber() {
                   <label style={lbl}>Cliente / Comprador</label>
                   <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                     <option value="">— Selecionar do cadastro —</option>
-                    {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    {pessoas.filter(p => p.cliente || (!p.cliente && !p.fornecedor)).map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}{p.fornecedor ? " (Cli/Forn)" : ""}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -868,6 +913,23 @@ export default function ContasReceber() {
               <div>
                 <label style={lbl}>Vencimento *</label>
                 <input style={inp} type="date" value={form.vencimento} onChange={e => setForm(p => ({ ...p, vencimento: e.target.value }))} />
+              </div>
+              <div>
+                <label style={lbl}>Forma de Recebimento</label>
+                <select style={inp} value={form.forma_recebimento} onChange={e => setForm(p => ({ ...p, forma_recebimento: e.target.value }))}>
+                  {FORMAS_RECEBIMENTO.map(f => <option key={f}>{f}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={lbl}>Conta de Recebimento</label>
+                <select style={inp} value={form.conta_recebimento} onChange={e => setForm(p => ({ ...p, conta_recebimento: e.target.value }))}>
+                  <option value="">— Selecionar conta —</option>
+                  {contas.map(c => {
+                    const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                    return <option key={c.id} value={label}>{label}</option>;
+                  })}
+                  {contas.length === 0 && <option disabled>Cadastre contas em Cadastros &gt; Contas Bancárias</option>}
+                </select>
               </div>
               <div>
                 <label style={lbl}>Safra</label>

@@ -2467,3 +2467,149 @@ CREATE POLICY backup_logs_leitura ON backup_logs
 -- Nome: backups  |  Tipo: Private  |  Sem política pública
 -- O acesso é feito via signed URLs geradas pelo backend com service role key.
 
+
+-- ============================================================
+-- Migration 63 — Rastreabilidade de lançamentos (origem_lancamento + pedido_compra_id)
+-- ============================================================
+
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS origem_lancamento TEXT
+    CHECK (origem_lancamento IN ('nf_entrada','nf_saida','pedido_compra','arrendamento','tesouraria','plantio','contrato_financeiro','manual')),
+  ADD COLUMN IF NOT EXISTS pedido_compra_id  UUID REFERENCES pedidos_compra(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_origem ON lancamentos(fazenda_id, origem_lancamento);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_pedido ON lancamentos(pedido_compra_id);
+
+-- ============================================================
+-- Migration 64 — Operações de Tesouraria (cadastro de tipos)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS operacoes_tesouraria (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id   UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome         TEXT NOT NULL,
+  tipo         TEXT NOT NULL CHECK (tipo IN ('entrada','saida','ambos','transferencia','ajuste')),
+  categoria    TEXT,
+  observacao   TEXT,
+  ativo        BOOLEAN DEFAULT TRUE,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE operacoes_tesouraria ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='operacoes_tesouraria' AND policyname='allow_all_operacoes_tesouraria') THEN
+    CREATE POLICY "allow_all_operacoes_tesouraria" ON operacoes_tesouraria FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_op_tesouraria_fazenda ON operacoes_tesouraria(fazenda_id);
+
+-- ────────────────────────────────────────────────────────────
+-- Migration: tornar empresa_id opcional em contas_bancarias
+-- Execute no Supabase SQL Editor
+-- ────────────────────────────────────────────────────────────
+ALTER TABLE contas_bancarias ALTER COLUMN empresa_id DROP NOT NULL;
+
+-- ────────────────────────────────────────────────────────────
+-- Tributação por NCM (NF-e)
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ncm_tributacoes (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+
+  ncm                   VARCHAR(8)    NOT NULL,
+  descricao             TEXT          NOT NULL,
+
+  -- ICMS
+  icms_cst_interno      VARCHAR(3)    NOT NULL DEFAULT '051', -- CST operações internas (ex: diferido)
+  icms_cst_externo      VARCHAR(3)    NOT NULL DEFAULT '020', -- CST operações interestaduais (ex: base reduzida)
+  icms_aliq             NUMERIC(5,2)  NOT NULL DEFAULT 0,     -- alíquota nominal %
+  icms_base_reduzida_pct NUMERIC(5,2) NOT NULL DEFAULT 100,  -- % da base (61,11 para soja/milho — Conv. 100/97)
+
+  -- PIS
+  pis_cst               VARCHAR(2)    NOT NULL DEFAULT '06',
+  pis_aliq              NUMERIC(5,2)  NOT NULL DEFAULT 0,
+
+  -- COFINS
+  cofins_cst            VARCHAR(2)    NOT NULL DEFAULT '06',
+  cofins_aliq           NUMERIC(5,2)  NOT NULL DEFAULT 0,
+
+  -- CFOPs (NULL = usa o do emitente)
+  cfop_dentro           VARCHAR(4),
+  cfop_fora             VARCHAR(4),
+
+  -- IBS/CBS — Reforma Tributária (LC 214/2025)
+  -- Alíquotas padrão; ibs_cbs_reducao_pct = 60 para produtos agropecuários
+  ibs_estadual_aliq     NUMERIC(5,2)  NOT NULL DEFAULT 0,
+  ibs_municipal_aliq    NUMERIC(5,2)  NOT NULL DEFAULT 0,
+  cbs_aliq              NUMERIC(5,2)  NOT NULL DEFAULT 0,
+  ibs_cbs_reducao_pct   NUMERIC(5,2)  NOT NULL DEFAULT 0,     -- 60 para agro, 100 para exportação/cesta básica
+
+  -- Texto legal específico para este NCM (sobrescreve o padrão do emitente)
+  inf_cpl               TEXT,
+
+  created_at            TIMESTAMPTZ   DEFAULT now(),
+  updated_at            TIMESTAMPTZ   DEFAULT now(),
+
+  UNIQUE(fazenda_id, ncm)
+);
+
+ALTER TABLE ncm_tributacoes ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='ncm_tributacoes' AND policyname='allow_all_ncm_tributacoes') THEN
+    CREATE POLICY "allow_all_ncm_tributacoes" ON ncm_tributacoes FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_ncm_trib_fazenda ON ncm_tributacoes(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_ncm_trib_ncm     ON ncm_tributacoes(fazenda_id, ncm);
+
+-- ────────────────────────────────────────────────────────────
+-- Operações Fiscais (CFOP + perfil tributário por tipo de saída)
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS operacoes_fiscais (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+
+  nome                  TEXT NOT NULL,
+  descricao             TEXT,
+
+  -- CFOPs — mesmo estado / outro estado ou exterior
+  cfop_interno          VARCHAR(4) NOT NULL,
+  cfop_externo          VARCHAR(4) NOT NULL,
+
+  -- ICMS
+  icms_cst_interno      VARCHAR(3) NOT NULL DEFAULT '051',  -- interno: diferido
+  icms_cst_externo      VARCHAR(3) NOT NULL DEFAULT '020',  -- interestadual: base reduzida
+  icms_aliq             NUMERIC(5,2) NOT NULL DEFAULT 0,
+  icms_base_reduzida_pct NUMERIC(5,2) NOT NULL DEFAULT 100, -- 61,11% para soja/milho interestadual
+
+  -- PIS / COFINS
+  pis_cst               VARCHAR(2) NOT NULL DEFAULT '06',
+  pis_aliq              NUMERIC(5,2) NOT NULL DEFAULT 0,
+  cofins_cst            VARCHAR(2) NOT NULL DEFAULT '06',
+  cofins_aliq           NUMERIC(5,2) NOT NULL DEFAULT 0,
+
+  -- IBS/CBS — Reforma Tributária (LC 214/2025)
+  -- ibs_cbs_imune = true para exportações (imunidade constitucional Art. 149-B CF)
+  ibs_cbs_imune         BOOLEAN NOT NULL DEFAULT FALSE,
+  ibs_cbs_reducao_pct   NUMERIC(5,2) NOT NULL DEFAULT 0,    -- 60% para produção rural
+
+  -- Template de texto complementar (infCpl)
+  -- Variáveis suportadas: [CONTRATO], [RE_NUMERO], [DUE_NUMERO], [CONHECIMENTO]
+  inf_cpl_template      TEXT,
+
+  ativa                 BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at            TIMESTAMPTZ DEFAULT now(),
+  updated_at            TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE operacoes_fiscais ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='operacoes_fiscais' AND policyname='allow_all_operacoes_fiscais') THEN
+    CREATE POLICY "allow_all_operacoes_fiscais" ON operacoes_fiscais FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_op_fiscais_fazenda ON operacoes_fiscais(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_op_fiscais_cfop    ON operacoes_fiscais(fazenda_id, cfop_interno);

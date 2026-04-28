@@ -197,6 +197,9 @@ export type Lancamento = {
   // Contabilidade — LCDPR + SPED ECD
   vinculo_atividade?: "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel";
   entidade_contabil?: "pf" | "pj";  // qual entidade contabiliza (PF/CNPJ ou PJ/CNPJ)
+  // Rastreabilidade — de onde veio o lançamento
+  origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "manual";
+  pedido_compra_id?: string;   // FK pedidos_compra.id — quando gerado por pedido de compra
   created_at?: string;
 };
 
@@ -572,7 +575,7 @@ export type Empresa = {
 
 export type ContaBancaria = {
   id: string;
-  empresa_id: string;
+  empresa_id?: string | null;
   fazenda_id: string;
   nome: string;
   banco?: string;

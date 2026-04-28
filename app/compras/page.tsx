@@ -7,7 +7,7 @@ import {
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
-  listarOperacoesGerenciais,
+  listarOperacoesGerenciais, criarLancamento,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial } from "../../lib/supabase";
 
@@ -20,6 +20,8 @@ const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtUSD = (v?: number | null) => `US$ ${(v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtMoeda = (v: number | null | undefined, moeda: string) => moeda === "USD" ? fmtUSD(v) : fmtBRL(v);
 const fmtN   = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
@@ -300,6 +302,35 @@ export default function ComprasPage() {
           centro_custo_id: it.centro_custo_id || undefined,
         }));
       await salvarPedidoCompraItens(pedidoId, fazendaId, itensSalvar);
+
+      // Se aprovado com data de vencimento e sem lancamento já criado, gera CP
+      const pedidoExistente = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit) : null;
+      if (f.status === "aprovado" && f.data_vencimento && totalItens > 0 && !pedidoExistente?.lancamento_id) {
+        const isUSD = f.cotacao_moeda === "USD";
+        const fornecedorNome = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
+        try {
+          const lanc = await criarLancamento({
+            fazenda_id:        fazendaId,
+            tipo:              "pagar",
+            moeda:             isUSD ? "USD" : "BRL",
+            cotacao_usd:       isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
+            descricao:         `Pedido de Compra — ${fornecedorNome}`,
+            categoria:         "Insumos",
+            data_lancamento:   f.data_registro,
+            data_vencimento:   f.data_vencimento,
+            valor:             totalItens,
+            status:            "em_aberto",
+            auto:              true,
+            pessoa_id:         f.fornecedor_id || undefined,
+            origem_lancamento: "pedido_compra",
+            pedido_compra_id:  pedidoId,
+          });
+          await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
+        } catch (lancErr: unknown) {
+          console.error("Erro ao criar lançamento do pedido:", lancErr);
+        }
+      }
+
       setModal(false);
       await carregar();
     } catch (e: unknown) {
@@ -763,7 +794,7 @@ export default function ComprasPage() {
                                   <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.01" value={it.valor_unitario} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: e.target.value } : x))} placeholder="0,00" />
                                 </td>
                                 <td style={{ padding: "5px 6px", textAlign: "right", width: 100, color: "#1A4870", fontWeight: 600 }}>
-                                  {calcItem(it) > 0 ? fmtBRL(calcItem(it)) : "—"}
+                                  {calcItem(it) > 0 ? fmtMoeda(calcItem(it), f.cotacao_moeda) : "—"}
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 80 }}>
                                   <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" value={it.qtd_cancelada} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: e.target.value } : x))} />
@@ -777,7 +808,7 @@ export default function ComprasPage() {
                           <tfoot>
                             <tr style={{ background: "#F3F6F9" }}>
                               <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "#555", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
-                              <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(lista.reduce((s, it) => s + calcItem(it), 0))}</td>
+                              <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
                               <td colSpan={2} />
                             </tr>
                           </tfoot>
@@ -889,8 +920,8 @@ export default function ComprasPage() {
               {/* Footer */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid #D4DCE8" }}>
                 <div style={{ fontSize: 13, color: "#555" }}>
-                  Total Financeiro: <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtBRL(totalItens)}</strong>
-                  {"  ·  "}Total Prod+Serviços: <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtBRL(totalItens)}</strong>
+                  Total Financeiro: <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
+                  {"  ·  "}Total Prod+Serviços: <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>

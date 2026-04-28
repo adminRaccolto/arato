@@ -102,9 +102,15 @@ const formatarData = (s: string) => {
   return `${d}/${m}/${y}`;
 };
 
-// Dias para vencer o cert A1 — configurado pelo usuário
-const CERT_VALIDADE: string | null = null;
-const diasCert = CERT_VALIDADE ? Math.ceil((new Date(CERT_VALIDADE).getTime() - new Date().getTime()) / 86400000) : null;
+interface CertInfo {
+  modulo: string;
+  arquivo_nome: string;
+  storage_path: string;
+  produtor_id?: string | null;
+  produtor_nome: string;
+  cpf_cnpj: string;
+  data_vencimento?: string | null;
+}
 
 // ————————————————————————————————————————
 
@@ -138,6 +144,11 @@ export default function Configuracoes() {
       setProdutores(data);
       if (data.length === 1) setCertProdutorId(data[0].id);
     }).catch(() => {});
+    // Carrega todos os certificados da fazenda via API (service role — sem RLS)
+    void fetch(`/api/cert-meta?fazenda_id=${fazendaId}`)
+      .then(r => r.json())
+      .then((d: { certs?: CertInfo[] }) => { if (d.certs) setCerts(d.certs); })
+      .catch(() => {});
   }, [fazendaId]);
 
   async function toggleRaccolto() {
@@ -154,16 +165,21 @@ export default function Configuracoes() {
   const [certProdutorId, setCertProdutorId] = useState<string>("");
   const [certFile,       setCertFile]       = useState<File | null>(null);
   const [certSenha,      setCertSenha]      = useState("");
+  const [certDataVenc,   setCertDataVenc]   = useState("");
   const [certArrastando, setCertArrastando] = useState(false);
   const [certCarregando, setCertCarregando] = useState(false);
   const [certSucesso,    setCertSucesso]    = useState(false);
   const certInputRef = useRef<HTMLInputElement>(null);
   const [modalCert, setModalCert]   = useState(false);
 
+  // Lista de certificados (um por produtor)
+  const [certs, setCerts] = useState<CertInfo[]>([]);
+
   function fecharModalCert() {
     setModalCert(false);
     setCertFile(null);
     setCertSenha("");
+    setCertDataVenc("");
     setCertArrastando(false);
     setCertCarregando(false);
     setCertSucesso(false);
@@ -177,13 +193,38 @@ export default function Configuracoes() {
     }
     setCertCarregando(true);
     try {
-      // Salva no Supabase Storage — bucket "certificados" (privado)
       const produtor = produtores.find(p => p.id === certProdutorId) ?? produtores[0];
-      const path = `${fazendaId}/${produtor?.id ?? "geral"}/${certFile.name}`;
-      const { error } = await supabase.storage
-        .from("certificados")
-        .upload(path, certFile, { upsert: true });
-      if (error) throw error;
+
+      // Upload + extração de data + salvamento em banco via API (service role)
+      const form = new FormData();
+      form.append("file",          certFile);
+      form.append("senha",         certSenha);
+      form.append("fazenda_id",    fazendaId!);
+      form.append("produtor_id",   produtor?.id        ?? "");
+      form.append("produtor_nome", produtor?.nome      ?? "");
+      form.append("cpf_cnpj",      produtor?.cpf_cnpj  ?? "");
+
+      const res = await fetch("/api/cert-upload", { method: "POST", body: form });
+      const json = await res.json() as {
+        ok?: boolean; error?: string;
+        arquivo_nome?: string; storage_path?: string;
+        produtor_nome?: string; cpf_cnpj?: string; data_vencimento?: string | null;
+      };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Erro no upload");
+
+      const novo: CertInfo = {
+        modulo:          `certificado_a1_${produtor?.id ?? "geral"}`,
+        arquivo_nome:    json.arquivo_nome    ?? "",
+        storage_path:    json.storage_path    ?? "",
+        produtor_id:     produtor?.id         ?? null,
+        produtor_nome:   json.produtor_nome   ?? "",
+        cpf_cnpj:        json.cpf_cnpj        ?? "",
+        data_vencimento: json.data_vencimento ?? null,
+      };
+      setCerts(prev => {
+        const outros = prev.filter(c => c.modulo !== novo.modulo);
+        return [...outros, novo];
+      });
       setCertSucesso(true);
       setTimeout(() => fecharModalCert(), 1800);
     } catch (e: unknown) {
@@ -205,6 +246,15 @@ export default function Configuracoes() {
   const salvarBasis = () => {
     try { localStorage.setItem("ractech_basis", JSON.stringify(basis)); setBasisSalvo(true); setTimeout(() => setBasisSalvo(false), 2000); } catch { /* ignore */ }
   };
+
+  const calcDias = (d?: string | null): number | null => {
+    if (!d) return null;
+    return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
+  };
+  const diasCert: number | null = (() => {
+    const dias = certs.map(c => calcDias(c.data_vencimento)).filter((d): d is number => d !== null);
+    return dias.length > 0 ? Math.min(...dias) : null;
+  })();
 
 
 
@@ -451,70 +501,84 @@ export default function Configuracoes() {
           {aba === "certificado" && (
             <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", padding: "24px" }}>
 
-              {/* Status atual */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-                <div style={{
-                  border: `1px solid ${diasCert !== null && diasCert <= 7 ? "#E24B4A" : diasCert !== null && diasCert <= 15 ? "#EF9F27" : "#D4DCE8"}`,
-                  borderRadius: 12,
-                  padding: "18px 20px",
-                  background: diasCert !== null && diasCert <= 7 ? "#FFFBFB" : diasCert !== null && diasCert <= 15 ? "#FFFDF5" : "#F7FDFA",
-                }}>
-                  <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>Certificado em uso</div>
-                  {CERT_VALIDADE ? (
-                    <>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Empresa</div>
-                      <div style={{ fontSize: 12, color: "#666" }}>CNPJ: —</div>
-                      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 10 }}>
-                        <div>
-                          <div style={{ fontSize: 11, color: "#555" }}>Vence em</div>
-                          <div style={{ fontWeight: 600, fontSize: 12, color: diasCert! <= 7 ? "#E24B4A" : diasCert! <= 15 ? "#EF9F27" : "#1A5C38" }}>
-                            {formatarData(CERT_VALIDADE)} ({diasCert}d)
+              {/* Cabeçalho da lista */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                    Certificados A1 cadastrados
+                  </div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                    {certs.length === 0 ? "Nenhum certificado configurado" : `${certs.length} certificado${certs.length > 1 ? "s" : ""} — um por produtor/titular`}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setCertProdutorId(produtores.length === 1 ? produtores[0].id : ""); setModalCert(true); }}
+                  style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+                >
+                  + Adicionar certificado
+                </button>
+              </div>
+
+              {/* Lista de certificados */}
+              {certs.length === 0 ? (
+                <div style={{ border: "0.5px dashed #1A4870", borderRadius: 12, padding: "36px", textAlign: "center", background: "#F5F9FF", marginBottom: 16 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>◉</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Nenhum certificado configurado</div>
+                  <div style={{ fontSize: 12, color: "#555" }}>
+                    Carregue um arquivo .pfx ou .p12 para assinar NF-e automaticamente
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                  {certs.map(cert => {
+                    const dias = calcDias(cert.data_vencimento);
+                    const corDias = dias !== null && dias <= 7 ? "#E24B4A" : dias !== null && dias <= 15 ? "#EF9F27" : "#1A5C38";
+                    const bgCard = dias !== null && dias <= 7 ? "#FFFBFB" : dias !== null && dias <= 15 ? "#FFFDF5" : "#F7FDFA";
+                    const borderCard = dias !== null && dias <= 7 ? "#E24B4A" : dias !== null && dias <= 15 ? "#EF9F27" : "#D4DCE8";
+                    return (
+                      <div key={cert.modulo} style={{ border: `1px solid ${borderCard}`, borderRadius: 12, padding: "16px 20px", background: bgCard, display: "flex", alignItems: "center", gap: 20 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{cert.produtor_nome || "Titular não informado"}</span>
+                            {cert.cpf_cnpj && <span style={{ fontSize: 11, color: "#888" }}>CNPJ/CPF: {cert.cpf_cnpj}</span>}
+                            <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 5 }}>A1 — .pfx</span>
                           </div>
+                          <div style={{ fontSize: 11, color: "#888", marginBottom: 10 }}>📄 {cert.arquivo_nome}</div>
+                          {cert.data_vencimento ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                              <div>
+                                <span style={{ fontSize: 11, color: "#555" }}>Vence em: </span>
+                                <span style={{ fontWeight: 600, fontSize: 12, color: corDias }}>
+                                  {cert.data_vencimento.split("-").reverse().join("/")}
+                                </span>
+                                <span style={{ marginLeft: 7, fontSize: 11, background: dias !== null && dias <= 7 ? "#FCEBEB" : dias !== null && dias <= 15 ? "#FFF3CD" : "#EAF3DE", color: corDias, padding: "1px 7px", borderRadius: 6, fontWeight: 600 }}>
+                                  {dias !== null ? `${dias}d` : "—"}
+                                </span>
+                              </div>
+                              <div style={{ flex: 1, maxWidth: 160 }}>
+                                <div style={{ height: 5, background: "#DEE5EE", borderRadius: 4, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${Math.max(0, Math.min(100, ((dias ?? 0) / 365) * 100))}%`, background: corDias, borderRadius: 4 }} />
+                                </div>
+                                <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{dias ?? "—"} dias restantes de 365</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 11, color: "#EF9F27" }}>⚠ Vencimento não informado — atualize o certificado</span>
+                          )}
                         </div>
-                        <div style={{ width: 1, height: 30, background: "#D4DCE8" }} />
-                        <div>
-                          <div style={{ fontSize: 11, color: "#555" }}>Tipo</div>
-                          <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 12 }}>A1 — e-CNPJ</div>
-                        </div>
+                        <button
+                          onClick={() => { setCertProdutorId(cert.produtor_id ?? ""); setModalCert(true); }}
+                          style={{ padding: "7px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "transparent", color: "#1A4870", cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                        >
+                          Atualizar
+                        </button>
                       </div>
-                      <div style={{ marginTop: 14 }}>
-                        <div style={{ height: 6, background: "#DEE5EE", borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{
-                            height: "100%",
-                            width: `${Math.max(0, (diasCert! / 365) * 100)}%`,
-                            background: diasCert! <= 7 ? "#E24B4A" : diasCert! <= 15 ? "#EF9F27" : "#1A5C38",
-                            borderRadius: 4,
-                          }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: "#444", marginTop: 4 }}>{diasCert} dias restantes de 365</div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: 13, color: "#888", marginTop: 8 }}>Nenhum certificado configurado. Carregue um arquivo .pfx abaixo.</div>
-                  )}
+                    );
+                  })}
                 </div>
+              )}
 
-                <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "18px 20px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Histórico de alertas enviados</div>
-                  <div style={{ fontSize: 12, color: "#888", padding: "8px 0" }}>Nenhum alerta enviado ainda.</div>
-                </div>
-              </div>
-
-              {/* Upload novo certificado */}
-              <div style={{ border: "0.5px dashed #1A4870", borderRadius: 12, padding: "24px", textAlign: "center", background: "#F5F9FF" }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>◉</div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Carregar novo certificado A1</div>
-                <div style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>
-                  Arquivo .pfx ou .p12 · Senha do certificado será solicitada
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button onClick={() => setModalCert(true)} style={{ padding: "9px 20px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                    ⟳ Selecionar arquivo .pfx
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16, background: "#D5E8F5", border: "0.5px solid #1A487030", borderRadius: 8, padding: "10px 14px", fontSize: 11, color: "#0B2D50" }}>
+              <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487030", borderRadius: 8, padding: "10px 14px", fontSize: 11, color: "#0B2D50" }}>
                 ⟳ O sistema verifica automaticamente a validade do certificado diariamente e envia alertas 30, 15, 7 e 1 dia antes do vencimento.
               </div>
             </div>

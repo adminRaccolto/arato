@@ -448,6 +448,11 @@ export async function atualizarPessoa(id: string, p: Partial<Pessoa>): Promise<v
   if (error) throw error;
 }
 export async function excluirPessoa(id: string): Promise<void> {
+  // Null out FK references that lack ON DELETE SET NULL before deleting
+  await supabase.from("contratos_financeiros").update({ pessoa_id: null }).eq("pessoa_id", id);
+  await supabase.from("contratos").update({ pessoa_id: null }).eq("pessoa_id", id);
+  await supabase.from("nf_entradas").update({ pessoa_id: null }).eq("pessoa_id", id);
+  await supabase.from("nf_servicos").update({ prestador_id: null }).eq("prestador_id", id);
   const { error } = await supabase.from("pessoas").delete().eq("id", id);
   if (error) throw error;
 }
@@ -926,12 +931,37 @@ export async function processarNfEntrada(
     }
   }
 
-  // Gera lançamento CP (apenas para NFs que não sejam só remessa — remessa já foi paga na VEF)
+  // ── Pessoa: lookup por CNPJ ou auto-cria fornecedor ──────────────────────
+  let pessoaId: string | null = null;
+  if (emitenteCnpj) {
+    const { data: pesExist } = await supabase
+      .from("pessoas").select("id")
+      .eq("fazenda_id", fazenda_id).eq("cpf_cnpj", emitenteCnpj).maybeSingle();
+    if (pesExist) {
+      pessoaId = pesExist.id;
+    } else {
+      const { data: novaPes } = await supabase.from("pessoas").insert({
+        fazenda_id,
+        nome: emitente,
+        tipo: "pj",
+        cliente: false,
+        fornecedor: true,
+        cpf_cnpj: emitenteCnpj,
+      }).select("id").single();
+      pessoaId = novaPes?.id ?? null;
+    }
+  }
+
+  // ── Gera lançamento CP (apenas para NFs que não sejam só remessa) ─────────
   const temVef     = itens.some(i => i.tipo_apropiacao === "vef");
   const temRemessa = itens.some(i => i.tipo_apropiacao === "remessa");
   const temOutros  = itens.some(i => !["vef","remessa"].includes(i.tipo_apropiacao));
+
+  const nfUpdates: Record<string, unknown> = { status: "processada", data_entrada: dataEntrada };
+  if (pessoaId) nfUpdates.pessoa_id = pessoaId;
+
   if (!temRemessa || temOutros || temVef) {
-    await supabase.from("lancamentos").insert({
+    const { data: lancDB } = await supabase.from("lancamentos").insert({
       fazenda_id,
       tipo:             "pagar",
       moeda:            "BRL",
@@ -942,11 +972,68 @@ export async function processarNfEntrada(
       valor:            valorTotal,
       status:           "em_aberto",
       auto:             true,
-    });
+      pessoa_id:        pessoaId ?? undefined,
+    }).select("id").single();
+    if (lancDB?.id) nfUpdates.lancamento_id = lancDB.id;
   }
 
-  // Marca NF como processada
-  await supabase.from("nf_entradas").update({ status: "processada", data_entrada: dataEntrada }).eq("id", nfId);
+  // Marca NF como processada (e vincula pessoa + lancamento em um único update)
+  await supabase.from("nf_entradas").update(nfUpdates).eq("id", nfId);
+}
+
+// Verifica se uma NF pode ser excluída e retorna o status do lançamento associado
+export async function verificarExclusaoNf(nfId: string): Promise<{
+  lancamento: { id: string; status: string; lote_id: string | null; conta_bancaria: string | null } | null;
+}> {
+  const { data: nf } = await supabase.from("nf_entradas").select("lancamento_id").eq("id", nfId).single();
+  if (!nf?.lancamento_id) return { lancamento: null };
+  const { data: lanc } = await supabase
+    .from("lancamentos").select("id, status, lote_id, conta_bancaria")
+    .eq("id", nf.lancamento_id).single();
+  return { lancamento: lanc ?? null };
+}
+
+// Exclui NF e reverte todas as movimentações associadas
+export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise<void> {
+  // 1. Itens da NF
+  const { data: itens } = await supabase
+    .from("nf_entrada_itens").select("id, insumo_id, quantidade, tipo_apropiacao")
+    .eq("nf_entrada_id", nfId);
+  const itemIds = (itens ?? []).map(i => i.id as string);
+
+  if (itemIds.length > 0) {
+    // 2. Reverter movimentações de estoque — busca entradas vinculadas a esta NF
+    const { data: movs } = await supabase
+      .from("movimentacoes_estoque").select("insumo_id, quantidade")
+      .in("nf_entrada_item_id", itemIds).eq("tipo", "entrada");
+
+    for (const mov of movs ?? []) {
+      const { data: ins } = await supabase.from("insumos")
+        .select("estoque").eq("id", mov.insumo_id).single();
+      if (ins) {
+        await supabase.from("insumos")
+          .update({ estoque: Math.max(0, (ins.estoque as number) - (mov.quantidade as number)) })
+          .eq("id", mov.insumo_id);
+      }
+    }
+    await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds);
+    await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
+  }
+
+  // 3. Estoque de terceiros vinculados a esta NF
+  await supabase.from("estoque_terceiros").delete().eq("nf_entrada_id", nfId);
+
+  // 4. Lançamento financeiro
+  const { data: nf } = await supabase.from("nf_entradas")
+    .select("lancamento_id").eq("id", nfId).single();
+  if (nf?.lancamento_id) {
+    await supabase.from("lancamentos").delete().eq("id", nf.lancamento_id);
+  }
+
+  // 5. Itens + NF
+  await supabase.from("nf_entrada_itens").delete().eq("nf_entrada_id", nfId);
+  const { error } = await supabase.from("nf_entradas").delete().eq("id", nfId).eq("fazenda_id", fazendaId);
+  if (error) throw new Error(error.message);
 }
 
 // Processa NF de Devolução de Compra:

@@ -53,6 +53,8 @@ const NAV: NavItem[] = [
       { id: "cad-combustivel",  label: "Combustíveis & Bombas", path: "/cadastros?tab=combustivel"  },
       { id: "cad-grupos-insumo",   label: "Grupos de Insumos",        path: "/cadastros?tab=grupos_insumo"         },
       { id: "cad-padroes-class",   label: "Padrões de Classificação", path: "/cadastros?tab=padroes_classificacao" },
+      { type: "divider", label: "Financeiro" },
+      { id: "cad-contas-bancarias", label: "Contas Bancárias",        path: "/cadastros?tab=contas_bancarias"      },
     ],
   },
 
@@ -91,23 +93,23 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro",
     children: [
-      { id: "fin-receber",     label: "Contas a Receber",      path: "/financeiro/receber"    },
-      { id: "fin-pagar",       label: "Contas a Pagar",        path: "/financeiro/pagar"      },
-      { id: "fin-contratos",   label: "Contratos Financeiros", path: "/financeiro/contratos"  },
-      { id: "fin-conciliacao", label: "Conciliação Bancária",  path: "/financeiro/conciliacao"},
+      { id: "fin-pagar",   label: "Contas a Pagar",   path: "/financeiro/pagar"   },
+      { id: "fin-receber", label: "Contas a Receber",  path: "/financeiro/receber" },
       {
         type: "subgroup", id: "sg-tesouraria", label: "Tesouraria",
         children: [
-          { id: "fin-tesouraria", label: "Mútuo entre Empresas", path: "/financeiro/tesouraria" },
-          { id: "fin-seguros",    label: "Seguros",               path: "/financeiro/seguros"    },
-          { id: "fin-consorcios", label: "Consórcios",            path: "/financeiro/consorcios" },
+          { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria", path: "/financeiro/tesouraria"           },
+          { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",  path: "/financeiro/tesouraria/operacoes" },
+          { id: "fin-mutuo",           label: "Mútuos entre Empresas",    path: "/financeiro/tesouraria/mutuo"     },
+          { id: "fin-conciliacao",     label: "Conciliação Bancária",     path: "/financeiro/conciliacao"          },
+          { id: "fin-contratos",       label: "Contratos Financeiros",    path: "/financeiro/contratos"            },
         ],
       },
       {
         type: "subgroup", id: "sg-fin-relatorios", label: "Relatórios",
         children: [
-          { id: "fin-fluxo", label: "Fluxo de Caixa",   path: "/financeiro/relatorios?aba=fluxo" },
-          { id: "fin-dfc",   label: "DFC — Demonstrativo", path: "/financeiro/relatorios?aba=dfc" },
+          { id: "fin-fluxo", label: "Fluxo de Caixa",      path: "/financeiro/relatorios?aba=fluxo" },
+          { id: "fin-dfc",   label: "DFC — Demonstrativo", path: "/financeiro/relatorios?aba=dfc"   },
         ],
       },
     ],
@@ -167,6 +169,8 @@ const NAV: NavItem[] = [
       { id: "custos-produt",     label: "Produtividade",        path: "/custos?aba=produtividade"      },
       { id: "custos-totais",     label: "Custos Totais",        path: "/custos?aba=custostotais"       },
       { id: "custos-aplicacoes", label: "Aplicações por Ciclo", path: "/lavoura/relatorios/aplicacoes" },
+      { id: "custos-rateio",     label: "Regras de Rateio",     path: "/configuracoes/rateio"          },
+      { id: "custos-centros",    label: "Centros de Custo",     path: "/cadastros?tab=centros_custo"   },
     ],
   },
 
@@ -179,18 +183,12 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-parametros", label: "Parâmetros",
         children: [
-          { id: "conf-modulos",       label: "Parâmetros do Sistema",  path: "/configuracoes/modulos"              },
-          { id: "conf-plano-contas",  label: "Plano de Contas",        path: "/configuracoes?tab=plano_contas"     },
-          { id: "conf-rateio",        label: "Regras de Rateio",       path: "/configuracoes/rateio"               },
-          { id: "conf-classificacao", label: "Classificação Automática", path: "/configuracoes/classificacao"      },
-        ],
-      },
-      {
-        type: "subgroup", id: "sg-financeiro-conf", label: "Financeiro",
-        children: [
-          { id: "conf-centros-custo", label: "Centros de Custo",      path: "/cadastros?tab=centros_custo"        },
-          { id: "conf-op-gerenciais", label: "Operações Gerenciais",  path: "/cadastros?tab=operacoes_gerenciais" },
-          { id: "conf-formas-pgto",   label: "Formas de Pagamento",   path: "/cadastros?tab=formas_pagamento"     },
+          { id: "conf-modulos",       label: "Parâmetros do Sistema",    path: "/configuracoes/modulos"          },
+          { id: "conf-plano-contas",  label: "Plano de Contas",          path: "/configuracoes?tab=plano_contas" },
+          { id: "conf-classificacao", label: "Classificação Automática", path: "/configuracoes/classificacao"    },
+          { id: "conf-op-fiscais",    label: "Operações Fiscais",        path: "/configuracoes/modulos?aba=operacoes" },
+          { id: "conf-op-gerenciais", label: "Operações Gerenciais",     path: "/cadastros?tab=operacoes_gerenciais" },
+          { id: "conf-formas-pgto",   label: "Formas de Pagamento",      path: "/cadastros?tab=formas_pagamento"     },
         ],
       },
       {
