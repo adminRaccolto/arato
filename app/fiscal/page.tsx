@@ -62,92 +62,264 @@ const inputSt: React.CSSProperties = {
 };
 const labelSt: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
 
-// ── Impressão DANFE simplificado ──────────────────────────────────────────────
-function imprimirDanfe(nota: NotaFiscal) {
-  const dataFmt = new Date(nota.data_emissao + "T12:00:00").toLocaleDateString("pt-BR");
-  const valorFmt = nota.valor_total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const chaveBlocks = nota.chave_acesso
-    ? nota.chave_acesso.replace(/(.{4})/g, "$1 ").trim()
-    : "— aguardando SEFAZ —";
+// ── Impressão DANFE — Modelo 55 ───────────────────────────────────────────────
+interface DanfeCfg {
+  razao_social?: string; cpf_cnpj_emitente?: string; ie_emitente?: string;
+  logradouro?: string; numero_end?: string; bairro?: string;
+  municipio?: string; uf?: string; cep?: string; fone?: string;
+  ambiente?: string;
+}
+function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}) {
+  const dataFmt  = new Date(nota.data_emissao + "T12:00:00").toLocaleDateString("pt-BR");
+  const valorFmt = nota.valor_total.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const chave44  = (nota.chave_acesso ?? "").replace(/\D/g, "");
+  const chaveBlocks = chave44
+    ? chave44.replace(/(.{4})/g, "$1 ").trim()
+    : "— aguardando autorização SEFAZ —";
+  const isHomolog = (cfg.ambiente ?? "homologacao") !== "producao";
+  const emiNome   = cfg.razao_social        ?? "—";
+  const emiCnpj   = cfg.cpf_cnpj_emitente  ?? "—";
+  const emiIe     = cfg.ie_emitente         ?? "—";
+  const emiEnd    = [cfg.logradouro, cfg.numero_end].filter(Boolean).join(", ") || "—";
+  const emiBairro = cfg.bairro   ?? "";
+  const emiMun    = cfg.municipio ?? "—";
+  const emiUf     = cfg.uf       ?? "—";
+  const emiCep    = cfg.cep      ?? "—";
+  const emiFone   = cfg.fone     ?? "—";
+  const tipoStr   = nota.tipo === "saida" ? "1" : "0";
+  const tipoDesc  = nota.tipo === "saida" ? "SAÍDA" : "ENTRADA";
+  // Parse numero "001.001" → "000.000.001" style
+  const numFmt = String(nota.numero).padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>DANFE NF-e ${nota.numero}</title>
+<title>DANFE NF-e ${numFmt} — Série ${nota.serie}</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
-  body{font-family:Arial,sans-serif;font-size:9pt;margin:0;padding:12mm;color:#000}
-  .box{border:1px solid #000;padding:4px 6px;margin-bottom:4px}
-  .row{display:flex;gap:4px;margin-bottom:4px}
-  .row>.box{flex:1;margin-bottom:0}
-  .title{font-size:11pt;font-weight:bold;text-align:center;margin:6px 0 2px}
-  .sub{font-size:8pt;text-align:center;color:#444;margin-bottom:4px}
-  .label{font-size:7pt;color:#555;display:block;margin-bottom:1px}
-  .value{font-size:9pt;font-weight:bold}
-  .chave{font-family:monospace;font-size:8pt;word-break:break-all;letter-spacing:.05em}
-  .total{font-size:14pt;font-weight:bold;text-align:right;border-top:1px solid #000;padding-top:6px;margin-top:6px}
-  .obs{font-size:8pt;color:#333;margin-top:8px;border-top:1px dashed #999;padding-top:6px}
-  .danfe-header{display:flex;align-items:center;border:1px solid #000;padding:8px;margin-bottom:4px;gap:12px}
-  .danfe-header .logo{font-size:14pt;font-weight:900;color:#1A4870;min-width:80px}
-  .danfe-header .center{flex:1;text-align:center}
-  .danfe-header .nfe{border:1px solid #000;padding:6px 12px;text-align:center;min-width:80px}
-  table{width:100%;border-collapse:collapse;margin:4px 0}
-  table th{background:#e8e8e8;font-size:8pt;padding:3px 6px;text-align:left;border:1px solid #ccc}
-  table td{font-size:8.5pt;padding:3px 6px;border:1px solid #ccc}
-  @media print{body{padding:0}@page{margin:10mm;size:A4}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:7pt;color:#000;background:#fff}
+.page{width:200mm;margin:0 auto;padding:4mm}
+.b{border:0.4px solid #000}
+.bt{border-top:0.4px solid #000}
+.bb{border-bottom:0.4px solid #000}
+.bl{border-left:0.4px solid #000}
+.br{border-right:0.4px solid #000}
+.lbl{font-size:5.5pt;color:#444;display:block;line-height:1.2}
+.val{font-size:8pt;font-weight:bold;line-height:1.4}
+.val-sm{font-size:7pt;font-weight:bold;line-height:1.4}
+.c{text-align:center}.r{text-align:right}
+.row{display:flex}
+.p{padding:2px 3px}
+table.prod{width:100%;border-collapse:collapse}
+table.prod th{background:#e8e8e8;font-size:5.5pt;padding:2px 3px;border:0.4px solid #000;text-align:center;font-weight:bold}
+table.prod td{font-size:6.5pt;padding:2px 3px;border:0.4px solid #000;vertical-align:top}
+.homolog{background:#ffd700;color:#000;font-weight:bold;font-size:8pt;text-align:center;padding:3px;margin-bottom:2px;border:1px solid #b8860b}
+@media print{body{padding:0}@page{margin:6mm;size:A4 portrait}.homolog{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#ffd700!important}}
 </style></head><body>
-<div class="danfe-header">
-  <div class="logo">RacTech</div>
-  <div class="center">
-    <div class="title">DANFE — Documento Auxiliar da Nota Fiscal Eletrônica</div>
-    <div class="sub">Nota Fiscal Eletrônica · Entrada/Saída</div>
-    <div class="sub">Homologação — SEM VALOR FISCAL</div>
+<div class="page">
+
+${isHomolog ? '<div class="homolog">⚠ AMBIENTE DE HOMOLOGAÇÃO — SEM VALOR FISCAL ⚠</div>' : ""}
+
+<!-- RECIBO -->
+<div class="b p" style="margin-bottom:2px;font-size:6.5pt;display:flex;justify-content:space-between;align-items:flex-start">
+  <div style="flex:1">
+    <strong>RECEBEMOS DE ${emiNome} OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA NOTA FISCAL ELETRÔNICA INDICADA ABAIXO.</strong><br>
+    EMISSÃO: ${dataFmt} &nbsp;&nbsp; VALOR TOTAL: R$ ${valorFmt} &nbsp;&nbsp; DESTINATÁRIO: ${nota.destinatario}
   </div>
-  <div class="nfe">
-    <div style="font-size:7pt;color:#555">NF-e</div>
-    <div style="font-size:16pt;font-weight:900">${String(nota.numero).replace(/^(\d+)\.(\d+)$/, "$1.$2")}</div>
-    <div style="font-size:8pt">Série ${nota.serie}</div>
+  <div style="text-align:right;min-width:40mm;padding-left:6px">
+    <div style="font-size:9pt;font-weight:900">NF-e</div>
+    <div style="font-size:8pt;font-weight:bold">Nº. ${numFmt}</div>
+    <div style="font-size:7pt">Série ${nota.serie}</div>
   </div>
 </div>
 
-<div class="box">
-  <span class="label">Chave de Acesso</span>
-  <span class="chave value">${chaveBlocks}</span>
+<!-- HEADER: EMITENTE | DANFE | CHAVE -->
+<div class="row b" style="margin-bottom:0">
+  <!-- Emitente -->
+  <div class="p br" style="flex:0 0 55mm">
+    <span class="lbl" style="font-size:5pt;font-style:italic">IDENTIFICAÇÃO DO EMITENTE</span>
+    <div style="font-size:9pt;font-weight:900;margin:2px 0">${emiNome}</div>
+    <div style="font-size:6pt">${emiEnd}</div>
+    <div style="font-size:6pt">${emiBairro ? emiBairro + " — " : ""}${emiCep}</div>
+    <div style="font-size:6pt">${emiMun} - ${emiUf} &nbsp; Fone: ${emiFone}</div>
+  </div>
+  <!-- DANFE título -->
+  <div class="p br c" style="flex:0 0 46mm;display:flex;flex-direction:column;justify-content:center;align-items:center">
+    <div style="font-size:12pt;font-weight:900;letter-spacing:0.05em">DANFE</div>
+    <div style="font-size:6.5pt;margin:1px 0">Documento Auxiliar da Nota</div>
+    <div style="font-size:6.5pt;margin-bottom:4px">Fiscal Eletrônica</div>
+    <div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">
+      <span style="font-size:6.5pt">0 - ENTRADA</span>
+      <span style="border:1px solid #000;padding:1px 6px;font-size:9pt;font-weight:900">${tipoStr}</span>
+      <span style="font-size:6.5pt">1 - SAÍDA</span>
+    </div>
+    <div style="border-top:0.4px solid #000;padding-top:4px;width:100%;text-align:center">
+      <div style="font-size:7.5pt;font-weight:bold">Nº. ${numFmt}</div>
+      <div style="font-size:7pt">Série ${nota.serie}</div>
+      <div style="font-size:6.5pt;color:#444">Folha 1/1</div>
+    </div>
+  </div>
+  <!-- Chave + Barcode -->
+  <div class="p" style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px">
+    <span class="lbl">CHAVE DE ACESSO</span>
+    <div style="font-family:monospace;font-size:6.5pt;font-weight:bold;word-break:break-all;letter-spacing:0.08em">${chaveBlocks}</div>
+    ${chave44 ? '<svg id="bc" style="width:100%;height:30px"></svg>' : '<div style="height:30px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:6pt;color:#888">Barcode disponível após autorização SEFAZ</div>'}
+    <div style="font-size:5.5pt;color:#444;margin-top:2px">Consulta de autenticidade no portal nacional da NF-e<br>www.nfe.fazenda.gov.br/portal ou no site da Sefaz Autorizadora</div>
+  </div>
 </div>
 
-<div class="row">
-  <div class="box"><span class="label">Natureza da Operação</span><span class="value">${nota.natureza}</span></div>
-  <div class="box" style="max-width:80px"><span class="label">CFOP</span><span class="value">${nota.cfop}</span></div>
-  <div class="box" style="max-width:100px"><span class="label">Data de Emissão</span><span class="value">${dataFmt}</span></div>
+<!-- Natureza + Protocolo -->
+<div class="row bb bl br" style="margin-bottom:0">
+  <div class="p br" style="flex:1"><span class="lbl">NATUREZA DA OPERAÇÃO</span><span class="val">${nota.natureza.toUpperCase()}</span></div>
+  <div class="p" style="flex:0 0 70mm"><span class="lbl">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+    <span class="val">${nota.chave_acesso ? "Aguardando autorização SEFAZ" : "— pendente —"}</span>
+  </div>
 </div>
 
-<div class="row">
-  <div class="box"><span class="label">Destinatário / Remetente</span><span class="value">${nota.destinatario}</span></div>
-  <div class="box" style="max-width:180px"><span class="label">CNPJ / CPF</span><span class="value">${nota.cnpj_destinatario ?? "—"}</span></div>
+<!-- IE / IE Subst / CNPJ -->
+<div class="row bb bl br">
+  <div class="p br" style="flex:1"><span class="lbl">INSCRIÇÃO ESTADUAL</span><span class="val">${emiIe}</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">INSCRIÇÃO ESTADUAL DO SUBST. TRIBUT.</span><span class="val">&nbsp;</span></div>
+  <div class="p" style="flex:1"><span class="lbl">CNPJ / CPF</span><span class="val">${emiCnpj}</span></div>
 </div>
 
-<table>
+<!-- DESTINATÁRIO header -->
+<div class="p bt bb bl br" style="background:#e8e8e8;font-size:6pt;font-weight:bold;letter-spacing:0.06em">DESTINATÁRIO / REMETENTE</div>
+
+<!-- Nome + CNPJ + Data Emissão -->
+<div class="row bl br bb">
+  <div class="p br" style="flex:1"><span class="lbl">NOME / RAZÃO SOCIAL</span><span class="val">${nota.destinatario.toUpperCase()}</span></div>
+  <div class="p br" style="flex:0 0 44mm"><span class="lbl">CNPJ / CPF</span><span class="val">${nota.cnpj_destinatario ?? "—"}</span></div>
+  <div class="p" style="flex:0 0 28mm"><span class="lbl">DATA DA EMISSÃO</span><span class="val">${dataFmt}</span></div>
+</div>
+
+<!-- Endereço + Bairro + CEP + Data Saída -->
+<div class="row bl br bb">
+  <div class="p br" style="flex:1"><span class="lbl">ENDEREÇO</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 34mm"><span class="lbl">BAIRRO / DISTRITO</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 22mm"><span class="lbl">CEP</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p" style="flex:0 0 28mm"><span class="lbl">DATA DA SAÍDA/ENTRADA</span><span class="val">${dataFmt}</span></div>
+</div>
+
+<!-- Município + UF + Fone + IE + Hora -->
+<div class="row bl br bb">
+  <div class="p br" style="flex:1"><span class="lbl">MUNICÍPIO</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 10mm c"><span class="lbl">UF</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 28mm"><span class="lbl">FONE / FAX</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 28mm"><span class="lbl">INSCRIÇÃO ESTADUAL</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p" style="flex:0 0 24mm"><span class="lbl">HORA DA SAÍDA/ENTRADA</span><span class="val-sm">&nbsp;</span></div>
+</div>
+
+<!-- FATURA -->
+<div class="p bt bb bl br" style="background:#e8e8e8;font-size:6pt;font-weight:bold;letter-spacing:0.06em">FATURA / DUPLICATA</div>
+<div class="row bl br bb p" style="min-height:10mm;font-size:7pt">
+  <div><strong>Num.</strong> 001 &nbsp;&nbsp; <strong>Venc.</strong> ${dataFmt} &nbsp;&nbsp; <strong>Valor</strong> R$ ${valorFmt}</div>
+</div>
+
+<!-- CÁLCULO DO IMPOSTO -->
+<div class="p bt bb bl br" style="background:#e8e8e8;font-size:6pt;font-weight:bold;letter-spacing:0.06em">CÁLCULO DO IMPOSTO</div>
+<div class="row bl br bb" style="font-size:6pt">
+  ${[
+    ["BASE DE CÁLC. DO ICMS","0,00"],["VALOR DO ICMS","0,00"],["BASE DE CÁLC. ICMS S.T.","0,00"],
+    ["VALOR DO ICMS SUBST.","0,00"],["V. IMP. IMPORTAÇÃO","0,00"],["V. ICMS UF REMET.","0,00"],
+    ["V. FCP UF DEST.","0,00"],["VALOR DO PIS","0,00"],["V. TOTAL PRODUTOS",valorFmt]
+  ].map(([l,v])=>`<div class="p br" style="flex:1"><span class="lbl">${l}</span><span class="val r">${v}</span></div>`).join("")}
+</div>
+<div class="row bl br bb" style="font-size:6pt">
+  ${[
+    ["VALOR DO FRETE","0,00"],["VALOR DO SEGURO","0,00"],["DESCONTO","0,00"],
+    ["OUTRAS DESPESAS","0,00"],["VALOR TOTAL IPI","0,00"],["V. ICMS UF DEST.","0,00"],
+    ["V. TOT. TRIB.","0,00"],["VALOR DA COFINS","0,00"],["V. TOTAL DA NOTA",valorFmt]
+  ].map(([l,v],i)=>`<div class="p br${i===8?' bl':''}" style="flex:1${i===8?';font-weight:bold;background:#f5f5f5':''}"><span class="lbl">${l}</span><span class="val r">${v}</span></div>`).join("")}
+</div>
+
+<!-- TRANSPORTADOR -->
+<div class="p bt bb bl br" style="background:#e8e8e8;font-size:6pt;font-weight:bold;letter-spacing:0.06em">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
+<div class="row bl br bb">
+  <div class="p br" style="flex:1"><span class="lbl">NOME / RAZÃO SOCIAL</span><span class="val-sm">9-Sem Transporte</span></div>
+  <div class="p br" style="flex:0 0 18mm"><span class="lbl">FRETE</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 24mm"><span class="lbl">CÓDIGO ANTT</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 22mm"><span class="lbl">PLACA DO VEÍCULO</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p br" style="flex:0 0 8mm"><span class="lbl">UF</span><span class="val-sm">&nbsp;</span></div>
+  <div class="p" style="flex:0 0 34mm"><span class="lbl">CNPJ / CPF</span><span class="val-sm">&nbsp;</span></div>
+</div>
+<div class="row bl br bb" style="min-height:8mm">
+  <div class="p br" style="flex:1"><span class="lbl">ENDEREÇO</span></div>
+  <div class="p br" style="flex:0 0 40mm"><span class="lbl">MUNICÍPIO</span></div>
+  <div class="p br" style="flex:0 0 8mm"><span class="lbl">UF</span></div>
+  <div class="p" style="flex:0 0 34mm"><span class="lbl">INSCRIÇÃO ESTADUAL</span></div>
+</div>
+<div class="row bl br bb" style="min-height:7mm">
+  <div class="p br" style="flex:0 0 18mm"><span class="lbl">QUANTIDADE</span></div>
+  <div class="p br" style="flex:0 0 18mm"><span class="lbl">ESPÉCIE</span></div>
+  <div class="p br" style="flex:0 0 28mm"><span class="lbl">MARCA</span></div>
+  <div class="p br" style="flex:0 0 28mm"><span class="lbl">NUMERAÇÃO</span></div>
+  <div class="p br" style="flex:1"><span class="lbl">PESO BRUTO</span></div>
+  <div class="p" style="flex:1"><span class="lbl">PESO LÍQUIDO</span></div>
+</div>
+
+<!-- DADOS DOS PRODUTOS -->
+<div class="p bt bb bl br" style="background:#e8e8e8;font-size:6pt;font-weight:bold;letter-spacing:0.06em">DADOS DOS PRODUTOS / SERVIÇOS</div>
+<table class="prod bl br bb">
   <thead><tr>
-    <th style="width:14%">NCM</th><th>Descrição</th>
-    <th style="width:10%;text-align:center">Qtd</th>
-    <th style="width:10%;text-align:center">Un</th>
-    <th style="width:14%;text-align:right">Valor Unit.</th>
-    <th style="width:14%;text-align:right">Valor Total</th>
+    <th style="width:10%">CÓDIGO<br>PRODUTO</th>
+    <th style="width:28%">DESCRIÇÃO DO PRODUTO / SERVIÇO</th>
+    <th style="width:8%">NCM/SH</th>
+    <th style="width:5%">O/CST</th>
+    <th style="width:5%">CFOP</th>
+    <th style="width:5%">UN</th>
+    <th style="width:7%">QUANT</th>
+    <th style="width:8%">VALOR<br>UNIT</th>
+    <th style="width:8%">VALOR<br>TOTAL</th>
+    <th style="width:6%">B.CÁLC<br>ICMS</th>
+    <th style="width:5%">VALOR<br>ICMS</th>
+    <th style="width:5%">VALOR<br>IPI</th>
+    <th style="width:5%">ALÍQ.<br>ICMS</th>
+    <th style="width:5%">ALÍQ.<br>IPI</th>
   </tr></thead>
-  <tbody><tr>
-    <td>—</td><td>${nota.natureza}</td>
-    <td style="text-align:center">—</td><td style="text-align:center">sc</td>
-    <td style="text-align:right">—</td>
-    <td style="text-align:right;font-weight:bold">${valorFmt}</td>
-  </tr></tbody>
+  <tbody>
+    <tr>
+      <td class="c">1</td>
+      <td>${nota.natureza}</td>
+      <td class="c">—</td>
+      <td class="c">041</td>
+      <td class="c">${nota.cfop.replace(".", "")}</td>
+      <td class="c">sc</td>
+      <td class="r">—</td>
+      <td class="r">—</td>
+      <td class="r" style="font-weight:bold">${valorFmt}</td>
+      <td class="r">0,00</td>
+      <td class="r">0,00</td>
+      <td class="r">0,00</td>
+      <td class="r">0,00</td>
+      <td class="r">—</td>
+    </tr>
+    ${Array(8).fill('<tr style="height:8px"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join("")}
+  </tbody>
 </table>
 
-<div class="total">Total NF-e: ${valorFmt}</div>
-
-${nota.observacao ? `<div class="obs"><strong>Informações Complementares (infCpl):</strong><br>${nota.observacao}</div>` : ""}
-
-<div style="text-align:center;font-size:7pt;color:#777;margin-top:16px;border-top:1px dashed #ccc;padding-top:6px">
-  Documento gerado pelo sistema RacTech · ${new Date().toLocaleString("pt-BR")} · HOMOLOGAÇÃO — SEM VALOR FISCAL
+<!-- DADOS ADICIONAIS -->
+<div class="p bt bb bl br" style="background:#e8e8e8;font-size:6pt;font-weight:bold;letter-spacing:0.06em">DADOS ADICIONAIS</div>
+<div class="row bl br bb" style="min-height:22mm">
+  <div class="p br" style="flex:1">
+    <span class="lbl">INFORMAÇÕES COMPLEMENTARES</span>
+    <div style="font-size:6.5pt;margin-top:2px;line-height:1.5">${nota.observacao ?? "&nbsp;"}</div>
+  </div>
+  <div class="p" style="flex:0 0 55mm">
+    <span class="lbl">RESERVADO AO FISCO</span>
+  </div>
 </div>
 
-<script>window.onload=()=>{window.print();}</script>
+<div style="text-align:right;font-size:5.5pt;color:#666;margin-top:3px">
+  Impresso em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")} &nbsp;·&nbsp; RacTech ERP Agrícola &nbsp;·&nbsp; Modelo 55
+</div>
+
+</div>
+<script>
+window.onload = function() {
+  ${chave44 ? `try { JsBarcode("#bc", "${chave44}", { format:"CODE128", displayValue:false, height:28, margin:0, lineColor:"#000" }); } catch(e) {}` : ""}
+  setTimeout(function(){ window.print(); }, 400);
+};
+<\/script>
 </body></html>`;
 
   const w = window.open("", "_blank", "width=900,height=700");
@@ -155,11 +327,12 @@ ${nota.observacao ? `<div class="obs"><strong>Informações Complementares (infC
 }
 
 // ── Tabela de NF-e reutilizável ───────────────────────────────────────────────
-function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz }: {
+function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImprimirDanfe }: {
   notas: NotaFiscal[];
   onCancelar?: (n: NotaFiscal) => void;
   onComplementar?: (n: NotaFiscal) => void;
   onConsultarSefaz?: (n: NotaFiscal) => void;
+  onImprimirDanfe?: (n: NotaFiscal) => void;
 }) {
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -235,7 +408,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz }: {
                       {nota.status === "autorizada" && (
                         <>
                           <button
-                            onClick={(e) => { e.stopPropagation(); imprimirDanfe(nota); }}
+                            onClick={(e) => { e.stopPropagation(); onImprimirDanfe?.(nota); }}
                             style={{ padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 6, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
                             🖨 Imprimir DANFE
                           </button>
@@ -287,6 +460,7 @@ function FiscalInner() {
   const searchParams = useSearchParams();
   const abaParam = searchParams.get("aba") as Aba | null;
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
+  const [danfeCfg, setDanfeCfg] = useState<DanfeCfg>({});
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -410,7 +584,24 @@ function FiscalInner() {
   const carregar = async () => {
     if (!fazendaId) return;
     setCarregando(true); setErro(null);
-    try { const data = await listarNotasFiscais(fazendaId); setNotas(data); }
+    try {
+      const data = await listarNotasFiscais(fazendaId);
+      setNotas(data);
+      // Carregar config do primeiro emitente fiscal disponível para o DANFE
+      const { data: cfgs } = await supabase.from("configuracoes_modulo")
+        .select("modulo, config").eq("fazenda_id", fazendaId)
+        .or("modulo.like.fiscal_emp_%,modulo.like.fiscal_pf_%,modulo.eq.fiscal");
+      if (cfgs && cfgs.length > 0) {
+        const c = cfgs[0].config as Record<string, string> ?? {};
+        setDanfeCfg({
+          razao_social: c.razao_social, cpf_cnpj_emitente: c.cpf_cnpj_emitente,
+          ie_emitente: c.ie_emitente, logradouro: c.logradouro,
+          numero_end: c.numero_end, bairro: c.bairro,
+          municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
+          ambiente: c.ambiente,
+        });
+      }
+    }
     catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar"); }
     finally { setCarregando(false); }
   };
@@ -639,6 +830,7 @@ function FiscalInner() {
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
                     onConsultarSefaz={consultarSefaz}
+                    onImprimirDanfe={n => imprimirDanfe(n, danfeCfg)}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>
