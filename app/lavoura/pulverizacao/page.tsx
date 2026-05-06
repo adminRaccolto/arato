@@ -8,6 +8,7 @@ import {
   listarPulverizacoes, listarPulverizacaoItens, excluirPulverizacao,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
+import FazendaSelector from "../../../components/FazendaSelector";
 import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -39,7 +40,10 @@ const ESTADIOS = ["VE","V1","V2","V3","V4","V5","V6","R1","R2","R3","R4","R5","R
 type ItemForm = { insumo_id: string; dose_ha: string; unidade: string };
 
 export default function PulverizacaoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
+  const fid = formFazendaId ?? fazendaId;
+
   const [pulverizacoes, setPulverizacoes] = useState<PulverizacaoOp[]>([]);
   const [talhoes, setTalhoes]     = useState<Talhao[]>([]);
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
@@ -62,16 +66,23 @@ export default function PulverizacaoPage() {
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
-    // Dados críticos — safras/talhões/insumos
     Promise.all([
       listarPulverizacoes(fazendaId).then(setPulverizacoes),
-      listarTalhoes(fazendaId).then(setTalhoes),
-      listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.categoria === "defensivo" || i.categoria === "fertilizante" || i.categoria === "inoculante"))),
+      listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))),
     ]).catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
-    // Dados opcionais — anos safra e ciclos (não bloqueiam o carregamento principal)
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-    listarTodosCiclos(fazendaId).then(setTodosCiclos).catch(() => {});
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (!fid) return;
+    listarTalhoes(fid).then(setTalhoes).catch(() => {});
+    listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
+  }, [fid]);
+
+  function mudarFazenda(novaId: string) {
+    setFormFazendaId(novaId);
+    setF(p => ({ ...p, ciclo_id: "", talhao_id: "", ano_safra_sel: "" }));
+  }
 
   // Ciclos filtrados pelo Ano Safra selecionado
   const ciclosDisponiveis = f.ano_safra_sel
@@ -96,7 +107,7 @@ export default function PulverizacaoPage() {
     try {
       setSalvando(true);
       const pulv = await criarPulverizacao({
-        fazenda_id: fazendaId!, ciclo_id: f.ciclo_id,
+        fazenda_id: fid!, ciclo_id: f.ciclo_id,
         talhao_id: f.talhao_id || undefined,
         tipo: f.tipo,
         pre_pos: f.pre_pos || null,
@@ -113,7 +124,7 @@ export default function PulverizacaoPage() {
       const itensSalvos: PulverizacaoItem[] = [];
       for (const it of calcItens) {
         const item = await criarPulverizacaoItem({
-          pulverizacao_id: pulv.id, fazenda_id: fazendaId!,
+          pulverizacao_id: pulv.id, fazenda_id: fid!,
           insumo_id: it.insumo_id, nome_produto: it.nome,
           dose_ha: parseFloat(it.dose_ha),
           unidade: it.unidade, total_consumido: it.total_consumido,
@@ -142,42 +153,47 @@ export default function PulverizacaoPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
+        <header style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Pulverização</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
-          <button style={btnV} onClick={() => setModal(true)}>+ Registrar Aplicação</button>
+          <button style={btnV} onClick={() => { setFormFazendaId(fazendaId); setModal(true); }}>+ Registrar Aplicação</button>
         </header>
 
-        <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>
-          {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-            {[
-              { label: "Total de aplicações", valor: String(pulverizacoes.length), cor: "#1A4870" },
-              { label: "Custo total defensivos", valor: fmtBRL(pulverizacoes.reduce((s, p) => s + (p.custo_total ?? 0), 0)), cor: "#E24B4A" },
-              { label: "Área total tratada", valor: `${pulverizacoes.reduce((s, p) => s + p.area_ha, 0).toLocaleString("pt-BR")} ha`, cor: "#C9921B" },
-            ].map((s, i) => (
-              <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>{s.valor}</div>
-              </div>
-            ))}
-          </div>
-
-          {pulverizacoes.length === 0 ? (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
-              Nenhuma pulverização registrada.
+        {/* Stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+          {[
+            { label: "Total de aplicações", valor: String(pulverizacoes.length), cor: "#1A4870" },
+            { label: "Custo total defensivos", valor: fmtBRL(pulverizacoes.reduce((s, p) => s + (p.custo_total ?? 0), 0)), cor: "#E24B4A" },
+            { label: "Área total tratada", valor: `${pulverizacoes.reduce((s, p) => s + p.area_ha, 0).toLocaleString("pt-BR")} ha`, cor: "#C9921B" },
+          ].map((s, i) => (
+            <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>{s.valor}</div>
             </div>
-          ) : (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          ))}
+        </div>
+
+        {pulverizacoes.length === 0 ? (
+          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
+            Nenhuma pulverização registrada.
+          </div>
+        ) : (
+          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    {["Safra / Talhão", "Tipo", "Estádio", "Data", "Área", "Calda Total", "Custo Total", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
-                    ))}
+                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Safra / Talhão</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Tipo</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Estádio</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Data</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Área</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Calda Total</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Custo Total</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -217,45 +233,46 @@ export default function PulverizacaoPage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
 
       {/* Modal Detalhe Produtos */}
       {detalhe && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
-          onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 640, maxWidth: "96vw", maxHeight: "80vh", overflowY: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
             <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>
               {TIPOS[detalhe.pulv.tipo].label} · {fmtData(detalhe.pulv.data_inicio)} · {fmtN(detalhe.pulv.area_ha)} ha
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "#F3F6F9" }}>
-                {["Produto", "Dose/ha", "Total Consumido", "Valor Unit.", "Custo/ha", "Custo Total"].map((h, i) => (
-                  <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {detalhe.itens.map((it, i) => (
-                  <tr key={it.id} style={{ borderBottom: i < detalhe.itens.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                    <td style={{ padding: "8px 12px" }}>{insumos.find(x => x.id === it.insumo_id)?.nome ?? it.insumo_id}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtN(it.dose_ha, 3)} {it.unidade}/ha</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtN(it.total_consumido, 3)} {it.unidade}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtBRL(it.valor_unitario)}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(it.custo_ha)}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#E24B4A" }}>{fmtBRL(it.custo_total)}</td>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead><tr style={{ background: "#F3F6F9" }}>
+                  {["Produto", "Dose/ha", "Total Consumido", "Valor Unit.", "Custo/ha", "Custo Total"].map((h, i) => (
+                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {detalhe.itens.map((it, i) => (
+                    <tr key={it.id} style={{ borderBottom: i < detalhe.itens.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <td style={{ padding: "8px 12px" }}>{insumos.find(x => x.id === it.insumo_id)?.nome ?? it.insumo_id}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtN(it.dose_ha, 3)} {it.unidade}/ha</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtN(it.total_consumido, 3)} {it.unidade}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtBRL(it.valor_unitario)}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(it.custo_ha)}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#E24B4A" }}>{fmtBRL(it.custo_total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: "#F3F6F9", color: "#1a1a1a", fontWeight: 600 }}>
+                    <td colSpan={4} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAL</td>
+                    <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_ha, 0))}</td>
+                    <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_total, 0))}</td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr style={{ background: "#F3F6F9", color: "#1a1a1a", fontWeight: 600 }}>
-                  <td colSpan={4} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAL</td>
-                  <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_ha, 0))}</td>
-                  <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_total, 0))}</td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
               <button style={btnR} onClick={() => setDetalhe(null)}>Fechar</button>
             </div>
@@ -265,10 +282,12 @@ export default function PulverizacaoPage() {
 
       {/* Modal Registrar Aplicação */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
-          onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 740, maxWidth: "97vw", maxHeight: "94vh", overflowY: "auto" }}>
-            <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15, marginBottom: 18 }}>Registrar Pulverização / Aplicação</div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 740, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+              <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
+              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} />
+            </div>
 
             <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0B2D50" }}>
               ⟳ Ao salvar: baixa automática do estoque de cada produto + lançamento CP "Defensivos Agrícolas" no financeiro.
@@ -282,7 +301,7 @@ export default function PulverizacaoPage() {
 
             {/* Identificação */}
             <div style={secTit}>Identificação</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Ano Safra</label>
                 <select style={inp} value={f.ano_safra_sel} onChange={e => setF(p => ({ ...p, ano_safra_sel: e.target.value, ciclo_id: "" }))}>
@@ -345,7 +364,7 @@ export default function PulverizacaoPage() {
 
             {/* Calda */}
             <div style={secTit}>Calda / Pulverizador</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Cap. Tanque (L)</label>
                 <input style={inp} type="number" step="1" placeholder="Ex: 2000" value={f.cap_tanque_l} onChange={e => setF(p => ({ ...p, cap_tanque_l: e.target.value }))} />
@@ -370,47 +389,49 @@ export default function PulverizacaoPage() {
 
             {/* Produtos */}
             <div style={secTit}>Produtos Aplicados</div>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 10 }}>
-              <thead><tr style={{ background: "#F3F6F9" }}>
-                {["Produto (estoque)", "Un.", "Dose/ha", "Total", "Custo/ha", "Custo Total", ""].map((h, i) => (
-                  <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>
-                {itens.map((it, idx) => {
-                  const ins = insumos.find(i => i.id === it.insumo_id);
-                  const dose = parseFloat(it.dose_ha) || 0;
-                  const total = dose * areaHa;
-                  const vu = ins?.custo_medio ?? ins?.valor_unitario ?? 0;
-                  const custoHa = vu * dose;
-                  const custoTot = custoHa * areaHa;
-                  return (
-                    <tr key={idx} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
-                      <td style={{ padding: "6px 8px" }}>
-                        <select style={{ ...inp, fontSize: 12 }} value={it.insumo_id} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, insumo_id: e.target.value, unidade: insumos.find(i => i.id === e.target.value)?.unidade ?? "L" } : x))}>
-                          <option value="">— Produto —</option>
-                          {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}{i.subgrupo ? ` (${i.subgrupo})` : ""} · Estoq: {fmtN(i.estoque)} {i.unidade}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: "6px 8px", width: 70 }}>
-                        <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
-                          {["L","kg","mL","g"].map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: "6px 8px", width: 90 }}>
-                        <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" placeholder="0,000" value={it.dose_ha} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: e.target.value } : x))} />
-                      </td>
-                      <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{total > 0 ? `${fmtN(total, 2)} ${it.unidade}` : "—"}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{custoTot > 0 ? fmtBRL(custoTot) : "—"}</td>
-                      <td style={{ padding: "6px 8px", width: 40 }}>
-                        {itens.length > 1 && <button style={btnX} onClick={() => setItens(p => p.filter((_, j) => j !== idx))}>✕</button>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div style={{ overflowX: "auto", marginBottom: 10 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead><tr style={{ background: "#F3F6F9" }}>
+                  {["Produto (estoque)", "Un.", "Dose/ha", "Total", "Custo/ha", "Custo Total", ""].map((h, i) => (
+                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {itens.map((it, idx) => {
+                    const ins = insumos.find(i => i.id === it.insumo_id);
+                    const dose = parseFloat(it.dose_ha) || 0;
+                    const total = dose * areaHa;
+                    const vu = ins?.custo_medio ?? ins?.valor_unitario ?? 0;
+                    const custoHa = vu * dose;
+                    const custoTot = custoHa * areaHa;
+                    return (
+                      <tr key={idx} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                        <td style={{ padding: "6px 8px" }}>
+                          <select style={{ ...inp, fontSize: 12 }} value={it.insumo_id} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, insumo_id: e.target.value, unidade: insumos.find(i => i.id === e.target.value)?.unidade ?? "L" } : x))}>
+                            <option value="">— Produto —</option>
+                            {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}{i.subgrupo ? ` (${i.subgrupo})` : ""} · Estoq: {fmtN(i.estoque)} {i.unidade}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: "6px 8px", width: 70 }}>
+                          <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
+                            {["L","kg","mL","g"].map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: "6px 8px", width: 90 }}>
+                          <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" placeholder="0,000" value={it.dose_ha} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: e.target.value } : x))} />
+                        </td>
+                        <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{total > 0 ? `${fmtN(total, 2)} ${it.unidade}` : "—"}</td>
+                        <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>
+                        <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{custoTot > 0 ? fmtBRL(custoTot) : "—"}</td>
+                        <td style={{ padding: "6px 8px", width: 40 }}>
+                          {itens.length > 1 && <button style={btnX} onClick={() => setItens(p => p.filter((_, j) => j !== idx))}>✕</button>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <button style={{ ...btnR, fontSize: 12 }} onClick={() => setItens(p => [...p, { insumo_id: "", dose_ha: "", unidade: "L" }])}>+ Produto</button>
               {custoTotal > 0 && (
@@ -421,7 +442,7 @@ export default function PulverizacaoPage() {
               )}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, alignItems: "end" }}>
               <div>
                 <label style={lbl}>Observação</label>
                 <input style={inp} value={f.observacao} onChange={e => setF(p => ({ ...p, observacao: e.target.value }))} />

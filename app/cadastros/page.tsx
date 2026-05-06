@@ -5,7 +5,8 @@ import TopNav from "../../components/TopNav";
 import {
   listarFazendas, criarFazenda, atualizarFazenda, excluirFazenda,
   listarTalhoes, criarTalhao, atualizarTalhao,
-  listarProdutores, criarProdutor, atualizarProdutor, excluirProdutor,
+  listarProdutores, listarProdutoresDaConta, criarProdutor, atualizarProdutor, excluirProdutor,
+  criarContaTenant,
   listarEmpresas, criarEmpresa, atualizarEmpresa, excluirEmpresa,
   listarMatriculas, criarMatricula, atualizarMatricula, excluirMatricula,
   listarArrendamentos, salvarArrendamentos,
@@ -183,7 +184,7 @@ function TH({ cols }: { cols: string[] }) {
 // ══════════════════════════════════════════════════════
 function CadastrosInner() {
   const params = useSearchParams();
-  const { fazendaId, userRole } = useAuth();
+  const { fazendaId, contaId, userRole } = useAuth();
   const [aba, setAba] = useState<TabCad>((params.get("tab") as TabCad) ?? "produtores");
 
   // Sincroniza a aba sempre que o query param ?tab= mudar na URL
@@ -255,12 +256,14 @@ function CadastrosInner() {
   const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "" });
   // talhões vinculados ao ciclo: { talhao_id -> area_plantada_ha (string para input) }
   const [cicloTalhoes, setCicloTalhoes] = useState<Record<string, string>>({});
+  // área já comprometida por OUTROS ciclos que se sobrepõem no tempo: { talhao_id -> ha }
+  const [ocupadoEmOutrosCiclos, setOcupado] = useState<Record<string, number>>({});
 
   // ── Máquinas ──
   const [maquinas, setMaquinas]       = useState<Maquina[]>([]);
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
-  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "" });
+  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", horimetro_atual: "" });
 
   // ── Bombas ──
   const [bombas, setBombas]           = useState<BombaCombustivel[]>([]);
@@ -367,7 +370,7 @@ function CadastrosInner() {
   const [fGrupo, setFGrupo]           = useState({ nome: "", descricao: "", permissoes: {} as Record<string, string> });
   const [modalUser, setModalUser]     = useState(false);
   const [editUser, setEditUser]       = useState<Usuario | null>(null);
-  const [fUser, setFUser]             = useState({ nome: "", email: "", grupo_id: "" });
+  const [fUser, setFUser]             = useState({ nome: "", email: "", grupo_id: "", whatsapp: "" });
 
   // ── Padrões de Classificação ──
   const [padroesCls, setPadroesCls]     = useState<PadraoClassificacao[]>([]);
@@ -385,18 +388,25 @@ function CadastrosInner() {
   useEffect(() => {
     if (!fazendaId) return;
     setErro(null);
-    if (aba === "produtores")  listarProdutores(fazendaId).then(setProdutores).catch(e => setErro(e.message));
+    const carregarProdutores = () => contaId
+      ? listarProdutoresDaConta(contaId).then(setProdutores).catch(e => setErro(e.message))
+      : listarProdutores(fazendaId).then(setProdutores).catch(e => setErro(e.message));
+    const carregarProdutoresSilencioso = () => contaId
+      ? listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {})
+      : listarProdutores(fazendaId).then(setProdutores).catch(() => {});
+
+    if (aba === "produtores")  carregarProdutores();
     if (aba === "empresas") {
       listarEmpresas(fazendaId).then(setEmpresas).catch(e => setErro(e.message));
-      listarProdutores(fazendaId).then(setProdutores).catch(() => {});
+      carregarProdutoresSilencioso();
     }
     if (aba === "fazendas") {
       if (userRole === "raccotlo" && fazendaId) {
-        // Raccotlo admin: busca todas as fazendas do mesmo cliente (mesmo owner_user_id)
-        supabase.from("fazendas").select("owner_user_id").eq("id", fazendaId).single()
+        // Raccotlo admin: busca todas as fazendas da conta do cliente ativo
+        supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single()
           .then(({ data: af }) => {
-            const q = af?.owner_user_id
-              ? supabase.from("fazendas").select("*").eq("owner_user_id", af.owner_user_id).order("nome")
+            const q = af?.conta_id
+              ? supabase.from("fazendas").select("*").eq("conta_id", af.conta_id).order("nome")
               : supabase.from("fazendas").select("*").eq("id", fazendaId);
             q.then(({ data, error }) => {
               if (error) setErro(error.message);
@@ -406,7 +416,7 @@ function CadastrosInner() {
       } else {
         listarFazendas().then(setFazendas).catch(e => setErro(e.message));
       }
-      listarProdutores(fazendaId).then(setProdutores).catch(() => {});
+      carregarProdutoresSilencioso();
       listarEmpresas(fazendaId).then(setEmpresas).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
     }
@@ -422,7 +432,7 @@ function CadastrosInner() {
     if (aba === "depositos")       listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
       listarContas(fazendaId).then(setContas).catch(e => setErro(e.message));
-      if (produtores.length === 0) listarProdutores(fazendaId).then(setProdutores).catch(() => {});
+      if (produtores.length === 0) carregarProdutoresSilencioso();
     }
     if (aba === "funcionarios") listarFuncionarios(fazendaId).then(setFuncs).catch(e => setErro(e.message));
     if (aba === "grupos_insumo") {
@@ -631,16 +641,24 @@ function CadastrosInner() {
     if (!fFaz.nome.trim() || !fFaz.area) return;
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Se raccotlo admin está gerenciando um cliente, owner_user_id = user_id do cliente
-    // Se cliente comum está criando sua fazenda, owner_user_id = próprio user_id
+    // Determinar owner_user_id e conta_id para a nova fazenda
     let ownerUserId = user?.id;
+    let contaIdParaFaz: string | undefined = contaId ?? undefined;
+
     if (userRole === "raccotlo" && fazendaId) {
+      // Raccotlo admin: usar o cliente da fazenda ativa como dono
       const { data: clientPerfil } = await supabase
-        .from("perfis").select("user_id")
+        .from("perfis").select("user_id, conta_id")
         .eq("fazenda_id", fazendaId)
         .neq("role", "raccotlo")
         .limit(1).maybeSingle();
       if (clientPerfil?.user_id) ownerUserId = clientPerfil.user_id;
+      if (clientPerfil?.conta_id) contaIdParaFaz = clientPerfil.conta_id;
+      // Fallback: buscar conta_id da fazenda ativa
+      if (!contaIdParaFaz) {
+        const { data: af } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single();
+        if (af?.conta_id) contaIdParaFaz = af.conta_id;
+      }
     }
 
     const payload: Omit<FazendaDB, "id" | "created_at"> = {
@@ -655,6 +673,7 @@ function CadastrosInner() {
       numero_end: fFaz.numero_end || undefined, complemento: fFaz.complemento || undefined,
       bairro: fFaz.bairro || undefined,
       owner_user_id: ownerUserId,
+      conta_id: contaIdParaFaz,
     };
     let fazId: string;
     if (editFaz) {
@@ -665,11 +684,23 @@ function CadastrosInner() {
       const n = await criarFazenda(payload);
       setFazendas(p => [...p, n]);
       fazId = n.id;
-      // Bootstrap: se ainda não há fazendaId no contexto, vincular esta fazenda ao perfil do usuário
+      // Bootstrap: se ainda não há fazendaId no contexto, criar conta e vincular perfil
       if (!fazendaId) {
         if (user) {
+          // Criar conta para o novo usuário se ainda não existir
+          let novaContaId = contaId;
+          if (!novaContaId) {
+            const { data: perfAtual } = await supabase.from("perfis").select("conta_id, nome").eq("user_id", user.id).maybeSingle();
+            novaContaId = (perfAtual as { conta_id?: string } | null)?.conta_id ?? null;
+            if (!novaContaId) {
+              const nc = await criarContaTenant({ nome: (perfAtual as { nome?: string } | null)?.nome || user.email || "Minha Conta", tipo: "pf" });
+              novaContaId = nc.id;
+              // Vincular conta_id à fazenda recém-criada
+              await supabase.from("fazendas").update({ conta_id: novaContaId }).eq("id", fazId);
+            }
+          }
           await supabase.from("perfis").upsert(
-            { user_id: user.id, fazenda_id: fazId, nome: user.email },
+            { user_id: user.id, fazenda_id: fazId, conta_id: novaContaId, nome: user.email },
             { onConflict: "user_id" }
           );
           alert("Fazenda criada com sucesso! Recarregue a página (Cmd+R) para ativar o sistema.");
@@ -897,12 +928,42 @@ function CadastrosInner() {
     else { const n = await criarAnoSafra({ ...fAno, fazenda_id: fazendaId! }); setAnosSafra(p => [...p, n]); }
     setModalAno(false);
   });
+  // Calcula quantos ha cada talhão já tem comprometido em ciclos que se sobrepõem
+  // ao intervalo [inicio, fim], excluindo o próprio ciclo em edição (excluirCicloId)
+  const calcularOcupacao = async (inicio: string, fim: string, excluirCicloId?: string) => {
+    if (!fazendaId || !inicio || !fim) { setOcupado({}); return; }
+    // Busca todos os ciclos da fazenda cujas datas se sobrepõem com [inicio, fim]
+    const { data: ciclosOverlap } = await supabase
+      .from("ciclos")
+      .select("id")
+      .eq("fazenda_id", fazendaId)
+      .lte("data_inicio", fim)   // ciclo começa antes do fim do atual
+      .gte("data_fim",    inicio); // ciclo termina depois do início do atual
+    if (!ciclosOverlap || ciclosOverlap.length === 0) { setOcupado({}); return; }
+    const ids = ciclosOverlap
+      .map((c: { id: string }) => c.id)
+      .filter(id => id !== excluirCicloId);
+    if (ids.length === 0) { setOcupado({}); return; }
+    const { data: cts } = await supabase
+      .from("ciclo_talhoes")
+      .select("talhao_id,area_plantada_ha")
+      .in("ciclo_id", ids);
+    const soma: Record<string, number> = {};
+    (cts ?? []).forEach((r: { talhao_id: string; area_plantada_ha: number }) => {
+      soma[r.talhao_id] = (soma[r.talhao_id] ?? 0) + (r.area_plantada_ha ?? 0);
+    });
+    setOcupado(soma);
+  };
+
   const abrirModalCiclo = async (c?: Ciclo) => {
     if (!anoSel) return;
+    setOcupado({});
     setEditCiclo(c ?? null);
+    const inicio = c?.data_inicio ?? "";
+    const fim    = c?.data_fim    ?? "";
     setFCiclo(c ? {
       descricao: c.descricao, cultura: c.cultura,
-      data_inicio: c.data_inicio, data_fim: c.data_fim,
+      data_inicio: inicio, data_fim: fim,
       produtividade_esperada_sc_ha: c.produtividade_esperada_sc_ha != null ? String(c.produtividade_esperada_sc_ha) : "",
       preco_esperado_sc: c.preco_esperado_sc != null ? String(c.preco_esperado_sc) : "",
     } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "" });
@@ -912,6 +973,7 @@ function CadastrosInner() {
       const mapa: Record<string, string> = {};
       (ct ?? []).forEach((r: { talhao_id: string; area_plantada_ha: number }) => { mapa[r.talhao_id] = String(r.area_plantada_ha); });
       setCicloTalhoes(mapa);
+      if (inicio && fim) await calcularOcupacao(inicio, fim, c.id);
     } else {
       setCicloTalhoes({});
     }
@@ -919,6 +981,23 @@ function CadastrosInner() {
   };
   const salvarCiclo = () => salvar(async () => {
     if (!anoSel || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim) return;
+    // Validar travas de área
+    const todosTalhoes = Object.values(talhoes).flat();
+    const errosArea: string[] = [];
+    Object.entries(cicloTalhoes).forEach(([tid, areaStr]) => {
+      const area = parseFloat(areaStr) || 0;
+      if (area <= 0) return;
+      const talhao = todosTalhoes.find(t => t.id === tid);
+      if (!talhao) return;
+      const ocupado = ocupadoEmOutrosCiclos[tid] ?? 0;
+      const disponivel = talhao.area_ha - ocupado;
+      if (area > talhao.area_ha) {
+        errosArea.push(`"${talhao.nome}": ${area}ha informado mas área total é ${talhao.area_ha}ha`);
+      } else if (area > disponivel) {
+        errosArea.push(`"${talhao.nome}": ${area}ha informado mas disponível é ${disponivel.toFixed(2)}ha (${ocupado.toFixed(2)}ha já comprometido em ciclos sobrepostos)`);
+      }
+    });
+    if (errosArea.length > 0) { alert("Área excedida:\n\n" + errosArea.join("\n")); return; }
     const payload = {
       descricao: fCiclo.descricao, cultura: fCiclo.cultura,
       data_inicio: fCiclo.data_inicio, data_fim: fCiclo.data_fim,
@@ -947,12 +1026,12 @@ function CadastrosInner() {
   // ─────────────── MÁQUINAS ───────────────
   const abrirModalMaq = (m?: Maquina) => {
     setEditMaq(m ?? null);
-    setFMaq(m ? { nome: m.nome, tipo: m.tipo, marca: m.marca ?? "", modelo: m.modelo ?? "", ano: String(m.ano ?? ""), patrimonio: m.patrimonio ?? "" } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "" });
+    setFMaq(m ? { nome: m.nome, tipo: m.tipo, marca: m.marca ?? "", modelo: m.modelo ?? "", ano: String(m.ano ?? ""), patrimonio: m.patrimonio ?? "", horimetro_atual: String(m.horimetro_atual ?? "") } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", horimetro_atual: "" });
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
     if (!fMaq.nome.trim()) return;
-    const payload = { fazenda_id: fazendaId!, nome: fMaq.nome.trim(), tipo: fMaq.tipo, marca: fMaq.marca || undefined, modelo: fMaq.modelo || undefined, ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined, ativa: true };
+    const payload = { fazenda_id: fazendaId!, nome: fMaq.nome.trim(), tipo: fMaq.tipo, marca: fMaq.marca || undefined, modelo: fMaq.modelo || undefined, ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined, horimetro_atual: fMaq.horimetro_atual ? Number(fMaq.horimetro_atual) : undefined, ativa: true };
     if (editMaq) { await atualizarMaquina(editMaq.id, payload); setMaquinas(p => p.map(x => x.id === editMaq.id ? { ...x, ...payload } : x)); }
     else { const n = await criarMaquina(payload); setMaquinas(p => [...p, n]); }
     setModalMaq(false);
@@ -1018,14 +1097,20 @@ function CadastrosInner() {
   // ─────────────── USUÁRIOS ───────────────
   const abrirModalUser = (u?: Usuario) => {
     setEditUser(u ?? null);
-    setFUser(u ? { nome: u.nome, email: u.email, grupo_id: u.grupo_id ?? "" } : { nome: "", email: "", grupo_id: "" });
+    setFUser(u ? { nome: u.nome, email: u.email, grupo_id: u.grupo_id ?? "", whatsapp: u.whatsapp ?? "" } : { nome: "", email: "", grupo_id: "", whatsapp: "" });
     setModalUser(true);
   };
   const salvarUser = () => salvar(async () => {
     if (!fUser.nome.trim() || !fUser.email.trim()) return;
-    const payload = { nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, ativo: true };
-    if (editUser) { await atualizarUsuario(editUser.id, payload); setUsuarios(p => p.map(x => x.id === editUser.id ? { ...x, ...payload } : x)); }
-    else { const n = await criarUsuario(payload); setUsuarios(p => [...p, n]); }
+    const whatsapp = fUser.whatsapp.trim() || undefined;
+    const payload = { nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, whatsapp, ativo: true };
+    if (editUser) {
+      await atualizarUsuario(editUser.id, payload);
+      setUsuarios(p => p.map(x => x.id === editUser.id ? { ...x, ...payload } : x));
+    } else {
+      const n = await criarUsuario(payload);
+      setUsuarios(p => [...p, n]);
+    }
     setModalUser(false);
   });
 
@@ -1456,7 +1541,7 @@ function CadastrosInner() {
                 <button style={btnV} onClick={() => abrirModalMaq()}>+ Nova Máquina</button>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome", "Tipo", "Marca / Modelo", "Ano", "Patrimônio", "Status", ""]} />
+                <TH cols={["Nome", "Tipo", "Marca / Modelo", "Ano", "Km / Horímetro", "Patrimônio", "Status", ""]} />
                 <tbody>
                   {maquinas.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina cadastrada</td></tr>}
                   {maquinas.map((m, i) => (
@@ -1465,6 +1550,11 @@ function CadastrosInner() {
                       <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo, "#F1EFE8", "#555")}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{m.ano ?? "—"}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontVariantNumeric: "tabular-nums" }}>
+                        {m.horimetro_atual != null
+                          ? <>{m.horimetro_atual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} {m.tipo === "caminhao" ? "km" : "h"}</>
+                          : "—"}
+                      </td>
                       <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{m.patrimonio || "—"}</td>
                       <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.ativa ? "Ativa" : "Inativa", m.ativa ? "#D5E8F5" : "#F1EFE8", m.ativa ? "#0B2D50" : "#555")}</td>
                       <td style={{ padding: "10px 14px", textAlign: "right" }}>
@@ -2258,10 +2348,18 @@ function CadastrosInner() {
                         <label style={lbl}>Unidade *</label>
                         <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
                           <option value="kg">kg</option>
+                          <option value="g">g (gramas)</option>
                           <option value="L">L (litros)</option>
+                          <option value="mL">mL (mililitros)</option>
                           <option value="sc">sc (sacas 60kg)</option>
-                          <option value="ton">ton</option>
-                          <option value="unid">unid</option>
+                          <option value="t">t (tonelada)</option>
+                          <option value="un">un (unidade)</option>
+                          <option value="m">m (metro)</option>
+                          <option value="m2">m² (metro quadrado)</option>
+                          <option value="cx">cx (caixa)</option>
+                          <option value="pc">pc (peça)</option>
+                          <option value="par">par</option>
+                          <option value="outros">outros</option>
                         </select>
                       </div>
                       {/* Estoque atual */}
@@ -3591,8 +3689,8 @@ function CadastrosInner() {
                 {CULTURAS.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => setFCiclo(p => ({ ...p, data_inicio: e.target.value }))} /></div>
-            <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => setFCiclo(p => ({ ...p, data_fim: e.target.value }))} /></div>
+            <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id); }} /></div>
+            <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id); }} /></div>
             <div>
               <label style={lbl}>Produtividade esperada (sc/ha)</label>
               <input style={inp} type="number" step="0.01" placeholder="Ex: 62,00" value={fCiclo.produtividade_esperada_sc_ha}
@@ -3640,32 +3738,62 @@ function CadastrosInner() {
                     <tr style={{ background: "#F3F6F9" }}>
                       <th style={{ padding: "7px 12px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Talhão</th>
                       <th style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Área total (ha)</th>
+                      <th style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Disponível (ha)</th>
                       <th style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Área plantada (ha)</th>
                       <th style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Incluir</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.values(talhoes).flat().map((t, ti, arr) => {
-                      const areaSel = cicloTalhoes[t.id] ?? "";
-                      const marcado = parseFloat(areaSel) > 0;
+                      const areaSel   = cicloTalhoes[t.id] ?? "";
+                      const marcado   = parseFloat(areaSel) > 0;
+                      const ocupado   = ocupadoEmOutrosCiclos[t.id] ?? 0;
+                      const disponivel = Math.max(0, t.area_ha - ocupado);
+                      const areaNum   = parseFloat(areaSel) || 0;
+                      const excede    = areaNum > disponivel || areaNum > t.area_ha;
+                      const temConflito = ocupado > 0;
                       return (
-                        <tr key={t.id} style={{ borderBottom: ti < arr.length - 1 ? "0.5px solid #EEF1F6" : "none", background: marcado ? "#FAFEF8" : "transparent" }}>
+                        <tr key={t.id} style={{ borderBottom: ti < arr.length - 1 ? "0.5px solid #EEF1F6" : "none", background: excede ? "#FFF5F5" : marcado ? "#FAFEF8" : "transparent" }}>
                           <td style={{ padding: "7px 12px", fontSize: 12, fontWeight: marcado ? 600 : 400, color: "#1a1a1a" }}>{t.nome}</td>
                           <td style={{ padding: "7px 12px", textAlign: "center", fontSize: 12, color: "#555" }}>{t.area_ha.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha</td>
-                          <td style={{ padding: "7px 12px", textAlign: "center" }}>
-                            {marcado && (
-                              <input
-                                style={{ width: 90, padding: "4px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 12, textAlign: "right", outline: "none" }}
-                                type="number" step="0.01" min="0" max={t.area_ha}
-                                value={areaSel}
-                                onChange={e => setCicloTalhoes(p => ({ ...p, [t.id]: e.target.value }))}
-                              />
+                          <td style={{ padding: "7px 12px", textAlign: "center", fontSize: 12 }}>
+                            {temConflito ? (
+                              <span style={{ color: disponivel === 0 ? "#E24B4A" : "#C9921B", fontWeight: 600 }}>
+                                {disponivel.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha
+                                <span style={{ fontSize: 10, fontWeight: 400, color: "#888", display: "block" }}>
+                                  {ocupado.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}ha em uso
+                                </span>
+                              </span>
+                            ) : (
+                              <span style={{ color: "#16A34A", fontWeight: 600 }}>
+                                {disponivel.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha
+                              </span>
                             )}
                           </td>
                           <td style={{ padding: "7px 12px", textAlign: "center" }}>
-                            <input type="checkbox" checked={marcado}
+                            {marcado && (
+                              <div>
+                                <input
+                                  style={{ width: 90, padding: "4px 8px", border: `0.5px solid ${excede ? "#E24B4A" : "#D4DCE8"}`, borderRadius: 6, fontSize: 12, textAlign: "right", outline: "none", background: excede ? "#FFF5F5" : "#fff" }}
+                                  type="number" step="0.01" min="0" max={disponivel}
+                                  value={areaSel}
+                                  onChange={e => {
+                                    const v = e.target.value;
+                                    setCicloTalhoes(p => ({ ...p, [t.id]: v }));
+                                  }}
+                                />
+                                {excede && (
+                                  <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>
+                                    máx {disponivel.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: "7px 12px", textAlign: "center" }}>
+                            <input type="checkbox" checked={marcado} disabled={disponivel === 0}
                               onChange={e => setCicloTalhoes(p => {
-                                if (e.target.checked) return { ...p, [t.id]: String(t.area_ha) };
+                                if (e.target.checked) return { ...p, [t.id]: String(disponivel) };
                                 const n = { ...p }; delete n[t.id]; return n;
                               })} />
                           </td>
@@ -3700,6 +3828,10 @@ function CadastrosInner() {
             <div><label style={lbl}>Modelo</label><input style={inp} value={fMaq.modelo} onChange={e => setFMaq(p => ({ ...p, modelo: e.target.value }))} /></div>
             <div><label style={lbl}>Patrimônio</label><input style={inp} value={fMaq.patrimonio} onChange={e => setFMaq(p => ({ ...p, patrimonio: e.target.value }))} /></div>
             <div><label style={lbl}>Ano de fabricação</label><input style={inp} type="number" placeholder="2020" value={fMaq.ano} onChange={e => setFMaq(p => ({ ...p, ano: e.target.value }))} /></div>
+            <div>
+              <label style={lbl}>{fMaq.tipo === "caminhao" ? "Odômetro atual (km)" : "Horímetro atual (h)"}</label>
+              <input style={inp} type="number" min="0" step="0.1" placeholder={fMaq.tipo === "caminhao" ? "Ex: 125.000" : "Ex: 4.320"} value={fMaq.horimetro_atual} onChange={e => setFMaq(p => ({ ...p, horimetro_atual: e.target.value }))} />
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalMaq(false)}>Cancelar</button>
@@ -4408,6 +4540,20 @@ function CadastrosInner() {
                 <option value="">Sem grupo</option>
                 {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
               </select>
+            </div>
+            <div>
+              <label style={lbl}>WhatsApp (assistente IA)</label>
+              <input
+                style={inp}
+                type="tel"
+                value={fUser.whatsapp}
+                onChange={e => setFUser(p => ({ ...p, whatsapp: e.target.value.replace(/\D/g, "") }))}
+                placeholder="5565999990000 (DDI+DDD+número)"
+                maxLength={15}
+              />
+              <span style={{ fontSize: 11, color: "#888", marginTop: 3, display: "block" }}>
+                Formato internacional sem espaços. Ex: 5565999990000
+              </span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>

@@ -5,7 +5,23 @@
  */
 
 import { supabase } from "./supabase";
-import type { Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula } from "./supabase";
+
+// ————————————————————————————————————————
+// CONTAS TENANT (entidade raiz do SaaS)
+// ————————————————————————————————————————
+
+export async function criarContaTenant(c: Omit<Conta, "id" | "created_at">): Promise<Conta> {
+  const { data, error } = await supabase.from("contas").insert(c).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listarContasTenant(): Promise<Conta[]> {
+  const { data, error } = await supabase.from("contas").select("*").order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
 
 // ————————————————————————————————————————
 // FAZENDAS
@@ -16,10 +32,16 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
   if (id) {
     q = q.eq("id", id);
   } else {
-    // Isolamento por tenant: retorna apenas fazendas do usuário atual
+    // Isolamento por tenant: retorna todas as fazendas da conta do usuário atual
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
-    q = q.eq("owner_user_id", user.id);
+    const { data: perfil } = await supabase.from("perfis").select("conta_id").eq("user_id", user.id).maybeSingle();
+    if (perfil?.conta_id) {
+      q = q.eq("conta_id", perfil.conta_id);
+    } else {
+      // Fallback para owner_user_id (contas ainda não migradas)
+      q = q.eq("owner_user_id", user.id);
+    }
   }
   const { data, error } = await q;
   if (error) throw error;
@@ -413,6 +435,12 @@ export async function excluirProdutor(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function listarProdutoresDaConta(conta_id: string): Promise<Produtor[]> {
+  const { data, error } = await supabase.from("produtores").select("*").eq("conta_id", conta_id).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
 // ————————————————————————————————————————
 // MATRÍCULAS DE IMÓVEIS
 // ————————————————————————————————————————
@@ -469,9 +497,17 @@ export async function excluirPessoa(id: string): Promise<void> {
 // ————————————————————————————————————————
 
 export async function listarAnosSafra(fazenda_id: string): Promise<AnoSafra[]> {
-  const { data, error } = await supabase.from("anos_safra").select("*").eq("fazenda_id", fazenda_id).order("data_inicio", { ascending: false });
+  const { data, error } = await supabase.from("anos_safra").select("*").eq("fazenda_id", fazenda_id).order("descricao");
   if (error) throw error;
-  return data ?? [];
+  if (data && data.length > 0) return data;
+  // Fallback: anos_safra referenciados pelos ciclos desta fazenda (dados sem fazenda_id direto)
+  const { data: ciclosData } = await supabase.from("ciclos").select("ano_safra_id").eq("fazenda_id", fazenda_id);
+  if (!ciclosData || ciclosData.length === 0) return [];
+  const anoIds = [...new Set(ciclosData.map((c: { ano_safra_id: string }) => c.ano_safra_id).filter(Boolean))];
+  if (anoIds.length === 0) return [];
+  const { data: anos, error: e2 } = await supabase.from("anos_safra").select("*").in("id", anoIds).order("descricao");
+  if (e2) throw e2;
+  return anos ?? [];
 }
 export async function criarAnoSafra(a: Omit<AnoSafra, "id" | "created_at">): Promise<AnoSafra> {
   const { data, error } = await supabase.from("anos_safra").insert(a).select().single();
@@ -1420,13 +1456,23 @@ export async function excluirCorrecao(id: string): Promise<void> {
 export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoSoloItem[], nomes: Record<string, string>): Promise<void> {
   for (const it of itens) {
     if (!it.insumo_id || !it.quantidade_ton) continue;
-    const qtyKg = it.quantidade_ton * 1000;
-    const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", it.insumo_id).single();
+    const { data: ins } = await supabase.from("insumos").select("estoque, unidade").eq("id", it.insumo_id).single();
     if (ins) {
-      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - qtyKg) }).eq("id", it.insumo_id);
+      // Converte quantidade (em toneladas) para a unidade nativa do insumo
+      const ton = it.quantidade_ton;
+      const unidade: string = ins.unidade ?? "kg";
+      let qtdNativa: number;
+      switch (unidade) {
+        case "t":   qtdNativa = ton; break;
+        case "kg":  qtdNativa = ton * 1000; break;
+        case "g":   qtdNativa = ton * 1_000_000; break;
+        case "sc":  qtdNativa = (ton * 1000) / 60; break; // saca = 60 kg
+        default:    qtdNativa = ton * 1000; break;
+      }
+      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - qtdNativa) }).eq("id", it.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id: it.insumo_id, fazenda_id: correcao.fazenda_id,
-        tipo: "saida", quantidade: qtyKg, data: correcao.data_aplicacao,
+        tipo: "saida", quantidade: qtdNativa, data: correcao.data_aplicacao,
         safra: correcao.ciclo_id, motivo: "correcao_solo",
         descricao: `Correção de Solo — ${nomes[it.insumo_id] ?? "produto"}`,
       });
@@ -1472,12 +1518,24 @@ export async function excluirAdubacao(id: string): Promise<void> {
 export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoBaseItem[], nomes: Record<string, string>): Promise<void> {
   for (const it of itens) {
     if (!it.insumo_id || !it.quantidade_kg) continue;
-    const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", it.insumo_id).single();
+    const { data: ins } = await supabase.from("insumos").select("estoque, unidade").eq("id", it.insumo_id).single();
     if (ins) {
-      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - it.quantidade_kg) }).eq("id", it.insumo_id);
+      // Converte quantidade (em kg) para a unidade nativa do insumo
+      const kg = it.quantidade_kg;
+      const unidade: string = ins.unidade ?? "kg";
+      let qtdNativa: number;
+      switch (unidade) {
+        case "kg":  qtdNativa = kg; break;
+        case "t":   qtdNativa = kg / 1000; break;
+        case "g":   qtdNativa = kg * 1000; break;
+        case "sc":  qtdNativa = kg / 60; break; // saca = 60 kg
+        case "L":   qtdNativa = kg; break; // fertilizante líquido: assume 1 kg ≈ 1 L (aproximação)
+        default:    qtdNativa = kg; break;
+      }
+      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - qtdNativa) }).eq("id", it.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id: it.insumo_id, fazenda_id: adubacao.fazenda_id,
-        tipo: "saida", quantidade: it.quantidade_kg, data: adubacao.data_aplicacao,
+        tipo: "saida", quantidade: qtdNativa, data: adubacao.data_aplicacao,
         safra: adubacao.ciclo_id, motivo: "adubacao_base",
         descricao: `Adubação de Base — ${nomes[it.insumo_id] ?? "fertilizante"}`,
       });
@@ -1757,7 +1815,7 @@ export async function finalizarColheita(colheita: ColheitaRegistro, insumoId: st
 // TABELAS AUXILIARES
 // ————————————————————————————————————————
 
-import type { GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento, PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, RateioRegra, RateioRegraLinha, OperacaoCompra, OperacaoGerencial, FormaPagamento, RegraClassificacao } from "./supabase";
+import type { GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento, PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, RateioRegra, RateioRegraLinha, OperacaoCompra, OperacaoGerencial, FormaPagamento, RegraClassificacao, RateioGlobal, RateioGlobalFazenda, RateioGlobalCiclo } from "./supabase";
 
 // Grupos de Insumos
 export async function listarGruposInsumo(fazenda_id: string): Promise<GrupoInsumo[]> {
@@ -2159,6 +2217,92 @@ export async function atualizarRateioRegra(
 export async function excluirRateioRegra(id: string): Promise<void> {
   // linhas são deletadas em cascata pelo ON DELETE CASCADE
   const { error } = await supabase.from("regras_rateio").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ── Rateio Global (inter-fazendas) ────────────────────────────
+
+type FazendaPayload = {
+  fazenda_id: string;
+  percentual: number;
+  ciclos: { ciclo_id: string; percentual: number; descricao?: string }[];
+};
+
+export async function listarRegrasRateioGlobal(conta_id: string): Promise<RateioGlobal[]> {
+  const { data: regras, error } = await supabase
+    .from("regras_rateio_global")
+    .select("*")
+    .eq("conta_id", conta_id)
+    .order("nome");
+  if (error) throw error;
+  const ids = (regras ?? []).map(r => r.id);
+  if (ids.length === 0) return [];
+
+  const { data: fazLinhas } = await supabase
+    .from("rateio_global_fazendas")
+    .select("*")
+    .in("regra_global_id", ids)
+    .order("ordem");
+
+  const fazIds = (fazLinhas ?? []).map(f => f.id);
+  const { data: cicloLinhas } = fazIds.length > 0
+    ? await supabase.from("rateio_global_ciclos").select("*").in("rateio_fazenda_id", fazIds).order("ordem")
+    : { data: [] as RateioGlobalCiclo[] };
+
+  return (regras ?? []).map(r => ({
+    ...r,
+    fazendas: (fazLinhas ?? [])
+      .filter(f => f.regra_global_id === r.id)
+      .map(f => ({ ...f, ciclos: (cicloLinhas ?? []).filter(c => c.rateio_fazenda_id === f.id) })),
+  }));
+}
+
+async function _inserirFazendasGlobal(regra_id: string, fazendas: FazendaPayload[]) {
+  for (let i = 0; i < fazendas.length; i++) {
+    const faz = fazendas[i];
+    const { data: fazLinha, error: fe } = await supabase
+      .from("rateio_global_fazendas")
+      .insert({ regra_global_id: regra_id, fazenda_id: faz.fazenda_id, percentual: faz.percentual, ordem: i })
+      .select().single();
+    if (fe) throw fe;
+    for (let j = 0; j < faz.ciclos.length; j++) {
+      const { error: ce } = await supabase.from("rateio_global_ciclos").insert({
+        rateio_fazenda_id: fazLinha.id,
+        ciclo_id: faz.ciclos[j].ciclo_id,
+        percentual: faz.ciclos[j].percentual,
+        descricao: faz.ciclos[j].descricao,
+        ordem: j,
+      });
+      if (ce) throw ce;
+    }
+  }
+}
+
+export async function criarRateioGlobal(
+  header: Omit<RateioGlobal, "id" | "created_at" | "fazendas">,
+  fazendas: FazendaPayload[],
+): Promise<void> {
+  const { data: regra, error } = await supabase
+    .from("regras_rateio_global").insert(header).select().single();
+  if (error) throw error;
+  await _inserirFazendasGlobal(regra.id, fazendas);
+}
+
+export async function atualizarRateioGlobal(
+  id: string,
+  header: Partial<Omit<RateioGlobal, "id" | "created_at" | "fazendas">>,
+  fazendas?: FazendaPayload[],
+): Promise<void> {
+  const { error } = await supabase.from("regras_rateio_global").update(header).eq("id", id);
+  if (error) throw error;
+  if (fazendas) {
+    await supabase.from("rateio_global_fazendas").delete().eq("regra_global_id", id);
+    await _inserirFazendasGlobal(id, fazendas);
+  }
+}
+
+export async function excluirRateioGlobal(id: string): Promise<void> {
+  const { error } = await supabase.from("regras_rateio_global").delete().eq("id", id);
   if (error) throw error;
 }
 

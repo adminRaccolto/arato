@@ -260,13 +260,20 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
 
 // ── Página principal ───────────────────────────────────────────────────────────
 export default function AdminUsuarios() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId, userRole } = useAuth();
+  const [fazendaInfo, setFazendaInfo] = useState<{ nome: string; municipio: string; estado: string } | null>(null);
 
   const [aba, setAba]             = useState<"grupos"|"usuarios">("grupos");
 
   // ── Acesso Raccolto (LGPD) ──────────────────────────────────────────────────
   const [raccoltoAcesso,   setRaccoltoAcesso]   = useState<boolean>(false);
   const [salvandoRaccolto, setSalvandoRaccolto] = useState(false);
+
+  useEffect(() => {
+    if (!fazendaId) return;
+    supabase.from("fazendas").select("nome, municipio, estado").eq("id", fazendaId).single()
+      .then(({ data }) => { if (data) setFazendaInfo({ nome: data.nome, municipio: data.municipio ?? "", estado: data.estado ?? "" }); });
+  }, [fazendaId]);
 
   useEffect(() => {
     if (!fazendaId) return;
@@ -311,7 +318,40 @@ export default function AdminUsuarios() {
 
   const [modalUser, setModalUser]   = useState(false);
   const [editUser, setEditUser]     = useState<Usuario | null>(null);
-  const [fUser, setFUser]           = useState({ nome: "", email: "", grupo_id: "", ativo: true });
+  const [fUser, setFUser]           = useState({ nome: "", email: "", senha: "Arato@123", grupo_id: "", ativo: true, enviarEmail: true, whatsapp: "" });
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [resultadoCriacao, setResultadoCriacao] = useState<{ ok: boolean; emailEnviado?: boolean; erro?: string } | null>(null);
+
+  // ── Criar Novo Cliente (raccotlo only) ────────────────────────────────────
+  const [modalNovoCliente, setModalNovoCliente] = useState(false);
+  const [criandoCliente,   setCriandoCliente]   = useState(false);
+  const [resultCliente,    setResultCliente]    = useState<{ ok: boolean; erro?: string; email?: string } | null>(null);
+  const [fCliente, setFCliente] = useState({
+    tipo: "pj", nome: "", cpf_cnpj: "", email_cliente: "", telefone: "",
+    municipio_cliente: "", estado_cliente: "",
+    fazenda_nome: "", fazenda_municipio: "", fazenda_estado: "", fazenda_area: "",
+    user_nome: "", user_email: "", user_senha: "Arato@123",
+  });
+
+  async function criarNovoCliente() {
+    setCriandoCliente(true); setResultCliente(null);
+    try {
+      const res = await fetch("/api/admin/criar-cliente-interno", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...fCliente, onboarding_ativo: true }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setResultCliente({ ok: true, email: fCliente.user_email });
+      } else {
+        setResultCliente({ ok: false, erro: json.error ?? "Erro desconhecido" });
+      }
+    } catch (e) {
+      setResultCliente({ ok: false, erro: String(e) });
+    }
+    setCriandoCliente(false);
+  }
 
   useEffect(() => {
     if (!fazendaId) return;
@@ -364,7 +404,9 @@ export default function AdminUsuarios() {
   // ── Usuário — abrir modal ──
   const abrirModalUser = (u?: Usuario) => {
     setEditUser(u ?? null);
-    setFUser({ nome: u?.nome ?? "", email: u?.email ?? "", grupo_id: u?.grupo_id ?? "", ativo: u?.ativo !== false });
+    setFUser({ nome: u?.nome ?? "", email: u?.email ?? "", senha: "Arato@123", grupo_id: u?.grupo_id ?? "", ativo: u?.ativo !== false, enviarEmail: true, whatsapp: (u as any)?.whatsapp ?? "" });
+    setSenhaVisivel(false);
+    setResultadoCriacao(null);
     setModalUser(true);
   };
 
@@ -372,14 +414,49 @@ export default function AdminUsuarios() {
   const salvarUser = async () => {
     if (!fazendaId || !fUser.nome.trim() || !fUser.email.trim()) return;
     setSalvando(true);
-    const payload = { fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo };
-    const { error } = editUser
-      ? await supabase.from("usuarios").update(payload).eq("id", editUser.id)
-      : await supabase.from("usuarios").insert(payload);
-    if (error) { setErro(error.message); setSalvando(false); return; }
+    setResultadoCriacao(null);
+
+    if (editUser) {
+      // Edição: só atualiza dados básicos (sem mexer na senha/Auth)
+      const payload = { fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null };
+      const { error } = await supabase.from("usuarios").update(payload).eq("id", editUser.id);
+      if (error) { setErro(error.message); setSalvando(false); return; }
+    } else {
+      // Novo usuário: chama API que cria Auth + perfil + envia email
+      if (!fUser.senha.trim() || fUser.senha.trim().length < 6) {
+        setErro("Senha deve ter pelo menos 6 caracteres.");
+        setSalvando(false);
+        return;
+      }
+      const res = await fetch("/api/admin/criar-usuario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id:        fazendaId,
+          conta_id:          contaId,
+          user_nome:         fUser.nome.trim(),
+          user_email:        fUser.email.trim(),
+          user_senha:        fUser.senha.trim(),
+          grupo_id:          fUser.grupo_id || null,
+          fazenda_nome:      fazendaInfo?.nome,
+          fazenda_municipio: fazendaInfo?.municipio,
+          fazenda_estado:    fazendaInfo?.estado,
+          enviar_email:      fUser.enviarEmail,
+          whatsapp:          fUser.whatsapp.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setErro(json.error ?? "Erro ao criar usuário.");
+        setSalvando(false);
+        return;
+      }
+      setResultadoCriacao({ ok: true, emailEnviado: json.email_enviado });
+    }
+
     const { data } = await supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
     setUsuarios((data ?? []) as Usuario[]);
-    setModalUser(false);
+    if (editUser) setModalUser(false);
     setSalvando(false);
   };
 
@@ -410,11 +487,20 @@ export default function AdminUsuarios() {
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Usuários & Permissões</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#555" }}>Grupos de acesso com permissões granulares por módulo e ação</p>
           </div>
-          <button
-            onClick={() => aba === "grupos" ? abrirModalGrupo() : abrirModalUser()}
-            style={{ ...btnV, fontSize: 12 }}>
-            + {aba === "grupos" ? "Novo Grupo" : "Novo Usuário"}
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            {userRole === "raccotlo" && (
+              <button
+                onClick={() => { setModalNovoCliente(true); setResultCliente(null); }}
+                style={{ ...btnV, fontSize: 12, background: "#16A34A" }}>
+                + Novo Cliente
+              </button>
+            )}
+            <button
+              onClick={() => aba === "grupos" ? abrirModalGrupo() : abrirModalUser()}
+              style={{ ...btnV, fontSize: 12 }}>
+              + {aba === "grupos" ? "Novo Grupo" : "Novo Usuário"}
+            </button>
+          </div>
         </header>
 
         <div style={{ padding: "16px 22px", flex: 1 }}>
@@ -679,38 +765,249 @@ export default function AdminUsuarios() {
       {/* ── Modal Usuário ── */}
       {modalUser && (
         <Modal titulo={editUser ? "Editar Usuário" : "Novo Usuário"} onClose={() => setModalUser(false)} width={520}>
-          <div style={{ display: "grid", gap: 14 }}>
-            <div><label style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
-            <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} placeholder="joao@fazenda.com.br" /></div>
-            <div>
-              <label style={lbl}>Grupo de acesso</label>
-              <select style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
-                <option value="">Sem grupo (sem acesso)</option>
-                {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
-              </select>
-              {fUser.grupo_id && (
-                <div style={{ marginTop: 6, padding: "8px 12px", background: "#EFF3FA", borderRadius: 8, fontSize: 11, color: "#555" }}>
-                  {(() => {
-                    const g = grupos.find(x => x.id === fUser.grupo_id)!;
-                    if (!g) return null;
-                    const res = resumoPerms(g);
-                    return `${g.nome}: acesso a ${res.comAcesso} de ${res.total} módulos`;
-                  })()}
+
+          {/* Resultado de criação (novo usuário) */}
+          {resultadoCriacao?.ok && (
+            <div style={{ background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "14px 16px", marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", marginBottom: 4 }}>✓ Usuário criado com sucesso!</div>
+              <div style={{ fontSize: 12, color: "#166534" }}>
+                {resultadoCriacao.emailEnviado
+                  ? `E-mail de boas-vindas enviado para ${fUser.email}.`
+                  : "E-mail não enviado (RESEND_API_KEY não configurado)."}
+              </div>
+              <button onClick={() => setModalUser(false)} style={{ ...btnV, marginTop: 12, fontSize: 12 }}>Fechar</button>
+            </div>
+          )}
+
+          {!resultadoCriacao?.ok && (
+            <>
+              <div style={{ display: "grid", gap: 14 }}>
+                <div><label style={lbl}>Nome completo *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} placeholder="João da Silva" /></div>
+                <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} placeholder="joao@fazenda.com.br" /></div>
+                <div>
+                  <label style={lbl}>WhatsApp (assistente IA)</label>
+                  <input
+                    style={inp}
+                    type="tel"
+                    value={fUser.whatsapp}
+                    onChange={e => setFUser(p => ({ ...p, whatsapp: e.target.value.replace(/\D/g, "") }))}
+                    placeholder="5565999990000"
+                    maxLength={15}
+                  />
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>DDI + DDD + número, sem espaços. Ex: 5565999990000</div>
                 </div>
+
+                {/* Senha — só para novo usuário */}
+                {!editUser && (
+                  <div>
+                    <label style={lbl}>Senha provisória *</label>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        style={{ ...inp, paddingRight: 40 }}
+                        type={senhaVisivel ? "text" : "password"}
+                        value={fUser.senha}
+                        onChange={e => setFUser(p => ({ ...p, senha: e.target.value }))}
+                        placeholder="Mín. 6 caracteres"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSenhaVisivel(v => !v)}
+                        style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#888" }}
+                      >
+                        {senhaVisivel ? "🙈" : "👁"}
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+                      O usuário será solicitado a trocar essa senha no primeiro acesso.
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label style={lbl}>Grupo de acesso</label>
+                  <select style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
+                    <option value="">Sem grupo (sem acesso)</option>
+                    {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                  </select>
+                  {fUser.grupo_id && (
+                    <div style={{ marginTop: 6, padding: "8px 12px", background: "#EFF3FA", borderRadius: 8, fontSize: 11, color: "#555" }}>
+                      {(() => {
+                        const g = grupos.find(x => x.id === fUser.grupo_id)!;
+                        if (!g) return null;
+                        const res = resumoPerms(g);
+                        return `${g.nome}: acesso a ${res.comAcesso} de ${res.total} módulos`;
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <input type="checkbox" id="ativo" checked={fUser.ativo} onChange={e => setFUser(p => ({ ...p, ativo: e.target.checked }))} />
+                  <label htmlFor="ativo" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Usuário ativo</label>
+                </div>
+
+                {/* Enviar email — só para novo usuário */}
+                {!editUser && (
+                  <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <input
+                        type="checkbox"
+                        id="enviarEmail"
+                        checked={fUser.enviarEmail}
+                        onChange={e => setFUser(p => ({ ...p, enviarEmail: e.target.checked }))}
+                        style={{ marginTop: 2 }}
+                      />
+                      <label htmlFor="enviarEmail" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer", lineHeight: 1.4 }}>
+                        <span style={{ fontWeight: 600 }}>Enviar e-mail de boas-vindas</span>
+                        <span style={{ display: "block", fontSize: 11, color: "#555", marginTop: 2 }}>
+                          Envia e-mail para <strong>{fUser.email || "o endereço acima"}</strong> com as credenciais de acesso.
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
+                <button style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
+                <button
+                  style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim()) ? 0.5 : 1 }}
+                  disabled={salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && !fUser.senha.trim())}
+                  onClick={salvarUser}
+                >
+                  {salvando ? "Criando…" : editUser ? "Salvar" : "Criar Usuário"}
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+
+      {/* ── Modal Criar Novo Cliente (raccotlo only) ── */}
+      {modalNovoCliente && (
+        <Modal titulo="Criar Novo Cliente" onClose={() => setModalNovoCliente(false)} width={720}>
+          {resultCliente ? (
+            <div style={{ padding: "32px 24px", textAlign: "center" }}>
+              {resultCliente.ok ? (
+                <>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>Cliente criado com sucesso!</div>
+                  <div style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>
+                    Usuário <strong>{resultCliente.email}</strong> criado com acesso ao Arato.
+                  </div>
+                  <button style={btnV} onClick={() => { setModalNovoCliente(false); setResultCliente(null); setFCliente({ tipo: "pj", nome: "", cpf_cnpj: "", email_cliente: "", telefone: "", municipio_cliente: "", estado_cliente: "", fazenda_nome: "", fazenda_municipio: "", fazenda_estado: "", fazenda_area: "", user_nome: "", user_email: "", user_senha: "Arato@123" }); }}>
+                    Fechar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#E24B4A", marginBottom: 8 }}>Falha ao criar cliente</div>
+                  <div style={{ fontSize: 12, color: "#555", background: "#FFF0F0", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 20, textAlign: "left", wordBreak: "break-word" }}>
+                    {resultCliente.erro}
+                  </div>
+                  <button style={btnR} onClick={() => setResultCliente(null)}>Tentar novamente</button>
+                </>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <input type="checkbox" id="ativo" checked={fUser.ativo} onChange={e => setFUser(p => ({ ...p, ativo: e.target.checked }))} />
-              <label htmlFor="ativo" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Usuário ativo</label>
+          ) : (
+            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {/* Produtor */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>Produtor / Empresa</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={lbl}>Tipo *</label>
+                    <select value={fCliente.tipo} onChange={e => setFCliente(p => ({ ...p, tipo: e.target.value }))} style={inp}>
+                      <option value="pf">Pessoa Física</option>
+                      <option value="pj">Pessoa Jurídica</option>
+                    </select>
+                  </div>
+                  <div style={{ gridColumn: "span 2" }}>
+                    <label style={lbl}>Nome / Razão Social *</label>
+                    <input style={inp} value={fCliente.nome} onChange={e => setFCliente(p => ({ ...p, nome: e.target.value }))} placeholder="Fazenda São João Ltda" />
+                  </div>
+                  <div>
+                    <label style={lbl}>CPF / CNPJ</label>
+                    <input style={inp} value={fCliente.cpf_cnpj} onChange={e => setFCliente(p => ({ ...p, cpf_cnpj: e.target.value }))} placeholder="00.000.000/0001-00" />
+                  </div>
+                  <div>
+                    <label style={lbl}>E-mail do produtor</label>
+                    <input style={inp} type="email" value={fCliente.email_cliente} onChange={e => setFCliente(p => ({ ...p, email_cliente: e.target.value }))} placeholder="produtor@fazenda.com" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Telefone</label>
+                    <input style={inp} value={fCliente.telefone} onChange={e => setFCliente(p => ({ ...p, telefone: e.target.value }))} placeholder="(65) 99999-0000" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Município</label>
+                    <input style={inp} value={fCliente.municipio_cliente} onChange={e => setFCliente(p => ({ ...p, municipio_cliente: e.target.value }))} placeholder="Nova Mutum" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Estado</label>
+                    <input style={inp} value={fCliente.estado_cliente} onChange={e => setFCliente(p => ({ ...p, estado_cliente: e.target.value }))} placeholder="MT" maxLength={2} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fazenda */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>Fazenda</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div style={{ gridColumn: "span 2" }}>
+                    <label style={lbl}>Nome da Fazenda *</label>
+                    <input style={inp} value={fCliente.fazenda_nome} onChange={e => setFCliente(p => ({ ...p, fazenda_nome: e.target.value }))} placeholder="Fazenda Santa Cruz" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Área Total (ha)</label>
+                    <input style={inp} type="number" value={fCliente.fazenda_area} onChange={e => setFCliente(p => ({ ...p, fazenda_area: e.target.value }))} placeholder="1500" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Município da Fazenda</label>
+                    <input style={inp} value={fCliente.fazenda_municipio} onChange={e => setFCliente(p => ({ ...p, fazenda_municipio: e.target.value }))} placeholder="Sorriso" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Estado</label>
+                    <input style={inp} value={fCliente.fazenda_estado} onChange={e => setFCliente(p => ({ ...p, fazenda_estado: e.target.value }))} placeholder="MT" maxLength={2} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Usuário de acesso */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>Usuário de Acesso ao Arato</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div>
+                    <label style={lbl}>Nome do usuário *</label>
+                    <input style={inp} value={fCliente.user_nome} onChange={e => setFCliente(p => ({ ...p, user_nome: e.target.value }))} placeholder="João da Silva" />
+                  </div>
+                  <div>
+                    <label style={lbl}>E-mail de login *</label>
+                    <input style={inp} type="email" value={fCliente.user_email} onChange={e => setFCliente(p => ({ ...p, user_email: e.target.value }))} placeholder="joao@fazenda.com" />
+                  </div>
+                  <div>
+                    <label style={lbl}>Senha provisória *</label>
+                    <input style={inp} value={fCliente.user_senha} onChange={e => setFCliente(p => ({ ...p, user_senha: e.target.value }))} placeholder="Arato@123" />
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, padding: "8px 12px", background: "#FBF3E0", borderRadius: 8, fontSize: 11, color: "#7A5A12" }}>
+                  O usuário receberá e-mail com as credenciais e será obrigado a trocar a senha no primeiro acesso.
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 4 }}>
+                <button style={btnR} onClick={() => setModalNovoCliente(false)}>Cancelar</button>
+                <button
+                  style={{ ...btnV, background: "#16A34A", opacity: criandoCliente || !fCliente.nome.trim() || !fCliente.fazenda_nome.trim() || !fCliente.user_email.trim() || !fCliente.user_senha.trim() ? 0.5 : 1 }}
+                  disabled={criandoCliente || !fCliente.nome.trim() || !fCliente.fazenda_nome.trim() || !fCliente.user_email.trim() || !fCliente.user_senha.trim()}
+                  onClick={criarNovoCliente}
+                >
+                  {criandoCliente ? "Criando..." : "Criar Cliente"}
+                </button>
+              </div>
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() ? 0.5 : 1 }}
-              disabled={salvando || !fUser.nome.trim() || !fUser.email.trim()} onClick={salvarUser}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </button>
-          </div>
+          )}
         </Modal>
       )}
     </div>

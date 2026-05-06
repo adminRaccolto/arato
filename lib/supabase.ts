@@ -9,9 +9,18 @@ export const supabase = createBrowserClient(url, key);
 // Tipos do banco (espelham as tabelas abaixo)
 // ————————————————————————————————————————
 
+export type Conta = {
+  id: string;
+  nome: string;
+  tipo: "pf" | "pj" | "grupo";
+  onboarding_ativo?: boolean;
+  created_at?: string;
+};
+
 export type Fazenda = {
   id: string;
   nome: string;
+  conta_id?: string;      // FK contas — tenant raiz
   // Vínculo: Fazenda pode pertencer a um Produtor diretamente (PF/parceria)
   // OU a uma Empresa (PJ). Preencha um ou ambos conforme a realidade do cliente.
   produtor_id?: string;   // FK produtores — vínculo direto (PF ou parceria sem empresa)
@@ -119,7 +128,7 @@ export type Insumo = {
     | "outros";
   subgrupo?: string;
   grupo_id?: string;     // FK grupos_insumos
-  unidade: "kg" | "L" | "sc" | "ton" | "unid" | "m" | "m2" | "cx" | "pc" | "par";
+  unidade: "kg" | "g" | "L" | "mL" | "sc" | "t" | "un" | "m" | "m2" | "cx" | "pc" | "par" | "outros";
   fabricante?: string;
   estoque: number;
   estoque_minimo: number;
@@ -392,6 +401,7 @@ export type Simulacao = {
 export type Produtor = {
   id: string;
   fazenda_id: string;
+  conta_id?: string;      // FK contas — usado para listar produtores de toda a conta
   nome: string;
   tipo: "pf" | "pj";
   cpf_cnpj?: string;
@@ -504,6 +514,7 @@ export type Maquina = {
   modelo?: string;
   ano?: number;
   patrimonio?: string;
+  horimetro_atual?: number;
   ativa: boolean;
   created_at?: string;
 };
@@ -541,9 +552,11 @@ export type GrupoUsuario = {
 
 export type Usuario = {
   id: string;
+  auth_user_id?: string;
   grupo_id?: string;
   nome: string;
   email: string;
+  whatsapp?: string;
   ativo: boolean;
   created_at?: string;
 };
@@ -1174,6 +1187,41 @@ export type RateioRegraLinha = {
   regra_id: string;
   ciclo_id?: string;          // null = overhead sem ciclo específico
   percentual: number;         // 0–100; soma das linhas deve ser 100
+  descricao?: string;
+  ordem?: number;
+  created_at?: string;
+};
+
+// ── Rateio Global (inter-fazendas) ────────────────────────────
+export type RateioGlobal = {
+  id: string;
+  conta_id: string;
+  ano_safra_label: string;        // "2025/2026" — label, não FK
+  centro_custo_id?: string;
+  nome: string;
+  descricao?: string;
+  ativo?: boolean;
+  created_at?: string;
+  // carregados em memória
+  fazendas?: RateioGlobalFazenda[];
+};
+
+export type RateioGlobalFazenda = {
+  id: string;
+  regra_global_id: string;
+  fazenda_id: string;
+  percentual: number;
+  ordem?: number;
+  created_at?: string;
+  // carregados em memória
+  ciclos?: RateioGlobalCiclo[];
+};
+
+export type RateioGlobalCiclo = {
+  id: string;
+  rateio_fazenda_id: string;
+  ciclo_id: string;
+  percentual: number;
   descricao?: string;
   ordem?: number;
   created_at?: string;

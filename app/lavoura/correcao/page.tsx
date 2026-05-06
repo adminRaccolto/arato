@@ -7,6 +7,7 @@ import {
   listarCorrecoes, criarCorrecao, criarCorrecaoItem, processarCorrecao, excluirCorrecao,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
+import FazendaSelector from "../../../components/FazendaSelector";
 import type { Ciclo, Talhao, Insumo, CorrecaoSolo, CorrecaoSoloItem, AnoSafra } from "../../../lib/supabase";
 
 // ── estilos ───────────────────────────────────────────────
@@ -34,7 +35,10 @@ const CULTURAS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", mi
 type ItemForm = { insumo_id: string; produto_nome: string; dose_ton_ha: string; };
 
 export default function CorrecaoSoloPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
+  const fid = formFazendaId ?? fazendaId;
+
   const [registros, setRegistros]   = useState<CorrecaoSolo[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
   const [talhoes, setTalhoes]       = useState<Talhao[]>([]);
@@ -56,14 +60,21 @@ export default function CorrecaoSoloPage() {
     setErro(null);
     Promise.all([
       listarCorrecoes(fazendaId).then(setRegistros),
-      listarTodosCiclos(fazendaId).then(setTodosCiclos),
-      listarTalhoes(fazendaId).then(setTalhoes),
-      listarInsumos(fazendaId).then(ins => setInsumos(
-        ins.filter(i => ["fertilizante", "calcario", "corretivo", "insumo"].includes(i.categoria))
-      )),
+      listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))),
     ]).catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (!fid) return;
+    listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
+    listarTalhoes(fid).then(setTalhoes).catch(() => {});
+  }, [fid]);
+
+  function mudarFazenda(novaId: string) {
+    setFormFazendaId(novaId);
+    setF(p => ({ ...p, ciclo_id: "", talhao_id: "", ano_safra_sel: "" }));
+  }
 
   const ciclosDisponiveis = f.ano_safra_sel
     ? todosCiclos.filter(c => c.ano_safra_id === f.ano_safra_sel)
@@ -96,7 +107,7 @@ export default function CorrecaoSoloPage() {
     try {
       setSalvando(true);
       const reg = await criarCorrecao({
-        fazenda_id: fazendaId!,
+        fazenda_id: fid!,
         ciclo_id: f.ciclo_id,
         talhao_id: f.talhao_id || undefined,
         finalidade: f.finalidade,
@@ -109,7 +120,7 @@ export default function CorrecaoSoloPage() {
       const nomes: Record<string, string> = {};
       for (const it of calcItens) {
         const item = await criarCorrecaoItem({
-          correcao_id: reg.id, fazenda_id: fazendaId!,
+          correcao_id: reg.id, fazenda_id: fid!,
           insumo_id: it.insumo_id || undefined,
           produto_nome: it.nome,
           dose_ton_ha: it.dose_ton_ha,
@@ -146,7 +157,7 @@ export default function CorrecaoSoloPage() {
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Correção de Solo</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Calcário, gesso agrícola, micronutrientes e corretivos orgânicos</p>
           </div>
-          <button style={btnV} onClick={() => setModal(true)}>+ Registrar Aplicação</button>
+          <button style={btnV} onClick={() => { setFormFazendaId(fazendaId); setModal(true); }}>+ Registrar Aplicação</button>
         </header>
 
         <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>
@@ -213,7 +224,10 @@ export default function CorrecaoSoloPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
           onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>Registrar Correção de Solo</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>Registrar Correção de Solo</div>
+              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} />
+            </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>Calcário, gesso, micronutrientes e corretivos orgânicos</div>
 
             <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#0B2D50" }}>

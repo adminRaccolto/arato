@@ -939,6 +939,18 @@ alter table pulverizacoes
 alter table colheitas
   add column if not exists ciclo_id uuid references ciclos(id) on delete set null;
 
+-- Correção: correcoes_solo e adubacoes_base também precisam de ciclo_id
+alter table correcoes_solo
+  add column if not exists ciclo_id uuid references ciclos(id) on delete set null;
+
+alter table adubacoes_base
+  add column if not exists ciclo_id uuid references ciclos(id) on delete set null;
+
+-- safra_id era NOT NULL na versão antiga (referenciava tabela safras, hoje vazia)
+-- Sistema migrou para ciclo_id — tornar nullable para não bloquear inserção
+alter table correcoes_solo alter column safra_id drop not null;
+alter table adubacoes_base  alter column safra_id drop not null;
+
 -- ============================================================
 -- Seção 21 — Pedidos de Compra + Regras de Rateio
 -- ============================================================
@@ -2736,3 +2748,466 @@ LEFT JOIN perfis p ON p.fazenda_id = f.id
 ORDER BY f.nome;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION v5 — Arquitetura Conta (tenant multi-fazenda)
+-- Execute INTEIRO de uma vez no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+-- 1. Criar tabela contas (raiz do tenant SaaS)
+CREATE TABLE IF NOT EXISTS contas (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome       text NOT NULL,
+  tipo       text NOT NULL DEFAULT 'pf' CHECK (tipo IN ('pf', 'pj', 'grupo')),
+  created_at timestamptz DEFAULT now()
+);
+
+-- 2. Adicionar conta_id nas tabelas principais (nullable primeiro para o backfill)
+ALTER TABLE fazendas   ADD COLUMN IF NOT EXISTS conta_id uuid REFERENCES contas(id);
+ALTER TABLE produtores ADD COLUMN IF NOT EXISTS conta_id uuid REFERENCES contas(id);
+ALTER TABLE perfis     ADD COLUMN IF NOT EXISTS conta_id uuid REFERENCES contas(id);
+
+-- 3. Backfill — criar uma conta por owner_user_id distinto nas fazendas
+DO $$
+DECLARE
+  rec           RECORD;
+  nova_conta_id uuid;
+  nome_conta    text;
+BEGIN
+  FOR rec IN
+    SELECT DISTINCT owner_user_id
+    FROM fazendas
+    WHERE owner_user_id IS NOT NULL
+  LOOP
+    -- Usar o nome do perfil do usuário como nome da conta
+    SELECT COALESCE(p.nome, 'Conta ' || LEFT(rec.owner_user_id::text, 8))
+    INTO   nome_conta
+    FROM   perfis p
+    WHERE  p.user_id = rec.owner_user_id
+    LIMIT  1;
+
+    IF nome_conta IS NULL THEN
+      nome_conta := 'Conta ' || LEFT(rec.owner_user_id::text, 8);
+    END IF;
+
+    INSERT INTO contas (nome, tipo) VALUES (nome_conta, 'pf')
+    RETURNING id INTO nova_conta_id;
+
+    -- Vincular fazendas
+    UPDATE fazendas   SET conta_id = nova_conta_id WHERE owner_user_id = rec.owner_user_id;
+    -- Vincular perfis do usuário
+    UPDATE perfis     SET conta_id = nova_conta_id WHERE user_id = rec.owner_user_id;
+    -- Vincular produtores via fazendas
+    UPDATE produtores SET conta_id = nova_conta_id
+    WHERE fazenda_id IN (SELECT id FROM fazendas WHERE conta_id = nova_conta_id);
+  END LOOP;
+END $$;
+
+-- 4. Atualizar RLS das fazendas — usar conta_id
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+CREATE POLICY "fazendas_select" ON fazendas FOR SELECT
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis
+      WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "fazendas_insert" ON fazendas FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis
+      WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis
+      WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+-- 5. RLS para produtores (nova proteção)
+ALTER TABLE produtores ENABLE ROW LEVEL SECURITY;
+
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'produtores' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON produtores';
+  END LOOP;
+END $$;
+
+CREATE POLICY "produtores_select" ON produtores FOR SELECT
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis
+      WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+    )
+    OR conta_id IS NULL
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "produtores_insert" ON produtores FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "produtores_update" ON produtores FOR UPDATE
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis
+      WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "produtores_delete" ON produtores FOR DELETE
+  USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis
+      WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+-- 6. Verificação pós-migration
+SELECT c.nome AS conta, f.nome AS fazenda, f.owner_user_id, f.conta_id
+FROM contas c
+JOIN fazendas f ON f.conta_id = c.id
+ORDER BY c.nome, f.nome;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION v6 — Onboarding guiado
+-- Execute no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE contas
+  ADD COLUMN IF NOT EXISTS onboarding_ativo boolean NOT NULL DEFAULT true;
+
+-- Clientes existentes: manter onboarding desligado (já foram implantados)
+UPDATE contas SET onboarding_ativo = false WHERE onboarding_ativo = true;
+
+-- Para ativar onboarding em um cliente específico:
+-- UPDATE contas SET onboarding_ativo = true WHERE id = '<id>';
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION v7 — Adicionar auth_user_id em usuarios
+-- Execute no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS auth_user_id uuid;
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- MIGRATION v8 — Rateio Global Inter-Fazendas
+-- Execute no Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════
+
+-- Regra de rateio global: aplica-se a todas as fazendas de uma conta.
+-- Exemplo: colheitadeira compartilhada → 60% Fazenda A, 40% Fazenda B;
+--          dentro de cada fazenda, o custo é dividido entre os ciclos.
+
+create table if not exists regras_rateio_global (
+  id               uuid primary key default gen_random_uuid(),
+  conta_id         uuid not null references contas(id) on delete cascade,
+  ano_safra_label  text not null,          -- "2025/2026" — label do ano (não FK)
+  centro_custo_id  uuid references centros_custo(id),
+  nome             text not null,
+  descricao        text,
+  ativo            boolean default true,
+  created_at       timestamptz default now()
+);
+
+-- Nível 1: distribuição percentual entre fazendas
+create table if not exists rateio_global_fazendas (
+  id               uuid primary key default gen_random_uuid(),
+  regra_global_id  uuid not null references regras_rateio_global(id) on delete cascade,
+  fazenda_id       uuid not null references fazendas(id) on delete cascade,
+  percentual       numeric(8,4) not null check (percentual >= 0 and percentual <= 100),
+  ordem            integer default 0,
+  created_at       timestamptz default now()
+);
+
+-- Nível 2: distribuição percentual entre ciclos dentro de cada fazenda
+create table if not exists rateio_global_ciclos (
+  id                  uuid primary key default gen_random_uuid(),
+  rateio_fazenda_id   uuid not null references rateio_global_fazendas(id) on delete cascade,
+  ciclo_id            uuid not null references ciclos(id) on delete cascade,
+  percentual          numeric(8,4) not null check (percentual >= 0 and percentual <= 100),
+  descricao           text,
+  ordem               integer default 0,
+  created_at          timestamptz default now()
+);
+
+alter table regras_rateio_global    enable row level security;
+alter table rateio_global_fazendas  enable row level security;
+alter table rateio_global_ciclos    enable row level security;
+
+drop policy if exists "allow_all_rateio_global"         on regras_rateio_global;
+drop policy if exists "allow_all_rateio_global_faz"     on rateio_global_fazendas;
+drop policy if exists "allow_all_rateio_global_ciclos"  on rateio_global_ciclos;
+
+create policy "allow_all_rateio_global"
+  on regras_rateio_global for all using (true) with check (true);
+create policy "allow_all_rateio_global_faz"
+  on rateio_global_fazendas for all using (true) with check (true);
+create policy "allow_all_rateio_global_ciclos"
+  on rateio_global_ciclos for all using (true) with check (true);
+
+create index if not exists idx_rateio_global_conta     on regras_rateio_global(conta_id);
+create index if not exists idx_rateio_gfaz_regra       on rateio_global_fazendas(regra_global_id);
+create index if not exists idx_rateio_gciclo_fazlinha  on rateio_global_ciclos(rateio_fazenda_id);
+
+NOTIFY pgrst, 'reload schema';
+
+
+-- ═══════════════════════════════════════════════════════════════
+-- ROLLBACK: Reverter refatoração Conta (se necessário)
+-- Execute SOMENTE se precisar voltar ao modelo com owner_user_id
+-- ═══════════════════════════════════════════════════════════════
+/*
+-- Remover contas
+ALTER TABLE perfis    DROP COLUMN IF EXISTS conta_id;
+ALTER TABLE perfis    DROP COLUMN IF EXISTS fazenda_ativa_id;
+ALTER TABLE fazendas  DROP COLUMN IF EXISTS conta_id;
+ALTER TABLE produtores DROP COLUMN IF EXISTS conta_id;
+DROP TABLE IF EXISTS contas CASCADE;
+
+-- Reativar RLS com owner_user_id
+DO $$
+DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+CREATE POLICY "fazendas_select" ON fazendas FOR SELECT
+  USING (
+    owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+CREATE POLICY "fazendas_insert" ON fazendas FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
+  USING (owner_user_id = auth.uid() OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
+  USING (owner_user_id = auth.uid() OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
+*/
+
+-- ============================================================
+-- SEÇÃO WhatsApp IA — Sessões conversacionais
+-- Execute no Supabase SQL Editor
+-- ============================================================
+
+-- 1. Campo whatsapp no perfil (vincular número ao usuário)
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS whatsapp text;
+CREATE UNIQUE INDEX IF NOT EXISTS perfis_whatsapp_idx ON perfis (whatsapp) WHERE whatsapp IS NOT NULL;
+
+-- 2. Campo origem em lancamentos (rastrear o que veio do WhatsApp)
+ALTER TABLE lancamentos ADD COLUMN IF NOT EXISTS origem text;
+
+-- 3. Campo origem em movimentacoes_estoque
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS origem text;
+
+-- 4. Campo origem em romaneios
+ALTER TABLE romaneios ADD COLUMN IF NOT EXISTS origem text;
+
+-- 5. Tabela de sessões conversacionais do WhatsApp
+CREATE TABLE IF NOT EXISTS sessoes_whatsapp (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  telefone        text NOT NULL UNIQUE,
+  usuario_id      uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  fazenda_id      uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  fazenda_nome    text DEFAULT '',
+  fluxo           text,
+  etapa           text,
+  dados           jsonb DEFAULT '{}',
+  aguardando_foto boolean DEFAULT false,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+-- Expirar sessões antigas automaticamente (limpeza via updated_at)
+CREATE INDEX IF NOT EXISTS sessoes_whatsapp_telefone_idx ON sessoes_whatsapp (telefone);
+CREATE INDEX IF NOT EXISTS sessoes_whatsapp_updated_idx ON sessoes_whatsapp (updated_at);
+
+-- RLS — somente service role acessa (webhook usa service role key)
+ALTER TABLE sessoes_whatsapp ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "sessoes_whatsapp_service_only" ON sessoes_whatsapp
+  USING (true) WITH CHECK (true);
+
+-- 6. Histórico de mensagens WhatsApp (auditoria)
+CREATE TABLE IF NOT EXISTS historico_whatsapp (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  telefone    text NOT NULL,
+  fazenda_id  uuid REFERENCES fazendas(id) ON DELETE SET NULL,
+  direcao     text CHECK (direcao IN ('entrada', 'saida')),
+  tipo        text,   -- text | audio | image
+  conteudo    text,
+  intencao    text,
+  created_at  timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS historico_whatsapp_telefone_idx ON historico_whatsapp (telefone);
+ALTER TABLE historico_whatsapp ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "historico_whatsapp_service_only" ON historico_whatsapp
+  USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- SEÇÃO Pendências Fiscais
+-- Execute no Supabase SQL Editor
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS pendencias_fiscais (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id       uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  lancamento_id    uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  movimentacao_id  uuid REFERENCES movimentacoes_estoque(id) ON DELETE SET NULL,
+  tipo             text NOT NULL DEFAULT 'outro' CHECK (tipo IN ('abastecimento','entrada_estoque','operacao_lavoura','saida_estoque','lancamento_cp','outro')),
+  status           text NOT NULL DEFAULT 'aguardando' CHECK (status IN ('aguardando','recebida','dispensada')),
+  descricao        text NOT NULL,
+  valor            numeric(14,2),
+  data_operacao    date NOT NULL DEFAULT CURRENT_DATE,
+  fornecedor_nome  text,
+  chave_acesso     text,
+  xml_storage_path text,
+  origem           text DEFAULT 'manual' CHECK (origem IN ('manual','whatsapp','sistema')),
+  observacoes      text,
+  created_at       timestamptz DEFAULT now(),
+  updated_at       timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS pendencias_fiscais_fazenda_idx ON pendencias_fiscais (fazenda_id, status);
+ALTER TABLE pendencias_fiscais ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "pendencias_fiscais_fazenda" ON pendencias_fiscais
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO Abastecimentos de Máquinas
+-- Execute no Supabase SQL Editor
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS abastecimentos (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id       uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  bomba_id         uuid NOT NULL REFERENCES bombas_combustivel(id) ON DELETE RESTRICT,
+  maquina_id       uuid REFERENCES maquinas(id) ON DELETE SET NULL,
+  funcionario_id   uuid REFERENCES funcionarios(id) ON DELETE SET NULL,
+  destino_livre    text,
+  quantidade_l     numeric(10,2) NOT NULL CHECK (quantidade_l > 0),
+  valor_unitario   numeric(14,4) NOT NULL CHECK (valor_unitario >= 0),
+  valor_total      numeric(14,2) NOT NULL CHECK (valor_total >= 0),
+  horimetro        numeric(12,1),
+  data             date NOT NULL DEFAULT CURRENT_DATE,
+  observacao       text,
+  lancamento_id    uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  created_at       timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS abastecimentos_fazenda_data_idx ON abastecimentos (fazenda_id, data DESC);
+CREATE INDEX IF NOT EXISTS abastecimentos_bomba_idx        ON abastecimentos (bomba_id);
+CREATE INDEX IF NOT EXISTS abastecimentos_maquina_idx      ON abastecimentos (maquina_id);
+
+ALTER TABLE abastecimentos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "abastecimentos_fazenda" ON abastecimentos
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO Horímetro/Odômetro em Máquinas
+-- Execute no Supabase SQL Editor
+-- ============================================================
+ALTER TABLE maquinas ADD COLUMN IF NOT EXISTS horimetro_atual numeric(12,1);
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO Monitoramento de Pragas & Doenças
+-- Execute no Supabase SQL Editor
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS monitoramento_pragas (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  talhao_id           uuid REFERENCES talhoes(id) ON DELETE SET NULL,
+  ciclo_id            uuid REFERENCES ciclos(id) ON DELETE SET NULL,
+  data                date NOT NULL DEFAULT CURRENT_DATE,
+  tipo                text NOT NULL CHECK (tipo IN ('praga','doenca','planta_daninha')),
+  nome                text NOT NULL,
+  nivel               integer NOT NULL CHECK (nivel BETWEEN 1 AND 4),
+  percentual_plantas  numeric(5,2),
+  estagio             text,
+  acao_recomendada    text,
+  observacoes         text,
+  usuario_id          uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at          timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS monitoramento_pragas_fazenda_idx ON monitoramento_pragas (fazenda_id, data DESC);
+CREATE INDEX IF NOT EXISTS monitoramento_pragas_talhao_idx  ON monitoramento_pragas (talhao_id);
+CREATE INDEX IF NOT EXISTS monitoramento_pragas_ciclo_idx   ON monitoramento_pragas (ciclo_id);
+CREATE INDEX IF NOT EXISTS monitoramento_pragas_nivel_idx   ON monitoramento_pragas (nivel);
+
+ALTER TABLE monitoramento_pragas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "monitoramento_pragas_fazenda" ON monitoramento_pragas
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Migration: Seed Anos Safra padrão (2025/2026 → 2031/2032)
+-- Aplica em todas as fazendas existentes que ainda não têm
+-- nenhum registro em anos_safra.
+-- ============================================================
+DO $$
+DECLARE
+  faz_id uuid;
+BEGIN
+  FOR faz_id IN SELECT id FROM fazendas LOOP
+    IF NOT EXISTS (SELECT 1 FROM anos_safra WHERE fazenda_id = faz_id) THEN
+      INSERT INTO anos_safra (fazenda_id, descricao, data_inicio, data_fim) VALUES
+        (faz_id, '2025/2026', '2025-10-01', '2026-09-30'),
+        (faz_id, '2026/2027', '2026-10-01', '2027-09-30'),
+        (faz_id, '2027/2028', '2027-10-01', '2028-09-30'),
+        (faz_id, '2028/2029', '2028-10-01', '2029-09-30'),
+        (faz_id, '2029/2030', '2029-10-01', '2030-09-30'),
+        (faz_id, '2030/2031', '2030-10-01', '2031-09-30'),
+        (faz_id, '2031/2032', '2031-10-01', '2032-09-30');
+    END IF;
+  END LOOP;
+END $$;
+
+-- WhatsApp: campo whatsapp na tabela usuarios (vincula número ao usuário local)
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS whatsapp text;
+CREATE UNIQUE INDEX IF NOT EXISTS usuarios_whatsapp_idx ON usuarios (whatsapp) WHERE whatsapp IS NOT NULL;

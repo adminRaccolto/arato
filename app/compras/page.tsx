@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import {
@@ -18,6 +18,65 @@ const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
 const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#555" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
+
+function SearchableSelect({
+  value, onChange, options, placeholder = "— Selecionar —", emptyMessage, style: extraStyle,
+}: {
+  value: string; onChange: (id: string) => void;
+  options: { id: string; label: string }[];
+  placeholder?: string; emptyMessage?: string;
+  style?: React.CSSProperties;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen]   = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find(o => o.id === value);
+  const filtered = query.trim() === ""
+    ? options
+    : options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(""); }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative", ...extraStyle }}>
+      <input
+        style={{ ...inp, paddingRight: 26 }}
+        value={open ? query : (selected?.label ?? "")}
+        placeholder={placeholder}
+        onFocus={() => { setOpen(true); setQuery(""); }}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        autoComplete="off"
+      />
+      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#999", pointerEvents: "none" }}>▾</span>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 220, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)" }}>
+          <div
+            style={{ padding: "6px 10px", fontSize: 13, color: "#aaa", cursor: "pointer", borderBottom: "0.5px solid #F0F0F0" }}
+            onMouseDown={() => { onChange(""); setOpen(false); setQuery(""); }}
+          >{placeholder}</div>
+          {filtered.length === 0 && (
+            <div style={{ padding: "8px 10px", fontSize: 12, color: "#bbb" }}>{emptyMessage ?? "Nenhum resultado"}</div>
+          )}
+          {filtered.map(o => (
+            <div
+              key={o.id}
+              style={{ padding: "7px 10px", fontSize: 13, cursor: "pointer", background: o.id === value ? "#D5E8F5" : "#fff", color: o.id === value ? "#0B2D50" : "#1a1a1a", fontWeight: o.id === value ? 600 : 400 }}
+              onMouseDown={() => { onChange(o.id); setOpen(false); setQuery(""); }}
+              onMouseEnter={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "#F4F6FA"; }}
+              onMouseLeave={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "#fff"; }}
+            >{o.label}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtUSD = (v?: number | null) => `US$ ${(v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -528,20 +587,17 @@ export default function ComprasPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                   <div>
                     <label style={lbl}>Operação</label>
-                    <select style={inp} value={f.operacao} onChange={e => {
-                      const opId = e.target.value;
-                      const op = operacoes.find(o => o.id === opId);
-                      const autoNf = !!op?.permite_notas_fiscais;
-                      setF(p => ({ ...p, operacao: opId, operacao_nf: autoNf ? opId : p.operacao_nf, operacao_nf_auto: autoNf }));
-                    }}>
-                      <option value="">— Selecionar —</option>
-                      {operacoes.filter(o => o.permite_cp_cr && !o.inativo).map(o => (
-                        <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
-                      ))}
-                      {operacoes.filter(o => o.permite_cp_cr && !o.inativo).length === 0 && (
-                        <option disabled value="">Configure em Cadastros → Operações Gerenciais</option>
-                      )}
-                    </select>
+                    <SearchableSelect
+                      value={f.operacao}
+                      onChange={id => {
+                        const op = operacoes.find(o => o.id === id);
+                        const autoNf = !!op?.permite_notas_fiscais;
+                        setF(p => ({ ...p, operacao: id, operacao_nf: autoNf ? id : p.operacao_nf, operacao_nf_auto: autoNf }));
+                      }}
+                      options={operacoes.filter(o => o.tipo === "despesa" && o.permite_cp_cr && !o.inativo).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                      placeholder="— Selecionar —"
+                      emptyMessage="Configure em Cadastros → Operações Gerenciais"
+                    />
                   </div>
                   <div>
                     <label style={lbl}>Ano Safra</label>
@@ -630,19 +686,12 @@ export default function ComprasPage() {
                         </span>
                       )}
                     </label>
-                    {pessoas.length > 0 ? (
-                      <select style={inp} value={f.fornecedor_id} onChange={e => setF(p => ({ ...p, fornecedor_id: e.target.value, contato_fornecedor: "" }))}>
-                        <option value="">— Selecionar —</option>
-                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        style={inp}
-                        placeholder="Digite o nome do fornecedor"
-                        value={f.contato_fornecedor}
-                        onChange={e => setF(p => ({ ...p, contato_fornecedor: e.target.value, fornecedor_id: "" }))}
-                      />
-                    )}
+                    <SearchableSelect
+                      value={f.fornecedor_id}
+                      onChange={id => setF(p => ({ ...p, fornecedor_id: id, contato_fornecedor: "" }))}
+                      options={pessoas.map(p => ({ id: p.id, label: p.nome }))}
+                      placeholder={pessoas.length === 0 ? "Nenhum fornecedor cadastrado" : "— Selecionar —"}
+                    />
                   </div>
                   <div>
                     <label style={lbl}>Nr. Pedido Fornecedor</label>
@@ -680,15 +729,13 @@ export default function ComprasPage() {
                         </button>
                       </div>
                     ) : (
-                      <select style={inp} value={f.operacao_nf} onChange={e => setF(p => ({ ...p, operacao_nf: e.target.value, operacao_nf_auto: false }))}>
-                        <option value="">— Selecionar —</option>
-                        {operacoes.filter(o => o.permite_notas_fiscais && !o.inativo).map(o => (
-                          <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
-                        ))}
-                        {operacoes.filter(o => o.permite_notas_fiscais && !o.inativo).length === 0 && (
-                          <option disabled value="">Configure em Cadastros → Operações Gerenciais</option>
-                        )}
-                      </select>
+                      <SearchableSelect
+                        value={f.operacao_nf}
+                        onChange={id => setF(p => ({ ...p, operacao_nf: id, operacao_nf_auto: false }))}
+                        options={operacoes.filter(o => o.tipo === "despesa" && o.permite_notas_fiscais && !o.inativo).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                        placeholder="— Selecionar —"
+                        emptyMessage="Configure em Cadastros → Operações Gerenciais"
+                      />
                     )}
                   </div>
 
@@ -777,14 +824,16 @@ export default function ComprasPage() {
                                   <span style={{ fontSize: 10, background: it.tipo_item === "produto" ? "#D5E8F5" : "#FBF3E0", color: it.tipo_item === "produto" ? "#0B2D50" : "#7A5200", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>{it.tipo_item === "produto" ? "Produto" : "Serviço"}</span>
                                 </td>
                                 <td style={{ padding: "5px 6px" }}>
-                                  <select style={{ ...inp, fontSize: 12 }} value={it.insumo_id} onChange={e => {
-                                    const ins = insumos.find(i => i.id === e.target.value);
-                                    setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, insumo_id: e.target.value, nome_item: ins?.nome ?? x.nome_item, unidade: ins?.unidade ?? x.unidade } : x));
-                                  }}>
-                                    <option value="">— Selecionar insumo —</option>
-                                    {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                                  </select>
-                                  {!it.insumo_id && <input style={{ ...inp, fontSize: 12, marginTop: 4 }} value={it.nome_item} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, nome_item: e.target.value } : x))} placeholder="Ou digite o nome" />}
+                                  <SearchableSelect
+                                    value={it.insumo_id}
+                                    onChange={id => {
+                                      const ins = insumos.find(i => i.id === id);
+                                      setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, insumo_id: id, nome_item: ins?.nome ?? x.nome_item, unidade: ins?.unidade ?? x.unidade } : x));
+                                    }}
+                                    options={insumos.map(i => ({ id: i.id, label: `${i.nome} (${i.unidade})` }))}
+                                    placeholder="— Selecionar insumo —"
+                                    style={{ fontSize: 12 }}
+                                  />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 60 }}>
                                   <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, unidade: e.target.value } : x))}>
