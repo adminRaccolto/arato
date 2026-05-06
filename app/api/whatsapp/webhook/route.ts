@@ -106,8 +106,10 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: true }); }
 
-  // Evolution API: verificar evento
+  // Log para debug
   const event = String(body.event ?? "");
+  console.log("[WH] event:", event, "keys:", Object.keys(body));
+
   if (event !== "messages.upsert") return NextResponse.json({ ok: true });
 
   const data = body.data as Record<string, unknown> | undefined;
