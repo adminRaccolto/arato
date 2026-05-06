@@ -28,9 +28,19 @@ function sb() {
 
 // ── Autenticar número ──────────────────────────────────────────────────────
 async function autenticarNumero(telefone: string): Promise<{ usuarioId: string; fazendaId: string; fazendaNome: string } | null> {
+  // Evolution API remove o 9 de números brasileiros — tenta os dois formatos
+  const variantes = [telefone];
+  if (telefone.startsWith("55") && telefone.length === 12) {
+    // 556596493240 → 5565996493240 (adiciona 9 após 2 dígitos de área)
+    variantes.push(telefone.slice(0, 4) + "9" + telefone.slice(4));
+  } else if (telefone.startsWith("55") && telefone.length === 13) {
+    // 5565996493240 → 556596493240 (remove o 9)
+    variantes.push(telefone.slice(0, 4) + telefone.slice(5));
+  }
+
   const { data } = await sb().from("usuarios")
     .select("id, fazenda_id, fazendas(nome)")
-    .eq("whatsapp", telefone)
+    .in("whatsapp", variantes)
     .eq("ativo", true)
     .single();
   if (!data) return null;
