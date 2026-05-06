@@ -86,6 +86,11 @@ function ehGrupo(jid: string): boolean {
   return jid.includes("@g.us");
 }
 
+// Número válido: 10-15 dígitos (DDI + DDD + número)
+function ehNumeroValido(telefone: string): boolean {
+  return telefone.length >= 10 && telefone.length <= 15;
+}
+
 // ── Handler principal ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
@@ -111,7 +116,7 @@ export async function POST(req: NextRequest) {
   if (ehGrupo(remoteJid)) return NextResponse.json({ ok: true });
 
   const telefone = jidParaTelefone(remoteJid);
-  if (!telefone) return NextResponse.json({ ok: true });
+  if (!telefone || !ehNumeroValido(telefone)) return NextResponse.json({ ok: true });
 
   const messageType = String(data.messageType ?? "");
   const message = data.message as Record<string, unknown> | undefined;
@@ -158,10 +163,7 @@ export async function POST(req: NextRequest) {
 
   // ── Autenticar ─────────────────────────────────────────────────────────
   const auth = await autenticarNumero(telefone);
-  if (!auth) {
-    await enviarTexto(telefone, "👋 Seu número não está cadastrado no Arato. Fale com o administrador para vincular seu WhatsApp.");
-    return NextResponse.json({ ok: true });
-  }
+  if (!auth) return NextResponse.json({ ok: true }); // número não cadastrado — ignora silenciosamente
   const { usuarioId, fazendaId, fazendaNome } = auth;
 
   // ── Sessão ─────────────────────────────────────────────────────────────
