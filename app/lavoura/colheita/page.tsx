@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
+import FazendaSelector from "../../../components/FazendaSelector";
 import {
   listarColheitas,
   criarColheita,
@@ -102,11 +103,17 @@ const ROMANEIO_VAZIO = {
 };
 
 // ────────────────────────────────────────────────────────────
+// Hook mobile
+// ────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────
 // Página principal
 // ────────────────────────────────────────────────────────────
 
 export default function ColheitaPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
+  const fid = formFazendaId ?? fazendaId;
 
   const [colheitas,   setColheitas]   = useState<ColheitaComRomaneios[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
@@ -178,16 +185,25 @@ export default function ColheitaPage() {
   // ── Criar colheita ────────────────────────────────────────
 
   const abrirModalColheita = () => {
-    setFormColheita({ ...COLHEITA_VAZIO, fazenda_id: fazendaId ?? "" });
+    const id = fazendaId ?? "";
+    setFormFazendaId(fazendaId);
+    setFormColheita({ ...COLHEITA_VAZIO, fazenda_id: id });
     setModalColheita(true);
   };
 
+  async function mudarFazendaColheita(novaId: string) {
+    setFormFazendaId(novaId);
+    setFormColheita(p => ({ ...p, fazenda_id: novaId, ciclo_id: "", talhao_id: "" }));
+    listarTalhoes(novaId).then(setTalhoes).catch(() => {});
+    listarTodosCiclos(novaId).then(setTodosCiclos).catch(() => {});
+  }
+
   const salvarColheita = async () => {
-    if (!fazendaId || !formColheita.ciclo_id) { setErro("Selecione a safra"); return; }
+    if (!fid || !formColheita.ciclo_id) { setErro("Selecione a safra"); return; }
     setSalvando(true);
     setErro(null);
     try {
-      await criarColheita({ ...formColheita, fazenda_id: fazendaId });
+      await criarColheita({ ...formColheita, fazenda_id: fid });
       setModalColheita(false);
       await carregar();
     } catch (e: unknown) {
@@ -304,12 +320,12 @@ export default function ColheitaPage() {
   // ────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#F3F6F9" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9" }}>
       <TopNav />
 
-      <main style={{ flex: 1, overflowY: "auto", padding: 28 }}>
+      <main style={{ flex: 1, padding: "24px 28px" }}>
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 24 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Colheita Própria</h1>
             <p style={{ fontSize: 13, color: "#555", margin: "4px 0 0" }}>
@@ -328,7 +344,7 @@ export default function ColheitaPage() {
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
           {[
             { label: "Registros de colheita", valor: colheitas.length.toString(), cor: "#1A4870" },
             { label: "Total sacas colhidas",  valor: fmt(totalSacas) + " sc", cor: "#378ADD" },
@@ -381,7 +397,7 @@ export default function ColheitaPage() {
                   background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden",
                 }}>
                   {/* Cabeçalho do card */}
-                  <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ padding: "16px 20px", display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}>
                     {/* Ícone produto */}
                     <div style={{
                       width: 40, height: 40, background: "#D5E8F5", borderRadius: 10,
@@ -402,7 +418,7 @@ export default function ColheitaPage() {
                     </div>
 
                     {/* Métricas */}
-                    <div style={{ display: "flex", gap: 20, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 20, flexWrap: "nowrap", flexShrink: 0 }}>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Área</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(col.area_ha ?? 0, 1)} ha</div>
@@ -434,7 +450,7 @@ export default function ColheitaPage() {
                     </div>
 
                     {/* Botões ação */}
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "nowrap", width: "auto" }}>
                       <button
                         onClick={() => abrirRomaneio(col.id)}
                         style={{
@@ -489,11 +505,21 @@ export default function ColheitaPage() {
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
                               <tr style={{ background: "#DEE5EE" }}>
-                                {["Nº", "Placa", "Data", "Peso Bruto", "Tara", "Peso Líq.", "Umid %", "D.Umid kg", "Imp %", "D.Imp kg", "Avar %", "D.Avar kg", "Classificado kg", "Sacas", ""].map(h => (
-                                  <th key={h} style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>
-                                    {h}
-                                  </th>
-                                ))}
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Nº</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Placa</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Data</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Peso Bruto</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Tara</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Peso Líq.</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Umid %</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>D.Umid kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Imp %</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>D.Imp kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Avar %</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>D.Avar kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Classificado kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Sacas</th>
+                                <th style={{ padding: "7px 12px", borderBottom: "0.5px solid #D4DCE8" }}></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -501,7 +527,7 @@ export default function ColheitaPage() {
                                 <tr key={rom.id} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
                                   <td style={{ padding: "8px 12px", color: "#1a1a1a" }}>{rom.numero || "—"}</td>
                                   <td style={{ padding: "8px 12px", fontWeight: 600, color: "#1a1a1a" }}>{rom.placa}</td>
-                                  <td style={{ padding: "8px 12px", color: "#1a1a1a" }}>{rom.data ? new Date(rom.data + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#1a1a1a" }}>{rom.data ? new Date(rom.data + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
                                   <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.peso_bruto_kg)} kg</td>
                                   <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.tara_kg)} kg</td>
                                   <td style={{ padding: "8px 12px", textAlign: "right", color: "#1a1a1a", fontWeight: 600 }}>{fmt(rom.peso_liquido_kg)} kg</td>
@@ -539,7 +565,8 @@ export default function ColheitaPage() {
                             {/* Totais */}
                             <tfoot>
                               <tr style={{ background: "#D5E8F5", color: "#1a1a1a", fontWeight: 600 }}>
-                                <td colSpan={5} style={{ padding: "8px 12px", color: "#0B2D50" }}>Total</td>
+                                <td colSpan={3} style={{ padding: "8px 12px", color: "#0B2D50" }}>Total</td>
+                                <td colSpan={2} style={{ padding: "8px 12px" }} />
                                 <td style={{ padding: "8px 12px", textAlign: "right", color: "#0B2D50" }}>
                                   {fmt(col.romaneios!.reduce((s, r) => s + r.peso_liquido_kg, 0))} kg
                                 </td>
@@ -575,22 +602,19 @@ export default function ColheitaPage() {
           MODAL — Nova Colheita
       ────────────────────────────────────────── */}
       {modalColheita && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex",
-          alignItems: "center", justifyContent: "center", zIndex: 1000,
-        }}>
-          <div style={{
-            background: "#fff", borderRadius: 14, width: 520, maxWidth: "95vw", maxHeight: "90vh",
-            overflow: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-          }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setModalColheita(false); }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Nova Colheita</h2>
-              <button onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazendaColheita} />
+                <button onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
+              </div>
             </div>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
 
               {/* Ano Safra, Safra e Talhão */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 <label>
                   <div style={lbStyle}>Ano Safra</div>
                   <select value={anoSafraSel} onChange={e => { setAnoSafraSel(e.target.value); setFormColheita(f => ({ ...f, ciclo_id: "" })); }} style={inpStyle}>
@@ -618,7 +642,7 @@ export default function ColheitaPage() {
               </div>
 
               {/* Produto e Variedade */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <label>
                   <div style={lbStyle}>Produto *</div>
                   <select value={formColheita.produto} onChange={e => setFormColheita(f => ({ ...f, produto: e.target.value }))} style={inpStyle}>
@@ -632,7 +656,7 @@ export default function ColheitaPage() {
               </div>
 
               {/* Área e Data */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <label>
                   <div style={lbStyle}>Área colhida (ha)</div>
                   <input type="number" value={formColheita.area_ha ?? ""} onChange={e => setFormColheita(f => ({ ...f, area_ha: parseFloat(e.target.value) || 0 }))} style={inpStyle} min={0} step={0.01} />
@@ -679,14 +703,8 @@ export default function ColheitaPage() {
         const totalDescKg = d_umid + d_imp + d_avar;
         const pctDesconto = pl > 0 ? (totalDescKg / pl) * 100 : 0;
         return (
-          <div style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex",
-            alignItems: "center", justifyContent: "center", zIndex: 1000,
-          }}>
-            <div style={{
-              background: "#fff", borderRadius: 14, width: 600, maxWidth: "95vw", maxHeight: "92vh",
-              overflow: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-            }}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setModalRomaneio(null); }}>
+            <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Lançar Romaneio</h2>
                 <button onClick={() => setModalRomaneio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
@@ -696,7 +714,7 @@ export default function ColheitaPage() {
                 {/* Seção 1 — Identificação */}
                 <div>
                   <div style={secTitle}>Identificação</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                     <label>
                       <div style={lbStyle}>Nº Romaneio</div>
                       <input value={formRomaneio.numero} onChange={e => setFormRomaneio(f => ({ ...f, numero: e.target.value }))} style={inpStyle} placeholder="001" />
@@ -721,7 +739,7 @@ export default function ColheitaPage() {
                 {/* Seção 2 — Pesagem */}
                 <div>
                   <div style={secTitle}>Pesagem</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                     <label>
                       <div style={lbStyle}>Peso Bruto (kg) *</div>
                       <input
@@ -757,7 +775,7 @@ export default function ColheitaPage() {
                 {/* Seção 3 — Classificação do Grão */}
                 <div>
                   <div style={secTitle}>Classificação do Grão</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 12 }}>
                     <label>
                       <div style={lbStyle}>Umidade medida (%)</div>
                       <input
@@ -802,12 +820,12 @@ export default function ColheitaPage() {
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase" }}>
                         Resultado da Classificação
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 10 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 10 }}>
                         <DescontoBox label="Desc. Umidade" valor={d_umid} />
                         <DescontoBox label="Desc. Impureza" valor={d_imp} />
                         <DescontoBox label="Desc. Avariados" valor={d_avar} />
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                         <div style={{ background: "#FFF5F5", borderRadius: 8, padding: 10, textAlign: "center" }}>
                           <div style={{ fontSize: 10, color: "#E24B4A", marginBottom: 4 }}>Total Descontos</div>
                           <div style={{ fontWeight: 700, color: "#E24B4A", fontSize: 14 }}>-{fmt(totalDescKg, 1)} kg</div>
@@ -846,14 +864,8 @@ export default function ColheitaPage() {
           MODAL — Finalizar Colheita
       ────────────────────────────────────────── */}
       {modalFinalizar && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex",
-          alignItems: "center", justifyContent: "center", zIndex: 1000,
-        }}>
-          <div style={{
-            background: "#fff", borderRadius: 14, width: 480, maxWidth: "95vw",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-          }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setModalFinalizar(null); }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Finalizar Colheita</h2>
               <button onClick={() => setModalFinalizar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
@@ -866,7 +878,7 @@ export default function ColheitaPage() {
                   {PRODUTOS_PADRAO[modalFinalizar.produto]?.label ?? modalFinalizar.produto}
                   {modalFinalizar.variedade ? ` — ${modalFinalizar.variedade}` : ""}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "#555" }}>Peso Líquido</div>
                     <div style={{ fontWeight: 600, color: "#0B2D50" }}>{fmt(modalFinalizar.total_kg_bruto / 1000, 2)} t</div>

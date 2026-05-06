@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
+import FazendaSelector from "../../../components/FazendaSelector";
 import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -109,7 +110,9 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4,
 
 // ═══════════════════════════════════════════════════════════════
 export default function ContasPagar() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
+  const fid = formFazendaId ?? fazendaId;
 
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
@@ -322,7 +325,7 @@ export default function ContasPagar() {
     const valorFinal = form.moeda === "barter" ? sacas * precoSaca : desmascarar(form.valorMask);
 
     const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
-      fazenda_id:    fazendaId!,
+      fazenda_id:    fid!,
       tipo:          "pagar",
       moeda:         form.moeda,
       pessoa_id:     form.pessoa_id     || undefined,
@@ -406,13 +409,22 @@ export default function ContasPagar() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{
+          background: "#fff",
+          borderBottom: "0.5px solid #D4DCE8",
+          padding: "12px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexDirection: "row",
+          gap: 0,
+        }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>Contas a Pagar</h1>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>Compromissos financeiros, parcelas e pagamentos — ordenados por vencimento</p>
           </div>
           <button
-            onClick={() => setModalNovo(true)}
+            onClick={() => { setFormFazendaId(fazendaId); setModalNovo(true); }}
             style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
           >
             ↑ Nova Conta a Pagar
@@ -718,6 +730,7 @@ export default function ContasPagar() {
           background: "#1A4870", color: "#fff", borderRadius: 14,
           padding: "12px 22px", display: "flex", alignItems: "center", gap: 18,
           boxShadow: "0 6px 24px rgba(0,0,0,0.25)", zIndex: 90, whiteSpace: "nowrap",
+          maxWidth: "calc(100vw - 32px)",
         }}>
           <span style={{ fontSize: 13 }}>
             <strong>{selecionados.size}</strong> título{selecionados.size !== 1 ? "s" : ""} selecionado{selecionados.size !== 1 ? "s" : ""}
@@ -741,9 +754,9 @@ export default function ContasPagar() {
 
       {/* ── Modal Baixa ─────────────────────────────────────────── */}
       {modalBaixa && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 440, maxWidth: "92vw" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>
               {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : "Registrar pagamento"}
             </div>
@@ -761,7 +774,7 @@ export default function ContasPagar() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <div style={{ gridColumn: "1/-1" }}>
                   <label style={lbl}>Valor pago (R$) *</label>
                   <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.valorMask}
@@ -810,9 +823,9 @@ export default function ContasPagar() {
 
       {/* ── Modal Pagamento em Lote ──────────────────────────── */}
       {modalLote && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 580, maxWidth: "96vw", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Pagamento em Lote (Borderô)</div>
@@ -823,7 +836,7 @@ export default function ContasPagar() {
             <div style={{ padding: "18px 22px" }}>
 
               {/* Parâmetros do lote */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 16 }}>
                 <div>
                   <label style={{ fontSize: 11, color: "#555", marginBottom: 3, display: "block" }}>Data do Pagamento *</label>
                   <input type="date" style={{ ...inp }} value={loteData} onChange={e => setLoteData(e.target.value)} />
@@ -892,12 +905,14 @@ export default function ContasPagar() {
 
       {/* ── Modal Novo CP ──────────────────────────────────────── */}
       {modalNovo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 600, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Nova Conta a Pagar</div>
-              <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <FazendaSelector contaId={contaId} value={fid} onChange={setFormFazendaId} />
+                <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
                 {(["real", "previsao"] as const).map(n => (
                   <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
                     style={{ padding: "5px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
@@ -906,6 +921,7 @@ export default function ContasPagar() {
                     {n === "real" ? "Real" : "Previsão"}
                   </button>
                 ))}
+                </div>
               </div>
             </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>
@@ -914,7 +930,7 @@ export default function ContasPagar() {
                 : "Lançamentos de insumos e serviços são criados automaticamente a partir das operações de lavoura."}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
               <div>
                 <label style={lbl}>Moeda</label>
                 <select style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
@@ -1042,7 +1058,7 @@ export default function ContasPagar() {
               </div>
 
               {form.condicao === "prazo" && (<>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "end", marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, alignItems: "end", marginBottom: 12 }}>
                   <div>
                     <label style={lbl}>Nº de parcelas</label>
                     <input style={inp} type="number" min="2" max="120" value={form.qtdParcelas}
@@ -1067,38 +1083,40 @@ export default function ContasPagar() {
                 </div>
 
                 {parcelas.length > 0 && (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 8 }}>
-                    <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
-                        {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
-                          <th key={i} style={{ padding: "5px 8px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 8 }}>
+                      <thead>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                            <th key={i} style={{ padding: "5px 8px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parcelas.map((p, i) => (
+                          <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                            <td style={{ padding: "4px 8px", textAlign: "center", color: "#555", fontSize: 11, width: 40 }}>{i + 1}/{parcelas.length}</td>
+                            <td style={{ padding: "4px 8px" }}>
+                              <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
+                                onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
+                            </td>
+                            <td style={{ padding: "4px 8px" }}>
+                              <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
+                                onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
+                            </td>
+                          </tr>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parcelas.map((p, i) => (
-                        <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
-                          <td style={{ padding: "4px 8px", textAlign: "center", color: "#555", fontSize: 11, width: 40 }}>{i + 1}/{parcelas.length}</td>
-                          <td style={{ padding: "4px 8px" }}>
-                            <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
-                              onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
-                          </td>
-                          <td style={{ padding: "4px 8px" }}>
-                            <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
-                              onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          <td colSpan={2} style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                            {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ background: "#F3F6F9" }}>
-                        <td colSpan={2} style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
-                        <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
-                          {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </tfoot>
+                    </table>
+                  </div>
                 )}
                 {parcelas.length === 0 && (
                   <div style={{ fontSize: 11, color: "#888", padding: "8px 12px", background: "#F4F6FA", borderRadius: 7 }}>
@@ -1111,7 +1129,7 @@ export default function ContasPagar() {
             {/* Adicionais */}
             <div style={{ marginTop: 18, borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 12 }}>Adicionais — LCDPR, encargos e vínculos</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 <div>
                   <label style={lbl}>Tipo Documento LCDPR</label>
                   <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>

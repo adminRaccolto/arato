@@ -190,7 +190,7 @@ export default function NfCompraPage() {
   const [modalNovoInsumo, setModalNovoInsumo] = useState<{ itemKey: string; nome: string } | null>(null);
   const [formNovoInsumo, setFormNovoInsumo] = useState<{
     nome: string; categoria: Insumo["categoria"]; unidade: Insumo["unidade"];
-  }>({ nome: "", categoria: "outros", unidade: "unid" });
+  }>({ nome: "", categoria: "outros", unidade: "un" });
   const [novoInsumoSaving, setNovoInsumoSaving] = useState(false);
   const [novoInsumoErr,    setNovoInsumoErr]    = useState("");
 
@@ -595,7 +595,7 @@ export default function NfCompraPage() {
 
   // ── Cadastro rápido de insumo dentro do wizard ───────────
   function abrirNovoInsumo(itemKey: string, descricaoNf: string) {
-    setFormNovoInsumo({ nome: descricaoNf, categoria: "outros", unidade: "unid" });
+    setFormNovoInsumo({ nome: descricaoNf, categoria: "outros", unidade: "un" });
     setNovoInsumoErr("");
     setModalNovoInsumo({ itemKey, nome: descricaoNf });
   }
@@ -1721,16 +1721,19 @@ export default function NfCompraPage() {
                   <label style={lbl}>Unidade de medida *</label>
                   <select style={inp} value={formNovoInsumo.unidade}
                     onChange={e => setFormNovoInsumo(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                    <option value="unid">Unidade (unid)</option>
+                    <option value="un">Unidade (un)</option>
                     <option value="kg">Quilograma (kg)</option>
+                    <option value="g">Grama (g)</option>
                     <option value="L">Litro (L)</option>
+                    <option value="mL">Mililitro (mL)</option>
                     <option value="sc">Saca (sc)</option>
-                    <option value="ton">Tonelada (ton)</option>
+                    <option value="t">Tonelada (t)</option>
                     <option value="m">Metro (m)</option>
                     <option value="m2">Metro² (m²)</option>
                     <option value="cx">Caixa (cx)</option>
                     <option value="pc">Peça (pc)</option>
                     <option value="par">Par</option>
+                    <option value="outros">Outros</option>
                   </select>
                 </div>
               </div>

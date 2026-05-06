@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
+import FazendaSelector from "../../../components/FazendaSelector";
 import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -103,7 +104,9 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4,
 
 // ═══════════════════════════════════════════════════════════════
 export default function ContasReceber() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
+  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
+  const fid = formFazendaId ?? fazendaId;
 
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
@@ -305,7 +308,7 @@ export default function ContasReceber() {
     const valorFinal = form.moeda === "barter" ? sacas * precoSaca : desmascarar(form.valorMask);
 
     const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
-      fazenda_id:    fazendaId!,
+      fazenda_id:    fid!,
       tipo:          "receber",
       moeda:         form.moeda,
       pessoa_id:     form.pessoa_id     || undefined,
@@ -372,17 +375,19 @@ export default function ContasReceber() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>Contas a Receber</h1>
-            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>Vendas de grãos, serviços, arrendamentos e outros recebimentos — ordenados por vencimento</p>
+        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "12px 24px" }}>
+          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>Contas a Receber</h1>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>Vendas de grãos, serviços, arrendamentos e outros recebimentos — ordenados por vencimento</p>
+            </div>
+            <button
+              onClick={() => { setFormFazendaId(fazendaId); setModalNovo(true); }}
+              style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              ↓ Nova Conta a Receber
+            </button>
           </div>
-          <button
-            onClick={() => setModalNovo(true)}
-            style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-          >
-            ↓ Nova Conta a Receber
-          </button>
         </header>
 
         <div style={{ padding: "18px 24px", flex: 1, overflowY: "auto" }}>
@@ -460,7 +465,7 @@ export default function ContasReceber() {
                 </span>
               </div>
 
-              {/* Tabela wide */}
+              {/* Tabela */}
               <div style={{ overflowX: "auto" }}>
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
@@ -707,9 +712,9 @@ export default function ContasReceber() {
 
       {/* ── Modal Baixa ─────────────────────────────────────────── */}
       {modalBaixa && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 440, maxWidth: "92vw" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>
               {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : "Registrar recebimento"}
             </div>
@@ -727,7 +732,7 @@ export default function ContasReceber() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <div style={{ gridColumn: "1/-1" }}>
                   <label style={lbl}>Valor recebido (R$) *
                     {modalBaixa.moeda === "USD" && (
@@ -782,9 +787,9 @@ export default function ContasReceber() {
 
       {/* ── Modal Recebimento em Lote ────────────────────────── */}
       {modalLote && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 580, maxWidth: "96vw", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Recebimento em Lote (Borderô)</div>
@@ -793,7 +798,7 @@ export default function ContasReceber() {
               <button onClick={() => setModalLote(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
             </div>
             <div style={{ padding: "18px 22px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 16 }}>
                 <div>
                   <label style={{ fontSize: 11, color: "#555", marginBottom: 3, display: "block" }}>Data do Recebimento *</label>
                   <input type="date" style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", boxSizing: "border-box" as const, outline: "none" }} value={loteData} onChange={e => setLoteData(e.target.value)} />
@@ -858,12 +863,14 @@ export default function ContasReceber() {
 
       {/* ── Modal Nova CR ──────────────────────────────────────── */}
       {modalNovo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 600, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
               <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Nova Conta a Receber</div>
-              <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <FazendaSelector contaId={contaId} value={fid} onChange={setFormFazendaId} />
+                <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
                 {(["real", "previsao"] as const).map(n => (
                   <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
                     style={{ padding: "5px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
@@ -874,13 +881,14 @@ export default function ContasReceber() {
                 ))}
               </div>
             </div>
+          </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>
               {form.natureza === "previsao"
                 ? "Previsão de receita — não gera movimentação financeira real. Confirme quando o recebimento for efetivado."
                 : "Vendas de grãos são lançadas automaticamente a partir de NF-e autorizadas."}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
               <div>
                 <label style={lbl}>Moeda</label>
                 <select style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
@@ -996,7 +1004,7 @@ export default function ContasReceber() {
                 Parcelar este recebimento
               </label>
               {form.parcelar && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                   <div>
                     <label style={lbl}>Nº de parcelas</label>
                     <input style={inp} type="number" min="2" max="60" value={form.totalParcelas} onChange={e => setForm(p => ({ ...p, totalParcelas: e.target.value }))} />
@@ -1020,7 +1028,7 @@ export default function ContasReceber() {
             {/* Adicionais */}
             <div style={{ marginTop: 18, borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 12 }}>Adicionais — LCDPR e vínculos</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 <div>
                   <label style={lbl}>Tipo Documento LCDPR</label>
                   <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>

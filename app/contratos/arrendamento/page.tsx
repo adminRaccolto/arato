@@ -233,14 +233,19 @@ export default function Arrendamentos() {
         produtor_id_2: fC.produtor_id_2 || null,
       };
       if (editContrato) {
-        const { data } = await supabase.from("arrendamentos").update(payload).eq("id", editContrato.id).select().single();
+        const { data, error } = await supabase.from("arrendamentos").update(payload).eq("id", editContrato.id).select().single();
+        if (error) throw error;
         setArrendamentos(prev => prev.map(a => a.id === editContrato.id ? data as Arrendamento : a));
       } else {
-        const { data } = await supabase.from("arrendamentos").insert(payload).select().single();
+        const { data, error } = await supabase.from("arrendamentos").insert(payload).select().single();
+        if (error) throw error;
         setArrendamentos(prev => [...prev, data as Arrendamento]);
       }
       setModalContrato(false); setEditContrato(null); setFC(initFC());
-    } catch (e) { alert((e as { message?: string })?.message ?? "Erro ao salvar contrato"); }
+    } catch (e) {
+      console.error("Erro ao salvar arrendamento:", e);
+      alert((e as { message?: string })?.message ?? "Erro ao salvar contrato");
+    }
     finally { setSalvando(false); }
   }
 

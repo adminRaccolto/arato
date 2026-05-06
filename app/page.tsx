@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../components/TopNav";
+import OnboardingPanel from "../components/OnboardingPanel";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../components/AuthProvider";
 import type { PrecosData } from "./api/precos/route";
@@ -93,7 +94,7 @@ type Alerta = {
 
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, onboardingAtivo } = useAuth();
 
   const [alertas,    setAlertas]    = useState<Alerta[]>([]);
   const [loadAl,     setLoadAl]     = useState(true);
@@ -385,10 +386,13 @@ export default function Dashboard() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
 
-      <main style={{ flex: 1, padding: "18px 24px" }}>
+      <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+
+        {/* ── Onboarding ── */}
+        {onboardingAtivo && <OnboardingPanel />}
 
         {/* ── Cabeçalho ── */}
-        <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 8 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>Dashboard</h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#666" }}>
@@ -398,14 +402,14 @@ export default function Dashboard() {
             </p>
           </div>
           {alertas.some(a => a.urgencia === "critico") && (
-            <div style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, color: "#991B1B" }}>
+            <div style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#991B1B", alignSelf: "center" }}>
               {alertas.filter(a => a.urgencia === "critico").length} alerta{alertas.filter(a => a.urgencia === "critico").length > 1 ? "s" : ""} crítico{alertas.filter(a => a.urgencia === "critico").length > 1 ? "s" : ""}
             </div>
           )}
         </div>
 
         {/* ── Grade principal ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, alignItems: "start" }}>
 
           {/* ── COLUNA ESQUERDA ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -438,36 +442,30 @@ export default function Dashboard() {
                       <div
                         key={a.id}
                         style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "10px 16px",
+                          display: "flex", alignItems: "center",
+                          flexDirection: "row",
+                          gap: 12,
+                          padding: "10px 14px",
                           borderBottom: "0.5px solid #F3F5F9",
                           background: cor.bg,
                           borderLeft: `3px solid ${cor.badge}`,
                         }}
                       >
-                        {/* Badge tipo */}
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, flexShrink: 0,
-                          background: cor.badge, color: "#fff",
-                        }}>
-                          {TIPO_LABEL[a.tipo] ?? a.tipo}
-                        </span>
-
-                        {/* Descrição */}
-                        <span style={{ flex: 1, fontSize: 12.5, color: cor.text, lineHeight: 1.4 }}>{a.desc}</span>
-
-                        {/* Ação */}
-                        <a
-                          href={a.link}
-                          style={{
-                            fontSize: 11, padding: "5px 12px", borderRadius: 6,
-                            background: "#fff", border: `0.5px solid ${cor.badge}`,
-                            color: cor.badge, fontWeight: 600, textDecoration: "none",
-                            whiteSpace: "nowrap", flexShrink: 0,
-                          }}
-                        >
-                          {a.linkLabel}
-                        </a>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                          {/* Badge tipo */}
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, flexShrink: 0,
+                            background: cor.badge, color: "#fff",
+                          }}>
+                            {TIPO_LABEL[a.tipo] ?? a.tipo}
+                          </span>
+                          {/* Descrição */}
+                          <span style={{ flex: 1, fontSize: 12, color: cor.text, lineHeight: 1.4 }}>{a.desc}</span>
+                          {/* Ação */}
+                          <a href={a.link} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, background: "#fff", border: `0.5px solid ${cor.badge}`, color: cor.badge, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+                            {a.linkLabel}
+                          </a>
+                        </div>
                       </div>
                     );
                   })}
@@ -497,7 +495,9 @@ export default function Dashboard() {
               background: saldoSemana >= 0 ? "#F0FDF4" : "#FEF2F2",
               border: `0.5px solid ${saldoSemana >= 0 ? "#86EFAC" : "#FECACA"}`,
               borderRadius: 10, padding: "14px 18px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
+              display: "flex", alignItems: "center",
+              justifyContent: "space-between",
+              flexDirection: "row",
             }}>
               <div>
                 <div style={{ fontSize: 12, color: saldoSemana >= 0 ? "#166534" : "#991B1B", marginBottom: 2 }}>

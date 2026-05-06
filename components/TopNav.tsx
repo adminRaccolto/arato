@@ -6,6 +6,7 @@ import { useAuth } from "./AuthProvider";
 import { supabase } from "../lib/supabase";
 import type { Fazenda } from "../lib/supabase";
 
+
 // ─── Tipos ───────────────────────────────────────────────────
 type NavLink     = { type?: "link";     id: string; label: string; path: string };
 type NavDivider  = { type: "divider";   label: string };
@@ -13,8 +14,8 @@ type NavSubgroup = { type: "subgroup";  id: string; label: string; children: Nav
 type NavChild    = NavLink | NavDivider | NavSubgroup;
 
 type NavItem =
-  | NavLink
-  | { type: "group"; id: string; label: string; panel?: boolean; children: NavChild[] };
+  | (NavLink & { minStep?: number })
+  | { type: "group"; id: string; label: string; panel?: boolean; minStep?: number; children: NavChild[] };
 
 function extrairGrupos(children: NavChild[]): { label: string; items: NavLink[] }[] {
   const grupos: { label: string; items: NavLink[] }[] = [];
@@ -34,10 +35,10 @@ function extrairGrupos(children: NavChild[]): { label: string; items: NavLink[] 
 // ─── Dados de navegação ──────────────────────────────────────
 const NAV: NavItem[] = [
 
-  { id: "dashboard", label: "Dashboard", path: "/" },
+  { id: "dashboard", label: "Dashboard", path: "/", minStep: 0 },
 
   {
-    type: "group", id: "cadastros", label: "Cadastros", panel: true,
+    type: "group", id: "cadastros", label: "Cadastros", panel: true, minStep: 0,
     children: [
       { type: "divider", label: "Gerais" },
       { id: "cad-produtores",   label: "Produtores",            path: "/cadastros?tab=produtores"   },
@@ -59,7 +60,7 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "comercial", label: "Comercial",
+    type: "group", id: "comercial", label: "Comercial", minStep: 4,
     children: [
       { id: "com-contratos",     label: "Contratos de Grãos",       path: "/contratos"              },
       { id: "com-arrendamentos", label: "Contratos de Arrendamento", path: "/contratos/arrendamento" },
@@ -68,7 +69,7 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "transporte", label: "Transporte",
+    type: "group", id: "transporte", label: "Transporte", minStep: 7,
     children: [
       { id: "transp-cte",  label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte"  },
       { id: "transp-mdfe", label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe" },
@@ -76,7 +77,7 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "compras-estoque", label: "Compras & Estoque",
+    type: "group", id: "compras-estoque", label: "Compras & Estoque", minStep: 5,
     children: [
       { id: "comp-pedidos",  label: "Pedidos de Compra",  path: "/compras"  },
       {
@@ -86,12 +87,13 @@ const NAV: NavItem[] = [
           { id: "comp-nf-servico", label: "NF de Serviços", path: "/compras/nf-servico" },
         ],
       },
-      { id: "comp-estoque", label: "Posição de Estoque", path: "/estoque" },
+      { id: "comp-estoque",       label: "Posição de Estoque",        path: "/estoque"                },
+      { id: "comp-abastecimento", label: "Abastecimento de Máquinas", path: "/estoque/abastecimento"  },
     ],
   },
 
   {
-    type: "group", id: "financeiro", label: "Financeiro",
+    type: "group", id: "financeiro", label: "Financeiro", minStep: 6,
     children: [
       { id: "fin-pagar",   label: "Contas a Pagar",   path: "/financeiro/pagar"   },
       { id: "fin-receber", label: "Contas a Receber",  path: "/financeiro/receber" },
@@ -108,15 +110,17 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-fin-relatorios", label: "Relatórios",
         children: [
-          { id: "fin-fluxo", label: "Fluxo de Caixa",      path: "/financeiro/relatorios?aba=fluxo" },
-          { id: "fin-dfc",   label: "DFC — Demonstrativo", path: "/financeiro/relatorios?aba=dfc"   },
+          { id: "fin-fluxo",   label: "Fluxo de Caixa",      path: "/financeiro/relatorios?aba=fluxo"   },
+          { id: "fin-cpcr",    label: "CP / CR — Contas",     path: "/financeiro/relatorios?aba=cpcr"    },
+          { id: "fin-dfc",     label: "DFC — Demonstrativo",  path: "/financeiro/relatorios?aba=dfc"     },
+          { id: "fin-posicao", label: "Posição por Conta",    path: "/financeiro/relatorios?aba=posicao" },
         ],
       },
     ],
   },
 
   {
-    type: "group", id: "lavoura", label: "Lavoura", panel: true,
+    type: "group", id: "lavoura", label: "Lavoura", panel: true, minStep: 3,
     children: [
       { type: "divider", label: "Lançamentos" },
       { id: "lav-correcao",     label: "Correção de Solo",    path: "/lavoura/correcao"              },
@@ -126,13 +130,15 @@ const NAV: NavItem[] = [
       { id: "lav-colheita",     label: "Colheita Própria",    path: "/lavoura/colheita"              },
       { type: "divider", label: "Planejamento" },
       { id: "lav-planejamento", label: "Planejamento de Safra", path: "/lavoura/planejamento"        },
+      { type: "divider", label: "Monitoramento" },
+      { id: "lav-pragas",         label: "Pragas & Doenças",     path: "/lavoura/pragas"                },
       { type: "divider", label: "Relatórios" },
       { id: "lav-rel-aplicacoes", label: "Aplicações por Ciclo", path: "/lavoura/relatorios/aplicacoes" },
     ],
   },
 
   {
-    type: "group", id: "fiscal", label: "Fiscal",
+    type: "group", id: "fiscal", label: "Fiscal", minStep: 7,
     children: [
       {
         type: "subgroup", id: "sg-notas-saida", label: "Notas de Saída",
@@ -149,6 +155,7 @@ const NAV: NavItem[] = [
           { id: "fiscal-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
         ],
       },
+      { id: "fiscal-pendencias", label: "Pendências Fiscais", path: "/fiscal/pendencias" },
       {
         type: "subgroup", id: "sg-obrigacoes", label: "Obrigações Acessórias",
         children: [
@@ -162,7 +169,7 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "custos", label: "Custos",
+    type: "group", id: "custos", label: "Custos", minStep: 3,
     children: [
       { id: "custos-dre",        label: "DRE Agrícola",         path: "/custos?aba=dre"                },
       { id: "custos-custoha",    label: "Custo / ha",           path: "/custos?aba=custoha"            },
@@ -175,7 +182,7 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "configuracoes", label: "Configurações",
+    type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
     children: [
       { type: "divider", label: "Cadastro" },
       { id: "conf-empresa",     label: "Empresa",        path: "/configuracoes?tab=empresa"     },
@@ -197,8 +204,9 @@ const NAV: NavItem[] = [
           { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade" },
         ],
       },
-      { id: "conf-automacoes", label: "Automações",           path: "/configuracoes/automacoes" },
-      { id: "conf-backup",     label: "Backup & Restauração", path: "/configuracoes/backup"     },
+      { id: "conf-automacoes",   label: "Automações",           path: "/configuracoes/automacoes"  },
+      { id: "conf-backup",       label: "Backup & Restauração", path: "/configuracoes/backup"      },
+      { id: "conf-importacao",   label: "Importações",          path: "/configuracoes/importacao"  },
       { type: "divider", label: "Ferramentas do Sistema" },
       { id: "conf-usuarios", label: "Usuários & Permissões", path: "/admin/usuarios" },
       { id: "conf-logs",     label: "Log do Sistema",        path: "/admin/logs"     },
@@ -207,7 +215,7 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "ajuda", label: "Ajuda",
+    type: "group", id: "ajuda", label: "Ajuda", minStep: 0,
     children: [
       { id: "ajuda-learning",   label: "Aprendizado",  path: "/learning"   },
       { id: "ajuda-controller", label: "Controller",   path: "/controller" },
@@ -220,16 +228,18 @@ const NAV: NavItem[] = [
 interface TopNavProps { automacoesAtivas?: number }
 
 export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
-  const [dropdown,    setDropdown]    = useState<string | null>(null);
-  const [openSub,     setOpenSub]     = useState<string | null>(null);
-  const [panelGroup,  setPanelGroup]  = useState<string>("Imóvel Rural");
-  const [fazenda,     setFazenda]     = useState<Fazenda | null>(null);
-  const [logoArato,   setLogoArato]   = useState<string | null>(null);
-  const [nomeArato,   setNomeArato]   = useState("Arato");
-  const [logoFazenda, setLogoFazenda] = useState<string | null>(null);
+  const [dropdown,         setDropdown]         = useState<string | null>(null);
+  const [openSub,          setOpenSub]          = useState<string | null>(null);
+  const [panelGroup,       setPanelGroup]        = useState<string>("Imóvel Rural");
+  const [fazenda,          setFazenda]          = useState<Fazenda | null>(null);
+  const [logoArato,        setLogoArato]        = useState<string | null>(null);
+  const [nomeArato,        setNomeArato]        = useState("Arato");
+  const [logoFazenda,      setLogoFazenda]      = useState<string | null>(null);
+  const [fazendas,         setFazendas]         = useState<Fazenda[]>([]);
+  const [farmSwitcherOpen, setFarmSwitcherOpen] = useState(false);
 
   const pathname = usePathname();
-  const { fazendaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -237,6 +247,12 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     supabase.from("fazendas").select("*").eq("id", fazendaId).single()
       .then(({ data }) => { if (data) setFazenda(data); });
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (!contaId) return;
+    supabase.from("fazendas").select("*").eq("conta_id", contaId).order("nome")
+      .then(({ data }) => { if (data) setFazendas(data); });
+  }, [contaId]);
 
   useEffect(() => {
     // Logo do sistema: lida do Supabase Storage (bucket "logos", arquivo "arato.png")
@@ -256,6 +272,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setDropdown(null);
         setOpenSub(null);
+        setFarmSwitcherOpen(false);
       }
     }
     document.addEventListener("mousedown", onClickOutside);
@@ -412,12 +429,12 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       {/* ── Faixa 1 ── */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 20px", height: 56,
+        padding: "0 16px", height: 56,
         borderBottom: "0.5px solid #D4DCE8",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {logoArato ? (
-            <img src={logoArato} alt={nomeArato} style={{ height: 36, maxWidth: 140, objectFit: "contain" }} />
+            <img src={logoArato} alt={nomeArato} style={{ height: 36, maxWidth: 130, objectFit: "contain" }} />
           ) : (
             <img src="/Logo_Arato.png" alt="Arato" style={{ height: 36, width: "auto", objectFit: "contain" }} />
           )}
@@ -425,21 +442,52 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {fazenda && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {logoFazenda ? (
-                <img src={logoFazenda} alt="Logo fazenda" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", border: "0.5px solid #D4DCE8" }} />
-              ) : (
-                <div style={{ width: 36, height: 36, borderRadius: 9, background: "#F3F6F9", border: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1A4870" }}>
-                  {iniciaisFazenda}
+            <div style={{ position: "relative" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: 10, cursor: fazendas.length > 1 ? "pointer" : "default", borderRadius: 8, padding: "4px 8px", background: farmSwitcherOpen ? "#F3F6F9" : "transparent" }}
+                onClick={() => fazendas.length > 1 && setFarmSwitcherOpen(o => !o)}
+              >
+                {logoFazenda ? (
+                  <img src={logoFazenda} alt="Logo fazenda" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", border: "0.5px solid #D4DCE8" }} />
+                ) : (
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: "#F3F6F9", border: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1A4870" }}>
+                    {iniciaisFazenda}
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.25 }}>{fazenda.nome}</div>
+                  <div style={{ fontSize: 11, color: "#666" }}>
+                    {fazenda.municipio} · {fazenda.estado}
+                    {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
+                  </div>
+                </div>
+                {fazendas.length > 1 && (
+                  <span style={{ fontSize: 10, color: "#888", transform: farmSwitcherOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.15s" }}>▼</span>
+                )}
+              </div>
+              {farmSwitcherOpen && fazendas.length > 1 && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 220, zIndex: 200, overflow: "hidden" }}>
+                  <div style={{ padding: "6px 12px 4px", fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Trocar fazenda</div>
+                  {fazendas.map(f => (
+                    <div
+                      key={f.id}
+                      onClick={() => { setFazendaAtiva(f.id, f.nome); setFarmSwitcherOpen(false); }}
+                      style={{ padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: f.id === fazendaId ? "#EAF3FB" : "transparent" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = f.id === fazendaId ? "#EAF3FB" : "#F3F6F9")}
+                      onMouseLeave={e => (e.currentTarget.style.background = f.id === fazendaId ? "#EAF3FB" : "transparent")}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#F3F6F9", border: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1A4870", flexShrink: 0 }}>
+                        {f.nome.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: f.id === fazendaId ? 700 : 500, color: "#1a1a1a" }}>{f.nome}</div>
+                        <div style={{ fontSize: 10, color: "#666" }}>{f.municipio} · {f.estado}</div>
+                      </div>
+                      {f.id === fazendaId && <span style={{ marginLeft: "auto", fontSize: 10, color: "#1A4870" }}>✓</span>}
+                    </div>
+                  ))}
                 </div>
               )}
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.25 }}>{fazenda.nome}</div>
-                <div style={{ fontSize: 11, color: "#666" }}>
-                  {fazenda.municipio} · {fazenda.estado}
-                  {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
-                </div>
-              </div>
             </div>
           )}
 
@@ -490,6 +538,23 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       {/* ── Faixa 2: navegação ── */}
       <nav style={{ display: "flex", alignItems: "center", padding: "0 16px", height: 40, gap: 2, background: "#1A5C38", overflow: "visible" }}>
         {NAV.map(item => {
+          // During onboarding, items with minStep > stepsCompletos are locked
+          const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;
+          if (isLocked) {
+            return (
+              <div key={item.type === "group" ? item.id : (item as NavLink).id} style={{
+                display: "flex", alignItems: "center", gap: 4,
+                padding: "5px 12px", borderRadius: 6,
+                color: "rgba(255,255,255,0.35)",
+                fontSize: 13, cursor: "not-allowed", userSelect: "none",
+                whiteSpace: "nowrap",
+              }} title={`Disponível após a etapa ${item.minStep ?? 0} da implantação`}>
+                {"label" in item ? item.label : ""}
+                <span style={{ fontSize: 9, opacity: 0.6 }}>🔒</span>
+              </div>
+            );
+          }
+
           if (item.type === "group") {
             const ativo = grupoAtivo(item);
             const open  = dropdown === item.id;

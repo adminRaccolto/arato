@@ -4,7 +4,7 @@ import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
 import {
-  listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, listarGruposInsumo,
+  listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, listarGruposInsumo, listarFazendas,
 } from "../../../../lib/db";
 import type { Talhao, Insumo, AnoSafra, Ciclo, GrupoInsumo, Fazenda } from "../../../../lib/supabase";
 
@@ -84,6 +84,10 @@ const AGRUP_LABELS: { key: Agrupamento; label: string }[] = [
 export default function RelAplicacoesPage() {
   const { fazendaId, nomeUsuario } = useAuth();
 
+  // Suporte multi-fazenda
+  const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
+  const [filtroFazenda, setFiltroFazenda] = useState<string>(""); // "" = ativa, "todas", ou id
+
   // Dados de referência
   const [talhoes,   setTalhoes]   = useState<Talhao[]>([]);
   const [insumos,   setInsumos]   = useState<Insumo[]>([]);
@@ -116,22 +120,39 @@ export default function RelAplicacoesPage() {
   const [waStatus,  setWaStatus]  = useState<"idle"|"uploading"|"done"|"error">("idle");
   const [waUrl,     setWaUrl]     = useState("");
 
-  // printRef removido — PDF gerado via jsPDF, impressão via nova janela HTML
+  // IDs efetivos
+  const fids = (() => {
+    if (filtroFazenda === "todas") return todasFazendas.map(f => f.id);
+    const fid = filtroFazenda || fazendaId || "";
+    return fid ? [fid] : [];
+  })();
+  const fid0 = fids[0] ?? fazendaId ?? "";
+
+  // ── Carregar fazendas disponíveis ──
+  useEffect(() => {
+    listarFazendas().then(setTodasFazendas).catch(() => {});
+  }, []);
 
   // ── Carrega referências ───────────────────────────────────
   useEffect(() => {
-    if (!fazendaId) return;
+    if (fids.length === 0) return;
     Promise.all([
-      listarTalhoes(fazendaId).then(setTalhoes),
-      listarInsumos(fazendaId).then(setInsumos),
-      listarAnosSafra(fazendaId).then(setAnos),
-      listarTodosCiclos(fazendaId).then(setCiclos),
-      listarGruposInsumo(fazendaId).then(setGrupos),
-      supabase.from("fazendas").select("*").eq("id", fazendaId).single().then(({ data }) => { if (data) setFazenda(data as Fazenda); }),
+      Promise.all(fids.map(f => listarTalhoes(f))).then(rs => setTalhoes(rs.flat())),
+      Promise.all(fids.map(f => listarInsumos(f))).then(rs => setInsumos(rs.flat())),
+      Promise.all(fids.map(f => listarAnosSafra(f))).then(rs => {
+        const seen = new Set<string>(); const merged: AnoSafra[] = [];
+        rs.flat().forEach(a => { if (!seen.has(a.id)) { seen.add(a.id); merged.push(a); } });
+        setAnos(merged);
+      }),
+      Promise.all(fids.map(f => listarTodosCiclos(f))).then(rs => setCiclos(rs.flat())),
+      listarGruposInsumo(fid0).then(setGrupos),
+      supabase.from("fazendas").select("*").eq("id", fid0).single().then(({ data }) => { if (data) setFazenda(data as Fazenda); }),
     ]).catch(() => {});
-    const logo = localStorage.getItem(`fazenda_logo_${fazendaId}`);
+    const logo = localStorage.getItem(`fazenda_logo_${fid0}`);
     if (logo) setLogoFaz(logo);
-  }, [fazendaId]);
+    setFCiclos([]); setFTalhoes([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fids.join(",")]);
 
   const ciclosFiltradosAno = fAno ? ciclos.filter(c => c.ano_safra_id === fAno) : ciclos;
 
@@ -163,10 +184,15 @@ export default function RelAplicacoesPage() {
 
   // ── Gera relatório ────────────────────────────────────────
   const gerar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (fids.length === 0) return;
     setCarregando(true); setErro(null);
     try {
       const ciclosAlvo = fCiclos.length > 0 ? fCiclos : ciclosFiltradosAno.map(c => c.id);
+
+      const fazQ = (table: string) => {
+        const q = supabase.from(table).select("*") as any;
+        return fids.length === 1 ? q.eq("fazenda_id", fids[0]) : q.in("fazenda_id", fids);
+      };
 
       const [
         { data: pulvs }, { data: pulvItens },
@@ -174,13 +200,13 @@ export default function RelAplicacoesPage() {
         { data: adubs }, { data: aduItens },
         { data: plantios },
       ] = await Promise.all([
-        supabase.from("pulverizacoes").select("*").eq("fazenda_id", fazendaId),
-        supabase.from("pulverizacao_itens").select("*").eq("fazenda_id", fazendaId),
-        supabase.from("correcoes_solo").select("*").eq("fazenda_id", fazendaId).then(r => r.error ? { data: [] } : r),
-        supabase.from("correcoes_solo_itens").select("*").eq("fazenda_id", fazendaId).then(r => r.error ? { data: [] } : r),
-        supabase.from("adubacoes_base").select("*").eq("fazenda_id", fazendaId).then(r => r.error ? { data: [] } : r),
-        supabase.from("adubacoes_base_itens").select("*").eq("fazenda_id", fazendaId).then(r => r.error ? { data: [] } : r),
-        supabase.from("plantios").select("*").eq("fazenda_id", fazendaId),
+        fazQ("pulverizacoes"),
+        fazQ("pulverizacao_itens"),
+        fazQ("correcoes_solo").then((r: any) => r.error ? { data: [] } : r),
+        fazQ("correcoes_solo_itens").then((r: any) => r.error ? { data: [] } : r),
+        fazQ("adubacoes_base").then((r: any) => r.error ? { data: [] } : r),
+        fazQ("adubacoes_base_itens").then((r: any) => r.error ? { data: [] } : r),
+        fazQ("plantios"),
       ]);
 
       const nomeT   = (id?: string) => talhoes.find(t => t.id === id)?.nome ?? "Sem talhão";
@@ -194,11 +220,11 @@ export default function RelAplicacoesPage() {
 
       // Pulverizações
       if (fTiposOp.includes("pulverizacao")) {
-        for (const p of (pulvs ?? []).filter(p => ciclosAlvo.includes(p.ciclo_id))) {
+        for (const p of ((pulvs ?? []) as any[]).filter((p: any) => ciclosAlvo.includes(p.ciclo_id))) {
           if (fTalhoes.length > 0 && p.talhao_id && !fTalhoes.includes(p.talhao_id)) continue;
           if (fDtInicio && p.data_inicio < fDtInicio) continue;
           if (fDtFim   && p.data_inicio > fDtFim)   continue;
-          const itens = (pulvItens ?? []).filter(i => i.pulverizacao_id === p.id);
+          const itens = ((pulvItens ?? []) as any[]).filter((i: any) => i.pulverizacao_id === p.id);
           for (const it of itens) {
             if (fProduto && !it.nome_produto.toLowerCase().includes(fProduto.toLowerCase())) continue;
             const info = infoIns(it.insumo_id);
@@ -663,6 +689,21 @@ export default function RelAplicacoesPage() {
           <div style={{ padding: "20px 22px", maxWidth: 900 }}>
             <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 22 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 18, paddingBottom: 10, borderBottom: "0.5px solid #D4DCE8" }}>Filtros do Relatório</div>
+
+              {/* Fazenda (só mostra se múltiplas fazendas) */}
+              {todasFazendas.length > 1 && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={lbl}>Fazenda</label>
+                  <select
+                    style={{ ...inp, borderColor: "#1A4870", background: "#F0F6FB" }}
+                    value={filtroFazenda || fid0}
+                    onChange={e => { setFiltroFazenda(e.target.value); setFAno(""); setFCiclos([]); setFTalhoes([]); }}
+                  >
+                    {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                    <option value="todas">Todas as fazendas (consolidado)</option>
+                  </select>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 18 }}>
                 <div>

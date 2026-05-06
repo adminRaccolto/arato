@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
+import { listarFazendas } from "../../../lib/db";
+import type { Fazenda } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type AnoSafra   = { id: string; ano: string };
-type Ciclo      = { id: string; cultura: string; ano_safra_id: string; talhoes?: string[] };
+type AnoSafra   = { id: string; ano: string; fazenda_id?: string };
+type Ciclo      = { id: string; cultura: string; ano_safra_id: string; fazenda_id: string };
 type DreRow     = { label: string; valor: number; bold?: boolean; indent?: number; tipo?: "receita" | "custo" | "resultado" | "subtotal" };
 
 type DreLinha = {
@@ -81,44 +83,87 @@ const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${fmt(v, 1)}%`;
 const fmtReal = (v: number) => `R$ ${fmt(v)}`;
 const fmtHa   = (v: number) => `${fmt(v)} sc/ha`;
 
+const CULT_LABELS: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", milho2: "Milho 2ª", algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo" };
+
 // ─── Página ───────────────────────────────────────────────────
 export default function DrePage() {
   const { fazendaId } = useAuth();
 
-  const [anosArr,  setAnosArr]  = useState<AnoSafra[]>([]);
+  // Suporte multi-fazenda
+  const [todasFazendas, setTodasFazendas] = useState<Fazenda[]>([]);
+  const [filtroFazenda, setFiltroFazenda] = useState<string>(""); // "" = ativa, "todas", ou id específico
+
+  const [anosArr,   setAnosArr]   = useState<AnoSafra[]>([]);
+  const [anoLabel,  setAnoLabel]  = useState<string>(""); // filtro por label ("2025/2026")
   const [ciclosArr, setCiclosArr] = useState<Ciclo[]>([]);
-  const [anoSel,   setAnoSel]   = useState<string>("");
-  const [ciclosSel, setCiclosSel] = useState<string[]>([]); // multi-select
-  const [loading,  setLoading]  = useState(false);
-  const [dres,     setDres]     = useState<DreData[]>([]);
-  const [viewMode, setViewMode] = useState<"consolidado" | "individual">("consolidado");
-  const [showPct,  setShowPct]  = useState(true);
-  const [showHa,   setShowHa]   = useState(false);
+  const [ciclosSel, setCiclosSel] = useState<string[]>([]);
+  const [loading,   setLoading]   = useState(false);
+  const [dres,      setDres]      = useState<DreData[]>([]);
+  const [viewMode,  setViewMode]  = useState<"consolidado" | "individual">("consolidado");
+  const [showPct,   setShowPct]   = useState(true);
+  const [showHa,    setShowHa]    = useState(false);
 
-  // ── Carga inicial ──
-  useEffect(() => {
-    if (!fazendaId) return;
-    supabase.from("anos_safra").select("id, ano").eq("fazenda_id", fazendaId).order("ano", { ascending: false })
-      .then(({ data }) => {
-        const rows = (data ?? []) as AnoSafra[];
-        setAnosArr(rows);
-        if (rows.length > 0) setAnoSel(rows[0].id);
-      });
-  }, [fazendaId]);
+  // IDs de fazendas efetivos para a query
+  const fids = (() => {
+    if (filtroFazenda === "todas") return todasFazendas.map(f => f.id);
+    const fid = filtroFazenda || fazendaId || "";
+    return fid ? [fid] : [];
+  })();
 
+  // ── Carregar fazendas disponíveis ──
   useEffect(() => {
-    if (!fazendaId || !anoSel) return;
-    supabase.from("ciclos").select("id, cultura, ano_safra_id").eq("fazenda_id", fazendaId).eq("ano_safra_id", anoSel).order("cultura")
-      .then(({ data }) => {
-        const rows = (data ?? []) as Ciclo[];
-        setCiclosArr(rows);
-        setCiclosSel(rows.map(c => c.id)); // seleciona todos por padrão
-      });
-  }, [fazendaId, anoSel]);
+    listarFazendas().then(setTodasFazendas).catch(() => {});
+  }, []);
+
+  // ── Carregar anos safra (por labels únicos) ──
+  useEffect(() => {
+    if (fids.length === 0) return;
+    Promise.all(
+      fids.map(fid =>
+        supabase.from("anos_safra").select("id, ano, fazenda_id").eq("fazenda_id", fid)
+          .order("ano", { ascending: false })
+          .then(r => (r.data ?? []) as AnoSafra[])
+      )
+    ).then(results => {
+      const seen = new Set<string>();
+      const unique: AnoSafra[] = [];
+      for (const rows of results) {
+        for (const a of rows) {
+          if (!seen.has(a.ano)) { seen.add(a.ano); unique.push(a); }
+        }
+      }
+      setAnosArr(unique);
+      if (unique.length > 0 && !anoLabel) setAnoLabel(unique[0].ano);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fids.join(",")]);
+
+  // ── Carregar ciclos (por label do ano safra) ──
+  useEffect(() => {
+    if (fids.length === 0 || !anoLabel) return;
+    Promise.all(
+      fids.map(fid =>
+        supabase.from("anos_safra").select("id").eq("fazenda_id", fid).eq("ano", anoLabel)
+          .then(r => (r.data ?? []).map(a => a.id as string))
+          .then(anoIds =>
+            anoIds.length > 0
+              ? supabase.from("ciclos").select("id, cultura, ano_safra_id, fazenda_id")
+                  .eq("fazenda_id", fid).in("ano_safra_id", anoIds).order("cultura")
+                  .then(r => (r.data ?? []) as Ciclo[])
+              : Promise.resolve([] as Ciclo[])
+          )
+      )
+    ).then(results => {
+      const all = results.flat();
+      setCiclosArr(all);
+      setCiclosSel(all.map(c => c.id));
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fids.join(","), anoLabel]);
 
   // ── Calcular DRE ──
   async function calcularDre() {
-    if (!fazendaId || ciclosSel.length === 0) return;
+    if (ciclosSel.length === 0) return;
     setLoading(true);
 
     const resultados: DreData[] = [];
@@ -126,10 +171,10 @@ export default function DrePage() {
     for (const cicloId of ciclosSel) {
       const ciclo = ciclosArr.find(c => c.id === cicloId);
       if (!ciclo) continue;
-      const ano = anosArr.find(a => a.id === ciclo.ano_safra_id);
-      if (!ano) continue;
+      const cfid = ciclo.fazenda_id || fazendaId!;
+      const anoLabel2 = anoLabel || "";
 
-      // ── Buscar dados em paralelo ──
+      // ── Buscar dados em paralelo usando a fazenda do ciclo ──
       const [
         { data: plantiosData },
         { data: pulvsData },
@@ -140,16 +185,15 @@ export default function DrePage() {
         { data: contratosData },
         { data: cpData },
       ] = await Promise.all([
-        supabase.from("plantios").select("custo_sementes, area_ha").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId),
-        supabase.from("pulverizacoes").select("custo_total").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId),
-        supabase.from("colheitas").select("peso_liquido_kg, sacas_liquidas, area_ha").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId),
-        supabase.from("adubacoes_base").select("custo_total").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId),
-        supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId),
-        supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId).maybeSingle(),
-        supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId).eq("confirmado", true),
-        supabase.from("contas_pagar").select("valor, categoria").eq("fazenda_id", fazendaId).eq("ciclo_id", cicloId),
+        supabase.from("plantios").select("custo_sementes, area_ha").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("pulverizacoes").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("colheitas").select("peso_liquido_kg, sacas_liquidas, area_ha").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("adubacoes_base").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).maybeSingle(),
+        supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
+        supabase.from("contas_pagar").select("valor, categoria").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
       ]);
-
       // ── Receitas ──
       const totalSacas = (colheitasData ?? []).reduce((s, r) => s + (r.sacas_liquidas ?? 0), 0);
       const totalAreaHa = (plantiosData ?? []).reduce((s, r) => s + (r.area_ha ?? 0), 0) ||
@@ -208,6 +252,7 @@ export default function DrePage() {
       const area = totalAreaHa || 1;
       const sacas = totalSacas || ((orcData as any)?.produtividade_esperada ?? 0) * area;
 
+      const ano = { id: ciclo.ano_safra_id, ano: anoLabel };
       resultados.push({
         ciclo,
         anoSafra: ano,
@@ -261,8 +306,8 @@ export default function DrePage() {
     const totalSacas = dres.reduce((s, d) => s + d.produtividade_scha * d.area_ha, 0);
     const totalReceita = sum("receita_total");
     return {
-      ciclo: { id: "consolidado", cultura: "Consolidado", ano_safra_id: anoSel },
-      anoSafra: anosArr.find(a => a.id === anoSel) ?? { id: anoSel, ano: "" },
+      ciclo: { id: "consolidado", cultura: "Consolidado", ano_safra_id: "", fazenda_id: "" },
+      anoSafra: { id: "", ano: anoLabel },
       area_ha: totalArea,
       receita_venda: sum("receita_venda"),
       receita_bonificacao: sum("receita_bonificacao"),
@@ -395,14 +440,30 @@ export default function DrePage() {
 
         {/* ── Filtros ── */}
         <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+
+          {/* Fazenda (só mostra se múltiplas fazendas) */}
+          {todasFazendas.length > 1 && (
+            <div>
+              <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Fazenda</div>
+              <select
+                value={filtroFazenda || fazendaId || ""}
+                onChange={e => { setFiltroFazenda(e.target.value); setAnoLabel(""); setCiclosSel([]); }}
+                style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid #1A4870", fontSize: 13, background: "#F0F6FB", minWidth: 160 }}
+              >
+                {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                <option value="todas">Todas (Consolidado)</option>
+              </select>
+            </div>
+          )}
+
           <div>
             <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Ano Safra</div>
             <select
-              value={anoSel}
-              onChange={e => setAnoSel(e.target.value)}
+              value={anoLabel}
+              onChange={e => { setAnoLabel(e.target.value); setCiclosSel([]); }}
               style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, minWidth: 140 }}
             >
-              {anosArr.map(a => <option key={a.id} value={a.id}>{a.ano}</option>)}
+              {anosArr.map(a => <option key={a.id} value={a.ano}>{a.ano}</option>)}
             </select>
           </div>
 
@@ -411,6 +472,7 @@ export default function DrePage() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {ciclosArr.map(c => {
                 const sel = ciclosSel.includes(c.id);
+                const fazNome = filtroFazenda === "todas" ? todasFazendas.find(f => f.id === c.fazenda_id)?.nome : null;
                 return (
                   <button
                     key={c.id}
@@ -423,7 +485,8 @@ export default function DrePage() {
                       fontWeight: sel ? 600 : 400,
                     }}
                   >
-                    {c.cultura}
+                    {CULT_LABELS[c.cultura] ?? c.cultura}
+                    {fazNome && <span style={{ fontSize: 10, opacity: 0.75, marginLeft: 4 }}>{fazNome}</span>}
                   </button>
                 );
               })}
@@ -461,7 +524,7 @@ export default function DrePage() {
 
           <button
             onClick={calcularDre}
-            disabled={loading || ciclosSel.length === 0}
+            disabled={loading || ciclosSel.length === 0 || fids.length === 0}
             style={{
               padding: "8px 20px", borderRadius: 7, border: "none", cursor: loading ? "not-allowed" : "pointer",
               background: loading ? "#ccc" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600,

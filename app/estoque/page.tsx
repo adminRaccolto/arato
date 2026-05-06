@@ -20,6 +20,8 @@ import type {
   NfEntrada, NfEntradaItem, EstoqueTerceiro, Pessoa,
 } from "../../lib/supabase";
 
+// ── Hook mobile ──────────────────────────────────────────
+
 // ────────────────────────────────────────────────────────
 // Estilos base
 // ────────────────────────────────────────────────────────
@@ -51,9 +53,8 @@ function TH({ cols }: { cols: string[] }) {
 
 function Modal({ titulo, subtitulo, width, onClose, children }: { titulo: string; subtitulo?: string; width?: number; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: width ?? 580, maxWidth: "95vw", maxHeight: "92vh", overflowY: "auto" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: width ?? 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
         <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
         {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
@@ -479,22 +480,24 @@ export default function Estoque() {
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Estoque</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Insumos, produtos, NF de entrada e movimentações</p>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {negativos.length > 0 && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#791F1F", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⛔ {negativos.length} saldo negativo</span>}
-            {alertas.length > 0 && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⚠ {alertas.length} no mínimo</span>}
-            <span style={{ fontSize: 12, color: "#555" }}>Valor: <strong style={{ color: "#1a1a1a" }}>{fmtBRL(totalValorEstoque)}</strong></span>
+        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 0 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Estoque</h1>
+              <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Insumos, produtos, NF de entrada e movimentações</p>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {negativos.length > 0 && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#791F1F", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⛔ {negativos.length} saldo negativo</span>}
+              {alertas.length > 0 && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⚠ {alertas.length} no mínimo</span>}
+              <span style={{ fontSize: 12, color: "#555" }}>Valor: <strong style={{ color: "#1a1a1a" }}>{fmtBRL(totalValorEstoque)}</strong></span>
+            </div>
           </div>
         </header>
 
-        {/* Abas */}
-        <div style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", display: "flex", padding: "0 22px" }}>
+        {/* Abas — scroll horizontal no mobile */}
+        <div style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
           {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"] ] as const).map(([k,l]) => (
-            <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "#1a1a1a" : "#555", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent" }}>{l}</button>
+            <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "#1a1a1a" : "#555", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent", flexShrink: 0 }}>{l}</button>
           ))}
         </div>
 
@@ -504,7 +507,7 @@ export default function Estoque() {
           {/* ══ POSIÇÃO DE ESTOQUE ══ */}
           {aba === "posicao" && (
             <div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexDirection: "row", flexWrap: "wrap" }}>
                 <input style={{ ...inp, width: 220 }} placeholder="Buscar…" value={busca} onChange={e => setBusca(e.target.value)} />
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {([
@@ -518,13 +521,13 @@ export default function Estoque() {
                     return <button key={k} onClick={() => setFiltroCat(k as typeof filtroCat)} style={{ padding: "6px 12px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: ativo ? 600 : 400, background: ativo ? (isAlert ? "#FCEBEB" : "#D5E8F5") : "#fff", color: ativo ? (isAlert ? "#791F1F" : "#0B2D50") : "#666", borderColor: ativo ? (isAlert ? "#E24B4A50" : "#1A487040") : "#D4DCE8" }}>{l}</button>;
                   })}
                 </div>
-                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
                   <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { setModalMov(true); }}>± Movimentar</button>
-                  <button style={btnV} onClick={() => { setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
+                  <button style={{ ...btnV }} onClick={() => { setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
                 </div>
               </div>
 
-              <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Item", "Tipo / Categoria", "Depósito", "Estoque atual", "Estoque mín.", "Custo médio", "Valor total", ""]} />
                   <tbody>
@@ -576,7 +579,7 @@ export default function Estoque() {
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
                 <button style={btnV} onClick={abrirNovaFf}>+ Lançar NF de Entrada</button>
               </div>
-              <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["NF / Série", "Emitente", "Data Emissão", "Valor Total", "Status", "Natureza", ""]} />
                   <tbody>
@@ -622,54 +625,56 @@ export default function Estoque() {
                 <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Estoque de Terceiros</div>
                 <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Insumos entregues por terceiros para uso futuro — controle de saldo e consumo</div>
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Descrição", "Terceiro", "Qtd. Original", "Saldo atual", "Status", "Safra", ""]} />
-                <tbody>
-                  {terceiros.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum estoque de terceiros registrado</td></tr>}
-                  {terceiros.map((t, i) => {
-                    const pct = t.quantidade_original > 0 ? (t.quantidade_saldo / t.quantidade_original) * 100 : 0;
-                    const corStatus: Record<EstoqueTerceiro["status"], [string,string]> = {
-                      aberto:    ["#D5E8F5","#0B2D50"],
-                      parcial:   ["#FAEEDA","#633806"],
-                      encerrado: ["#F1EFE8","#555"],
-                    };
-                    const [bg, cl] = corStatus[t.status];
-                    const insumo = insumos.find(x => x.id === t.insumo_id);
-                    return (
-                      <tr key={t.id} style={{ borderBottom: i < terceiros.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <td style={{ padding: "10px 14px" }}>
-                          <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{t.descricao}</div>
-                          {insumo && <div style={{ fontSize: 11, color: "#444" }}>{insumo.nome} — {insumo.unidade}</div>}
-                        </td>
-                        <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 500 }}>{t.terceiro_nome}</div>
-                          {t.terceiro_cnpj && <div style={{ fontSize: 11, color: "#444" }}>{t.terceiro_cnpj}</div>}
-                        </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(t.quantidade_original)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          <div style={{ fontWeight: 600, color: pct < 20 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(t.quantidade_saldo)}</div>
-                          <div style={{ width: 60, height: 4, background: "#DEE5EE", borderRadius: 2, margin: "3px auto 0", overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : "#1A4870", borderRadius: 2 }} />
-                          </div>
-                        </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(t.status.charAt(0).toUpperCase()+t.status.slice(1), bg, cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontSize: 12 }}>{t.safra || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <button style={btnE}>Detalhes</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <TH cols={["Descrição", "Terceiro", "Qtd. Original", "Saldo atual", "Status", "Safra", ""]} />
+                  <tbody>
+                    {terceiros.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum estoque de terceiros registrado</td></tr>}
+                    {terceiros.map((t, i) => {
+                      const pct = t.quantidade_original > 0 ? (t.quantidade_saldo / t.quantidade_original) * 100 : 0;
+                      const corStatus: Record<EstoqueTerceiro["status"], [string,string]> = {
+                        aberto:    ["#D5E8F5","#0B2D50"],
+                        parcial:   ["#FAEEDA","#633806"],
+                        encerrado: ["#F1EFE8","#555"],
+                      };
+                      const [bg, cl] = corStatus[t.status];
+                      const insumo = insumos.find(x => x.id === t.insumo_id);
+                      return (
+                        <tr key={t.id} style={{ borderBottom: i < terceiros.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                          <td style={{ padding: "10px 14px" }}>
+                            <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{t.descricao}</div>
+                            {insumo && <div style={{ fontSize: 11, color: "#444" }}>{insumo.nome} — {insumo.unidade}</div>}
+                          </td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <div style={{ fontWeight: 500 }}>{t.terceiro_nome}</div>
+                            {t.terceiro_cnpj && <div style={{ fontSize: 11, color: "#444" }}>{t.terceiro_cnpj}</div>}
+                          </td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(t.quantidade_original)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                            <div style={{ fontWeight: 600, color: pct < 20 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(t.quantidade_saldo)}</div>
+                            <div style={{ width: 60, height: 4, background: "#DEE5EE", borderRadius: 2, margin: "3px auto 0", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : "#1A4870", borderRadius: 2 }} />
+                            </div>
+                          </td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(t.status.charAt(0).toUpperCase()+t.status.slice(1), bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontSize: 12 }}>{t.safra || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <button style={btnE}>Detalhes</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* ══ MOVIMENTAÇÕES ══ */}
           {aba === "movimentacoes" && (
             <div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
-                <div style={{ display: "flex", gap: 4 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {([["todos","Todas"],["entrada","Entradas"],["saida","Saídas"]] as const).map(([k,l]) => (
                     <button key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#D5E8F5" : "#fff", color: filtroMov === k ? "#0B2D50" : "#666", borderColor: filtroMov === k ? "#1A487040" : "#D4DCE8" }}>{l}</button>
                   ))}
@@ -677,7 +682,7 @@ export default function Estoque() {
                 <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>{movs.filter(m => filtroMov === "todos" || m.tipo === filtroMov).length} registros</span>
                 <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => setModalMov(true)}>± Nova Movimentação</button>
               </div>
-              <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Origem"]} />
                   <tbody>
@@ -719,18 +724,18 @@ export default function Estoque() {
           {/* ══ RELATÓRIOS ══ */}
           {aba === "relatorios" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Sub-abas */}
-              <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+              {/* Sub-abas — scroll horizontal no mobile */}
+              <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
                 {([["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
-                  <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#1A4870" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13 }}>{l}</button>
+                  <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#1A4870" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
               </div>
 
               {/* Histórico por item */}
               {relTipo === "historico" && (
                 <div>
-                  <div style={{ display: "flex", gap: 10, marginBottom: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
-                    <div style={{ minWidth: 260 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 14 }}>
+                    <div style={{ gridColumn: "1/3" }}>
                       <label style={lbl}>Item *</label>
                       <select style={inp} value={relInsumoId} onChange={e => setRelInsumoId(e.target.value)}>
                         <option value="">— Selecionar —</option>
@@ -739,9 +744,11 @@ export default function Estoque() {
                     </div>
                     <div>
                       <label style={lbl}>A partir de</label>
-                      <input style={{ ...inp, width: 150 }} type="date" value={relDataInicio} onChange={e => setRelDataInicio(e.target.value)} />
+                      <input style={inp} type="date" value={relDataInicio} onChange={e => setRelDataInicio(e.target.value)} />
                     </div>
-                    <button style={btnV} onClick={buscarHistorico}>Buscar</button>
+                    <div style={{ display: "flex", alignItems: "flex-end" }}>
+                      <button style={{ ...btnV, width: "100%" }} onClick={buscarHistorico}>Buscar</button>
+                    </div>
                   </div>
                   {relInsumoId && (() => {
                     const ins = insumos.find(x => x.id === relInsumoId)!;
@@ -756,31 +763,33 @@ export default function Estoque() {
                     });
                     return (
                       <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 16, alignItems: "center" }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{ins.nome}</span>
                           <span style={{ fontSize: 12, color: "#555" }}>Saldo atual: <strong style={{ color: ins.estoque < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(ins.estoque)} {ins.unidade}</strong></span>
                           <span style={{ fontSize: 12, color: "#555" }}>{rows.length} movimentações</span>
                         </div>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                          <TH cols={["Data","Tipo","Motivo","Quantidade","Saldo acum.","Depósito","Origem"]} />
-                          <tbody>
-                            {rows.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: "center", color: "#444" }}>Nenhuma movimentação no período</td></tr>}
-                            {rows.map((m, i) => {
-                              const dep = depositos.find(x => x.id === m.deposito_id);
-                              return (
-                                <tr key={m.id} style={{ borderBottom: i < rows.length-1 ? "0.5px solid #DEE5EE" : "none" }}>
-                                  <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{m.motivo ?? "—"}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins.unidade}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(m.saldo)} {ins.unidade}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.auto ? badge("Auto","#D5E8F5","#0B2D50") : badge("Manual","#FBF0D8","#7A5A12")}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <TH cols={["Data","Tipo","Motivo","Quantidade","Saldo acum.","Depósito","Origem"]} />
+                            <tbody>
+                              {rows.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: "center", color: "#444" }}>Nenhuma movimentação no período</td></tr>}
+                              {rows.map((m, i) => {
+                                const dep = depositos.find(x => x.id === m.deposito_id);
+                                return (
+                                  <tr key={m.id} style={{ borderBottom: i < rows.length-1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                    <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{m.motivo ?? "—"}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins.unidade}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(m.saldo)} {ins.unidade}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.auto ? badge("Auto","#D5E8F5","#0B2D50") : badge("Manual","#FBF0D8","#7A5A12")}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     );
                   })()}
@@ -794,30 +803,32 @@ export default function Estoque() {
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Saldos de Estoque</div>
                     <div style={{ fontSize: 12, color: "#555" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
                   </div>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <TH cols={["Item","Tipo","Categoria","Depósito","Saldo","Mínimo","Status"]} />
-                    <tbody>
-                      {insumos.sort((a,b) => a.nome.localeCompare(b.nome)).map((ins, i) => {
-                        const negativo = ins.estoque < 0;
-                        const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
-                        const dep      = depositos.find(d => d.id === ins.deposito_id);
-                        const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: ins.categoria };
-                        return (
-                          <tr key={ins.id} style={{ borderBottom: i < insumos.length-1 ? "0.5px solid #DEE5EE" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
-                            <td style={{ padding: "9px 14px", fontWeight: 600, color: "#1a1a1a" }}>{ins.nome}</td>
-                            <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(ins.tipo === "produto" ? "Produto" : "Insumo", ins.tipo === "produto" ? "#F0F9FF" : "#E8F5E9", ins.tipo === "produto" ? "#0369A1" : "#1A6B3C")}</td>
-                            <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
-                            <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
-                            <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: negativo ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(ins.estoque)} {ins.unidade}</td>
-                            <td style={{ padding: "9px 14px", textAlign: "center", color: "#555" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
-                            <td style={{ padding: "9px 14px", textAlign: "center" }}>
-                              {negativo ? badge("Negativo","#FCEBEB","#791F1F") : alerta ? badge("Mínimo","#FAEEDA","#633806") : badge("OK","#D5E8F5","#0B2D50")}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <TH cols={["Item","Tipo","Categoria","Depósito","Saldo","Mínimo","Status"]} />
+                      <tbody>
+                        {insumos.sort((a,b) => a.nome.localeCompare(b.nome)).map((ins, i) => {
+                          const negativo = ins.estoque < 0;
+                          const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
+                          const dep      = depositos.find(d => d.id === ins.deposito_id);
+                          const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: ins.categoria };
+                          return (
+                            <tr key={ins.id} style={{ borderBottom: i < insumos.length-1 ? "0.5px solid #DEE5EE" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
+                              <td style={{ padding: "9px 14px", fontWeight: 600, color: "#1a1a1a" }}>{ins.nome}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(ins.tipo === "produto" ? "Produto" : "Insumo", ins.tipo === "produto" ? "#F0F9FF" : "#E8F5E9", ins.tipo === "produto" ? "#0369A1" : "#1A6B3C")}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: negativo ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(ins.estoque)} {ins.unidade}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center", color: "#555" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center" }}>
+                                {negativo ? badge("Negativo","#FCEBEB","#791F1F") : alerta ? badge("Mínimo","#FAEEDA","#633806") : badge("OK","#D5E8F5","#0B2D50")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -833,7 +844,7 @@ export default function Estoque() {
                 const total = porCategoria.reduce((s,[,v]) => s+v, 0);
                 return (
                   <div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
                       {[["Total em Estoque", fmtBRL(total), "#1A4870", "#D5E8F5"],
                         ["Itens cadastrados", String(insumos.length), "#1A6B3C", "#E8F5E9"],
                         ["Alertas (mínimo/neg.)", String(alertas.length + negativos.length), "#791F1F", "#FCEBEB"]
@@ -846,30 +857,32 @@ export default function Estoque() {
                     </div>
                     <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", fontWeight: 600, fontSize: 14 }}>Valor por Categoria</div>
-                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <TH cols={["Categoria","Qtd. itens","Valor total","% do estoque"]} />
-                        <tbody>
-                          {porCategoria.map(([cat, valor], i) => {
-                            const qtd = insumos.filter(x => (CAT_META[x.categoria]?.label ?? x.categoria) === cat).length;
-                            const pct = total > 0 ? (valor/total*100) : 0;
-                            return (
-                              <tr key={cat} style={{ borderBottom: i < porCategoria.length-1 ? "0.5px solid #DEE5EE" : "none" }}>
-                                <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1a1a1a" }}>{cat}</td>
-                                <td style={{ padding: "10px 14px", textAlign: "center", color: "#555" }}>{qtd}</td>
-                                <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>{fmtBRL(valor)}</td>
-                                <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                                    <div style={{ width: 80, height: 5, background: "#DEE5EE", borderRadius: 3, overflow: "hidden" }}>
-                                      <div style={{ height: "100%", width: `${pct}%`, background: "#1A4870", borderRadius: 3 }} />
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <TH cols={["Categoria","Qtd. itens","Valor total","% do estoque"]} />
+                          <tbody>
+                            {porCategoria.map(([cat, valor], i) => {
+                              const qtd = insumos.filter(x => (CAT_META[x.categoria]?.label ?? x.categoria) === cat).length;
+                              const pct = total > 0 ? (valor/total*100) : 0;
+                              return (
+                                <tr key={cat} style={{ borderBottom: i < porCategoria.length-1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                  <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1a1a1a" }}>{cat}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center", color: "#555" }}>{qtd}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>{fmtBRL(valor)}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                                      <div style={{ width: 80, height: 5, background: "#DEE5EE", borderRadius: 3, overflow: "hidden" }}>
+                                        <div style={{ height: "100%", width: `${pct}%`, background: "#1A4870", borderRadius: 3 }} />
+                                      </div>
+                                      <span style={{ fontSize: 12, color: "#555", minWidth: 36 }}>{pct.toFixed(1)}%</span>
                                     </div>
-                                    <span style={{ fontSize: 12, color: "#555", minWidth: 36 }}>{pct.toFixed(1)}%</span>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 );
@@ -887,7 +900,7 @@ export default function Estoque() {
         const ins = insumos.find(x => x.id === fMov.insumo_id);
         return (
           <Modal titulo="Movimentação de Estoque" width={580} onClose={() => setModalMov(false)}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Item *</label>
                 <select style={inp} value={fMov.insumo_id} onChange={e => { const i = insumos.find(x => x.id === e.target.value); setFMov(p => ({ ...p, insumo_id: e.target.value, deposito_id: i?.deposito_id ?? "" })); }}>
@@ -988,7 +1001,7 @@ export default function Estoque() {
         const isProduto = ["peca","material","uso_consumo","escritorio"].includes(fIns.categoria);
         return (
           <Modal titulo={isProduto ? "Novo Produto" : "Novo Insumo"} width={660} onClose={() => setModalInsumo(false)}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
               <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} /></div>
               <div style={{ gridColumn: "1/3" }}>
                 <label style={lbl}>Categoria *</label>
@@ -1014,15 +1027,18 @@ export default function Estoque() {
                 <label style={lbl}>Unidade *</label>
                 <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value }))}>
                   <option value="kg">kg</option>
+                  <option value="g">g (grama)</option>
                   <option value="L">L (litro)</option>
+                  <option value="mL">mL (mililitro)</option>
                   <option value="sc">sc (saca 60 kg)</option>
-                  <option value="ton">ton</option>
-                  <option value="unid">unid</option>
+                  <option value="t">t (tonelada)</option>
+                  <option value="un">un (unidade)</option>
                   <option value="m">m (metro)</option>
                   <option value="m2">m²</option>
                   <option value="cx">cx (caixa)</option>
                   <option value="pc">pc (peça)</option>
                   <option value="par">par</option>
+                  <option value="outros">outros</option>
                 </select>
               </div>
               <div style={{ gridColumn: "1/-1" }}>
@@ -1107,7 +1123,7 @@ export default function Estoque() {
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
             <div><label style={lbl}>Número NF *</label><input style={inp} value={fNf.numero} onChange={e => setFNf(p => ({ ...p, numero: e.target.value }))} /></div>
             <div><label style={lbl}>Série</label><input style={inp} value={fNf.serie} onChange={e => setFNf(p => ({ ...p, serie: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Emitente (Fornecedor) *</label><input style={inp} value={fNf.emitente_nome} onChange={e => setFNf(p => ({ ...p, emitente_nome: e.target.value }))} /></div>
@@ -1141,7 +1157,7 @@ export default function Estoque() {
               <div key={item.key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, background: item.alerta_preco ? "#FFFAF8" : "#F8FAFD", borderLeft: `3px solid ${borderColor}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Item {idx + 1}</span>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     {autoVinculado && <span style={{ fontSize: 11, background: "#D4EDDA", color: "#155724", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>✓ Auto-vinculado</span>}
                     {semVinculo    && <span style={{ fontSize: 11, background: "#F8D7DA", color: "#721C24", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>⚠ Sem vínculo — selecione o insumo</span>}
                     {item.alerta_preco && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>⚠ Preço +10% vs. custo médio</span>}
@@ -1150,8 +1166,8 @@ export default function Estoque() {
                 </div>
 
                 {/* linha 1: descrição, cfop, qtd, valor uni */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 0.7fr 0.7fr 0.9fr 0.9fr", gap: 10, marginBottom: 10 }}>
-                  <div><label style={lbl}>Descrição *</label><input style={inp} value={item.descricao_produto} onChange={e => atualizarItem(item.key, { descricao_produto: e.target.value })} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 10 }}>
+                  <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição *</label><input style={inp} value={item.descricao_produto} onChange={e => atualizarItem(item.key, { descricao_produto: e.target.value })} /></div>
                   <div><label style={lbl}>CFOP</label><input style={{ ...inp, textAlign: "center" }} placeholder="1102" value={item.cfop} onChange={e => atualizarItem(item.key, { cfop: e.target.value })} /></div>
                   <div><label style={lbl}>Unidade</label><input style={{ ...inp, textAlign: "center" }} value={item.unidade} onChange={e => atualizarItem(item.key, { unidade: e.target.value })} /></div>
                   <div><label style={lbl}>Quantidade</label><input style={{ ...inp, textAlign: "right" }} type="number" step="0.001" value={item.quantidade} onChange={e => atualizarItem(item.key, { quantidade: parseFloat(e.target.value) || 0 })} /></div>
@@ -1159,7 +1175,7 @@ export default function Estoque() {
                 </div>
 
                 {/* linha 2: apropriação */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                   <div>
                     <label style={lbl}>Apropriação *</label>
                     <select style={inp} value={item.tipo_apropiacao} onChange={e => {
@@ -1274,7 +1290,7 @@ export default function Estoque() {
             })}
           </div>
 
-          <div style={{ display: "flex", gap: 8, justifyContent: "space-between", marginTop: 20, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: "space-between", marginTop: 20, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ fontSize: 12, color: "#555" }}>
               {itensNf.length} iten(s) · Total: <strong>{fmtBRL(itensNf.reduce((s,i) => s + i.valor_total, 0))}</strong>
             </div>
@@ -1289,48 +1305,50 @@ export default function Estoque() {
       {/* Modal Detalhe NF */}
       {modalDetalheNf && (
         <Modal titulo={`NF ${modalDetalheNf.numero} — Itens`} subtitulo={`${modalDetalheNf.emitente_nome} · ${modalDetalheNf.data_emissao.split("-").reverse().join("/")} · ${fmtBRL(modalDetalheNf.valor_total)}`} width={700} onClose={() => setModalDetalheNf(null)}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <TH cols={["Descrição", "Qtd.", "Vl. Unit.", "Vl. Total", "Apropriação", "Destino"]} />
-            <tbody>
-              {itensDetalhe.length === 0 && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#444" }}>Nenhum item registrado</td></tr>}
-              {itensDetalhe.map((it, i) => {
-                const ins = insumos.find(x => x.id === it.insumo_id);
-                const dep = depositos.find(x => x.id === it.deposito_id);
-                const maq = maquinas.find(x => x.id === it.maquina_id);
-                const destino = dep?.nome ?? maq?.nome ?? "—";
-                const corApr: Record<NfEntradaItem["tipo_apropiacao"], [string,string]> = {
-                  estoque:    ["#D5E8F5","#0B2D50"],
-                  maquinario: ["#E6F1FB","#0C447C"],
-                  terceiro:   ["#FBF0D8","#7A5A12"],
-                  direto:     ["#F1EFE8","#555"],
-                  vef:        ["#FBF3E0","#C9921B"],
-                  remessa:    ["#E8F5E9","#1A6B3C"],
-                };
-                const [bg, cl] = corApr[it.tipo_apropiacao];
-                const labelApr: Record<NfEntradaItem["tipo_apropiacao"], string> = {
-                  estoque:    "Estoque",
-                  maquinario: "Máquina",
-                  terceiro:   "Terceiros",
-                  direto:     "Direto",
-                  vef:        "VEF",
-                  remessa:    "Remessa",
-                };
-                return (
-                  <tr key={it.id} style={{ borderBottom: i < itensDetalhe.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                    <td style={{ padding: "9px 14px" }}>
-                      <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{it.descricao_produto}</div>
-                      {ins && <div style={{ fontSize: 11, color: "#444" }}>{ins.nome}</div>}
-                    </td>
-                    <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(it.quantidade)} {it.unidade}</td>
-                    <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtBRL(it.valor_unitario)}</td>
-                    <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{fmtBRL(it.valor_total)}</td>
-                    <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(labelApr[it.tipo_apropiacao], bg, cl)}</td>
-                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{destino}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <TH cols={["Descrição", "Qtd.", "Vl. Unit.", "Vl. Total", "Apropriação", "Destino"]} />
+              <tbody>
+                {itensDetalhe.length === 0 && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#444" }}>Nenhum item registrado</td></tr>}
+                {itensDetalhe.map((it, i) => {
+                  const ins = insumos.find(x => x.id === it.insumo_id);
+                  const dep = depositos.find(x => x.id === it.deposito_id);
+                  const maq = maquinas.find(x => x.id === it.maquina_id);
+                  const destino = dep?.nome ?? maq?.nome ?? "—";
+                  const corApr: Record<NfEntradaItem["tipo_apropiacao"], [string,string]> = {
+                    estoque:    ["#D5E8F5","#0B2D50"],
+                    maquinario: ["#E6F1FB","#0C447C"],
+                    terceiro:   ["#FBF0D8","#7A5A12"],
+                    direto:     ["#F1EFE8","#555"],
+                    vef:        ["#FBF3E0","#C9921B"],
+                    remessa:    ["#E8F5E9","#1A6B3C"],
+                  };
+                  const [bg, cl] = corApr[it.tipo_apropiacao];
+                  const labelApr: Record<NfEntradaItem["tipo_apropiacao"], string> = {
+                    estoque:    "Estoque",
+                    maquinario: "Máquina",
+                    terceiro:   "Terceiros",
+                    direto:     "Direto",
+                    vef:        "VEF",
+                    remessa:    "Remessa",
+                  };
+                  return (
+                    <tr key={it.id} style={{ borderBottom: i < itensDetalhe.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <td style={{ padding: "9px 14px" }}>
+                        <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{it.descricao_produto}</div>
+                        {ins && <div style={{ fontSize: 11, color: "#444" }}>{ins.nome}</div>}
+                      </td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(it.quantidade)} {it.unidade}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtBRL(it.valor_unitario)}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{fmtBRL(it.valor_total)}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(labelApr[it.tipo_apropiacao], bg, cl)}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{destino}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
             <button style={btnR} onClick={() => setModalDetalheNf(null)}>Fechar</button>
           </div>

@@ -30,16 +30,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Parâmetros inválidos" }, { status: 400 });
     }
 
-    // Verifica que o usuário pertence a esta fazenda
+    // Verifica que o usuário pertence à conta que tem esta fazenda
     const supabase = adminClient();
     const { data: perfil } = await supabase
       .from("perfis")
-      .select("fazenda_id")
+      .select("conta_id, role")
       .eq("user_id", user.id)
       .single();
 
-    if (!perfil || perfil.fazenda_id !== fazenda_id) {
+    if (!perfil) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+
+    // Raccotlo pode atualizar qualquer fazenda
+    if (perfil.role !== "raccotlo") {
+      // Cliente só pode atualizar fazendas da própria conta
+      const { data: fazenda } = await supabase
+        .from("fazendas")
+        .select("conta_id")
+        .eq("id", fazenda_id)
+        .single();
+
+      if (!fazenda || fazenda.conta_id !== perfil.conta_id) {
+        return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+      }
     }
 
     // Atualiza com service role (ignora RLS)

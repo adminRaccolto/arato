@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -68,8 +69,10 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "#555", marginBot
 
 
 // ─── Componente principal ─────────────────────────────────────
-export default function FinanceiroRelatorios() {
+function FinanceiroRelatoriosInner() {
   const { fazendaId } = useAuth();
+  const searchParams = useSearchParams();
+  const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
   const [lancamentos,  setLancamentos]  = useState<Lancamento[]>([]);
   const [empresas,     setEmpresas]     = useState<Empresa[]>([]);
@@ -79,7 +82,6 @@ export default function FinanceiroRelatorios() {
   const [carregando,  setCarregando]  = useState(true);
   const [cotacaoUSD,  setCotacaoUSD]  = useState<number>(5.90);
   const [filtroAberto, setFiltroAberto] = useState(false);
-  const [aba,         setAba]         = useState<AbaFin>("fluxo");
 
   const anoAtual = new Date().getFullYear();
   const [filtro, setFiltro] = useState<FiltroFluxo>({
@@ -101,6 +103,13 @@ export default function FinanceiroRelatorios() {
 
   // DFC — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
+
+  // CP/CR — filtros (devem ficar no topo — Rules of Hooks)
+  const [tipoCPCR,    setTipoCPCR]    = useState<"todos"|"receber"|"pagar">("todos");
+  const [statusCPCR,  setStatusCPCR]  = useState<"todos"|"em_aberto"|"vencido"|"baixado">("todos");
+  const [catCPCR,     setCatCPCR]     = useState("");
+  const [inicioCPCR,  setInicioCPCR]  = useState(`${anoAtual}-01-01`);
+  const [fimCPCR,     setFimCPCR]     = useState(`${anoAtual}-12-31`);
 
   const toggleMes = (m: string) =>
     setMesesExpandidos(prev => { const s = new Set(prev); s.has(m) ? s.delete(m) : s.add(m); return s; });
@@ -164,9 +173,10 @@ export default function FinanceiroRelatorios() {
     });
 
   // Operações relevantes para DFC (excluir grupos 4 e 5 = movimentos econômicos/estoque)
-  const opsDFC = operacoesGer.filter(op =>
-    !op.classificacao.startsWith("4") && !op.classificacao.startsWith("5")
-  );
+  const opsDFC = operacoesGer.filter(op => {
+    const cl = op.classificacao ?? "";
+    return !cl.startsWith("4") && !cl.startsWith("5");
+  });
 
   // Leaf = tem pelo menos uma flag financeira ativa (gera movimento de caixa real)
   const isDFCLeaf = (op: OperacaoGerencial) =>
@@ -174,9 +184,10 @@ export default function FinanceiroRelatorios() {
 
   // Leaves filhos de um prefixo de classificação
   const leavesUnder = (pref: string) =>
-    opsDFC.filter(op =>
-      isDFCLeaf(op) && (op.classificacao === pref || op.classificacao.startsWith(pref + "."))
-    );
+    opsDFC.filter(op => {
+      const cl = op.classificacao ?? "";
+      return isDFCLeaf(op) && (cl === pref || cl.startsWith(pref + "."));
+    });
 
   // Subtotal líquido mensal de todos os leaves sob um prefixo
   const prefLiqMes = (pref: string): number[] =>
@@ -186,17 +197,19 @@ export default function FinanceiroRelatorios() {
     );
 
   // Atividade DFC de um código de classificação
-  const dfcAtiv = (c: string) =>
-    (c.startsWith("1") || c.startsWith("2"))           ? "op"  :
-    (c === "3.01" || c.startsWith("3.01.") ||
-     c === "3.02" || c.startsWith("3.02."))            ? "inv" :
-    c.startsWith("3.")                                 ? "fin" : null;
+  const dfcAtiv = (c: string) => {
+    const cl = c ?? "";
+    return (cl.startsWith("1") || cl.startsWith("2"))           ? "op"  :
+           (cl === "3.01" || cl.startsWith("3.01.") ||
+            cl === "3.02" || cl.startsWith("3.02."))            ? "inv" :
+           cl.startsWith("3.")                                  ? "fin" : null;
+  };
 
   // Grupos filtrados por atividade DFC
-  const opsGrupo1   = opsDFC.filter(op => op.classificacao.startsWith("1"));
-  const opsGrupo2   = opsDFC.filter(op => op.classificacao.startsWith("2"));
-  const opsGrupoInv = opsDFC.filter(op => dfcAtiv(op.classificacao) === "inv");
-  const opsGrupoFin = opsDFC.filter(op => dfcAtiv(op.classificacao) === "fin");
+  const opsGrupo1   = opsDFC.filter(op => (op.classificacao ?? "").startsWith("1"));
+  const opsGrupo2   = opsDFC.filter(op => (op.classificacao ?? "").startsWith("2"));
+  const opsGrupoInv = opsDFC.filter(op => dfcAtiv(op.classificacao ?? "") === "inv");
+  const opsGrupoFin = opsDFC.filter(op => dfcAtiv(op.classificacao ?? "") === "fin");
 
   // Subtotais por atividade (12 meses)
   const liqGrupo1   = prefLiqMes("1");
@@ -205,7 +218,7 @@ export default function FinanceiroRelatorios() {
   const liqInv      = [...leavesUnder("3.01"), ...leavesUnder("3.02")]
     .reduce((acc, op) => { const mv = opLiqMes(op.id); return acc.map((v, i) => v + mv[i]); }, Array(12).fill(0) as number[]);
   const liqFin      = opsDFC
-    .filter(op => isDFCLeaf(op) && dfcAtiv(op.classificacao) === "fin")
+    .filter(op => isDFCLeaf(op) && dfcAtiv(op.classificacao ?? "") === "fin")
     .reduce((acc, op) => { const mv = opLiqMes(op.id); return acc.map((v, i) => v + mv[i]); }, Array(12).fill(0) as number[]);
   const varLiqMes   = liqOp.map((v, i) => v + liqInv[i] + liqFin[i]);
 
@@ -228,8 +241,10 @@ export default function FinanceiroRelatorios() {
 
         <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Relatórios Financeiros</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Fluxo de caixa diário com simulações · DFC formal mensal</p>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>
+              {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta" }[aba]}
+            </h1>
+            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
           </div>
           <button onClick={() => window.print()} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             ⟳ Exportar PDF
@@ -244,25 +259,6 @@ export default function FinanceiroRelatorios() {
 
           {!carregando && (
             <>
-              {/* Abas */}
-              <div style={{ display: "flex", background: "#fff", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
-                {([
-                  { key: "fluxo",   label: "Fluxo de Caixa" },
-                  { key: "cpcr",    label: "CP / CR — Contas" },
-                  { key: "dfc",     label: "DFC — Demonstrativo" },
-                  { key: "posicao", label: "Posição por Conta" },
-                ] as { key: AbaFin; label: string }[]).map(a => (
-                  <button key={a.key} onClick={() => setAba(a.key)} style={{
-                    padding: "11px 20px", border: "none", background: "transparent", cursor: "pointer",
-                    fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
-                    color: aba === a.key ? "#1a1a1a" : "#555",
-                    borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
-                  }}>
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-
               {/* ═══════ ABA: FLUXO DE CAIXA ═══════ */}
               {aba === "fluxo" && (() => {
                 // Contas que entram no fluxo: corrente e investimento (excluir caixa e transitoria)
@@ -492,7 +488,7 @@ export default function FinanceiroRelatorios() {
                     )}
 
                     {/* Painel principal */}
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px" }}>
+                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
                       {/* Filtros */}
                       <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -696,12 +692,6 @@ export default function FinanceiroRelatorios() {
 
               {/* ═══════ ABA: CP / CR ═══════ */}
               {aba === "cpcr" && (() => {
-                const [tipoCPCR, setTipoCPCR] = React.useState<"todos"|"receber"|"pagar">("todos");
-                const [statusCPCR, setStatusCPCR] = React.useState<"todos"|"em_aberto"|"vencido"|"baixado">("todos");
-                const [catCPCR, setCatCPCR] = React.useState("");
-                const [inicioCPCR, setInicioCPCR] = React.useState(`${anoAtual}-01-01`);
-                const [fimCPCR, setFimCPCR] = React.useState(`${anoAtual}-12-31`);
-
                 const lancsCPCR = lancamentos.filter(l => {
                   if (l.moeda === "barter") return false;
                   const dt = l.data_vencimento ?? l.data_lancamento ?? "";
@@ -728,7 +718,7 @@ export default function FinanceiroRelatorios() {
                 };
 
                 return (
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px" }}>
+                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
                     {/* Filtros CP/CR */}
                     <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -849,7 +839,7 @@ export default function FinanceiroRelatorios() {
                   v === 0 ? "#bbb" : v > 0 ? "#16A34A" : "#E24B4A";
 
                 // Nível de indentação pelo nº de partes do código
-                const nivelOp = (c: string) => c.split(".").length - 1;
+                const nivelOp = (c: string | null) => (c ?? "").split(".").length - 1;
 
                 // Célula de valor padrão
                 const TdV = ({ v, bold = false, cor }: { v: number; bold?: boolean; cor?: string }) => (
@@ -928,7 +918,7 @@ export default function FinanceiroRelatorios() {
                   );
 
                 return (
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
 
                     {/* Cabeçalho */}
                     <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1069,7 +1059,7 @@ export default function FinanceiroRelatorios() {
                 const totalProj  = posicoes.reduce((s, p) => s + p.saldoProj, 0);
 
                 return (
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 20 }}>
+                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 20 }}>
                     {/* KPIs */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
                       {[
@@ -1140,5 +1130,13 @@ export default function FinanceiroRelatorios() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function FinanceiroRelatorios() {
+  return (
+    <Suspense fallback={null}>
+      <FinanceiroRelatoriosInner />
+    </Suspense>
   );
 }

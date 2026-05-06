@@ -843,9 +843,51 @@ arato/
 - LCDPR filtra lançamentos com `vinculo_atividade = 'rural'`
 - SPED ECD gera blocos 0, I e 9 (leiaute 10); transmissão via PGE da Receita Federal
 
+### Sessão 19 — 28 de abril de 2026
+
+**Refatoração de segurança (continuação) + Arquitetura Conta**
+
+#### Fase 1 — Correção de segurança multi-tenant (sessão anterior)
+- Bug crítico resolvido: fazendas de clientes diferentes apareciam umas para as outras
+- Adicionado `owner_user_id` na tabela `fazendas` + RLS v4 com bypass raccotlo
+- Removido fallback perigoso no `AuthProvider` que atribuía a primeira fazenda do banco a novos usuários
+- `api/admin/novo-cliente` corrigido: `owner_user_id` agora é setado após criação do usuário (antes ficava NULL)
+
+#### Fase 2 — Arquitetura Conta (multi-fazenda por produtor)
+- **Problema motivador:** produtores reais têm múltiplas fazendas — o modelo `perfis.fazenda_id` como tenant não suportava isso
+- **Solução:** nova entidade `contas` como raiz do tenant SaaS
+
+**Tabelas alteradas:**
+- `contas` (nova): `{ id, nome, tipo (pf/pj/grupo), created_at }`
+- `fazendas.conta_id` FK → contas
+- `produtores.conta_id` FK → contas
+- `perfis.conta_id` FK → contas + `perfis.fazenda_id` agora é a "fazenda ativa" (farm switcher)
+
+**RLS atualizado:**
+- `fazendas`: `conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())` + raccotlo bypass
+- `produtores`: mesmo padrão + `OR conta_id IS NULL` (dados legados)
+
+**Código alterado:**
+- `lib/supabase.ts` — tipo `Conta` adicionado; `Fazenda.conta_id` e `Produtor.conta_id` adicionados
+- `lib/db.ts` — `listarFazendas()` busca por `conta_id` (via perfil do usuário); nova função `listarProdutoresDaConta(conta_id)`; `criarContaTenant()` e `listarContasTenant()`
+- `components/AuthProvider.tsx` — expõe `contaId`; nova função `setFazendaAtiva(id, nome)` que atualiza `perfis.fazenda_id` no banco + localStorage
+- `components/TopNav.tsx` — farm switcher: dropdown aparece quando conta tem >1 fazenda; clique chama `setFazendaAtiva()`
+- `app/cadastros/page.tsx` — usa `listarProdutoresDaConta(contaId)` na aba Produtores; usa `conta_id` para listar fazendas no modo raccotlo; `salvarFaz` define `conta_id` nas novas fazendas; bootstrap cria conta automaticamente para novo usuário
+- `app/api/admin/novo-cliente/route.ts` — passo 0: cria conta antes da fazenda; produtor e perfil recebem `conta_id`
+
+**Backfill automático (Migration v5):**
+- Para cada `owner_user_id` distinto em `fazendas`, cria uma `conta` usando o nome do `perfil` do usuário
+- Vincula todas as fazendas, produtores e perfis desse usuário à conta criada
+
+### Arquitetura — Conta (tenant raiz)
+- `contas` é a raiz do SaaS: um produtor com 3 fazendas tem 1 conta + 3 fazendas
+- `perfis.conta_id` = tenant do usuário. `perfis.fazenda_id` = fazenda ativa no momento
+- Farm switcher: `TopNav` busca todas as fazendas da `conta_id` atual; >1 fazenda exibe dropdown
+- Troca de fazenda: `setFazendaAtiva()` atualiza `perfis.fazenda_id` no banco e em memória
+- Raccotlo admin: `conta_id = NULL` no perfil deles; bypass via `role = 'raccotlo'`
+- Novos clientes via `novo-cliente`: conta criada automaticamente no onboarding
+
 ### Próximos passos
-- **Executar Migrations 51–58** no Supabase SQL Editor
-- **Configurar Operações Gerenciais** com `conta_debito`/`conta_credito` para cada operação — necessário para o SPED ECD
 - **Configurar variáveis de ambiente na Vercel**: `RESEND_API_KEY`, `RESEND_FROM`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`
 - Integração real com SEFAZ para NF-e e MDF-e
 - Cadastrar usuários reais para clientes fazendeiros
