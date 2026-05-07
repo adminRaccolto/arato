@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
 
   const messageType = String(data.messageType ?? "");
   const message = data.message as Record<string, unknown> | undefined;
+  console.log("[WH] messageType:", messageType, "message keys:", message ? Object.keys(message).slice(0, 8) : "null");
   if (!message) return NextResponse.json({ ok: true });
 
   let textoMensagem = "";
@@ -182,6 +183,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  console.log("[WH] textoMensagem:", JSON.stringify(textoMensagem), "temImagem:", !!imagemBase64);
+
   // ── Autenticar ─────────────────────────────────────────────────────────
   console.log("[WH] telefone extraído:", telefone, "len:", telefone.length);
   const auth = await autenticarNumero(telefone);
@@ -190,11 +193,14 @@ export async function POST(req: NextRequest) {
   const { usuarioId, fazendaId, fazendaNome } = auth;
 
   // ── Sessão ─────────────────────────────────────────────────────────────
+  console.log("[WH] pós-auth: buscando sessão para", telefone);
   let sessao = await buscarSessao(telefone);
   if (!sessao) {
     await salvarSessao(telefone, { usuario_id: usuarioId, fazenda_id: fazendaId, fazenda_nome: fazendaNome });
     sessao = await buscarSessao(telefone);
   }
+
+  console.log("[WH] sessao:", sessao ? `fluxo=${sessao.fluxo ?? "none"} etapa=${sessao.etapa ?? "none"}` : "null");
 
   // Comandos globais
   const textLower = textoMensagem.toLowerCase().trim();
