@@ -9,12 +9,18 @@ function headers() {
 
 export async function enviarTexto(telefone: string, mensagem: string) {
   const url = `${EVO_BASE}/message/sendText/${EVO_INSTANCE}`;
+  console.log("[EVO] enviarTexto →", url, "para:", telefone);
   const res = await fetch(url, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify({ number: telefone, text: mensagem }),
   });
-  if (!res.ok) console.error("[EVO] erro enviarTexto", await res.text());
+  if (!res.ok) {
+    const body = await res.text();
+    console.error("[EVO] erro enviarTexto status:", res.status, "body:", body);
+  } else {
+    console.log("[EVO] enviarTexto OK status:", res.status);
+  }
 }
 
 export async function enviarLista(

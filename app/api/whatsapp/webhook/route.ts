@@ -31,18 +31,19 @@ async function autenticarNumero(telefone: string): Promise<{ usuarioId: string; 
   // Evolution API remove o 9 de números brasileiros — tenta os dois formatos
   const variantes = [telefone];
   if (telefone.startsWith("55") && telefone.length === 12) {
-    // 556596493240 → 5565996493240 (adiciona 9 após 2 dígitos de área)
     variantes.push(telefone.slice(0, 4) + "9" + telefone.slice(4));
   } else if (telefone.startsWith("55") && telefone.length === 13) {
-    // 5565996493240 → 556596493240 (remove o 9)
     variantes.push(telefone.slice(0, 4) + telefone.slice(5));
   }
 
-  const { data } = await sb().from("usuarios")
+  console.log("[WH] autenticar variantes:", variantes);
+  const { data: rows, error } = await sb().from("usuarios")
     .select("id, fazenda_id, fazendas(nome)")
     .in("whatsapp", variantes)
     .eq("ativo", true)
-    .single();
+    .limit(1);
+  const data = rows?.[0] ?? null;
+  console.log("[WH] db result:", data ? `found id=${data.id}` : "null", "error:", error?.message ?? "none");
   if (!data) return null;
   const fazenda = (Array.isArray(data.fazendas) ? data.fazendas[0] : data.fazendas) as { nome: string } | null;
   return { usuarioId: data.id, fazendaId: data.fazenda_id, fazendaNome: fazenda?.nome ?? "" };
@@ -109,19 +110,27 @@ export async function POST(req: NextRequest) {
   // Log para debug
   const event = String(body.event ?? "");
   console.log("[WH] event:", event, "keys:", Object.keys(body));
+  const eventNorm = event.toLowerCase().replace(/_/g, ".");
+  console.log("[WH] eventNorm:", eventNorm);
+  if (eventNorm !== "messages.upsert") return NextResponse.json({ ok: true });
 
-  if (event !== "messages.upsert") return NextResponse.json({ ok: true });
+  console.log("[WH] body.data type:", Array.isArray(body.data) ? "array[" + (body.data as unknown[]).length + "]" : typeof body.data);
+  console.log("[WH] body slice:", JSON.stringify(body).slice(0, 600));
 
-  const data = body.data as Record<string, unknown> | undefined;
+  // Evolution API v2 envia data como array ou objeto — normaliza para objeto único
+  const rawData = body.data;
+  const data = (Array.isArray(rawData) ? rawData[0] : rawData) as Record<string, unknown> | undefined;
   if (!data) return NextResponse.json({ ok: true });
+  console.log("[WH] data keys:", Object.keys(data));
 
   const key = data.key as Record<string, unknown> | undefined;
   if (!key) return NextResponse.json({ ok: true });
 
+  const remoteJid = String(key.remoteJid ?? "");
+  console.log("[WH] remoteJid:", remoteJid, "fromMe:", key.fromMe);
+
   // Ignorar mensagens enviadas pelo próprio bot
   if (key.fromMe === true) return NextResponse.json({ ok: true });
-
-  const remoteJid = String(key.remoteJid ?? "");
   if (!remoteJid) return NextResponse.json({ ok: true });
 
   // Ignorar grupos
@@ -174,7 +183,9 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Autenticar ─────────────────────────────────────────────────────────
+  console.log("[WH] telefone extraído:", telefone, "len:", telefone.length);
   const auth = await autenticarNumero(telefone);
+  console.log("[WH] auth result:", auth ? `ok fazenda=${auth.fazendaId}` : "NULL — número não encontrado");
   if (!auth) return NextResponse.json({ ok: true }); // número não cadastrado — ignora silenciosamente
   const { usuarioId, fazendaId, fazendaNome } = auth;
 
@@ -231,22 +242,49 @@ export async function POST(req: NextRequest) {
   // ── Nova mensagem — detectar intenção ──────────────────────────────────
   if (!textoMensagem && !imagemBase64) return NextResponse.json({ ok: true });
 
-  const { intencao, entidades } = await detectarIntencao(textoMensagem);
+  console.log("[WH] detectarIntencao para:", textoMensagem.slice(0, 80));
+  let intencao: string;
+  let entidades: Record<string, string | number>;
+  try {
+    const result = await detectarIntencao(textoMensagem);
+    intencao  = result.intencao;
+    entidades = result.entidades;
+    console.log("[WH] intencao:", intencao, "entidades:", JSON.stringify(entidades));
+  } catch (err) {
+    console.error("[WH] ERRO detectarIntencao:", err);
+    try { await enviarTexto(telefone, "⚠️ Serviço de IA temporariamente indisponível. Tente novamente."); } catch {}
+    return NextResponse.json({ ok: true });
+  }
 
   if (intencao.startsWith("consulta_")) {
-    const resposta = await resolverConsulta(intencao, entidades, fazendaId);
-    await enviarTexto(telefone, resposta);
+    try {
+      const resposta = await resolverConsulta(intencao, entidades, fazendaId);
+      console.log("[WH] consulta resolvida, enviando resposta de", resposta.length, "chars");
+      await enviarTexto(telefone, resposta);
+    } catch (err) {
+      console.error("[WH] ERRO consulta/envio:", err);
+    }
     return NextResponse.json({ ok: true });
   }
 
   const fluxo = INTENCAO_PARA_FLUXO[intencao];
   if (fluxo) {
-    const pergunta = await iniciarFluxo(telefone, fluxo, entidades as Record<string, unknown>);
-    await enviarTexto(telefone, pergunta);
+    try {
+      const pergunta = await iniciarFluxo(telefone, fluxo, entidades as Record<string, unknown>);
+      console.log("[WH] fluxo iniciado:", fluxo);
+      await enviarTexto(telefone, pergunta);
+    } catch (err) {
+      console.error("[WH] ERRO fluxo/envio:", err);
+    }
     return NextResponse.json({ ok: true });
   }
 
-  await enviarTexto(telefone, `🤔 Não entendi. Digite *ajuda* para ver o que posso fazer.\n\n_Fazenda: ${fazendaNome}_`);
+  console.log("[WH] intenção não mapeada:", intencao, "— enviando fallback");
+  try {
+    await enviarTexto(telefone, `🤔 Não entendi. Digite *ajuda* para ver o que posso fazer.\n\n_Fazenda: ${fazendaNome}_`);
+  } catch (err) {
+    console.error("[WH] ERRO envio fallback:", err);
+  }
   return NextResponse.json({ ok: true });
 }
 
