@@ -117,11 +117,9 @@ export async function POST(req: NextRequest) {
   const { usuarioId, fazendaId, fazendaNome } = auth;
 
   // ── Sessão e histórico ─────────────────────────────────────────────────────
-  let sessao = await buscarSessao(telefone);
-  if (!sessao) {
-    await salvarSessao(telefone, { usuario_id: usuarioId, fazenda_id: fazendaId, fazenda_nome: fazendaNome });
-    sessao = await buscarSessao(telefone);
-  }
+  // upsert garante sessão existente sem race condition
+  await salvarSessao(telefone, { usuario_id: usuarioId, fazenda_id: fazendaId, fazenda_nome: fazendaNome });
+  const sessao = await buscarSessao(telefone);
 
   // Comando global de reset
   const textLower = textoMensagem.toLowerCase().trim();
@@ -131,8 +129,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Recupera histórico da sessão (últimas 8 trocas = 16 mensagens)
+  // Recupera histórico da sessão (últimas 10 trocas = 20 mensagens)
   const historico: Mensagem[] = (sessao?.dados?.historico as Mensagem[] | undefined) ?? [];
+  console.log("[WH] histórico carregado:", historico.length, "mensagens");
 
   // ── Imagem — tenta ler como nota fiscal e injeta o texto no contexto ────────
   let textoParaIA = textoMensagem;
@@ -163,13 +162,19 @@ export async function POST(req: NextRequest) {
   // Envia resposta
   await enviarTexto(telefone, resposta);
 
-  // Salva histórico (mantém últimas 8 trocas)
+  // Salva histórico (mantém últimas 10 trocas = 20 mensagens)
   const novoHistorico: Mensagem[] = [
     ...historico,
     { role: "user" as const, content: textoParaIA },
     { role: "assistant" as const, content: resposta },
-  ].slice(-16);
-  await salvarSessao(telefone, { dados: { historico: novoHistorico } });
+  ].slice(-20);
+  console.log("[WH] salvando histórico:", novoHistorico.length, "mensagens");
+  await salvarSessao(telefone, {
+    usuario_id: usuarioId,
+    fazenda_id: fazendaId,
+    fazenda_nome: fazendaNome,
+    dados: { historico: novoHistorico },
+  });
 
   return NextResponse.json({ ok: true });
 }

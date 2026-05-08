@@ -29,21 +29,21 @@ function sb() {
 
 // ── CRUD de sessão ──────────────────────────────────────────────────────────
 export async function buscarSessao(telefone: string): Promise<Sessao | null> {
+  // limit(1) em vez de single() para não quebrar se houver linhas duplicadas
   const { data } = await sb().from("sessoes_whatsapp")
-    .select("*").eq("telefone", telefone).single();
-  return data as Sessao | null;
+    .select("*").eq("telefone", telefone)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  return (data?.[0] ?? null) as Sessao | null;
 }
 
 export async function salvarSessao(telefone: string, patch: Partial<Sessao>) {
-  const { data: existe } = await sb().from("sessoes_whatsapp")
-    .select("id").eq("telefone", telefone).single();
-  if (existe) {
-    await sb().from("sessoes_whatsapp")
-      .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq("telefone", telefone);
-  } else {
-    await sb().from("sessoes_whatsapp").insert({ telefone, ...patch });
-  }
+  // upsert atômico pelo telefone — elimina race condition de criação dupla
+  const { error } = await sb().from("sessoes_whatsapp").upsert(
+    { telefone, ...patch, updated_at: new Date().toISOString() },
+    { onConflict: "telefone" }
+  );
+  if (error) console.error("[SESSAO] erro upsert:", error.message);
 }
 
 export async function limparSessao(telefone: string) {

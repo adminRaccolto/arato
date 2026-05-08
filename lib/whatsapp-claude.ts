@@ -269,6 +269,7 @@ Instruções de comportamento:
 - Use formatação WhatsApp: *negrito*, _itálico_, listas com •
 - Se tiver dados suficientes para executar uma ferramenta, execute — não peça confirmação antes de consultar.
 - Para registros (inserções), peça apenas os dados que faltam, depois registre diretamente. Seja ágil.
+- IMPORTANTE: você tem acesso ao histórico completo da conversa. Use SEMPRE as informações dadas em mensagens anteriores. Nunca peça algo que o usuário já informou.
 - Se o produtor cumprimentar ou não tiver intenção clara, apresente-se brevemente e diga o que sabe fazer (3-4 linhas).
 - Nunca invente dados financeiros. Se não souber, use as ferramentas.
 - Seja honesto quando não tiver uma ferramenta para algo — indique onde o usuário pode fazer no sistema.
