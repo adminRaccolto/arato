@@ -144,13 +144,14 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     valor, moeda: "BRL",
     status: jaPago ? "baixado" : "em_aberto",
     conta_bancaria: conta?.id ?? null,
+    auto: false,
   };
   if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
 
   const { error: errCp } = await sb().from("lancamentos").insert(cpPayload);
   if (errCp) {
     console.error("[BOT] Erro insert lancamentos abastecimento:", JSON.stringify(errCp));
-    return { ok: false, mensagem: `❌ Erro técnico (abastecimento): ${errCp.code} — ${errCp.message}` };
+    return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
   }
 
   // Movimentação de estoque (se for para tanque/estoque)
@@ -668,12 +669,16 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     status: jaPago ? "baixado" : "em_aberto",
     pessoa_id: pessoaId,
     conta_bancaria: conta?.id ?? null,
+    auto: false,
   };
   if (jaPago) { payload.data_baixa = hoje; payload.valor_pago = valor; }
 
   const { error } = await sb().from("lancamentos").insert(payload);
 
-  if (error) return { ok: false, mensagem: `❌ Erro: ${error.message}` };
+  if (error) {
+    console.error("[BOT] Erro insert lancamentos:", JSON.stringify(error));
+    return { ok: false, mensagem: `❌ Erro DB lancamentos: [${error.code}] ${error.message}` };
+  }
   const label = tipo === "pagar" ? "Conta a Pagar" : "Conta a Receber";
   const statusLabel = jaPago
     ? `✓ ${tipo === "pagar" ? "Pago" : "Recebido"}${conta ? ` — *${conta.nome}*` : ""}`

@@ -164,8 +164,8 @@ export async function POST(req: NextRequest) {
     { role: "assistant" as const, content: resposta },
   ].slice(-20);
   console.log("[WH] salvando histórico:", novoHistorico.length, "msgs para telefone:", telefone);
+  // usuario_id omitido — FK referencia auth.users mas usuarioId vem de usuarios (tabela custom)
   await salvarSessao(telefone, {
-    usuario_id: usuarioId,
     fazenda_id: fazendaId,
     fazenda_nome: fazendaNome,
     dados: { historico: novoHistorico },
