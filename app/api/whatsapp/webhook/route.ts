@@ -13,8 +13,17 @@ function sb() {
   );
 }
 
+type AuthResult = {
+  usuarioId: string;
+  fazendaId: string;
+  fazendaNome: string;
+  authUserId: string | null;
+  contaId: string | null;
+  todasFazendas: { id: string; nome: string }[];
+};
+
 // ── Autenticar número ──────────────────────────────────────────────────────
-async function autenticarNumero(telefone: string): Promise<{ usuarioId: string; fazendaId: string; fazendaNome: string } | null> {
+async function autenticarNumero(telefone: string): Promise<AuthResult | null> {
   const variantes = [telefone];
   if (telefone.startsWith("55") && telefone.length === 12) {
     variantes.push(telefone.slice(0, 4) + "9" + telefone.slice(4));
@@ -33,10 +42,12 @@ async function autenticarNumero(telefone: string): Promise<{ usuarioId: string; 
   // Prioriza perfis.fazenda_id (fazenda ativa no app) sobre usuarios.fazenda_id
   let fazendaId: string = data.fazenda_id;
   let fazendaNome: string = (Array.isArray(data.fazendas) ? data.fazendas[0] : data.fazendas as { nome: string } | null)?.nome ?? "";
+  let contaId: string | null = null;
+  let todasFazendas: { id: string; nome: string }[] = [];
 
   if (data.auth_user_id) {
     const { data: perfil } = await sb().from("perfis")
-      .select("fazenda_id, fazendas(nome)")
+      .select("fazenda_id, conta_id, fazendas(nome)")
       .eq("user_id", data.auth_user_id)
       .maybeSingle();
     if (perfil?.fazenda_id) {
@@ -44,10 +55,22 @@ async function autenticarNumero(telefone: string): Promise<{ usuarioId: string; 
       const pfaz = (Array.isArray(perfil.fazendas) ? perfil.fazendas[0] : perfil.fazendas) as { nome: string } | null;
       if (pfaz?.nome) fazendaNome = pfaz.nome;
     }
+    contaId = perfil?.conta_id ?? null;
+
+    // Lista todas as fazendas da conta (para farm switcher)
+    if (contaId) {
+      const { data: fazs } = await sb().from("fazendas")
+        .select("id, nome")
+        .eq("conta_id", contaId)
+        .order("nome");
+      todasFazendas = fazs ?? [];
+    }
   }
 
-  console.log("[WH] auth: usuario", data.id, "fazenda_id =>", fazendaId, fazendaNome);
-  return { usuarioId: data.id, fazendaId, fazendaNome };
+  if (todasFazendas.length === 0) todasFazendas = [{ id: fazendaId, nome: fazendaNome }];
+
+  console.log("[WH] auth: usuario", data.id, "fazenda_id =>", fazendaId, fazendaNome, "| fazendas:", todasFazendas.length);
+  return { usuarioId: data.id, fazendaId, fazendaNome, authUserId: data.auth_user_id ?? null, contaId, todasFazendas };
 }
 
 // ── Extrair número limpo do JID ────────────────────────────────────────────
@@ -131,11 +154,11 @@ export async function POST(req: NextRequest) {
   // ── Autenticar ─────────────────────────────────────────────────────────────
   const auth = await autenticarNumero(telefone);
   if (!auth) return NextResponse.json({ ok: true });
-  const { usuarioId, fazendaId, fazendaNome } = auth;
+  let { fazendaId, fazendaNome } = auth;
+  const { usuarioId, authUserId, todasFazendas } = auth;
 
   // ── Sessão e histórico ─────────────────────────────────────────────────────
   console.log("[WH] telefone:", telefone, "usuario:", usuarioId, "fazenda:", fazendaId);
-  // Lê sessão SEM salvar antes — salvar depois em operação única evita limpar o histórico
   const sessao = await buscarSessao(telefone);
   const historico: Mensagem[] = (sessao?.dados?.historico as Mensagem[] | undefined) ?? [];
   console.log("[WH] sessão:", sessao ? `encontrada (id=${sessao.id})` : "nova", "histórico:", historico.length, "msgs");
@@ -144,7 +167,36 @@ export async function POST(req: NextRequest) {
   const textLower = textoMensagem.toLowerCase().trim();
   if (["cancelar", "cancel", "sair", "reiniciar"].includes(textLower)) {
     await limparSessao(telefone);
-    await enviarTexto(telefone, `Ok, conversa reiniciada. Como posso ajudar, *${fazendaNome}*?`);
+    await enviarTexto(telefone, `Ok, conversa reiniciada. Fazenda ativa: *${fazendaNome}*. Como posso ajudar?`);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Comando: trocar fazenda ────────────────────────────────────────────────
+  // Detecta "trocar para X", "mudar para X", "fazenda X"
+  const trocaMatch = textLower.match(/^(?:trocar?|mudar?|ir\s+para?|selecionar?)\s+(?:para\s+|de\s+|pra\s+)?(.+)/);
+  if (trocaMatch && todasFazendas.length > 1) {
+    const nomeBuscado = trocaMatch[1].trim();
+    const fazMatch = todasFazendas.find(f =>
+      f.nome.toLowerCase().includes(nomeBuscado) || nomeBuscado.includes(f.nome.toLowerCase())
+    );
+    if (fazMatch && fazMatch.id !== fazendaId) {
+      if (authUserId) {
+        await sb().from("perfis").update({ fazenda_id: fazMatch.id }).eq("user_id", authUserId);
+      }
+      await limparSessao(telefone);
+      await enviarTexto(telefone, `✅ Trocado para *${fazMatch.nome}*.\nPróximas operações serão registradas nessa fazenda.`);
+      return NextResponse.json({ ok: true });
+    } else if (!fazMatch && todasFazendas.length > 1) {
+      const lista = todasFazendas.map(f => `• ${f.nome}${f.id === fazendaId ? " ✓" : ""}`).join("\n");
+      await enviarTexto(telefone, `❓ Não encontrei "${nomeBuscado}". Suas fazendas:\n${lista}\n\nDiga _"trocar para [nome]"_ para mudar.`);
+      return NextResponse.json({ ok: true });
+    }
+  }
+
+  // Comando: listar fazendas disponíveis
+  if (["fazendas", "minhas fazendas", "listar fazendas"].includes(textLower) && todasFazendas.length > 1) {
+    const lista = todasFazendas.map(f => `• ${f.nome}${f.id === fazendaId ? " ✓ _(ativa)_" : ""}`).join("\n");
+    await enviarTexto(telefone, `🏡 Suas fazendas:\n${lista}\n\nDiga _"trocar para [nome]"_ para mudar a fazenda ativa.`);
     return NextResponse.json({ ok: true });
   }
 
@@ -158,6 +210,25 @@ export async function POST(req: NextRequest) {
     } catch {
       textoParaIA = "[Usuário enviou uma imagem mas não foi possível lê-la.]";
     }
+  }
+
+  // ── Pagamento já efetuado: injeta hint obrigatório antes de Claude ─────────
+  const pagoPalavras = [
+    "paguei em dinheiro", "pago em dinheiro", "paguei no dinheiro",
+    "paguei em pix", "paguei no pix", "paguei via pix",
+    "paguei à vista", "paguei a vista", "foi pago à vista", "foi a vista",
+    "paguei agora", "já paguei", "ja paguei", "pago na hora",
+    "paguei em débito", "paguei no débito",
+  ];
+  if (pagoPalavras.some(k => textLower.includes(k))) {
+    textoParaIA = `[SISTEMA — OBRIGATÓRIO: O produtor confirmou pagamento já efetuado. Use ja_pago='sim' em TODAS as ferramentas desta mensagem, sem exceção.]\n${textoParaIA}`;
+  }
+
+  // ── Contexto multi-fazenda: injeta na primeira mensagem de sessão nova ──────
+  const isNovasSessao = !sessao;
+  if (isNovasSessao && todasFazendas.length > 1) {
+    const listaFaz = todasFazendas.map(f => `• ${f.nome}${f.id === fazendaId ? " (ativa)" : ""}`).join(", ");
+    textoParaIA = `[SISTEMA: Produtor tem ${todasFazendas.length} fazendas: ${listaFaz}. Fazenda ativa agora: "${fazendaNome}". Mencione brevemente a fazenda ativa na sua primeira resposta e informe que ele pode dizer "trocar para [nome]" para mudar.]\n${textoParaIA}`;
   }
 
   // ── Claude processa com tool use ────────────────────────────────────────────

@@ -274,7 +274,7 @@ function CadastrosInner() {
   const [bombas, setBombas]           = useState<BombaCombustivel[]>([]);
   const [modalBomba, setModalBomba]   = useState(false);
   const [editBomba, setEditBomba]     = useState<BombaCombustivel | null>(null);
-  const [fBomba, setFBomba]           = useState({ nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0" });
+  const [fBomba, setFBomba]           = useState({ nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true });
 
   // ── Funcionários ──
   const [funcs, setFuncs]             = useState<Funcionario[]>([]);
@@ -1070,12 +1070,12 @@ function CadastrosInner() {
   // ─────────────── BOMBAS ───────────────
   const abrirModalBomba = (b?: BombaCombustivel) => {
     setEditBomba(b ?? null);
-    setFBomba(b ? { nome: b.nome, combustivel: b.combustivel, capacidade_l: String(b.capacidade_l ?? ""), estoque_atual_l: String(b.estoque_atual_l) } : { nome: "", combustivel: "diesel_s10", capacidade_l: "", estoque_atual_l: "0" });
+    setFBomba(b ? { nome: b.nome, combustivel: b.combustivel, capacidade_l: String(b.capacidade_l ?? ""), estoque_atual_l: String(b.estoque_atual_l), consume_estoque: b.consume_estoque !== false } : { nome: "", combustivel: "diesel_s10", capacidade_l: "", estoque_atual_l: "0", consume_estoque: true });
     setModalBomba(true);
   };
   const salvarBomba = () => salvar(async () => {
     if (!fBomba.nome.trim()) return;
-    const payload = { fazenda_id: fazendaId!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, ativa: true };
+    const payload = { fazenda_id: fazendaId!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, ativa: true };
     if (editBomba) { await atualizarBomba(editBomba.id, payload); setBombas(p => p.map(x => x.id === editBomba.id ? { ...x, ...payload } : x)); }
     else { const n = await criarBomba(payload); setBombas(p => [...p, n]); }
     setModalBomba(false);
@@ -1619,9 +1619,9 @@ function CadastrosInner() {
                 <button style={btnV} onClick={() => abrirModalBomba()}>+ Nova Bomba</button>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome / Localização", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Status", ""]} />
+                <TH cols={["Nome / Localização", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Controle", "Status", ""]} />
                 <tbody>
-                  {bombas.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
+                  {bombas.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
                   {bombas.map((b, i) => {
                     const pct = b.capacidade_l ? Math.round(b.estoque_atual_l / b.capacidade_l * 100) : null;
                     const corComb: Record<string, [string,string]> = { diesel_s10: ["#E6F1FB","#0C447C"], diesel_s500: ["#E6F1FB","#0B2D50"], gasolina: ["#FAEEDA","#633806"], etanol: ["#D5E8F5","#0B2D50"], arla: ["#FBF0D8","#7A5A12"] };
@@ -1642,6 +1642,7 @@ function CadastrosInner() {
                             </div>
                           ) : "—"}
                         </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.consume_estoque !== false ? "Estoque" : "Posto externo", b.consume_estoque !== false ? "#D5E8F5" : "#FBF3E0", b.consume_estoque !== false ? "#0B2D50" : "#7A5A12")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#D5E8F5" : "#F1EFE8", b.ativa ? "#0B2D50" : "#555")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
@@ -3949,6 +3950,11 @@ function CadastrosInner() {
             </div>
             <div><label style={lbl}>Capacidade do tanque (L)</label><input style={inp} type="number" value={fBomba.capacidade_l} onChange={e => setFBomba(p => ({ ...p, capacidade_l: e.target.value }))} /></div>
             <div><label style={lbl}>Estoque atual (L)</label><input style={inp} type="number" value={fBomba.estoque_atual_l} onChange={e => setFBomba(p => ({ ...p, estoque_atual_l: e.target.value }))} /></div>
+            <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
+              <input type="checkbox" id="consume_estoque" checked={fBomba.consume_estoque} onChange={e => setFBomba(p => ({ ...p, consume_estoque: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
+              <label htmlFor="consume_estoque" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer", fontWeight: 600 }}>Controla estoque interno</label>
+              <span style={{ fontSize: 12, color: "#666" }}>— Marque para bombas físicas da fazenda (tanques próprios). Desmarque para postos externos ou despesas diretas sem controle de estoque.</span>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalBomba(false)}>Cancelar</button>

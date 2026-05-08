@@ -534,6 +534,7 @@ export type BombaCombustivel = {
   combustivel: "diesel_s10" | "diesel_s500" | "gasolina" | "etanol" | "arla";
   capacidade_l?: number;
   estoque_atual_l: number;
+  consume_estoque: boolean;
   ativa: boolean;
   created_at?: string;
 };

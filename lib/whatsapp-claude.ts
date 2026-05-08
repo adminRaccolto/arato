@@ -102,9 +102,11 @@ const TOOLS: Anthropic.Tool[] = [
         quantidade: { type: "number", description: "Litros abastecidos" },
         valor: { type: "number", description: "Valor total em R$. Se informado preço/litro, calcule: quantidade × preço" },
         veiculo: { type: "string", description: "Nome, placa ou descrição do veículo/máquina (opcional)" },
+        bomba_nome: { type: "string", description: "Nome da bomba ou posto usado. Informe quando o usuário mencionar onde abasteceu (ex: 'Posto', 'Bomba 1', 'Posto Shell'). Isso registra o abastecimento no histórico." },
         tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "'estoque': comprou para repor o tanque interno da fazenda (deduz estoque). 'direto': abasteceu em posto externo ou direto na máquina sem passar pelo estoque — não há dedução de estoque. Padrão: direto." },
         vencimento: { type: "string", description: "Data de vencimento: hoje, amanhã, dd/mm/aaaa ou 'à vista'" },
-        ja_pago: { type: "string", enum: ["sim", "nao"], description: "Use 'sim' quando o usuário disser que já pagou, é à vista, dinheiro, débito imediato ou 'já baixado'. CP será lançado como pago." },
+        ja_pago: { type: "string", enum: ["sim", "nao"], description: "PAGAMENTO já feito (dinheiro transferido). Use 'sim' quando o usuário disser que já pagou, é à vista, pagou em dinheiro, débito ou PIX. IMPORTANTE: 'ja_pago' refere-se ao dinheiro pago, NÃO à nota fiscal — mesmo que a NF chegue depois, se o dinheiro já saiu use 'sim'." },
+        forma_pagamento: { type: "string", description: "Forma de pagamento: dinheiro, PIX, débito, boleto etc" },
         conta_bancaria: { type: "string", description: "Nome da conta bancária usada para pagamento (ex: Sicredi, Bradesco, Caixa, Caixa Fazenda). Só preencha quando o usuário mencionar a conta." },
       },
       required: ["produto"],
@@ -162,6 +164,19 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["descricao"],
     },
   },
+  {
+    name: "vincular_nf",
+    description: "Vincula uma nota fiscal (NF-e) a um lançamento de Contas a Pagar existente. Use quando o usuário informar que chegou a nota fiscal de uma compra anterior (ex: 'chegou a NF 001234 do abastecimento').",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        nf_numero:   { type: "string", description: "Número da nota fiscal (ex: 001234)" },
+        nf_emitente: { type: "string", description: "Nome do emitente/fornecedor (ex: Posto Shell, Agroloja)" },
+        busca:       { type: "string", description: "Trecho da descrição do lançamento para localizar o CP correto (ex: 'abastecimento diesel', 'posto')" },
+      },
+      required: ["nf_numero"],
+    },
+  },
 ];
 
 // ── Executor das ferramentas ────────────────────────────────────────────────
@@ -207,9 +222,11 @@ async function executarFerramenta(
           quantidade: input.quantidade,
           valor: input.valor,
           veiculo: input.veiculo,
+          bomba_nome: input.bomba_nome ?? "",
           tipo_destino: input.tipo_destino ?? "direto",
           vencimento: input.vencimento ?? "hoje",
           ja_pago: input.ja_pago ?? "nao",
+          forma_pagamento: input.forma_pagamento ?? "",
           conta_bancaria: input.conta_bancaria ?? "",
           tem_nf: "nao",
         }, fazendaId, usuarioId);
@@ -252,6 +269,14 @@ async function executarFerramenta(
         }, fazendaId, usuarioId);
         return res.mensagem;
       }
+      case "vincular_nf": {
+        const res = await executarInsercao("vincular_nf", {
+          nf_numero:   input.nf_numero,
+          nf_emitente: input.nf_emitente ?? "",
+          busca:       input.busca ?? "",
+        }, fazendaId, usuarioId);
+        return res.mensagem;
+      }
       default:
         return "Ferramenta não reconhecida.";
     }
@@ -289,6 +314,12 @@ REGRA CRÍTICA — SEMPRE CHAME A FERRAMENTA:
 - Ao registrar abastecimento, conta a pagar/receber ou operação de lavoura: CHAME a ferramenta correspondente mesmo que suspeite que algum dado está faltando. Não tente decidir sozinho se tem dados suficientes — a ferramenta vai te dizer o que falta.
 - Se a ferramenta retornar uma pergunta (ex: "❓ Qual o valor?"), repasse essa pergunta diretamente ao usuário — sem inventar ou adaptar.
 - NUNCA diga "ocorreu um erro no sistema", "não foi possível registrar" ou qualquer mensagem de erro sem ter chamado a ferramenta. Erros só existem se a ferramenta retornar um erro específico.
+
+REGRA CRÍTICA — ja_pago vs nota fiscal:
+- ja_pago="sim" significa que o DINHEIRO já saiu da conta — o pagamento foi efetuado.
+- A nota fiscal é um documento fiscal separado — pode chegar dias depois e NÃO afeta o status de pagamento.
+- Se o usuário disser "paguei em dinheiro", "paguei à vista", "já paguei", "débito", "PIX" → ja_pago="sim", independente da NF.
+- Só use ja_pago="nao" quando o usuário não mencionou ter pago ainda (ex: "comprei por boleto para pagar sexta").
 
 REGRA CRÍTICA — CONTINUIDADE DE CONTEXTO:
 - Você tem acesso ao histórico completo da conversa. Leia TODAS as mensagens anteriores antes de responder.

@@ -3458,3 +3458,60 @@ ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS valor_unitario numeri
 -- Seção 71 complemento — coluna origem (rastrear registros do WhatsApp)
 ALTER TABLE lancamentos           ADD COLUMN IF NOT EXISTS origem text;
 ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS origem text;
+
+-- ============================================================
+-- Seção 72 — Colunas do bot WhatsApp em lancamentos + sessoes_whatsapp
+-- Execute no Supabase SQL Editor (necessário para o bot funcionar)
+-- ============================================================
+
+-- Colunas de baixa e conta bancária nos lançamentos
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS conta_bancaria  uuid REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS data_baixa      date,
+  ADD COLUMN IF NOT EXISTS valor_pago      numeric(15,2),
+  ADD COLUMN IF NOT EXISTS pessoa_id       uuid REFERENCES pessoas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS safra_id        uuid;
+
+-- Tabela de sessões conversacionais do WhatsApp (histórico de contexto)
+CREATE TABLE IF NOT EXISTS sessoes_whatsapp (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  telefone        text NOT NULL UNIQUE,
+  usuario_id      uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  fazenda_id      uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  fazenda_nome    text DEFAULT '',
+  fluxo           text,
+  etapa           text,
+  dados           jsonb DEFAULT '{}',
+  aguardando_foto boolean DEFAULT false,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS sessoes_whatsapp_telefone_idx ON sessoes_whatsapp (telefone);
+CREATE INDEX IF NOT EXISTS sessoes_whatsapp_updated_idx  ON sessoes_whatsapp (updated_at);
+
+ALTER TABLE sessoes_whatsapp ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'sessoes_whatsapp' AND policyname = 'sessoes_whatsapp_service_only'
+  ) THEN
+    CREATE POLICY "sessoes_whatsapp_service_only" ON sessoes_whatsapp USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+-- ============================================================
+-- SEÇÃO 73 — Bomba Combustível: flag consume_estoque
+-- ============================================================
+
+-- Flag que indica se a bomba controla estoque interno da fazenda.
+-- FALSE = posto externo / despesa direta (não debita estoque, mas registra no histórico).
+ALTER TABLE bombas_combustivel
+  ADD COLUMN IF NOT EXISTS consume_estoque boolean DEFAULT true;
+
+-- Criar uma bomba virtual "Posto" para cada fazenda que ainda não tiver
+-- (opcional — o usuário pode criar manualmente no cadastro)
+-- INSERT INTO bombas_combustivel (fazenda_id, nome, tipo, consume_estoque)
+-- SELECT id, 'Posto', 'diesel_s10', false FROM fazendas
+-- WHERE id NOT IN (SELECT DISTINCT fazenda_id FROM bombas_combustivel WHERE consume_estoque = false);
+
+NOTIFY pgrst, 'reload schema';

@@ -126,6 +126,9 @@ export default function ContasPagar() {
 
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo,  setModalNovo]  = useState(false);
+  const [modalNF,    setModalNF]    = useState<Lancamento | null>(null);
+  const [nfNumero,   setNfNumero]   = useState("");
+  const [nfEmitente, setNfEmitente] = useState("");
 
   // ── Seleção para borderô ──────────────────────────────────
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
@@ -250,7 +253,8 @@ export default function ContasPagar() {
       if (fVencDe     && (l.data_vencimento ?? "") < fVencDe)                                  return false;
       if (fVencAte    && (l.data_vencimento ?? "") > fVencAte)                                  return false;
       if (fMoedaOrig  && l.moeda !== fMoedaOrig)                                               return false;
-      if (fConta      && !(l.conta_bancaria ?? "").toLowerCase().includes(fConta.toLowerCase())) return false;
+      const contaNomeRes = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
+      if (fConta      && !contaNomeRes.toLowerCase().includes(fConta.toLowerCase())) return false;
       if (fProdutor   && !prodLabel.toLowerCase().includes(fProdutor.toLowerCase()))            return false;
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
       return true;
@@ -678,7 +682,7 @@ export default function ContasPagar() {
                             </td>
                             {/* Conta */}
                             <td style={{ padding: "10px 10px", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
-                              {l.conta_bancaria ?? "—"}
+                              {contas.find(c => c.id === l.conta_bancaria)?.nome ?? "—"}
                             </td>
                             {/* Produtor */}
                             <td style={{ padding: "10px 10px", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
@@ -690,21 +694,44 @@ export default function ContasPagar() {
                             </td>
                             {/* Ação */}
                             <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                              {isPrevisao ? (
+                              <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
+                                {isPrevisao ? (
+                                  <button
+                                    onClick={() => confirmarPrevisao(l)}
+                                    style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#1A5CB8", color: "#fff", border: "none" }}
+                                  >
+                                    ✓ Confirmar
+                                  </button>
+                                ) : l.status !== "baixado" ? (
+                                  <button
+                                    onClick={() => abrirBaixa(l)}
+                                    style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#C9921B", color: "#fff", border: "none" }}
+                                  >
+                                    ◈ Baixar
+                                  </button>
+                                ) : null}
                                 <button
-                                  onClick={() => confirmarPrevisao(l)}
-                                  style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#1A5CB8", color: "#fff", border: "none" }}
+                                  onClick={() => { setModalNF(l); setNfNumero(l.nfe_numero ?? ""); setNfEmitente(""); }}
+                                  title={l.nfe_numero ? `NF vinculada: ${l.nfe_numero}` : "Vincular nota fiscal"}
+                                  style={{ fontSize: 12, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: l.nfe_numero ? "#D5E8F5" : "transparent", color: l.nfe_numero ? "#0B2D50" : "#888", border: `0.5px solid ${l.nfe_numero ? "#1A4870" : "#CCC"}`, lineHeight: 1, fontWeight: l.nfe_numero ? 700 : 400 }}
                                 >
-                                  ✓ Confirmar
+                                  📎{l.nfe_numero ? ` ${l.nfe_numero}` : ""}
                                 </button>
-                              ) : l.status !== "baixado" ? (
-                                <button
-                                  onClick={() => abrirBaixa(l)}
-                                  style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#C9921B", color: "#fff", border: "none" }}
-                                >
-                                  ◈ Baixar
-                                </button>
-                              ) : null}
+                                {!l.auto && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Excluir "${l.descricao}"?\nEsta ação não pode ser desfeita.`)) return;
+                                      const { error } = await supabase.from("lancamentos").delete().eq("id", l.id);
+                                      if (error) { alert("Erro ao excluir: " + error.message); return; }
+                                      setLancamentos(prev => prev.filter(x => x.id !== l.id));
+                                    }}
+                                    title="Excluir lançamento"
+                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "transparent", color: "#E24B4A", border: "0.5px solid #E24B4A", lineHeight: 1 }}
+                                  >
+                                    🗑
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -722,6 +749,48 @@ export default function ContasPagar() {
           )}
         </div>
       </main>
+
+      {/* ── Modal Vincular NF ────────────────────────────────── */}
+      {modalNF && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>📎 Vincular Nota Fiscal</div>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>{modalNF.descricao}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+              <div>
+                <label style={lbl}>Número da NF *</label>
+                <input style={inp} placeholder="ex: 001234" value={nfNumero} onChange={e => setNfNumero(e.target.value)} autoFocus />
+              </div>
+              <div>
+                <label style={lbl}>Emitente / Fornecedor</label>
+                <input style={inp} placeholder="ex: Posto Shell" value={nfEmitente} onChange={e => setNfEmitente(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setModalNF(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              {modalNF.nfe_numero && (
+                <button onClick={async () => {
+                  if (!confirm("Remover NF vinculada?")) return;
+                  await supabase.from("lancamentos").update({ nfe_numero: null }).eq("id", modalNF.id);
+                  setLancamentos(prev => prev.map(x => x.id === modalNF.id ? { ...x, nfe_numero: undefined } : x));
+                  setModalNF(null);
+                }} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #E24B4A", background: "transparent", color: "#E24B4A", cursor: "pointer", fontSize: 13 }}>Remover NF</button>
+              )}
+              <button disabled={salvando || !nfNumero.trim()} onClick={async () => {
+                if (!nfNumero.trim()) return;
+                setSalvando(true);
+                const { error } = await supabase.from("lancamentos").update({ nfe_numero: nfNumero.trim() }).eq("id", modalNF.id);
+                setSalvando(false);
+                if (error) { alert("Erro: " + error.message); return; }
+                setLancamentos(prev => prev.map(x => x.id === modalNF.id ? { ...x, nfe_numero: nfNumero.trim() } : x));
+                setModalNF(null);
+              }} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando || !nfNumero.trim() ? 0.5 : 1 }}>
+                {salvando ? "Salvando…" : "Vincular NF"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Barra flutuante de seleção (borderô) ─────────────── */}
       {selecionados.size > 0 && (

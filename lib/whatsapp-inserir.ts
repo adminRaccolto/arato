@@ -25,7 +25,11 @@ function parseData(texto: string): string {
 }
 
 function parseValor(texto: string): number {
-  return parseFloat(String(texto).replace(/[R$\s.]/g, "").replace(",", ".")) || 0;
+  const s = String(texto).trim().replace(/[R$\s]/g, "");
+  // Número JS passado como string (ex: "237.27") — ponto é decimal, sem vírgula
+  if (s.includes(".") && !s.includes(",")) return parseFloat(s) || 0;
+  // Formato BR: remove pontos de milhar, substitui vírgula decimal (ex: "1.234,56" ou "237,27")
+  return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
 }
 
 // ── Conversão de unidades ────────────────────────────────────────────────────
@@ -76,6 +80,34 @@ export function converterUnidade(valor: number, unidadeOrigem: string, unidadeDe
 
 type Resultado = { ok: boolean; mensagem: string };
 
+// ── Ciclo vigente na data (usado por todos os inserters) ────────────────────
+async function buscarCicloVigente(fazendaId: string, dataRef: string): Promise<{ id: string; ano_safra_id: string | null } | null> {
+  // 1. Ciclo cujo período contém a data
+  const { data: c1 } = await sb().from("ciclos")
+    .select("id, ano_safra_id").eq("fazenda_id", fazendaId)
+    .lte("data_inicio", dataRef).gte("data_fim", dataRef)
+    .order("data_inicio", { ascending: false }).limit(1);
+  if (c1?.[0]) return c1[0];
+
+  // 2. Ano safra vigente → ciclo mais recente do ano
+  const { data: ano } = await sb().from("anos_safra")
+    .select("id").eq("fazenda_id", fazendaId)
+    .lte("data_inicio", dataRef).gte("data_fim", dataRef)
+    .limit(1).maybeSingle();
+  if (ano) {
+    const { data: c2 } = await sb().from("ciclos")
+      .select("id, ano_safra_id").eq("fazenda_id", fazendaId).eq("ano_safra_id", ano.id)
+      .order("data_inicio", { ascending: false }).limit(1);
+    if (c2?.[0]) return c2[0];
+  }
+
+  // 3. Fallback: ciclo mais recente
+  const { data: c3 } = await sb().from("ciclos")
+    .select("id, ano_safra_id").eq("fazenda_id", fazendaId)
+    .order("created_at", { ascending: false }).limit(1);
+  return c3?.[0] ?? null;
+}
+
 // ── Lookup de conta bancária por nome ───────────────────────────────────────
 async function buscarContaBancaria(fazendaId: string, nome: string): Promise<{ id: string; nome: string } | null> {
   if (!nome || nome.trim() === "") return null;
@@ -106,6 +138,7 @@ export async function executarInsercao(
     case "baixar_cp":          return baixarLancamento("pagar", dados, fazendaId);
     case "baixar_cr":          return baixarLancamento("receber", dados, fazendaId);
     case "romaneio":           return inserirRomaneio(dados, fazendaId);
+    case "vincular_nf":        return vincularNF(dados, fazendaId);
     default:                   return { ok: false, mensagem: "Fluxo desconhecido." };
   }
 }
@@ -125,44 +158,83 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   const unidadeUsuario = String(dados.unidade ?? "L");
   const hoje       = new Date().toISOString().split("T")[0];
 
-  // Se o usuário disse "à vista" / "já pago" / "já baixado", lança direto como pago
+  // ja_pago: "sim" explícito, à vista, ou forma de pagamento imediata (dinheiro, débito, PIX)
   const jaVStr = String(dados.ja_pago ?? "").toLowerCase();
+  const formaPag = String(dados.forma_pagamento ?? "").toLowerCase();
   const jaPago = jaVStr === "true" || jaVStr === "sim" || jaVStr === "yes" ||
-    String(dados.vencimento ?? "").toLowerCase().includes("vista");
+    String(dados.vencimento ?? "").toLowerCase().includes("vista") ||
+    formaPag.includes("dinheiro") || formaPag.includes("débito") || formaPag.includes("debito") || formaPag.includes("pix");
 
-  // Conta bancária (lookup por nome)
-  const conta = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
+  // Conta bancária e ciclo vigente
+  const conta  = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
+  const cicloAb = await buscarCicloVigente(fazendaId, hoje);
+
+  // Bomba (lookup por nome) — permite registrar no histórico de abastecimentos
+  const bombaStr = String(dados.bomba_nome ?? "");
+  let bomba: { id: string; consume_estoque: boolean } | null = null;
+  if (bombaStr) {
+    const { data: bombaData } = await sb().from("bombas_combustivel")
+      .select("id, consume_estoque")
+      .eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${bombaStr}%`)
+      .limit(1).maybeSingle();
+    bomba = bombaData ?? null;
+  }
 
   // CP
   const cpPayload: Record<string, unknown> = {
     fazenda_id: fazendaId,
     tipo: "pagar",
-    descricao: `Abastecimento ${dados.produto ?? "combustível"} — ${dados.veiculo ?? dados.tipo_destino ?? "direto"}`,
+    descricao: `Abastecimento ${dados.produto ?? "combustível"} — ${dados.veiculo ?? dados.bomba_nome ?? dados.tipo_destino ?? "direto"}`,
     categoria: "combustivel",
     data_lancamento: hoje,
     data_vencimento: vencimento,
     valor, moeda: "BRL",
     status: jaPago ? "baixado" : "em_aberto",
     conta_bancaria: conta?.id ?? null,
+    safra_id:      cicloAb?.id ?? null,
+    ano_safra_id:  cicloAb?.ano_safra_id ?? null,
+    observacao:    "Inserido via Arato-IA",
     auto: false,
   };
   if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
 
-  const { error: errCp } = await sb().from("lancamentos").insert(cpPayload);
+  const { data: lancRow, error: errCp } = await sb().from("lancamentos").insert(cpPayload).select("id").maybeSingle();
   if (errCp) {
     console.error("[BOT] Erro insert lancamentos abastecimento:", JSON.stringify(errCp));
     return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
   }
 
-  // Movimentação de estoque (se for para tanque/estoque)
-  if (dados.tipo_destino === "estoque") {
+  // Registra no histórico de abastecimentos (quando bomba informada)
+  if (bomba) {
+    const { data: maqData } = await sb().from("maquinas")
+      .select("id")
+      .eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${dados.veiculo ?? ""}%`)
+      .limit(1).maybeSingle();
+
+    await sb().from("abastecimentos").insert({
+      fazenda_id: fazendaId,
+      bomba_id: bomba.id,
+      maquina_id: maqData?.id ?? null,
+      quantidade_l: qtdUsuario,
+      valor_unitario: qtdUsuario > 0 ? valor / qtdUsuario : 0,
+      valor_total: valor,
+      data: hoje,
+      observacao: String(dados.veiculo ?? "") || null,
+      lancamento_id: lancRow?.id ?? null,
+    });
+  }
+
+  // Movimentação de estoque: apenas se tipo_destino=estoque E a bomba não for de posto externo
+  const deveMovEstoque = dados.tipo_destino === "estoque" && (bomba ? bomba.consume_estoque !== false : true);
+  if (deveMovEstoque) {
     const { data: insumo } = await sb().from("insumos")
       .select("id, nome, unidade, estoque, valor_unitario, custo_medio")
       .eq("fazenda_id", fazendaId)
-      .ilike("nome", `%${dados.produto}%`).limit(1).single();
+      .ilike("nome", `%${dados.produto}%`).limit(1).maybeSingle();
 
     if (insumo) {
-      // Converte para a unidade nativa do insumo (combustível geralmente em L)
       const unidadeInsumo = String(insumo.unidade ?? "L");
       const qtdNativa = converterUnidade(qtdUsuario, unidadeUsuario, unidadeInsumo);
       const novoEstoque = Number(insumo.estoque ?? 0) + qtdNativa;
@@ -176,17 +248,18 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
         fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada",
         quantidade: qtdNativa, valor_unitario: qtdNativa > 0 ? valor / qtdNativa : 0,
         motivo: "compra", observacao: `Abastecimento via WhatsApp — ${insumo.nome}`,
-        data: new Date().toISOString().split("T")[0], auto: false,
+        data: hoje, auto: false,
       });
     }
   }
 
   const statusLabel = jaPago
     ? `Pago ✓${conta ? ` — debitado de *${conta.nome}*` : ""}`
-    : `Vence: ${vencimento}`;
+    : `A vencer: ${vencimento}`;
+  const localLabel = bomba ? ` via *${bombaStr}*` : "";
   return {
     ok: true,
-    mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${dados.produto ?? "combustível"} — ${dados.veiculo ?? ""}\n• R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• ${statusLabel}`,
+    mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${dados.produto ?? "combustível"}${localLabel}${dados.veiculo ? ` — ${dados.veiculo}` : ""}\n• Valor: R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• Status: ${statusLabel}`,
   };
 }
 
@@ -684,8 +757,9 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     pessoaId = pessoa?.id ?? null;
   }
 
-  // Conta bancária (lookup por nome)
-  const conta = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
+  // Conta bancária e ciclo vigente
+  const conta   = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
+  const cicloLanc = await buscarCicloVigente(fazendaId, hoje);
 
   const payload: Record<string, unknown> = {
     fazenda_id: fazendaId, tipo,
@@ -696,6 +770,9 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     status: jaPago ? "baixado" : "em_aberto",
     pessoa_id: pessoaId,
     conta_bancaria: conta?.id ?? null,
+    safra_id:      cicloLanc?.id ?? null,
+    ano_safra_id:  cicloLanc?.ano_safra_id ?? null,
+    observacao:    "Inserido via Arato-IA",
     auto: false,
   };
   if (jaPago) { payload.data_baixa = hoje; payload.valor_pago = valor; }
@@ -742,6 +819,51 @@ async function baixarLancamento(tipo: "pagar" | "receber", dados: Record<string,
   return {
     ok: true,
     mensagem: `✅ Baixa registrada!\n• ${lanc.descricao}\n• Valor: R$ ${valorFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• Data: ${dataBaixa}${contaLabel}`,
+  };
+}
+
+// ── Vincular NF a lançamento existente ──────────────────────────────────────
+async function vincularNF(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const nfNumero   = String(dados.nf_numero   ?? "").trim();
+  const nfEmitente = String(dados.nf_emitente ?? "").trim();
+  const busca      = String(dados.busca       ?? dados.descricao ?? "").trim();
+
+  if (!nfNumero) return { ok: false, mensagem: "❓ Qual é o número da nota fiscal?" };
+
+  // Busca o CP mais recente que bate com a descrição/emitente
+  let query = sb().from("lancamentos")
+    .select("id, descricao, valor, data_vencimento")
+    .eq("fazenda_id", fazendaId)
+    .eq("tipo", "pagar")
+    .in("status", ["em_aberto", "baixado"])
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (busca) {
+    query = query.ilike("descricao", `%${busca}%`);
+  }
+
+  const { data: candidatos } = await query;
+  if (!candidatos?.length) {
+    return { ok: false, mensagem: `❌ Não encontrei CP com "${busca || "combustível"}". Tente com um trecho da descrição.` };
+  }
+
+  // Pega o primeiro (mais recente)
+  const lanc = candidatos[0];
+  const obsAtual = String((lanc as Record<string, unknown>).observacao ?? "");
+  const novaObs = obsAtual ? `${obsAtual} | NF ${nfNumero}${nfEmitente ? ` — ${nfEmitente}` : ""}` : `NF ${nfNumero}${nfEmitente ? ` — ${nfEmitente}` : ""}`;
+
+  const { error } = await sb().from("lancamentos").update({
+    nfe_numero: nfNumero,
+    observacao: novaObs,
+  }).eq("id", lanc.id);
+
+  if (error) return { ok: false, mensagem: `❌ Erro ao vincular NF: ${error.message}` };
+
+  const fmtData = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
+  return {
+    ok: true,
+    mensagem: `✅ NF ${nfNumero} vinculada!\n• Lançamento: ${lanc.descricao}\n• Valor: R$ ${Number(lanc.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• Vencimento: ${fmtData(lanc.data_vencimento)}`,
   };
 }
 

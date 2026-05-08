@@ -5,7 +5,7 @@ import { extrairEntidade } from "./whatsapp-ai";
 export type FluxoNome =
   | "abastecimento" | "operacao_lavoura" | "entrada_estoque"
   | "saida_estoque" | "lancar_cp" | "baixar_cp"
-  | "lancar_cr" | "baixar_cr" | "romaneio";
+  | "lancar_cr" | "baixar_cr" | "romaneio" | "vincular_nf";
 
 export type Sessao = {
   id: string;
@@ -162,6 +162,14 @@ const FLUXOS: Record<FluxoNome, { etapas: EtapaConfig[]; resumo: (d: Record<stri
       const sacas = (liquido / 60).toFixed(0);
       return `🌾 *Romaneio*\n• ${d.commodity} — Talhão ${d.talhao}\n• Placa: ${d.placa}\n• Peso bruto: ${Number(d.peso_bruto).toLocaleString("pt-BR")} kg\n• Tara: ${Number(d.tara).toLocaleString("pt-BR")} kg\n• Líquido: ${liquido.toLocaleString("pt-BR")} kg (${sacas} sc)\n\nConfirma? Responda *SIM* ou *NÃO*`;
     },
+  },
+  vincular_nf: {
+    etapas: [
+      { campo: "nf_numero",   pergunta: "Número da nota fiscal:" },
+      { campo: "nf_emitente", pergunta: "Nome do emitente/fornecedor (ou deixe em branco):" },
+      { campo: "busca",       pergunta: "Trecho da descrição do lançamento para localizar (ex: 'abastecimento diesel'):" },
+    ],
+    resumo: (d) => `📎 *Vincular NF*\n• NF: ${d.nf_numero}\n• Emitente: ${d.nf_emitente || "não informado"}\n• Lançamento: "${d.busca}"\n\nConfirma? Responda *SIM* ou *NÃO*`,
   },
 };
 
