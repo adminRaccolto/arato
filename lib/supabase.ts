@@ -509,12 +509,20 @@ export type Maquina = {
   id: string;
   fazenda_id: string;
   nome: string;
-  tipo: "trator" | "colheitadeira" | "pulverizador" | "plantadeira" | "caminhao" | "implemento" | "outro";
+  tipo: "trator" | "colheitadeira" | "pulverizador" | "plantadeira" | "caminhao" | "carro" | "implemento" | "outro";
   marca?: string;
   modelo?: string;
   ano?: number;
   patrimonio?: string;
+  chassi?: string;
   horimetro_atual?: number;
+  // Seguro
+  seguro_seguradora?: string;
+  seguro_corretora?: string;
+  seguro_numero_apolice?: string;
+  seguro_data_contratacao?: string;
+  seguro_vencimento_apolice?: string;
+  seguro_premio?: number;
   ativa: boolean;
   created_at?: string;
 };

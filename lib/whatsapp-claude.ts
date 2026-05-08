@@ -94,16 +94,18 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "registrar_abastecimento",
-    description: "Registra abastecimento de combustível. Lança CP e movimenta estoque.",
+    description: "Registra abastecimento de combustível. Lança CP (já pago ou a vencer) e movimenta estoque.",
     input_schema: {
       type: "object" as const,
       properties: {
-        produto: { type: "string", description: "diesel, gasolina, etc" },
+        produto: { type: "string", description: "diesel s10, gasolina, etanol, arla etc" },
         quantidade: { type: "number", description: "Litros abastecidos" },
-        valor: { type: "number", description: "Valor total em R$" },
-        veiculo: { type: "string", description: "Nome ou placa do veículo (opcional)" },
-        tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "Vai para o tanque/estoque ou uso imediato" },
-        vencimento: { type: "string", description: "Data de vencimento da conta: hoje, amanhã, ou dd/mm/aaaa" },
+        valor: { type: "number", description: "Valor total em R$. Se informado preço/litro, calcule: quantidade × preço" },
+        veiculo: { type: "string", description: "Nome, placa ou descrição do veículo/máquina (opcional)" },
+        tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "Vai para tanque/estoque ou uso imediato no veículo" },
+        vencimento: { type: "string", description: "Data de vencimento: hoje, amanhã, dd/mm/aaaa ou 'à vista'" },
+        ja_pago: { type: "string", enum: ["sim", "nao"], description: "Use 'sim' quando o usuário disser que já pagou, é à vista, dinheiro, débito imediato ou 'já baixado'. CP será lançado como pago." },
+        conta_bancaria: { type: "string", description: "Nome da conta bancária usada para pagamento (ex: Sicredi, Bradesco, Caixa, Caixa Fazenda). Só preencha quando o usuário mencionar a conta." },
       },
       required: ["produto", "quantidade", "valor"],
     },
@@ -129,7 +131,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "registrar_conta_pagar",
-    description: "Lança uma conta a pagar no financeiro.",
+    description: "Lança uma conta a pagar no financeiro. Use ja_pago=sim quando o usuário diz que já pagou ou é à vista.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -138,6 +140,8 @@ const TOOLS: Anthropic.Tool[] = [
         vencimento: { type: "string", description: "Data de vencimento: hoje, amanhã, ou dd/mm/aaaa" },
         fornecedor: { type: "string", description: "Nome do fornecedor (opcional)" },
         categoria: { type: "string", description: "combustivel, defensivos, fertilizantes, arrendamento, manutencao, outros (opcional)" },
+        ja_pago: { type: "string", enum: ["sim", "nao"], description: "Use 'sim' quando já foi pago, é à vista ou o usuário pede para lançar como pago/baixado" },
+        conta_bancaria: { type: "string", description: "Nome da conta bancária usada para pagamento (ex: Sicredi, Bradesco, Caixa). Só preencha quando o usuário mencionar a conta." },
       },
       required: ["descricao", "valor", "vencimento"],
     },
@@ -152,6 +156,8 @@ const TOOLS: Anthropic.Tool[] = [
         valor: { type: "number", description: "Valor em R$" },
         vencimento: { type: "string", description: "Data de recebimento: hoje, amanhã, ou dd/mm/aaaa" },
         cliente: { type: "string", description: "Nome do cliente/comprador (opcional)" },
+        conta_bancaria: { type: "string", description: "Nome da conta bancária onde o recebimento será creditado (ex: Sicredi, Bradesco). Só preencha quando o usuário mencionar a conta." },
+        ja_recebido: { type: "string", enum: ["sim", "nao"], description: "Use 'sim' quando o usuário disser que já recebeu / já caiu na conta. CR será lançado como baixado." },
       },
       required: ["descricao", "valor", "vencimento"],
     },
@@ -201,8 +207,10 @@ async function executarFerramenta(
           quantidade: input.quantidade,
           valor: input.valor,
           veiculo: input.veiculo,
-          tipo_destino: input.tipo_destino ?? "estoque",
+          tipo_destino: input.tipo_destino ?? "direto",
           vencimento: input.vencimento ?? "hoje",
+          ja_pago: input.ja_pago ?? "nao",
+          conta_bancaria: input.conta_bancaria ?? "",
           tem_nf: "nao",
         }, fazendaId, usuarioId);
         return res.mensagem;
@@ -228,6 +236,8 @@ async function executarFerramenta(
           vencimento: input.vencimento,
           fornecedor: input.fornecedor ?? "",
           categoria: input.categoria ?? "outros",
+          ja_pago: input.ja_pago ?? "nao",
+          conta_bancaria: input.conta_bancaria ?? "",
         }, fazendaId, usuarioId);
         return res.mensagem;
       }
@@ -237,6 +247,8 @@ async function executarFerramenta(
           valor: input.valor,
           vencimento: input.vencimento,
           cliente: input.cliente ?? "",
+          conta_bancaria: input.conta_bancaria ?? "",
+          ja_recebido: input.ja_recebido ?? "nao",
         }, fazendaId, usuarioId);
         return res.mensagem;
       }

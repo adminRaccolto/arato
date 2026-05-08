@@ -93,7 +93,7 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "safras",                  label: "Safras"                    },
     { key: "insumos",                 label: "Insumos"                   },
     { key: "depositos",               label: "Depósitos & Armazéns"      },
-    { key: "maquinas",                label: "Máquinas"                  },
+    { key: "maquinas",                label: "Máquinas e Veículos"       },
     { key: "combustivel",             label: "Combustíveis & Bombas"     },
     { key: "grupos_insumo",           label: "Grupos de Insumos"         },
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
@@ -117,6 +117,10 @@ const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", 
 const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+
+function diasAteDate(d: string): number {
+  return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
+}
 
 function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
   return <span style={{ fontSize: 10, background: bg, color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{texto}</span>;
@@ -263,7 +267,8 @@ function CadastrosInner() {
   const [maquinas, setMaquinas]       = useState<Maquina[]>([]);
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
-  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", horimetro_atual: "" });
+  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
+  const [tabMaq, setTabMaq]           = useState<"geral" | "seguro">("geral");
 
   // ── Bombas ──
   const [bombas, setBombas]           = useState<BombaCombustivel[]>([]);
@@ -1024,14 +1029,39 @@ function CadastrosInner() {
   });
 
   // ─────────────── MÁQUINAS ───────────────
+  const isVeiculo = (tipo: string) => ["carro", "caminhao"].includes(tipo);
   const abrirModalMaq = (m?: Maquina) => {
     setEditMaq(m ?? null);
-    setFMaq(m ? { nome: m.nome, tipo: m.tipo, marca: m.marca ?? "", modelo: m.modelo ?? "", ano: String(m.ano ?? ""), patrimonio: m.patrimonio ?? "", horimetro_atual: String(m.horimetro_atual ?? "") } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", horimetro_atual: "" });
+    setTabMaq("geral");
+    setFMaq(m ? {
+      nome: m.nome, tipo: m.tipo, marca: m.marca ?? "", modelo: m.modelo ?? "",
+      ano: String(m.ano ?? ""), patrimonio: m.patrimonio ?? "", chassi: m.chassi ?? "",
+      horimetro_atual: String(m.horimetro_atual ?? ""),
+      seguro_seguradora: m.seguro_seguradora ?? "", seguro_corretora: m.seguro_corretora ?? "",
+      seguro_numero_apolice: m.seguro_numero_apolice ?? "",
+      seguro_data_contratacao: m.seguro_data_contratacao ?? "",
+      seguro_vencimento_apolice: m.seguro_vencimento_apolice ?? "",
+      seguro_premio: String(m.seguro_premio ?? ""),
+    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
     if (!fMaq.nome.trim()) return;
-    const payload = { fazenda_id: fazendaId!, nome: fMaq.nome.trim(), tipo: fMaq.tipo, marca: fMaq.marca || undefined, modelo: fMaq.modelo || undefined, ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined, horimetro_atual: fMaq.horimetro_atual ? Number(fMaq.horimetro_atual) : undefined, ativa: true };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload: any = {
+      fazenda_id: fazendaId!, nome: fMaq.nome.trim(), tipo: fMaq.tipo,
+      marca: fMaq.marca || undefined, modelo: fMaq.modelo || undefined,
+      ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined,
+      chassi: fMaq.chassi || undefined,
+      horimetro_atual: fMaq.horimetro_atual ? Number(fMaq.horimetro_atual) : undefined,
+      seguro_seguradora: fMaq.seguro_seguradora || undefined,
+      seguro_corretora: fMaq.seguro_corretora || undefined,
+      seguro_numero_apolice: fMaq.seguro_numero_apolice || undefined,
+      seguro_data_contratacao: fMaq.seguro_data_contratacao || undefined,
+      seguro_vencimento_apolice: fMaq.seguro_vencimento_apolice || undefined,
+      seguro_premio: fMaq.seguro_premio ? Number(fMaq.seguro_premio) : undefined,
+      ativa: true,
+    };
     if (editMaq) { await atualizarMaquina(editMaq.id, payload); setMaquinas(p => p.map(x => x.id === editMaq.id ? { ...x, ...payload } : x)); }
     else { const n = await criarMaquina(payload); setMaquinas(p => [...p, n]); }
     setModalMaq(false);
@@ -1533,38 +1563,49 @@ function CadastrosInner() {
             </div>
           )}
 
-          {/* ══ MÁQUINAS ══ */}
+          {/* ══ MÁQUINAS E VEÍCULOS ══ */}
           {aba === "maquinas" && (
             <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
               <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Máquinas e Equipamentos <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({maquinas.length})</span></div>
-                <button style={btnV} onClick={() => abrirModalMaq()}>+ Nova Máquina</button>
+                <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Máquinas e Veículos <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({maquinas.length})</span></div>
+                <button style={btnV} onClick={() => abrirModalMaq()}>+ Nova Máquina / Veículo</button>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome", "Tipo", "Marca / Modelo", "Ano", "Km / Horímetro", "Patrimônio", "Status", ""]} />
+                <TH cols={["Nome", "Tipo", "Marca / Modelo", "Chassi", "Ano", "Km / Horímetro", "Seguro", "Status", ""]} />
                 <tbody>
-                  {maquinas.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina cadastrada</td></tr>}
-                  {maquinas.map((m, i) => (
-                    <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                      <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{m.nome}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo, "#F1EFE8", "#555")}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{m.ano ?? "—"}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontVariantNumeric: "tabular-nums" }}>
-                        {m.horimetro_atual != null
-                          ? <>{m.horimetro_atual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} {m.tipo === "caminhao" ? "km" : "h"}</>
-                          : "—"}
-                      </td>
-                      <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{m.patrimonio || "—"}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.ativa ? "Ativa" : "Inativa", m.ativa ? "#D5E8F5" : "#F1EFE8", m.ativa ? "#0B2D50" : "#555")}</td>
-                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button style={btnE} onClick={() => abrirModalMaq(m)}>Editar</button>
-                          <button style={btnX} onClick={() => { if (confirm("Excluir máquina?")) excluirMaquina(m.id).then(() => setMaquinas(x => x.filter(r => r.id !== m.id))); }}>✕</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {maquinas.length === 0 && <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
+                  {maquinas.map((m, i) => {
+                    const vencSeguro = m.seguro_vencimento_apolice ? diasAteDate(m.seguro_vencimento_apolice) : null;
+                    const corSeguro = vencSeguro === null ? "#888" : vencSeguro < 0 ? "#E24B4A" : vencSeguro <= 15 ? "#EF9F27" : "#16A34A";
+                    return (
+                      <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{m.nome}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo === "carro" ? "Carro" : m.tipo, "#F1EFE8", "#555")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#666", fontSize: 12, fontFamily: "monospace" }}>{m.chassi || "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{m.ano ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontVariantNumeric: "tabular-nums" }}>
+                          {m.horimetro_atual != null
+                            ? <>{m.horimetro_atual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} {isVeiculo(m.tipo) ? "km" : "h"}</>
+                            : "—"}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          {m.seguro_vencimento_apolice
+                            ? <span style={{ fontSize: 11, color: corSeguro, fontWeight: 600 }}>
+                                {vencSeguro! < 0 ? "Vencido" : vencSeguro! <= 15 ? `${vencSeguro}d` : m.seguro_vencimento_apolice.split("-").reverse().join("/")}
+                              </span>
+                            : <span style={{ color: "#888", fontSize: 11 }}>—</span>}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.ativa ? "Ativa" : "Inativa", m.ativa ? "#D5E8F5" : "#F1EFE8", m.ativa ? "#0B2D50" : "#555")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                            <button style={btnE} onClick={() => abrirModalMaq(m)}>Editar</button>
+                            <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirMaquina(m.id).then(() => setMaquinas(x => x.filter(r => r.id !== m.id))); }}>✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -3813,26 +3854,77 @@ function CadastrosInner() {
         </Modal>
       )}
 
-      {/* Modal Máquina */}
+      {/* Modal Máquina / Veículo */}
       {modalMaq && (
-        <Modal titulo={editMaq ? "Editar Máquina" : "Nova Máquina"} onClose={() => setModalMaq(false)} width={780}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} value={fMaq.nome} onChange={e => setFMaq(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div>
-              <label style={lbl}>Tipo *</label>
-              <select style={inp} value={fMaq.tipo} onChange={e => setFMaq(p => ({ ...p, tipo: e.target.value as Maquina["tipo"] }))}>
-                {(["trator","colheitadeira","pulverizador","plantadeira","caminhao","implemento","outro"] as const).map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
-              </select>
-            </div>
-            <div><label style={lbl}>Marca</label><input style={inp} value={fMaq.marca} onChange={e => setFMaq(p => ({ ...p, marca: e.target.value }))} /></div>
-            <div><label style={lbl}>Modelo</label><input style={inp} value={fMaq.modelo} onChange={e => setFMaq(p => ({ ...p, modelo: e.target.value }))} /></div>
-            <div><label style={lbl}>Patrimônio</label><input style={inp} value={fMaq.patrimonio} onChange={e => setFMaq(p => ({ ...p, patrimonio: e.target.value }))} /></div>
-            <div><label style={lbl}>Ano de fabricação</label><input style={inp} type="number" placeholder="2020" value={fMaq.ano} onChange={e => setFMaq(p => ({ ...p, ano: e.target.value }))} /></div>
-            <div>
-              <label style={lbl}>{fMaq.tipo === "caminhao" ? "Odômetro atual (km)" : "Horímetro atual (h)"}</label>
-              <input style={inp} type="number" min="0" step="0.1" placeholder={fMaq.tipo === "caminhao" ? "Ex: 125.000" : "Ex: 4.320"} value={fMaq.horimetro_atual} onChange={e => setFMaq(p => ({ ...p, horimetro_atual: e.target.value }))} />
-            </div>
+        <Modal titulo={editMaq ? "Editar Máquina / Veículo" : "Nova Máquina / Veículo"} onClose={() => setModalMaq(false)} width={820}>
+          {/* Abas internas */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DEE5EE", marginBottom: 18 }}>
+            {(["geral", "seguro"] as const).map(t => (
+              <button key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #1A5CB8" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#1A5CB8" : "#555", cursor: "pointer", fontSize: 13 }}>
+                {t === "geral" ? "Dados Gerais" : "Seguro"}
+              </button>
+            ))}
           </div>
+
+          {/* Aba Dados Gerais */}
+          {tabMaq === "geral" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} value={fMaq.nome} onChange={e => setFMaq(p => ({ ...p, nome: e.target.value }))} /></div>
+              <div>
+                <label style={lbl}>Tipo *</label>
+                <select style={inp} value={fMaq.tipo} onChange={e => setFMaq(p => ({ ...p, tipo: e.target.value as Maquina["tipo"] }))}>
+                  <option value="trator">Trator</option>
+                  <option value="colheitadeira">Colheitadeira</option>
+                  <option value="pulverizador">Pulverizador</option>
+                  <option value="plantadeira">Plantadeira</option>
+                  <option value="caminhao">Caminhão</option>
+                  <option value="carro">Carro / Veículo Leve</option>
+                  <option value="implemento">Implemento</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div><label style={lbl}>Marca</label><input style={inp} value={fMaq.marca} onChange={e => setFMaq(p => ({ ...p, marca: e.target.value }))} /></div>
+              <div><label style={lbl}>Modelo</label><input style={inp} value={fMaq.modelo} onChange={e => setFMaq(p => ({ ...p, modelo: e.target.value }))} /></div>
+              <div><label style={lbl}>Ano de fabricação</label><input style={inp} type="number" placeholder="2020" value={fMaq.ano} onChange={e => setFMaq(p => ({ ...p, ano: e.target.value }))} /></div>
+              <div><label style={lbl}>Patrimônio / Placa</label><input style={inp} placeholder="Ex: FAZ-0001 ou ABC-1234" value={fMaq.patrimonio} onChange={e => setFMaq(p => ({ ...p, patrimonio: e.target.value }))} /></div>
+              <div>
+                <label style={lbl}>Chassi / Nº de Série</label>
+                <input style={{ ...inp, fontFamily: "monospace", letterSpacing: 1 }} placeholder="Ex: 9BW258090B3128765" value={fMaq.chassi} onChange={e => setFMaq(p => ({ ...p, chassi: e.target.value.toUpperCase() }))} />
+              </div>
+              <div>
+                <label style={lbl}>{isVeiculo(fMaq.tipo) ? "Odômetro atual (km)" : "Horímetro atual (h)"}</label>
+                <input style={inp} type="number" min="0" step="0.1" placeholder={isVeiculo(fMaq.tipo) ? "Ex: 125000" : "Ex: 4320"} value={fMaq.horimetro_atual} onChange={e => setFMaq(p => ({ ...p, horimetro_atual: e.target.value }))} />
+              </div>
+            </div>
+          )}
+
+          {/* Aba Seguro */}
+          {tabMaq === "seguro" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div><label style={lbl}>Seguradora</label><input style={inp} placeholder="Ex: Porto Seguro, Bradesco Seguros" value={fMaq.seguro_seguradora} onChange={e => setFMaq(p => ({ ...p, seguro_seguradora: e.target.value }))} /></div>
+              <div><label style={lbl}>Corretora</label><input style={inp} placeholder="Ex: Corretora XYZ" value={fMaq.seguro_corretora} onChange={e => setFMaq(p => ({ ...p, seguro_corretora: e.target.value }))} /></div>
+              <div><label style={lbl}>Nº da Apólice</label><input style={inp} placeholder="Ex: 000.123456-7" value={fMaq.seguro_numero_apolice} onChange={e => setFMaq(p => ({ ...p, seguro_numero_apolice: e.target.value }))} /></div>
+              <div>
+                <label style={lbl}>Data de Contratação</label>
+                <input style={inp} type="date" value={fMaq.seguro_data_contratacao} onChange={e => setFMaq(p => ({ ...p, seguro_data_contratacao: e.target.value }))} />
+              </div>
+              <div>
+                <label style={lbl}>Vencimento da Apólice</label>
+                <input style={inp} type="date" value={fMaq.seguro_vencimento_apolice} onChange={e => setFMaq(p => ({ ...p, seguro_vencimento_apolice: e.target.value }))} />
+              </div>
+              <div>
+                <label style={lbl}>Prêmio anual (R$)</label>
+                <input style={inp} type="number" min="0" step="0.01" placeholder="Ex: 3500.00" value={fMaq.seguro_premio} onChange={e => setFMaq(p => ({ ...p, seguro_premio: e.target.value }))} />
+              </div>
+              {fMaq.seguro_vencimento_apolice && (() => {
+                const dias = diasAteDate(fMaq.seguro_vencimento_apolice);
+                const cor = dias < 0 ? "#E24B4A" : dias <= 15 ? "#EF9F27" : "#16A34A";
+                const txt = dias < 0 ? `Apólice VENCIDA há ${Math.abs(dias)} dias` : dias <= 15 ? `⚠️ Vence em ${dias} dias` : `✓ Válida — vence em ${dias} dias`;
+                return <div style={{ gridColumn: "1/-1", background: dias <= 15 ? "#FFF8ED" : "#F0FDF4", border: `0.5px solid ${cor}30`, borderRadius: 8, padding: "10px 14px", color: cor, fontWeight: 600, fontSize: 12 }}>{txt}</div>;
+              })()}
+            </div>
+          )}
+
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalMaq(false)}>Cancelar</button>
             <button style={{ ...btnV, opacity: salvando || !fMaq.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fMaq.nome.trim()} onClick={salvarMaq}>{salvando ? "Salvando…" : "Salvar"}</button>

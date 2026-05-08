@@ -83,7 +83,7 @@ function urgDias(d: number): Urgencia {
 // ─── Tipos ────────────────────────────────────────────────────
 type Alerta = {
   id: string;
-  tipo: "cp" | "cr" | "arrendamento" | "cert_a1" | "contrato" | "estoque";
+  tipo: "cp" | "cr" | "arrendamento" | "cert_a1" | "contrato" | "estoque" | "seguro";
   desc: string;
   valor?: number;
   dias?: number;
@@ -243,10 +243,18 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("status", "aberto")
         .lt("data_vencimento", isoHoje),
+
+      // Seguros de máquinas vencendo em 30 dias
+      supabase.from("maquinas")
+        .select("id, nome, seguro_vencimento_apolice, seguro_seguradora")
+        .eq("fazenda_id", fazendaId)
+        .eq("ativa", true)
+        .not("seguro_vencimento_apolice", "is", null)
+        .lte("seguro_vencimento_apolice", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
-      ciclosRes, contratosRes, cpVencRes,
+      ciclosRes, contratosRes, cpVencRes, segurosRes,
     ]) => {
       const novosAlertas: Alerta[] = [];
 
@@ -349,6 +357,24 @@ export default function Dashboard() {
             linkLabel: "Renovar",
           });
         }
+      }
+
+      // ── Seguros de máquinas / veículos ──
+      for (const maq of (segurosRes.data ?? [])) {
+        const dias = diasAte(maq.seguro_vencimento_apolice);
+        if (dias === null) continue;
+        const desc = dias < 0
+          ? `Seguro "${maq.nome}" VENCIDO há ${Math.abs(dias)} dias — ${maq.seguro_seguradora ?? "seguradora não informada"}`
+          : `Seguro "${maq.nome}" vence ${labelDias(dias)} — ${maq.seguro_seguradora ?? ""}`;
+        novosAlertas.push({
+          id: `seguro-${maq.id}`,
+          tipo: "seguro",
+          desc,
+          dias,
+          urgencia: dias < 0 ? "critico" : dias <= 7 ? "alto" : "medio",
+          link: "/cadastros?tab=maquinas",
+          linkLabel: "Renovar",
+        });
       }
 
       // Ordenar: crítico → alto → médio
