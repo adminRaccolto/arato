@@ -813,6 +813,21 @@ export default function ContasPagar() {
             Pagar em Lote ›
           </button>
           <button
+            onClick={async () => {
+              const manuais = filtrados.filter(l => selecionados.has(l.id) && !l.auto);
+              if (manuais.length === 0) { alert("Nenhum lançamento manual selecionado para excluir."); return; }
+              if (!confirm(`Excluir ${manuais.length} lançamento${manuais.length !== 1 ? "s" : ""}?\nEsta ação não pode ser desfeita.`)) return;
+              const ids = manuais.map(l => l.id);
+              const { error } = await supabase.from("lancamentos").delete().in("id", ids);
+              if (error) { alert("Erro ao excluir: " + error.message); return; }
+              setLancamentos(prev => prev.filter(x => !ids.includes(x.id)));
+              setSelecionados(new Set());
+            }}
+            style={{ background: "#E24B4A", color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+          >
+            🗑 Excluir
+          </button>
+          <button
             onClick={() => setSelecionados(new Set())}
             style={{ background: "none", border: "0.5px solid rgba(255,255,255,0.4)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
           >
