@@ -213,6 +213,10 @@ export async function POST(req: NextRequest) {
     await enviarTexto(telefone, menuPrincipal(fazendaNome));
     return NextResponse.json({ ok: true });
   }
+  if (["oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "hello", "hi"].includes(textLower)) {
+    await enviarTexto(telefone, menuPrincipal(fazendaNome));
+    return NextResponse.json({ ok: true });
+  }
 
   // ── Fluxo em andamento ─────────────────────────────────────────────────
   if (sessao?.fluxo) {
