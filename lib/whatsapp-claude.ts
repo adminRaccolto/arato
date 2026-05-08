@@ -102,7 +102,7 @@ const TOOLS: Anthropic.Tool[] = [
         quantidade: { type: "number", description: "Litros abastecidos" },
         valor: { type: "number", description: "Valor total em R$. Se informado preço/litro, calcule: quantidade × preço" },
         veiculo: { type: "string", description: "Nome, placa ou descrição do veículo/máquina (opcional)" },
-        tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "Vai para tanque/estoque ou uso imediato no veículo" },
+        tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "'estoque': comprou para repor o tanque interno da fazenda (deduz estoque). 'direto': abasteceu em posto externo ou direto na máquina sem passar pelo estoque — não há dedução de estoque. Padrão: direto." },
         vencimento: { type: "string", description: "Data de vencimento: hoje, amanhã, dd/mm/aaaa ou 'à vista'" },
         ja_pago: { type: "string", enum: ["sim", "nao"], description: "Use 'sim' quando o usuário disser que já pagou, é à vista, dinheiro, débito imediato ou 'já baixado'. CP será lançado como pago." },
         conta_bancaria: { type: "string", description: "Nome da conta bancária usada para pagamento (ex: Sicredi, Bradesco, Caixa, Caixa Fazenda). Só preencha quando o usuário mencionar a conta." },

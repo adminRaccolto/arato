@@ -235,20 +235,47 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     ? `\n_↔️ Dose convertida: ${doseNum} ${unidadeUsuario} → ${doseNativa.toFixed(4).replace(/\.?0+$/, "")} ${unidadeInsumo}/ha_`
     : "";
 
-  // ── Buscar ciclo ───────────────────────────────────────────────────────────
+  // ── Buscar ciclo com bom senso de data ─────────────────────────────────────
   let ciclo: { id: string } | null = null;
   const nomeCiclo = String(dados.ciclo ?? "").trim();
+
+  // 1. Se usuário nomeou o ciclo, busca por nome/cultura primeiro
   if (nomeCiclo) {
     const { data: ciclosBusca } = await sb().from("ciclos")
       .select("id, descricao, cultura").eq("fazenda_id", fazendaId)
       .or(`descricao.ilike.%${nomeCiclo}%,cultura.ilike.%${nomeCiclo}%`).limit(1);
     ciclo = ciclosBusca?.[0] ?? null;
   }
+
+  // 2. Ciclo ativo hoje (data_inicio <= hoje <= data_fim)
   if (!ciclo) {
-    const { data: ciclosAtivos } = await sb().from("ciclos")
+    const { data: ciclosHoje } = await sb().from("ciclos")
+      .select("id").eq("fazenda_id", fazendaId)
+      .lte("data_inicio", dataOp).gte("data_fim", dataOp)
+      .order("data_inicio", { ascending: false }).limit(1);
+    ciclo = ciclosHoje?.[0] ?? null;
+  }
+
+  // 3. Ano safra vigente (data_inicio <= hoje <= data_fim) → ciclo mais recente
+  if (!ciclo) {
+    const { data: anoAtivo } = await sb().from("anos_safra")
+      .select("id").eq("fazenda_id", fazendaId)
+      .lte("data_inicio", dataOp).gte("data_fim", dataOp)
+      .limit(1).maybeSingle();
+    if (anoAtivo) {
+      const { data: ciclosDoAno } = await sb().from("ciclos")
+        .select("id").eq("fazenda_id", fazendaId).eq("ano_safra_id", anoAtivo.id)
+        .order("data_inicio", { ascending: false }).limit(1);
+      ciclo = ciclosDoAno?.[0] ?? null;
+    }
+  }
+
+  // 4. Fallback: ciclo mais recente de qualquer forma
+  if (!ciclo) {
+    const { data: ciclosRecentes } = await sb().from("ciclos")
       .select("id").eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false }).limit(1);
-    ciclo = ciclosAtivos?.[0] ?? null;
+    ciclo = ciclosRecentes?.[0] ?? null;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
