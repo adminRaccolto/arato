@@ -130,6 +130,59 @@ export default function ContasPagar() {
   const [nfNumero,   setNfNumero]   = useState("");
   const [nfEmitente, setNfEmitente] = useState("");
 
+  // ── Modal Editar ──────────────────────────────────────────────
+  const [modalEditar, setModalEditar] = useState<Lancamento | null>(null);
+  const [editForm, setEditForm] = useState({
+    descricao: "", categoria: "", data_vencimento: "",
+    valorMask: "", observacao: "", pessoa_id: "",
+    conta_bancaria: "", ano_safra_id: "", produtor_id: "",
+  });
+  const [editSalvando, setEditSalvando] = useState(false);
+
+  function abrirEditar(l: Lancamento) {
+    setEditForm({
+      descricao:        l.descricao ?? "",
+      categoria:        l.categoria ?? "",
+      data_vencimento:  l.data_vencimento ?? "",
+      valorMask:        l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
+      observacao:       l.observacao ?? "",
+      pessoa_id:        l.pessoa_id ?? "",
+      conta_bancaria:   l.conta_bancaria ?? "",
+      ano_safra_id:     l.ano_safra_id ?? "",
+      produtor_id:      l.produtor_id ?? "",
+    });
+    setModalEditar(l);
+  }
+
+  async function salvarEditar() {
+    if (!modalEditar) return;
+    setEditSalvando(true);
+    const valor = parseFloat(editForm.valorMask.replace(/\./g, "").replace(",", ".")) || 0;
+    const { error } = await supabase.from("lancamentos").update({
+      descricao:       editForm.descricao,
+      categoria:       editForm.categoria,
+      data_vencimento: editForm.data_vencimento,
+      valor,
+      observacao:      editForm.observacao || null,
+      pessoa_id:       editForm.pessoa_id  || null,
+      conta_bancaria:  editForm.conta_bancaria || null,
+      ano_safra_id:    editForm.ano_safra_id   || null,
+      produtor_id:     editForm.produtor_id    || null,
+    }).eq("id", modalEditar.id);
+    if (error) { alert("Erro ao salvar: " + error.message); setEditSalvando(false); return; }
+    setLancamentos(prev => prev.map(x => x.id === modalEditar.id
+      ? { ...x, descricao: editForm.descricao, categoria: editForm.categoria,
+          data_vencimento: editForm.data_vencimento, valor,
+          observacao: editForm.observacao || null,
+          pessoa_id: editForm.pessoa_id || null,
+          conta_bancaria: editForm.conta_bancaria || null,
+          ano_safra_id: editForm.ano_safra_id || null,
+          produtor_id: editForm.produtor_id || null } as Lancamento : x
+    ));
+    setModalEditar(null);
+    setEditSalvando(false);
+  }
+
   // ── Seleção para borderô ──────────────────────────────────
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalLote,    setModalLote]    = useState(false);
@@ -710,6 +763,15 @@ export default function ContasPagar() {
                                     ◈ Baixar
                                   </button>
                                 ) : null}
+                                {!l.auto && (
+                                  <button
+                                    onClick={() => abrirEditar(l)}
+                                    title="Editar lançamento"
+                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "transparent", color: "#555", border: "0.5px solid #CCC", lineHeight: 1 }}
+                                  >
+                                    ✏
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => { setModalNF(l); setNfNumero(l.nfe_numero ?? ""); setNfEmitente(""); }}
                                   title={l.nfe_numero ? `NF vinculada: ${l.nfe_numero}` : "Vincular nota fiscal"}
@@ -786,6 +848,73 @@ export default function ContasPagar() {
                 setModalNF(null);
               }} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando || !nfNumero.trim() ? 0.5 : 1 }}>
                 {salvando ? "Salvando…" : "Vincular NF"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Editar ─────────────────────────────────────── */}
+      {modalEditar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) setModalEditar(null); }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>✏ Editar Lançamento</div>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                <label style={lbl}>Descrição</label>
+                <input value={editForm.descricao} onChange={e => setEditForm(f => ({ ...f, descricao: e.target.value }))} style={inp} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>Valor (R$)</label>
+                  <input value={editForm.valorMask} onChange={e => setEditForm(f => ({ ...f, valorMask: e.target.value }))} style={inp} placeholder="0,00" />
+                </div>
+                <div>
+                  <label style={lbl}>Vencimento</label>
+                  <input type="date" value={editForm.data_vencimento} onChange={e => setEditForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>Categoria</label>
+                  <select value={editForm.categoria} onChange={e => setEditForm(f => ({ ...f, categoria: e.target.value }))} style={inp}>
+                    {CATS_CP.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Conta Bancária</label>
+                  <select value={editForm.conta_bancaria} onChange={e => setEditForm(f => ({ ...f, conta_bancaria: e.target.value }))} style={inp}>
+                    <option value="">— Sem conta —</option>
+                    {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={lbl}>Fornecedor / Pessoa</label>
+                  <select value={editForm.pessoa_id} onChange={e => setEditForm(f => ({ ...f, pessoa_id: e.target.value }))} style={inp}>
+                    <option value="">— Não informado —</option>
+                    {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Ano Safra</label>
+                  <select value={editForm.ano_safra_id} onChange={e => setEditForm(f => ({ ...f, ano_safra_id: e.target.value }))} style={inp}>
+                    <option value="">— Sem safra —</option>
+                    {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Observação</label>
+                <input value={editForm.observacao} onChange={e => setEditForm(f => ({ ...f, observacao: e.target.value }))} style={inp} placeholder="Opcional" />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+              <button onClick={() => setModalEditar(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button disabled={editSalvando} onClick={salvarEditar} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: editSalvando ? "#aaa" : "#1A4870", color: "#fff", cursor: editSalvando ? "wait" : "pointer", fontSize: 13, fontWeight: 700 }}>
+                {editSalvando ? "Salvando…" : "✓ Salvar"}
               </button>
             </div>
           </div>
