@@ -125,50 +125,127 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
 
 // ── Operação de lavoura ─────────────────────────────────────────────────────
 async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  // tipo_op aceita string direta (pulverizacao, adubacao…) ou código numérico legado (1,2,3,4)
   const tipoMap: Record<string, string> = { "1": "pulverizacao", "2": "adubacao", "3": "plantio", "4": "correcao_solo" };
-  const tipoOp = tipoMap[String(dados.tipo_op)] ?? String(dados.tipo_op ?? "pulverizacao");
+  const tipoRaw = String(dados.tipo_op ?? "pulverizacao");
+  const tipoOp = tipoMap[tipoRaw] ?? tipoRaw;
   const dataOp = parseData(String(dados.data_op ?? "hoje"));
+  const doseStr = String(dados.dose ?? "0");
+  const doseNum = parseFloat(doseStr) || 0;
+  const unidade = String(dados.unidade ?? (doseStr.includes("kg") ? "kg/ha" : "L/ha"));
+  const areaHa  = Number(dados.area_ha ?? 0) || null;
 
   // Buscar talhão pelo nome
-  const { data: talhao } = await sb().from("talhoes")
+  const { data: talhoes } = await sb().from("talhoes")
     .select("id, nome").eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${dados.talhao}%`).single();
+    .ilike("nome", `%${dados.talhao}%`).limit(1);
+  const talhao = talhoes?.[0] ?? null;
 
   // Buscar insumo pelo nome
-  const { data: insumo } = await sb().from("insumos")
-    .select("id, nome").eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${dados.produto}%`).single();
+  const { data: insumos } = await sb().from("insumos")
+    .select("id, nome, custo_medio").eq("fazenda_id", fazendaId)
+    .ilike("nome", `%${dados.produto}%`).limit(1);
+  const insumo = insumos?.[0] ?? null;
 
-  // Buscar ciclo ativo
-  const { data: ciclo } = await sb().from("ciclos")
+  // Buscar ciclo ativo mais recente
+  const { data: ciclos } = await sb().from("ciclos")
     .select("id").eq("fazenda_id", fazendaId).eq("status", "em_andamento")
-    .order("created_at", { ascending: false }).limit(1).single();
+    .order("created_at", { ascending: false }).limit(1);
+  const ciclo = ciclos?.[0] ?? null;
 
+  // ── Pulverização ────────────────────────────────────────────────────────────
   if (tipoOp === "pulverizacao") {
     const { data: pulv, error } = await sb().from("pulverizacoes").insert({
       fazenda_id: fazendaId,
       ciclo_id: ciclo?.id ?? null,
       talhao_id: talhao?.id ?? null,
-      data_aplicacao: dataOp,
-      observacoes: `Registrado via WhatsApp`,
+      tipo: "herbicida",
+      data_inicio: dataOp,
+      area_ha: areaHa,
+      observacao: `Registrado via WhatsApp — ${dados.produto}`,
     }).select("id").single();
 
-    if (!error && pulv && insumo) {
-      const doseStr = String(dados.dose ?? "");
-      const doseNum = parseFloat(doseStr) || 0;
+    if (error) return { ok: false, mensagem: `❌ Erro pulverização: ${error.message}` };
+
+    if (pulv && insumo) {
+      const custoHa = doseNum * Number(insumo.custo_medio ?? 0);
       await sb().from("pulverizacao_itens").insert({
         pulverizacao_id: pulv.id,
+        fazenda_id: fazendaId,
         insumo_id: insumo.id,
+        nome_produto: insumo.nome,
         dose_ha: doseNum,
-        unidade: doseStr.includes("kg") ? "kg/ha" : "L/ha",
+        unidade,
+        valor_unitario: Number(insumo.custo_medio ?? 0),
+        custo_ha: custoHa,
       });
     }
-    if (error) return { ok: false, mensagem: `❌ Erro: ${error.message}` };
   }
 
+  // ── Adubação ────────────────────────────────────────────────────────────────
+  else if (tipoOp === "adubacao") {
+    const { data: adub, error } = await sb().from("adubacoes_base").insert({
+      fazenda_id: fazendaId,
+      ciclo_id: ciclo?.id ?? null,
+      talhao_id: talhao?.id ?? null,
+      data_aplicacao: dataOp,
+      area_ha: areaHa,
+      observacao: `Registrado via WhatsApp — ${dados.produto}`,
+    }).select("id").single();
+
+    if (error) return { ok: false, mensagem: `❌ Erro adubação: ${error.message}` };
+
+    if (adub && insumo) {
+      try {
+        await sb().from("adubacao_itens").insert({
+          adubacao_id: adub.id,
+          fazenda_id: fazendaId,
+          insumo_id: insumo.id,
+          nome_produto: insumo.nome,
+          dose_ha: doseNum,
+          unidade,
+        });
+      } catch { /* tabela pode não existir em todas as instâncias */ }
+    }
+  }
+
+  // ── Plantio ─────────────────────────────────────────────────────────────────
+  else if (tipoOp === "plantio") {
+    const { error } = await sb().from("plantios").insert({
+      fazenda_id: fazendaId,
+      ciclo_id: ciclo?.id ?? null,
+      talhao_id: talhao?.id ?? null,
+      data_plantio: dataOp,
+      area_ha: areaHa,
+      cultura: String(dados.cultura ?? "soja"),
+      semente: insumo ? insumo.nome : String(dados.produto ?? ""),
+      observacao: `Registrado via WhatsApp`,
+    });
+    if (error) return { ok: false, mensagem: `❌ Erro plantio: ${error.message}` };
+  }
+
+  // ── Correção de solo ─────────────────────────────────────────────────────────
+  else if (tipoOp === "correcao_solo") {
+    const { error } = await sb().from("correcoes_solo").insert({
+      fazenda_id: fazendaId,
+      ciclo_id: ciclo?.id ?? null,
+      talhao_id: talhao?.id ?? null,
+      data_aplicacao: dataOp,
+      area_ha: areaHa,
+      produto: insumo ? insumo.nome : String(dados.produto ?? ""),
+      dose_tha: doseNum,
+      observacao: `Registrado via WhatsApp`,
+    });
+    if (error) return { ok: false, mensagem: `❌ Erro correção de solo: ${error.message}` };
+  }
+
+  const tipoLabel: Record<string, string> = {
+    pulverizacao: "Pulverização", adubacao: "Adubação",
+    plantio: "Plantio", correcao_solo: "Correção de Solo",
+  };
   return {
     ok: true,
-    mensagem: `✅ Operação registrada!\n• ${tipoOp} em ${talhao?.nome ?? dados.talhao}\n• ${dados.produto} — ${dados.dose}\n• Data: ${dataOp}`,
+    mensagem: `✅ ${tipoLabel[tipoOp] ?? tipoOp} registrada!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNum} ${unidade}\n• Data: ${dataOp}`,
   };
 }
 
