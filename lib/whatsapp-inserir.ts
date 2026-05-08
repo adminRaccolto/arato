@@ -236,7 +236,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     valor,
     data_operacao: hoje,
     fornecedor_nome: String(dados.veiculo ?? dados.bomba_nome ?? ""),
-    origem: "whatsapp_ia",
+    origem: "whatsapp",
   });
 
   // Movimentação de estoque: apenas se tipo_destino=estoque E a bomba não for de posto externo
@@ -810,7 +810,7 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
       valor: parseValor(String(payload.valor ?? 0)),
       data_operacao: hoje,
       fornecedor_nome: nomePessoa || null,
-      origem: "whatsapp_ia",
+      origem: "whatsapp",
     });
   }
 

@@ -353,13 +353,17 @@ REGRA CRÍTICA — CONTINUIDADE DE CONTEXTO:
   }
 
   // Loop de tool use — Claude pode chamar múltiplas ferramentas
-  while (response.stop_reason === "tool_use") {
+  let ultimosResultados: string[] = [];
+  let iteracoes = 0;
+  while (response.stop_reason === "tool_use" && iteracoes < 6) {
+    iteracoes++;
     const assistantContent = response.content;
     const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    ultimosResultados = [];
 
     for (const block of assistantContent) {
       if (block.type === "tool_use") {
-        console.log(`[CLAUDE-TOOL] chamando ${block.name}:`, JSON.stringify(block.input).slice(0, 100));
+        console.log(`[CLAUDE-TOOL] chamando ${block.name}:`, JSON.stringify(block.input).slice(0, 120));
         const resultado = await executarFerramenta(
           block.name,
           block.input as Record<string, unknown>,
@@ -367,13 +371,14 @@ REGRA CRÍTICA — CONTINUIDADE DE CONTEXTO:
           usuarioId,
         );
         toolResults.push({ type: "tool_result", tool_use_id: block.id, content: resultado });
+        ultimosResultados.push(resultado);
       }
     }
 
-    // Segunda chamada com os resultados das ferramentas
+    // Próxima chamada com os resultados das ferramentas
     response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: systemPrompt,
       tools: TOOLS,
       messages: [
@@ -389,6 +394,12 @@ REGRA CRÍTICA — CONTINUIDADE DE CONTEXTO:
     .map(b => (b as Anthropic.TextBlock).text)
     .join("\n")
     .trim();
+
+  // Fallback: se Claude não gerou texto mas executou ferramentas, encaminha o resultado diretamente
+  if (!texto_resposta) {
+    console.error("[CLAUDE] resposta vazia. stop_reason:", response.stop_reason, "iteracoes:", iteracoes, "ultimo_resultado:", ultimosResultados[0]?.slice(0, 100));
+    if (ultimosResultados.length > 0) return ultimosResultados.join("\n\n");
+  }
 
   return texto_resposta || "Não consegui processar. Tente novamente.";
 }

@@ -3515,3 +3515,21 @@ ALTER TABLE bombas_combustivel
 -- WHERE id NOT IN (SELECT DISTINCT fazenda_id FROM bombas_combustivel WHERE consume_estoque = false);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 74 — Abastecimentos: bomba_id opcional + pendencias origem
+-- ============================================================
+
+-- bomba_id pode ser NULL quando o abastecimento é em posto externo
+-- sem bomba cadastrada (registrado pelo bot sem bomba_nome)
+ALTER TABLE abastecimentos
+  ALTER COLUMN bomba_id DROP NOT NULL;
+
+-- Alarga constraint de origem para incluir 'whatsapp' (bot)
+ALTER TABLE pendencias_fiscais
+  DROP CONSTRAINT IF EXISTS pendencias_fiscais_origem_check;
+ALTER TABLE pendencias_fiscais
+  ADD CONSTRAINT pendencias_fiscais_origem_check
+  CHECK (origem IN ('manual','whatsapp','sistema'));
+
+NOTIFY pgrst, 'reload schema';
