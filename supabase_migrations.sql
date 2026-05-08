@@ -3454,3 +3454,7 @@ ALTER TABLE maquinas ADD CONSTRAINT maquinas_tipo_check
 ALTER TABLE lancamentos           ADD COLUMN IF NOT EXISTS auto boolean DEFAULT false;
 ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS auto boolean DEFAULT false;
 ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS valor_unitario numeric(14,4);
+
+-- Seção 71 complemento — coluna origem (rastrear registros do WhatsApp)
+ALTER TABLE lancamentos           ADD COLUMN IF NOT EXISTS origem text;
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS origem text;

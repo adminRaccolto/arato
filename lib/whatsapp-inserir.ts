@@ -136,7 +136,6 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     data_vencimento: vencimento,
     valor, moeda: "BRL",
     status: jaPago ? "baixado" : "em_aberto",
-    origem: "whatsapp",
     conta_bancaria: conta?.id ?? null,
   };
   if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
@@ -300,7 +299,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", origem: "whatsapp",
+          status: "em_aberto",
         });
       }
     }
@@ -373,7 +372,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", origem: "whatsapp",
+          status: "em_aberto",
         });
       }
     }
@@ -436,7 +435,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoSementes,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", origem: "whatsapp",
+          status: "em_aberto",
         }).select("id").single();
 
         if (lanc?.id) {
@@ -514,7 +513,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", origem: "whatsapp",
+          status: "em_aberto",
         });
       }
     }
@@ -578,7 +577,6 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
     descricao: `Compra ${insumo?.nome ?? dados.produto} — ${dados.fornecedor ?? ""}`,
     categoria: "insumo", data_lancamento: new Date().toISOString().split("T")[0],
     data_vencimento: vencimento, valor, moeda: "BRL", status: "em_aberto",
-    origem: "whatsapp",
   });
 
   return {
@@ -657,7 +655,6 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     data_lancamento: hoje,
     data_vencimento: vencimento, valor, moeda: "BRL",
     status: jaPago ? "baixado" : "em_aberto",
-    origem: "whatsapp",
     pessoa_id: pessoaId,
     conta_bancaria: conta?.id ?? null,
   };
@@ -724,7 +721,6 @@ async function inserirRomaneio(dados: Record<string, unknown>, fazendaId: string
     peso_bruto_kg: pesoBruto, tara_kg: tara,
     peso_liquido_kg: liquido, total_sacas: sacas,
     data_romaneio: new Date().toISOString().split("T")[0],
-    origem: "whatsapp",
   });
 
   if (error) return { ok: false, mensagem: `❌ Erro: ${error.message}` };
