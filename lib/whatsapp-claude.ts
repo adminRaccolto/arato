@@ -115,10 +115,13 @@ const TOOLS: Anthropic.Tool[] = [
       type: "object" as const,
       properties: {
         tipo_op: { type: "string", enum: ["pulverizacao", "adubacao", "plantio", "correcao_solo"], description: "Tipo de operação" },
+        tipo_produto: { type: "string", enum: ["herbicida", "fungicida", "inseticida", "nematicida", "foliar", "outros"], description: "Tipo do produto aplicado (para pulverização)" },
         talhao: { type: "string", description: "Nome ou número do talhão" },
         produto: { type: "string", description: "Nome do insumo/produto aplicado" },
-        dose: { type: "number", description: "Dose aplicada" },
-        unidade: { type: "string", description: "L/ha, kg/ha, sc/ha, etc" },
+        dose: { type: "number", description: "Dose aplicada numericamente" },
+        unidade: { type: "string", description: "L/ha, ml/ha, kg/ha, g/ha, sc/ha, etc" },
+        area_ha: { type: "number", description: "Área em hectares onde a operação foi realizada" },
+        ciclo: { type: "string", description: "Nome, descrição ou número do ciclo/safra (ex: 'milho safrinha', 'ciclo 2', 'soja 25/26')" },
         data_op: { type: "string", description: "Data da operação: hoje, ontem, ou dd/mm/aaaa" },
       },
       required: ["tipo_op", "talhao", "produto"],
@@ -205,15 +208,15 @@ async function executarFerramenta(
         return res.mensagem;
       }
       case "registrar_operacao_lavoura": {
-        const tipoMap: Record<string, string> = {
-          pulverizacao: "1", adubacao: "2", plantio: "3", correcao_solo: "4"
-        };
         const res = await executarInsercao("operacao_lavoura", {
-          tipo_op: tipoMap[String(input.tipo_op ?? "pulverizacao")] ?? "1",
+          tipo_op: String(input.tipo_op ?? "pulverizacao"),
+          tipo_produto: String(input.tipo_produto ?? "herbicida"),
           talhao: input.talhao,
           produto: input.produto,
           dose: input.dose ?? 0,
           unidade: input.unidade ?? "L/ha",
+          area_ha: input.area_ha ?? 0,
+          ciclo: input.ciclo ?? "",
           data_op: input.data_op ?? "hoje",
         }, fazendaId, usuarioId);
         return res.mensagem;

@@ -129,6 +129,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
   const tipoMap: Record<string, string> = { "1": "pulverizacao", "2": "adubacao", "3": "plantio", "4": "correcao_solo" };
   const tipoRaw = String(dados.tipo_op ?? "pulverizacao");
   const tipoOp = tipoMap[tipoRaw] ?? tipoRaw;
+  const tipoProduto = String(dados.tipo_produto ?? "herbicida");
   const dataOp = parseData(String(dados.data_op ?? "hoje"));
   const doseStr = String(dados.dose ?? "0");
   const doseNum = parseFloat(doseStr) || 0;
@@ -147,11 +148,23 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     .ilike("nome", `%${dados.produto}%`).limit(1);
   const insumo = insumos?.[0] ?? null;
 
-  // Buscar ciclo ativo mais recente
-  const { data: ciclos } = await sb().from("ciclos")
-    .select("id").eq("fazenda_id", fazendaId).eq("status", "em_andamento")
-    .order("created_at", { ascending: false }).limit(1);
-  const ciclo = ciclos?.[0] ?? null;
+  // Buscar ciclo: primeiro pelo nome/descrição fornecido, depois pelo mais recente ativo
+  let ciclo: { id: string } | null = null;
+  const nomeCiclo = String(dados.ciclo ?? "").trim();
+  if (nomeCiclo) {
+    const { data: ciclosBusca } = await sb().from("ciclos")
+      .select("id, descricao, cultura")
+      .eq("fazenda_id", fazendaId)
+      .or(`descricao.ilike.%${nomeCiclo}%,cultura.ilike.%${nomeCiclo}%`)
+      .limit(1);
+    ciclo = ciclosBusca?.[0] ?? null;
+  }
+  if (!ciclo) {
+    const { data: ciclosAtivos } = await sb().from("ciclos")
+      .select("id").eq("fazenda_id", fazendaId)
+      .order("created_at", { ascending: false }).limit(1);
+    ciclo = ciclosAtivos?.[0] ?? null;
+  }
 
   // ── Pulverização ────────────────────────────────────────────────────────────
   if (tipoOp === "pulverizacao") {
@@ -159,7 +172,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
       fazenda_id: fazendaId,
       ciclo_id: ciclo?.id ?? null,
       talhao_id: talhao?.id ?? null,
-      tipo: "herbicida",
+      tipo: tipoProduto,
       data_inicio: dataOp,
       area_ha: areaHa,
       observacao: `Registrado via WhatsApp — ${dados.produto}`,
