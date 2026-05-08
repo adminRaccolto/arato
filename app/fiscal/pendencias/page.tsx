@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { consultarNfePorChave, salvarXmlStorage } from "../../../lib/sefaz-consulta";
@@ -39,6 +41,7 @@ const TIPO_LABEL: Record<string, string> = {
 
 export default function PendenciasFiscaisPage() {
   const { fazendaId } = useAuth();
+  const router = useRouter();
 
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -174,11 +177,19 @@ export default function PendenciasFiscaisPage() {
   const totalAguardando = contadores["aguardando"] ?? 0;
 
   return (
+    <>
+    <TopNav />
     <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
 
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
+          <button
+            onClick={() => router.back()}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#1A4870", fontWeight: 600, padding: "0 0 8px 0", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            ← Voltar
+          </button>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Pendências Fiscais</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Consumos registrados sem documento fiscal — WhatsApp IA ou lançamentos manuais
@@ -450,5 +461,6 @@ export default function PendenciasFiscaisPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
