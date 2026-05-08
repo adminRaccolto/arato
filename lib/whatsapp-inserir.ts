@@ -85,7 +85,7 @@ async function buscarContaBancaria(fazendaId: string, nome: string): Promise<{ i
     .eq("ativa", true)
     .ilike("nome", `%${nome.trim()}%`)
     .limit(1)
-    .single();
+    .maybeSingle();
   return data ?? null;
 }
 
@@ -112,9 +112,16 @@ export async function executarInsercao(
 
 // ── Abastecimento ───────────────────────────────────────────────────────────
 async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
-  const valor      = parseValor(String(dados.valor ?? 0));
-  const vencimento = parseData(String(dados.vencimento ?? "hoje"));
   const qtdUsuario = Number(dados.quantidade ?? 0);
+  if (!qtdUsuario || qtdUsuario === 0) {
+    return { ok: false, mensagem: "❓ Quantos litros foram abastecidos?" };
+  }
+  const valor      = parseValor(String(dados.valor ?? 0));
+  if (!valor || valor === 0) {
+    return { ok: false, mensagem: "❓ Qual o valor total do abastecimento? (ex: R$ 180,00)" };
+  }
+
+  const vencimento = parseData(String(dados.vencimento ?? "hoje"));
   const unidadeUsuario = String(dados.unidade ?? "L");
   const hoje       = new Date().toISOString().split("T")[0];
 
@@ -627,7 +634,11 @@ async function inserirSaidaEstoque(dados: Record<string, unknown>, fazendaId: st
 
 // ── Lançamento CP/CR ────────────────────────────────────────────────────────
 async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
-  const valor      = parseValor(String(dados.valor ?? 0));
+  const valor = parseValor(String(dados.valor ?? 0));
+  if (!valor || valor === 0) {
+    const label = tipo === "pagar" ? "pagar" : "receber";
+    return { ok: false, mensagem: `❓ Qual o valor da conta a ${label}? (ex: R$ 1.500,00)` };
+  }
   const vencimento = parseData(String(dados.vencimento ?? "hoje"));
   const hoje       = new Date().toISOString().split("T")[0];
 

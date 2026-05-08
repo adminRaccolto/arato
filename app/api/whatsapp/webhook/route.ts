@@ -117,10 +117,11 @@ export async function POST(req: NextRequest) {
   const { usuarioId, fazendaId, fazendaNome } = auth;
 
   // ── Sessão e histórico ─────────────────────────────────────────────────────
+  console.log("[WH] telefone:", telefone, "usuario:", usuarioId, "fazenda:", fazendaId);
   // Lê sessão SEM salvar antes — salvar depois em operação única evita limpar o histórico
   const sessao = await buscarSessao(telefone);
   const historico: Mensagem[] = (sessao?.dados?.historico as Mensagem[] | undefined) ?? [];
-  console.log("[WH] histórico carregado:", historico.length, "mensagens");
+  console.log("[WH] sessão:", sessao ? `encontrada (id=${sessao.id})` : "nova", "histórico:", historico.length, "msgs");
 
   // Comando global de reset
   const textLower = textoMensagem.toLowerCase().trim();
@@ -162,13 +163,14 @@ export async function POST(req: NextRequest) {
     { role: "user" as const, content: textoParaIA },
     { role: "assistant" as const, content: resposta },
   ].slice(-20);
-  console.log("[WH] salvando histórico:", novoHistorico.length, "mensagens");
+  console.log("[WH] salvando histórico:", novoHistorico.length, "msgs para telefone:", telefone);
   await salvarSessao(telefone, {
     usuario_id: usuarioId,
     fazenda_id: fazendaId,
     fazenda_nome: fazendaNome,
     dados: { historico: novoHistorico },
   });
+  console.log("[WH] histórico salvo OK");
 
   // Envia resposta após salvar
   await enviarTexto(telefone, resposta);
