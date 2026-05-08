@@ -262,6 +262,41 @@ export default function AbastecimentoPage() {
     return fDestLivre || "—";
   }
 
+  // ─── Excluir abastecimento em cascata ─────────────────────────────────────
+  async function excluir(ab: Abastecimento) {
+    const dataFmt = new Date(ab.data + "T12:00").toLocaleDateString("pt-BR");
+    const linhas = [`Excluir abastecimento de ${fmtNum(ab.quantidade_l, 0)} L em ${dataFmt}?`, ""];
+    if (ab.lancamento_id) linhas.push("• Conta a Pagar vinculada será excluída");
+    linhas.push("• Pendência fiscal será excluída (se existir)");
+    linhas.push("• Estoque da bomba será restaurado");
+    linhas.push("", "Esta ação não pode ser desfeita.");
+    if (!confirm(linhas.join("\n"))) return;
+
+    // 1. Pendências fiscais vinculadas ao lançamento
+    if (ab.lancamento_id) {
+      await supabase.from("pendencias_fiscais").delete().eq("lancamento_id", ab.lancamento_id);
+      // 2. Lançamento (CP)
+      await supabase.from("lancamentos").delete().eq("id", ab.lancamento_id);
+    }
+
+    // 3. Restaurar estoque da bomba (apenas bombas internas com estoque)
+    if (ab.bomba_id) {
+      const bomba = bombas.find(b => b.id === ab.bomba_id);
+      if (bomba && bomba.consume_estoque !== false) {
+        await supabase.from("bombas_combustivel")
+          .update({ estoque_atual_l: bomba.estoque_atual_l + ab.quantidade_l })
+          .eq("id", ab.bomba_id);
+        setBombas(prev => prev.map(b =>
+          b.id === ab.bomba_id ? { ...b, estoque_atual_l: b.estoque_atual_l + ab.quantidade_l } : b
+        ));
+      }
+    }
+
+    // 4. Excluir abastecimento
+    await supabase.from("abastecimentos").delete().eq("id", ab.id);
+    setHistorico(prev => prev.filter(h => h.id !== ab.id));
+  }
+
   function abrirModal() {
     setFBomba(""); setFDestTipo("maquina"); setFMaquina(""); setFFuncionario(""); setFDestLivre("");
     setFQuantidade(""); setFValUnit(""); setFObs(""); setFHorimetro(""); setFGerarCP(false);
@@ -376,7 +411,7 @@ export default function AbastecimentoPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
-                  {["Data", "Bomba / Combustível", "Destino", "Km / Horas", "Litros", "Valor/L", "Total", "CP"].map(h => (
+                  {["Data", "Bomba / Combustível", "Destino", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
                     <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -419,6 +454,17 @@ export default function AbastecimentoPage() {
                           <span style={{ background: "#F3F4F6", color: "#888", padding: "2px 8px", borderRadius: 8 }}>—</span>
                         )}
                       </td>
+                      <td style={{ padding: "10px 14px" }}>
+                        <button
+                          onClick={() => excluir(h)}
+                          title="Excluir abastecimento (e CP/pendência vinculados)"
+                          style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "#888", lineHeight: 1 }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#FEE2E2"; (e.currentTarget as HTMLButtonElement).style.color = "#991B1B"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#FCA5A5"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
+                        >
+                          🗑
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -429,7 +475,7 @@ export default function AbastecimentoPage() {
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{fmtNum(totalLitrosMes, 0)} L</td>
                   <td style={{ padding: "10px 14px" }} />
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{fmtBRL(totalCustoMes)}</td>
-                  <td />
+                  <td /><td />
                 </tr>
               </tfoot>
             </table>
