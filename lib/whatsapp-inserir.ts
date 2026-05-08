@@ -205,17 +205,17 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
   }
 
-  // Registra no histórico de abastecimentos (quando bomba informada)
-  if (bomba) {
+  // Registra no histórico de abastecimentos (sempre, bomba_id pode ser null para posto externo)
+  {
     const { data: maqData } = await sb().from("maquinas")
       .select("id")
       .eq("fazenda_id", fazendaId)
-      .ilike("nome", `%${dados.veiculo ?? ""}%`)
+      .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
       .limit(1).maybeSingle();
 
     await sb().from("abastecimentos").insert({
       fazenda_id: fazendaId,
-      bomba_id: bomba.id,
+      bomba_id: bomba?.id ?? null,
       maquina_id: maqData?.id ?? null,
       quantidade_l: qtdUsuario,
       valor_unitario: qtdUsuario > 0 ? valor / qtdUsuario : 0,
@@ -225,6 +225,19 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
       lancamento_id: lancRow?.id ?? null,
     });
   }
+
+  // Pendência fiscal — aguardando NF do abastecimento
+  await sb().from("pendencias_fiscais").insert({
+    fazenda_id: fazendaId,
+    lancamento_id: lancRow?.id ?? null,
+    tipo: "abastecimento",
+    status: "aguardando",
+    descricao: String(cpPayload.descricao),
+    valor,
+    data_operacao: hoje,
+    fornecedor_nome: String(dados.veiculo ?? dados.bomba_nome ?? ""),
+    origem: "whatsapp_ia",
+  });
 
   // Movimentação de estoque: apenas se tipo_destino=estoque E a bomba não for de posto externo
   const deveMovEstoque = dados.tipo_destino === "estoque" && (bomba ? bomba.consume_estoque !== false : true);
@@ -777,12 +790,30 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
   };
   if (jaPago) { payload.data_baixa = hoje; payload.valor_pago = valor; }
 
-  const { error } = await sb().from("lancamentos").insert(payload);
+  const { data: lancRowCP, error } = await sb().from("lancamentos").insert(payload).select("id").maybeSingle();
 
   if (error) {
     console.error("[BOT] Erro insert lancamentos:", JSON.stringify(error));
     return { ok: false, mensagem: `❌ Erro DB lancamentos: [${error.code}] ${error.message}` };
   }
+
+  // Pendência fiscal para CPs de insumos/combustível (categorias que exigem NF)
+  const catsFiscais = ["combustivel", "insumo", "Insumos — Sementes", "Insumos — Fertilizantes", "Insumos — Defensivos", "Insumos — Inoculantes", "Insumos — Corretivos"];
+  const catAtual = String(payload.categoria ?? "");
+  if (tipo === "pagar" && catsFiscais.some(c => catAtual.toLowerCase().includes(c.toLowerCase()))) {
+    await sb().from("pendencias_fiscais").insert({
+      fazenda_id: fazendaId,
+      lancamento_id: lancRowCP?.id ?? null,
+      tipo: "lancamento_cp",
+      status: "aguardando",
+      descricao: String(payload.descricao),
+      valor: parseValor(String(payload.valor ?? 0)),
+      data_operacao: hoje,
+      fornecedor_nome: nomePessoa || null,
+      origem: "whatsapp_ia",
+    });
+  }
+
   const label = tipo === "pagar" ? "Conta a Pagar" : "Conta a Receber";
   const statusLabel = jaPago
     ? `✓ ${tipo === "pagar" ? "Pago" : "Recebido"}${conta ? ` — *${conta.nome}*` : ""}`
