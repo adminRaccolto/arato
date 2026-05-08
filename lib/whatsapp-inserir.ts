@@ -136,13 +136,16 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     data_vencimento: vencimento,
     valor, moeda: "BRL",
     status: jaPago ? "baixado" : "em_aberto",
-    auto: false, origem: "whatsapp",
+    origem: "whatsapp",
     conta_bancaria: conta?.id ?? null,
   };
   if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
 
   const { error: errCp } = await sb().from("lancamentos").insert(cpPayload);
-  if (errCp) return { ok: false, mensagem: `❌ Erro ao lançar CP: ${errCp.message}` };
+  if (errCp) {
+    console.error("[BOT] Erro insert lancamentos abastecimento:", JSON.stringify(errCp));
+    return { ok: false, mensagem: `❌ Erro técnico (abastecimento): ${errCp.code} — ${errCp.message}` };
+  }
 
   // Movimentação de estoque (se for para tanque/estoque)
   if (dados.tipo_destino === "estoque") {
@@ -297,7 +300,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", auto: true, origem: "whatsapp",
+          status: "em_aberto", origem: "whatsapp",
         });
       }
     }
@@ -370,7 +373,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", auto: true, origem: "whatsapp",
+          status: "em_aberto", origem: "whatsapp",
         });
       }
     }
@@ -433,7 +436,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoSementes,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", auto: true, origem: "whatsapp",
+          status: "em_aberto", origem: "whatsapp",
         }).select("id").single();
 
         if (lanc?.id) {
@@ -511,7 +514,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
           safra_id: ciclo?.id ?? null,
-          status: "em_aberto", auto: true, origem: "whatsapp",
+          status: "em_aberto", origem: "whatsapp",
         });
       }
     }
@@ -575,7 +578,7 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
     descricao: `Compra ${insumo?.nome ?? dados.produto} — ${dados.fornecedor ?? ""}`,
     categoria: "insumo", data_lancamento: new Date().toISOString().split("T")[0],
     data_vencimento: vencimento, valor, moeda: "BRL", status: "em_aberto",
-    auto: false, origem: "whatsapp",
+    origem: "whatsapp",
   });
 
   return {
@@ -654,7 +657,7 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     data_lancamento: hoje,
     data_vencimento: vencimento, valor, moeda: "BRL",
     status: jaPago ? "baixado" : "em_aberto",
-    auto: false, origem: "whatsapp",
+    origem: "whatsapp",
     pessoa_id: pessoaId,
     conta_bancaria: conta?.id ?? null,
   };

@@ -3211,3 +3211,246 @@ END $$;
 -- WhatsApp: campo whatsapp na tabela usuarios (vincula número ao usuário local)
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS whatsapp text;
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_whatsapp_idx ON usuarios (whatsapp) WHERE whatsapp IS NOT NULL;
+
+
+-- ────────────────────────────────────────────────────────────
+-- MÓDULO DE INTEGRAÇÕES — Catálogo central + config por fazenda
+-- ────────────────────────────────────────────────────────────
+
+-- Catálogo global (gerenciado pela Raccotlo, sem fazenda_id)
+CREATE TABLE IF NOT EXISTS integracoes_catalogo (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  categoria        text NOT NULL,   -- 'balanca' | 'comunicacao' | 'mercado' | 'bancario'
+  nome             text NOT NULL,
+  fabricante       text,
+  descricao        text,
+  icone            text DEFAULT '🔌',
+  config_schema    jsonb,
+  config_padrao    jsonb DEFAULT '{}',
+  requer_hardware  boolean DEFAULT false,
+  requer_api_key   boolean DEFAULT false,
+  ativo            boolean DEFAULT true,
+  ordem            integer DEFAULT 0,
+  created_at       timestamptz DEFAULT now()
+);
+
+-- Integrações habilitadas por fazenda
+CREATE TABLE IF NOT EXISTS integracoes_fazenda (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id     uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  integracao_id  uuid REFERENCES integracoes_catalogo(id),
+  config         jsonb DEFAULT '{}',
+  ativo          boolean DEFAULT false,
+  testado_em     timestamptz,
+  created_at     timestamptz DEFAULT now(),
+  UNIQUE(fazenda_id, integracao_id)
+);
+
+-- RLS
+ALTER TABLE integracoes_catalogo ENABLE ROW LEVEL SECURITY;
+ALTER TABLE integracoes_fazenda  ENABLE ROW LEVEL SECURITY;
+
+-- Catálogo: todos podem ler
+CREATE POLICY "integracoes_catalogo_read" ON integracoes_catalogo
+  FOR SELECT USING (true);
+
+-- Config por fazenda: acesso ao próprio tenant
+CREATE POLICY "integracoes_fazenda_tenant" ON integracoes_fazenda
+  FOR ALL USING (
+    fazenda_id IN (
+      SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()
+      UNION
+      SELECT id FROM fazendas WHERE EXISTS (
+        SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+      )
+    )
+  );
+
+-- ── Seed: balanças pré-configuradas ─────────────────────────
+
+INSERT INTO integracoes_catalogo (categoria, nome, fabricante, descricao, icone, config_padrao, requer_hardware, requer_api_key, ordem)
+VALUES
+
+('balanca', 'Toledo Prix / ICS', 'Mettler-Toledo',
+ 'Balança Toledo via RS-232. Envia peso continuamente sem necessidade de comando. Protocolo padrão 9600-8N1.',
+ '⚖️',
+ '{"baudRate":9600,"dataBits":8,"stopBits":1,"parity":"none","commandToSend":"","responseRegex":"([+-]?\\d+\\.?\\d*)\\s*[kK][gG]","weightUnit":"kg"}',
+ true, false, 1),
+
+('balanca', 'Filizola MK-III / PDV', 'Filizola',
+ 'Balança Filizola via RS-232. Protocolo contínuo 9600-8N1. Compatível com série MK e PDV.',
+ '⚖️',
+ '{"baudRate":9600,"dataBits":8,"stopBits":1,"parity":"none","commandToSend":"","responseRegex":"([+-]?\\d+\\.?\\d*)\\s*[kK][gG]","weightUnit":"kg"}',
+ true, false, 2),
+
+('balanca', 'Urano UR-E / POP', 'Urano',
+ 'Balança Urano via RS-232. Envia peso ao receber comando "P". Protocolo 9600-8N1.',
+ '⚖️',
+ '{"baudRate":9600,"dataBits":8,"stopBits":1,"parity":"none","commandToSend":"P","responseRegex":"([+-]?\\d+\\.?\\d*)\\s*[kK][gG]","weightUnit":"kg"}',
+ true, false, 3),
+
+('balanca', 'Digilog IW / DL', 'Digilog',
+ 'Balança Digilog via RS-232. Protocolo contínuo 9600-8N1.',
+ '⚖️',
+ '{"baudRate":9600,"dataBits":8,"stopBits":1,"parity":"none","commandToSend":"","responseRegex":"([+-]?\\d+\\.?\\d*)\\s*[kK][gG]","weightUnit":"kg"}',
+ true, false, 4),
+
+('balanca', 'Micheletti LD / BW', 'Micheletti',
+ 'Balança Micheletti via RS-232. Protocolo contínuo 4800-8N1.',
+ '⚖️',
+ '{"baudRate":4800,"dataBits":8,"stopBits":1,"parity":"none","commandToSend":"","responseRegex":"([+-]?\\d+\\.?\\d*)\\s*[kK][gG]","weightUnit":"kg"}',
+ true, false, 5),
+
+('balanca', 'Genérica RS-232', NULL,
+ 'Configuração manual para qualquer balança com saída serial RS-232. Ajuste o protocolo conforme o manual do equipamento.',
+ '⚖️',
+ '{"baudRate":9600,"dataBits":8,"stopBits":1,"parity":"none","commandToSend":"","responseRegex":"([+-]?\\d+\\.?\\d*)\\s*[kK][gG]","weightUnit":"kg"}',
+ true, false, 6),
+
+('comunicacao', 'WhatsApp (Evolution API)', 'Evolution API',
+ 'Bot de WhatsApp via Evolution API. Responde consultas de saldo, estoque, lavoura e registra operações por voz ou texto.',
+ '💬',
+ '{"server_url":"","instance":"arato","api_key":""}',
+ false, true, 10),
+
+('comunicacao', 'E-mail Transacional (Resend)', 'Resend',
+ 'Envio de e-mails: alertas de vencimento, relatório semanal e boas-vindas para novos usuários.',
+ '📧',
+ '{"api_key":"","from_address":"noreply@arato.agr.br"}',
+ false, true, 11),
+
+('mercado', 'Cotações de Commodities', 'Arato',
+ 'Atualização automática às 7h: soja, milho e algodão (B3 + CBOT), câmbio USD/BRL. Sem configuração necessária.',
+ '📈',
+ '{}',
+ false, false, 20),
+
+('bancario', 'Importação OFX', 'Todos os bancos',
+ 'Importa extrato bancário no formato OFX (BB, Itaú, Bradesco, Sicoob, Sicredi, Caixa). Conciliação automática com CP/CR.',
+ '🏦',
+ '{}',
+ false, false, 30);
+
+
+-- ────────────────────────────────────────────────────────────
+-- MÓDULO DE RECOMENDAÇÕES AGRONÔMICAS
+-- ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS recomendacoes (
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id             uuid REFERENCES fazendas(id) ON DELETE CASCADE NOT NULL,
+  ciclo_id               uuid REFERENCES ciclos(id),
+  tipo                   text NOT NULL CHECK (tipo IN ('pulverizacao','adubacao','plantio','correcao_solo','tratamento_sementes','colheita')),
+  status                 text DEFAULT 'pendente' CHECK (status IN ('pendente','em_execucao','concluida','cancelada')),
+
+  -- Identificação
+  codigo                 text,
+  agronomo_nome          text,
+  agronomo_crea          text,
+
+  -- Timing
+  data_recomendacao      date NOT NULL DEFAULT CURRENT_DATE,
+  data_prevista_inicio   date,
+  data_prevista_fim      date,
+
+  -- Área e remonte
+  remonte_pct            numeric DEFAULT 0,
+  area_total_recomendada_ha numeric,
+
+  -- Condições de aplicação (pulverização)
+  vazao_lha              numeric,
+  cap_tanque_l           numeric,
+  bico                   text,
+  pressao_min            numeric,
+  pressao_max            numeric,
+  ph_min                 numeric,
+  ph_max                 numeric,
+  velocidade_min         numeric,
+  velocidade_max         numeric,
+  vento_max              numeric,
+  umidade_min            numeric,
+  umidade_max            numeric,
+  temperatura_min        numeric,
+  temperatura_max        numeric,
+
+  -- Observações
+  observacoes            text,
+
+  created_at             timestamptz DEFAULT now(),
+  updated_at             timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS recomendacao_talhoes (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  recomendacao_id       uuid REFERENCES recomendacoes(id) ON DELETE CASCADE,
+  talhao_id             uuid REFERENCES talhoes(id),
+  talhao_nome           text NOT NULL,
+  area_recomendada_ha   numeric NOT NULL,
+  area_executada_ha     numeric,
+  concluido             boolean DEFAULT false,
+  ordem                 integer DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS recomendacao_produtos (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  recomendacao_id  uuid REFERENCES recomendacoes(id) ON DELETE CASCADE,
+  insumo_id        uuid REFERENCES insumos(id),
+  produto_nome     text NOT NULL,
+  dose_ha          numeric NOT NULL,
+  unidade          text NOT NULL DEFAULT 'L/ha',
+  quantidade_total numeric,
+  ordem            integer DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS recomendacao_execucoes (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  recomendacao_id  uuid REFERENCES recomendacoes(id) ON DELETE CASCADE,
+  operador_nome    text,
+  data_inicio      timestamptz DEFAULT now(),
+  data_fim         timestamptz,
+  observacoes      text,
+  origem           text DEFAULT 'web',   -- 'web' | 'offline'
+  sincronizado_em  timestamptz,
+  created_at       timestamptz DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE recomendacoes            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recomendacao_talhoes     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recomendacao_produtos    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recomendacao_execucoes   ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "rec_tenant"     ON recomendacoes          FOR ALL USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+CREATE POLICY "rec_tal_tenant" ON recomendacao_talhoes   FOR ALL USING (recomendacao_id IN (SELECT id FROM recomendacoes WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())));
+CREATE POLICY "rec_prod_tenant"ON recomendacao_produtos  FOR ALL USING (recomendacao_id IN (SELECT id FROM recomendacoes WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())));
+CREATE POLICY "rec_exec_tenant"ON recomendacao_execucoes FOR ALL USING (recomendacao_id IN (SELECT id FROM recomendacoes WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())));
+
+-- Novo perfil agronomo/operador ao enum role (se usar check constraint)
+-- ALTER TABLE perfis DROP CONSTRAINT IF EXISTS perfis_role_check;
+-- ALTER TABLE perfis ADD CONSTRAINT perfis_role_check CHECK (role IN ('raccotlo','client','agronomo','operador','admin'));
+
+-- ============================================================
+-- Seção 70 — Máquinas e Veículos: chassi + campos de seguro
+-- ============================================================
+ALTER TABLE maquinas
+  ADD COLUMN IF NOT EXISTS chassi                    text,
+  ADD COLUMN IF NOT EXISTS seguro_seguradora         text,
+  ADD COLUMN IF NOT EXISTS seguro_corretora          text,
+  ADD COLUMN IF NOT EXISTS seguro_numero_apolice     text,
+  ADD COLUMN IF NOT EXISTS seguro_data_contratacao   date,
+  ADD COLUMN IF NOT EXISTS seguro_vencimento_apolice date,
+  ADD COLUMN IF NOT EXISTS seguro_premio             numeric(12,2);
+
+-- Adiciona 'carro' ao tipo (se houver check constraint)
+-- Se não houver constraint, apenas o código TypeScript controla
+ALTER TABLE maquinas DROP CONSTRAINT IF EXISTS maquinas_tipo_check;
+ALTER TABLE maquinas ADD CONSTRAINT maquinas_tipo_check
+  CHECK (tipo IN ('trator','colheitadeira','pulverizador','plantadeira','caminhao','carro','implemento','outro'));
+
+-- ============================================================
+-- Seção 71 — Garantir coluna auto em lancamentos e movimentacoes_estoque
+-- Execute no Supabase SQL Editor se os inserts do bot estiverem falhando
+-- ============================================================
+ALTER TABLE lancamentos           ADD COLUMN IF NOT EXISTS auto boolean DEFAULT false;
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS auto boolean DEFAULT false;
+ALTER TABLE movimentacoes_estoque ADD COLUMN IF NOT EXISTS valor_unitario numeric(14,4);
