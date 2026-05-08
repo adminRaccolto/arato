@@ -23,14 +23,31 @@ async function autenticarNumero(telefone: string): Promise<{ usuarioId: string; 
   }
 
   const { data: rows } = await sb().from("usuarios")
-    .select("id, fazenda_id, fazendas(nome)")
+    .select("id, fazenda_id, auth_user_id, fazendas(nome)")
     .in("whatsapp", variantes)
     .eq("ativo", true)
     .limit(1);
   const data = rows?.[0] ?? null;
   if (!data) return null;
-  const fazenda = (Array.isArray(data.fazendas) ? data.fazendas[0] : data.fazendas) as { nome: string } | null;
-  return { usuarioId: data.id, fazendaId: data.fazenda_id, fazendaNome: fazenda?.nome ?? "" };
+
+  // Prioriza perfis.fazenda_id (fazenda ativa no app) sobre usuarios.fazenda_id
+  let fazendaId: string = data.fazenda_id;
+  let fazendaNome: string = (Array.isArray(data.fazendas) ? data.fazendas[0] : data.fazendas as { nome: string } | null)?.nome ?? "";
+
+  if (data.auth_user_id) {
+    const { data: perfil } = await sb().from("perfis")
+      .select("fazenda_id, fazendas(nome)")
+      .eq("user_id", data.auth_user_id)
+      .maybeSingle();
+    if (perfil?.fazenda_id) {
+      fazendaId = perfil.fazenda_id;
+      const pfaz = (Array.isArray(perfil.fazendas) ? perfil.fazendas[0] : perfil.fazendas) as { nome: string } | null;
+      if (pfaz?.nome) fazendaNome = pfaz.nome;
+    }
+  }
+
+  console.log("[WH] auth: usuario", data.id, "fazenda_id =>", fazendaId, fazendaNome);
+  return { usuarioId: data.id, fazendaId, fazendaNome };
 }
 
 // ── Extrair número limpo do JID ────────────────────────────────────────────
