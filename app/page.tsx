@@ -83,7 +83,7 @@ function urgDias(d: number): Urgencia {
 // ─── Tipos ────────────────────────────────────────────────────
 type Alerta = {
   id: string;
-  tipo: "cp" | "cr" | "arrendamento" | "cert_a1" | "contrato" | "estoque" | "seguro";
+  tipo: "cp" | "cr" | "arrendamento" | "cert_a1" | "contrato" | "estoque" | "seguro" | "fiscal";
   desc: string;
   valor?: number;
   dias?: number;
@@ -251,10 +251,17 @@ export default function Dashboard() {
         .eq("ativa", true)
         .not("seguro_vencimento_apolice", "is", null)
         .lte("seguro_vencimento_apolice", new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]),
+
+      // Pendências fiscais aguardando NF
+      supabase.from("pendencias_fiscais")
+        .select("id", { count: "exact", head: true })
+        .eq("fazenda_id", fazendaId)
+        .eq("status", "aguardando"),
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
       ciclosRes, contratosRes, cpVencRes, segurosRes,
+      pendFiscalRes,
     ]) => {
       const novosAlertas: Alerta[] = [];
 
@@ -377,6 +384,19 @@ export default function Dashboard() {
         });
       }
 
+      // ── Pendências fiscais ──
+      const qtdFiscal = pendFiscalRes.count ?? 0;
+      if (qtdFiscal > 0) {
+        novosAlertas.push({
+          id: "pendencias-fiscais",
+          tipo: "fiscal",
+          desc: `${qtdFiscal} pendência${qtdFiscal > 1 ? "s" : ""} fiscal${qtdFiscal > 1 ? "is" : ""} aguardando NF`,
+          urgencia: "medio",
+          link: "/fiscal/pendencias",
+          linkLabel: "Ver",
+        });
+      }
+
       // Ordenar: crítico → alto → médio
       const ordem: Record<Urgencia, number> = { critico: 0, alto: 1, medio: 2, info: 3 };
       novosAlertas.sort((a, b) => ordem[a.urgencia] - ordem[b.urgencia]);
@@ -405,7 +425,7 @@ export default function Dashboard() {
 
   const TIPO_LABEL: Record<string, string> = {
     cp: "A Pagar", cr: "A Receber", arrendamento: "Arrendamento",
-    cert_a1: "Certificado", contrato: "Contrato", estoque: "Estoque",
+    cert_a1: "Certificado", contrato: "Contrato", estoque: "Estoque", fiscal: "Fiscal",
   };
 
   return (
