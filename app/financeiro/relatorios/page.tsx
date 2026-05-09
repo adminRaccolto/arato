@@ -782,12 +782,33 @@ function FinanceiroRelatoriosInner() {
                     {/* ── MENSAL ── */}
                     {subAbaFluxo === "mensal" && (() => {
                       const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                      // Reutiliza as mesmas contas efetivas calculadas no Diário
+                      const contasFiltProdM = filtro.produtoresSel.length > 0
+                        ? contasFluxo.filter(c => c.produtor_id && filtro.produtoresSel.includes(c.produtor_id))
+                        : contasFluxo;
+                      const contasEfetivasM = filtro.contasSel.length > 0
+                        ? contasFiltProdM.filter(c => filtro.contasSel.includes(c.id))
+                        : contasFiltProdM;
+                      const contasEfetivasIdsM = new Set(contasEfetivasM.map(c => c.id));
+                      // Filtro base — ano + todos os filtros do painel
                       const lanAno = lancamentos.filter(l => {
                         const dt = l.data_vencimento ?? l.data_lancamento ?? "";
-                        return dt.startsWith(dfcAno) && l.moeda !== "barter";
+                        if (!dt.startsWith(dfcAno)) return false;
+                        if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
+                        if (filtro.contasSel.length > 0 && l.conta_bancaria && !contasEfetivasIdsM.has(l.conta_bancaria)) return false;
+                        return true;
                       });
-                      // Inclui baixados sempre; pendentes/previsões quando toggle ativo
-                      const lanVis = lanAno.filter(l => l.status === "baixado" || incluirPrevisoes);
+                      // Filtro de moeda
+                      const lanFiltMoedaM = filtro.moedasSel.length > 0
+                        ? lanAno.filter(l => { const m = l.moeda ?? "BRL"; return filtro.moedasSel.includes(m); })
+                        : lanAno.filter(l => l.moeda !== "barter");
+                      // Filtro tipo (previsto/realizado/ambos) + toggle previsões
+                      const lanVis = lanFiltMoedaM.filter(l => {
+                        if (filtro.tipoVis === "realizado") return l.status === "baixado";
+                        if (filtro.tipoVis === "previsto")  return l.status !== "baixado";
+                        // ambos: baixados sempre; pendentes só se toggle ativo
+                        return l.status === "baixado" || incluirPrevisoes;
+                      });
                       type CellM = { real: number; prev: number; sim: number };
                       type CatRowM = { cat: string; tipo: "receber" | "pagar"; meses: CellM[] };
                       const catMapM = new Map<string, CatRowM>();
