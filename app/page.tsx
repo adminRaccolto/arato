@@ -173,7 +173,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
         .lte("data_vencimento", isoEm7)
         .order("data_vencimento"),
@@ -184,7 +184,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "receber")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
         .lte("data_vencimento", isoEm7)
         .order("data_vencimento"),
@@ -209,7 +209,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto),
 
       // CR total em aberto
@@ -218,7 +218,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "receber")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto),
 
       // CP vencendo esta semana (hoje a 7 dias)
@@ -227,7 +227,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
         .gte("data_vencimento", isoHoje)
         .lte("data_vencimento", isoEm7),
@@ -238,7 +238,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "receber")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
         .gte("data_vencimento", isoHoje)
         .lte("data_vencimento", isoEm7),
@@ -262,7 +262,7 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .eq("tipo", "pagar")
         .neq("moeda", "barter")
-        .neq("natureza", "previsao")
+        .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
         .lt("data_vencimento", isoHoje),
 
