@@ -513,24 +513,24 @@ export default function Dashboard() {
                           display: "flex", alignItems: "center",
                           flexDirection: "row",
                           gap: 12,
-                          padding: "10px 14px",
+                          padding: "13px 16px",
                           borderBottom: "0.5px solid #F3F5F9",
                           background: cor.bg,
                           borderLeft: `3px solid ${cor.badge}`,
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
                           {/* Badge tipo */}
                           <span style={{
-                            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10, flexShrink: 0,
+                            fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 10, flexShrink: 0,
                             background: cor.badge, color: "#fff",
                           }}>
                             {TIPO_LABEL[a.tipo] ?? a.tipo}
                           </span>
                           {/* Descrição */}
-                          <span style={{ flex: 1, fontSize: 12, color: cor.text, lineHeight: 1.4 }}>{a.desc}</span>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: cor.text, lineHeight: 1.4 }}>{a.desc}</span>
                           {/* Ação */}
-                          <a href={a.link} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, background: "#fff", border: `0.5px solid ${cor.badge}`, color: cor.badge, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          <a href={a.link} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "#fff", border: `0.5px solid ${cor.badge}`, color: cor.badge, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {a.linkLabel}
                           </a>
                         </div>
