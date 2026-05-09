@@ -786,24 +786,41 @@ function FinanceiroRelatoriosInner() {
                         const dt = l.data_vencimento ?? l.data_lancamento ?? "";
                         return dt.startsWith(dfcAno) && l.moeda !== "barter";
                       });
+                      // Inclui baixados sempre; pendentes/previsões quando toggle ativo
                       const lanVis = lanAno.filter(l => l.status === "baixado" || incluirPrevisoes);
-                      type CellM = { real: number; prev: number };
+                      type CellM = { real: number; prev: number; sim: number };
                       type CatRowM = { cat: string; tipo: "receber" | "pagar"; meses: CellM[] };
                       const catMapM = new Map<string, CatRowM>();
+                      const newRow = (cat: string, tipo: "receber"|"pagar"): CatRowM =>
+                        ({ cat, tipo, meses: Array.from({ length: 12 }, () => ({ real: 0, prev: 0, sim: 0 })) });
+                      // Lançamentos reais e previsões
                       for (const l of lanVis) {
                         const cat = l.categoria || "Sem categoria";
                         const key = `${l.tipo}__${cat}`;
                         const mes = parseInt((l.data_vencimento ?? l.data_lancamento ?? "").slice(5, 7)) - 1;
                         if (mes < 0 || mes > 11) continue;
-                        if (!catMapM.has(key)) catMapM.set(key, { cat, tipo: l.tipo as "receber"|"pagar", meses: Array.from({ length: 12 }, () => ({ real: 0, prev: 0 })) });
+                        if (!catMapM.has(key)) catMapM.set(key, newRow(cat, l.tipo as "receber"|"pagar"));
                         const row = catMapM.get(key)!;
                         if (l.status === "baixado") row.meses[mes].real += paraBRLRel(l, cotacaoUSD);
                         else                        row.meses[mes].prev += paraBRLRel(l, cotacaoUSD);
                       }
+                      // Simulações
+                      if (simulacoesAtivas) {
+                        for (const s of simEntries.filter(x => x.ativo)) {
+                          if (!s.data.startsWith(dfcAno)) continue;
+                          const mes = parseInt(s.data.slice(5, 7)) - 1;
+                          if (mes < 0 || mes > 11) continue;
+                          const tipo: "receber"|"pagar" = s.tipo === "entrada" ? "receber" : "pagar";
+                          const cat = `◆ ${s.descricao || "Simulação"}`;
+                          const key = `${tipo}__${cat}`;
+                          if (!catMapM.has(key)) catMapM.set(key, newRow(cat, tipo));
+                          catMapM.get(key)!.meses[mes].sim += s.valor;
+                        }
+                      }
                       const entradasM = Array.from(catMapM.values()).filter(r => r.tipo === "receber").sort((a, b) => a.cat.localeCompare(b.cat));
                       const saidasM   = Array.from(catMapM.values()).filter(r => r.tipo === "pagar").sort((a, b) => a.cat.localeCompare(b.cat));
-                      const totEntM   = MESES.map((_, i) => entradasM.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev, 0));
-                      const totSaiM   = MESES.map((_, i) => saidasM.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev, 0));
+                      const totEntM   = MESES.map((_, i) => entradasM.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
+                      const totSaiM   = MESES.map((_, i) => saidasM.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev + r.meses[i].sim, 0));
                       const saldoMesM = MESES.map((_, i) => totEntM[i] - totSaiM[i]);
                       let _accM = 0;
                       const saldoAcM  = saldoMesM.map(v => { _accM += v; return _accM; });
@@ -816,22 +833,25 @@ function FinanceiroRelatoriosInner() {
                         if (Math.abs(v) >= 1_000)     return `${(v/1_000).toFixed(0)}k`;
                         return fmtBRL(v);
                       };
+                      const isSim = (cat: string) => cat.startsWith("◆ ");
                       const CatRowMEl = ({ row }: { row: CatRowM }) => {
-                        const totRow = row.meses.reduce((s, c) => s + c.real + c.prev, 0);
+                        const totRow = row.meses.reduce((s, c) => s + c.real + c.prev + c.sim, 0);
                         if (totRow === 0) return null;
-                        const cor = row.tipo === "receber" ? "#16A34A" : "#E24B4A";
+                        const sim = isSim(row.cat);
+                        const cor = sim ? "#7C3AED" : row.tipo === "receber" ? "#16A34A" : "#E24B4A";
                         return (
-                          <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
-                            <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: "#1a1a1a", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</td>
+                          <tr style={{ borderBottom: "0.5px solid #F0F3FA", background: sim ? "#FAF5FF" : undefined }}>
+                            <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: sim ? "#7C3AED" : "#1a1a1a", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</td>
                             {row.meses.map((c, i) => {
-                              const total = c.real + c.prev;
+                              const total = c.real + c.prev + c.sim;
                               return (
                                 <td key={i} style={{ padding: "5px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
                                   {total > 0 ? (
                                     <>
                                       <div style={{ fontSize: 11, fontWeight: 600, color: cor }}>{fmtKM(total)}</div>
-                                      {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
-                                      {c.prev > 0 && c.real > 0  && <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtKM(c.prev)} prev</div>}
+                                      {c.prev > 0 && c.real === 0 && c.sim === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
+                                      {c.prev > 0 && (c.real > 0 || c.sim > 0) && <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtKM(c.prev)} prev</div>}
+                                      {c.sim > 0 && c.real === 0 && c.prev === 0 && <div style={{ fontSize: 9, color: "#7C3AED" }}>sim</div>}
                                     </>
                                   ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
                                 </td>
