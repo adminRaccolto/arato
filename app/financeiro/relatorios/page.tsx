@@ -504,7 +504,7 @@ function FinanceiroRelatoriosInner() {
                                         </span>
                                       </td>
                                       <td style={{ padding: "11px 16px", textAlign: "right", fontWeight: 700, fontSize: 14, color: s.tipo === "entrada" ? "#16A34A" : "#E24B4A" }}>
-                                        {s.tipo === "entrada" ? "+" : "−"} {fmtBRL(s.valor)}
+                                        {s.tipo === "entrada" ? "+" : "−"} {fmtBRL(s.valor, 2)}
                                       </td>
                                       <td style={{ padding: "11px 16px", width: 64 }}>
                                         <div style={{ display: "flex", gap: 8 }}>
@@ -523,9 +523,9 @@ function FinanceiroRelatoriosInner() {
                           {simsAtivas.length > 0 && (
                             <div style={{ padding: "14px 28px", borderTop: "0.5px solid #DDD6FE", background: "#F5F3FF", borderRadius: "0 0 12px 12px", display: "flex", gap: 28, alignItems: "center", flexWrap: "wrap" }}>
                               <span style={{ fontSize: 12, color: "#7C3AED", fontWeight: 700 }}>Impacto ({simsAtivas.length} ativas):</span>
-                              <span style={{ fontSize: 14, color: "#16A34A", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0))}</span>
-                              <span style={{ fontSize: 14, color: "#E24B4A", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0))}</span>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#1A4870" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq)}</span>
+                              <span style={{ fontSize: 14, color: "#16A34A", fontWeight: 700 }}>+ {fmtBRL(simsAtivas.filter(s => s.tipo === "entrada").reduce((a, s) => a + s.valor, 0), 2)}</span>
+                              <span style={{ fontSize: 14, color: "#E24B4A", fontWeight: 700 }}>− {fmtBRL(simsAtivas.filter(s => s.tipo === "saida").reduce((a, s) => a + s.valor, 0), 2)}</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: totalSimLiq >= 0 ? "#1A4870" : "#E24B4A" }}>Líquido: {fmtBRL(totalSimLiq, 2)}</span>
                             </div>
                           )}
                         </div>
@@ -565,7 +565,7 @@ function FinanceiroRelatoriosInner() {
                           <div style={{ display: "flex", flexDirection: "column", gap: 2, justifyContent: "flex-end" }}>
                             <label style={labelStyle}>Saldo Inicial</label>
                             <div style={{ padding: "7px 12px", background: saldoInicial >= 0 ? "#D5E8F5" : "#FCEBEB", borderRadius: 8, fontSize: 13, fontWeight: 700, color: saldoInicial >= 0 ? "#0B2D50" : "#E24B4A", whiteSpace: "nowrap" }}>
-                              {fmtBRL(saldoInicial)}
+                              {fmtBRL(saldoInicial, 2)}
                             </div>
                           </div>
                         )}
@@ -655,10 +655,10 @@ function FinanceiroRelatoriosInner() {
                         <div style={{ margin: "12px 20px 0", padding: "12px 16px", background: "#FEF3E2", border: "0.5px solid #C9921B", borderRadius: 10, display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
                           <span style={{ fontSize: 12, fontWeight: 700, color: "#7A4300" }}>⚠ Compromissos não baixados antes de {new Date(filtro.inicio + "T12:00:00").toLocaleDateString("pt-BR")}</span>
                           {cpAntPeriodo > 0 && (
-                            <span style={{ fontSize: 12, color: "#E24B4A", fontWeight: 600 }}>CP em aberto: <strong>{fmtBRL(cpAntPeriodo)}</strong></span>
+                            <span style={{ fontSize: 12, color: "#E24B4A", fontWeight: 600 }}>CP em aberto: <strong>{fmtBRL(cpAntPeriodo, 2)}</strong></span>
                           )}
                           {crAntPeriodo > 0 && (
-                            <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>CR em aberto: <strong>{fmtBRL(crAntPeriodo)}</strong></span>
+                            <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>CR em aberto: <strong>{fmtBRL(crAntPeriodo, 2)}</strong></span>
                           )}
                           <span style={{ fontSize: 11, color: "#888" }}>Esses valores afetarão o saldo quando forem baixados.</span>
                         </div>
@@ -723,10 +723,10 @@ function FinanceiroRelatoriosInner() {
                                         {temPrev && <span style={{ marginLeft: 4, fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "1px 5px", borderRadius: 8 }}>prev</span>}
                                       </td>
                                       <td /><td />
-                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#16A34A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaEnt > 0 ? fmtBRL(diaEnt) : ""}</td>
-                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#E24B4A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSai > 0 ? fmtBRL(diaSai) : ""}</td>
-                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSimLiq !== 0 ? (diaSimLiq > 0 ? "+" : "−") + fmtBRL(Math.abs(diaSimLiq)) : ""}</td>
-                                      <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: diaUltSaldo >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(diaUltSaldo)}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#16A34A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaEnt > 0 ? fmtBRL(diaEnt, 2) : ""}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#E24B4A", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSai > 0 ? fmtBRL(diaSai, 2) : ""}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>{diaSimLiq !== 0 ? (diaSimLiq > 0 ? "+" : "−") + fmtBRL(Math.abs(diaSimLiq), 2) : ""}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: diaUltSaldo >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(diaUltSaldo, 2)}</td>
                                     </tr>
                                     {expandido && diaRows.map((r, idx) => {
                                       const isSim  = r.tipo_row === "simulacao";
@@ -755,17 +755,17 @@ function FinanceiroRelatoriosInner() {
                                             {isReal && <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
-                                            {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada)}</div>}
+                                            {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada, 2)}</div>}
                                             {r.entrada > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{r.subMoeda}</div>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
-                                            {r.saida > 0 && <div style={{ color: "#E24B4A", fontWeight: 600 }}>{fmtBRL(r.saida)}</div>}
+                                            {r.saida > 0 && <div style={{ color: "#E24B4A", fontWeight: 600 }}>{fmtBRL(r.saida, 2)}</div>}
                                             {r.saida > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{r.subMoeda}</div>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 700 }}>
-                                            {isSim ? ((r.simEntrada > 0 ? "+" : "−") + " " + fmtBRL(Math.max(r.simEntrada, r.simSaida))) : ""}
+                                            {isSim ? ((r.simEntrada > 0 ? "+" : "−") + " " + fmtBRL(Math.max(r.simEntrada, r.simSaida), 2)) : ""}
                                           </td>
-                                          <td style={{ padding: "6px 14px", textAlign: "right", fontWeight: 700, color: r.saldo >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(r.saldo)}</td>
+                                          <td style={{ padding: "6px 14px", textAlign: "right", fontWeight: 700, color: r.saldo >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(r.saldo, 2)}</td>
                                         </tr>
                                       );
                                     })}
