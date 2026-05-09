@@ -827,18 +827,11 @@ function FinanceiroRelatoriosInner() {
                       const totEntAnual = totEntM.reduce((s, v) => s + v, 0);
                       const totSaiAnual = totSaiM.reduce((s, v) => s + v, 0);
                       const totLiqAnual = totEntAnual - totSaiAnual;
-                      const fmtKM = (v: number): string => {
-                        if (v === 0) return "—";
-                        if (Math.abs(v) >= 1_000_000) return `${(v/1_000_000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}M`;
-                        if (Math.abs(v) >= 1_000)     return `${(v/1_000).toFixed(0)}k`;
-                        return fmtBRL(v);
-                      };
                       const isSim = (cat: string) => cat.startsWith("◆ ");
                       const CatRowMEl = ({ row }: { row: CatRowM }) => {
                         const totRow = row.meses.reduce((s, c) => s + c.real + c.prev + c.sim, 0);
                         if (totRow === 0) return null;
                         const sim = isSim(row.cat);
-                        const cor = sim ? "#7C3AED" : row.tipo === "receber" ? "#16A34A" : "#E24B4A";
                         return (
                           <tr style={{ borderBottom: "0.5px solid #F0F3FA", background: sim ? "#FAF5FF" : undefined }}>
                             <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: sim ? "#7C3AED" : "#1a1a1a", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</td>
@@ -848,16 +841,16 @@ function FinanceiroRelatoriosInner() {
                                 <td key={i} style={{ padding: "5px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
                                   {total > 0 ? (
                                     <>
-                                      <div style={{ fontSize: 11, fontWeight: 600, color: cor }}>{fmtKM(total)}</div>
+                                      <div style={{ fontSize: 11, fontWeight: 600, color: sim ? "#7C3AED" : "#1a1a1a" }}>{fmtBRL(total)}</div>
                                       {c.prev > 0 && c.real === 0 && c.sim === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
-                                      {c.prev > 0 && (c.real > 0 || c.sim > 0) && <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtKM(c.prev)} prev</div>}
+                                      {c.prev > 0 && (c.real > 0 || c.sim > 0) && <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtBRL(c.prev)} prev</div>}
                                       {c.sim > 0 && c.real === 0 && c.prev === 0 && <div style={{ fontSize: 9, color: "#7C3AED" }}>sim</div>}
                                     </>
                                   ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
                                 </td>
                               );
                             })}
-                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: cor, whiteSpace: "nowrap" }}>{totRow === 0 ? "—" : fmtBRL(totRow)}</td>
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: sim ? "#7C3AED" : "#1a1a1a", whiteSpace: "nowrap" }}>{totRow === 0 ? "—" : fmtBRL(totRow)}</td>
                           </tr>
                         );
                       };
@@ -885,14 +878,14 @@ function FinanceiroRelatoriosInner() {
                           {/* KPIs */}
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
                             {[
-                              { label: "Total Entradas",   v: totEntAnual, cor: "#0B2D50",                                      bg: "#D5E8F5" },
-                              { label: "Total Saídas",     v: totSaiAnual, cor: "#791F1F",                                      bg: "#FCEBEB" },
-                              { label: "Resultado Líquido",v: totLiqAnual, cor: totLiqAnual >= 0 ? "#0B2D50" : "#791F1F",       bg: totLiqAnual >= 0 ? "#D5E8F5" : "#FCEBEB" },
-                              { label: "Saldo Acumulado",  v: saldoAcM[11] ?? totLiqAnual, cor: (saldoAcM[11] ?? totLiqAnual) >= 0 ? "#0B2D50" : "#791F1F", bg: (saldoAcM[11] ?? totLiqAnual) >= 0 ? "#D5E8F5" : "#FCEBEB" },
+                              { label: "Total Entradas",    v: totEntAnual },
+                              { label: "Total Saídas",      v: totSaiAnual },
+                              { label: "Resultado Líquido", v: totLiqAnual },
+                              { label: "Saldo Acumulado",   v: saldoAcM[11] ?? totLiqAnual },
                             ].map((k, i) => (
-                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none", background: k.bg }}>
-                                <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{k.label}</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{fmtBRL(k.v)}</div>
+                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none", background: "#F8FAFD" }}>
+                                <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{k.label}</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: k.v < 0 ? "#B91C1C" : "#1A4870" }}>{fmtBRL(k.v)}</div>
                               </div>
                             ))}
                           </div>
@@ -907,29 +900,29 @@ function FinanceiroRelatoriosInner() {
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr style={{ background: "#DCFCE7" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 800, fontSize: 11, color: "#14532D", letterSpacing: "0.04em" }}>ENTRADAS</td></tr>
+                                <tr style={{ background: "#F4F6FA" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
                                 {entradasM.length > 0 ? entradasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
-                                <tr style={{ background: "#ECFDF5", borderTop: "0.5px solid #DDE2EE" }}>
-                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#16A34A" }}>Total Entradas</td>
-                                  {totEntM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#16A34A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
-                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#16A34A", whiteSpace: "nowrap" }}>{totEntAnual === 0 ? "—" : fmtBRL(totEntAnual)}</td>
+                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Entradas</td>
+                                  {totEntM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{totEntAnual === 0 ? "—" : fmtBRL(totEntAnual)}</td>
                                 </tr>
-                                <tr style={{ background: "#FCEBEB" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 800, fontSize: 11, color: "#791F1F", letterSpacing: "0.04em" }}>SAÍDAS</td></tr>
+                                <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
                                 {saidasM.length > 0 ? saidasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída.</td></tr>}
-                                <tr style={{ background: "#FEF3F2", borderTop: "0.5px solid #DDE2EE" }}>
-                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#E24B4A" }}>Total Saídas</td>
-                                  {totSaiM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
-                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#E24B4A", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual)}</td>
+                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Saídas</td>
+                                  {totSaiM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual)}</td>
                                 </tr>
-                                <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}>
+                                <tr style={{ background: "#EFF3FA", borderTop: "1px solid #C7D7EC" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Mês</td>
-                                  {saldoMesM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
-                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: totLiqAnual >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>{totLiqAnual === 0 ? "—" : fmtBRL(totLiqAnual)}</td>
+                                  {saldoMesM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v)}</td>)}
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: totLiqAnual < 0 ? "#B91C1C" : "#1A4870", whiteSpace: "nowrap" }}>{totLiqAnual === 0 ? "—" : fmtBRL(totLiqAnual)}</td>
                                 </tr>
                                 <tr style={{ background: "#EFF3FA" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
-                                  {saldoAcM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
-                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: (saldoAcM[11]??totLiqAnual) >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[11]??totLiqAnual)}</td>
+                                  {saldoAcM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v)}</td>)}
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: (saldoAcM[11]??totLiqAnual) < 0 ? "#B91C1C" : "#1A4870", whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[11]??totLiqAnual)}</td>
                                 </tr>
                               </tbody>
                             </table>
