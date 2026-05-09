@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
 import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa } from "../../../lib/supabase";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -24,6 +25,8 @@ const CATS_CP = [
   "Insumos — Fertilizantes",
   "Insumos — Defensivos",
   "Insumos — Inoculantes",
+  "Combustível — Compra para Estoque",
+  "Combustível — Consumo Direto",
   "Serviços Agrícolas",
   "Fretes e Transportes",
   "Arrendamento de Terra",
@@ -111,6 +114,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4,
 // ═══════════════════════════════════════════════════════════════
 export default function ContasPagar() {
   const { fazendaId, contaId } = useAuth();
+  const router = useRouter();
   const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
   const fid = formFazendaId ?? fazendaId;
 
@@ -118,6 +122,7 @@ export default function ContasPagar() {
   const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
   const [produtores,  setProdutores]  = useState<Produtor[]>([]);
   const [pessoas,     setPessoas]     = useState<Pessoa[]>([]);
+  const [ciclos,      setCiclos]      = useState<Ciclo[]>([]);
   const [contas,      setContas]      = useState<ContaBancariaMin[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -126,16 +131,14 @@ export default function ContasPagar() {
 
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo,  setModalNovo]  = useState(false);
-  const [modalNF,    setModalNF]    = useState<Lancamento | null>(null);
-  const [nfNumero,   setNfNumero]   = useState("");
-  const [nfEmitente, setNfEmitente] = useState("");
+  const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
 
   // ── Modal Editar ──────────────────────────────────────────────
   const [modalEditar, setModalEditar] = useState<Lancamento | null>(null);
   const [editForm, setEditForm] = useState({
     descricao: "", categoria: "", data_vencimento: "",
     valorMask: "", observacao: "", pessoa_id: "",
-    conta_bancaria: "", ano_safra_id: "", produtor_id: "",
+    conta_bancaria: "", ano_safra_id: "", produtor_id: "", ciclo_id: "",
   });
   const [editSalvando, setEditSalvando] = useState(false);
 
@@ -150,6 +153,7 @@ export default function ContasPagar() {
       conta_bancaria:   l.conta_bancaria ?? "",
       ano_safra_id:     l.ano_safra_id ?? "",
       produtor_id:      l.produtor_id ?? "",
+      ciclo_id:         l.ciclo_id ?? "",
     });
     setModalEditar(l);
   }
@@ -168,6 +172,7 @@ export default function ContasPagar() {
       conta_bancaria:  editForm.conta_bancaria || null,
       ano_safra_id:    editForm.ano_safra_id   || null,
       produtor_id:     editForm.produtor_id    || null,
+      ciclo_id:        editForm.ciclo_id       || null,
     }).eq("id", modalEditar.id);
     if (error) { alert("Erro ao salvar: " + error.message); setEditSalvando(false); return; }
     setLancamentos(prev => prev.map(x => x.id === modalEditar.id
@@ -177,7 +182,8 @@ export default function ContasPagar() {
           pessoa_id: editForm.pessoa_id || null,
           conta_bancaria: editForm.conta_bancaria || null,
           ano_safra_id: editForm.ano_safra_id || null,
-          produtor_id: editForm.produtor_id || null } as Lancamento : x
+          produtor_id: editForm.produtor_id || null,
+          ciclo_id: editForm.ciclo_id || null } as Lancamento : x
     ));
     setModalEditar(null);
     setEditSalvando(false);
@@ -203,7 +209,7 @@ export default function ContasPagar() {
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
     juros_pct: "", multa_pct: "", desconto_pct: "",
     chave_xml: "", centro_custo: "",
-    ano_safra_id: "", produtor_id: "",
+    ano_safra_id: "", produtor_id: "", ciclo_id: "",
     natureza: "real" as "real" | "previsao",
     forma_pagamento: "PIX",
     conta_pagamento: "",
@@ -244,6 +250,7 @@ export default function ContasPagar() {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
     }
   }, [fazendaId]);
@@ -317,6 +324,10 @@ export default function ContasPagar() {
   // ── Baixar ─────────────────────────────────────────────────
 
   const abrirBaixa = (l: Lancamento) => {
+    // Intercepta se não tem NF vinculada (exceto barter e lançamentos de arrendamento/financiamento)
+    const categoriasSemNF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto"];
+    const precisaNF = l.moeda !== "barter" && !l.nfe_numero && !categoriasSemNF.includes(l.categoria ?? "");
+    if (precisaNF) { setAlertaNF(l); return; }
     setModalBaixa(l);
     setBaixa({ valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)), data: TODAY, conta: "", obs: "" });
   };
@@ -333,7 +344,8 @@ export default function ContasPagar() {
       ));
       setModalBaixa(null);
     } catch (e: unknown) {
-      alert("Erro: " + (e instanceof Error ? e.message : e));
+      const msgBaixa = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+      alert("Erro: " + msgBaixa);
     } finally {
       setSalvando(false);
     }
@@ -406,6 +418,7 @@ export default function ContasPagar() {
       centro_custo:  form.centro_custo  || undefined,
       observacao:    form.obs           || undefined,
       ano_safra_id:  form.ano_safra_id  || undefined,
+      ciclo_id:      form.ciclo_id      || undefined,
       produtor_id:   form.produtor_id   || undefined,
       natureza:      form.natureza,
     };
@@ -441,7 +454,8 @@ export default function ContasPagar() {
       setForm(f => ({ ...f, pessoa_id: "", descricao: "", vencimento: "", valorMask: "", sacasMask: "", obs: "", condicao: "avista", qtdParcelas: "2", conta_pagamento: "", forma_pagamento: "PIX" }));
       setModalNovo(false);
     } catch (e: unknown) {
-      alert("Erro ao salvar: " + (e instanceof Error ? e.message : e));
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+      alert("Erro ao salvar: " + msg);
     } finally {
       setSalvando(false);
     }
@@ -772,13 +786,11 @@ export default function ContasPagar() {
                                     ✏
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => { setModalNF(l); setNfNumero(l.nfe_numero ?? ""); setNfEmitente(""); }}
-                                  title={l.nfe_numero ? `NF vinculada: ${l.nfe_numero}` : "Vincular nota fiscal"}
-                                  style={{ fontSize: 12, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: l.nfe_numero ? "#D5E8F5" : "transparent", color: l.nfe_numero ? "#0B2D50" : "#888", border: `0.5px solid ${l.nfe_numero ? "#1A4870" : "#CCC"}`, lineHeight: 1, fontWeight: l.nfe_numero ? 700 : 400 }}
-                                >
-                                  📎{l.nfe_numero ? ` ${l.nfe_numero}` : ""}
-                                </button>
+                                {l.nfe_numero && (
+                                  <span title={`NF vinculada: ${l.nfe_numero}`} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 5, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870", fontWeight: 700 }}>
+                                    📎 {l.nfe_numero}
+                                  </span>
+                                )}
                                 {!l.auto && (
                                   <button
                                     onClick={async () => {
@@ -812,42 +824,50 @@ export default function ContasPagar() {
         </div>
       </main>
 
-      {/* ── Modal Vincular NF ────────────────────────────────── */}
-      {modalNF && (
+      {/* ── Alerta: CP sem NF ───────────────────────────────────── */}
+      {alertaNF && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>📎 Vincular Nota Fiscal</div>
-            <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>{modalNF.descricao}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-              <div>
-                <label style={lbl}>Número da NF *</label>
-                <input style={inp} placeholder="ex: 001234" value={nfNumero} onChange={e => setNfNumero(e.target.value)} autoFocus />
-              </div>
-              <div>
-                <label style={lbl}>Emitente / Fornecedor</label>
-                <input style={inp} placeholder="ex: Posto Shell" value={nfEmitente} onChange={e => setNfEmitente(e.target.value)} />
-              </div>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span style={{ fontSize: 22 }}>⚠️</span>
+              <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Conta a Pagar sem Nota Fiscal</span>
+            </div>
+            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>{alertaNF.descricao}</div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>
+              Este lançamento não possui nota fiscal vinculada. Para conformidade com o LCDPR e SPED, recomenda-se registrar a NF antes de baixar.
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalNF(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              {modalNF.nfe_numero && (
-                <button onClick={async () => {
-                  if (!confirm("Remover NF vinculada?")) return;
-                  await supabase.from("lancamentos").update({ nfe_numero: null }).eq("id", modalNF.id);
-                  setLancamentos(prev => prev.map(x => x.id === modalNF.id ? { ...x, nfe_numero: undefined } : x));
-                  setModalNF(null);
-                }} style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #E24B4A", background: "transparent", color: "#E24B4A", cursor: "pointer", fontSize: 13 }}>Remover NF</button>
-              )}
-              <button disabled={salvando || !nfNumero.trim()} onClick={async () => {
-                if (!nfNumero.trim()) return;
-                setSalvando(true);
-                const { error } = await supabase.from("lancamentos").update({ nfe_numero: nfNumero.trim() }).eq("id", modalNF.id);
-                setSalvando(false);
-                if (error) { alert("Erro: " + error.message); return; }
-                setLancamentos(prev => prev.map(x => x.id === modalNF.id ? { ...x, nfe_numero: nfNumero.trim() } : x));
-                setModalNF(null);
-              }} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando || !nfNumero.trim() ? 0.5 : 1 }}>
-                {salvando ? "Salvando…" : "Vincular NF"}
+              <button onClick={() => setAlertaNF(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={async () => {
+                // Garante que existe uma pendência fiscal para este lançamento
+                const l = alertaNF;
+                const { data: existe } = await supabase.from("pendencias_fiscais")
+                  .select("id").eq("lancamento_id", l.id).maybeSingle();
+                if (!existe) {
+                  await supabase.from("pendencias_fiscais").insert({
+                    fazenda_id:      fid,
+                    lancamento_id:   l.id,
+                    tipo:            "compra",
+                    status:          "aguardando",
+                    descricao:       l.descricao ?? "",
+                    valor:           l.valor ?? 0,
+                    data_operacao:   l.data_vencimento ?? TODAY,
+                    fornecedor_nome: "",
+                    origem:          "manual",
+                  });
+                }
+                setAlertaNF(null);
+                router.push("/fiscal/pendencias");
+              }} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #1A4870", background: "transparent", color: "#1A4870", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                📎 Vincular Nota
+              </button>
+              <button onClick={() => {
+                const l = alertaNF;
+                setAlertaNF(null);
+                setModalBaixa(l);
+                setBaixa({ valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)), data: TODAY, conta: "", obs: "" });
+              }} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                Continuar sem NF
               </button>
             </div>
           </div>
@@ -900,11 +920,21 @@ export default function ContasPagar() {
                 </div>
                 <div>
                   <label style={lbl}>Ano Safra</label>
-                  <select value={editForm.ano_safra_id} onChange={e => setEditForm(f => ({ ...f, ano_safra_id: e.target.value }))} style={inp}>
+                  <select value={editForm.ano_safra_id} onChange={e => setEditForm(f => ({ ...f, ano_safra_id: e.target.value, ciclo_id: "" }))} style={inp}>
                     <option value="">— Sem safra —</option>
                     {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                   </select>
                 </div>
+              </div>
+              <div>
+                <label style={lbl}>Ciclo / Empreendimento</label>
+                <select value={editForm.ciclo_id} onChange={e => setEditForm(f => ({ ...f, ciclo_id: e.target.value }))} style={inp}>
+                  <option value="">— Sem ciclo —</option>
+                  {ciclos
+                    .filter(c => !editForm.ano_safra_id || c.ano_safra_id === editForm.ano_safra_id)
+                    .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)
+                  }
+                </select>
               </div>
               <div>
                 <label style={lbl}>Observação</label>
@@ -1196,10 +1226,24 @@ export default function ContasPagar() {
               </div>
               <div>
                 <label style={lbl}>Safra</label>
-                <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value }))}>
+                <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
                   <option value="">Sem vínculo</option>
                   {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                 </select>
+              </div>
+              <div>
+                <label style={lbl}>Ciclo / Empreendimento</label>
+                <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
+                  <option value="">— Sem ciclo —</option>
+                  {ciclos
+                    .filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
+                    .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)
+                  }
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Centro de Custo</label>
+                <input style={inp} placeholder="Ex: Talhão 3 / Maquinário" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
               </div>
               <div>
                 <label style={lbl}>Produtor</label>

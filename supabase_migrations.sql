@@ -3533,3 +3533,25 @@ ALTER TABLE pendencias_fiscais
   CHECK (origem IN ('manual','whatsapp','sistema'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 75 — lancamentos.nf_entrada_id — vínculo fiscal real
+-- ============================================================
+-- Permite vincular um lançamento CP/CR a uma NF de entrada real
+-- para conformidade com LCDPR e SPED ECD.
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS nf_entrada_id UUID REFERENCES nf_entradas(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_nf_entrada ON lancamentos(nf_entrada_id);
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 76 — lancamentos.ciclo_id — vínculo com ciclo agrícola
+-- ============================================================
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS ciclo_id UUID REFERENCES ciclos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_ciclo ON lancamentos(ciclo_id);
+
+NOTIFY pgrst, 'reload schema';

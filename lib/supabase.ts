@@ -190,10 +190,12 @@ export type Lancamento = {
   preco_saca_barter?: number;
   // Vínculos
   nfe_numero?: string;
+  nf_entrada_id?: string;  // FK nf_entradas — vínculo fiscal real (LCDPR/SPED)
   chave_xml?: string;
   conta_bancaria?: string;
   safra_id?: string;
   ano_safra_id?: string;
+  ciclo_id?: string;       // FK ciclos.id — ciclo/empreendimento vinculado
   produtor_id?: string;
   pessoa_id?: string;      // FK pessoas — cliente (CR) ou fornecedor (CP)
   operacao_id?: string;

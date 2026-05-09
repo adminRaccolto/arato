@@ -22,7 +22,7 @@ interface FlowRow {
   data: string;
   fornecedor: string;
   descricao: string;
-  tipo_row: "real" | "previsao" | "simulacao";
+  tipo_row: "real" | "pendente" | "previsao" | "simulacao";
   entrada: number;
   saida: number;
   subMoeda?: string;
@@ -37,6 +37,8 @@ type FiltroFluxo = {
   fim:           string;
   moedaExib:     "BRL" | "USD";
   visao:         "ambos" | "realizado" | "projetado";
+  tipoVis:       "ambos" | "previsto" | "realizado";
+  moedasSel:     string[];   // [] = todas; ["BRL","USD","barter"] = filtro
 };
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -92,6 +94,8 @@ function FinanceiroRelatoriosInner() {
     fim:           `${anoAtual}-12-31`,
     moedaExib:     "BRL",
     visao:         "ambos",
+    tipoVis:       "ambos",
+    moedasSel:     [],
   });
   const [mesesExpandidos,   setMesesExpandidos]   = useState<Set<string>>(new Set());
   const [simEntries,        setSimEntries]        = useState<SimEntry[]>([]);
@@ -283,32 +287,70 @@ function FinanceiroRelatoriosInner() {
                   const dt = l.data_vencimento ?? l.data_lancamento ?? "";
                   if (filtro.inicio && dt < filtro.inicio) return false;
                   if (filtro.fim   && dt > filtro.fim)   return false;
-                  // filtro de produtor no lançamento
+                  // filtro de produtor: exclui somente se o lançamento tem produtor_id
+                  // explicitamente diferente do selecionado (lançamentos sem produtor_id são overhead geral)
                   if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
-                  // filtro de conta
-                  if (filtro.contasSel.length > 0 || filtro.produtoresSel.length > 0) {
+                  // filtro de conta: só aplica quando contas são selecionadas explicitamente
+                  if (filtro.contasSel.length > 0) {
                     if (l.conta_bancaria && !contasEfetivasIds.has(l.conta_bancaria)) return false;
-                  } else {
-                    if (l.conta_bancaria && !contasFluxoIds.has(l.conta_bancaria)) return false;
                   }
                   return true;
                 });
 
-                const lanRealizados = lansFiltrados.filter(l => l.status === "baixado");
-                const lanPrevisoes  = lansFiltrados.filter(l => l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo");
+                // Aplica filtro de moeda antes de separar
+                const lansFiltMoeda = filtro.moedasSel.length > 0
+                  ? lansFiltrados.filter(l => {
+                      const m = l.moeda === "barter" ? "barter" : (l.moeda ?? "BRL");
+                      return filtro.moedasSel.includes(m);
+                    })
+                  : lansFiltrados.filter(l => l.moeda !== "barter"); // barter excluído por padrão
+
+                // Contas não baixadas ANTES do período (compromissos pendentes)
+                const cpAntPeriodo = lancamentos.filter(l =>
+                  l.moeda !== "barter" && l.tipo === "pagar" &&
+                  l.status !== "baixado" && l.natureza !== "previsao" &&
+                  (l.data_vencimento ?? "") < (filtro.inicio || "")
+                ).reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+                const crAntPeriodo = lancamentos.filter(l =>
+                  l.moeda !== "barter" && l.tipo === "receber" &&
+                  l.status !== "baixado" && l.natureza !== "previsao" &&
+                  (l.data_vencimento ?? "") < (filtro.inicio || "")
+                ).reduce((s, l) => s + paraBRLRel(l, cotacaoUSD), 0);
+
+                const mostrarAntPeriodo = filtro.tipoVis !== "realizado" && filtro.inicio && (cpAntPeriodo > 0 || crAntPeriodo > 0);
+
+                // Separa realizados x pendentes x previsões
+                const lanRealizados = lansFiltMoeda.filter(l => l.status === "baixado");
+                const lanPendentes  = lansFiltMoeda.filter(l =>
+                  (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.natureza !== "previsao"
+                );
+                const lanPrevisoes  = lansFiltMoeda.filter(l =>
+                  (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.natureza === "previsao"
+                );
 
                 const rows: FlowRow[] = [];
-                for (const l of lanRealizados) {
-                  const brl = paraBRLRel(l, cotacaoUSD);
-                  rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "real", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
-                }
-                if (incluirPrevisoes) {
-                  for (const l of lanPrevisoes) {
+                // Realizados — sempre incluídos (exceto quando tipoVis = "previsto")
+                if (filtro.tipoVis !== "previsto") {
+                  for (const l of lanRealizados) {
                     const brl = paraBRLRel(l, cotacaoUSD);
-                    rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "previsao", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
+                    rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "real", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
                   }
                 }
-                const simsAtivas = simulacoesAtivas ? simEntries.filter(s => s.ativo) : [];
+                // Pendentes (lançamentos reais não baixados) — excluídos em modo "realizado"
+                if (filtro.tipoVis !== "realizado") {
+                  for (const l of lanPendentes) {
+                    const brl = paraBRLRel(l, cotacaoUSD);
+                    rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "pendente", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
+                  }
+                  // Previsões (natureza = previsao) — somente se toggle ativo
+                  if (incluirPrevisoes) {
+                    for (const l of lanPrevisoes) {
+                      const brl = paraBRLRel(l, cotacaoUSD);
+                      rows.push({ data: l.data_vencimento ?? l.data_lancamento ?? "", fornecedor: l.descricao ?? "", descricao: l.categoria, tipo_row: "previsao", entrada: l.tipo === "receber" ? brl : 0, saida: l.tipo === "pagar" ? brl : 0, subMoeda: subMoedaRel(l, cotacaoUSD), origem_lancamento: l.origem_lancamento });
+                    }
+                  }
+                }
+                const simsAtivas = (simulacoesAtivas && filtro.tipoVis !== "realizado") ? simEntries.filter(s => s.ativo) : [];
                 for (const s of simsAtivas) {
                   rows.push({ data: s.data, fornecedor: s.fornecedor, descricao: s.descricao, tipo_row: "simulacao", entrada: 0, saida: 0 });
                 }
@@ -489,8 +531,8 @@ function FinanceiroRelatoriosInner() {
 
                     {/* Painel principal */}
                     <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
-                      {/* Filtros */}
-                      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                      {/* Filtros — linha 1: período + produtores */}
+                      <div style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           <label style={labelStyle}>Início</label>
                           <input type="date" value={filtro.inicio} onChange={e => setFiltro(f => ({ ...f, inicio: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
@@ -499,7 +541,6 @@ function FinanceiroRelatoriosInner() {
                           <label style={labelStyle}>Fim</label>
                           <input type="date" value={filtro.fim} onChange={e => setFiltro(f => ({ ...f, fim: e.target.value }))} style={{ ...inputStyle, width: 140 }} />
                         </div>
-                        {/* Botão filtros avançados + badge de ativos */}
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end" }}>
                           <label style={labelStyle}>&nbsp;</label>
                           <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#1A4870" : "#D4DCE8"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#D5E8F5" : "#fff", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0B2D50" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -514,20 +555,39 @@ function FinanceiroRelatoriosInner() {
                             </div>
                           </div>
                         )}
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto", flexWrap: "wrap" }}>
+                      </div>
+                      {/* Filtros — linha 2: tipo + moeda + toggles */}
+                      <div style={{ padding: "8px 20px 10px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "#888", marginRight: 2 }}>Tipo:</span>
+                        {(["ambos", "previsto", "realizado"] as const).map(t => (
+                          <button key={t} onClick={() => setFiltro(f => ({ ...f, tipoVis: t }))}
+                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.tipoVis === t ? "#1A4870" : "#D4DCE8"}`, background: filtro.tipoVis === t ? "#1A4870" : "#fff", color: filtro.tipoVis === t ? "#fff" : "#555" }}>
+                            {t === "ambos" ? "Ambos" : t === "previsto" ? "Previsto" : "Realizado"}
+                          </button>
+                        ))}
+                        <div style={{ width: 1, height: 22, background: "#D4DCE8", margin: "0 4px" }} />
+                        <span style={{ fontSize: 11, color: "#888", marginRight: 2 }}>Moeda:</span>
+                        {(["BRL", "USD"] as const).map(m => (
+                          <button key={m} onClick={() => setFiltro(f => ({ ...f, moedasSel: f.moedasSel.includes(m) ? f.moedasSel.filter(x => x !== m) : [...f.moedasSel, m] }))}
+                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.moedasSel.includes(m) ? "#C9921B" : "#D4DCE8"}`, background: filtro.moedasSel.includes(m) ? "#FBF3E0" : "#fff", color: filtro.moedasSel.includes(m) ? "#7A4300" : "#555" }}>
+                            {m}
+                          </button>
+                        ))}
+                        <div style={{ width: 1, height: 22, background: "#D4DCE8", margin: "0 4px" }} />
+                        {filtro.tipoVis !== "realizado" && (
                           <button onClick={() => setIncluirPrevisoes(v => !v)}
-                            style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${incluirPrevisoes ? "#16A34A" : "#D4DCE8"}`, background: incluirPrevisoes ? "#F0FDF4" : "#fff", color: incluirPrevisoes ? "#16A34A" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${incluirPrevisoes ? "#16A34A" : "#D4DCE8"}`, background: incluirPrevisoes ? "#F0FDF4" : "#fff", color: incluirPrevisoes ? "#16A34A" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                             {incluirPrevisoes ? "✓" : "○"} Previsões
                           </button>
-                          <button onClick={() => setSimulacoesAtivas(v => !v)}
-                            style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${simulacoesAtivas ? "#7C3AED" : "#D4DCE8"}`, background: simulacoesAtivas ? "#F5F3FF" : "#fff", color: simulacoesAtivas ? "#7C3AED" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                            {simulacoesAtivas ? "✓" : "○"} Simulações
-                          </button>
-                          <button onClick={() => setSimPopupAberto(true)}
-                            style={{ padding: "7px 14px", borderRadius: 8, border: "0.5px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
-                            ⟳ Gerenciar{simEntries.length > 0 ? ` (${simEntries.length})` : ""}
-                          </button>
-                        </div>
+                        )}
+                        <button onClick={() => setSimulacoesAtivas(v => !v)}
+                          style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${simulacoesAtivas ? "#7C3AED" : "#D4DCE8"}`, background: simulacoesAtivas ? "#F5F3FF" : "#fff", color: simulacoesAtivas ? "#7C3AED" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                          {simulacoesAtivas ? "✓" : "○"} Simulações
+                        </button>
+                        <button onClick={() => setSimPopupAberto(true)}
+                          style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                          ⟳ Gerenciar{simEntries.length > 0 ? ` (${simEntries.length})` : ""}
+                        </button>
                       </div>
 
                       {/* Painel de checkboxes Produtores / Contas */}
@@ -576,8 +636,22 @@ function FinanceiroRelatoriosInner() {
                         </div>
                       )}
 
+                      {/* Quadro de compromissos anteriores ao período */}
+                      {mostrarAntPeriodo && (
+                        <div style={{ margin: "12px 20px 0", padding: "12px 16px", background: "#FEF3E2", border: "0.5px solid #C9921B", borderRadius: 10, display: "flex", gap: 24, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#7A4300" }}>⚠ Compromissos não baixados antes de {new Date(filtro.inicio + "T12:00:00").toLocaleDateString("pt-BR")}</span>
+                          {cpAntPeriodo > 0 && (
+                            <span style={{ fontSize: 12, color: "#E24B4A", fontWeight: 600 }}>CP em aberto: <strong>{fmtBRL(cpAntPeriodo)}</strong></span>
+                          )}
+                          {crAntPeriodo > 0 && (
+                            <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>CR em aberto: <strong>{fmtBRL(crAntPeriodo)}</strong></span>
+                          )}
+                          <span style={{ fontSize: 11, color: "#888" }}>Esses valores afetarão o saldo quando forem baixados.</span>
+                        </div>
+                      )}
+
                       {/* KPIs */}
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid #DEE5EE" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid #DEE5EE", marginTop: mostrarAntPeriodo ? 12 : 0 }}>
                         {[
                           ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "#555" : "#E24B4A" }] : []),
                           { label: "Total Entradas",           valor: fmtBRL(totalEntradas), cor: "#16A34A" },
@@ -643,8 +717,10 @@ function FinanceiroRelatoriosInner() {
                                     {expandido && diaRows.map((r, idx) => {
                                       const isSim  = r.tipo_row === "simulacao";
                                       const isPrev = r.tipo_row === "previsao";
+                                      const isPend = r.tipo_row === "pendente";
+                                      const isReal = r.tipo_row === "real";
                                       return (
-                                        <tr key={`${dia}-${idx}`} style={{ background: isSim ? "#FAF5FF" : isPrev ? "#F0FDF4" : "#fff", borderBottom: "0.5px solid #F4F6FA" }}>
+                                        <tr key={`${dia}-${idx}`} style={{ background: isSim ? "#FAF5FF" : isPrev ? "#F0FDF4" : isPend ? "#FFFBF0" : "#fff", borderBottom: "0.5px solid #F4F6FA" }}>
                                           <td />
                                           <td style={{ padding: "6px 14px 6px 28px", color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>
                                             {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
@@ -661,7 +737,8 @@ function FinanceiroRelatoriosInner() {
                                               if (orig === "nf_entrada")      return <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>NF Entrada</span>;
                                               return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>;
                                             })()}
-                                            {!isSim && !isPrev && <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
+                                            {isPend && <span style={{ fontSize: 10, background: "#FEF3E2", color: "#7A4300", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Em Aberto</span>}
+                                            {isReal && <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
                                             {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada)}</div>}
@@ -831,194 +908,221 @@ function FinanceiroRelatoriosInner() {
 
               {/* ═══════ ABA: DFC ═══════ */}
               {aba === "dfc" && (() => {
-                const COL = 14; // 1 descrição + 12 meses + 1 total
+                const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
-                const fmtV = (v: number) =>
-                  v === 0 ? "—" : v < 0 ? `(${fmtBRL(-v)})` : fmtBRL(v);
-                const corV = (v: number) =>
-                  v === 0 ? "#bbb" : v > 0 ? "#16A34A" : "#E24B4A";
+                // Lançamentos do exercício selecionado (excluir barter)
+                const lanAno = lancamentos.filter(l => {
+                  const dt = l.data_vencimento ?? l.data_lancamento ?? "";
+                  return dt.startsWith(dfcAno) && l.moeda !== "barter";
+                });
 
-                // Nível de indentação pelo nº de partes do código
-                const nivelOp = (c: string | null) => (c ?? "").split(".").length - 1;
-
-                // Célula de valor padrão
-                const TdV = ({ v, bold = false, cor }: { v: number; bold?: boolean; cor?: string }) => (
-                  <td style={{ padding: "7px 8px", textAlign: "right", fontSize: 11, fontWeight: bold ? 700 : 400, color: cor ?? corV(v), whiteSpace: "nowrap" }}>
-                    {fmtV(v)}
-                  </td>
+                // Visíveis: baixados sempre + pendentes/previsões conforme toggle
+                const lanVisiveis = lanAno.filter(l =>
+                  l.status === "baixado" || incluirPrevisoes
                 );
 
-                // Linha de atividade (cabeçalho colorido)
-                const AtivRow = ({ label, bg, cor }: { label: string; bg: string; cor: string }) => (
+                // Agrupar por categoria × mês × (real | prev)
+                type CellData = { real: number; prev: number };
+                type CatRow   = { cat: string; tipo: "receber" | "pagar"; meses: CellData[] };
+                const catMap  = new Map<string, CatRow>();
+
+                for (const l of lanVisiveis) {
+                  const cat = l.categoria || "Sem categoria";
+                  const key = `${l.tipo}__${cat}`;
+                  const mes = parseInt((l.data_vencimento ?? l.data_lancamento ?? "").slice(5, 7)) - 1;
+                  if (mes < 0 || mes > 11) continue;
+                  if (!catMap.has(key)) {
+                    catMap.set(key, { cat, tipo: l.tipo as "receber" | "pagar", meses: Array.from({ length: 12 }, () => ({ real: 0, prev: 0 })) });
+                  }
+                  const row = catMap.get(key)!;
+                  if (l.status === "baixado") row.meses[mes].real += paraBRLRel(l, cotacaoUSD);
+                  else                        row.meses[mes].prev += paraBRLRel(l, cotacaoUSD);
+                }
+
+                const entradas = Array.from(catMap.values()).filter(r => r.tipo === "receber").sort((a, b) => a.cat.localeCompare(b.cat));
+                const saidas   = Array.from(catMap.values()).filter(r => r.tipo === "pagar").sort((a, b) => a.cat.localeCompare(b.cat));
+
+                // Totais mensais
+                const totEntMes  = MESES.map((_, i) => entradas.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev, 0));
+                const totSaiMes  = MESES.map((_, i) => saidas.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev, 0));
+                const saldoMes   = MESES.map((_, i) => totEntMes[i] - totSaiMes[i]);
+                let _acc2 = 0;
+                const saldoAcMensal = saldoMes.map(v => { _acc2 += v; return _acc2; });
+
+                const totEnt = totEntMes.reduce((s, v) => s + v, 0);
+                const totSai = totSaiMes.reduce((s, v) => s + v, 0);
+                const totLiq = totEnt - totSai;
+
+                const fmtC = (v: number) => v === 0 ? "—" : fmtBRL(v);
+                const fmtK = (v: number): string => {
+                  if (v === 0) return "—";
+                  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+                  if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(0)}k`;
+                  return fmtBRL(v);
+                };
+
+                // Linha de categoria
+                const CatRowEl = ({ row }: { row: CatRow }) => {
+                  const totRow = row.meses.reduce((s, c) => s + c.real + c.prev, 0);
+                  if (totRow === 0) return null;
+                  const cor = row.tipo === "receber" ? "#16A34A" : "#E24B4A";
+                  return (
+                    <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
+                      <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: "#1a1a1a", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {row.cat}
+                      </td>
+                      {row.meses.map((c, i) => {
+                        const total = c.real + c.prev;
+                        return (
+                          <td key={i} style={{ padding: "5px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
+                            {total > 0 ? (
+                              <>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: cor }}>{fmtK(total)}</div>
+                                {c.prev > 0 && c.real === 0 && (
+                                  <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>
+                                )}
+                                {c.prev > 0 && c.real > 0 && (
+                                  <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtK(c.prev)} prev</div>
+                                )}
+                              </>
+                            ) : (
+                              <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: cor, whiteSpace: "nowrap" }}>
+                        {fmtC(totRow)}
+                      </td>
+                    </tr>
+                  );
+                };
+
+                // Linha de seção (cabeçalho colorido)
+                const SecRow = ({ label, bg, cor }: { label: string; bg: string; cor: string }) => (
                   <tr style={{ background: bg }}>
-                    <td colSpan={COL} style={{ padding: "8px 16px", fontWeight: 800, fontSize: 12, color: cor, letterSpacing: "0.02em" }}>
+                    <td colSpan={14} style={{ padding: "7px 16px", fontWeight: 800, fontSize: 11, color: cor, letterSpacing: "0.04em" }}>
                       {label}
                     </td>
                   </tr>
                 );
 
-                // Linha de grupo/subgrupo com subtotais mensais
-                const GrupoRow = ({ op, vals }: { op: OperacaoGerencial; vals: number[] }) => {
-                  const tot = vals.reduce((s, v) => s + v, 0);
-                  const nv  = nivelOp(op.classificacao);
-                  return (
-                    <tr style={{ background: nv === 0 ? "#F0F4FA" : "#F8FAFC", borderBottom: "0.5px solid #DEE5EE" }}>
-                      <td style={{ padding: `8px 16px 8px ${16 + nv * 12}px`, fontWeight: 700, fontSize: 12, color: "#1A4870" }}>
-                        <span style={{ color: "#888", marginRight: 6, fontSize: 11 }}>{op.classificacao}</span>
-                        {op.descricao}
-                      </td>
-                      {vals.map((v, i) => <TdV key={i} v={v} bold />)}
-                      <TdV v={tot} bold cor={tot >= 0 ? "#1A4870" : "#E24B4A"} />
-                    </tr>
-                  );
-                };
-
-                // Linha de leaf com valores individuais
-                const LeafRow = ({ op }: { op: OperacaoGerencial }) => {
-                  const vals = opLiqMes(op.id);
-                  const tot  = vals.reduce((s, v) => s + v, 0);
-                  const nv   = nivelOp(op.classificacao);
-                  // ocultar linhas completamente zeradas para não poluir
-                  if (tot === 0 && vals.every(v => v === 0)) return null;
-                  return (
-                    <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
-                      <td style={{ padding: `7px 16px 7px ${16 + nv * 12}px`, fontSize: 12, color: "#1a1a1a" }}>
-                        <span style={{ color: "#999", marginRight: 6, fontSize: 10 }}>{op.classificacao}</span>
-                        {op.descricao}
-                      </td>
-                      {vals.map((v, i) => <TdV key={i} v={v} />)}
-                      <TdV v={tot} bold />
-                    </tr>
-                  );
-                };
-
-                // Linha de subtotal (= Caixa das Atividades X)
-                const SubtotalRow = ({ label, vals, bg, cor }: { label: string; vals: number[]; bg: string; cor: string }) => {
-                  const tot = vals.reduce((s, v) => s + v, 0);
+                // Linha de total de seção
+                const TotRow = ({ label, vals, bg, cor, bold = false }: { label: string; vals: number[]; bg: string; cor: string; bold?: boolean }) => {
+                  const totR = vals.reduce((s, v) => s + v, 0);
                   return (
                     <tr style={{ background: bg, borderTop: "0.5px solid #DDE2EE" }}>
-                      <td style={{ padding: "9px 16px", fontWeight: 700, fontSize: 12, color: cor }}>{label}</td>
+                      <td style={{ padding: "8px 14px", fontWeight: bold ? 800 : 700, fontSize: bold ? 13 : 12, color: cor }}>{label}</td>
                       {vals.map((v, i) => (
-                        <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontSize: 12, fontWeight: 700, color: v >= 0 ? cor : "#E24B4A", whiteSpace: "nowrap" }}>
-                          {fmtV(v)}
+                        <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: bold ? 800 : 700, fontSize: 11, color: v === 0 ? "#bbb" : cor, whiteSpace: "nowrap" }}>
+                          {fmtK(v)}
                         </td>
                       ))}
-                      <td style={{ padding: "9px 10px", textAlign: "right", fontSize: 12, fontWeight: 700, color: tot >= 0 ? cor : "#E24B4A", whiteSpace: "nowrap" }}>
-                        {fmtV(tot)}
+                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: bold ? 800 : 700, fontSize: bold ? 13 : 12, color: totR === 0 ? "#bbb" : cor, whiteSpace: "nowrap" }}>
+                        {fmtC(totR)}
                       </td>
                     </tr>
                   );
                 };
-
-                // Renderiza um bloco de operações (grupos + leaves) de um conjunto filtrado
-                const renderOps = (ops: OperacaoGerencial[]) =>
-                  ops.map(op => isDFCLeaf(op)
-                    ? <LeafRow key={op.id} op={op} />
-                    : <GrupoRow key={op.id} op={op} vals={prefLiqMes(op.classificacao)} />
-                  );
 
                 return (
                   <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
 
                     {/* Cabeçalho */}
-                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>DFC — Demonstrativo de Fluxo de Caixa (Método Direto)</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Fluxo de Caixa Mensal</div>
                         <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
-                          Estruturado por Operações Gerenciais · Apenas lançamentos baixados (realizados)
+                          Estruturado por categoria · Entradas e saídas por mês
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <label style={{ fontSize: 12, color: "#555" }}>Exercício:</label>
-                        <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
-                          style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
-                          {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
-                        </select>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <button
+                          onClick={() => setIncluirPrevisoes(v => !v)}
+                          style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer",
+                            background: incluirPrevisoes ? "#FBF3E0" : "#F4F6FA",
+                            color:      incluirPrevisoes ? "#7A4300" : "#555",
+                            borderColor: incluirPrevisoes ? "#C9921B" : "#D4DCE8" }}>
+                          {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
+                        </button>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <label style={{ fontSize: 12, color: "#555" }}>Exercício:</label>
+                          <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
+                            style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                            {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
                     {/* KPI cards */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
                       {[
-                        { label: "Caixa Operacional",   v: totOp,  cor: totOp  >= 0 ? "#0B2D50" : "#791F1F", bg: totOp  >= 0 ? "#D5E8F5" : "#FCEBEB" },
-                        { label: "Caixa Investimento",  v: totInv, cor: totInv >= 0 ? "#14532D" : "#791F1F", bg: totInv >= 0 ? "#ECFDF5" : "#FCEBEB" },
-                        { label: "Caixa Financiamento", v: totFin, cor: totFin >= 0 ? "#5B2D8E" : "#791F1F", bg: totFin >= 0 ? "#F3E8FF" : "#FCEBEB" },
-                        { label: "Variação Líquida",    v: totVar, cor: totVar >= 0 ? "#0B2D50" : "#791F1F", bg: totVar >= 0 ? "#D5E8F5" : "#FCEBEB" },
+                        { label: "Total Entradas",  v: totEnt, cor: "#0B2D50", bg: "#D5E8F5" },
+                        { label: "Total Saídas",    v: totSai, cor: "#791F1F", bg: "#FCEBEB" },
+                        { label: "Resultado Líquido", v: totLiq, cor: totLiq >= 0 ? "#0B2D50" : "#791F1F", bg: totLiq >= 0 ? "#D5E8F5" : "#FCEBEB" },
+                        { label: "Saldo Acumulado", v: saldoAcMensal[11] ?? totLiq, cor: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#0B2D50" : "#791F1F", bg: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#D5E8F5" : "#FCEBEB" },
                       ].map((k, i) => (
                         <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none", background: k.bg }}>
                           <div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>{k.label}</div>
-                          <div style={{ fontSize: 17, fontWeight: 700, color: k.cor }}>
-                            {k.v < 0 ? `(${fmtBRL(-k.v)})` : fmtBRL(k.v)}
-                          </div>
+                          <div style={{ fontSize: 17, fontWeight: 700, color: k.cor }}>{fmtBRL(k.v)}</div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Tabela hierárquica */}
+                    {/* Tabela horizontal */}
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1080 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
                         <thead>
                           <tr style={{ background: "#F4F6FA" }}>
-                            <th style={{ padding: "8px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 260, borderBottom: "0.5px solid #DDE2EE" }}>Descrição</th>
-                            {MESES_DFC.map(m => (
-                              <th key={m} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{m}</th>
+                            <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 200, position: "sticky", left: 0, background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>Categoria</th>
+                            {MESES.map(m => (
+                              <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>
                             ))}
                             <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
                           </tr>
                         </thead>
                         <tbody>
 
-                          {/* ── ATIVIDADES OPERACIONAIS ── */}
-                          <AtivRow label="ATIVIDADES OPERACIONAIS" bg="#D5E8F5" cor="#0B2D50" />
+                          {/* ── ENTRADAS ── */}
+                          <SecRow label="ENTRADAS" bg="#DCFCE7" cor="#14532D" />
+                          {entradas.length > 0
+                            ? entradas.map(r => <CatRowEl key={r.cat} row={r} />)
+                            : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada no período.</td></tr>
+                          }
+                          <TotRow label="Total Entradas" vals={totEntMes} bg="#ECFDF5" cor="#16A34A" />
 
-                          {/* Grupo 1 — RECEITAS */}
-                          {renderOps(opsGrupo1)}
-                          <SubtotalRow label="Subtotal Receitas" vals={liqGrupo1} bg="#EBF3FC" cor="#0B2D50" />
+                          {/* ── SAÍDAS ── */}
+                          <SecRow label="SAÍDAS" bg="#FCEBEB" cor="#791F1F" />
+                          {saidas.length > 0
+                            ? saidas.map(r => <CatRowEl key={r.cat} row={r} />)
+                            : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída no período.</td></tr>
+                          }
+                          <TotRow label="Total Saídas" vals={totSaiMes} bg="#FEF3F2" cor="#E24B4A" />
 
-                          {/* Grupo 2 — DESPESAS OPERACIONAIS */}
-                          {renderOps(opsGrupo2)}
-                          <SubtotalRow label="Subtotal Despesas Operacionais" vals={liqGrupo2} bg="#FEF3F2" cor="#791F1F" />
-
-                          {/* = Caixa Op */}
-                          <SubtotalRow label="= CAIXA DAS ATIVIDADES OPERACIONAIS" vals={liqOp} bg="#D5E8F5" cor="#0B2D50" />
-
-                          {/* ── ATIVIDADES DE INVESTIMENTO ── */}
-                          <AtivRow label="ATIVIDADES DE INVESTIMENTO" bg="#ECFDF5" cor="#14532D" />
-                          {renderOps(opsGrupoInv)}
-                          <SubtotalRow label="= CAIXA DAS ATIVIDADES DE INVESTIMENTO" vals={liqInv} bg="#D1FAE5" cor="#14532D" />
-
-                          {/* ── ATIVIDADES DE FINANCIAMENTO ── */}
-                          <AtivRow label="ATIVIDADES DE FINANCIAMENTO" bg="#F3E8FF" cor="#5B2D8E" />
-                          {renderOps(opsGrupoFin)}
-                          <SubtotalRow label="= CAIXA DAS ATIVIDADES DE FINANCIAMENTO" vals={liqFin} bg="#EDE9FE" cor="#5B2D8E" />
-
-                          {/* ── VARIAÇÃO LÍQUIDA ── */}
-                          <tr style={{ background: totVar >= 0 ? "#D5E8F5" : "#FCEBEB", borderTop: "1.5px solid #1A4870" }}>
-                            <td style={{ padding: "10px 16px", fontWeight: 800, fontSize: 13, color: totVar >= 0 ? "#0B2D50" : "#791F1F" }}>
-                              = VARIAÇÃO LÍQUIDA DE CAIXA NO PERÍODO
-                            </td>
-                            {varLiqMes.map((v, i) => (
-                              <td key={i} style={{ padding: "10px 8px", textAlign: "right", fontSize: 12, fontWeight: 800, color: v >= 0 ? "#0B2D50" : "#791F1F", whiteSpace: "nowrap" }}>
-                                {fmtV(v)}
+                          {/* ── SALDO DO MÊS ── */}
+                          <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}>
+                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "#F4F6FA" }}>Saldo do Mês</td>
+                            {saldoMes.map((v, i) => (
+                              <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>
+                                {fmtK(v)}
                               </td>
                             ))}
-                            <td style={{ padding: "10px 10px", textAlign: "right", fontSize: 13, fontWeight: 800, color: totVar >= 0 ? "#0B2D50" : "#791F1F", whiteSpace: "nowrap" }}>
-                              {fmtV(totVar)}
+                            <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: totLiq >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>
+                              {fmtC(totLiq)}
                             </td>
                           </tr>
 
-                          {/* Saldo acumulado */}
-                          <tr style={{ background: "#F8FAFD" }}>
-                            <td style={{ padding: "7px 16px", fontWeight: 600, fontSize: 11, color: "#555" }}>
-                              Saldo acumulado no exercício
-                            </td>
-                            {saldoAcMes.map((v, i) => (
-                              <td key={i} style={{ padding: "7px 8px", textAlign: "right", fontSize: 11, fontWeight: 600, color: v >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
-                                {v !== 0 ? fmtNum(v / 1000, 0) + "k" : "—"}
+                          {/* ── SALDO ACUMULADO ── */}
+                          <tr style={{ background: "#EFF3FA" }}>
+                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "#EFF3FA" }}>Saldo Acumulado</td>
+                            {saldoAcMensal.map((v, i) => (
+                              <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
+                                {fmtK(v)}
                               </td>
                             ))}
-                            <td style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: totVar >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
-                              {fmtBRL(totVar)}
+                            <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
+                              {fmtC(saldoAcMensal[11] ?? totLiq)}
                             </td>
                           </tr>
 
@@ -1027,8 +1131,10 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     <div style={{ padding: "10px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
-                      Inclui apenas lançamentos com status "Baixado" vinculados a uma Operação Gerencial via <em>operacao_id</em>.
-                      Lançamentos sem operação vinculada não são classificados. Grupos 4 e 5 (movimentos econômicos/estoque) são excluídos do DFC.
+                      {incluirPrevisoes
+                        ? "Inclui lançamentos baixados + pendentes (em aberto, vencidos, previsões). Valores de previsão aparecem em mostarda."
+                        : "Inclui apenas lançamentos com status Baixado (realizados). Ative 'Incluindo pendentes' para ver projetado."
+                      }
                     </div>
                   </div>
                 );
