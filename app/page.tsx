@@ -165,20 +165,27 @@ export default function Dashboard() {
     const isoEm7  = em7.toISOString().split("T")[0];
     const isoEm15 = em15.toISOString().split("T")[0];
 
+    const statusAberto = ["em_aberto", "vencido", "vencendo"];
     Promise.all([
-      // CP em aberto (vencidos + vencendo 7 dias)
-      supabase.from("contas_pagar")
+      // CP a vencer nos próximos 7 dias + vencidos
+      supabase.from("lancamentos")
         .select("id, descricao, valor, data_vencimento, status")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto")
+        .eq("tipo", "pagar")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto)
         .lte("data_vencimento", isoEm7)
         .order("data_vencimento"),
 
-      // CR em aberto (vencidos + vencendo 7 dias)
-      supabase.from("contas_receber")
+      // CR a vencer nos próximos 7 dias + vencidos
+      supabase.from("lancamentos")
         .select("id, descricao, valor, data_vencimento, status")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto")
+        .eq("tipo", "receber")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto)
         .lte("data_vencimento", isoEm7)
         .order("data_vencimento"),
 
@@ -197,30 +204,42 @@ export default function Dashboard() {
         .maybeSingle(),
 
       // CP total em aberto
-      supabase.from("contas_pagar")
+      supabase.from("lancamentos")
         .select("valor")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto"),
+        .eq("tipo", "pagar")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto),
 
       // CR total em aberto
-      supabase.from("contas_receber")
+      supabase.from("lancamentos")
         .select("valor")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto"),
+        .eq("tipo", "receber")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto),
 
-      // CP vencendo esta semana
-      supabase.from("contas_pagar")
+      // CP vencendo esta semana (hoje a 7 dias)
+      supabase.from("lancamentos")
         .select("valor")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto")
+        .eq("tipo", "pagar")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto)
         .gte("data_vencimento", isoHoje)
         .lte("data_vencimento", isoEm7),
 
-      // CR vencendo esta semana
-      supabase.from("contas_receber")
+      // CR vencendo esta semana (hoje a 7 dias)
+      supabase.from("lancamentos")
         .select("valor")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto")
+        .eq("tipo", "receber")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto)
         .gte("data_vencimento", isoHoje)
         .lte("data_vencimento", isoEm7),
 
@@ -237,11 +256,14 @@ export default function Dashboard() {
         .eq("confirmado", true)
         .neq("status", "encerrado"),
 
-      // CP vencidos
-      supabase.from("contas_pagar")
+      // CP vencidos (data < hoje)
+      supabase.from("lancamentos")
         .select("valor")
         .eq("fazenda_id", fazendaId)
-        .eq("status", "aberto")
+        .eq("tipo", "pagar")
+        .neq("moeda", "barter")
+        .neq("natureza", "previsao")
+        .in("status", statusAberto)
         .lt("data_vencimento", isoHoje),
 
       // Seguros de máquinas vencendo em 30 dias
