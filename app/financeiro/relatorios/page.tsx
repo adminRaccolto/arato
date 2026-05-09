@@ -105,7 +105,10 @@ function FinanceiroRelatoriosInner() {
   const [simEditId,         setSimEditId]         = useState<string | null>(null);
   const [simPopupAberto,    setSimPopupAberto]    = useState(false);
 
-  // DFC — filtros
+  // Fluxo — sub-aba Diário / Mensal
+  const [subAbaFluxo, setSubAbaFluxo] = useState<"diario" | "mensal">("diario");
+
+  // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
 
   // CP/CR — filtros (devem ficar no topo — Rules of Hooks)
@@ -529,7 +532,18 @@ function FinanceiroRelatoriosInner() {
                       </div>
                     )}
 
-                    {/* Painel principal */}
+                    {/* Sub-abas Diário / Mensal */}
+                    <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
+                      {(["diario", "mensal"] as const).map(t => (
+                        <button key={t} onClick={() => setSubAbaFluxo(t)}
+                          style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #1A4870" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "#fff", color: subAbaFluxo === t ? "#1A4870" : "#888", transition: "all 0.15s" }}>
+                          {t === "diario" ? "Diário" : "Mensal"}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* ── DIÁRIO ── */}
+                    {subAbaFluxo === "diario" && (
                     <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
                       {/* Filtros — linha 1: período + produtores */}
                       <div style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
@@ -763,6 +777,150 @@ function FinanceiroRelatoriosInner() {
                         </div>
                       )}
                     </div>
+                    )} {/* fim subAbaFluxo === "diario" */}
+
+                    {/* ── MENSAL ── */}
+                    {subAbaFluxo === "mensal" && (() => {
+                      const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+                      const lanAno = lancamentos.filter(l => {
+                        const dt = l.data_vencimento ?? l.data_lancamento ?? "";
+                        return dt.startsWith(dfcAno) && l.moeda !== "barter";
+                      });
+                      const lanVis = lanAno.filter(l => l.status === "baixado" || incluirPrevisoes);
+                      type CellM = { real: number; prev: number };
+                      type CatRowM = { cat: string; tipo: "receber" | "pagar"; meses: CellM[] };
+                      const catMapM = new Map<string, CatRowM>();
+                      for (const l of lanVis) {
+                        const cat = l.categoria || "Sem categoria";
+                        const key = `${l.tipo}__${cat}`;
+                        const mes = parseInt((l.data_vencimento ?? l.data_lancamento ?? "").slice(5, 7)) - 1;
+                        if (mes < 0 || mes > 11) continue;
+                        if (!catMapM.has(key)) catMapM.set(key, { cat, tipo: l.tipo as "receber"|"pagar", meses: Array.from({ length: 12 }, () => ({ real: 0, prev: 0 })) });
+                        const row = catMapM.get(key)!;
+                        if (l.status === "baixado") row.meses[mes].real += paraBRLRel(l, cotacaoUSD);
+                        else                        row.meses[mes].prev += paraBRLRel(l, cotacaoUSD);
+                      }
+                      const entradasM = Array.from(catMapM.values()).filter(r => r.tipo === "receber").sort((a, b) => a.cat.localeCompare(b.cat));
+                      const saidasM   = Array.from(catMapM.values()).filter(r => r.tipo === "pagar").sort((a, b) => a.cat.localeCompare(b.cat));
+                      const totEntM   = MESES.map((_, i) => entradasM.reduce((s, r) => s + r.meses[i].real + r.meses[i].prev, 0));
+                      const totSaiM   = MESES.map((_, i) => saidasM.reduce(  (s, r) => s + r.meses[i].real + r.meses[i].prev, 0));
+                      const saldoMesM = MESES.map((_, i) => totEntM[i] - totSaiM[i]);
+                      let _accM = 0;
+                      const saldoAcM  = saldoMesM.map(v => { _accM += v; return _accM; });
+                      const totEntAnual = totEntM.reduce((s, v) => s + v, 0);
+                      const totSaiAnual = totSaiM.reduce((s, v) => s + v, 0);
+                      const totLiqAnual = totEntAnual - totSaiAnual;
+                      const fmtKM = (v: number): string => {
+                        if (v === 0) return "—";
+                        if (Math.abs(v) >= 1_000_000) return `${(v/1_000_000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}M`;
+                        if (Math.abs(v) >= 1_000)     return `${(v/1_000).toFixed(0)}k`;
+                        return fmtBRL(v);
+                      };
+                      const CatRowMEl = ({ row }: { row: CatRowM }) => {
+                        const totRow = row.meses.reduce((s, c) => s + c.real + c.prev, 0);
+                        if (totRow === 0) return null;
+                        const cor = row.tipo === "receber" ? "#16A34A" : "#E24B4A";
+                        return (
+                          <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
+                            <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: "#1a1a1a", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</td>
+                            {row.meses.map((c, i) => {
+                              const total = c.real + c.prev;
+                              return (
+                                <td key={i} style={{ padding: "5px 6px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                  {total > 0 ? (
+                                    <>
+                                      <div style={{ fontSize: 11, fontWeight: 600, color: cor }}>{fmtKM(total)}</div>
+                                      {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
+                                      {c.prev > 0 && c.real > 0  && <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtKM(c.prev)} prev</div>}
+                                    </>
+                                  ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
+                                </td>
+                              );
+                            })}
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: cor, whiteSpace: "nowrap" }}>{totRow === 0 ? "—" : fmtBRL(totRow)}</td>
+                          </tr>
+                        );
+                      };
+                      return (
+                        <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                          {/* Cabeçalho */}
+                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                            <div style={{ fontSize: 11, color: "#555" }}>
+                              Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
+                            </div>
+                            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                              <button onClick={() => setIncluirPrevisoes(v => !v)}
+                                style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer", background: incluirPrevisoes ? "#FBF3E0" : "#F4F6FA", color: incluirPrevisoes ? "#7A4300" : "#555", borderColor: incluirPrevisoes ? "#C9921B" : "#D4DCE8" }}>
+                                {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
+                              </button>
+                              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <label style={{ fontSize: 12, color: "#555" }}>Exercício:</label>
+                                <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
+                                  style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                                  {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                          {/* KPIs */}
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
+                            {[
+                              { label: "Total Entradas",   v: totEntAnual, cor: "#0B2D50",                                      bg: "#D5E8F5" },
+                              { label: "Total Saídas",     v: totSaiAnual, cor: "#791F1F",                                      bg: "#FCEBEB" },
+                              { label: "Resultado Líquido",v: totLiqAnual, cor: totLiqAnual >= 0 ? "#0B2D50" : "#791F1F",       bg: totLiqAnual >= 0 ? "#D5E8F5" : "#FCEBEB" },
+                              { label: "Saldo Acumulado",  v: saldoAcM[11] ?? totLiqAnual, cor: (saldoAcM[11] ?? totLiqAnual) >= 0 ? "#0B2D50" : "#791F1F", bg: (saldoAcM[11] ?? totLiqAnual) >= 0 ? "#D5E8F5" : "#FCEBEB" },
+                            ].map((k, i) => (
+                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none", background: k.bg }}>
+                                <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{k.label}</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{fmtBRL(k.v)}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Tabela */}
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
+                              <thead>
+                                <tr style={{ background: "#F4F6FA" }}>
+                                  <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 200, borderBottom: "0.5px solid #DDE2EE" }}>Categoria</th>
+                                  {MESES.map(m => <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>)}
+                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr style={{ background: "#DCFCE7" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 800, fontSize: 11, color: "#14532D", letterSpacing: "0.04em" }}>ENTRADAS</td></tr>
+                                {entradasM.length > 0 ? entradasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
+                                <tr style={{ background: "#ECFDF5", borderTop: "0.5px solid #DDE2EE" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#16A34A" }}>Total Entradas</td>
+                                  {totEntM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#16A34A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#16A34A", whiteSpace: "nowrap" }}>{totEntAnual === 0 ? "—" : fmtBRL(totEntAnual)}</td>
+                                </tr>
+                                <tr style={{ background: "#FCEBEB" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 800, fontSize: 11, color: "#791F1F", letterSpacing: "0.04em" }}>SAÍDAS</td></tr>
+                                {saidasM.length > 0 ? saidasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída.</td></tr>}
+                                <tr style={{ background: "#FEF3F2", borderTop: "0.5px solid #DDE2EE" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#E24B4A" }}>Total Saídas</td>
+                                  {totSaiM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#E24B4A", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual)}</td>
+                                </tr>
+                                <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Mês</td>
+                                  {saldoMesM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: totLiqAnual >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>{totLiqAnual === 0 ? "—" : fmtBRL(totLiqAnual)}</td>
+                                </tr>
+                                <tr style={{ background: "#EFF3FA" }}>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
+                                  {saldoAcM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtKM(v)}</td>)}
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: (saldoAcM[11]??totLiqAnual) >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[11]??totLiqAnual)}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div style={{ padding: "8px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
+                            {incluirPrevisoes ? "Baixados + pendentes (em aberto/vencidos/previsões). Prev em mostarda." : "Apenas lançamentos com status Baixado."}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                   </>
                 );
               })()}
@@ -906,7 +1064,7 @@ function FinanceiroRelatoriosInner() {
                 );
               })()}
 
-              {/* ═══════ ABA: DFC ═══════ */}
+              {/* ABA DFC removida — conteúdo incorporado em Fluxo de Caixa > aba Mensal */}
               {aba === "dfc" && (() => {
                 const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
