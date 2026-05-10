@@ -282,7 +282,11 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
   const tipoRaw  = String(dados.tipo_op ?? "pulverizacao");
   const tipoOp   = tipoMap[tipoRaw] ?? tipoRaw;
   const tipoProduto = String(dados.tipo_produto ?? "herbicida");
-  const dataOp   = parseData(String(dados.data_op ?? "hoje"));
+
+  // Data obrigatória — perguntar se não informada
+  const dataOpRaw = String(dados.data_op ?? "").trim();
+  if (!dataOpRaw) return { ok: false, mensagem: "❓ Qual a data da operação? (ex: hoje, ontem, 10/05)" };
+  const dataOp = parseData(dataOpRaw);
   const doseNum  = parseFloat(String(dados.dose ?? "0")) || 0;
   const areaHa   = Number(dados.area_ha ?? 0) || 0;
 
@@ -321,64 +325,83 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     ? `\n_↔️ Dose convertida: ${doseNum} ${unidadeUsuario} → ${doseNativa.toFixed(4).replace(/\.?0+$/, "")} ${unidadeInsumo}/ha_`
     : "";
 
-  // ── Buscar ciclo com bom senso de data ─────────────────────────────────────
-  let ciclo: { id: string } | null = null;
+  // ── Buscar ciclo ─────────────────────────────────────────────────────────────
+  let ciclo: { id: string; descricao?: string; cultura?: string } | null = null;
   const nomeCiclo = String(dados.ciclo ?? "").trim();
 
-  // 1. Se usuário nomeou o ciclo, busca por nome/cultura primeiro
+  // 1. Usuário nomeou o ciclo → busca por nome, cultura ou ano safra
   if (nomeCiclo) {
     const { data: ciclosBusca } = await sb().from("ciclos")
       .select("id, descricao, cultura").eq("fazenda_id", fazendaId)
       .or(`descricao.ilike.%${nomeCiclo}%,cultura.ilike.%${nomeCiclo}%`).limit(1);
     ciclo = ciclosBusca?.[0] ?? null;
-  }
 
-  // 2. Ciclo ativo hoje (data_inicio <= hoje <= data_fim)
-  if (!ciclo) {
-    const { data: ciclosHoje } = await sb().from("ciclos")
-      .select("id").eq("fazenda_id", fazendaId)
-      .lte("data_inicio", dataOp).gte("data_fim", dataOp)
-      .order("data_inicio", { ascending: false }).limit(1);
-    ciclo = ciclosHoje?.[0] ?? null;
-  }
-
-  // 3. Ano safra vigente (data_inicio <= hoje <= data_fim) → ciclo mais recente
-  if (!ciclo) {
-    const { data: anoAtivo } = await sb().from("anos_safra")
-      .select("id").eq("fazenda_id", fazendaId)
-      .lte("data_inicio", dataOp).gte("data_fim", dataOp)
-      .limit(1).maybeSingle();
-    if (anoAtivo) {
-      const { data: ciclosDoAno } = await sb().from("ciclos")
-        .select("id").eq("fazenda_id", fazendaId).eq("ano_safra_id", anoAtivo.id)
-        .order("data_inicio", { ascending: false }).limit(1);
-      ciclo = ciclosDoAno?.[0] ?? null;
+    if (!ciclo) {
+      const { data: anos } = await sb().from("anos_safra")
+        .select("id").eq("fazenda_id", fazendaId)
+        .ilike("descricao", `%${nomeCiclo}%`).limit(1);
+      const anoId = anos?.[0]?.id;
+      if (anoId) {
+        const { data: ciclosDoAno } = await sb().from("ciclos")
+          .select("id, descricao, cultura").eq("fazenda_id", fazendaId).eq("ano_safra_id", anoId)
+          .order("created_at", { ascending: false }).limit(1);
+        ciclo = ciclosDoAno?.[0] ?? null;
+      }
     }
   }
 
-  // 4. Fallback: ciclo mais recente de qualquer forma
+  // 2. Sem nome → busca ciclos ativos no período da operação
+  if (!ciclo) {
+    const { data: ciclosAtivos } = await sb().from("ciclos")
+      .select("id, descricao, cultura").eq("fazenda_id", fazendaId)
+      .lte("data_inicio", dataOp).gte("data_fim", dataOp)
+      .order("data_inicio", { ascending: false });
+
+    if (ciclosAtivos && ciclosAtivos.length === 1) {
+      // Apenas 1 ciclo ativo no período → seleciona automaticamente
+      ciclo = ciclosAtivos[0];
+    } else if (ciclosAtivos && ciclosAtivos.length > 1) {
+      // Múltiplos ciclos ativos → pergunta ao usuário
+      const lista = ciclosAtivos
+        .map((c, i) => `*${i + 1}* ${[c.cultura, c.descricao].filter(Boolean).join(" — ")}`)
+        .join("\n");
+      return { ok: false, mensagem: `❓ Há ${ciclosAtivos.length} ciclos ativos nesta data. Qual devo usar?\n${lista}` };
+    }
+  }
+
+  // 3. Nenhum ciclo ativo no período → usa o mais recente cadastrado
   if (!ciclo) {
     const { data: ciclosRecentes } = await sb().from("ciclos")
-      .select("id").eq("fazenda_id", fazendaId)
+      .select("id, descricao, cultura").eq("fazenda_id", fazendaId)
       .order("created_at", { ascending: false }).limit(1);
     ciclo = ciclosRecentes?.[0] ?? null;
+  }
+
+  // 4. Nenhum ciclo cadastrado → erro claro
+  if (!ciclo) {
+    return { ok: false, mensagem: "❌ Não encontrei nenhum ciclo/safra cadastrado para essa fazenda. Cadastre um ciclo em Lavoura → Safras antes de registrar operações." };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PULVERIZAÇÃO
   // ═══════════════════════════════════════════════════════════════════════════
   if (tipoOp === "pulverizacao") {
+    if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar a pulverização." };
     const { data: pulv, error: errPulv } = await sb().from("pulverizacoes").insert({
-      fazenda_id: fazendaId,
-      ciclo_id:   ciclo?.id ?? null,
-      talhao_id:  talhao?.id ?? null,
-      tipo:       tipoProduto,
+      fazenda_id:  fazendaId,
+      ciclo_id:    ciclo!.id,
+      talhao_id:   talhao?.id ?? null,
+      tipo:        tipoProduto,
       data_inicio: dataOp,
-      area_ha:    areaHa || null,
-      observacao: `Registrado via WhatsApp — ${insumo?.nome ?? dados.produto}`,
+      data_fim:    dataOp,
+      area_ha:     areaHa,
+      observacao:  `Registrado via WhatsApp — ${insumo?.nome ?? dados.produto}`,
     }).select("id").single();
 
-    if (errPulv) return { ok: false, mensagem: `❌ Erro pulverização: ${errPulv.message}` };
+    if (errPulv) {
+      console.error("[BOT-PULV] Erro insert pulverizacoes:", JSON.stringify(errPulv), "| fazenda:", fazendaId, "| ciclo:", ciclo!.id, "| talhao:", talhao?.id ?? "null", "| tipo:", tipoProduto, "| data:", dataOp, "| area:", areaHa);
+      return { ok: false, mensagem: `❌ Erro pulverização: [${errPulv.code}] ${errPulv.message}` };
+    }
     if (!pulv)   return { ok: false, mensagem: "❌ Erro ao obter ID da pulverização." };
 
     // Inserir item com todos os campos necessários para o relatório
@@ -434,7 +457,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
     return {
       ok: true,
-      mensagem: `✅ Pulverização registrada!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNativa.toFixed(4).replace(/\.?0+$/, "")} ${unidadeInsumo}/ha × ${areaHa} ha${infoEstoque}${infoCusto}${notaConversao}`,
+      mensagem: `✅ Pulverização registrada!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNativa.toFixed(4).replace(/\.?0+$/, "")} ${unidadeInsumo}/ha × ${areaHa} ha${infoEstoque}${infoCusto}${notaConversao}\n_🔍 ${pulv.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
     };
   }
 
@@ -442,34 +465,36 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
   // ADUBAÇÃO
   // ═══════════════════════════════════════════════════════════════════════════
   if (tipoOp === "adubacao") {
+    if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar a adubação." };
+
     const { data: adub, error: errAdub } = await sb().from("adubacoes_base").insert({
       fazenda_id: fazendaId,
-      ciclo_id:   ciclo?.id ?? null,
+      ciclo_id:   ciclo!.id,
       talhao_id:  talhao?.id ?? null,
       data_aplicacao: dataOp,
-      area_ha:    areaHa || null,
+      area_ha:    areaHa,
       custo_total: custoTotal || null,
       observacao: `Registrado via WhatsApp — ${insumo?.nome ?? dados.produto}`,
     }).select("id").single();
 
-    if (errAdub) return { ok: false, mensagem: `❌ Erro adubação: ${errAdub.message}` };
+    if (errAdub) {
+      console.error("[BOT-ADUB] Erro insert adubacoes_base:", JSON.stringify(errAdub), "| fazenda:", fazendaId, "| ciclo:", ciclo!.id, "| data:", dataOp);
+      return { ok: false, mensagem: `❌ Erro adubação: [${errAdub.code}] ${errAdub.message}` };
+    }
     if (!adub)   return { ok: false, mensagem: "❌ Erro ao obter ID da adubação." };
 
     if (insumo) {
-      // quantidade_kg: total em kg (coluna padrão de adubacoes_base_itens)
       const totalKg = converterUnidade(totalNativo, unidadeInsumo, "kg");
 
       await sb().from("adubacoes_base_itens").insert({
-        adubacao_id:  adub.id,
-        fazenda_id:   fazendaId,
-        insumo_id:    insumo.id,
-        nome_produto: insumo.nome,
-        dose_ha:      doseNativa,
-        unidade:      unidadeInsumo,
+        adubacao_id:   adub.id,
+        fazenda_id:    fazendaId,
+        insumo_id:     insumo.id,
+        produto_nome:  insumo.nome,
+        dose_kg_ha:    doseNativa,
         quantidade_kg: totalKg,
         valor_unitario: custoMedio,
-        custo_ha:     custoHa,
-        custo_total:  custoTotal,
+        custo_total:   custoTotal,
       });
 
       // Baixa de estoque na unidade nativa
@@ -506,7 +531,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
     return {
       ok: true,
-      mensagem: `✅ Adubação registrada!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNativa.toFixed(2)} ${unidadeInsumo}/ha × ${areaHa} ha${infoEstoque}${infoCusto}${notaConversao}`,
+      mensagem: `✅ Adubação registrada!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNativa.toFixed(2)} ${unidadeInsumo}/ha × ${areaHa} ha${infoEstoque}${infoCusto}${notaConversao}\n_🔍 ${adub.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
     };
   }
 
@@ -518,15 +543,16 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const quantidadeKg = converterUnidade(totalNativo, unidadeInsumo, "kg");
     const custoSementes = custoTotal; // total_nativo * custo_medio
 
+    if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar o plantio." };
     const { data: plantioRow, error: errPlantio } = await sb().from("plantios").insert({
       fazenda_id:      fazendaId,
-      ciclo_id:        ciclo?.id ?? null,
+      ciclo_id:        ciclo!.id,
       talhao_id:       talhao?.id ?? null,
       data_plantio:    dataOp,
-      area_ha:         areaHa || null,
-      cultura:         String(dados.ciclo ?? dados.cultura ?? "soja"),
-      semente:         insumo?.nome ?? String(dados.produto ?? ""),
+      area_ha:         areaHa,
+      variedade:       insumo?.nome ?? String(dados.produto ?? ""),
       insumo_id:       insumo?.id ?? null,
+      dose_kg_ha:      doseNativa || null,
       quantidade_kg:   quantidadeKg || null,
       custo_sementes:  custoSementes || null,
       observacao:      `Registrado via WhatsApp`,
@@ -585,16 +611,16 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const doseTha   = converterUnidade(doseNativa, unidadeInsumo, "t");
     const totalTon  = converterUnidade(totalNativo, unidadeInsumo, "t");
 
+    if (!areaHa) return { ok: false, mensagem: "❌ Informe a área em hectares para registrar a correção de solo." };
     const { data: corr, error: errCorr } = await sb().from("correcoes_solo").insert({
       fazenda_id:     fazendaId,
-      ciclo_id:       ciclo?.id ?? null,
+      ciclo_id:       ciclo!.id,
       talhao_id:      talhao?.id ?? null,
       data_aplicacao: dataOp,
-      area_ha:        areaHa || null,
-      produto:        insumo?.nome ?? String(dados.produto ?? ""),
-      dose_tha:       doseTha || null,
+      area_ha:        areaHa,
+      finalidade:     "calcario",
       custo_total:    custoTotal || null,
-      observacao:     `Registrado via WhatsApp`,
+      observacao:     `Registrado via WhatsApp — ${insumo?.nome ?? dados.produto}`,
     }).select("id").single();
 
     if (errCorr) return { ok: false, mensagem: `❌ Erro correção de solo: ${errCorr.message}` };
@@ -603,14 +629,14 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     if (insumo) {
       // Item da correção (usa quantidade_ton)
       await sb().from("correcoes_solo_itens").insert({
-        correcao_id:   corr.id,
-        fazenda_id:    fazendaId,
-        insumo_id:     insumo.id,
-        nome_produto:  insumo.nome,
-        dose_tha:      doseTha,
+        correcao_id:    corr.id,
+        fazenda_id:     fazendaId,
+        insumo_id:      insumo.id,
+        produto_nome:   insumo.nome,
+        dose_ton_ha:    doseTha,
         quantidade_ton: totalTon,
         valor_unitario: custoMedio,
-        custo_total:   custoTotal,
+        custo_total:    custoTotal,
       });
 
       // Baixa de estoque na unidade nativa

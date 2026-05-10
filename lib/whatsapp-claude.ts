@@ -119,7 +119,7 @@ const TOOLS: Anthropic.Tool[] = [
       type: "object" as const,
       properties: {
         tipo_op: { type: "string", enum: ["pulverizacao", "adubacao", "plantio", "correcao_solo"], description: "Tipo de operação" },
-        tipo_produto: { type: "string", enum: ["herbicida", "fungicida", "inseticida", "nematicida", "foliar", "outros"], description: "Tipo do produto aplicado (para pulverização)" },
+        tipo_produto: { type: "string", enum: ["herbicida", "fungicida", "inseticida", "nematicida", "acaricida", "fertilizante_foliar", "regulador", "dessecacao", "outros"], description: "Tipo do produto aplicado (para pulverização)" },
         talhao: { type: "string", description: "Nome ou número do talhão" },
         produto: { type: "string", description: "Nome do insumo/produto aplicado" },
         dose: { type: "number", description: "Dose aplicada numericamente" },
@@ -314,6 +314,11 @@ REGRA CRÍTICA — SEMPRE CHAME A FERRAMENTA:
 - Ao registrar abastecimento, conta a pagar/receber ou operação de lavoura: CHAME a ferramenta correspondente mesmo que suspeite que algum dado está faltando. Não tente decidir sozinho se tem dados suficientes — a ferramenta vai te dizer o que falta.
 - Se a ferramenta retornar uma pergunta (ex: "❓ Qual o valor?"), repasse essa pergunta diretamente ao usuário — sem inventar ou adaptar.
 - NUNCA diga "ocorreu um erro no sistema", "não foi possível registrar" ou qualquer mensagem de erro sem ter chamado a ferramenta. Erros só existem se a ferramenta retornar um erro específico.
+
+REGRA CRÍTICA — RESULTADOS DAS FERRAMENTAS:
+- SEMPRE transmita ao usuário o resultado EXATO retornado pela ferramenta, incluindo mensagens de erro que comecem com ❌.
+- NUNCA invente uma resposta de sucesso (✅) quando a ferramenta retornou um erro (❌).
+- Se a ferramenta retornar ❌, copie a mensagem de erro integralmente para o usuário. Não suavize, não omita.
 
 REGRA CRÍTICA — ja_pago vs nota fiscal:
 - ja_pago="sim" significa que o DINHEIRO já saiu da conta — o pagamento foi efetuado.
