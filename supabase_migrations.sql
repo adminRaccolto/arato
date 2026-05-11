@@ -3611,4 +3611,14 @@ CREATE INDEX IF NOT EXISTS idx_cessao_contrato   ON contrato_cessao_debitos(cont
 CREATE INDEX IF NOT EXISTS idx_cessao_lancamento ON contrato_cessao_debitos(lancamento_id);
 CREATE INDEX IF NOT EXISTS idx_contratos_cessao  ON contratos(fazenda_id, dado_em_cessao) WHERE dado_em_cessao = true;
 
+-- ────────────────────────────────────────────────────────────
+-- 79. COLUNAS FALTANTES EM contratos
+-- frete e modalidade não foram incluídos no ALTER TABLE da sessão 10
+-- ────────────────────────────────────────────────────────────
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS frete     text,
+  ADD COLUMN IF NOT EXISTS modalidade text DEFAULT 'fixo',
+  ADD COLUMN IF NOT EXISTS numero    text,
+  ADD COLUMN IF NOT EXISTS data_contrato date;
+
 NOTIFY pgrst, 'reload schema';
