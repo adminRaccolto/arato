@@ -80,6 +80,36 @@ export function converterUnidade(valor: number, unidadeOrigem: string, unidadeDe
 
 type Resultado = { ok: boolean; mensagem: string };
 
+// ── Busca de insumo com fallback por palavras individuais ──────────────────
+type InsumoRow = { id: string; nome: string; unidade: string; custo_medio: number; valor_unitario: number; estoque: number };
+
+// ── Busca de insumo com fallback por palavras individuais ──────────────────
+// Aceita nomes parciais: "3770", "tmg 3770", "semente tmg" encontram "Semente Soja TMG 3770"
+async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<InsumoRow | null> {
+  if (!nomeProduto) return null;
+  const cols = "id, nome, unidade, custo_medio, valor_unitario, estoque";
+
+  // 1. Match do termo completo
+  const { data: r1 } = await sb().from("insumos").select(cols)
+    .eq("fazenda_id", fazendaId).ilike("nome", `%${nomeProduto}%`).limit(1);
+  if (r1?.[0]) return r1[0] as InsumoRow;
+
+  // 2. Busca por palavra individualmente — números/alfanuméricos primeiro (ex: "3770")
+  const palavras = nomeProduto.split(/\s+/).filter(w => w.length > 2);
+  palavras.sort((a, b) => {
+    const an = /\d/.test(a), bn = /\d/.test(b);
+    if (an && !bn) return -1;
+    if (!an && bn) return 1;
+    return b.length - a.length;
+  });
+  for (const palavra of palavras) {
+    const { data: r2 } = await sb().from("insumos").select(cols)
+      .eq("fazenda_id", fazendaId).ilike("nome", `%${palavra}%`).limit(1);
+    if (r2?.[0]) return r2[0] as InsumoRow;
+  }
+  return null;
+}
+
 // ── Ciclo vigente na data (usado por todos os inserters) ────────────────────
 async function buscarCicloVigente(fazendaId: string, dataRef: string): Promise<{ id: string; ano_safra_id: string | null } | null> {
   // 1. Ciclo cujo período contém a data
@@ -242,10 +272,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   // Movimentação de estoque: apenas se tipo_destino=estoque E a bomba não for de posto externo
   const deveMovEstoque = dados.tipo_destino === "estoque" && (bomba ? bomba.consume_estoque !== false : true);
   if (deveMovEstoque) {
-    const { data: insumo } = await sb().from("insumos")
-      .select("id, nome, unidade, estoque, valor_unitario, custo_medio")
-      .eq("fazenda_id", fazendaId)
-      .ilike("nome", `%${dados.produto}%`).limit(1).maybeSingle();
+    const insumo = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
 
     if (insumo) {
       const unidadeInsumo = String(insumo.unidade ?? "L");
@@ -305,12 +332,9 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
   const talhao = talhoes?.[0] ?? null;
 
   // ── Buscar insumo com unidade e custo_medio ────────────────────────────────
-  const { data: insumos } = await sb().from("insumos")
-    .select("id, nome, unidade, custo_medio, estoque")
-    .eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${dados.produto}%`).limit(1);
-  const insumo = insumos?.[0] ?? null;
-  const unidadeInsumo = String(insumo?.unidade ?? "L");
+  const insumo = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
+  if (!insumo) console.warn("[BOT-OP] Insumo não encontrado para:", dados.produto, "| fazenda:", fazendaId);
+  const unidadeInsumo = String(insumo?.unidade ?? "kg");
   const custoMedio = Number(insumo?.custo_medio ?? 0);
 
   // ── Conversão de dose: unidade do usuário → unidade nativa do insumo ───────
@@ -687,10 +711,7 @@ async function inserirEntradaEstoque(dados: Record<string, unknown>, fazendaId: 
   const qtdUsuario = Number(dados.quantidade ?? 0);
   const unidadeUsuario = String(dados.unidade ?? "");
 
-  const { data: insumo } = await sb().from("insumos")
-    .select("id, nome, unidade, estoque, custo_medio")
-    .eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${dados.produto}%`).limit(1).single();
+  const insumo = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
 
   let qtdFinal = qtdUsuario;
   let unidadeFinal = unidadeUsuario;
@@ -737,11 +758,7 @@ async function inserirSaidaEstoque(dados: Record<string, unknown>, fazendaId: st
   const qtdUsuario = Number(dados.quantidade ?? 0);
   const unidadeUsuario = String(dados.unidade ?? "");
 
-  const { data: insumo } = await sb().from("insumos")
-    .select("id, nome, unidade, estoque")
-    .eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${dados.produto}%`).limit(1).single();
-
+  const insumo = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
   if (!insumo) return { ok: false, mensagem: `❌ Produto "${dados.produto}" não encontrado.` };
 
   const unidadeInsumo = String(insumo.unidade ?? "");
