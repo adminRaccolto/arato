@@ -94,13 +94,13 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "registrar_abastecimento",
-    description: "Registra abastecimento de combustível. Se bomba interna (fazenda), usa custo médio do estoque sem gerar CP. Se posto externo, gera CP. **Sempre obrigatório informar a bomba.** Chame com os dados que tiver — a ferramenta pede o que faltar.",
+    description: "Registra abastecimento de combustível. REGRA CRÍTICA: se o usuário mencionar bomba da fazenda (interna), NÃO peça valor/preço — chame imediatamente com os dados que tiver; a ferramenta usa o custo médio do estoque automaticamente e NÃO gera CP. Só peça valor para postos externos. `valor` NUNCA é coletado antes de chamar — a ferramenta solicita se for necessário.",
     input_schema: {
       type: "object" as const,
       properties: {
         produto: { type: "string", description: "diesel s10, gasolina, etanol, arla etc" },
         quantidade: { type: "number", description: "Litros abastecidos" },
-        valor: { type: "number", description: "Valor total em R$. Necessário apenas para posto externo (fazenda usa custo do estoque automaticamente)." },
+        valor: { type: "number", description: "Valor total em R$. SÓ para posto externo. Para bomba interna da fazenda NÃO preencher — o sistema usa o custo do estoque." },
         veiculo: { type: "string", description: "Nome, placa ou descrição do veículo/máquina (opcional)" },
         bomba_nome: { type: "string", description: "Nome da bomba ou posto usado. **OBRIGATÓRIO** — sempre informe (ex: 'Bomba Fazenda', 'Posto Shell'). Pergunta ao usuário antes de chamar se não foi mencionado." },
         tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "'estoque': comprou para repor o tanque interno da fazenda (deduz estoque). 'direto': abasteceu em posto externo ou direto na máquina sem passar pelo estoque — não há dedução de estoque. Padrão: direto." },
@@ -345,11 +345,18 @@ REGRA #2 — COPIE O RESULTADO DA FERRAMENTA EXATAMENTE:
 - Se a ferramenta retornou "✅ Pulverização registrada!\n• Talhão: X\n• Produto: Y", escreva exatamente isso.
 - ABSOLUTAMENTE PROIBIDO: gerar "✅ Pronto! Operação registrada:" ou qualquer ✅ com lista de campos de entrada sem que a ferramenta tenha executado e retornado esse texto.
 
-REGRA #3 — ja_pago vs nota fiscal:
+REGRA #3 — ABASTECIMENTO COM BOMBA INTERNA:
+- Se o usuário mencionar "bomba fazenda", "tanque fazenda", "bomba interna" ou qualquer bomba da propriedade:
+  → Chame a ferramenta registrar_abastecimento IMEDIATAMENTE sem perguntar preço, valor ou custo.
+  → A ferramenta usa o custo médio do estoque automaticamente. Sem CP gerado.
+- NUNCA pergunte "Qual o valor?" ou "Qual o preço por litro?" para bomba interna.
+- Se a ferramenta retornar ❓ pedindo nome da bomba → repasse a pergunta. Para qualquer outra resposta ❓ → repasse sem reformular.
+
+REGRA #4 — ja_pago vs nota fiscal:
 - ja_pago="sim" = dinheiro já saiu da conta. "paguei em dinheiro/pix/débito/à vista" → ja_pago="sim".
 - Nota fiscal é separada — pode chegar depois. Não afeta ja_pago.
 
-REGRA #4 — CONTEXTO CONTÍNUO:
+REGRA #5 — CONTEXTO CONTÍNUO:
 - Ao responder, leia o histórico completo da conversa.
 - Se a ferramenta pediu uma informação e o usuário respondeu, use os dados acumulados na próxima chamada.
 - NUNCA peça novamente algo que o usuário já informou.

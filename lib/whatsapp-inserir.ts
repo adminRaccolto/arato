@@ -216,18 +216,51 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     return { ok: false, mensagem: "❓ Qual bomba ou posto foi usado? (ex: *Bomba Fazenda*, *Posto Shell*)" };
   }
 
-  // 2. Buscar bomba no banco
+  // 2. Buscar bomba no banco — multi-tentativa para nomes parciais
   type BombaRow = { id: string; consume_estoque: boolean; estoque_atual_l: number; combustivel: string; nome: string };
-  const { data: bombaData } = await sb().from("bombas_combustivel")
-    .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
-    .eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${bombaStr}%`)
-    .limit(1).maybeSingle();
-  const bomba = bombaData as BombaRow | null;
+  let bomba: BombaRow | null = null;
+
+  // 2a. Match completo da string
+  { const { data } = await sb().from("bombas_combustivel")
+      .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
+      .eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${bombaStr}%`)
+      .limit(1).maybeSingle();
+    if (data) bomba = data as BombaRow;
+  }
+
+  // 2b. Match por cada palavra (ex: "bomba fazenda" → tenta "bomba", depois "fazenda")
+  if (!bomba) {
+    const palavras = bombaStr.split(/\s+/).filter(w => w.length > 2);
+    for (const palavra of palavras) {
+      const { data } = await sb().from("bombas_combustivel")
+        .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
+        .eq("fazenda_id", fazendaId)
+        .ilike("nome", `%${palavra}%`)
+        .limit(1).maybeSingle();
+      if (data) { bomba = data as BombaRow; break; }
+    }
+  }
+
+  // 2c. Se ainda não encontrou, listar bombas disponíveis e pedir confirmação
+  // NÃO cair no fluxo externo quando usuário claramente quis bomba interna
+  if (!bomba) {
+    const { data: todasBombas } = await sb().from("bombas_combustivel")
+      .select("nome, consume_estoque")
+      .eq("fazenda_id", fazendaId)
+      .eq("ativa", true)
+      .order("nome");
+    const lista = (todasBombas ?? []).map((b: { nome: string; consume_estoque: boolean }) =>
+      `• ${b.nome} (${b.consume_estoque ? "interna" : "posto externo"})`).join("\n");
+    if (lista) {
+      return { ok: false, mensagem: `❓ Não encontrei a bomba "*${bombaStr}*". Bombas cadastradas:\n${lista}\n\nQual foi usada?` };
+    }
+    // Sem bombas cadastradas → fluxo externo normal (posto sem cadastro)
+  }
 
   const qtdUsuario = Number(dados.quantidade ?? 0);
 
-  // 3. BOMBA INTERNA (consume_estoque === true)
+  // 3. BOMBA INTERNA (consume_estoque = true ou não definido)
   if (bomba && bomba.consume_estoque !== false) {
     // Buscar insumo correspondente pelo tipo de combustível
     const insumo = await buscarInsumo(fazendaId, bomba.combustivel.replace(/_/g, " "));
@@ -292,10 +325,11 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     };
   }
 
-  // 4. POSTO EXTERNO (consume_estoque === false ou bomba não encontrada)
+  // 4. POSTO EXTERNO (consume_estoque === false — confirma que não é bomba interna)
   const valor = parseValor(String(dados.valor ?? 0));
   if (!valor || valor === 0) {
-    return { ok: false, mensagem: "❓ Qual o valor total do abastecimento? (ex: R$ 180,00)" };
+    const nomeBomba = bomba?.nome ?? bombaStr;
+    return { ok: false, mensagem: `❓ Posto externo *${nomeBomba}* — qual o valor total do abastecimento? (ex: R$ 180,00)` };
   }
 
   if (!qtdUsuario || qtdUsuario === 0) {
