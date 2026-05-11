@@ -47,6 +47,7 @@ const STATUS_META: Record<string, { bg: string; cl: string; label: string }> = {
 const TIPO_META: Record<string, { bg: string; cl: string; label: string }> = {
   consumo:          { bg: "#F3E8FF", cl: "#6B21A8", label: "Consumo"      },
   insumos:          { bg: "#D5E8F5", cl: "#0B2D50", label: "Insumos"      },
+  custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Custo Direto" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"           },
   remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"       },
   devolucao_compra: { bg: "#FCEBEB", cl: "#791F1F", label: "Devolução"     },
@@ -92,12 +93,13 @@ const ITEM_VAZIO = (): ItemRascunho => ({
 
 type Etapa = "origem" | "cabecalho" | "itens";
 type OrigEscolha = "manual" | "xml" | "sieg";
-type TipoEntrada = "insumos" | "vef" | "remessa";
+type TipoEntrada = "insumos" | "vef" | "remessa" | "custo_direto";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
-  insumos:  { label: "Insumos / Estoque",    desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo.",      cor: "#D5E8F5" },
-  vef:      { label: "Entrega Futura (VEF)", desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",     cor: "#FAEEDA" },
-  remessa:  { label: "Remessa / Entrega",    desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",  cor: "#E6F1FB" },
+  insumos:      { label: "Insumos / Estoque",    desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo.",                                      cor: "#D5E8F5" },
+  custo_direto: { label: "Custo Direto",         desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).", cor: "#E8F5E9" },
+  vef:          { label: "Entrega Futura (VEF)", desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                      cor: "#FAEEDA" },
+  remessa:      { label: "Remessa / Entrega",    desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                   cor: "#E6F1FB" },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -482,8 +484,10 @@ export default function NfCompraPage() {
       for (const it of itens) {
         if (!it.descricao_nf.trim()) continue;
         const tipoAprp: NfEntradaItem["tipo_apropiacao"] =
-          tipo === "vef"     ? "vef"     :
-          tipo === "remessa" ? "remessa" : "estoque";
+          tipo === "vef"          ? "vef"     :
+          tipo === "remessa"      ? "remessa" :
+          tipo === "custo_direto" ? "direto"  :
+          it.tipo_apropiacao;
 
         const itemPayload: Omit<NfEntradaItem, "id" | "created_at"> = {
           nf_entrada_id:    nfEdit.id,
@@ -728,7 +732,7 @@ export default function NfCompraPage() {
 
   // ── Auto-fill tipo_apropiacao por tipo de entrada ─────────
   const tipoAprpDefault = (t: TipoEntrada): NfEntradaItem["tipo_apropiacao"] =>
-    t === "vef" ? "vef" : t === "remessa" ? "remessa" : "estoque";
+    t === "vef" ? "vef" : t === "remessa" ? "remessa" : t === "custo_direto" ? "direto" : "estoque";
 
   // ── Totais ─────────────────────────────────────────────────
   const totalItens = itens.reduce((s, i) => s + i.valor_total, 0);
@@ -1125,6 +1129,16 @@ export default function NfCompraPage() {
                     </div>
                   )}
 
+                  {tipo === "custo_direto" && (
+                    <div style={{ background: "#E8F5E950", border: "0.5px solid #86EFAC", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1A6B3C", marginBottom: 6 }}>Custo Direto — sem movimentação de estoque</div>
+                      <div style={{ fontSize: 12, color: "#166534" }}>
+                        Cada item desta NF será apropriado diretamente a um centro de custo. Nenhum produto será lançado no estoque.
+                        Ideal para NFs de mercado, energia, combustível externo, serviços, fretes e demais despesas operacionais.
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ marginBottom: 14 }}>
                     <label style={lbl}>Chave de Acesso NF-e (44 dígitos)</label>
                     <input value={cab.chave_acesso} onChange={e => setCab(p=>({...p,chave_acesso:e.target.value.replace(/\D/g,"")}))} maxLength={44} placeholder="Opcional — para rastreabilidade" style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
@@ -1182,12 +1196,18 @@ export default function NfCompraPage() {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                     <div>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>
-                        {tipo === "insumos" ? "Associação de produtos" :
-                         tipo === "vef"     ? "Itens da VEF"           : "Itens da remessa"}
+                        {tipo === "insumos"      ? "Associação de produtos" :
+                         tipo === "custo_direto" ? "Itens — Custo Direto"   :
+                         tipo === "vef"          ? "Itens da VEF"           : "Itens da remessa"}
                       </span>
                       {tipo === "insumos" && (
                         <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
-                          Associe cada item da NF ao insumo correspondente no catálogo. Defina o fator de conversão se a unidade diferir.
+                          Associe cada item da NF ao insumo correspondente no catálogo. Use o toggle "C. Custo" para itens que vão direto ao centro de custo sem entrar no estoque.
+                        </div>
+                      )}
+                      {tipo === "custo_direto" && (
+                        <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
+                          Atribua cada item a um centro de custo. Nenhum insumo será lançado no estoque.
                         </div>
                       )}
                     </div>
@@ -1202,9 +1222,17 @@ export default function NfCompraPage() {
                   {/* Grid de itens */}
                   <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
                     {/* Cabeçalho */}
-                    <div style={{ display: "grid", gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" : "2fr 80px 90px 100px 110px 1.5fr 90px 32px", gap: 0, background: "#F3F6F9", borderBottom: "0.5px solid #D4DCE8" }}>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" :
+                                           tipo === "custo_direto" ? "2fr 80px 90px 100px 110px 1.5fr 32px" :
+                                           "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
+                      gap: 0, background: "#F3F6F9", borderBottom: "0.5px solid #D4DCE8"
+                    }}>
                       {(tipo === "insumos"
-                        ? ["Descrição NF", "Insumo Catálogo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Fator Conv.", ""]
+                        ? ["Descrição NF", "Insumo / Centro Custo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Fator Conv.", ""]
+                        : tipo === "custo_direto"
+                        ? ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro de Custo", ""]
                         : ["Descrição", "Unidade", "Quantidade", "Vl. Unit.", "Vl. Total", "Centro Custo", "Apropriação", ""]
                       ).map((h, i) => (
                         <div key={i} style={{ padding: "7px 10px", fontSize: 10, fontWeight: 600, color: "#555" }}>{h}</div>
@@ -1213,22 +1241,48 @@ export default function NfCompraPage() {
 
                     {/* Linhas */}
                     {itens.map((it) => (
-                      <div key={it.key} style={{ display: "grid", gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" : "2fr 80px 90px 100px 110px 1.5fr 90px 32px", gap: 0, borderBottom: "0.5px solid #F0F2F7", alignItems: "center" }}>
+                      <div key={it.key} style={{
+                        display: "grid",
+                        gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" :
+                                             tipo === "custo_direto" ? "2fr 80px 90px 100px 110px 1.5fr 32px" :
+                                             "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
+                        gap: 0, borderBottom: "0.5px solid #F0F2F7", alignItems: "center"
+                      }}>
                         {tipo === "insumos" ? (
                           <>
                             <div style={{ padding: "6px 8px" }}>
                               <input value={it.descricao_nf} onChange={e => setItem(it.key, { descricao_nf: e.target.value })} placeholder="Descrição na NF" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
-                            <div style={{ padding: "6px 8px", display: "flex", gap: 4, alignItems: "center" }}>
-                              <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
-                                <option value="">— não associado —</option>
-                                {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                              </select>
-                              <button
-                                onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
-                                title="Cadastrar novo produto no catálogo"
-                                style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0, fontWeight: 700 }}
-                              >+</button>
+                            <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
+                              {/* Toggle Estoque / C. Custo */}
+                              <div style={{ display: "flex", gap: 2 }}>
+                                <button
+                                  onClick={() => setItem(it.key, { tipo_apropiacao: "estoque", centro_custo_id: "" })}
+                                  style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#D4DCE8" : "#1A4870"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#D5E8F5", color: it.tipo_apropiacao === "direto" ? "#888" : "#1A4870", cursor: "pointer", fontWeight: 600 }}
+                                >📦 Estoque</button>
+                                <button
+                                  onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "" })}
+                                  style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "#D4DCE8"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "#fff", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "#888", cursor: "pointer", fontWeight: 600 }}
+                                >💸 C. Custo</button>
+                              </div>
+                              {it.tipo_apropiacao === "direto" ? (
+                                <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                                  <option value="">— selecionar CC —</option>
+                                  {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                                </select>
+                              ) : (
+                                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                                  <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
+                                    <option value="">— não associado —</option>
+                                    {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                                  </select>
+                                  <button
+                                    onClick={() => abrirNovoInsumo(it.key, it.descricao_nf)}
+                                    title="Cadastrar novo produto no catálogo"
+                                    style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "0.5px solid #C9921B", background: "#FBF0D8", color: "#7A5A12", cursor: "pointer", fontSize: 15, lineHeight: 1, padding: 0, fontWeight: 700 }}
+                                  >+</button>
+                                </div>
+                              )}
                             </div>
                             <div style={{ padding: "6px 8px" }}>
                               <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
@@ -1243,13 +1297,39 @@ export default function NfCompraPage() {
                               {fmtBRL(it.valor_total)}
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <input
-                                type="number" step="0.001"
-                                value={it.fator_conversao || 1}
-                                onChange={e => setItem(it.key, { fator_conversao: parseFloat(e.target.value)||1 })}
-                                title="Fator de conversão: qtd NF × fator = qtd no catálogo"
-                                style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
-                              />
+                              {it.tipo_apropiacao !== "direto" && (
+                                <input
+                                  type="number" step="0.001"
+                                  value={it.fator_conversao || 1}
+                                  onChange={e => setItem(it.key, { fator_conversao: parseFloat(e.target.value)||1 })}
+                                  title="Fator de conversão: qtd NF × fator = qtd no catálogo"
+                                  style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
+                                />
+                              )}
+                            </div>
+                          </>
+                        ) : tipo === "custo_direto" ? (
+                          <>
+                            <div style={{ padding: "6px 8px" }}>
+                              <input value={it.descricao_nf} onChange={e => setItem(it.key, { descricao_nf: e.target.value })} placeholder="Descrição" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <input value={it.unidade_nf} onChange={e => setItem(it.key, { unidade_nf: e.target.value })} placeholder="UN" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <input type="number" value={it.quantidade || ""} onChange={e => setItem(it.key, { quantidade: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <input type="number" value={it.valor_unitario || ""} onChange={e => setItem(it.key, { valor_unitario: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                            </div>
+                            <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                              {fmtBRL(it.valor_total)}
+                            </div>
+                            <div style={{ padding: "6px 8px" }}>
+                              <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                                <option value="">— selecionar CC —</option>
+                                {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                              </select>
                             </div>
                           </>
                         ) : (
@@ -1302,10 +1382,10 @@ export default function NfCompraPage() {
                     </div>
                   </div>
 
-                  {/* Aviso para depósito/insumo não associado */}
-                  {tipo === "insumos" && itens.some(it => !it.insumo_id) && (
+                  {/* Aviso para insumo não associado (ignora itens marcados como custo direto) */}
+                  {tipo === "insumos" && itens.some(it => !it.insumo_id && it.tipo_apropiacao !== "direto" && it.descricao_nf.trim()) && (
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 }}>
-                      ⚠️ Itens sem insumo associado não serão lançados no estoque. Associe ou remova-os antes de processar.
+                      ⚠️ Itens sem insumo associado não serão lançados no estoque. Associe, mude para "C. Custo" ou remova-os antes de processar.
                     </div>
                   )}
 
@@ -1330,10 +1410,18 @@ export default function NfCompraPage() {
                     {tipo === "insumos" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8" }}>
                         <div style={{ fontSize: 11, color: "#555" }}>
-                          {itens.filter(i=>i.insumo_id).length} item(s) serão lançados no estoque ·{" "}
-                          {itens.filter(i=>!i.insumo_id && i.descricao_nf.trim()).length} item(s) sem associação (ignorados)
-                          {depositos.length > 0 && " · Depósito padrão: " + (nomeDeposito(itens.find(i=>i.deposito_id)?.deposito_id ?? "") || "não definido")}
+                          {itens.filter(i => i.insumo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque ·{" "}
+                          {itens.filter(i => i.tipo_apropiacao === "direto" && i.descricao_nf.trim()).length} item(s) → custo direto ·{" "}
+                          {itens.filter(i => !i.insumo_id && i.tipo_apropiacao !== "direto" && i.descricao_nf.trim()).length} item(s) sem associação (ignorados)
+                          {depositos.length > 0 && " · Depósito padrão: " + (nomeDeposito(itens.find(i => i.deposito_id && i.tipo_apropiacao !== "direto")?.deposito_id ?? "") || "não definido")}
                         </div>
+                      </div>
+                    )}
+                    {tipo === "custo_direto" && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8", fontSize: 11, color: "#1A6B3C" }}>
+                        {itens.filter(i => i.centro_custo_id && i.descricao_nf.trim()).length} item(s) com centro de custo ·{" "}
+                        {itens.filter(i => !i.centro_custo_id && i.descricao_nf.trim()).length} sem CC (serão lançados sem centro de custo).
+                        Nenhuma movimentação de estoque será gerada.
                       </div>
                     )}
                     {tipo === "vef" && (
@@ -1349,8 +1437,8 @@ export default function NfCompraPage() {
                     )}
                   </div>
 
-                  {/* Depósito padrão para itens sem depósito (insumos) */}
-                  {tipo === "insumos" && (
+                  {/* Depósito padrão para itens sem depósito (somente insumos que vão para estoque) */}
+                  {tipo === "insumos" && itens.some(i => i.tipo_apropiacao !== "direto") && (
                     <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 8 }}>Depósito padrão para itens sem depósito individual</div>
                       <select
