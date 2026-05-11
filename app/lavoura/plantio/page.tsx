@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
-import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantios, excluirPlantio } from "../../../lib/db";
+import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantios, excluirPlantio, atualizarPlantio } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
 import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo } from "../../../lib/supabase";
@@ -120,6 +120,15 @@ export default function PlantioPage() {
 
   const totalArea = plantios.reduce((a, p) => a + p.area_ha, 0);
 
+  async function recalcularCusto(plantio: Plantio) {
+    const ins = sementes.find(s => s.id === plantio.insumo_id);
+    if (!ins || !plantio.quantidade_kg) return;
+    const custo = plantio.quantidade_kg * (ins.custo_medio ?? ins.valor_unitario);
+    if (!custo) return;
+    await atualizarPlantio(plantio.id, { custo_sementes: custo });
+    setPlantios(prev => prev.map(p => p.id === plantio.id ? { ...p, custo_sementes: custo } : p));
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
@@ -199,7 +208,28 @@ export default function PlantioPage() {
                           : "—"}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                        {p.custo_sementes ? <span style={{ color: "#E24B4A" }}>{fmtBRL(p.custo_sementes)}</span> : "—"}
+                        {(() => {
+                          if (p.custo_sementes) {
+                            return <span style={{ color: "#E24B4A", fontWeight: 600 }}>{fmtBRL(p.custo_sementes)}</span>;
+                          }
+                          const ins = sementes.find(s => s.id === p.insumo_id);
+                          const calc = ins && p.quantidade_kg ? p.quantidade_kg * (ins.custo_medio ?? ins.valor_unitario) : null;
+                          if (calc) {
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                                <span style={{ color: "#C9921B", fontWeight: 600 }}>{fmtBRL(calc)}</span>
+                                <button
+                                  style={{ fontSize: 10, padding: "1px 6px", border: "0.5px solid #C9921B", borderRadius: 4, background: "#FBF3E0", color: "#7A5A0A", cursor: "pointer" }}
+                                  onClick={() => recalcularCusto(p)}
+                                  title="Salvar custo calculado no registro"
+                                >
+                                  💾 salvar
+                                </button>
+                              </div>
+                            );
+                          }
+                          return <span style={{ color: "#888" }}>—</span>;
+                        })()}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPlantio(p.id).then(() => setPlantios(x => x.filter(r => r.id !== p.id))); }}>✕</button>

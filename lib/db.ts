@@ -1076,7 +1076,7 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
         .select("estoque").eq("id", mov.insumo_id).single();
       if (ins) {
         await supabase.from("insumos")
-          .update({ estoque: Math.max(0, (ins.estoque as number) - (mov.quantidade as number)) })
+          .update({ estoque: (ins.estoque as number) - (mov.quantidade as number) })
           .eq("id", mov.insumo_id);
       }
     }
@@ -1517,7 +1517,7 @@ export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoS
         case "sc":  qtdNativa = (ton * 1000) / 60; break; // saca = 60 kg
         default:    qtdNativa = ton * 1000; break;
       }
-      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - qtdNativa) }).eq("id", it.insumo_id);
+      await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", it.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id: it.insumo_id, fazenda_id: correcao.fazenda_id,
         tipo: "saida", quantidade: qtdNativa, data: correcao.data_aplicacao,
@@ -1608,7 +1608,7 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
         case "L":   qtdNativa = kg; break; // fertilizante líquido: assume 1 kg ≈ 1 L (aproximação)
         default:    qtdNativa = kg; break;
       }
-      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - qtdNativa) }).eq("id", it.insumo_id);
+      await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", it.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id: it.insumo_id, fazenda_id: adubacao.fazenda_id,
         tipo: "saida", quantidade: qtdNativa, data: adubacao.data_aplicacao,
@@ -1676,7 +1676,7 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
   if (plantio.insumo_id && qty > 0) {
     const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", plantio.insumo_id).single();
     if (ins) {
-      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - qty) }).eq("id", plantio.insumo_id);
+      await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qty }).eq("id", plantio.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id: plantio.insumo_id,
         fazenda_id: plantio.fazenda_id,
@@ -1774,7 +1774,7 @@ export async function processarPulverizacao(
     // baixa de estoque
     const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", item.insumo_id).single();
     if (ins) {
-      await supabase.from("insumos").update({ estoque: Math.max(0, (ins.estoque ?? 0) - item.total_consumido) }).eq("id", item.insumo_id);
+      await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - item.total_consumido }).eq("id", item.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id: item.insumo_id,
         fazenda_id: item.fazenda_id,

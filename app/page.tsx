@@ -279,11 +279,17 @@ export default function Dashboard() {
         .select("id", { count: "exact", head: true })
         .eq("fazenda_id", fazendaId)
         .eq("status", "aguardando"),
+
+      // Insumos com estoque negativo
+      supabase.from("insumos")
+        .select("id, nome, estoque, unidade")
+        .eq("fazenda_id", fazendaId)
+        .lt("estoque", 0),
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
       ciclosRes, contratosRes, cpVencRes, segurosRes,
-      pendFiscalRes,
+      pendFiscalRes, insNegRes,
     ]) => {
       const novosAlertas: Alerta[] = [];
 
@@ -416,6 +422,21 @@ export default function Dashboard() {
           urgencia: "medio",
           link: "/fiscal/pendencias",
           linkLabel: "Ver",
+        });
+      }
+
+      // ── Estoque negativo ──
+      const insNeg = (insNegRes.data ?? []) as { id: string; nome: string; estoque: number; unidade: string }[];
+      if (insNeg.length > 0) {
+        const lista = insNeg.slice(0, 3).map(i => `${i.nome} (${i.estoque.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ${i.unidade})`).join(", ");
+        const sufixo = insNeg.length > 3 ? ` e mais ${insNeg.length - 3}` : "";
+        novosAlertas.push({
+          id: "estoque-negativo",
+          tipo: "estoque",
+          desc: `${insNeg.length} insumo${insNeg.length > 1 ? "s" : ""} com estoque negativo: ${lista}${sufixo}`,
+          urgencia: "alto",
+          link: "/cadastros?tab=insumos",
+          linkLabel: "Ver Insumos",
         });
       }
 

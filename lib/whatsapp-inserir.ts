@@ -267,7 +267,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
 
     // Deduzir insumo de estoque + movimentação
     if (insumo) {
-      const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - qtdUsuario);
+      const novoEstoque = Number(insumo.estoque ?? 0) - qtdUsuario;
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id:     fazendaId,
@@ -530,7 +530,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         custo_total:     custoTotal,
       });
 
-      const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
+      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id: fazendaId, insumo_id: insumo.id,
@@ -552,8 +552,9 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
+    const alertaNeg = estoqueRestante !== null && estoqueRestante < 0 ? `\n⚠️ *Estoque negativo!* Saldo: ${estoqueRestante.toFixed(2)} ${unidadeInsumo}` : "";
     const infoEstoque = insumo
-      ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
+      ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNeg}` : "";
     const infoCusto = custoTotal > 0
       ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
       : (insumo && custoMedio === 0 ? `\n⚠️ _Insumo sem preço cadastrado — atualize o custo médio em Estoque para registrar custos futuros._` : "");
@@ -606,7 +607,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         dose_kg_ha: doseNativa, quantidade_kg: totalKg,
         valor_unitario: custoMedio, custo_total: custoTotal,
       });
-      const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
+      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id: fazendaId, insumo_id: insumo.id,
@@ -627,8 +628,9 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
+    const alertaNeg = estoqueRestante !== null && estoqueRestante < 0 ? `\n⚠️ *Estoque negativo!* Saldo: ${estoqueRestante.toFixed(2)} ${unidadeInsumo}` : "";
     const infoEstoque = insumo
-      ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
+      ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNeg}` : "";
     const infoCusto = custoTotal > 0
       ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
       : (insumo && custoMedio === 0 ? `\n⚠️ _Insumo sem preço cadastrado — atualize o custo médio em Estoque._` : "");
@@ -678,7 +680,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
 
     if (insumo && totalNativo > 0) {
-      const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
+      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id: fazendaId, insumo_id: insumo.id,
@@ -702,8 +704,9 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
+    const alertaNegP = estoqueRestante !== null && estoqueRestante < 0 ? `\n⚠️ *Estoque negativo!* Saldo: ${estoqueRestante.toFixed(2)} ${unidadeInsumo}` : "";
     const infoEstoque = insumo
-      ? `\n• Semente: ${totalNativo.toFixed(2)} ${unidadeInsumo} (${quantidadeKg.toFixed(1)} kg) — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
+      ? `\n• Semente: ${totalNativo.toFixed(2)} ${unidadeInsumo} (${quantidadeKg.toFixed(1)} kg) — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNegP}` : "";
     const infoCusto = custoSementes > 0
       ? `\n• Custo sementes: R$ ${custoSementes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
       : (insumo && custoMedio === 0 ? `\n⚠️ _Semente sem preço cadastrado — atualize o custo médio em Estoque._` : "");
@@ -763,7 +766,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
       });
 
       // Baixa de estoque na unidade nativa
-      const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
+      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
 
       // Movimentação
@@ -789,8 +792,9 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
+    const alertaNegC = estoqueRestante !== null && estoqueRestante < 0 ? `\n⚠️ *Estoque negativo!* Saldo: ${estoqueRestante.toFixed(2)} ${unidadeInsumo}` : "";
     const infoEstoque = insumo
-      ? `\n• Consumido: ${totalTon.toFixed(3)} t (${totalNativo.toFixed(2)} ${unidadeInsumo}) — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
+      ? `\n• Consumido: ${totalTon.toFixed(3)} t (${totalNativo.toFixed(2)} ${unidadeInsumo}) — estoque restante: ${(estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}${alertaNegC}` : "";
     const infoCusto = custoTotal > 0
       ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)` : "";
 
