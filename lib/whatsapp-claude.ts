@@ -185,6 +185,8 @@ async function executarFerramenta(
   input: Record<string, unknown>,
   fazendaId: string,
   usuarioId: string,
+  usuarioNome: string,
+  usuarioWhatsapp: string,
 ): Promise<string> {
   try {
     switch (nome) {
@@ -229,7 +231,7 @@ async function executarFerramenta(
           forma_pagamento: input.forma_pagamento ?? "",
           conta_bancaria: input.conta_bancaria ?? "",
           tem_nf: "nao",
-        }, fazendaId, usuarioId);
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
       case "registrar_operacao_lavoura": {
@@ -243,7 +245,7 @@ async function executarFerramenta(
           area_ha: input.area_ha ?? 0,
           ciclo: input.ciclo ?? "",
           data_op: input.data_op ?? "hoje",
-        }, fazendaId, usuarioId);
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
       case "registrar_conta_pagar": {
@@ -255,7 +257,7 @@ async function executarFerramenta(
           categoria: input.categoria ?? "outros",
           ja_pago: input.ja_pago ?? "nao",
           conta_bancaria: input.conta_bancaria ?? "",
-        }, fazendaId, usuarioId);
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
       case "registrar_conta_receber": {
@@ -266,7 +268,7 @@ async function executarFerramenta(
           cliente: input.cliente ?? "",
           conta_bancaria: input.conta_bancaria ?? "",
           ja_recebido: input.ja_recebido ?? "nao",
-        }, fazendaId, usuarioId);
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
       case "vincular_nf": {
@@ -274,7 +276,7 @@ async function executarFerramenta(
           nf_numero:   input.nf_numero,
           nf_emitente: input.nf_emitente ?? "",
           busca:       input.busca ?? "",
-        }, fazendaId, usuarioId);
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
       default:
@@ -318,10 +320,10 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
 // ── Processador principal ───────────────────────────────────────────────────
 export async function processarMensagemIA(
   texto: string,
-  contexto: { fazendaId: string; fazendaNome: string; usuarioId: string },
+  contexto: { fazendaId: string; fazendaNome: string; usuarioId: string; usuarioNome?: string; usuarioWhatsapp?: string },
   historico: Mensagem[],
 ): Promise<string> {
-  const { fazendaId, fazendaNome, usuarioId } = contexto;
+  const { fazendaId, fazendaNome, usuarioId, usuarioNome = "", usuarioWhatsapp = "" } = contexto;
   const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
   const systemPrompt = `Você é o *Arato*, assistente de gestão agrícola da fazenda *${fazendaNome}*, operando via WhatsApp.
@@ -406,6 +408,8 @@ COMPORTAMENTO GERAL:
           block.input as Record<string, unknown>,
           fazendaId,
           usuarioId,
+          usuarioNome,
+          usuarioWhatsapp,
         );
         toolResults.push({ type: "tool_result", tool_use_id: block.id, content: resultado });
         ultimosResultados.push(resultado);

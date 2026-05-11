@@ -159,6 +159,8 @@ async function criarPendenciaInsumo(
   dadosOriginais: Record<string, unknown>,
   produtoNome: string,
   talhaoNome: string | null,
+  usuarioNome: string,
+  usuarioWhatsapp: string,
 ): Promise<void> {
   const tipoLabel: Record<string, string> = {
     pulverizacao: "Pulverização", adubacao: "Adubação",
@@ -175,6 +177,8 @@ async function criarPendenciaInsumo(
     produto_nome_pendente: produtoNome,
     talhao_nome_pendente: talhaoNome ?? null,
     origem: "whatsapp",
+    usuario_nome: usuarioNome || null,
+    usuario_whatsapp: usuarioWhatsapp || null,
   });
 }
 
@@ -183,11 +187,13 @@ export async function executarInsercao(
   fluxo: FluxoNome,
   dados: Record<string, unknown>,
   fazendaId: string,
-  usuarioId: string
+  usuarioId: string,
+  usuarioNome: string = "",
+  usuarioWhatsapp: string = "",
 ): Promise<Resultado> {
   switch (fluxo) {
     case "abastecimento":      return inserirAbastecimento(dados, fazendaId);
-    case "operacao_lavoura":   return inserirOperacaoLavoura(dados, fazendaId);
+    case "operacao_lavoura":   return inserirOperacaoLavoura(dados, fazendaId, usuarioNome, usuarioWhatsapp);
     case "entrada_estoque":    return inserirEntradaEstoque(dados, fazendaId);
     case "saida_estoque":      return inserirSaidaEstoque(dados, fazendaId);
     case "lancar_cp":          return inserirLancamento("pagar", dados, fazendaId);
@@ -331,7 +337,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
 }
 
 // ── Operação de lavoura ─────────────────────────────────────────────────────
-async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId: string, usuarioNome = "", usuarioWhatsapp = ""): Promise<Resultado> {
   const tipoMap: Record<string, string> = { "1": "pulverizacao", "2": "adubacao", "3": "plantio", "4": "correcao_solo" };
   const tipoRaw  = String(dados.tipo_op ?? "pulverizacao");
   const tipoOp   = tipoMap[tipoRaw] ?? tipoRaw;
@@ -462,7 +468,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         produto: dados.produto, talhao: dados.talhao,
         talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
         dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
       return {
         ok: true,
         mensagem: `⚠️ Pulverização registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo e processar custo/estoque._\n_🔍 ${pulv.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -544,7 +550,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         tipo_op: "adubacao", produto: dados.produto, talhao: dados.talhao,
         talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
         dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
       return {
         ok: true,
         mensagem: `⚠️ Adubação registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo._\n_🔍 ${adub.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -623,7 +629,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         tipo_op: "plantio", produto: dados.produto, talhao: dados.talhao,
         talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
         dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
       return {
         ok: true,
         mensagem: `⚠️ Plantio registrado com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular a semente._\n_🔍 ${plantioRow.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -695,7 +701,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         tipo_op: "correcao_solo", produto: dados.produto, talhao: dados.talhao,
         talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
         dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
       return {
         ok: true,
         mensagem: `⚠️ Correção de Solo registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo._\n_🔍 ${corr.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,

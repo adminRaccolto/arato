@@ -2771,6 +2771,8 @@ export type PendenciaRow = {
   produto_nome_pendente?: string;
   talhao_nome_pendente?: string;
   origem?: string;
+  usuario_nome?: string;
+  usuario_whatsapp?: string;
   criado_em?: string;
   resolvido_em?: string;
 };

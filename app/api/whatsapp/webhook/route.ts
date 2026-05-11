@@ -15,6 +15,8 @@ function sb() {
 
 type AuthResult = {
   usuarioId: string;
+  usuarioNome: string;
+  usuarioWhatsapp: string;
   fazendaId: string;
   fazendaNome: string;
   authUserId: string | null;
@@ -32,7 +34,7 @@ async function autenticarNumero(telefone: string): Promise<AuthResult | null> {
   }
 
   const { data: rows } = await sb().from("usuarios")
-    .select("id, fazenda_id, auth_user_id, fazendas(nome)")
+    .select("id, nome, whatsapp, fazenda_id, auth_user_id, fazendas(nome)")
     .in("whatsapp", variantes)
     .eq("ativo", true)
     .limit(1);
@@ -70,7 +72,12 @@ async function autenticarNumero(telefone: string): Promise<AuthResult | null> {
   if (todasFazendas.length === 0) todasFazendas = [{ id: fazendaId, nome: fazendaNome }];
 
   console.log("[WH] auth: usuario", data.id, "fazenda_id =>", fazendaId, fazendaNome, "| fazendas:", todasFazendas.length);
-  return { usuarioId: data.id, fazendaId, fazendaNome, authUserId: data.auth_user_id ?? null, contaId, todasFazendas };
+  return {
+    usuarioId: data.id,
+    usuarioNome: (data as { nome?: string }).nome ?? "",
+    usuarioWhatsapp: (data as { whatsapp?: string }).whatsapp ?? telefone,
+    fazendaId, fazendaNome, authUserId: data.auth_user_id ?? null, contaId, todasFazendas,
+  };
 }
 
 // ── Extrair número limpo do JID ────────────────────────────────────────────
@@ -155,7 +162,7 @@ export async function POST(req: NextRequest) {
   const auth = await autenticarNumero(telefone);
   if (!auth) return NextResponse.json({ ok: true });
   let { fazendaId, fazendaNome } = auth;
-  const { usuarioId, authUserId, todasFazendas } = auth;
+  const { usuarioId, usuarioNome, usuarioWhatsapp, authUserId, todasFazendas } = auth;
 
   // ── Sessão e histórico ─────────────────────────────────────────────────────
   console.log("[WH] telefone:", telefone, "usuario:", usuarioId, "fazenda:", fazendaId);
@@ -259,7 +266,7 @@ export async function POST(req: NextRequest) {
   try {
     resposta = await processarMensagemIA(
       textoParaIA,
-      { fazendaId, fazendaNome, usuarioId },
+      { fazendaId, fazendaNome, usuarioId, usuarioNome, usuarioWhatsapp },
       historico,
     );
   } catch (err) {

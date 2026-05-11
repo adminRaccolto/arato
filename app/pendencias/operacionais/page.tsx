@@ -287,6 +287,19 @@ export default function PendenciasOperacionais() {
                       )}
                     </div>
 
+                    {/* Quem enviou via WhatsApp */}
+                    {(p.usuario_nome || p.usuario_whatsapp) && (
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 20, padding: "3px 10px" }}>
+                        <span style={{ fontSize: 12 }}>📲</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1D4ED8" }}>
+                          {p.usuario_nome || p.usuario_whatsapp}
+                        </span>
+                        {p.usuario_whatsapp && p.usuario_nome && (
+                          <span style={{ fontSize: 11, color: "#60A5FA" }}>{p.usuario_whatsapp}</span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Se resolvida: mostra info de resolução */}
                     {p.status === "resolvida" && p.resolvido_em && (
                       <div style={{ marginTop: 8, fontSize: 12, color: "#065F46", background: "#D1FAE5", borderRadius: 6, padding: "4px 10px", display: "inline-block" }}>
@@ -345,6 +358,20 @@ export default function PendenciasOperacionais() {
               </div>
               <button onClick={() => setModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", padding: "0 4px" }}>×</button>
             </div>
+
+            {/* Quem enviou */}
+            {(modal.usuario_nome || modal.usuario_whatsapp) && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, background: "#EFF6FF", border: "0.5px solid #BFDBFE", borderRadius: 8, padding: "8px 14px" }}>
+                <span style={{ fontSize: 14 }}>📲</span>
+                <div>
+                  <span style={{ fontSize: 11, color: "#60A5FA" }}>Enviado por: </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>{modal.usuario_nome || modal.usuario_whatsapp}</span>
+                  {modal.usuario_whatsapp && modal.usuario_nome && (
+                    <span style={{ fontSize: 11, color: "#93C5FD", marginLeft: 6 }}>{modal.usuario_whatsapp}</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Resumo da pendência */}
             <div style={{ background: "#FEF9E7", border: "0.5px solid #FCD34D", borderRadius: 10, padding: "12px 16px", marginBottom: 20 }}>
