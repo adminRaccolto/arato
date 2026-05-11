@@ -3555,3 +3555,31 @@ ALTER TABLE lancamentos
 CREATE INDEX IF NOT EXISTS idx_lancamentos_ciclo ON lancamentos(ciclo_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 77 — pendencias_operacionais — registros do bot com dados incompletos
+-- ============================================================
+-- Criada quando o bot não encontra insumo, talhão ou outro dado necessário.
+-- Ao resolver, o sistema reprocessa: estoque, custo, lancamento CP.
+CREATE TABLE IF NOT EXISTS pendencias_operacionais (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo VARCHAR(50) NOT NULL DEFAULT 'operacao_lavoura',
+  subtipo VARCHAR(50),
+  status VARCHAR(20) NOT NULL DEFAULT 'pendente'
+    CHECK (status IN ('pendente', 'resolvida', 'cancelada')),
+  motivo VARCHAR(200),
+  descricao TEXT,
+  dados_originais JSONB NOT NULL DEFAULT '{}',
+  operacao_id UUID,
+  produto_nome_pendente VARCHAR(200),
+  talhao_nome_pendente VARCHAR(200),
+  origem VARCHAR(50) DEFAULT 'whatsapp',
+  criado_em TIMESTAMPTZ DEFAULT NOW(),
+  resolvido_em TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_pendencias_op_fazenda_status
+  ON pendencias_operacionais(fazenda_id, status);
+
+NOTIFY pgrst, 'reload schema';

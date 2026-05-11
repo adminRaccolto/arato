@@ -239,6 +239,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [logoFazenda,      setLogoFazenda]      = useState<string | null>(null);
   const [fazendas,         setFazendas]         = useState<Fazenda[]>([]);
   const [farmSwitcherOpen, setFarmSwitcherOpen] = useState(false);
+  const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
   const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos } = useAuth();
@@ -249,6 +250,16 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     supabase.from("fazendas").select("*").eq("id", fazendaId).single()
       .then(({ data }) => { if (data) setFazenda(data); });
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (!fazendaId) return;
+    supabase
+      .from("pendencias_operacionais")
+      .select("id", { count: "exact", head: true })
+      .eq("fazenda_id", fazendaId)
+      .eq("status", "pendente")
+      .then(({ count }) => setQtdPendencias(count ?? 0));
+  }, [fazendaId, pathname]);
 
   useEffect(() => {
     if (!contaId) return;
@@ -694,6 +705,28 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             </Link>
           );
         })}
+
+        {/* Pendências — visível sempre que houver ≥1 pendente */}
+        {qtdPendencias > 0 && (
+          <Link
+            href="/pendencias/operacionais"
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "5px 12px", borderRadius: 6, textDecoration: "none",
+              background: pathname.startsWith("/pendencias") ? "rgba(255,255,255,0.20)" : "rgba(245,158,11,0.18)",
+              color: "#FDE9BB", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap",
+              border: "0.5px solid rgba(245,158,11,0.55)",
+            }}
+          >
+            Pendências
+            <span style={{
+              background: "#F59E0B", color: "#1a1a1a", borderRadius: 20,
+              fontSize: 10, fontWeight: 800, padding: "1px 6px", lineHeight: 1.5,
+            }}>
+              {qtdPendencias}
+            </span>
+          </Link>
+        )}
 
         {userRole === "raccotlo" && (
           <Link

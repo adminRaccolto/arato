@@ -151,6 +151,33 @@ async function buscarContaBancaria(fazendaId: string, nome: string): Promise<{ i
   return data ?? null;
 }
 
+// ── Cria pendência operacional (insumo não encontrado) ──────────────────────
+async function criarPendenciaInsumo(
+  fazendaId: string,
+  subtipo: string,
+  operacaoId: string,
+  dadosOriginais: Record<string, unknown>,
+  produtoNome: string,
+  talhaoNome: string | null,
+): Promise<void> {
+  const tipoLabel: Record<string, string> = {
+    pulverizacao: "Pulverização", adubacao: "Adubação",
+    plantio: "Plantio", correcao_solo: "Correção de Solo",
+  };
+  await sb().from("pendencias_operacionais").insert({
+    fazenda_id: fazendaId,
+    tipo: "operacao_lavoura",
+    subtipo,
+    motivo: "insumo_nao_encontrado",
+    descricao: `${tipoLabel[subtipo] ?? subtipo} — produto "${produtoNome}" não encontrado no cadastro`,
+    dados_originais: dadosOriginais,
+    operacao_id: operacaoId,
+    produto_nome_pendente: produtoNome,
+    talhao_nome_pendente: talhaoNome ?? null,
+    origem: "whatsapp",
+  });
+}
+
 // ── Roteador principal ──────────────────────────────────────────────────────
 export async function executarInsercao(
   fluxo: FluxoNome,
@@ -428,7 +455,20 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
     if (!pulv)   return { ok: false, mensagem: "❌ Erro ao obter ID da pulverização." };
 
-    // Inserir item com todos os campos necessários para o relatório
+    if (!insumo && dados.produto) {
+      // Insumo não encontrado — cria pendência para resolver depois
+      await criarPendenciaInsumo(fazendaId, "pulverizacao", pulv.id, {
+        tipo_op: "pulverizacao", tipo_produto: tipoProduto,
+        produto: dados.produto, talhao: dados.talhao,
+        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      return {
+        ok: true,
+        mensagem: `⚠️ Pulverização registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo e processar custo/estoque._\n_🔍 ${pulv.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
+      };
+    }
+
     if (insumo) {
       await sb().from("pulverizacao_itens").insert({
         pulverizacao_id: pulv.id,
@@ -443,22 +483,15 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         custo_total:     custoTotal,
       });
 
-      // Baixa de estoque
       const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-
-      // Movimentação
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id: fazendaId, insumo_id: insumo.id,
         tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
         safra: ciclo?.id ?? null, operacao: tipoProduto,
         observacao: `Pulverização ${tipoProduto} — ${insumo.nome} via WhatsApp`, auto: true,
       });
-
-      // Custo total na pulverização
       await sb().from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
-
-      // Lançamento CP
       if (custoTotal > 0) {
         await sb().from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
@@ -466,16 +499,14 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           categoria: "Insumos — Defensivos",
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
-          safra_id: ciclo?.id ?? null,
-          status: "em_aberto",
+          safra_id: ciclo?.id ?? null, status: "em_aberto",
         });
       }
     }
 
     const estoqueRestante = insumo ? Number(insumo.estoque ?? 0) - totalNativo : null;
     const infoEstoque = insumo
-      ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}`
-      : "";
+      ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
     const infoCusto = custoTotal > 0
       ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)` : "";
 
@@ -507,33 +538,34 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
     if (!adub)   return { ok: false, mensagem: "❌ Erro ao obter ID da adubação." };
 
+    if (!insumo && dados.produto) {
+      await criarPendenciaInsumo(fazendaId, "adubacao", adub.id, {
+        tipo_op: "adubacao", produto: dados.produto, talhao: dados.talhao,
+        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      return {
+        ok: true,
+        mensagem: `⚠️ Adubação registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo._\n_🔍 ${adub.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
+      };
+    }
+
     if (insumo) {
       const totalKg = converterUnidade(totalNativo, unidadeInsumo, "kg");
-
       await sb().from("adubacoes_base_itens").insert({
-        adubacao_id:   adub.id,
-        fazenda_id:    fazendaId,
-        insumo_id:     insumo.id,
-        produto_nome:  insumo.nome,
-        dose_kg_ha:    doseNativa,
-        quantidade_kg: totalKg,
-        valor_unitario: custoMedio,
-        custo_total:   custoTotal,
+        adubacao_id: adub.id, fazenda_id: fazendaId,
+        insumo_id: insumo.id, produto_nome: insumo.nome,
+        dose_kg_ha: doseNativa, quantidade_kg: totalKg,
+        valor_unitario: custoMedio, custo_total: custoTotal,
       });
-
-      // Baixa de estoque na unidade nativa
       const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-
-      // Movimentação
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id: fazendaId, insumo_id: insumo.id,
         tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
         safra: ciclo?.id ?? null, operacao: "adubacao_base",
         observacao: `Adubação de Base — ${insumo.nome} via WhatsApp`, auto: true,
       });
-
-      // CP
       if (custoTotal > 0) {
         await sb().from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
@@ -541,8 +573,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
           categoria: "Insumos — Fertilizantes",
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoTotal,
-          safra_id: ciclo?.id ?? null,
-          status: "em_aberto",
+          safra_id: ciclo?.id ?? null, status: "em_aberto",
         });
       }
     }
@@ -583,32 +614,38 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }).select("id").single();
 
     if (errPlantio) return { ok: false, mensagem: `❌ Erro plantio: ${errPlantio.message}` };
+    if (!plantioRow) return { ok: false, mensagem: "❌ Erro ao obter ID do plantio." };
+
+    if (!insumo && dados.produto) {
+      await criarPendenciaInsumo(fazendaId, "plantio", plantioRow.id, {
+        tipo_op: "plantio", produto: dados.produto, talhao: dados.talhao,
+        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      return {
+        ok: true,
+        mensagem: `⚠️ Plantio registrado com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular a semente._\n_🔍 ${plantioRow.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
+      };
+    }
 
     if (insumo && totalNativo > 0) {
-      // Baixa estoque
       const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - totalNativo);
       await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-
-      // Movimentação
       await sb().from("movimentacoes_estoque").insert({
         fazenda_id: fazendaId, insumo_id: insumo.id,
         tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
         safra: ciclo?.id ?? null, operacao: "plantio",
         observacao: `Plantio — ${insumo.nome} via WhatsApp`, auto: true,
       });
-
-      // CP custo sementes
-      if (custoSementes > 0 && plantioRow) {
+      if (custoSementes > 0) {
         const { data: lanc } = await sb().from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Plantio — ${insumo.nome}`,
           categoria: "Insumos — Sementes",
           data_lancamento: new Date().toISOString().split("T")[0],
           data_vencimento: dataOp, valor: custoSementes,
-          safra_id: ciclo?.id ?? null,
-          status: "em_aberto",
+          safra_id: ciclo?.id ?? null, status: "em_aberto",
         }).select("id").single();
-
         if (lanc?.id) {
           await sb().from("plantios").update({ lancamento_id: lanc.id }).eq("id", plantioRow.id);
         }
@@ -623,7 +660,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
     return {
       ok: true,
-      mensagem: `✅ Plantio registrado!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Semente: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNativa.toFixed(2)} ${unidadeInsumo}/ha × ${areaHa} ha${infoEstoque}${infoCusto}${notaConversao}`,
+      mensagem: `✅ Plantio registrado!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Semente: ${insumo?.nome ?? dados.produto}\n• Dose: ${doseNativa.toFixed(2)} ${unidadeInsumo}/ha × ${areaHa} ha${infoEstoque}${infoCusto}${notaConversao}\n_🔍 ${plantioRow.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
     };
   }
 
@@ -649,6 +686,18 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
     if (errCorr) return { ok: false, mensagem: `❌ Erro correção de solo: ${errCorr.message}` };
     if (!corr)   return { ok: false, mensagem: "❌ Erro ao obter ID da correção." };
+
+    if (!insumo && dados.produto) {
+      await criarPendenciaInsumo(fazendaId, "correcao_solo", corr.id, {
+        tipo_op: "correcao_solo", produto: dados.produto, talhao: dados.talhao,
+        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""));
+      return {
+        ok: true,
+        mensagem: `⚠️ Correção de Solo registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo._\n_🔍 ${corr.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
+      };
+    }
 
     if (insumo) {
       // Item da correção (usa quantidade_ton)

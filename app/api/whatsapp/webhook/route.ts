@@ -224,11 +224,19 @@ export async function POST(req: NextRequest) {
     textoParaIA = `[SISTEMA — OBRIGATÓRIO: O produtor confirmou pagamento já efetuado. Use ja_pago='sim' em TODAS as ferramentas desta mensagem, sem exceção.]\n${textoParaIA}`;
   }
 
-  // ── Contexto multi-fazenda: injeta na primeira mensagem de sessão nova ──────
-  const isNovasSessao = !sessao;
-  if (isNovasSessao && todasFazendas.length > 1) {
-    const listaFaz = todasFazendas.map(f => `• ${f.nome}${f.id === fazendaId ? " (ativa)" : ""}`).join(", ");
-    textoParaIA = `[SISTEMA: Produtor tem ${todasFazendas.length} fazendas: ${listaFaz}. Fazenda ativa agora: "${fazendaNome}". Mencione brevemente a fazenda ativa na sua primeira resposta e informe que ele pode dizer "trocar para [nome]" para mudar.]\n${textoParaIA}`;
+  // ── Contexto multi-fazenda: obrigatório confirmar fazenda antes de registros ──
+  if (todasFazendas.length > 1) {
+    const fazendaConfirmadaId = sessao?.dados?.fazenda_confirmada_id as string | undefined;
+    const jaConfirmou = fazendaConfirmadaId === fazendaId;
+    const listaFaz = todasFazendas.map(f => `• *${f.nome}*${f.id === fazendaId ? " ✓" : ""}`).join("\n");
+
+    if (jaConfirmou) {
+      // Fazenda já confirmada nesta sessão — apenas lembrete sutil
+      textoParaIA = `[SISTEMA: Fazenda ativa confirmada: *${fazendaNome}*]\n${textoParaIA}`;
+    } else {
+      // Fazenda ainda não confirmada — OBRIGATÓRIO pedir antes de qualquer registro
+      textoParaIA = `[SISTEMA OBRIGATÓRIO — MULTI-FAZENDA: Este produtor tem ${todasFazendas.length} fazendas:\n${listaFaz}\nFazenda ativa agora: *${fazendaNome}*.\nREGRA: antes de executar QUALQUER ferramenta de registro (operação agrícola, financeiro, estoque), você DEVE perguntar: "Esta operação é para a fazenda *${fazendaNome}*? (responda SIM ou diga o nome de outra fazenda)". Se o usuário confirmar com SIM ou variante, inclua [FAZENDA_OK] no início da resposta e prossiga. Para CONSULTAS, pode prosseguir sem confirmar.]\n${textoParaIA}`;
+    }
   }
 
   // ── Claude processa com tool use ────────────────────────────────────────────
@@ -245,23 +253,30 @@ export async function POST(req: NextRequest) {
     resposta = "⚠️ Serviço temporariamente indisponível. Tente novamente em instantes.";
   }
 
+  // Captura confirmação de fazenda e remove o token interno da resposta
+  let fazendaConfirmadaId = sessao?.dados?.fazenda_confirmada_id as string | undefined;
+  let respostaLimpa = resposta;
+  if (resposta.includes("[FAZENDA_OK]")) {
+    fazendaConfirmadaId = fazendaId;
+    respostaLimpa = resposta.replace(/\[FAZENDA_OK\]\s*/g, "").trim();
+  }
+
   // Salva histórico ANTES de enviar — elimina race condition
   const novoHistorico: Mensagem[] = [
     ...historico,
     { role: "user" as const, content: textoParaIA },
-    { role: "assistant" as const, content: resposta },
+    { role: "assistant" as const, content: respostaLimpa },
   ].slice(-20);
   console.log("[WH] salvando histórico:", novoHistorico.length, "msgs para telefone:", telefone);
-  // usuario_id omitido — FK referencia auth.users mas usuarioId vem de usuarios (tabela custom)
   await salvarSessao(telefone, {
     fazenda_id: fazendaId,
     fazenda_nome: fazendaNome,
-    dados: { historico: novoHistorico },
+    dados: { historico: novoHistorico, fazenda_confirmada_id: fazendaConfirmadaId },
   });
   console.log("[WH] histórico salvo OK");
 
   // Envia resposta após salvar
-  await enviarTexto(telefone, resposta);
+  await enviarTexto(telefone, respostaLimpa);
 
   return NextResponse.json({ ok: true });
 }

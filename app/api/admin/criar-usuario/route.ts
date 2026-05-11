@@ -62,13 +62,15 @@ export async function POST(req: Request) {
       authUserId = authData.user.id;
     }
 
-    // ── 2. Criar perfil (upsert — seguro para re-tentativas) ──
+    // ── 2. Criar perfil (upsert — nunca sobrescreve role raccotlo) ──
+    const { data: perfilExistente } = await supabase.from("perfis").select("role").eq("user_id", authUserId).maybeSingle();
+    const roleFinal = perfilExistente?.role === "raccotlo" ? "raccotlo" : "client";
     const { error: perfErr } = await supabase.from("perfis").upsert({
       user_id:    authUserId,
       fazenda_id: fazenda_id,
       conta_id:   conta_id ?? null,
       nome:       user_nome,
-      role:       "client",
+      role:       roleFinal,
     }, { onConflict: "user_id" });
     if (perfErr) {
       if (!senhaRedefinida) await supabase.auth.admin.deleteUser(authUserId);

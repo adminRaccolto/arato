@@ -1450,6 +1450,33 @@ export async function listarCorrecaoItens(correcao_id: string): Promise<Correcao
   return data ?? [];
 }
 export async function excluirCorrecao(id: string): Promise<void> {
+  const { data: correcao } = await supabase.from("correcoes_solo").select("fazenda_id").eq("id", id).single();
+  const { data: itens } = await supabase.from("correcoes_solo_itens").select("*").eq("correcao_id", id);
+  if (itens && correcao) {
+    for (const it of itens) {
+      if (!it.insumo_id || !it.quantidade_ton) continue;
+      const { data: ins } = await supabase.from("insumos").select("estoque, unidade").eq("id", it.insumo_id).single();
+      if (ins) {
+        const ton = it.quantidade_ton;
+        const unidade: string = ins.unidade ?? "kg";
+        let qtd: number;
+        switch (unidade) {
+          case "t":  qtd = ton; break;
+          case "kg": qtd = ton * 1000; break;
+          case "g":  qtd = ton * 1_000_000; break;
+          case "sc": qtd = (ton * 1000) / 60; break;
+          default:   qtd = ton * 1000; break;
+        }
+        await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + qtd }).eq("id", it.insumo_id);
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id: it.insumo_id, fazenda_id: correcao.fazenda_id,
+          tipo: "entrada", quantidade: qtd, data: new Date().toISOString().slice(0, 10),
+          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de correção de solo", auto: true,
+        });
+      }
+    }
+  }
+  await supabase.from("correcoes_solo_itens").delete().eq("correcao_id", id);
   const { error } = await supabase.from("correcoes_solo").delete().eq("id", id);
   if (error) throw error;
 }
@@ -1483,7 +1510,7 @@ export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoS
       fazenda_id: correcao.fazenda_id, tipo: "pagar",
       descricao: `Correção de Solo — ${correcao.area_ha} ha`,
       valor: correcao.custo_total, data_vencimento: correcao.data_aplicacao,
-      status: "pendente", categoria: "Insumos / Corretivos",
+      status: "pendente", categoria: "Insumos — Corretivos",
     });
   }
 }
@@ -1512,6 +1539,34 @@ export async function listarAdubacaoItens(adubacao_id: string): Promise<Adubacao
   return data ?? [];
 }
 export async function excluirAdubacao(id: string): Promise<void> {
+  const { data: adub } = await supabase.from("adubacoes_base").select("fazenda_id").eq("id", id).single();
+  const { data: itens } = await supabase.from("adubacoes_base_itens").select("*").eq("adubacao_id", id);
+  if (itens && adub) {
+    for (const it of itens) {
+      if (!it.insumo_id || !it.quantidade_kg) continue;
+      const { data: ins } = await supabase.from("insumos").select("estoque, unidade").eq("id", it.insumo_id).single();
+      if (ins) {
+        const kg = it.quantidade_kg;
+        const unidade: string = ins.unidade ?? "kg";
+        let qtd: number;
+        switch (unidade) {
+          case "kg": qtd = kg; break;
+          case "t":  qtd = kg / 1000; break;
+          case "g":  qtd = kg * 1000; break;
+          case "sc": qtd = kg / 60; break;
+          case "L":  qtd = kg; break;
+          default:   qtd = kg; break;
+        }
+        await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + qtd }).eq("id", it.insumo_id);
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id: it.insumo_id, fazenda_id: adub.fazenda_id,
+          tipo: "entrada", quantidade: qtd, data: new Date().toISOString().slice(0, 10),
+          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de adubação de base", auto: true,
+        });
+      }
+    }
+  }
+  await supabase.from("adubacoes_base_itens").delete().eq("adubacao_id", id);
   const { error } = await supabase.from("adubacoes_base").delete().eq("id", id);
   if (error) throw error;
 }
@@ -1546,7 +1601,7 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
       fazenda_id: adubacao.fazenda_id, tipo: "pagar",
       descricao: `Adubação de Base — ${adubacao.area_ha} ha`,
       valor: adubacao.custo_total, data_vencimento: adubacao.data_aplicacao,
-      status: "pendente", categoria: "Insumos / Fertilizantes",
+      status: "pendente", categoria: "Insumos — Fertilizantes",
     });
   }
 }
@@ -1569,6 +1624,23 @@ export async function atualizarPlantio(id: string, p: Partial<Plantio>): Promise
 }
 
 export async function excluirPlantio(id: string): Promise<void> {
+  const { data: p } = await supabase.from("plantios").select("*").eq("id", id).single();
+  if (p) {
+    if (p.insumo_id && (p.quantidade_kg ?? 0) > 0) {
+      const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", p.insumo_id).single();
+      if (ins) {
+        await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + p.quantidade_kg }).eq("id", p.insumo_id);
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id: p.insumo_id, fazenda_id: p.fazenda_id,
+          tipo: "entrada", quantidade: p.quantidade_kg, data: new Date().toISOString().slice(0, 10),
+          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de plantio", auto: true,
+        });
+      }
+    }
+    if (p.lancamento_id) {
+      await supabase.from("lancamentos").delete().eq("id", p.lancamento_id);
+    }
+  }
   const { error } = await supabase.from("plantios").delete().eq("id", id);
   if (error) throw error;
 }
@@ -1604,7 +1676,7 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
       fazenda_id: plantio.fazenda_id,
       tipo: "pagar", moeda: "BRL",
       descricao: `Plantio — ${insumoNome}${plantio.variedade ? ` (${plantio.variedade})` : ""}`,
-      categoria: "Custo de Sementes",
+      categoria: "Insumos — Sementes",
       data_lancamento: hoje,
       data_vencimento: plantio.data_plantio,
       valor: custo,
@@ -1648,6 +1720,22 @@ export async function criarPulverizacaoItem(i: Omit<PulverizacaoItem, "id" | "cr
 }
 
 export async function excluirPulverizacao(id: string): Promise<void> {
+  const { data: pulv } = await supabase.from("pulverizacoes").select("fazenda_id").eq("id", id).single();
+  const { data: itens } = await supabase.from("pulverizacao_itens").select("*").eq("pulverizacao_id", id);
+  if (itens && pulv) {
+    for (const it of itens) {
+      if (!it.insumo_id || !it.total_consumido) continue;
+      const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", it.insumo_id).single();
+      if (ins) {
+        await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) + it.total_consumido }).eq("id", it.insumo_id);
+        await supabase.from("movimentacoes_estoque").insert({
+          insumo_id: it.insumo_id, fazenda_id: pulv.fazenda_id,
+          tipo: "entrada", quantidade: it.total_consumido, data: new Date().toISOString().slice(0, 10),
+          motivo: "estorno_exclusao", descricao: "Estorno por exclusão de pulverização", auto: true,
+        });
+      }
+    }
+  }
   await supabase.from("pulverizacao_itens").delete().eq("pulverizacao_id", id);
   const { error } = await supabase.from("pulverizacoes").delete().eq("id", id);
   if (error) throw error;
@@ -1690,7 +1778,7 @@ export async function processarPulverizacao(
       fazenda_id: pulv.fazenda_id,
       tipo: "pagar", moeda: "BRL",
       descricao: `Pulverização — ${TIPO_PULV_LABEL[pulv.tipo] ?? pulv.tipo}`,
-      categoria: "Defensivos Agrícolas",
+      categoria: "Insumos — Defensivos",
       data_lancamento: new Date().toISOString().slice(0, 10),
       data_vencimento: pulv.data_inicio,
       valor: custoTotal,
@@ -2643,6 +2731,55 @@ export async function salvarMensagemSuporte(msg: Omit<SuporteMensagem, "id" | "c
     .update({ updated_at: new Date().toISOString() })
     .eq("id", msg.conversa_id);
   return data!;
+}
+
+// ————————————————————————————————————————
+// PENDÊNCIAS OPERACIONAIS
+// ————————————————————————————————————————
+
+export type PendenciaRow = {
+  id: string;
+  fazenda_id: string;
+  tipo: string;
+  subtipo?: string;
+  status: "pendente" | "resolvida" | "cancelada";
+  motivo?: string;
+  descricao?: string;
+  dados_originais: Record<string, unknown>;
+  operacao_id?: string;
+  produto_nome_pendente?: string;
+  talhao_nome_pendente?: string;
+  origem?: string;
+  criado_em?: string;
+  resolvido_em?: string;
+};
+
+export async function listarPendenciasOperacionais(fazendaId: string): Promise<PendenciaRow[]> {
+  const { data, error } = await supabase
+    .from("pendencias_operacionais")
+    .select("*")
+    .eq("fazenda_id", fazendaId)
+    .order("criado_em", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PendenciaRow[];
+}
+
+export async function contarPendenciasOperacionais(fazendaId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("pendencias_operacionais")
+    .select("id", { count: "exact", head: true })
+    .eq("fazenda_id", fazendaId)
+    .eq("status", "pendente");
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function cancelarPendenciaOperacional(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("pendencias_operacionais")
+    .update({ status: "cancelada" })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 // ————————————————————————————————————————

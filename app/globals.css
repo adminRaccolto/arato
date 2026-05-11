@@ -14,3 +14,61 @@ body {
 input, select, textarea, button {
   font-family: inherit;
 }
+
+/* ── Lavoura Mobile App Shell ────────────────────────────────── */
+.lavoura-app-shell {
+  min-height: 100vh;
+}
+
+/* Desktop: esconde UI mobile */
+.lavoura-mobile-header { display: none; }
+.lavoura-bottom-tabs   { display: none; }
+.lavoura-action-sheet  { display: none; }
+
+/* Mobile: esconde TopNav (<header>) e mostra app UI */
+@media (max-width: 768px) {
+  .lavoura-app-shell > header {
+    display: none !important;
+  }
+
+  .lavoura-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: #1A4870;
+    color: #fff;
+    padding: 0 16px;
+    z-index: 900;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .lavoura-content-mobile {
+    padding-top: 56px;
+    padding-bottom: 72px;
+  }
+
+  .lavoura-bottom-tabs {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: #fff;
+    border-top: 1px solid #DDE2EE;
+    z-index: 900;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .lavoura-action-sheet {
+    display: block;
+    position: fixed;
+    bottom: 64px; left: 0; right: 0;
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+    z-index: 950;
+    padding: 8px 0 16px;
+  }
+}

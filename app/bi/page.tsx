@@ -172,7 +172,7 @@ export default function BI() {
     const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, precR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
-      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao").eq("fazenda_id", fazendaId),
+      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc").eq("fazenda_id", fazendaId),
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").eq("fazenda_id", fazendaId),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
@@ -320,7 +320,12 @@ export default function BI() {
     const fixadoSacas = contratos
       .filter(c => !c.is_arrendamento && c.produto === comm && c.status !== "cancelado")
       .reduce((s, c) => s + (c.quantidade_sc || 0), 0);
-    const precoBrl = comm === "Soja"  ? (precos?.soja.brl ?? 0)
+    const ciclosComm = ciclosFiltrados.filter(c => culturaToCommodity(c.cultura) === comm && (c as any).preco_esperado_sc);
+    const precoCiclo = ciclosComm.length > 0
+      ? ciclosComm.reduce((s: number, c: any) => s + (c.preco_esperado_sc as number), 0) / ciclosComm.length
+      : 0;
+    const precoBrl = precoCiclo > 0 ? precoCiclo
+                   : comm === "Soja"  ? (precos?.soja.brl ?? 0)
                    : comm === "Milho" ? (precos?.milho.brl ?? 0)
                    : (precos?.algodao?.brl ?? 0);
     const dividaBrl   = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "BRL" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
@@ -858,16 +863,16 @@ export default function BI() {
                   color: commodity === c ? "#fff" : "#1a1a1a",
                 }}>{c}</button>
               ))}
-              {precos && (
-                <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>
-                  Preço ref.:&nbsp;
-                  <strong style={{ color: "#1A4870" }}>
-                    {commodity === "Soja"   ? `R$ ${fmtN(precos.soja.brl, 2)}/sc`
-                    : commodity === "Milho" ? `R$ ${fmtN(precos.milho.brl, 2)}/sc`
-                    : `R$ ${fmtN(precos.algodao?.brl ?? 0, 2)}/@`}
-                  </strong>
-                </span>
-              )}
+              {(() => {
+                const pRef = calcPosicao(commodity).precoBrl;
+                const unidade = commodity === "Algodão" ? "@" : "sc";
+                return pRef > 0 ? (
+                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>
+                    Preço ref.:&nbsp;
+                    <strong style={{ color: "#1A4870" }}>R$ {fmtN(pRef, 2)}/{unidade}</strong>
+                  </span>
+                ) : null;
+              })()}
             </div>
 
             {(() => {

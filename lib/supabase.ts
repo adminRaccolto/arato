@@ -1392,3 +1392,21 @@ export type SuporteMensagem = {
   content: string;
   created_at?: string;
 };
+
+// ── Pendências Operacionais (bot) ─────────────────────────────
+export type PendenciaOperacional = {
+  id: string;
+  fazenda_id: string;
+  tipo: string;
+  subtipo?: string;
+  status: "pendente" | "resolvida" | "cancelada";
+  motivo?: string;
+  descricao?: string;
+  dados_originais: Record<string, unknown>;
+  operacao_id?: string;
+  produto_nome_pendente?: string;
+  talhao_nome_pendente?: string;
+  origem?: string;
+  criado_em?: string;
+  resolvido_em?: string;
+};
