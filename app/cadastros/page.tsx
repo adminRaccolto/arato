@@ -29,10 +29,11 @@ import {
   listarFormasPagamento, criarFormaPagamento, atualizarFormaPagamento, excluirFormaPagamento,
   listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
   listarContas, criarConta, atualizarConta, excluirConta,
+  listarPlanoContas,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
-import { planoContasPadrao, labelConta } from "../../lib/planoContas";
+import { planoContasPadrao, labelConta, type ContaContabil } from "../../lib/planoContas";
 import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
 import type {
   Fazenda as FazendaDB, Talhao,
@@ -336,9 +337,11 @@ function CadastrosInner() {
 
   // ── Operações Gerenciais / Plano de Contas ──
   const [opGers, setOpGers]           = useState<OperacaoGerencial[]>([]);
+  const [planoContasDB, setPlanoContasDB] = useState<ContaContabil[]>([]);
   const [modalOpGer, setModalOpGer]   = useState(false);
   const [editOpGer, setEditOpGer]     = useState<OperacaoGerencial | null>(null);
   const [abaOpGer, setAbaOpGer]       = useState<"principal"|"estoque"|"fiscal"|"financeiro"|"contabilidade">("principal");
+  const [erroOpGer, setErroOpGer]     = useState<string | null>(null);
   const OG_VAZIO = {
     parent_id: "",
     classificacao: "", descricao: "", tipo: "despesa" as OperacaoGerencial["tipo"],
@@ -459,7 +462,10 @@ function CadastrosInner() {
     }
     if (aba === "centros_custo")    listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(e => setErro(e.message));
     if (aba === "formas_pagamento")     listarFormasPagamento(fazendaId).then(setFormasPagamento).catch(e => setErro(e.message));
-    if (aba === "operacoes_gerenciais") listarOperacoesGerenciais(fazendaId).then(setOpGers).catch(e => setErro(e.message));
+    if (aba === "operacoes_gerenciais") {
+      listarOperacoesGerenciais(fazendaId).then(setOpGers).catch(e => setErro(e.message));
+      listarPlanoContas(fazendaId).then(r => setPlanoContasDB(r.length > 0 ? r : planoContasPadrao)).catch(() => setPlanoContasDB(planoContasPadrao));
+    }
     if (aba === "padroes_classificacao") supabase.from("padroes_classificacao").select("*").eq("fazenda_id", fazendaId).order("commodity").order("nome_padrao").then(({ data, error }) => { if (error) setErro(error.message); else setPadroesCls((data ?? []) as PadraoClassificacao[]); });
   }, [aba, fazendaId]);
 
@@ -2031,6 +2037,9 @@ function CadastrosInner() {
                       }
                     }}
                   >{seedingOpGer ? "Importando…" : "↓ Importar Plano Padrão"}</button>
+                  <button onClick={() => window.print()} className="no-print" style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600 }}>
+                    🖨 Imprimir
+                  </button>
                   <button style={btnV} onClick={() => { setEditOpGer(null); setFOG({ ...OG_VAZIO }); setAbaOpGer("principal"); setModalOpGer(true); }}>+ Nova Operação</button>
                 </div>
               </div>
@@ -4442,12 +4451,15 @@ function CadastrosInner() {
                   <select style={{ ...inp, fontFamily: "monospace" }} value={fOG.conta_debito}
                     onChange={e => setFOG(p => ({ ...p, conta_debito: e.target.value }))}>
                     <option value="">— Selecione a conta de débito —</option>
-                    {planoContasPadrao.map(c => (
-                      <option key={c.codigo} value={c.codigo}
-                        style={{ paddingLeft: c.nivel * 12, fontWeight: c.nivel <= 1 ? 600 : 400 }}>
-                        {"\u00A0".repeat(c.nivel * 3)}{labelConta(c)}
-                      </option>
-                    ))}
+                    {planoContasDB.map(c => {
+                      const d = c.codigo ? c.codigo.split('.').length - 1 : 0;
+                      return (
+                        <option key={c.codigo} value={c.codigo}
+                          style={{ paddingLeft: d * 12, fontWeight: d <= 1 ? 600 : 400 }}>
+                          {"\u00A0".repeat(d * 3)}{labelConta(c)}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Conta de débito no razão contábil</div>
                 </div>
@@ -4456,12 +4468,15 @@ function CadastrosInner() {
                   <select style={{ ...inp, fontFamily: "monospace" }} value={fOG.conta_credito}
                     onChange={e => setFOG(p => ({ ...p, conta_credito: e.target.value }))}>
                     <option value="">— Selecione a conta de crédito —</option>
-                    {planoContasPadrao.map(c => (
-                      <option key={c.codigo} value={c.codigo}
-                        style={{ paddingLeft: c.nivel * 12, fontWeight: c.nivel <= 1 ? 600 : 400 }}>
-                        {"\u00A0".repeat(c.nivel * 3)}{labelConta(c)}
-                      </option>
-                    ))}
+                    {planoContasDB.map(c => {
+                      const d = c.codigo ? c.codigo.split('.').length - 1 : 0;
+                      return (
+                        <option key={c.codigo} value={c.codigo}
+                          style={{ paddingLeft: d * 12, fontWeight: d <= 1 ? 600 : 400 }}>
+                          {"\u00A0".repeat(d * 3)}{labelConta(c)}
+                        </option>
+                      );
+                    })}
                   </select>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Conta de crédito no razão contábil</div>
                 </div>
@@ -4494,10 +4509,16 @@ function CadastrosInner() {
           )}
 
           {/* Footer */}
+          {erroOpGer && (
+            <div style={{ margin: "0 0 10px", padding: "8px 14px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, color: "#791F1F", fontSize: 12 }}>
+              {erroOpGer}
+            </div>
+          )}
           <div style={{ marginTop: 20, paddingTop: 14, borderTop: "0.5px solid #D4DCE8", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button style={btnR} onClick={() => setModalOpGer(false)}>Cancelar</button>
-            <button style={btnV} disabled={!fOG.classificacao.trim() || !fOG.descricao.trim() || salvando}
+            <button style={btnR} onClick={() => { setModalOpGer(false); setErroOpGer(null); }}>Cancelar</button>
+            <button style={btnV} disabled={!fOG.classificacao.trim() || !fOG.descricao.trim() || salvando || !fazendaId}
               onClick={async () => {
+                setErroOpGer(null);
                 await salvar(async () => {
                   const payload: Omit<OperacaoGerencial, "id" | "created_at"> = {
                     fazenda_id: fazendaId!,
@@ -4542,7 +4563,11 @@ function CadastrosInner() {
                     const n = await criarOperacaoGerencial(payload);
                     setOpGers(x => [...x, n]);
                   }
+                  setErroOpGer(null);
                   setModalOpGer(false);
+                }).catch((e: unknown) => {
+                  const msg = (e instanceof Error ? e.message : String(e)) ?? "Erro ao salvar";
+                  setErroOpGer(msg);
                 });
               }}>{salvando ? "Salvando…" : "Salvar Operação"}</button>
           </div>

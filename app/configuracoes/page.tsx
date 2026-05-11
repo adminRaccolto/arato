@@ -4,7 +4,7 @@ import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { type ContaContabil, planoContasPadrao, LCDPR_OPCOES, LCDPR_LABELS } from "../../lib/planoContas";
-import { listarProdutores } from "../../lib/db";
+import { listarProdutores, listarPlanoContas, salvarContaContabil, excluirContaContabil, seedPlanoContas } from "../../lib/db";
 import type { Produtor } from "../../lib/supabase";
 
 // ————————————————————————————————————————
@@ -144,11 +144,14 @@ export default function Configuracoes() {
       setProdutores(data);
       if (data.length === 1) setCertProdutorId(data[0].id);
     }).catch(() => {});
-    // Carrega todos os certificados da fazenda via API (service role — sem RLS)
     void fetch(`/api/cert-meta?fazenda_id=${fazendaId}`)
       .then(r => r.json())
       .then((d: { certs?: CertInfo[] }) => { if (d.certs) setCerts(d.certs); })
       .catch(() => {});
+    // Plano de contas — carrega do banco; usa padrão se vazio
+    listarPlanoContas(fazendaId).then(data => {
+      setContas(data.length > 0 ? data : planoContasPadrao);
+    }).catch(() => {});
   }, [fazendaId]);
 
   async function toggleRaccolto() {
@@ -159,7 +162,7 @@ export default function Configuracoes() {
     if (!error) setRaccoltoAcesso(novoValor);
     setSalvandoRaccolto(false);
   }
-  const [contas, setContas]         = useState<ContaContabil[]>(planoContasPadrao);
+  const [contas, setContas]         = useState<ContaContabil[]>([]);
   const [filtroContas, setFiltroContas] = useState<"todos" | "ativo" | "passivo" | "pl" | "receita" | "custo" | "despesa">("todos");
   const [produtores,     setProdutores]     = useState<Produtor[]>([]);
   const [certProdutorId, setCertProdutorId] = useState<string>("");
@@ -276,24 +279,41 @@ export default function Configuracoes() {
     setModalConta(true);
   }
 
-  function salvarConta() {
-    if (!formConta.codigo.trim() || !formConta.nome.trim()) return;
-    const dados = { ...formConta, lcdpr: formConta.lcdpr || null };
-    if (contaEditandoCodigo !== null) {
-      setContas(prev => prev.map(c => c.codigo === contaEditandoCodigo ? dados : c));
-    } else {
-      if (contas.some(c => c.codigo === dados.codigo)) {
-        alert("Já existe uma conta com este código.");
-        return;
-      }
-      setContas(prev => [...prev, dados]);
+  const [erroContaModal, setErroContaModal] = useState<string | null>(null);
+  const [salvandoConta, setSalvandoConta] = useState(false);
+
+  async function salvarConta() {
+    if (!formConta.codigo.trim() || !formConta.nome.trim() || !fazendaId) return;
+    const dados: ContaContabil = { ...formConta, lcdpr: formConta.lcdpr || null };
+    if (contaEditandoCodigo === null && contas.some(c => c.codigo === dados.codigo)) {
+      setErroContaModal("Já existe uma conta com este código.");
+      return;
     }
-    setModalConta(false);
+    setErroContaModal(null);
+    setSalvandoConta(true);
+    try {
+      await salvarContaContabil(fazendaId, dados);
+      if (contaEditandoCodigo !== null) {
+        setContas(prev => prev.map(c => c.codigo === contaEditandoCodigo ? dados : c));
+      } else {
+        setContas(prev => [...prev, dados]);
+      }
+      setModalConta(false);
+    } catch (e: unknown) {
+      setErroContaModal((e as Error).message ?? "Erro ao salvar");
+    } finally {
+      setSalvandoConta(false);
+    }
   }
 
-  function excluirConta(codigo: string) {
-    if (!confirm("Excluir esta conta do plano?")) return;
-    setContas(prev => prev.filter(c => c.codigo !== codigo));
+  async function excluirConta(codigo: string) {
+    if (!confirm("Excluir esta conta do plano?") || !fazendaId) return;
+    try {
+      await excluirContaContabil(fazendaId, codigo);
+      setContas(prev => prev.filter(c => c.codigo !== codigo));
+    } catch (e: unknown) {
+      alert((e as Error).message ?? "Erro ao excluir");
+    }
   }
 
   const toggleAutomacao = (id: string) => {
@@ -404,6 +424,9 @@ export default function Configuracoes() {
                     <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>{contas.filter(c => c.lcdpr).length}</span>
                     contas vinculadas ao LCDPR
                   </span>
+                  <button onClick={() => window.print()} className="no-print" style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600 }}>
+                    🖨 Imprimir
+                  </button>
                   <button onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
                     + Nova conta
                   </button>
@@ -422,7 +445,8 @@ export default function Configuracoes() {
                 <tbody>
                   {contasFiltradas.map((c, ci) => {
                     const ct = corTipoConta(c.tipo);
-                    const isGrupo = c.nivel === 0;
+                    const depth = c.codigo ? c.codigo.split('.').length - 1 : 0;
+                    const isGrupo = depth === 0;
                     const lcdprCods: Record<string, string> = {
                       "101": "101 — Venda rural",
                       "102": "102 — Serviços rurais",
@@ -440,7 +464,7 @@ export default function Configuracoes() {
                         <td style={{ padding: "8px 16px", fontFamily: "monospace", fontSize: 12, color: "#1a1a1a", width: 90 }}>{c.codigo}</td>
                         <td style={{ padding: "8px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ paddingLeft: c.nivel * 14, fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 700 : 400, color: "#1a1a1a" }}>
+                            <span style={{ paddingLeft: depth * 14, fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 700 : 400, color: "#1a1a1a" }}>
                               {c.nome}
                             </span>
                             {c.transitoria && (
@@ -463,7 +487,7 @@ export default function Configuracoes() {
                           ) : null}
                         </td>
                         <td style={{ padding: "8px 16px", textAlign: "center" }}>
-                          {c.nivel > 0 && (
+                          {depth > 0 && (
                             c.operacional
                               ? <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>Sim</span>
                               : <span style={{ fontSize: 10, color: "#bbb" }}>back-office</span>
@@ -474,7 +498,7 @@ export default function Configuracoes() {
                             <span style={{ fontSize: 10, background: c.lcdpr.startsWith("1") ? "#EAF3DE" : "#FAEEDA", color: c.lcdpr.startsWith("1") ? "#1A5C38" : "#633806", padding: "2px 8px", borderRadius: 6, fontWeight: 600, whiteSpace: "nowrap" }}>
                               {lcdprCods[c.lcdpr] ?? c.lcdpr}
                             </span>
-                          ) : c.nivel > 0 ? (
+                          ) : depth > 0 ? (
                             <span style={{ fontSize: 10, color: "#bbb" }}>— não entra</span>
                           ) : null}
                         </td>
@@ -491,8 +515,25 @@ export default function Configuracoes() {
                   })}
                 </tbody>
               </table>
-              <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", fontSize: 11, color: "#444" }}>
-                Plano de contas padrão Arato para produtor rural. Contas marcadas com código LCDPR são incluídas automaticamente no Livro Caixa Digital do Produtor Rural.
+              <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", fontSize: 11, color: "#444", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Plano de contas padrão Arato para produtor rural. Contas marcadas com código LCDPR são incluídas automaticamente no Livro Caixa Digital do Produtor Rural.</span>
+                <button
+                  onClick={async () => {
+                    if (!fazendaId) return;
+                    if (!confirm("Isso vai salvar o plano padrão no banco (novas contas adicionadas; existentes não alteradas). Continuar?")) return;
+                    try {
+                      await seedPlanoContas(fazendaId, planoContasPadrao);
+                      const fresh = await listarPlanoContas(fazendaId);
+                      setContas(fresh);
+                      alert("Plano padrão importado com sucesso!");
+                    } catch (e: unknown) {
+                      alert((e as Error).message ?? "Erro ao importar");
+                    }
+                  }}
+                  style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", marginLeft: 16 }}
+                >
+                  ↓ Importar Plano Padrão
+                </button>
               </div>
             </div>
           )}
@@ -949,11 +990,16 @@ export default function Configuracoes() {
                 Selecione o código para que esta conta seja incluída automaticamente no Livro Caixa Digital do Produtor Rural.
               </div>
             </div>
+            {erroContaModal && (
+              <div style={{ marginBottom: 10, padding: "8px 12px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, color: "#791F1F", fontSize: 12 }}>
+                {erroContaModal}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalConta(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim()}
+              <button onClick={() => { setModalConta(false); setErroContaModal(null); }} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim() || salvandoConta}
                 style={{ padding: "8px 20px", background: formConta.codigo.trim() && formConta.nome.trim() ? "#1A5C38" : "#999", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {contaEditandoCodigo ? "Salvar alterações" : "Criar conta"}
+                {salvandoConta ? "Salvando…" : contaEditandoCodigo ? "Salvar alterações" : "Criar conta"}
               </button>
             </div>
           </div>
