@@ -289,6 +289,32 @@ async function executarFerramenta(
 // ── Histórico de conversa (últimas N trocas) ────────────────────────────────
 export type Mensagem = { role: "user" | "assistant"; content: string };
 
+// ── Detecta intenção de registro para forçar tool_choice: any ───────────────
+// Sem isso, Claude pode fabricar ✅ sem chamar a ferramenta (stop_reason=end_turn)
+function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
+  const t = texto.toLowerCase();
+
+  // Intenção de registro na mensagem atual
+  const kw = [
+    "plantio", "plantei", "plantou", "plantar", "fiz o plantio",
+    "pulveriz", "apliquei", "aplicou", "aplicar", "apliquei herbicida",
+    "apliquei fungicida", "apliquei inseticida",
+    "abasteç", "abasteceu", "abasteci", "abastecimento",
+    "adub", "fertiliz",
+    "correção de solo", "calcário", "calcario", "gessagem", "gesso agrícola",
+    "registrar", "registrei", "registrou", "lançar", "lançamento",
+    "conta a pagar", "cp de", "cr de", "conta a receber",
+    "comprei", "compra de", "paguei", "recebi", "gastei",
+  ];
+  if (kw.some(k => t.includes(k))) return true;
+
+  // Histórico: último turno do assistente fez pergunta — usuário está respondendo
+  const ultimoAss = [...historico].reverse().find(m => m.role === "assistant");
+  if (ultimoAss?.content.includes("❓")) return true;
+
+  return false;
+}
+
 // ── Processador principal ───────────────────────────────────────────────────
 export async function processarMensagemIA(
   texto: string,
@@ -303,19 +329,19 @@ Hoje é ${hoje}.
 
 Seu papel: ajudar o produtor a consultar informações do ERP e registrar operações do dia a dia.
 
-REGRA #1 — REGISTROS SEMPRE VÃO PELA FERRAMENTA:
-Quando o usuário pedir para registrar qualquer coisa (operação de lavoura, abastecimento, conta, estoque):
+REGRA #1 — NUNCA RESPONDA ANTES DE CHAMAR A FERRAMENTA:
+Quando o usuário mencionar plantio, pulverização, adubação, abastecimento, conta a pagar, conta a receber — chame a ferramenta ANTES de gerar qualquer texto de confirmação.
 - Chame a ferramenta IMEDIATAMENTE com os dados que tiver, mesmo que incompletos.
 - NÃO faça perguntas antes de chamar a ferramenta. Chame primeiro, a ferramenta pergunta o que falta.
 - Se a ferramenta retornar ❓pergunta, repasse a pergunta ao usuário.
 - Quando o usuário responder, chame a ferramenta NOVAMENTE com TODOS os dados acumulados (anteriores + novos).
-- Só confirme "registrado" quando a ferramenta retornar ✅.
+- NUNCA GERE ✅ POR CONTA PRÓPRIA. Só confirme "registrado" quando a ferramenta retornar ✅ no resultado.
 
-REGRA #2 — COPIE O RESULTADO EXATAMENTE:
+REGRA #2 — COPIE O RESULTADO DA FERRAMENTA EXATAMENTE:
 - Quando a ferramenta retornar texto, copie-o PALAVRA POR PALAVRA para o usuário.
-- NÃO reformate, NÃO crie novas listas, NÃO adicione campos extras como "Tipo:", "Ciclo:", "Área:", "Data:".
+- NÃO reformate, NÃO crie novas listas, NÃO adicione campos como "Tipo:", "Ciclo:", "Área:", "Data:".
 - Se a ferramenta retornou "✅ Pulverização registrada!\n• Talhão: X\n• Produto: Y", escreva exatamente isso.
-- PROIBIDO: gerar ✅ com bullet list de campos de entrada (Tipo / Talhão / Área / Ciclo / Data) sem que a ferramenta tenha retornado esse formato.
+- ABSOLUTAMENTE PROIBIDO: gerar "✅ Pronto! Operação registrada:" ou qualquer ✅ com lista de campos de entrada sem que a ferramenta tenha executado e retornado esse texto.
 
 REGRA #3 — ja_pago vs nota fiscal:
 - ja_pago="sim" = dinheiro já saiu da conta. "paguei em dinheiro/pix/débito/à vista" → ja_pago="sim".
@@ -339,12 +365,21 @@ COMPORTAMENTO GERAL:
     { role: "user", content: texto },
   ];
 
+  // Força tool_choice=any quando detecta intenção de registro
+  // Isso impede Claude de gerar ✅ sem chamar a ferramenta (stop_reason=end_turn)
+  const forcaTool = deveForcarFerramenta(texto, historico);
+  const toolChoice = forcaTool
+    ? { type: "any" as const }
+    : { type: "auto" as const };
+  if (forcaTool) console.log("[CLAUDE] tool_choice=any (intenção de registro detectada)");
+
   // Primeira chamada — Claude pode chamar ferramentas
   let response = await claude.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: systemPrompt,
     tools: TOOLS,
+    tool_choice: toolChoice,
     messages,
   });
 
