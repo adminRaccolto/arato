@@ -91,7 +91,9 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   setCicloIds: React.Dispatch<React.SetStateAction<string[]>>;
   dreLoading: boolean;
 }) {
-  const ciclosFiltrados = ciclos.filter(c => c.ano_safra_id === anoSafraId);
+  // Filtra por ano safra; se não houver ciclos vinculados ao ano, mostra todos
+  const ciclosPorAno = ciclos.filter(c => c.ano_safra_id === anoSafraId);
+  const ciclosFiltrados = ciclosPorAno.length > 0 ? ciclosPorAno : ciclos;
   const ciclosSel = ciclos.filter(c => cicloIds.includes(c.id));
   const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_ha ?? 0), 0);
 
@@ -102,8 +104,8 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
           <label style={lbl}>Ano Safra</label>
           <select value={anoSafraId} onChange={e => {
             setAnoSafraId(e.target.value);
-            const novos = ciclos.filter(c => c.ano_safra_id === e.target.value).map(c => c.id);
-            setCicloIds(novos);
+            const doAno = ciclos.filter(c => c.ano_safra_id === e.target.value);
+            setCicloIds((doAno.length > 0 ? doAno : ciclos).map(c => c.id));
           }} style={inp}>
             <option value="">Todos</option>
             {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
@@ -128,7 +130,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                 </button>
               );
             })}
-            {ciclosFiltrados.length === 0 && <span style={{ fontSize: 12, color: "#999" }}>Selecione um ano safra</span>}
+            {ciclosFiltrados.length === 0 && <span style={{ fontSize: 12, color: "#999" }}>Nenhum ciclo cadastrado</span>}
           </div>
         </div>
       </div>
@@ -180,8 +182,11 @@ function CustosInner() {
       setAnosSafra(as);
       setCiclos(cs);
       if (as.length > 0) {
-        setAnoSafraId(as[0].id);
-        setCicloIds(cs.filter(c => c.ano_safra_id === as[0].id).map(c => c.id));
+        const anoId = as[0].id;
+        setAnoSafraId(anoId);
+        const doAno = cs.filter(c => c.ano_safra_id === anoId);
+        // fallback: se nenhum ciclo está vinculado ao ano safra, seleciona todos
+        setCicloIds((doAno.length > 0 ? doAno : cs).map(c => c.id));
       }
     }).finally(() => setInitLoading(false));
   }, [fazendaId]);
