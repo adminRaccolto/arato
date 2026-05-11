@@ -3583,3 +3583,32 @@ CREATE INDEX IF NOT EXISTS idx_pendencias_op_fazenda_status
   ON pendencias_operacionais(fazenda_id, status);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 78 — Cessão de Contratos de Grãos
+-- ============================================================
+-- Permite que um contrato de venda seja dado em cessão a um fornecedor,
+-- quitando débitos (CP) que o produtor tem com esse fornecedor.
+
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS dado_em_cessao        boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS cessao_fornecedor_id  uuid REFERENCES pessoas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS cessao_fornecedor_nome text,
+  ADD COLUMN IF NOT EXISTS cessao_data           date,
+  ADD COLUMN IF NOT EXISTS cessao_obs            text;
+
+CREATE TABLE IF NOT EXISTS contrato_cessao_debitos (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id   UUID NOT NULL REFERENCES contratos(id)   ON DELETE CASCADE,
+  fazenda_id    UUID NOT NULL REFERENCES fazendas(id)    ON DELETE CASCADE,
+  lancamento_id UUID NOT NULL REFERENCES lancamentos(id) ON DELETE CASCADE,
+  valor_cessao  NUMERIC(16,2) NOT NULL DEFAULT 0,
+  obs           TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cessao_contrato   ON contrato_cessao_debitos(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_cessao_lancamento ON contrato_cessao_debitos(lancamento_id);
+CREATE INDEX IF NOT EXISTS idx_contratos_cessao  ON contratos(fazenda_id, dado_em_cessao) WHERE dado_em_cessao = true;
+
+NOTIFY pgrst, 'reload schema';

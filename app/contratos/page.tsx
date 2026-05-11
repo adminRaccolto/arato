@@ -5,10 +5,21 @@ import {
   listarContratos, criarContrato, atualizarContrato,
   listarRomaneios, criarRomaneio,
   listarItensContrato, salvarItensContrato,
+  listarCessaoDebitos, salvarCessaoDebitos,
   listarPessoas, listarProdutores, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
 } from "../../lib/db";
+import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
 import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda } from "../../lib/supabase";
+
+const sbErr = (e: unknown) => {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null) {
+    const o = e as Record<string, unknown>;
+    return String(o.message ?? o.details ?? JSON.stringify(e));
+  }
+  return String(e);
+};
 
 // ── Tabela fiscal de naturezas de operação ────────────────────────────────────
 // Cada natureza carrega: descrição, CFOP intra (5xxx) e inter (6xxx), CST ICMS
@@ -233,9 +244,21 @@ export default function Contratos() {
     deposito_fiscal: false,
     observacao_interna: "",
     observacao: "",
+    // cessão
+    dado_em_cessao: false,
+    cessao_fornecedor_id: "",
+    cessao_fornecedor_nome: "",
+    cessao_data: "",
+    cessao_obs: "",
   });
 
   const [fC, setFC] = useState(fContratoVazio());
+
+  // ── modal cessão ─────────────────────────────────────────────
+  type LancItem = { id: string; descricao: string; data_vencimento: string; valor: number; status: string };
+  const [modalCessao,      setModalCessao]      = useState(false);
+  const [cessaoLancs,      setCessaoLancs]      = useState<LancItem[]>([]);
+  const [cessaoSelecionados, setCessaoSelecionados] = useState<Record<string, number>>({}); // lancamento_id → valor_cessao
 
   // ── modal romaneio ───────────────────────────────────────────
   const [modalRomaneio, setModalRomaneio] = useState(false);
@@ -339,11 +362,24 @@ export default function Contratos() {
       deposito_fiscal: c.deposito_fiscal ?? false,
       observacao_interna: c.observacao_interna ?? "",
       observacao: c.observacao ?? "",
+      // cessão
+      dado_em_cessao: c.dado_em_cessao ?? false,
+      cessao_fornecedor_id: c.cessao_fornecedor_id ?? "",
+      cessao_fornecedor_nome: c.cessao_fornecedor_nome ?? "",
+      cessao_data: c.cessao_data ?? "",
+      cessao_obs: c.cessao_obs ?? "",
     });
     try {
       const its = await listarItensContrato(c.id);
       setItens(its.length > 0 ? its.map(i => ({ tipo:i.tipo, produto:i.produto, unidade:i.unidade, quantidade:i.quantidade, valor_unitario:i.valor_unitario, valor_total:i.valor_total, moeda:i.moeda, classificacao:i.classificacao })) : [itemVazio()]);
     } catch { setItens([itemVazio()]); }
+    // carrega débitos vinculados
+    try {
+      const debs = await listarCessaoDebitos(c.id);
+      const sel: Record<string, number> = {};
+      for (const d of debs) sel[d.lancamento_id] = d.valor_cessao;
+      setCessaoSelecionados(sel);
+    } catch { setCessaoSelecionados({}); }
     setAbaForm("principal");
     setModalContrato(true);
   };
@@ -409,6 +445,12 @@ export default function Contratos() {
         observacao_interna: fC.observacao_interna || undefined,
         observacao: fC.observacao || undefined,
         status: editContrato?.status ?? "aberto",
+        // cessão
+        dado_em_cessao: fC.dado_em_cessao || false,
+        cessao_fornecedor_id: fC.cessao_fornecedor_id || undefined,
+        cessao_fornecedor_nome: fC.cessao_fornecedor_nome || undefined,
+        cessao_data: fC.cessao_data || undefined,
+        cessao_obs: fC.cessao_obs || undefined,
       };
       let salvo: Contrato;
       if (editContrato) {
@@ -423,14 +465,38 @@ export default function Contratos() {
         valor_total: i.valor_total, moeda: i.moeda, classificacao: i.classificacao,
         contrato_id: salvo.id, fazenda_id: fazendaId!,
       })));
+      // salva débitos de cessão se houver
+      if (fC.dado_em_cessao && Object.keys(cessaoSelecionados).length > 0) {
+        await salvarCessaoDebitos(salvo.id, fazendaId!, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
+      }
       if (editContrato) {
         setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i.quantidade>0) as ContratoItem[] } : c));
       } else {
         setContratos(prev => [...prev, { ...salvo, romaneios:[], itens:[] }]);
       }
       setModalContrato(false);
-    } catch(e: unknown) { alert("Erro: " + (e instanceof Error ? e.message : e)); }
+    } catch(e: unknown) { alert("Erro ao salvar: " + sbErr(e)); }
     finally { setSalvando(false); }
+  };
+
+  // ── cessão: abre modal de débitos ───────────────────────────────
+  const abrirModalCessao = async () => {
+    if (!fC.cessao_fornecedor_id || !fazendaId) return;
+    try {
+      const { data } = await supabase
+        .from("lancamentos")
+        .select("id, descricao, data_vencimento, valor, status")
+        .eq("fazenda_id", fazendaId)
+        .eq("tipo", "pagar")
+        .eq("pessoa_id", fC.cessao_fornecedor_id)
+        .in("status", ["em_aberto", "parcial"])
+        .order("data_vencimento", { ascending: true });
+      setCessaoLancs((data ?? []) as LancItem[]);
+    } catch {
+      // fallback: mostra sem filtro por pessoa
+      setCessaoLancs([]);
+    }
+    setModalCessao(true);
   };
 
   // ── romaneio — cálculos em tempo real ─────────────────────────
@@ -519,7 +585,7 @@ export default function Contratos() {
       setFRom(ROM_VAZIO());
       setModalRomaneio(false);
       setAbaLista("expedicao");
-    } catch(e: unknown) { alert("Erro: " + (e instanceof Error ? e.message : e)); }
+    } catch(e: unknown) { alert("Erro ao salvar romaneio: " + sbErr(e)); }
     finally { setSalvando(false); }
   };
 
@@ -663,10 +729,13 @@ export default function Contratos() {
                             <React.Fragment key={c.id}>
                               <tr style={{ borderBottom:"0.5px solid #DEE5EE", cursor:"pointer" }} onClick={() => toggleExpand(c.id)}>
                                 <td style={{ padding:"10px 12px" }}>
-                                  <div style={{ fontWeight:600, fontSize:12, color:"#1a1a1a", display:"flex", alignItems:"center", gap:6 }}>
+                                  <div style={{ fontWeight:600, fontSize:12, color:"#1a1a1a", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                                     {c.numero}
                                     {(c as {is_arrendamento?:boolean}).is_arrendamento && (
                                       <span style={{ fontSize:9, background:"#FBF3E0", color:"#7A5A12", padding:"1px 6px", borderRadius:4, fontWeight:600, letterSpacing:"0.3px" }}>ARRENDAMENTO</span>
+                                    )}
+                                    {(c as {dado_em_cessao?:boolean}).dado_em_cessao && (
+                                      <span style={{ fontSize:9, background:"#EDE9FE", color:"#5B21B6", padding:"1px 6px", borderRadius:4, fontWeight:600, letterSpacing:"0.3px" }}>CESSÃO</span>
                                     )}
                                   </div>
                                   <div style={{ fontSize:10, color:"#444" }}>{c.tipo?.toUpperCase() ?? "VENDA"} · Safra {c.safra}</div>
@@ -1227,6 +1296,72 @@ export default function Contratos() {
                       <textarea style={{ ...inp, height:56, resize:"vertical" }} value={fC.observacao_interna} onChange={e => setFC(p=>({...p,observacao_interna:e.target.value}))} />
                     </div>
                   </div>
+
+                  {/* ── Cessão ─────────────────────────────────────── */}
+                  <div style={{ borderTop:"0.5px solid #D4DCE8", paddingTop:14, marginTop:4 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Cessão de Recebível</div>
+                    <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", marginBottom:fC.dado_em_cessao?14:0 }}>
+                      <input
+                        type="checkbox"
+                        checked={fC.dado_em_cessao}
+                        onChange={e => setFC(p=>({...p, dado_em_cessao:e.target.checked, cessao_fornecedor_id:"", cessao_fornecedor_nome:""}))}
+                      />
+                      <span style={{ fontSize:13, fontWeight:600, color: fC.dado_em_cessao ? "#1A4870" : "#444" }}>Dado em Cessão</span>
+                      <span style={{ fontSize:11, color:"#888", fontWeight:400 }}>— o recebível deste contrato será cedido a um fornecedor</span>
+                    </label>
+
+                    {fC.dado_em_cessao && (
+                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                        <div>
+                          <label style={lbl}>Fornecedor que recebe a cessão *</label>
+                          <select
+                            style={{ ...inp, color: fC.cessao_fornecedor_id ? "#1a1a1a" : "#888" }}
+                            value={fC.cessao_fornecedor_id}
+                            onChange={e => {
+                              const nome = pessoas.find(p=>p.id===e.target.value)?.nome ?? "";
+                              setFC(p=>({...p, cessao_fornecedor_id:e.target.value, cessao_fornecedor_nome:nome}));
+                            }}
+                          >
+                            <option value="">— selecione o fornecedor —</option>
+                            {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Data da Cessão</label>
+                          <input type="date" style={inp} value={fC.cessao_data} onChange={e => setFC(p=>({...p,cessao_data:e.target.value}))} />
+                        </div>
+                        <div style={{ gridColumn:"1/-1" }}>
+                          <label style={lbl}>Observação da Cessão</label>
+                          <input style={inp} value={fC.cessao_obs} onChange={e => setFC(p=>({...p,cessao_obs:e.target.value}))} placeholder="Ex: quitação barter safra 25/26..." />
+                        </div>
+                        <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                          <div>
+                            <span style={{ fontSize:12, color:"#555" }}>
+                              Débitos vinculados: <strong>{Object.keys(cessaoSelecionados).length}</strong>
+                              {Object.keys(cessaoSelecionados).length > 0 && (
+                                <span style={{ marginLeft:8, color:"#1A4870" }}>
+                                  Total: R$ {Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!fC.cessao_fornecedor_id}
+                            onClick={abrirModalCessao}
+                            style={{
+                              padding:"6px 14px", border:"0.5px solid #1A4870", borderRadius:7,
+                              background: fC.cessao_fornecedor_id ? "#EBF5FF" : "#F4F6FA",
+                              color: fC.cessao_fornecedor_id ? "#1A4870" : "#aaa",
+                              fontSize:12, fontWeight:600, cursor: fC.cessao_fornecedor_id ? "pointer" : "not-allowed",
+                            }}
+                          >
+                            Vincular Débitos CP →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -1448,6 +1583,90 @@ export default function Contratos() {
                 style={{ ...btnV, opacity: salvando||!contratoSel||!fRom.placa||plCalc<=0?0.5:1 }}>
                 {salvando ? "Salvando…" : "Confirmar Pesagem"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Modal Cessão: Vincular Débitos ── */}
+      {modalCessao && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:640, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 20px 60px rgba(0,0,0,0.22)" }}>
+            <div style={{ padding:"20px 24px 16px", borderBottom:"0.5px solid #D4DCE8" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div>
+                  <h2 style={{ margin:0, fontSize:16, fontWeight:700 }}>Vincular Débitos à Cessão</h2>
+                  <p style={{ margin:"4px 0 0", fontSize:12, color:"#666" }}>
+                    Selecione as Contas a Pagar do fornecedor <strong>{fC.cessao_fornecedor_nome}</strong> que serão quitadas por este contrato.
+                  </p>
+                </div>
+                <button onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+              </div>
+              <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12 }}>
+                <span>Valor do Contrato: <strong style={{ color:"#1A4870" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+                <span>Total Cedido: <strong style={{ color: Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0) > valorFinanceiro ? "#E24B4A" : "#16A34A" }}>R$ {Object.values(cessaoSelecionados).reduce((a,b)=>a+b,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
+              </div>
+            </div>
+
+            <div style={{ flex:1, overflowY:"auto", padding:"0 24px" }}>
+              {cessaoLancs.length === 0 ? (
+                <div style={{ textAlign:"center", padding:"40px 0", color:"#888", fontSize:13 }}>
+                  Nenhum CP em aberto encontrado para este fornecedor.<br />
+                  <span style={{ fontSize:11 }}>Verifique se o fornecedor está vinculado aos lançamentos em CP.</span>
+                </div>
+              ) : (
+                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                  <thead>
+                    <tr style={{ borderBottom:"0.5px solid #D4DCE8", color:"#666", textAlign:"left" }}>
+                      <th style={{ padding:"10px 8px 8px" }}>✓</th>
+                      <th style={{ padding:"10px 8px 8px" }}>Descrição</th>
+                      <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Vencimento</th>
+                      <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Valor Total</th>
+                      <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Valor Cessão</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cessaoLancs.map(l => {
+                      const sel = l.id in cessaoSelecionados;
+                      const valCessao = cessaoSelecionados[l.id] ?? l.valor;
+                      return (
+                        <tr key={l.id} style={{ borderBottom:"0.5px solid #EEF1F6", background: sel ? "#EBF5FF" : "transparent" }}>
+                          <td style={{ padding:"8px" }}>
+                            <input type="checkbox" checked={sel}
+                              onChange={e => {
+                                if (e.target.checked) setCessaoSelecionados(p => ({ ...p, [l.id]: l.valor }));
+                                else setCessaoSelecionados(p => { const n={...p}; delete n[l.id]; return n; });
+                              }} />
+                          </td>
+                          <td style={{ padding:"8px", color:"#1a1a1a" }}>{l.descricao}</td>
+                          <td style={{ padding:"8px", textAlign:"right", color:"#666" }}>
+                            {l.data_vencimento ? l.data_vencimento.split("T")[0].split("-").reverse().join("/") : "—"}
+                          </td>
+                          <td style={{ padding:"8px", textAlign:"right", fontWeight:600, color:"#1a1a1a" }}>
+                            R$ {l.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
+                          </td>
+                          <td style={{ padding:"8px" }}>
+                            {sel ? (
+                              <input
+                                type="number" step="0.01" min="0" max={l.valor}
+                                value={valCessao}
+                                onChange={e => setCessaoSelecionados(p => ({ ...p, [l.id]: parseFloat(e.target.value)||0 }))}
+                                style={{ ...inp, textAlign:"right", width:110, padding:"4px 6px" }}
+                              />
+                            ) : (
+                              <span style={{ color:"#ccc" }}>—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div style={{ padding:"16px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:10 }}>
+              <button style={btnR} onClick={() => setModalCessao(false)}>Fechar</button>
+              <button style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</button>
             </div>
           </div>
         </div>

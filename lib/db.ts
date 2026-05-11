@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula } from "./supabase";
 
 // ————————————————————————————————————————
 // CONTAS TENANT (entidade raiz do SaaS)
@@ -355,6 +355,27 @@ export async function salvarItensContrato(contrato_id: string, fazenda_id: strin
   const { data, error } = await supabase.from("contrato_itens").insert(itens.map(i => ({ ...i, contrato_id, fazenda_id }))).select();
   if (error) throw error;
   return data ?? [];
+}
+
+// ── Cessão ───────────────────────────────────────────────────────────────────
+export async function listarCessaoDebitos(contrato_id: string): Promise<(ContratoCessaoDebito & { descricao?: string; data_vencimento?: string; valor?: number })[]> {
+  const { data, error } = await supabase
+    .from("contrato_cessao_debitos")
+    .select("*, lancamentos(descricao, data_vencimento, valor, status)")
+    .eq("contrato_id", contrato_id)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((r: Record<string, unknown>) => {
+    const lanc = r.lancamentos as Record<string, unknown> | null;
+    return { ...(r as ContratoCessaoDebito), descricao: String(lanc?.descricao ?? ""), data_vencimento: String(lanc?.data_vencimento ?? ""), valor: Number(lanc?.valor ?? 0) };
+  });
+}
+
+export async function salvarCessaoDebitos(contrato_id: string, fazenda_id: string, debitos: { lancamento_id: string; valor_cessao: number; obs?: string }[]): Promise<void> {
+  await supabase.from("contrato_cessao_debitos").delete().eq("contrato_id", contrato_id);
+  if (debitos.length === 0) return;
+  const { error } = await supabase.from("contrato_cessao_debitos").insert(debitos.map(d => ({ ...d, contrato_id, fazenda_id })));
+  if (error) throw error;
 }
 
 // ————————————————————————————————————————

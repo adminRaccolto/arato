@@ -177,7 +177,7 @@ export default function BI() {
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
       supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id").eq("fazenda_id", fazendaId),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,safra,comprador,numero").eq("fazenda_id", fazendaId),
+      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data").eq("fazenda_id", fazendaId),
       fetch("/api/precos").then(r => r.json()),
     ]);
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
@@ -976,8 +976,20 @@ export default function BI() {
                             const entPct = c.quantidade_sc > 0 ? (c.entregue_sc / c.quantidade_sc) * 100 : 0;
                             return (
                               <tr key={c.id} style={{ borderBottom: i < contratosComm.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
-                                <td style={{ padding: "8px 14px", fontSize: 11, color: "#555" }}>{c.numero ?? "—"}</td>
-                                <td style={{ padding: "8px 14px", fontSize: 12, color: "#1a1a1a" }}>{c.comprador ?? "—"}</td>
+                                <td style={{ padding: "8px 14px", fontSize: 11, color: "#555" }}>
+                                  <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                                    {c.numero ?? "—"}
+                                    {(c as {dado_em_cessao?:boolean}).dado_em_cessao && (
+                                      <span style={{ fontSize:9, background:"#EDE9FE", color:"#5B21B6", padding:"1px 5px", borderRadius:3, fontWeight:700, width:"fit-content" }}>CESSÃO</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: "8px 14px", fontSize: 12, color: "#1a1a1a" }}>
+                                  <div>{c.comprador ?? "—"}</div>
+                                  {(c as {dado_em_cessao?:boolean}).dado_em_cessao && (c as {cessao_fornecedor_nome?:string}).cessao_fornecedor_nome && (
+                                    <div style={{ fontSize:10, color:"#5B21B6" }}>→ cessão: {(c as {cessao_fornecedor_nome?:string}).cessao_fornecedor_nome}</div>
+                                  )}
+                                </td>
                                 <td style={{ padding: "8px 14px", textAlign: "right", fontSize: 12, fontWeight: 600 }}>{fmtN(c.quantidade_sc, 0)}</td>
                                 <td style={{ padding: "8px 14px", textAlign: "right", fontSize: 12, color: "#378ADD" }}>{fmtN(c.entregue_sc, 0)}</td>
                                 <td style={{ padding: "8px 14px", textAlign: "right", fontSize: 11 }}>
