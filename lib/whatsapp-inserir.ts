@@ -224,15 +224,15 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   const normalBomba = (raw: Record<string, unknown>): BombaRow => ({
     id:               String(raw.id ?? ""),
     nome:             String(raw.nome ?? ""),
-    tipo:             String(raw.tipo ?? "diesel_s10"),
-    combustivel:      String(raw.combustivel ?? raw.tipo ?? "diesel_s10"),
+    tipo:             String(raw.combustivel ?? "diesel_s10"),
+    combustivel:      String(raw.combustivel ?? "diesel_s10"),
     consume_estoque:  raw.consume_estoque !== false,
     estoque_atual_l:  Number(raw.estoque_atual_l ?? 0),
   });
 
   // 2a. Match completo da string
   { const { data } = await sb().from("bombas_combustivel")
-      .select("id, consume_estoque, estoque_atual_l, combustivel, tipo, nome")
+      .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
       .eq("fazenda_id", fazendaId)
       .ilike("nome", `%${bombaStr}%`)
       .limit(1).maybeSingle();
@@ -244,7 +244,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     const palavras = bombaStr.split(/\s+/).filter(w => w.length > 2);
     for (const palavra of palavras) {
       const { data } = await sb().from("bombas_combustivel")
-        .select("id, consume_estoque, estoque_atual_l, combustivel, tipo, nome")
+        .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
         .eq("fazenda_id", fazendaId)
         .ilike("nome", `%${palavra}%`)
         .limit(1).maybeSingle();

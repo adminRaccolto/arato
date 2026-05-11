@@ -3696,9 +3696,4 @@ ALTER TABLE bombas_combustivel
   ADD COLUMN IF NOT EXISTS capacidade_l   numeric(12,2),
   ADD COLUMN IF NOT EXISTS estoque_atual_l numeric(12,2) NOT NULL DEFAULT 0;
 
--- Migra dados existentes: tipo → combustivel (se combustivel ainda for NULL)
-UPDATE bombas_combustivel
-   SET combustivel = tipo
- WHERE combustivel IS NULL AND tipo IS NOT NULL;
-
 NOTIFY pgrst, 'reload schema';
