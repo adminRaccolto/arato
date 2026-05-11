@@ -284,8 +284,10 @@ export type Contrato = {
   terceiro?: string;
   observacao_interna?: string;  // não vai na NF
   // Datas / Status
-  data_contrato: string;
+  data_contrato?: string;
   data_entrega: string;
+  data_pagamento?: string;      // prazo de pagamento → gera CR quando confirmado
+  lancamento_cr_id?: string;    // FK lancamentos.id do CR gerado automaticamente
   status: "aberto" | "parcial" | "encerrado" | "cancelado";
   observacao?: string;
   // Comprometimento de arrendamento (não gera financeiro)

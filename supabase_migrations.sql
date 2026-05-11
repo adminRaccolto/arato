@@ -3612,13 +3612,58 @@ CREATE INDEX IF NOT EXISTS idx_cessao_lancamento ON contrato_cessao_debitos(lanc
 CREATE INDEX IF NOT EXISTS idx_contratos_cessao  ON contratos(fazenda_id, dado_em_cessao) WHERE dado_em_cessao = true;
 
 -- ────────────────────────────────────────────────────────────
--- 79. COLUNAS FALTANTES EM contratos
--- frete e modalidade não foram incluídos no ALTER TABLE da sessão 10
+-- 79. COLUNAS FALTANTES EM contratos (batch completo)
+-- Muitas colunas foram adicionadas no código mas nunca nas migrations.
+-- Este ALTER cobre todas de uma vez com ADD COLUMN IF NOT EXISTS.
 -- ────────────────────────────────────────────────────────────
 ALTER TABLE contratos
-  ADD COLUMN IF NOT EXISTS frete     text,
-  ADD COLUMN IF NOT EXISTS modalidade text DEFAULT 'fixo',
-  ADD COLUMN IF NOT EXISTS numero    text,
-  ADD COLUMN IF NOT EXISTS data_contrato date;
+  -- campos básicos possivelmente ausentes
+  ADD COLUMN IF NOT EXISTS tipo            text DEFAULT 'venda',
+  ADD COLUMN IF NOT EXISTS numero          text,
+  ADD COLUMN IF NOT EXISTS data_contrato   date,
+  ADD COLUMN IF NOT EXISTS modalidade      text DEFAULT 'fixo',
+  ADD COLUMN IF NOT EXISTS moeda           text DEFAULT 'BRL',
+  ADD COLUMN IF NOT EXISTS frete           text,
+  -- campos financeiros
+  ADD COLUMN IF NOT EXISTS data_pagamento  date,
+  ADD COLUMN IF NOT EXISTS lancamento_cr_id uuid REFERENCES lancamentos(id) ON DELETE SET NULL,
+  -- campos da reescrita da sessão 10 (alguns podem já existir via migration anterior)
+  ADD COLUMN IF NOT EXISTS num_lancamento        integer,
+  ADD COLUMN IF NOT EXISTS safra                 text,
+  ADD COLUMN IF NOT EXISTS autorizacao           text DEFAULT 'pendente',
+  ADD COLUMN IF NOT EXISTS confirmado            boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS a_fixar               boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS venda_a_ordem         boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS produtor_id           uuid REFERENCES produtores(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS produtor_nome         text,
+  ADD COLUMN IF NOT EXISTS pessoa_id             uuid REFERENCES pessoas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS nr_contrato_cliente   text,
+  ADD COLUMN IF NOT EXISTS contato_broker        text,
+  ADD COLUMN IF NOT EXISTS grupo_vendedor        text,
+  ADD COLUMN IF NOT EXISTS vendedor              text,
+  ADD COLUMN IF NOT EXISTS saldo_tipo            text DEFAULT 'peso_saida',
+  ADD COLUMN IF NOT EXISTS valor_frete           numeric(14,4),
+  ADD COLUMN IF NOT EXISTS natureza_operacao     text,
+  ADD COLUMN IF NOT EXISTS cfop                  text,
+  ADD COLUMN IF NOT EXISTS deposito_carregamento text,
+  ADD COLUMN IF NOT EXISTS deposito_fiscal       boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS propriedade           text,
+  ADD COLUMN IF NOT EXISTS empreendimento        text,
+  ADD COLUMN IF NOT EXISTS seguradora            text,
+  ADD COLUMN IF NOT EXISTS corretora             text,
+  ADD COLUMN IF NOT EXISTS cte_numero            text,
+  ADD COLUMN IF NOT EXISTS terceiro              text,
+  ADD COLUMN IF NOT EXISTS observacao_interna    text,
+  ADD COLUMN IF NOT EXISTS ano_safra_id          uuid REFERENCES anos_safra(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ciclo_id              uuid REFERENCES ciclos(id) ON DELETE SET NULL,
+  -- cessão
+  ADD COLUMN IF NOT EXISTS dado_em_cessao        boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS cessao_fornecedor_id  uuid REFERENCES pessoas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS cessao_fornecedor_nome text,
+  ADD COLUMN IF NOT EXISTS cessao_data           date,
+  ADD COLUMN IF NOT EXISTS cessao_obs            text,
+  -- arrendamento
+  ADD COLUMN IF NOT EXISTS is_arrendamento       boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS arrendamento_id       uuid REFERENCES arrendamentos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';

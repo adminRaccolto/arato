@@ -226,6 +226,7 @@ export default function Contratos() {
     preco: 0,
     quantidade_sc: 0,
     data_entrega: "",
+    data_pagamento: undefined as string | undefined,
     // logística / fiscal
     saldo_tipo: "peso_saida" as Contrato["saldo_tipo"],
     frete: "destinatario" as Contrato["frete"],
@@ -336,7 +337,7 @@ export default function Contratos() {
       confirmado: c.confirmado ?? false,
       a_fixar: c.a_fixar ?? false,
       venda_a_ordem: c.venda_a_ordem ?? false,
-      data_contrato: c.data_contrato, pessoa_id: c.pessoa_id ?? "",
+      data_contrato: c.data_contrato ?? "", pessoa_id: c.pessoa_id ?? "",
       produtor_id: c.produtor_id ?? "",
       nr_contrato_cliente: c.nr_contrato_cliente ?? "",
       contato_broker: c.contato_broker ?? "",
@@ -345,6 +346,7 @@ export default function Contratos() {
       produto: c.produto, modalidade: c.modalidade,
       moeda: c.moeda, preco: c.preco, quantidade_sc: c.quantidade_sc,
       data_entrega: c.data_entrega,
+      data_pagamento: c.data_pagamento ?? undefined,
       saldo_tipo: c.saldo_tipo ?? "peso_saida",
       frete: c.frete ?? "destinatario",
       valor_frete: c.valor_frete ?? 0,
@@ -416,6 +418,7 @@ export default function Contratos() {
         venda_a_ordem: fC.venda_a_ordem,
         data_contrato: fC.data_contrato,
         data_entrega: fC.data_entrega,
+        data_pagamento: fC.data_pagamento || undefined,
         pessoa_id: fC.pessoa_id || undefined,
         produtor_id: fC.produtor_id || undefined,
         comprador: pessoas.find(p=>p.id===fC.pessoa_id)?.nome ?? fC.pessoa_id ?? "",
@@ -471,6 +474,29 @@ export default function Contratos() {
       // salva débitos de cessão se houver
       if (fC.dado_em_cessao && Object.keys(cessaoSelecionados).length > 0) {
         await salvarCessaoDebitos(salvo.id, fazendaId!, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
+      }
+      // cria CR automático quando contrato confirmado + data de pagamento + sem CR existente
+      const valorTotal = itensCalc.reduce((s, i) => s + i.valor_total, 0);
+      if (fC.confirmado && fC.data_pagamento && valorTotal > 0 && !salvo.lancamento_cr_id) {
+        const compradorNome = pessoas.find(p=>p.id===fC.pessoa_id)?.nome ?? payload.comprador ?? "";
+        const { data: crRow } = await supabase.from("lancamentos").insert({
+          fazenda_id: fazendaId,
+          tipo: "receber",
+          descricao: `Venda de grãos — ${compradorNome} (Contrato ${salvo.numero ?? salvo.id.slice(-6)})`,
+          categoria: "Receita Grãos",
+          data_lancamento: new Date().toISOString().split("T")[0],
+          data_vencimento: fC.data_pagamento,
+          valor: valorTotal,
+          moeda: fC.moeda,
+          status: "em_aberto",
+          safra_id: fC.ciclo_id || null,
+          ano_safra_id: fC.ano_safra_id || null,
+          observacao: `CR gerado automaticamente ao confirmar contrato`,
+          auto: true,
+        }).select("id").maybeSingle();
+        if (crRow?.id) {
+          await supabase.from("contratos").update({ lancamento_cr_id: crRow.id }).eq("id", salvo.id);
+        }
       }
       if (editContrato) {
         setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i.quantidade>0) as ContratoItem[] } : c));
@@ -1085,6 +1111,11 @@ export default function Contratos() {
                     <div>
                       <label style={lbl}>Prazo de Entrega *</label>
                       <input style={inp} type="date" value={fC.data_entrega} onChange={e => setFC(p=>({...p,data_entrega:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Data de Pagamento</label>
+                      <input style={inp} type="date" value={fC.data_pagamento ?? ""} onChange={e => setFC(p=>({...p,data_pagamento:e.target.value||undefined}))} />
+                      <span style={{ fontSize:10, color:"#888", marginTop:2, display:"block" }}>Gera CR ao confirmar</span>
                     </div>
                     <div>
                       <label style={lbl}>Modalidade de Preço</label>
