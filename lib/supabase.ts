@@ -148,8 +148,8 @@ export type MovimentacaoEstoque = {
   tipo: "entrada" | "saida" | "ajuste";
   motivo?: "compra" | "ajuste_saldo" | "baixa_uso" | "baixa_perda" | "transferencia" | "inventario" | "outros";
   quantidade: number;
-  valor_unitario?: number;        // preço unitário da entrada (compra)
-  custo_unitario_na_baixa?: number; // custo médio dos últimos 6 meses no momento da saída
+  valor_unitario?: number;
+  custo_unitario_na_baixa?: number;
   data: string;
   talhao?: string;
   safra?: string;
@@ -157,7 +157,25 @@ export type MovimentacaoEstoque = {
   nf_entrada?: string;
   deposito_id?: string;
   observacao?: string;
+  usuario_nome?: string;
   auto: boolean;
+  created_at?: string;
+};
+
+export type LogSistema = {
+  id: string;
+  fazenda_id: string;
+  usuario_id?: string;
+  usuario_nome?: string;
+  usuario_email?: string;
+  acao: "insert" | "update" | "delete" | "login" | "logout" | "export" | "view";
+  modulo: string;
+  entidade?: string;
+  entidade_id?: string;
+  descricao: string;
+  dados_antes?: Record<string, unknown>;
+  dados_depois?: Record<string, unknown>;
+  ip?: string;
   created_at?: string;
 };
 

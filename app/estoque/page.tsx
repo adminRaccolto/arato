@@ -12,6 +12,7 @@ import {
   processarNfEntrada,
   listarEstoqueTerceiros,
   listarPessoas, criarPessoa,
+  registrarLog,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type {
@@ -54,8 +55,8 @@ function TH({ cols }: { cols: string[] }) {
 function Modal({ titulo, subtitulo, width, onClose, children }: { titulo: string; subtitulo?: string; width?: number; onClose: () => void; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: width ?? 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
+      <div style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: width ?? 600, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a", marginBottom: subtitulo ? 4 : 20 }}>{titulo}</div>
         {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
@@ -181,7 +182,7 @@ function parsearXmlNfe(xml: string): { numero: string; serie: string; chave: str
 // PÁGINA
 // ────────────────────────────────────────────────────────
 export default function Estoque() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, nomeUsuario, emailUsuario } = useAuth();
 
   const [aba, setAba] = useState<Aba>("posicao");
   const [erro, setErro] = useState<string | null>(null);
@@ -282,13 +283,21 @@ export default function Estoque() {
     const qtd = parseFloat(fMov.quantidade) || 0;
     const qtdNova = parseFloat(fMov.quantidade_nova) || 0;
     if (fMov.tipo !== "ajuste" && qtd <= 0) { alert("Quantidade deve ser maior que zero."); return; }
+    if (fMov.tipo === "ajuste" && !fMov.observacao.trim()) { alert("Informe a justificativa do ajuste."); return; }
+    const insNome = insumos.find(x => x.id === fMov.insumo_id)?.nome ?? fMov.insumo_id;
     await criarMovimentacaoManual(
       fazendaId!, fMov.insumo_id, fMov.tipo, fMov.motivo,
       qtd, fMov.deposito_id || undefined, fMov.data, fMov.observacao || undefined,
       fMov.tipo === "ajuste" ? qtdNova : undefined,
+      nomeUsuario ?? undefined,
     );
-    const [ins, movs] = await Promise.all([listarInsumos(fazendaId!), listarMovimentacoes(fazendaId!)]);
-    setInsumos(ins); setMovs(movs);
+    const tipoLabel = fMov.tipo === "ajuste" ? "Ajuste de estoque" : fMov.tipo === "entrada" ? "Entrada" : "Saída";
+    registrarLog(fazendaId!, "insert", "estoque",
+      `${tipoLabel}: ${insNome} — ${fMov.tipo === "ajuste" ? `saldo ajustado para ${qtdNova}` : `${qtd} unid.`}`,
+      { usuarioNome: nomeUsuario ?? undefined, usuarioEmail: emailUsuario ?? undefined, entidade: "movimentacoes_estoque", dadosDepois: { tipo: fMov.tipo, motivo: fMov.motivo, quantidade: qtd, observacao: fMov.observacao } }
+    );
+    const [ins2, movs] = await Promise.all([listarInsumos(fazendaId!), listarMovimentacoes(fazendaId!)]);
+    setInsumos(ins2); setMovs(movs);
     setModalMov(false);
     setFMov({ insumo_id: "", tipo: "entrada", motivo: "compra", quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "" });
   });
@@ -732,8 +741,13 @@ export default function Estoque() {
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {m.auto ? badge("Auto","#D5E8F5","#0B2D50") : badge("Manual","#FBF0D8","#7A5A12")}
+                            {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome && (
+                              <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                                {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome}
+                              </div>
+                            )}
                             {m.observacao && (
-                              <div style={{ fontSize: 11, color: isAdj ? "#7A5A12" : "#888", marginTop: 3, maxWidth: 180, whiteSpace: "normal", textAlign: "left" }}>
+                              <div style={{ fontSize: 11, color: isAdj ? "#7A5A12" : "#888", marginTop: 2, maxWidth: 200, whiteSpace: "normal", textAlign: "left" }}>
                                 {isAdj && <span style={{ fontWeight: 600 }}>Justificativa: </span>}
                                 {m.observacao}
                               </div>
@@ -1245,7 +1259,13 @@ export default function Estoque() {
             {isAjuste && obsObrig && (
               <div style={{ marginTop: 8, fontSize: 11, color: "#E24B4A" }}>A justificativa é obrigatória para ajustes de estoque.</div>
             )}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
+            {/* Operador — sempre visível, nunca editável */}
+            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#F8FAFB", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
+              <span style={{ fontSize: 11, color: "#888" }}>Operador:</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{nomeUsuario ?? "—"}</span>
+              <span style={{ fontSize: 11, color: "#aaa", marginLeft: 4 }}>({emailUsuario ?? ""})</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
               <button style={btnR} onClick={() => setModalMov(false)}>Cancelar</button>
               <button
                 style={{ ...btnV, background: isAjuste ? "#C9921B" : btnV.background, opacity: canSave ? 1 : 0.5 }}

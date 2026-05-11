@@ -3762,3 +3762,29 @@ ALTER TABLE movimentacoes_estoque
 
 -- O campo valor_unitario já existe em alguns ambientes (seção 71) mas com IF NOT EXISTS não gera erro
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 86: usuario_nome em movimentacoes_estoque + fix RLS logs_sistema
+-- ============================================================
+
+-- Registrar quem fez cada movimentação
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS usuario_nome TEXT;
+
+-- Corrigir RLS da logs_sistema: usar user_id ao invés de id
+DROP POLICY IF EXISTS logs_leitura  ON logs_sistema;
+DROP POLICY IF EXISTS logs_insercao ON logs_sistema;
+
+CREATE POLICY logs_leitura ON logs_sistema
+  FOR SELECT USING (
+    fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY logs_insercao ON logs_sistema
+  FOR INSERT WITH CHECK (
+    fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';

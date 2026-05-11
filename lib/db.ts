@@ -5,7 +5,53 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema } from "./supabase";
+
+// ————————————————————————————————————————
+// LOGS DE AUDITORIA
+// ————————————————————————————————————————
+
+export async function registrarLog(
+  fazendaId: string,
+  acao: LogSistema["acao"],
+  modulo: string,
+  descricao: string,
+  opts?: {
+    usuarioId?: string;
+    usuarioNome?: string;
+    usuarioEmail?: string;
+    entidade?: string;
+    entidadeId?: string;
+    dadosDepois?: Record<string, unknown>;
+  }
+): Promise<void> {
+  // Fire-and-forget: nunca bloqueia a operação principal
+  supabase.from("logs_sistema").insert({
+    fazenda_id: fazendaId,
+    acao,
+    modulo,
+    descricao,
+    usuario_id:    opts?.usuarioId   ?? null,
+    usuario_nome:  opts?.usuarioNome ?? null,
+    usuario_email: opts?.usuarioEmail ?? null,
+    entidade:      opts?.entidade    ?? null,
+    entidade_id:   opts?.entidadeId  ?? null,
+    dados_depois:  opts?.dadosDepois ?? null,
+  }).then(({ error }) => {
+    if (error) console.warn("[log] falha ao registrar:", error.message);
+  });
+}
+
+export async function listarLogs(
+  fazendaId: string,
+  modulo?: string,
+  limite = 200
+): Promise<LogSistema[]> {
+  let q = supabase.from("logs_sistema").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).limit(limite);
+  if (modulo) q = q.eq("modulo", modulo);
+  const { data } = await q;
+  return (data ?? []) as LogSistema[];
+}
 
 // ————————————————————————————————————————
 // CONTAS TENANT (entidade raiz do SaaS)
@@ -187,9 +233,10 @@ export async function criarMovimentacaoManual(
   data: string,
   observacao?: string,
   quantidade_nova?: number,    // para ajuste de saldo: valor absoluto desejado
+  usuario_nome?: string,
 ): Promise<void> {
-  const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", insumo_id).single();
-  if (!ins) throw new Error("Insumo não encontrado");
+  const { data: ins, error: insErr } = await supabase.from("insumos").select("id, nome, estoque").eq("id", insumo_id).single();
+  if (!ins || insErr) throw new Error("Insumo não encontrado");
 
   let delta: number;
   if (tipo === "ajuste" && quantidade_nova !== undefined) {
@@ -208,7 +255,7 @@ export async function criarMovimentacaoManual(
     motivo,
     quantidade: tipo === "ajuste" ? delta : Math.abs(delta),
     data, deposito_id: deposito_id ?? null,
-    observacao, auto: false,
+    observacao, auto: false, usuario_nome: usuario_nome ?? null,
   });
 }
 
