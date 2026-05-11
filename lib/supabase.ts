@@ -135,6 +135,7 @@ export type Insumo = {
   valor_unitario: number;
   custo_medio?: number;
   deposito_id?: string;  // depósito padrão onde este item é armazenado
+  bomba_id?: string;     // bomba de combustível associada (só para categoria combustivel)
   lote?: string;
   validade?: string;
   created_at?: string;

@@ -305,6 +305,7 @@ function CadastrosInner() {
     subgrupo: "", unidade: "L" as Insumo["unidade"],
     fabricante: "", estoque: "0", estoque_minimo: "0",
     valor_unitario: "0", lote: "", validade: "",
+    deposito_id: "", bomba_id: "",
   });
 
   // ── Tabelas Auxiliares ──
@@ -433,6 +434,8 @@ function CadastrosInner() {
       listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
       listarGruposInsumo(fazendaId).then(setGruposInsumo).catch(() => {});
       listarSubgruposInsumo(fazendaId).then(setSubgruposInsumo).catch(() => {});
+      listarDepositos(fazendaId).then(setDepositos).catch(() => {});
+      listarBombas(fazendaId).then(setBombas).catch(() => {});
     }
     if (aba === "depositos")       listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
@@ -2196,25 +2199,29 @@ function CadastrosInner() {
                 unidade: ins.unidade, fabricante: ins.fabricante ?? "",
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
-              } : { nome: "", categoria: "defensivo", subgrupo: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "" });
+                deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "",
+              } : { nome: "", categoria: "defensivo", subgrupo: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "" });
               setModalIns(true);
             };
 
             const salvarIns = async () => {
               setSalvando(true);
               try {
+                const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
                   fazenda_id:     fazendaId!,
                   nome:           fIns.nome.trim(),
                   categoria:      fIns.categoria,
                   subgrupo:       fIns.subgrupo || undefined,
-                  unidade:        fIns.unidade,
-                  fabricante:     fIns.fabricante || undefined,
+                  unidade:        isComb ? "L" : fIns.unidade,
+                  fabricante:     isComb ? undefined : (fIns.fabricante || undefined),
                   estoque:        parseFloat(fIns.estoque) || 0,
                   estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
                   valor_unitario: parseFloat(fIns.valor_unitario) || 0,
-                  lote:           fIns.lote || undefined,
-                  validade:       fIns.validade || undefined,
+                  lote:           isComb ? undefined : (fIns.lote || undefined),
+                  validade:       isComb ? undefined : (fIns.validade || undefined),
+                  deposito_id:    isComb ? undefined : (fIns.deposito_id || undefined),
+                  bomba_id:       isComb ? (fIns.bomba_id || undefined) : undefined,
                   tipo:           (["peca","material","uso_consumo","escritorio"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
                 };
                 if (editIns) {
@@ -2344,18 +2351,23 @@ function CadastrosInner() {
                 </div>
 
                 {/* Modal Insumo */}
-                {modalIns && (
-                  <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Insumo"} onClose={() => setModalIns(false)} width={860}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                {modalIns && (() => {
+                  const isComb = fIns.categoria === "combustivel";
+                  return (
+                  <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Insumo"} onClose={() => setModalIns(false)} width={720}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                       {/* Nome */}
                       <div style={{ gridColumn: "1/-1" }}>
                         <label style={lbl}>Nome *</label>
-                        <input style={inp} placeholder="Ex: Roundup Original" value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                        <input style={inp} placeholder={isComb ? "Ex: Diesel S10, Gasolina" : "Ex: Roundup Original"} value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
                       </div>
                       {/* Categoria */}
                       <div>
                         <label style={lbl}>Categoria *</label>
-                        <select style={inp} value={fIns.categoria} onChange={e => setFIns(p => ({ ...p, categoria: e.target.value as Insumo["categoria"], subgrupo: "" }))}>
+                        <select style={inp} value={fIns.categoria} onChange={e => {
+                          const cat = e.target.value as Insumo["categoria"];
+                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "combustivel" ? "L" : p.unidade }));
+                        }}>
                           <option value="semente">Semente</option>
                           <option value="fertilizante">Fertilizante</option>
                           <option value="defensivo">Defensivo</option>
@@ -2365,7 +2377,7 @@ function CadastrosInner() {
                           <option value="outros">Outros</option>
                         </select>
                       </div>
-                      {/* Subgrupo — vem do cadastro de subgrupos ou texto livre */}
+                      {/* Subgrupo */}
                       <div>
                         <label style={lbl}>Subgrupo</label>
                         {subgruposDoCadastro.length > 0 ? (
@@ -2377,36 +2389,64 @@ function CadastrosInner() {
                             })}
                           </select>
                         ) : (
-                          <input style={inp} placeholder="Ex: Herbicida" value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
+                          <input style={inp} placeholder={isComb ? "Ex: Diesel, Gasolina" : "Ex: Herbicida"} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
                         )}
                       </div>
-                      {/* Fabricante */}
-                      <div>
-                        <label style={lbl}>Fabricante / Marca</label>
-                        <input style={inp} placeholder="Ex: Bayer, Syngenta" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
-                      </div>
+                      {/* Fabricante/Marca — apenas para não-combustível */}
+                      {!isComb && (
+                        <div>
+                          <label style={lbl}>Fabricante / Marca</label>
+                          <input style={inp} placeholder="Ex: Bayer, Syngenta" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                        </div>
+                      )}
                       {/* Unidade */}
                       <div>
                         <label style={lbl}>Unidade *</label>
-                        <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                          <option value="kg">kg</option>
-                          <option value="g">g (gramas)</option>
-                          <option value="L">L (litros)</option>
-                          <option value="mL">mL (mililitros)</option>
-                          <option value="sc">sc (sacas 60kg)</option>
-                          <option value="t">t (tonelada)</option>
-                          <option value="un">un (unidade)</option>
-                          <option value="m">m (metro)</option>
-                          <option value="m2">m² (metro quadrado)</option>
-                          <option value="cx">cx (caixa)</option>
-                          <option value="pc">pc (peça)</option>
-                          <option value="par">par</option>
-                          <option value="outros">outros</option>
-                        </select>
+                        {isComb ? (
+                          <input style={{ ...inp, background: "#F4F6FA", color: "#555" }} value="L (litros)" readOnly />
+                        ) : (
+                          <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                            <option value="kg">kg</option>
+                            <option value="g">g (gramas)</option>
+                            <option value="L">L (litros)</option>
+                            <option value="mL">mL (mililitros)</option>
+                            <option value="sc">sc (sacas 60kg)</option>
+                            <option value="t">t (tonelada)</option>
+                            <option value="un">un (unidade)</option>
+                            <option value="m">m (metro)</option>
+                            <option value="m2">m² (metro quadrado)</option>
+                            <option value="cx">cx (caixa)</option>
+                            <option value="pc">pc (peça)</option>
+                            <option value="par">par</option>
+                            <option value="outros">outros</option>
+                          </select>
+                        )}
                       </div>
+                      {/* Bomba (combustível) ou Depósito (outros) */}
+                      {isComb ? (
+                        <div>
+                          <label style={lbl}>Bomba associada</label>
+                          <select style={inp} value={fIns.bomba_id} onChange={e => setFIns(p => ({ ...p, bomba_id: e.target.value }))}>
+                            <option value="">— Selecione a bomba —</option>
+                            {bombas.map(b => (
+                              <option key={b.id} value={b.id}>{b.nome} {b.consume_estoque ? "🏠 Fazenda" : "⛽ Posto"}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label style={lbl}>Depósito padrão</label>
+                          <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
+                            <option value="">— Selecione —</option>
+                            {depositos.filter(d => d.ativo).map(d => (
+                              <option key={d.id} value={d.id}>{d.nome}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       {/* Estoque atual */}
                       <div>
-                        <label style={lbl}>Estoque atual</label>
+                        <label style={lbl}>Estoque atual ({isComb ? "L" : fIns.unidade})</label>
                         <input style={inp} type="number" min="0" step="0.01" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
                       </div>
                       {/* Estoque mínimo */}
@@ -2416,19 +2456,22 @@ function CadastrosInner() {
                       </div>
                       {/* Valor unitário */}
                       <div>
-                        <label style={lbl}>Valor unitário (R$/{fIns.unidade})</label>
+                        <label style={lbl}>Valor unitário (R$/{isComb ? "L" : fIns.unidade})</label>
                         <input style={inp} type="number" min="0" step="0.01" value={fIns.valor_unitario} onChange={e => setFIns(p => ({ ...p, valor_unitario: e.target.value }))} />
                       </div>
-                      {/* Lote */}
-                      <div>
-                        <label style={lbl}>Lote</label>
-                        <input style={inp} placeholder="Opcional" value={fIns.lote} onChange={e => setFIns(p => ({ ...p, lote: e.target.value }))} />
-                      </div>
-                      {/* Validade */}
-                      <div>
-                        <label style={lbl}>Validade</label>
-                        <input style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} />
-                      </div>
+                      {/* Lote e Validade — apenas para não-combustível */}
+                      {!isComb && (
+                        <>
+                          <div>
+                            <label style={lbl}>Lote</label>
+                            <input style={inp} placeholder="Opcional" value={fIns.lote} onChange={e => setFIns(p => ({ ...p, lote: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Validade</label>
+                            <input style={inp} type="date" value={fIns.validade} onChange={e => setFIns(p => ({ ...p, validade: e.target.value }))} />
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Preview valor total */}
@@ -2445,7 +2488,8 @@ function CadastrosInner() {
                       </button>
                     </div>
                   </Modal>
-                )}
+                  );
+                })()}
               </div>
             );
           })()}

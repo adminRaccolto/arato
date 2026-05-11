@@ -3667,3 +3667,20 @@ ALTER TABLE contratos
   ADD COLUMN IF NOT EXISTS arrendamento_id       uuid REFERENCES arrendamentos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 80 — insumos.bomba_id + pendencias_operacionais: usuario
+-- ============================================================
+
+-- Vincula um insumo de combustível à bomba onde fica armazenado
+ALTER TABLE insumos
+  ADD COLUMN IF NOT EXISTS bomba_id UUID REFERENCES bombas_combustivel(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_insumos_bomba ON insumos(bomba_id) WHERE bomba_id IS NOT NULL;
+
+-- Rastrear qual usuário do WhatsApp gerou a pendência operacional
+ALTER TABLE pendencias_operacionais
+  ADD COLUMN IF NOT EXISTS usuario_nome     text,
+  ADD COLUMN IF NOT EXISTS usuario_whatsapp text;
+
+NOTIFY pgrst, 'reload schema';
