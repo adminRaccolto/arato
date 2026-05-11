@@ -148,6 +148,8 @@ export type MovimentacaoEstoque = {
   tipo: "entrada" | "saida" | "ajuste";
   motivo?: "compra" | "ajuste_saldo" | "baixa_uso" | "baixa_perda" | "transferencia" | "inventario" | "outros";
   quantidade: number;
+  valor_unitario?: number;        // preço unitário da entrada (compra)
+  custo_unitario_na_baixa?: number; // custo médio dos últimos 6 meses no momento da saída
   data: string;
   talhao?: string;
   safra?: string;
@@ -212,7 +214,9 @@ export type Lancamento = {
   entidade_contabil?: "pf" | "pj";  // qual entidade contabiliza (PF/CNPJ ou PJ/CNPJ)
   // Rastreabilidade — de onde veio o lançamento
   origem_lancamento?: "nf_entrada" | "nf_saida" | "pedido_compra" | "arrendamento" | "tesouraria" | "plantio" | "contrato_financeiro" | "manual";
-  pedido_compra_id?: string;   // FK pedidos_compra.id — quando gerado por pedido de compra
+  pedido_compra_id?: string;          // FK pedidos_compra.id — quando gerado por pedido de compra
+  operacao_gerencial_id?: string;     // FK operacoes_gerenciais.id — vínculo contábil (débito/crédito)
+  forma_pagamento?: string;
   created_at?: string;
 };
 

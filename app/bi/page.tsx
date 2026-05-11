@@ -76,30 +76,42 @@ function BarraGraos({ producao, arrSacas, barterSacas, fixadoSacas, dividaSacas 
   producao: number; arrSacas: number; barterSacas: number; fixadoSacas: number; dividaSacas: number;
 }) {
   if (producao <= 0) return <span style={{ fontSize: 11, color: "#aaa" }}>Sem produção projetada</span>;
-  const livre = Math.max(0, producao - arrSacas - barterSacas - fixadoSacas - dividaSacas);
+  const livre = Math.max(0, producao - arrSacas - barterSacas - fixadoSacas);
   const p = (v: number) => Math.max(0, Math.min(100, (v / producao) * 100));
   return (
     <div>
+      {/* Barra de comprometimento físico */}
       <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", gap: 1, background: "#EEF1F6" }}>
         {arrSacas    > 0 && <div style={{ width: `${p(arrSacas)}%`,    background: "#E24B4A" }} title={`Arrendamento: ${fmtN(arrSacas, 0)} sc`} />}
         {barterSacas > 0 && <div style={{ width: `${p(barterSacas)}%`, background: "#EF9F27" }} title={`Barter: ${fmtN(barterSacas, 0)} sc`} />}
         {fixadoSacas > 0 && <div style={{ width: `${p(fixadoSacas)}%`, background: "#378ADD" }} title={`Fixado: ${fmtN(fixadoSacas, 0)} sc`} />}
-        {dividaSacas > 0 && <div style={{ width: `${p(dividaSacas)}%`, background: "#9B59B6" }} title={`Dívida: ${fmtN(dividaSacas, 0)} sc`} />}
         {livre       > 0 && <div style={{ width: `${p(livre)}%`,       background: "#16A34A" }} title={`Livre: ${fmtN(livre, 0)} sc`} />}
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
+      {/* Barra de dívida sobreposta (indicador separado) */}
+      {dividaSacas > 0 && (
+        <div style={{ marginTop: 4, display: "flex", height: 6, borderRadius: 4, overflow: "hidden", gap: 1, background: "#F3EBF8" }}>
+          <div style={{ width: `${p(Math.min(dividaSacas, producao))}%`, background: "#9B59B6" }} title={`Sacas para quitar dívidas: ${fmtN(dividaSacas, 0)} sc`} />
+        </div>
+      )}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
         {[
-          { label: "Arrendamento", v: arrSacas,    bg: "#E24B4A" },
-          { label: "Barter",       v: barterSacas, bg: "#EF9F27" },
-          { label: "Fixado",       v: fixadoSacas, bg: "#378ADD" },
-          { label: "Dívida (sc)",  v: dividaSacas, bg: "#9B59B6" },
-          { label: "Livre",        v: livre,        bg: "#16A34A" },
+          { label: "Arrendamento (físico)", v: arrSacas,    bg: "#E24B4A" },
+          { label: "Barter (físico)",       v: barterSacas, bg: "#EF9F27" },
+          { label: "Fixado (contratos)",    v: fixadoSacas, bg: "#378ADD" },
+          { label: "Livre",                 v: livre,        bg: "#16A34A" },
         ].filter(x => x.v > 0).map(x => (
           <span key={x.label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#555" }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: x.bg, display: "inline-block" }} />
             {x.label}: <strong>{fmtN(x.v, 0)} sc</strong>
           </span>
         ))}
+        {dividaSacas > 0 && (
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#555" }}>
+            <span style={{ width: 8, height: 6, borderRadius: 2, background: "#9B59B6", display: "inline-block" }} />
+            Dívidas → <strong style={{ color: "#9B59B6" }}>{fmtN(dividaSacas, 0)} sc equiv.</strong>
+            <span style={{ fontSize: 10, color: "#888" }}>(barra inferior)</span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -328,10 +340,15 @@ export default function BI() {
                    : comm === "Soja"  ? (precos?.soja.brl ?? 0)
                    : comm === "Milho" ? (precos?.milho.brl ?? 0)
                    : (precos?.algodao?.brl ?? 0);
-    const dividaBrl   = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "BRL" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
-    const dividaSacas = precoBrl > 0 ? dividaBrl / precoBrl : 0;
-    const comprPct    = producao > 0 ? Math.min(100, ((arrSacas + barterSacas + fixadoSacas + dividaSacas) / producao) * 100) : 0;
-    return { producao, arrSacas, barterSacas, fixadoSacas, dividaSacas, comprPct, precoBrl };
+    const dividaBrl     = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "BRL" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
+    const dividaUsdBrl  = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado").reduce((s, l) => s + l.valor * (l.cotacao_usd ?? 5.1), 0);
+    const dividaSacas   = precoBrl > 0 ? (dividaBrl + dividaUsdBrl) / precoBrl : 0;
+    // comprPct = apenas comprometimento físico (arrendamento + barter + contratos fixados)
+    const comprFisico   = arrSacas + barterSacas + fixadoSacas;
+    const comprPct      = producao > 0 ? Math.min(100, (comprFisico / producao) * 100) : 0;
+    // comprPctTotal inclui dívida convertida — usado para alertas de risco
+    const comprPctTotal = producao > 0 ? Math.min(100, ((comprFisico + dividaSacas) / producao) * 100) : 0;
+    return { producao, arrSacas, barterSacas, fixadoSacas, dividaSacas, comprPct, comprPctTotal, precoBrl };
   }
 
   // ── Produção total filtrada ───────────────────────────────────
@@ -349,10 +366,11 @@ export default function BI() {
 
   const posSoja = calcPosicao("Soja");
   if (posSoja.producao > 0) {
-    if (posSoja.comprPct > 90)      diagnostico.push({ tipo: "crit", msg: `Soja ${fmtN(posSoja.comprPct, 0)}% comprometida — risco de déficit de grãos` });
-    else if (posSoja.comprPct > 70) diagnostico.push({ tipo: "warn", msg: `Soja ${fmtN(posSoja.comprPct, 0)}% comprometida — acompanhar posição de fixação` });
-    else if (posSoja.comprPct < 25) diagnostico.push({ tipo: "warn", msg: `Soja apenas ${fmtN(posSoja.comprPct, 0)}% comprometida — considerar fixação de mais volume` });
-    else                             diagnostico.push({ tipo: "ok",   msg: `Posição de soja equilibrada (${fmtN(posSoja.comprPct, 0)}% comprometida)` });
+    if (posSoja.comprPct > 95)          diagnostico.push({ tipo: "crit", msg: `Soja ${fmtN(posSoja.comprPct, 0)}% comprometida fisicamente — risco real de déficit` });
+    else if (posSoja.comprPctTotal > 90) diagnostico.push({ tipo: "crit", msg: `Soja: dívidas + compromissos = ${fmtN(posSoja.comprPctTotal, 0)}% da produção — liquidez crítica` });
+    else if (posSoja.comprPct > 70)     diagnostico.push({ tipo: "warn", msg: `Soja ${fmtN(posSoja.comprPct, 0)}% comprometida — acompanhar posição de fixação` });
+    else if (posSoja.comprPct < 25)     diagnostico.push({ tipo: "warn", msg: `Soja apenas ${fmtN(posSoja.comprPct, 0)}% comprometida fisicamente — considerar fixação de mais volume` });
+    else                                 diagnostico.push({ tipo: "ok",   msg: `Posição de soja equilibrada: ${fmtN(posSoja.comprPct, 0)}% comprometido (${fmtN(posSoja.comprPctTotal, 0)}% c/ dívidas)` });
   }
 
   if (custoHaEstimado > 0 && areaFiltrada > 0) {
@@ -624,14 +642,15 @@ export default function BI() {
                 {(["Soja", "Milho", "Algodão"] as const).map(comm => {
                   const p = calcPosicao(comm);
                   if (p.producao === 0 && p.arrSacas === 0 && p.fixadoSacas === 0) return null;
-                  const risco: "verde" | "amarelo" | "vermelho" = p.comprPct > 90 ? "vermelho" : p.comprPct > 65 ? "amarelo" : "verde";
+                  const risco: "verde" | "amarelo" | "vermelho" = p.comprPctTotal > 90 ? "vermelho" : p.comprPct > 70 ? "amarelo" : "verde";
                   return (
                     <div key={comm}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", width: 65 }}>{comm}</span>
                         <Semaforo saude={risco} />
                         <span style={{ fontSize: 11, color: "#666" }}>
-                          {fmtN(p.producao, 0)} sc projetadas · {fmtN(Math.max(0, p.producao - p.arrSacas - p.barterSacas - p.fixadoSacas - p.dividaSacas), 0)} sc livres ({fmtN(100 - p.comprPct, 0)}% livre)
+                          {fmtN(p.producao, 0)} sc projetadas · <strong style={{ color: "#16A34A" }}>{fmtN(Math.max(0, p.producao - p.arrSacas - p.barterSacas - p.fixadoSacas), 0)} sc livres</strong> ({fmtN(100 - p.comprPct, 0)}% livre físico)
+                          {p.dividaSacas > 0 && <span style={{ color: "#9B59B6", marginLeft: 6 }}>· {fmtN(p.dividaSacas, 0)} sc para pagar dívidas</span>}
                         </span>
                       </div>
                       <BarraGraos {...p} />
@@ -877,8 +896,8 @@ export default function BI() {
 
             {(() => {
               const p = calcPosicao(commodity);
-              const risco: "verde" | "amarelo" | "vermelho" = p.comprPct > 90 ? "vermelho" : p.comprPct > 65 ? "amarelo" : "verde";
-              const livre = Math.max(0, p.producao - p.arrSacas - p.barterSacas - p.fixadoSacas - p.dividaSacas);
+              const risco: "verde" | "amarelo" | "vermelho" = p.comprPctTotal > 90 ? "vermelho" : p.comprPct > 70 ? "amarelo" : "verde";
+              const livre = Math.max(0, p.producao - p.arrSacas - p.barterSacas - p.fixadoSacas);
               const contratosComm = contratosAtivos.filter(c => c.produto === commodity);
               const precosFixados = contratosComm.filter(c => c.preco).map(c => c.preco!);
               const precoMedio = precosFixados.length > 0 ? precosFixados.reduce((s, v) => s + v, 0) / precosFixados.length : 0;
@@ -890,7 +909,7 @@ export default function BI() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12 }}>
                     {[
                       { label: "Produção Projetada",    v: `${fmtN(p.producao, 0)} sc`,                            color: "#0C447C", bg: "#EBF3FC" },
-                      { label: "Volume Comprometido",   v: `${fmtN(p.arrSacas + p.barterSacas + p.fixadoSacas, 0)} sc (${fmtN(p.comprPct, 0)}%)`, color: risco === "verde" ? "#14532D" : risco === "amarelo" ? "#7A5A12" : "#791F1F", bg: risco === "verde" ? "#ECFDF5" : risco === "amarelo" ? "#FBF3E0" : "#FCEBEB" },
+                      { label: "Comprometido (físico)",  v: `${fmtN(p.arrSacas + p.barterSacas + p.fixadoSacas, 0)} sc (${fmtN(p.comprPct, 0)}%)`, color: risco === "verde" ? "#14532D" : risco === "amarelo" ? "#7A5A12" : "#791F1F", bg: risco === "verde" ? "#ECFDF5" : risco === "amarelo" ? "#FBF3E0" : "#FCEBEB" },
                       { label: "Volume Livre",          v: `${fmtN(livre, 0)} sc`,                                 color: "#14532D", bg: "#ECFDF5" },
                       { label: "Preço Médio Fixado",    v: precoMedio > 0 ? fmtR(precoMedio) + "/sc" : "A fixar",  color: "#1A4870", bg: "#F4F6FA" },
                       { label: "Receita Esperada Total",v: receitaEsperada > 0 ? fmtR(receitaEsperada) : "—",      color: "#14532D", bg: "#ECFDF5" },
@@ -907,24 +926,29 @@ export default function BI() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                       <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{commodity} — {fazenda?.nome}</span>
                       <Semaforo saude={risco} />
-                      <span style={{ fontSize: 12, color: "#666" }}>{fmtN(p.comprPct, 0)}% comprometido</span>
+                      <span style={{ fontSize: 12, color: "#666" }}>{fmtN(p.comprPct, 0)}% comprometido fisicamente · {fmtN(p.comprPctTotal, 0)}% c/ dívidas</span>
                     </div>
                     <BarraGraos {...p} />
 
                     {/* Legenda */}
-                    <div style={{ display: "flex", gap: 14, marginTop: 14, padding: "10px 14px", background: "#F8FAFD", borderRadius: 8 }}>
-                      {[
-                        { label: "Arrendamento (físico)", bg: "#E24B4A" },
-                        { label: "Barter (físico)",       bg: "#EF9F27" },
-                        { label: "Fixado (contratos)",    bg: "#378ADD" },
-                        { label: "Dívida convertida",     bg: "#9B59B6" },
-                        { label: "Livre",                 bg: "#16A34A" },
-                      ].map(x => (
-                        <span key={x.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
-                          <span style={{ width: 9, height: 9, borderRadius: 2, background: x.bg, display: "inline-block" }} />
-                          {x.label}
-                        </span>
-                      ))}
+                    <div style={{ marginTop: 14, padding: "10px 14px", background: "#F8FAFD", borderRadius: 8 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 6 }}>
+                        {[
+                          { label: "Arrendamento (físico)", bg: "#E24B4A" },
+                          { label: "Barter (físico)",       bg: "#EF9F27" },
+                          { label: "Fixado (contratos)",    bg: "#378ADD" },
+                          { label: "Livre (disponível)",    bg: "#16A34A" },
+                        ].map(x => (
+                          <span key={x.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+                            <span style={{ width: 9, height: 9, borderRadius: 2, background: x.bg, display: "inline-block" }} />
+                            {x.label}
+                          </span>
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#888", borderTop: "0.5px solid #E4E9F0", paddingTop: 6 }}>
+                        <span style={{ width: 9, height: 6, borderRadius: 2, background: "#9B59B6", display: "inline-block" }} />
+                        Barra inferior (roxo) = sacas equivalentes para quitar toda a dívida financeira ({fmtN(p.dividaSacas, 0)} sc)
+                      </div>
                     </div>
                   </div>
 

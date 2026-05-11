@@ -166,10 +166,11 @@ export async function excluirInsumo(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string): Promise<MovimentacaoEstoque[]> {
+export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
   let q = supabase.from("movimentacoes_estoque").select("*").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
   if (insumo_id) q = q.eq("insumo_id", insumo_id);
   if (dataInicio) q = q.gte("data", dataInicio);
+  if (dataFim)    q = q.lte("data", dataFim);
   const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
@@ -841,17 +842,34 @@ async function buscarDepositoTerceiroPorCnpj(fazenda_id: string, cnpj: string): 
 }
 
 // Atualiza custo médio ponderado e saldo do insumo
-async function creditarInsumo(insumo_id: string, quantidade: number, valor_unitario: number): Promise<void> {
-  const { data: ins } = await supabase.from("insumos").select("estoque, custo_medio, valor_unitario").eq("id", insumo_id).single();
+async function creditarInsumo(insumo_id: string, quantidade: number, valor_unitario: number, fazenda_id?: string): Promise<void> {
+  const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", insumo_id).single();
   if (!ins) return;
-  const estoqueAtual = ins.estoque ?? 0;
-  const custoAtual   = ins.custo_medio ?? ins.valor_unitario ?? valor_unitario;
-  const novoCusto    = estoqueAtual > 0
-    ? (estoqueAtual * custoAtual + quantidade * valor_unitario) / (estoqueAtual + quantidade)
-    : valor_unitario;
+
+  // Custo de baixa = média ponderada das entradas dos últimos 6 meses + esta nova entrada
+  let novoCusto = valor_unitario;
+  if (fazenda_id) {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const { data: movs } = await supabase
+      .from("movimentacoes_estoque")
+      .select("quantidade, valor_unitario")
+      .eq("insumo_id", insumo_id)
+      .eq("fazenda_id", fazenda_id)
+      .eq("tipo", "entrada")
+      .gte("data", sixMonthsAgo.toISOString().split("T")[0])
+      .not("valor_unitario", "is", null);
+    const historico = movs ?? [];
+    const todasEntradas = [...historico, { quantidade, valor_unitario }];
+    const totalQtd  = todasEntradas.reduce((s, m) => s + (m.quantidade ?? 0), 0);
+    const totalCust = todasEntradas.reduce((s, m) => s + (m.quantidade ?? 0) * ((m.valor_unitario as number) ?? 0), 0);
+    novoCusto = totalQtd > 0 ? totalCust / totalQtd : valor_unitario;
+  }
+
   await supabase.from("insumos").update({
-    estoque:     estoqueAtual + quantidade,
-    custo_medio: Math.round(novoCusto * 10000) / 10000,
+    estoque:        (ins.estoque ?? 0) + quantidade,
+    custo_medio:    Math.round(novoCusto * 10000) / 10000,
+    valor_unitario, // sempre atualiza para o preço da última compra
   }).eq("id", insumo_id);
 }
 
@@ -875,18 +893,20 @@ export async function processarNfEntrada(
   for (const item of itens) {
     // ── Compra normal → estoque ──────────────────────────────────
     if (item.tipo_apropiacao === "estoque" && item.insumo_id) {
-      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario);
+      // Insere movimento ANTES de atualizar custo_medio (inclui esta entrada no cálculo dos 6 meses)
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id:          item.insumo_id,
         fazenda_id,
         tipo:               "entrada",
         quantidade:         item.quantidade,
+        valor_unitario:     item.valor_unitario,
         data:               dataEntrada,
         observacao:         `NF ${nfId} — ${item.descricao_produto}`,
         auto:               true,
         deposito_id:        item.deposito_id ?? null,
         nf_entrada_item_id: item.id,
       });
+      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id);
     }
 
     // ── Manutenção de máquina ────────────────────────────────────
@@ -977,21 +997,21 @@ export async function processarNfEntrada(
         }).eq("id", reg.id);
       }
 
-      // 3. Credita insumo_fazenda: custo médio + saldo
-      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario);
-
-      // 4. Movimentação de entrada no depósito de insumo_fazenda
+      // 3. Credita insumo_fazenda: custo médio 6 meses + saldo
+      // Insere movimento ANTES de calcular custo_medio (inclui esta entrada no cálculo)
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id:          item.insumo_id,
         fazenda_id,
         tipo:               "entrada",
         quantidade:         item.quantidade,
+        valor_unitario:     item.valor_unitario,
         data:               dataEntrada,
         observacao:         `Remessa NF ${nfId} — ${item.descricao_produto} (${emitente})`,
         auto:               true,
         deposito_id:        item.deposito_id ?? null,
         nf_entrada_item_id: item.id,
       });
+      await creditarInsumo(item.insumo_id, item.quantidade, item.valor_unitario, fazenda_id);
     }
   }
 
@@ -1504,7 +1524,7 @@ export async function excluirCorrecao(id: string): Promise<void> {
 export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoSoloItem[], nomes: Record<string, string>): Promise<void> {
   for (const it of itens) {
     if (!it.insumo_id || !it.quantidade_ton) continue;
-    const { data: ins } = await supabase.from("insumos").select("estoque, unidade").eq("id", it.insumo_id).single();
+    const { data: ins } = await supabase.from("insumos").select("estoque, unidade, custo_medio, valor_unitario").eq("id", it.insumo_id).single();
     if (ins) {
       // Converte quantidade (em toneladas) para a unidade nativa do insumo
       const ton = it.quantidade_ton;
@@ -1519,8 +1539,9 @@ export async function processarCorrecao(correcao: CorrecaoSolo, itens: CorrecaoS
       }
       await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", it.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
-        insumo_id: it.insumo_id, fazenda_id: correcao.fazenda_id,
-        tipo: "saida", quantidade: qtdNativa, data: correcao.data_aplicacao,
+        insumo_id:               it.insumo_id, fazenda_id: correcao.fazenda_id,
+        tipo:                    "saida", quantidade: qtdNativa, data: correcao.data_aplicacao,
+        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
         safra: correcao.ciclo_id, motivo: "correcao_solo",
         descricao: `Correção de Solo — ${nomes[it.insumo_id] ?? "produto"}`,
       });
@@ -1594,7 +1615,7 @@ export async function excluirAdubacao(id: string): Promise<void> {
 export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoBaseItem[], nomes: Record<string, string>): Promise<void> {
   for (const it of itens) {
     if (!it.insumo_id || !it.quantidade_kg) continue;
-    const { data: ins } = await supabase.from("insumos").select("estoque, unidade").eq("id", it.insumo_id).single();
+    const { data: ins } = await supabase.from("insumos").select("estoque, unidade, custo_medio, valor_unitario").eq("id", it.insumo_id).single();
     if (ins) {
       // Converte quantidade (em kg) para a unidade nativa do insumo
       const kg = it.quantidade_kg;
@@ -1610,8 +1631,9 @@ export async function processarAdubacao(adubacao: AdubacaoBase, itens: AdubacaoB
       }
       await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qtdNativa }).eq("id", it.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
-        insumo_id: it.insumo_id, fazenda_id: adubacao.fazenda_id,
-        tipo: "saida", quantidade: qtdNativa, data: adubacao.data_aplicacao,
+        insumo_id:               it.insumo_id, fazenda_id: adubacao.fazenda_id,
+        tipo:                    "saida", quantidade: qtdNativa, data: adubacao.data_aplicacao,
+        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
         safra: adubacao.ciclo_id, motivo: "adubacao_base",
         descricao: `Adubação de Base — ${nomes[it.insumo_id] ?? "fertilizante"}`,
       });
@@ -1674,19 +1696,20 @@ export async function processarPlantio(plantio: Plantio, insumoNome: string): Pr
 
   // Baixa de estoque
   if (plantio.insumo_id && qty > 0) {
-    const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", plantio.insumo_id).single();
+    const { data: ins } = await supabase.from("insumos").select("estoque, custo_medio, valor_unitario").eq("id", plantio.insumo_id).single();
     if (ins) {
       await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - qty }).eq("id", plantio.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
-        insumo_id: plantio.insumo_id,
-        fazenda_id: plantio.fazenda_id,
-        tipo: "saida",
-        quantidade: qty,
-        data: plantio.data_plantio,
-        safra: plantio.ciclo_id,
-        operacao: "plantio",
-        observacao: `Plantio — ${insumoNome} ${plantio.variedade ?? ""}`.trim(),
-        auto: true,
+        insumo_id:                plantio.insumo_id,
+        fazenda_id:               plantio.fazenda_id,
+        tipo:                     "saida",
+        quantidade:               qty,
+        custo_unitario_na_baixa:  ins.custo_medio ?? ins.valor_unitario ?? undefined,
+        data:                     plantio.data_plantio,
+        safra:                    plantio.ciclo_id,
+        operacao:                 "plantio",
+        observacao:               `Plantio — ${insumoNome} ${plantio.variedade ?? ""}`.trim(),
+        auto:                     true,
       });
     }
   }
@@ -1772,19 +1795,20 @@ export async function processarPulverizacao(
 
   for (const item of itens) {
     // baixa de estoque
-    const { data: ins } = await supabase.from("insumos").select("estoque").eq("id", item.insumo_id).single();
+    const { data: ins } = await supabase.from("insumos").select("estoque, custo_medio, valor_unitario").eq("id", item.insumo_id).single();
     if (ins) {
       await supabase.from("insumos").update({ estoque: (ins.estoque ?? 0) - item.total_consumido }).eq("id", item.insumo_id);
       await supabase.from("movimentacoes_estoque").insert({
-        insumo_id: item.insumo_id,
-        fazenda_id: item.fazenda_id,
-        tipo: "saida",
-        quantidade: item.total_consumido,
-        data: pulv.data_inicio,
-        safra: pulv.ciclo_id,
-        operacao: pulv.tipo,
-        observacao: `Pulverização ${pulv.tipo} — ${nomesInsumos[item.insumo_id] ?? item.insumo_id}`,
-        auto: true,
+        insumo_id:               item.insumo_id,
+        fazenda_id:              item.fazenda_id,
+        tipo:                    "saida",
+        quantidade:              item.total_consumido,
+        custo_unitario_na_baixa: ins.custo_medio ?? ins.valor_unitario ?? undefined,
+        data:                    pulv.data_inicio,
+        safra:                   pulv.ciclo_id,
+        operacao:                pulv.tipo,
+        observacao:              `Pulverização ${pulv.tipo} — ${nomesInsumos[item.insumo_id] ?? item.insumo_id}`,
+        auto:                    true,
       });
     }
     custoTotal += item.custo_total;
@@ -2802,6 +2826,57 @@ export async function cancelarPendenciaOperacional(id: string): Promise<void> {
     .from("pendencias_operacionais")
     .update({ status: "cancelada" })
     .eq("id", id);
+  if (error) throw error;
+}
+
+// ————————————————————————————————————————
+// ————————————————————————————————————————
+// PLANO DE CONTAS CONTÁBIL
+// ————————————————————————————————————————
+
+import type { ContaContabil } from "./planoContas";
+
+export async function listarPlanoContas(fazenda_id: string): Promise<ContaContabil[]> {
+  const { data, error } = await supabase
+    .from("plano_contas")
+    .select("*")
+    .eq("fazenda_id", fazenda_id)
+    .order("codigo");
+  if (error) throw error;
+  return (data ?? []).map(r => ({
+    codigo:      r.codigo,
+    nome:        r.nome,
+    tipo:        r.tipo as ContaContabil["tipo"],
+    nivel:       r.nivel,
+    pai:         r.pai ?? undefined,
+    natureza:    r.natureza as ContaContabil["natureza"] ?? undefined,
+    transitoria: r.transitoria ?? undefined,
+    operacional: r.operacional ?? undefined,
+    lcdpr:       r.lcdpr ?? null,
+  }));
+}
+
+export async function salvarContaContabil(fazenda_id: string, conta: ContaContabil): Promise<void> {
+  const { error } = await supabase
+    .from("plano_contas")
+    .upsert({ fazenda_id, ...conta }, { onConflict: "fazenda_id,codigo" });
+  if (error) throw error;
+}
+
+export async function excluirContaContabil(fazenda_id: string, codigo: string): Promise<void> {
+  const { error } = await supabase
+    .from("plano_contas")
+    .delete()
+    .eq("fazenda_id", fazenda_id)
+    .eq("codigo", codigo);
+  if (error) throw error;
+}
+
+export async function seedPlanoContas(fazenda_id: string, contas: ContaContabil[]): Promise<void> {
+  const rows = contas.map(c => ({ fazenda_id, ...c }));
+  const { error } = await supabase
+    .from("plano_contas")
+    .upsert(rows, { onConflict: "fazenda_id,codigo" });
   if (error) throw error;
 }
 

@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo } from "../../../lib/supabase";
+import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciais } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -118,12 +118,13 @@ export default function ContasPagar() {
   const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
   const fid = formFazendaId ?? fazendaId;
 
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
-  const [produtores,  setProdutores]  = useState<Produtor[]>([]);
-  const [pessoas,     setPessoas]     = useState<Pessoa[]>([]);
-  const [ciclos,      setCiclos]      = useState<Ciclo[]>([]);
-  const [contas,      setContas]      = useState<ContaBancariaMin[]>([]);
+  const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
+  const [anosSafra,     setAnosSafra]     = useState<AnoSafra[]>([]);
+  const [produtores,    setProdutores]    = useState<Produtor[]>([]);
+  const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
+  const [ciclos,        setCiclos]        = useState<Ciclo[]>([]);
+  const [contas,        setContas]        = useState<ContaBancariaMin[]>([]);
+  const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
@@ -139,6 +140,7 @@ export default function ContasPagar() {
     descricao: "", categoria: "", data_vencimento: "",
     valorMask: "", observacao: "", pessoa_id: "",
     conta_bancaria: "", ano_safra_id: "", produtor_id: "", ciclo_id: "",
+    operacao_gerencial_id: "",
   });
   const [editSalvando, setEditSalvando] = useState(false);
 
@@ -150,10 +152,11 @@ export default function ContasPagar() {
       valorMask:        l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
       observacao:       l.observacao ?? "",
       pessoa_id:        l.pessoa_id ?? "",
-      conta_bancaria:   l.conta_bancaria ?? "",
-      ano_safra_id:     l.ano_safra_id ?? "",
-      produtor_id:      l.produtor_id ?? "",
-      ciclo_id:         l.ciclo_id ?? "",
+      conta_bancaria:        l.conta_bancaria ?? "",
+      ano_safra_id:          l.ano_safra_id ?? "",
+      produtor_id:           l.produtor_id ?? "",
+      ciclo_id:              l.ciclo_id ?? "",
+      operacao_gerencial_id: l.operacao_gerencial_id ?? "",
     });
     setModalEditar(l);
   }
@@ -171,8 +174,9 @@ export default function ContasPagar() {
       pessoa_id:       editForm.pessoa_id  || null,
       conta_bancaria:  editForm.conta_bancaria || null,
       ano_safra_id:    editForm.ano_safra_id   || null,
-      produtor_id:     editForm.produtor_id    || null,
-      ciclo_id:        editForm.ciclo_id       || null,
+      produtor_id:           editForm.produtor_id           || null,
+      ciclo_id:              editForm.ciclo_id              || null,
+      operacao_gerencial_id: editForm.operacao_gerencial_id || null,
     }).eq("id", modalEditar.id);
     if (error) { alert("Erro ao salvar: " + error.message); setEditSalvando(false); return; }
     setLancamentos(prev => prev.map(x => x.id === modalEditar.id
@@ -210,6 +214,7 @@ export default function ContasPagar() {
     juros_pct: "", multa_pct: "", desconto_pct: "",
     chave_xml: "", centro_custo: "",
     ano_safra_id: "", produtor_id: "", ciclo_id: "",
+    operacao_gerencial_id: "",
     natureza: "real" as "real" | "previsao",
     forma_pagamento: "PIX",
     conta_pagamento: "",
@@ -250,6 +255,7 @@ export default function ContasPagar() {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+      listarOperacoesGerenciais(fazendaId).then(ops => setOpGerenciais(ops.filter(o => !o.inativo))).catch(() => {});
       supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
     }
@@ -415,12 +421,13 @@ export default function ContasPagar() {
       multa_pct:     form.multa_pct     ? Number(form.multa_pct)   : undefined,
       desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : undefined,
       chave_xml:     form.chave_xml     || undefined,
-      centro_custo:  form.centro_custo  || undefined,
-      observacao:    form.obs           || undefined,
-      ano_safra_id:  form.ano_safra_id  || undefined,
-      ciclo_id:      form.ciclo_id      || undefined,
-      produtor_id:   form.produtor_id   || undefined,
-      natureza:      form.natureza,
+      centro_custo:          form.centro_custo          || undefined,
+      observacao:            form.obs                   || undefined,
+      ano_safra_id:          form.ano_safra_id          || undefined,
+      ciclo_id:              form.ciclo_id              || undefined,
+      produtor_id:           form.produtor_id           || undefined,
+      operacao_gerencial_id: form.operacao_gerencial_id || undefined,
+      natureza:              form.natureza,
     };
 
     try {
@@ -937,6 +944,25 @@ export default function ContasPagar() {
                 </select>
               </div>
               <div>
+                <label style={lbl}>Operação Gerencial</label>
+                <select value={editForm.operacao_gerencial_id} onChange={e => setEditForm(f => ({ ...f, operacao_gerencial_id: e.target.value }))} style={inp}>
+                  <option value="">— Sem vínculo contábil —</option>
+                  {opGerenciais.filter(o => o.tipo === "despesa").map(o => (
+                    <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
+                  ))}
+                </select>
+                {editForm.operacao_gerencial_id && (() => {
+                  const op = opGerenciais.find(o => o.id === editForm.operacao_gerencial_id);
+                  if (!op) return null;
+                  return (
+                    <div style={{ marginTop: 4, padding: "5px 10px", background: "#F0F7FF", borderRadius: 6, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 16 }}>
+                      <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
+                      <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
+                    </div>
+                  );
+                })()}
+              </div>
+              <div>
                 <label style={lbl}>Observação</label>
                 <input value={editForm.observacao} onChange={e => setEditForm(f => ({ ...f, observacao: e.target.value }))} style={inp} placeholder="Opcional" />
               </div>
@@ -1387,6 +1413,27 @@ export default function ContasPagar() {
             <div style={{ marginTop: 18, borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 12 }}>Adicionais — LCDPR, encargos e vínculos</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                {/* Operação Gerencial */}
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={lbl}>Operação Gerencial <span style={{ color: "#888", fontWeight: 400 }}>(débito / crédito contábil)</span></label>
+                  <select style={inp} value={form.operacao_gerencial_id}
+                    onChange={e => setForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
+                    <option value="">— Sem vínculo contábil —</option>
+                    {opGerenciais.filter(o => o.tipo === "despesa").map(o => (
+                      <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
+                    ))}
+                  </select>
+                  {form.operacao_gerencial_id && (() => {
+                    const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!op) return null;
+                    return (
+                      <div style={{ marginTop: 4, padding: "6px 10px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 16 }}>
+                        <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
+                        <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div>
                   <label style={lbl}>Tipo Documento LCDPR</label>
                   <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>

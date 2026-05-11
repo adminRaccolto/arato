@@ -3750,3 +3750,15 @@ ALTER TABLE centros_custo
   ADD COLUMN IF NOT EXISTS manutencao_maquinas boolean NOT NULL DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 85: custo na baixa — média 6 meses
+-- ============================================================
+-- Adiciona valor_unitario (preço de compra) e custo_unitario_na_baixa
+-- (custo médio 6 meses registrado no momento da saída)
+ALTER TABLE movimentacoes_estoque
+  ADD COLUMN IF NOT EXISTS valor_unitario       numeric(14,4),
+  ADD COLUMN IF NOT EXISTS custo_unitario_na_baixa numeric(14,4);
+
+-- O campo valor_unitario já existe em alguns ambientes (seção 71) mas com IF NOT EXISTS não gera erro
+NOTIFY pgrst, 'reload schema';
