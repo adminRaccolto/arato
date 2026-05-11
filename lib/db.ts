@@ -200,11 +200,13 @@ export async function criarMovimentacaoManual(
 
   await supabase.from("insumos").update({ estoque: ins.estoque + delta }).eq("id", insumo_id);
 
+  // Para ajustes: armazenamos o delta assinado em quantidade (pode ser negativo)
+  // Para entrada/saída: armazenamos positivo (direção indicada pelo tipo)
   await supabase.from("movimentacoes_estoque").insert({
     fazenda_id, insumo_id,
-    tipo:       tipo === "ajuste" ? (delta >= 0 ? "entrada" : "saida") : tipo,
+    tipo,
     motivo,
-    quantidade: Math.abs(delta),
+    quantidade: tipo === "ajuste" ? delta : Math.abs(delta),
     data, deposito_id: deposito_id ?? null,
     observacao, auto: false,
   });

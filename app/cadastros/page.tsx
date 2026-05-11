@@ -2453,10 +2453,17 @@ function CadastrosInner() {
                           </select>
                         </div>
                       )}
-                      {/* Estoque atual */}
+                      {/* Estoque atual — bloqueado em edição */}
                       <div>
                         <label style={lbl}>Estoque atual ({isComb ? "L" : fIns.unidade})</label>
-                        <input style={inp} type="number" min="0" step="0.01" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
+                        {editIns ? (
+                          <div style={{ padding: "8px 10px", background: "#F8FAFB", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, color: "#888", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span>{fIns.estoque} {isComb ? "L" : fIns.unidade}</span>
+                            <span style={{ fontSize: 11, color: "#C9921B" }}>Altere via Ajuste de Estoque</span>
+                          </div>
+                        ) : (
+                          <input style={inp} type="number" min="0" step="0.01" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
+                        )}
                       </div>
                       {/* Estoque mínimo */}
                       <div>
@@ -4002,7 +4009,17 @@ function CadastrosInner() {
               </select>
             </div>
             <div><label style={lbl}>Capacidade do tanque (L)</label><input style={inp} type="number" value={fBomba.capacidade_l} onChange={e => setFBomba(p => ({ ...p, capacidade_l: e.target.value }))} /></div>
-            <div><label style={lbl}>Estoque atual (L)</label><input style={inp} type="number" value={fBomba.estoque_atual_l} onChange={e => setFBomba(p => ({ ...p, estoque_atual_l: e.target.value }))} /></div>
+            <div>
+              <label style={lbl}>Estoque atual (L)</label>
+              {editBomba ? (
+                <div style={{ padding: "8px 10px", background: "#F8FAFB", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, color: "#888", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>{fBomba.estoque_atual_l} L</span>
+                  <span style={{ fontSize: 11, color: "#C9921B" }}>Altere via Ajuste de Estoque</span>
+                </div>
+              ) : (
+                <input style={inp} type="number" value={fBomba.estoque_atual_l} onChange={e => setFBomba(p => ({ ...p, estoque_atual_l: e.target.value }))} />
+              )}
+            </div>
             <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
               <input type="checkbox" id="consume_estoque" checked={fBomba.consume_estoque} onChange={e => setFBomba(p => ({ ...p, consume_estoque: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
               <label htmlFor="consume_estoque" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer", fontWeight: 600 }}>Controla estoque interno</label>

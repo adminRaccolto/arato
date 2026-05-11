@@ -212,10 +212,17 @@ export default function Estoque() {
   const [fMov, setFMov]           = useState({ insumo_id: "", tipo: "entrada" as "entrada"|"saida"|"ajuste", motivo: "compra" as MovimentacaoEstoque["motivo"], quantidade: "0", quantidade_nova: "0", deposito_id: "", data: new Date().toISOString().slice(0,10), observacao: "" });
 
   // relatórios
-  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao">("saldos");
+  const [relTipo, setRelTipo]     = useState<"historico"|"saldos"|"posicao"|"kardex">("saldos");
   const [relInsumoId, setRelInsumoId] = useState("");
   const [relDataInicio, setRelDataInicio] = useState(() => { const d = new Date(); d.setMonth(d.getMonth()-3); return d.toISOString().slice(0,10); });
   const [relMovs, setRelMovs]     = useState<MovimentacaoEstoque[]>([]);
+  // kardex
+  const [kardexInicio, setKardexInicio] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
+  const [kardexFim, setKardexFim]       = useState(() => new Date().toISOString().slice(0,10));
+  const [kardexCat, setKardexCat]       = useState<"todos" | Insumo["categoria"]>("todos");
+  const [kardexInsumoId, setKardexInsumoId] = useState("");
+  const [kardexMovs, setKardexMovs]     = useState<MovimentacaoEstoque[]>([]);
+  const [kardexBuscando, setKardexBuscando] = useState(false);
 
   // modal NF Entrada — passo 1: dados da NF / passo 2: itens
   const [modalNf, setModalNf] = useState<"off" | "passo1" | "passo2">("off");
@@ -290,6 +297,16 @@ export default function Estoque() {
   const buscarHistorico = () => {
     if (!fazendaId || !relInsumoId) return;
     listarMovimentacoes(fazendaId, relInsumoId, relDataInicio).then(setRelMovs).catch(() => {});
+  };
+
+  const buscarKardex = async () => {
+    if (!fazendaId) return;
+    setKardexBuscando(true);
+    try {
+      const movs = await listarMovimentacoes(fazendaId, kardexInsumoId || undefined, kardexInicio, kardexFim);
+      setKardexMovs(movs);
+    } catch { /* ignore */ }
+    setKardexBuscando(false);
   };
 
   // ── Novo insumo ──
@@ -693,24 +710,34 @@ export default function Estoque() {
                       const ins = insumos.find(x => x.id === m.insumo_id);
                       const dep = depositos.find(x => x.id === m.deposito_id);
                       const MOTIVO_LABEL: Record<string, string> = { compra: "Compra", ajuste_saldo: "Ajuste saldo", baixa_uso: "Baixa uso", baixa_perda: "Baixa perda", transferencia: "Transferência", inventario: "Inventário", outros: "Outros" };
+                      const isAdj = m.tipo === "ajuste";
                       return (
-                        <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none", background: isAdj ? "#FFFDF5" : undefined }}>
                           <td style={{ padding: "10px 14px", color: "#1a1a1a", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
                           <td style={{ padding: "10px 14px" }}>
                             <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{ins?.nome ?? "—"}</div>
                             {ins && <div style={{ fontSize: 11, color: "#444" }}>{CAT_META[ins.categoria]?.label ?? ins.categoria}</div>}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                            {m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
+                            {isAdj
+                              ? badge("⚙ Ajuste","#FBF3E0","#7A5A12")
+                              : m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{m.motivo ? MOTIVO_LABEL[m.motivo] ?? m.motivo : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>
-                            <span style={{ color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins?.unidade}</span>
+                            {isAdj
+                              ? <span style={{ color: m.quantidade >= 0 ? "#1A4870" : "#E24B4A" }}>{m.quantidade >= 0 ? "+" : ""}{fmtNum(m.quantidade)} {ins?.unidade} <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 400 }}>(ajuste)</span></span>
+                              : <span style={{ color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins?.unidade}</span>}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {m.auto ? badge("Auto","#D5E8F5","#0B2D50") : badge("Manual","#FBF0D8","#7A5A12")}
-                            {m.observacao && <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{m.observacao}</div>}
+                            {m.observacao && (
+                              <div style={{ fontSize: 11, color: isAdj ? "#7A5A12" : "#888", marginTop: 3, maxWidth: 180, whiteSpace: "normal", textAlign: "left" }}>
+                                {isAdj && <span style={{ fontWeight: 600 }}>Justificativa: </span>}
+                                {m.observacao}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );
@@ -726,10 +753,221 @@ export default function Estoque() {
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Sub-abas — scroll horizontal no mobile */}
               <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
-                {([["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
+                {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#1A4870" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
               </div>
+
+              {/* ── Movimentação por Produto (Kardex) ── */}
+              {relTipo === "kardex" && (() => {
+                // Filtrar movs por categoria e produto selecionado
+                const insumosFiltrados = insumos.filter(ins =>
+                  (kardexCat === "todos" || ins.categoria === kardexCat) &&
+                  (!kardexInsumoId || ins.id === kardexInsumoId)
+                );
+                const insIds = new Set(insumosFiltrados.map(i => i.id));
+                const movsFiltr = kardexMovs.filter(m => insIds.has(m.insumo_id));
+
+                // Agrupar por produto
+                type KardexRow = { insumo: Insumo; movs: (MovimentacaoEstoque & { saldo: number })[]; totalE: number; totalS: number; saldoFinal: number; saldoInicial: number };
+                const grupos: KardexRow[] = insumosFiltrados
+                  .map(ins => {
+                    const mIns = movsFiltr.filter(m => m.insumo_id === ins.id).slice().reverse(); // cronológico
+                    let saldoFinalCalc = ins.estoque;
+                    const totalE = movsFiltr.filter(m => m.insumo_id === ins.id && m.tipo === "entrada").reduce((s, m) => s + m.quantidade, 0);
+                    const totalS = movsFiltr.filter(m => m.insumo_id === ins.id && m.tipo === "saida").reduce((s, m) => s + m.quantidade, 0);
+                    // ajustes são registados como delta absoluto; precisamos do net para calcular saldo inicial
+                    // ajuste armazena delta assinado (positivo=aumento, negativo=redução)
+                    const totalAjNeto = movsFiltr.filter(m => m.insumo_id === ins.id && m.tipo === "ajuste").reduce((s, m) => s + m.quantidade, 0);
+                    // saldo inicial = saldo atual - entradas - ajustes + saidas
+                    const saldoInicialCalc = saldoFinalCalc - totalE - totalAjNeto + totalS;
+                    let running = saldoInicialCalc;
+                    const rows = mIns.map(m => {
+                      if (m.tipo === "ajuste") {
+                        running += m.quantidade; // delta assinado
+                      } else {
+                        running += m.tipo === "entrada" ? m.quantidade : -m.quantidade;
+                      }
+                      return { ...m, saldo: running };
+                    });
+                    saldoFinalCalc = running;
+                    return { insumo: ins, movs: rows, totalE, totalS, saldoFinal: saldoFinalCalc, saldoInicial: saldoInicialCalc };
+                  })
+                  .filter(g => g.movs.length > 0); // só produtos com movimento no período
+
+                const totalEntradas = grupos.reduce((s, g) => s + g.totalE, 0);
+                const totalSaidas   = grupos.reduce((s, g) => s + g.totalS, 0);
+                const MOTIVO_LABEL: Record<string, string> = { compra: "Compra", ajuste_saldo: "Ajuste", baixa_uso: "Uso", baixa_perda: "Perda", transferencia: "Transfer.", inventario: "Inventário", abastecimento: "Abastecimento", outros: "Outros" };
+
+                return (
+                  <div>
+                    {/* Filtros */}
+                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
+                        <div>
+                          <label style={lbl}>Data início *</label>
+                          <input style={inp} type="date" value={kardexInicio} onChange={e => setKardexInicio(e.target.value)} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Data fim *</label>
+                          <input style={inp} type="date" value={kardexFim} onChange={e => setKardexFim(e.target.value)} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Categoria</label>
+                          <select style={inp} value={kardexCat} onChange={e => setKardexCat(e.target.value as typeof kardexCat)}>
+                            <option value="todos">Todas</option>
+                            {Object.entries(CAT_META).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Produto (opcional)</label>
+                          <select style={inp} value={kardexInsumoId} onChange={e => setKardexInsumoId(e.target.value)}>
+                            <option value="">Todos</option>
+                            {insumos.filter(i => kardexCat === "todos" || i.categoria === kardexCat).map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <button onClick={buscarKardex} disabled={kardexBuscando} style={{ ...btnV, whiteSpace: "nowrap", opacity: kardexBuscando ? 0.6 : 1 }}>
+                            {kardexBuscando ? "Buscando…" : "Buscar"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {kardexMovs.length === 0 && !kardexBuscando && (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "#888", background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+                        Selecione o período e clique em Buscar para gerar o relatório.
+                      </div>
+                    )}
+
+                    {grupos.length > 0 && (
+                      <div>
+                        {/* KPIs */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
+                          {[
+                            ["Produtos com movimento", String(grupos.length), "#1A4870", "#D5E8F5"],
+                            ["Total de movimentações", String(movsFiltr.length), "#1A6B3C", "#E8F5E9"],
+                            ["Total de entradas", grupos.reduce((s,g) => s + g.totalE, 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 }), "#1A6B3C", "#E8F5E9"],
+                            ["Total de saídas", grupos.reduce((s,g) => s + g.totalS, 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 }), "#791F1F", "#FCEBEB"],
+                          ].map(([l, v, cl, bg]) => (
+                            <div key={l} style={{ background: bg, border: `0.5px solid ${cl}30`, borderRadius: 10, padding: "12px 16px" }}>
+                              <div style={{ fontSize: 11, color: cl, marginBottom: 2 }}>{l}</div>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: cl }}>{v}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Cabeçalho da impressão */}
+                        <div style={{ display: "none" }} className="print-area">
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontWeight: 700, fontSize: 16 }}>Relatório de Movimentação de Estoque por Produto</div>
+                            <div style={{ fontSize: 12, color: "#555" }}>Período: {kardexInicio.split("-").reverse().join("/")} a {kardexFim.split("-").reverse().join("/")} · Gerado em {new Date().toLocaleDateString("pt-BR")}</div>
+                          </div>
+                        </div>
+
+                        {/* Botão imprimir */}
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }} className="no-print">
+                          <button onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                            🖨 Imprimir
+                          </button>
+                        </div>
+
+                        {/* Tabela resumo */}
+                        <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+                          <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", fontWeight: 600, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span>Resumo por Produto</span>
+                            <span style={{ fontSize: 12, color: "#555", fontWeight: 400 }}>{kardexInicio.split("-").reverse().join("/")} → {kardexFim.split("-").reverse().join("/")}</span>
+                          </div>
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <TH cols={["Produto", "Categoria", "Unid.", "Saldo Inicial", "Entradas", "Saídas", "Saldo Final"]} />
+                              <tbody>
+                                {grupos.map((g, i) => {
+                                  const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: g.insumo.categoria };
+                                  return (
+                                    <tr key={g.insumo.id} style={{ borderBottom: i < grupos.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                      <td style={{ padding: "9px 14px", fontWeight: 600, color: "#1a1a1a" }}>{g.insumo.nome}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#555", fontSize: 12 }}>{g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "right", color: "#555" }}>{fmtNum(g.saldoInicial)} {g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>+{fmtNum(g.totalE)} {g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: "#E24B4A" }}>-{fmtNum(g.totalS)} {g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: g.saldoFinal < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(g.saldoFinal)} {g.insumo.unidade}</td>
+                                    </tr>
+                                  );
+                                })}
+                                <tr style={{ background: "#F8FAFD", borderTop: "1px solid #D4DCE8" }}>
+                                  <td colSpan={3} style={{ padding: "9px 14px", fontWeight: 700, color: "#1a1a1a" }}>TOTAL</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#555" }}>—</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>▲ {fmtNum(totalEntradas)}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#E24B4A" }}>▼ {fmtNum(totalSaidas)}</td>
+                                  <td style={{ padding: "9px 14px" }} />
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* Detalhe por produto */}
+                        {grupos.map(g => {
+                          const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: g.insumo.categoria };
+                          return (
+                            <div key={g.insumo.id} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                              <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                                <span style={{ fontWeight: 700, color: "#1a1a1a" }}>{g.insumo.nome}</span>
+                                {badge(cat.label, cat.bg, cat.cl)}
+                                <span style={{ fontSize: 12, color: "#555" }}>{g.movs.length} moviment.</span>
+                                <span style={{ marginLeft: "auto", display: "flex", gap: 16, fontSize: 12 }}>
+                                  <span>Inicial: <strong>{fmtNum(g.saldoInicial)} {g.insumo.unidade}</strong></span>
+                                  <span style={{ color: "#1A4870" }}>+{fmtNum(g.totalE)}</span>
+                                  <span style={{ color: "#E24B4A" }}>-{fmtNum(g.totalS)}</span>
+                                  <span>Final: <strong style={{ color: g.saldoFinal < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(g.saldoFinal)} {g.insumo.unidade}</strong></span>
+                                </span>
+                              </div>
+                              <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                  <TH cols={["Data", "Tipo", "Motivo", "Quantidade", "Saldo Acum.", "Depósito", "Obs."]} />
+                                  <tbody>
+                                    {g.movs.map((m, mi) => {
+                                      const dep = depositos.find(d => d.id === m.deposito_id);
+                                      const isAdj2 = m.tipo === "ajuste";
+                                      return (
+                                        <tr key={m.id} style={{ borderBottom: mi < g.movs.length - 1 ? "0.5px solid #EEF1F6" : "none", background: isAdj2 ? "#FFFDF5" : undefined }}>
+                                          <td style={{ padding: "8px 14px", whiteSpace: "nowrap", color: "#555" }}>{m.data.split("-").reverse().join("/")}</td>
+                                          <td style={{ padding: "8px 14px", textAlign: "center" }}>
+                                            {isAdj2 ? badge("⚙ Ajuste","#FBF3E0","#7A5A12") : m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
+                                          </td>
+                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? m.motivo ?? "—"}</td>
+                                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 600, color: isAdj2 ? (m.quantidade >= 0 ? "#1A4870" : "#E24B4A") : m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>
+                                            {isAdj2 ? `${m.quantidade >= 0 ? "+" : ""}${fmtNum(m.quantidade)}` : `${m.tipo === "entrada" ? "+" : "-"}${fmtNum(m.quantidade)}`} {g.insumo.unidade}
+                                          </td>
+                                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "#1a1a1a" }}>
+                                            {fmtNum(m.saldo)} {g.insumo.unidade}
+                                          </td>
+                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
+                                          <td style={{ padding: "8px 14px", fontSize: 11, color: isAdj2 ? "#7A5A12" : "#888", maxWidth: 180, whiteSpace: "normal" }}>
+                                            {m.observacao ? <><strong>{isAdj2 ? "Justificativa: " : ""}</strong><span title={m.observacao}>{m.observacao.slice(0, 60)}{m.observacao.length > 60 ? "…" : ""}</span></> : "—"}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {kardexMovs.length > 0 && grupos.length === 0 && (
+                      <div style={{ textAlign: "center", padding: "32px 0", color: "#888", background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+                        Nenhum produto com movimentação no período com os filtros selecionados.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Histórico por item */}
               {relTipo === "historico" && (
@@ -898,8 +1136,16 @@ export default function Estoque() {
       {/* Modal Movimentação Manual */}
       {modalMov && (() => {
         const ins = insumos.find(x => x.id === fMov.insumo_id);
+        const isAjuste = fMov.tipo === "ajuste";
+        const obsObrig = isAjuste && !fMov.observacao.trim();
+        const canSave = !salvando && !!fMov.insumo_id && !!fMov.data && !obsObrig;
         return (
-          <Modal titulo="Movimentação de Estoque" width={580} onClose={() => setModalMov(false)}>
+          <Modal titulo={isAjuste ? "Ajuste de Estoque" : "Movimentação de Estoque"} width={600} onClose={() => setModalMov(false)}>
+            {isAjuste && (
+              <div style={{ marginBottom: 14, background: "#FBF3E0", border: "0.5px solid #E8C97A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12" }}>
+                <strong>Ajuste de Estoque</strong> — use para corrigir inconsistências entre o sistema e a contagem física. O registro fica permanente no extrato para auditoria.
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
               <div style={{ gridColumn: "1/-1" }}>
                 <label style={lbl}>Item *</label>
@@ -913,7 +1159,7 @@ export default function Estoque() {
                 <select style={inp} value={fMov.tipo} onChange={e => {
                   const tipo = e.target.value as typeof fMov.tipo;
                   const motivo = tipo === "entrada" ? "compra" : tipo === "ajuste" ? "ajuste_saldo" : "baixa_uso";
-                  setFMov(p => ({ ...p, tipo, motivo: motivo as typeof p.motivo }));
+                  setFMov(p => ({ ...p, tipo, motivo: motivo as typeof p.motivo, observacao: "" }));
                 }}>
                   <option value="entrada">Entrada de estoque</option>
                   <option value="saida">Saída de estoque</option>
@@ -941,7 +1187,7 @@ export default function Estoque() {
                   </>}
                 </select>
               </div>
-              {fMov.tipo === "ajuste" ? (
+              {isAjuste ? (
                 <div>
                   <label style={lbl}>Novo saldo *{ins ? ` (atual: ${fmtNum(ins.estoque)} ${ins.unidade})` : ""}</label>
                   <input style={inp} type="number" step="0.001" value={fMov.quantidade_nova} onChange={e => setFMov(p => ({ ...p, quantidade_nova: e.target.value }))} />
@@ -964,11 +1210,19 @@ export default function Estoque() {
                 <input style={inp} type="date" value={fMov.data} onChange={e => setFMov(p => ({ ...p, data: e.target.value }))} />
               </div>
               <div style={{ gridColumn: "1/-1" }}>
-                <label style={lbl}>Observação</label>
-                <input style={inp} placeholder="Motivo, referência, responsável…" value={fMov.observacao} onChange={e => setFMov(p => ({ ...p, observacao: e.target.value }))} />
+                <label style={{ ...lbl, color: isAjuste ? "#C9921B" : undefined }}>
+                  {isAjuste ? "Justificativa do ajuste *" : "Observação"}
+                  {isAjuste && <span style={{ fontWeight: 400, marginLeft: 6, fontSize: 11 }}>(obrigatório — ficará no extrato de auditoria)</span>}
+                </label>
+                <input
+                  style={{ ...inp, borderColor: isAjuste && obsObrig && fMov.observacao !== "" ? "#E24B4A" : isAjuste ? "#C9921B50" : undefined, background: isAjuste ? "#FFFDF5" : undefined }}
+                  placeholder={isAjuste ? "Ex: Inventário físico realizado em 10/05. Contagem: 120L. Sistema: 135L. Diferença de 15L ajustada." : "Motivo, referência, responsável…"}
+                  value={fMov.observacao}
+                  onChange={e => setFMov(p => ({ ...p, observacao: e.target.value }))}
+                />
               </div>
             </div>
-            {ins && fMov.tipo !== "ajuste" && (
+            {ins && !isAjuste && (
               <div style={{ marginTop: 12, fontSize: 12, color: "#555", background: "#F3F6F9", padding: "8px 12px", borderRadius: 7 }}>
                 Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
                 {" → "}
@@ -977,20 +1231,27 @@ export default function Estoque() {
                 </strong>
               </div>
             )}
-            {ins && fMov.tipo === "ajuste" && (
-              <div style={{ marginTop: 12, fontSize: 12, color: "#555", background: "#F3F6F9", padding: "8px 12px", borderRadius: 7 }}>
+            {ins && isAjuste && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "#555", background: "#FBF3E0", border: "0.5px solid #E8C97A", padding: "10px 14px", borderRadius: 7 }}>
                 Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
                 {" → "}
                 <strong style={{ color: "#C9921B" }}>{fmtNum(parseFloat(fMov.quantidade_nova)||0)} {ins.unidade}</strong>
-                {" (delta: "}
+                {" · delta: "}
                 <strong style={{ color: (parseFloat(fMov.quantidade_nova)||0) >= ins.estoque ? "#1A4870" : "#E24B4A" }}>
-                  {((parseFloat(fMov.quantidade_nova)||0) - ins.estoque).toFixed(3)}
-                </strong>{")"}
+                  {((parseFloat(fMov.quantidade_nova)||0) >= ins.estoque ? "+" : "")}{((parseFloat(fMov.quantidade_nova)||0) - ins.estoque).toFixed(3)} {ins.unidade}
+                </strong>
               </div>
+            )}
+            {isAjuste && obsObrig && (
+              <div style={{ marginTop: 8, fontSize: 11, color: "#E24B4A" }}>A justificativa é obrigatória para ajustes de estoque.</div>
             )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
               <button style={btnR} onClick={() => setModalMov(false)}>Cancelar</button>
-              <button style={{ ...btnV, background: "#C9921B", opacity: salvando || !fMov.insumo_id || !fMov.data ? 0.5 : 1 }} disabled={salvando || !fMov.insumo_id || !fMov.data} onClick={salvarMovimentacaoManual}>{salvando ? "Salvando…" : "Registrar Movimentação"}</button>
+              <button
+                style={{ ...btnV, background: isAjuste ? "#C9921B" : btnV.background, opacity: canSave ? 1 : 0.5 }}
+                disabled={!canSave}
+                onClick={salvarMovimentacaoManual}
+              >{salvando ? "Salvando…" : isAjuste ? "Registrar Ajuste" : "Registrar Movimentação"}</button>
             </div>
           </Modal>
         );
