@@ -14,7 +14,8 @@ interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string }
-interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; safra?: string; comprador?: string; numero?: string }
+interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string }
+interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
 // ── Formatadores ──────────────────────────────────────────────
 const fmtR  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -142,7 +143,7 @@ function BarraHorizontal({ value, max, color, label, sub }: { value: number; max
   );
 }
 
-type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade";
+type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio";
 
 // ── Componente principal ──────────────────────────────────────
 export default function BI() {
@@ -155,8 +156,9 @@ export default function BI() {
   const [plantios,    setPlantios]    = useState<Plantio[]>([]);
   const [colheitas,   setColheitas]   = useState<Colheita[]>([]);
   const [arrPags,     setArrPags]     = useState<ArrPag[]>([]);
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [contratos,   setContratos]   = useState<Contrato[]>([]);
+  const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
+  const [contratos,     setContratos]     = useState<Contrato[]>([]);
+  const [cessaoDebitos, setCessaoDebitos] = useState<CessaoDebito[]>([]);
   const [precos,      setPrecos]      = useState<PrecosData | null>(null);
 
   const [loading,     setLoading]     = useState(true);
@@ -181,7 +183,7 @@ export default function BI() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
-    const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, precR] = await Promise.allSettled([
+    const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
       supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc").eq("fazenda_id", fazendaId),
@@ -189,7 +191,8 @@ export default function BI() {
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
       supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id").eq("fazenda_id", fazendaId),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data").eq("fazenda_id", fazendaId),
+      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento").eq("fazenda_id", fazendaId),
+      supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").eq("fazenda_id", fazendaId),
       fetch("/api/precos").then(r => r.json()),
     ]);
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
@@ -200,6 +203,7 @@ export default function BI() {
     if (arrR.status === "fulfilled") setArrPags((arrR.value.data ?? []) as ArrPag[]);
     if (lanR.status === "fulfilled") setLancamentos((lanR.value.data ?? []) as Lancamento[]);
     if (conR.status === "fulfilled") setContratos((conR.value.data ?? []) as Contrato[]);
+    if (cesR.status === "fulfilled") setCessaoDebitos((cesR.value.data ?? []) as CessaoDebito[]);
     if (precR.status === "fulfilled") setPrecos(precR.value as PrecosData);
     setLoading(false);
   }, [fazendaId]);
@@ -441,12 +445,29 @@ export default function BI() {
 
   // ── Abas ──────────────────────────────────────────────────────
   const alertasCount = lancamentos.filter(l => l.tipo === "pagar" && l.status !== "baixado" && l.data_vencimento < hj).length;
+  const usdDescasados = (() => {
+    // Datas com descasamento USD (mais CP do que CR em USD)
+    const cpUsd = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado");
+    const crUsd = lancamentos.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
+    const datas = new Set([...cpUsd.map(l => l.data_vencimento), ...crUsd.map(l => l.data_vencimento)]);
+    let cnt = 0;
+    for (const dt of datas) {
+      const cp = cpUsd.filter(l => l.data_vencimento === dt).reduce((s, l) => s + l.valor, 0);
+      const cr = crUsd.filter(l => l.data_vencimento === dt).reduce((s, l) => s + l.valor, 0);
+      if (cp > cr) cnt++;
+    }
+    return cnt;
+  })();
+
+  const cessoesPendentes = contratos.filter(c => c.dado_em_cessao && c.status !== "cancelado").length;
+
   const ABAS: { key: Aba; label: string; badge?: number }[] = [
     { key: "painel",          label: "Painel Executivo" },
     { key: "producao",        label: "Produção" },
     { key: "custos",          label: "Custos & Insumos" },
     { key: "comercializacao", label: "Comercialização" },
     { key: "financeiro",      label: "Financeiro", badge: alertasCount },
+    { key: "cambio",          label: "Câmbio / USD", badge: usdDescasados > 0 ? usdDescasados : undefined },
     { key: "sensibilidade",   label: "Sensibilidade" },
   ];
 
@@ -1168,6 +1189,298 @@ export default function BI() {
             </div>
           </div>
         )}
+
+        {/* ═══════════ CÂMBIO / USD ═══════════ */}
+        {!loading && aba === "cambio" && (() => {
+          // ── Fluxo USD por data ──────────────────────────────────
+          const cpUsdLan  = lancamentos.filter(l => l.tipo === "pagar"   && l.moeda === "USD" && l.status !== "baixado");
+          const crUsdLan  = lancamentos.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
+          // CR de contratos em USD (usa data_pagamento como data de recebimento)
+          const crUsdCon  = contratos.filter(c => c.moeda === "USD" && c.status !== "cancelado" && !c.is_arrendamento && c.data_pagamento && c.preco && c.quantidade_sc);
+
+          // Agrupa por data
+          const porData: Map<string, { cpUsd: number; crUsd: number; items: { tipo: "cp"|"cr"; desc: string; valor: number }[] }> = new Map();
+          const addDate = (dt: string) => { if (!porData.has(dt)) porData.set(dt, { cpUsd: 0, crUsd: 0, items: [] }); };
+
+          for (const l of cpUsdLan) {
+            const dt = l.data_vencimento;
+            addDate(dt);
+            const e = porData.get(dt)!;
+            e.cpUsd  += l.valor;
+            e.items.push({ tipo: "cp", desc: l.descricao || "—", valor: l.valor });
+          }
+          for (const l of crUsdLan) {
+            const dt = l.data_vencimento;
+            addDate(dt);
+            const e = porData.get(dt)!;
+            e.crUsd  += l.valor;
+            e.items.push({ tipo: "cr", desc: l.descricao || "—", valor: l.valor });
+          }
+          for (const c of crUsdCon) {
+            const dt = c.data_pagamento!;
+            addDate(dt);
+            const e = porData.get(dt)!;
+            const val = (c.preco ?? 0) * (c.quantidade_sc ?? 0);
+            e.crUsd  += val;
+            e.items.push({ tipo: "cr", desc: `Contrato ${c.numero ?? c.comprador ?? "—"} — ${c.produto}`, valor: val });
+          }
+
+          const datas = Array.from(porData.keys()).sort();
+          const totalCpUsd = cpUsdLan.reduce((s, l) => s + l.valor, 0);
+          const totalCrUsd = crUsdLan.reduce((s, l) => s + l.valor, 0) + crUsdCon.reduce((s, c) => s + (c.preco ?? 0) * (c.quantidade_sc ?? 0), 0);
+          const saldoUsd   = totalCrUsd - totalCpUsd;
+          const descasadas = datas.filter(dt => (porData.get(dt)!.cpUsd) > (porData.get(dt)!.crUsd));
+          const cotacao    = precos?.usdBrl ?? 5.10;
+
+          // ── Cessão de Crédito ───────────────────────────────────
+          const conCessao = contratos.filter(c => c.dado_em_cessao && c.status !== "cancelado");
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* KPIs USD */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
+                {[
+                  { label: "Total CP em USD",       v: `USD ${fmtN(totalCpUsd, 2)}`,  sub: fmtR(totalCpUsd * cotacao),  color: "#E24B4A", bg: "#FCEBEB" },
+                  { label: "Total CR em USD",        v: `USD ${fmtN(totalCrUsd, 2)}`, sub: fmtR(totalCrUsd * cotacao),   color: "#16A34A", bg: "#ECFDF5" },
+                  { label: "Saldo Líquido USD",      v: `${saldoUsd >= 0 ? "+" : ""}USD ${fmtN(Math.abs(saldoUsd), 2)}`, sub: saldoUsd >= 0 ? "Posição coberta" : "Posição descoberta", color: saldoUsd >= 0 ? "#16A34A" : "#E24B4A", bg: saldoUsd >= 0 ? "#ECFDF5" : "#FCEBEB" },
+                  { label: "Datas Descasadas",       v: `${descasadas.length}`,         sub: descasadas.length > 0 ? "risco cambial" : "todas cobertas",   color: descasadas.length > 0 ? "#E24B4A" : "#16A34A", bg: descasadas.length > 0 ? "#FCEBEB" : "#ECFDF5" },
+                ].map(k => (
+                  <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
+                    <div style={{ fontSize: 10, color: "#666", marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{k.sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Cotação usada */}
+              <div style={{ fontSize: 11, color: "#888", marginTop: -6 }}>
+                Cotação usada: USD/BRL {fmtN(cotacao, 4)} · {precos ? "ao vivo" : "estimada"}
+              </div>
+
+              {/* Timeline de fluxo USD */}
+              {datas.length === 0 ? (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 20px", textAlign: "center", color: "#aaa", fontSize: 13 }}>
+                  Nenhum lançamento em USD encontrado.<br />
+                  <span style={{ fontSize: 11 }}>CP e CR em moeda USD aparecerão aqui para análise de descasamento.</span>
+                </div>
+              ) : (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                  <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Fluxo USD por Data</span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+                      {descasadas.length > 0
+                        ? `⚠ ${descasadas.length} data${descasadas.length > 1 ? "s" : ""} descasada${descasadas.length > 1 ? "s" : ""} — risco de exposição cambial`
+                        : "✓ Todas as datas com USD coberto"}
+                    </span>
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#F8FAFD" }}>
+                        {["Data", "CP a Pagar (USD)", "CR a Receber (USD)", "Saldo USD", "Saldo BRL", "Status"].map((h, i) => (
+                          <th key={h} style={{ padding: "8px 16px", textAlign: i >= 1 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {datas.map((dt, i) => {
+                        const e = porData.get(dt)!;
+                        const net = e.crUsd - e.cpUsd;
+                        const descasado = e.cpUsd > e.crUsd;
+                        const maxVal = Math.max(e.cpUsd, e.crUsd, 1);
+                        return (
+                          <tr key={dt} style={{ borderBottom: i < datas.length - 1 ? "0.5px solid #EEF1F6" : "none", background: descasado ? "#FFF8F8" : "transparent" }}>
+                            <td style={{ padding: "10px 16px" }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{fmtDt(dt)}</div>
+                              {/* mini-barras */}
+                              <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+                                {e.cpUsd > 0 && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ fontSize: 9, color: "#E24B4A", width: 18 }}>CP</span>
+                                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: "#EEF1F6", overflow: "hidden", minWidth: 80 }}>
+                                      <div style={{ width: `${pct(e.cpUsd, maxVal)}%`, height: "100%", background: "#E24B4A" }} />
+                                    </div>
+                                  </div>
+                                )}
+                                {e.crUsd > 0 && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ fontSize: 9, color: "#16A34A", width: 18 }}>CR</span>
+                                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: "#EEF1F6", overflow: "hidden", minWidth: 80 }}>
+                                      <div style={{ width: `${pct(e.crUsd, maxVal)}%`, height: "100%", background: "#16A34A" }} />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: e.cpUsd > 0 ? "#E24B4A" : "#888" }}>
+                                {e.cpUsd > 0 ? `USD ${fmtN(e.cpUsd, 2)}` : "—"}
+                              </div>
+                              {e.items.filter(x => x.tipo === "cp").slice(0, 2).map((x, j) => (
+                                <div key={j} style={{ fontSize: 9, color: "#888", marginTop: 1 }}>{x.desc.slice(0, 35)}</div>
+                              ))}
+                            </td>
+                            <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: e.crUsd > 0 ? "#16A34A" : "#888" }}>
+                                {e.crUsd > 0 ? `USD ${fmtN(e.crUsd, 2)}` : "—"}
+                              </div>
+                              {e.items.filter(x => x.tipo === "cr").slice(0, 2).map((x, j) => (
+                                <div key={j} style={{ fontSize: 9, color: "#888", marginTop: 1 }}>{x.desc.slice(0, 35)}</div>
+                              ))}
+                            </td>
+                            <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: net >= 0 ? "#16A34A" : "#E24B4A" }}>
+                                {net >= 0 ? "+" : ""}USD {fmtN(Math.abs(net), 2)}
+                              </div>
+                            </td>
+                            <td style={{ padding: "10px 16px", textAlign: "right", fontSize: 11, color: "#555" }}>
+                              {net >= 0 ? "+" : ""}{fmtR(net * cotacao)}
+                            </td>
+                            <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                              {descasado ? (
+                                <span style={{ background: "#FCEBEB", color: "#791F1F", borderRadius: 5, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>
+                                  Descasado ⚠
+                                </span>
+                              ) : e.cpUsd === 0 ? (
+                                <span style={{ background: "#ECFDF5", color: "#14532D", borderRadius: 5, padding: "2px 8px", fontSize: 10 }}>
+                                  Só CR
+                                </span>
+                              ) : (
+                                <span style={{ background: "#ECFDF5", color: "#14532D", borderRadius: 5, padding: "2px 8px", fontSize: 10 }}>
+                                  Coberto ✓
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* Resumo de descasamento */}
+                  {descasadas.length > 0 && (
+                    <div style={{ padding: "12px 20px", background: "#FFF3F3", borderTop: "0.5px solid #FECACA" }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#991B1B", marginBottom: 8 }}>
+                        Datas com exposição cambial descoberta:
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {descasadas.map(dt => {
+                          const e = porData.get(dt)!;
+                          const expUsd = e.cpUsd - e.crUsd;
+                          return (
+                            <div key={dt} style={{ background: "#fff", border: "0.5px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{fmtDt(dt)}</div>
+                              <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 2 }}>CP: USD {fmtN(e.cpUsd, 2)}</div>
+                              <div style={{ fontSize: 11, color: "#16A34A" }}>CR: USD {fmtN(e.crUsd, 2)}</div>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: "#E24B4A", marginTop: 4 }}>Exposto: USD {fmtN(expUsd, 2)}</div>
+                              <div style={{ fontSize: 10, color: "#888" }}>{fmtR(expUsd * cotacao)}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Cessão de Crédito ──────────────────────────────── */}
+              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Contratos Dados em Cessão de Crédito</span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginLeft: 8 }}>Recebíveis cedidos a fornecedores para quitação de CP</span>
+                  </div>
+                  {cessoesPendentes > 0 && (
+                    <span style={{ background: "#EDE9FE", color: "#5B21B6", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
+                      {cessoesPendentes} cessão{cessoesPendentes > 1 ? "ões" : ""}
+                    </span>
+                  )}
+                </div>
+
+                {conCessao.length === 0 ? (
+                  <div style={{ padding: "32px 20px", textAlign: "center", color: "#aaa", fontSize: 13 }}>
+                    Nenhum contrato dado em cessão de crédito.<br />
+                    <span style={{ fontSize: 11 }}>Contratos cedidos a fornecedores aparecerão aqui com os CPs vinculados.</span>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {conCessao.map((c, ci) => {
+                      const debitos = cessaoDebitos.filter(d => d.contrato_id === c.id);
+                      const totalCessao = debitos.reduce((s, d) => s + d.valor_cessao, 0);
+                      const receitaContrato = (c.preco ?? 0) * (c.quantidade_sc ?? 0);
+                      const coberturaPct = receitaContrato > 0 ? Math.min(100, (totalCessao / receitaContrato) * 100) : 0;
+                      return (
+                        <div key={c.id} style={{ borderBottom: ci < conCessao.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                          {/* Linha do contrato */}
+                          <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", gap: 16, alignItems: "start", background: "#FDFCFF" }}>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                                <span style={{ background: "#EDE9FE", color: "#5B21B6", borderRadius: 4, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>CESSÃO</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{c.numero ?? `Contrato ${ci + 1}`}</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: "#555" }}>{c.comprador} · {c.produto} · {c.safra ?? "—"}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Cedido a</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "#5B21B6" }}>{c.cessao_fornecedor_nome ?? "—"}</div>
+                              <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{c.cessao_data ? fmtDt(c.cessao_data) : "—"}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Valor do contrato</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                                {fmtN(c.quantidade_sc ?? 0, 0)} sc × {c.preco ? (c.moeda === "USD" ? `USD ${fmtN(c.preco, 2)}` : fmtR2(c.preco)) : "—"}
+                              </div>
+                              <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{receitaContrato > 0 ? fmtR(receitaContrato) : "—"}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>CP cobertos pela cessão</div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#E24B4A" }}>{fmtR(totalCessao)}</div>
+                              {receitaContrato > 0 && (
+                                <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{fmtN(coberturaPct, 0)}% do valor do contrato</div>
+                              )}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>Cobertura</div>
+                              <div style={{ height: 6, borderRadius: 3, background: "#EEF1F6", overflow: "hidden", marginBottom: 3 }}>
+                                <div style={{ width: `${coberturaPct}%`, height: "100%", background: coberturaPct >= 100 ? "#16A34A" : "#9B59B6" }} />
+                              </div>
+                              <div style={{ fontSize: 10, color: coberturaPct >= 100 ? "#16A34A" : "#9B59B6", fontWeight: 600 }}>
+                                {fmtN(coberturaPct, 0)}%
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* CPs vinculados */}
+                          {debitos.length > 0 && (
+                            <div style={{ padding: "0 20px 14px 20px" }}>
+                              <div style={{ fontSize: 10, color: "#888", marginBottom: 6 }}>CP VINCULADOS A ESTA CESSÃO:</div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {debitos.map(d => {
+                                  const lan = lancamentos.find(l => l.id === d.lancamento_id);
+                                  return (
+                                    <div key={d.id} style={{ background: "#F9F5FF", border: "0.5px solid #DDD0F7", borderRadius: 7, padding: "6px 12px" }}>
+                                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1a1a1a" }}>{lan?.descricao ?? d.lancamento_id.slice(0, 8)}</div>
+                                      <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{lan?.data_vencimento ? fmtDt(lan.data_vencimento) : "—"} · Cessão: {fmtR(d.valor_cessao)}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          {debitos.length === 0 && (
+                            <div style={{ padding: "0 20px 14px 60px", fontSize: 11, color: "#aaa", fontStyle: "italic" }}>
+                              Nenhum CP vinculado — execute a vinculação em Contas a Pagar
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ═══════════ SENSIBILIDADE ═══════════ */}
         {!loading && aba === "sensibilidade" && (
