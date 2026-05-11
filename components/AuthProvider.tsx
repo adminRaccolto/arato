@@ -4,6 +4,10 @@ import { supabase } from "../lib/supabase";
 import { calcularStepsCompletos } from "../lib/onboarding";
 import { useRouter } from "next/navigation";
 
+// Permissões por módulo — values: 'escrita' | 'leitura' | 'nenhum'
+// Vazio = sem restrição (raccotlo ou usuário sem grupo)
+export type ModuloPermissao = "escrita" | "leitura" | "nenhum";
+
 type AuthCtx = {
   fazendaId:              string | null;
   contaId:                string | null;
@@ -13,6 +17,11 @@ type AuthCtx = {
   nomeFazendaSelecionada: string | null;
   onboardingAtivo:        boolean;
   stepsCompletos:         number;
+  // Permissões por módulo do grupo do usuário
+  permissoes:             Record<string, ModuloPermissao>;
+  // Helpers
+  podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
+  podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
   refetchOnboarding:      () => void;
   selectFazenda:          (id: string, nome: string) => void;
   setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
@@ -29,6 +38,9 @@ const Ctx = createContext<AuthCtx>({
   nomeFazendaSelecionada: null,
   onboardingAtivo:        false,
   stepsCompletos:         0,
+  permissoes:             {},
+  podeAcessar:            () => true,
+  podeEscrever:           () => true,
   refetchOnboarding:      () => {},
   selectFazenda:          () => {},
   setFazendaAtiva:        async () => {},
@@ -47,6 +59,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [nomeFazendaSelecionada, setNomeFazendaSelecionada] = useState<string | null>(null);
   const [onboardingAtivo,        setOnboardingAtivo]        = useState<boolean>(false);
   const [stepsCompletos,         setStepsCompletos]         = useState<number>(0);
+  const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
   const router = useRouter();
 
   const selectFazenda = useCallback((id: string, nome: string) => {
@@ -101,6 +114,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         } else if (typeof window !== "undefined" && window.location.pathname !== "/seletor-cliente") {
           router.push("/seletor-cliente");
         }
+        // raccotlo não tem restrições de módulo
+        setPermissoes({});
         return;
       }
 
@@ -109,6 +124,23 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const cid: string | null = (perfil as { conta_id?: string } | null)?.conta_id ?? null;
       setFazendaId(fid);
       setContaId(cid);
+
+      // Carrega permissões do grupo do usuário
+      try {
+        const { data: usuarioData } = await supabase
+          .from("usuarios")
+          .select("grupo_id, grupos_usuarios(permissoes)")
+          .eq("auth_user_id", user.id)
+          .maybeSingle();
+        const perms = (
+          (Array.isArray(usuarioData?.grupos_usuarios)
+            ? usuarioData?.grupos_usuarios[0]
+            : usuarioData?.grupos_usuarios) as { permissoes?: Record<string, string> } | null
+        )?.permissoes ?? {};
+        setPermissoes(perms as Record<string, ModuloPermissao>);
+      } catch {
+        setPermissoes({});
+      }
     }
 
     init();
@@ -156,6 +188,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     if (fazendaId && contaId) fetchOnboarding(fazendaId, contaId).catch(() => {});
   }, [fazendaId, contaId, fetchOnboarding]);
 
+  const podeAcessar = useCallback((modulo: string) => {
+    return permissoes[modulo] !== "nenhum";
+  }, [permissoes]);
+
+  const podeEscrever = useCallback((modulo: string) => {
+    const p = permissoes[modulo];
+    if (!p) return true;
+    return p === "escrita";
+  }, [permissoes]);
+
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)
   const setFazendaAtiva = useCallback(async (id: string, nome: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -178,6 +220,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       fazendaId, contaId, nomeUsuario, emailUsuario, userRole,
       nomeFazendaSelecionada, onboardingAtivo, stepsCompletos, refetchOnboarding,
+      permissoes, podeAcessar, podeEscrever,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>
       {children}

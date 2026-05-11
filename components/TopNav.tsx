@@ -226,6 +226,21 @@ const NAV: NavItem[] = [
   },
 ];
 
+// ─── Mapeamento nav-id → módulo de permissão ────────────────
+const NAV_MODULE_MAP: Record<string, string> = {
+  "dashboard":       "dashboard",
+  "cadastros":       "cadastros",
+  "comercial":       "comercial",
+  "transporte":      "transporte",
+  "compras-estoque": "estoque",
+  "financeiro":      "financeiro",
+  "lavoura":         "lavoura",
+  "fiscal":          "fiscal",
+  "custos":          "relatorios",
+  "configuracoes":   "configuracoes",
+  // "ajuda" não está no mapa → sempre visível
+};
+
 // ─── Componente ──────────────────────────────────────────────
 interface TopNavProps { automacoesAtivas?: number }
 
@@ -242,7 +257,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -551,6 +566,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       {/* ── Faixa 2: navegação ── */}
       <nav style={{ display: "flex", alignItems: "center", padding: "0 16px", height: 40, gap: 2, background: "#1A5C38", overflow: "visible" }}>
         {NAV.map(item => {
+          // Filtra por permissão de módulo do grupo do usuário
+          const navId  = item.type === "group" ? item.id : (item as NavLink).id;
+          const modulo = NAV_MODULE_MAP[navId];
+          if (modulo && !podeAcessar(modulo)) return null;
+
           // During onboarding, items with minStep > stepsCompletos are locked
           const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;
           if (isLocked) {
