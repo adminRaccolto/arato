@@ -16,10 +16,11 @@ import {
   listarOperacoesGerenciais,
   verificarExclusaoNf,
   excluirNfEntrada,
+  listarMaquinas,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial } from "../../../lib/supabase";
+import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 // ─────────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ const STATUS_META: Record<string, { bg: string; cl: string; label: string }> = {
 const TIPO_META: Record<string, { bg: string; cl: string; label: string }> = {
   consumo:          { bg: "#F3E8FF", cl: "#6B21A8", label: "Consumo"      },
   insumos:          { bg: "#D5E8F5", cl: "#0B2D50", label: "Insumos"      },
-  custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Custo Direto" },
+  custo_direto:     { bg: "#E8F5E9", cl: "#1A6B3C", label: "Aprop. Direta" },
   vef:              { bg: "#FAEEDA", cl: "#633806", label: "VEF"           },
   remessa:          { bg: "#E6F1FB", cl: "#0C447C", label: "Remessa"       },
   devolucao_compra: { bg: "#FCEBEB", cl: "#791F1F", label: "Devolução"     },
@@ -97,7 +98,7 @@ type TipoEntrada = "insumos" | "vef" | "remessa" | "custo_direto";
 
 const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: string }> = {
   insumos:      { label: "Insumos / Estoque",    desc: "Compra que gera entrada no estoque. Associe cada item da NF ao catálogo.",                                      cor: "#D5E8F5" },
-  custo_direto: { label: "Custo Direto",         desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).", cor: "#E8F5E9" },
+  custo_direto: { label: "Apropriação Direta",   desc: "NF sem entrada em estoque. Cada item é apropriado diretamente a um centro de custo (mercado, energia, frete…).", cor: "#E8F5E9" },
   vef:          { label: "Entrega Futura (VEF)", desc: "Pago agora, produto entregue depois. Gera depósito em nome do fornecedor.",                                      cor: "#FAEEDA" },
   remessa:      { label: "Remessa / Entrega",    desc: "Entrega de VEF anterior. Debita estoque do fornecedor e credita operacional.",                                   cor: "#E6F1FB" },
 };
@@ -114,6 +115,7 @@ export default function NfCompraPage() {
   const [depositos, setDepositos] = useState<Deposito[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
   const [centros, setCentros]     = useState<CentroCusto[]>([]);
+  const [maquinas, setMaquinas]   = useState<Maquina[]>([]);
   const [pedidos, setPedidos]     = useState<PedidoMin[]>([]);
   const [regrasClass, setRegrasClass] = useState<RegraClassificacao[]>([]);
   const [sugestaoNome, setSugestaoNome] = useState<string | null>(null); // nome da regra aplicada
@@ -219,6 +221,12 @@ export default function NfCompraPage() {
       setCentros(cc);
     } catch {}
 
+    // Máquinas (para vínculo em CC de manutenção)
+    try {
+      const maq = await listarMaquinas(fazendaId);
+      setMaquinas(maq);
+    } catch {}
+
     // Regras de classificação automática
     try {
       const rc = await listarRegrasClassificacao(fazendaId);
@@ -247,8 +255,9 @@ export default function NfCompraPage() {
   useEffect(() => { carregar(); }, [carregar]);
 
   // ── Helpers ─────────────────────────────────────────────────
-  const nomeDeposito = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
-  const nomeInsumo   = (id: string) => insumos.find(i => i.id === id)?.nome ?? "—";
+  const nomeDeposito   = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
+  const nomeInsumo     = (id: string) => insumos.find(i => i.id === id)?.nome ?? "—";
+  const ccManutencao   = (id: string) => !!centros.find(c => c.id === id)?.manutencao_maquinas;
 
   // ── Abrir wizard novo ──────────────────────────────────────
   function abrirNovo() {
@@ -1131,7 +1140,7 @@ export default function NfCompraPage() {
 
                   {tipo === "custo_direto" && (
                     <div style={{ background: "#E8F5E950", border: "0.5px solid #86EFAC", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1A6B3C", marginBottom: 6 }}>Custo Direto — sem movimentação de estoque</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1A6B3C", marginBottom: 6 }}>Apropriação Direta — sem movimentação de estoque</div>
                       <div style={{ fontSize: 12, color: "#166534" }}>
                         Cada item desta NF será apropriado diretamente a um centro de custo. Nenhum produto será lançado no estoque.
                         Ideal para NFs de mercado, energia, combustível externo, serviços, fretes e demais despesas operacionais.
@@ -1197,7 +1206,7 @@ export default function NfCompraPage() {
                     <div>
                       <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>
                         {tipo === "insumos"      ? "Associação de produtos" :
-                         tipo === "custo_direto" ? "Itens — Custo Direto"   :
+                         tipo === "custo_direto" ? "Itens — Apropriação Direta" :
                          tipo === "vef"          ? "Itens da VEF"           : "Itens da remessa"}
                       </span>
                       {tipo === "insumos" && (
@@ -1266,10 +1275,22 @@ export default function NfCompraPage() {
                                 >💸 C. Custo</button>
                               </div>
                               {it.tipo_apropiacao === "direto" ? (
-                                <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
-                                  <option value="">— selecionar CC —</option>
-                                  {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
-                                </select>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                  <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                                    <option value="">— selecionar CC —</option>
+                                    {centros.map(c => (
+                                      <option key={c.id} value={c.id}>
+                                        {c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {ccManutencao(it.centro_custo_id) && (
+                                    <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                                      <option value="">🔧 Máquina (opcional)</option>
+                                      {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                    </select>
+                                  )}
+                                </div>
                               ) : (
                                 <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                                   <select value={it.insumo_id} onChange={e => setItem(it.key, { insumo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px", flex: 1 }}>
@@ -1325,11 +1346,21 @@ export default function NfCompraPage() {
                             <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
                               {fmtBRL(it.valor_total)}
                             </div>
-                            <div style={{ padding: "6px 8px" }}>
-                              <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
+                            <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+                              <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value, maquina_id: "" })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">— selecionar CC —</option>
-                                {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                                {centros.map(c => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.manutencao_maquinas ? "🔧 " : ""}{c.codigo ? `${c.codigo} ` : ""}{c.nome}
+                                  </option>
+                                ))}
                               </select>
+                              {ccManutencao(it.centro_custo_id) && (
+                                <select value={it.maquina_id} onChange={e => setItem(it.key, { maquina_id: e.target.value })} style={{ ...inp, fontSize: 11, padding: "4px 8px", background: "#FBF0D8", border: "0.5px solid #F6C87A" }}>
+                                  <option value="">🔧 Máquina (opcional)</option>
+                                  {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                                </select>
+                              )}
                             </div>
                           </>
                         ) : (

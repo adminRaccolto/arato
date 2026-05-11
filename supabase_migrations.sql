@@ -3697,3 +3697,56 @@ ALTER TABLE bombas_combustivel
   ADD COLUMN IF NOT EXISTS estoque_atual_l numeric(12,2) NOT NULL DEFAULT 0;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 82 — Pendências Fiscais: vínculo direto com abastecimento
+-- ============================================================
+-- Adiciona FK abastecimento_id com ON DELETE CASCADE para que ao
+-- excluir um abastecimento a pendência seja removida automaticamente.
+
+ALTER TABLE pendencias_fiscais
+  ADD COLUMN IF NOT EXISTS abastecimento_id uuid REFERENCES abastecimentos(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS pendencias_fiscais_abastecimento_idx
+  ON pendencias_fiscais (abastecimento_id)
+  WHERE abastecimento_id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 83 — Plano de Contas Contábil por Fazenda
+-- ============================================================
+CREATE TABLE IF NOT EXISTS plano_contas (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id    uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  codigo        text NOT NULL,
+  nome          text NOT NULL,
+  tipo          text NOT NULL CHECK (tipo IN ('ativo','passivo','pl','receita','custo','despesa')),
+  nivel         integer NOT NULL DEFAULT 2,
+  pai           text,
+  natureza      text CHECK (natureza IN ('devedora','credora')),
+  transitoria   boolean DEFAULT false,
+  operacional   boolean DEFAULT true,
+  lcdpr         text,
+  created_at    timestamptz DEFAULT now(),
+  UNIQUE (fazenda_id, codigo)
+);
+
+ALTER TABLE plano_contas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "plano_contas_fazenda" ON plano_contas
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  WITH CHECK (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE INDEX IF NOT EXISTS plano_contas_fazenda_idx ON plano_contas (fazenda_id, codigo);
+
+NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 84: flag manutencao_maquinas em centros_custo
+-- ============================================================
+ALTER TABLE centros_custo
+  ADD COLUMN IF NOT EXISTS manutencao_maquinas boolean NOT NULL DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

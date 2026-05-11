@@ -1100,6 +1100,7 @@ export type CentroCusto = {
   nome: string;
   tipo: "receita" | "despesa" | "neutro";
   parent_id?: string;  // hierarquia: centro pai
+  manutencao_maquinas?: boolean;
   created_at?: string;
 };
 

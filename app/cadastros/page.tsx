@@ -330,7 +330,7 @@ function CadastrosInner() {
   const [fTipoPes, setFTipoPes]               = useState({ nome: "", descricao: "" });
   const [modalCC, setModalCC]                 = useState(false);
   const [editCC, setEditCC]                   = useState<CentroCusto | null>(null);
-  const [fCC, setFCC]                         = useState({ codigo: "", nome: "", tipo: "despesa" as CentroCusto["tipo"], parent_id: "" });
+  const [fCC, setFCC]                         = useState({ codigo: "", nome: "", tipo: "despesa" as CentroCusto["tipo"], parent_id: "", manutencao_maquinas: false });
   const [modalCatLanc, setModalCatLanc]       = useState(false);
   const [editCatLanc, setEditCatLanc]         = useState<CategoriaLancamento | null>(null);
   const [fCatLanc, setFCatLanc]               = useState({ nome: "", tipo: "ambos" as CategoriaLancamento["tipo"] });
@@ -1887,7 +1887,7 @@ function CadastrosInner() {
                       <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Centros de Custo</div>
                       <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Estrutura hierárquica para rateio de receitas e despesas por área, safra ou atividade</div>
                     </div>
-                    <button style={btnV} onClick={() => { setEditCC(null); setFCC({ codigo: "", nome: "", tipo: "despesa", parent_id: "" }); setModalCC(true); }}>+ Novo</button>
+                    <button style={btnV} onClick={() => { setEditCC(null); setFCC({ codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</button>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <TH cols={["Código", "Nome", "Tipo", "Centro Pai", ""]} />
@@ -1909,7 +1909,7 @@ function CadastrosInner() {
                             <td style={{ padding: "10px 14px", fontSize: 12, color: "#1a1a1a" }}>{pai?.nome || "—"}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right" }}>
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                <button style={btnE} onClick={() => { setEditCC(c); setFCC({ codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "" }); setModalCC(true); }}>Editar</button>
+                                <button style={btnE} onClick={() => { setEditCC(c); setFCC({ codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</button>
                                 <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</button>
                               </div>
                             </td>
@@ -1971,7 +1971,7 @@ function CadastrosInner() {
                   <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Centros de Custo</div>
                   <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Estrutura hierárquica para rateio de receitas e despesas por área, safra ou atividade</div>
                 </div>
-                <button style={btnV} onClick={() => { setEditCC(null); setFCC({ codigo: "", nome: "", tipo: "despesa", parent_id: "" }); setModalCC(true); }}>+ Novo</button>
+                <button style={btnV} onClick={() => { setEditCC(null); setFCC({ codigo: "", nome: "", tipo: "despesa", parent_id: "", manutencao_maquinas: false }); setModalCC(true); }}>+ Novo</button>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <TH cols={["Código", "Nome", "Tipo", "Centro Pai", ""]} />
@@ -1993,7 +1993,7 @@ function CadastrosInner() {
                         <td style={{ padding: "10px 14px", fontSize: 12, color: "#1a1a1a" }}>{pai?.nome || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => { setEditCC(c); setFCC({ codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "" }); setModalCC(true); }}>Editar</button>
+                            <button style={btnE} onClick={() => { setEditCC(c); setFCC({ codigo: c.codigo ?? "", nome: c.nome, tipo: c.tipo, parent_id: c.parent_id ?? "", manutencao_maquinas: c.manutencao_maquinas ?? false }); setModalCC(true); }}>Editar</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirCentroCusto(c.id).then(() => setCentrosCusto(x => x.filter(r => r.id !== c.id))); }}>✕</button>
                           </div>
                         </td>
@@ -4140,6 +4140,23 @@ function CadastrosInner() {
                 {centrosCusto.filter(c => !editCC || c.id !== editCC.id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
               </select>
             </div>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", background: fCC.manutencao_maquinas ? "#E8F5E9" : "#F4F6FA", border: `0.5px solid ${fCC.manutencao_maquinas ? "#86EFAC" : "#DDE2EE"}`, borderRadius: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={fCC.manutencao_maquinas}
+                  onChange={e => setFCC(p => ({ ...p, manutencao_maquinas: e.target.checked }))}
+                  style={{ marginTop: 2, flexShrink: 0, accentColor: "#1A5C38", width: 15, height: 15 }}
+                />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>Centro de Custo destinado a Manutenção de Máquinas</div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                    Ao apropriar custo a este CC, o sistema oferecerá vincular também à máquina específica.
+                    Permite rastrear custo total no CC e custo por máquina individualmente.
+                  </div>
+                </div>
+              </label>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalCC(false)}>Cancelar</button>
@@ -4147,7 +4164,7 @@ function CadastrosInner() {
               onClick={async () => {
                 setSalvando(true);
                 try {
-                  const payload = { fazenda_id: fazendaId!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined };
+                  const payload = { fazenda_id: fazendaId!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined, manutencao_maquinas: fCC.manutencao_maquinas };
                   if (editCC) {
                     await atualizarCentroCusto(editCC.id, payload);
                     setCentrosCusto(x => x.map(r => r.id === editCC.id ? { ...r, ...payload } : r));
