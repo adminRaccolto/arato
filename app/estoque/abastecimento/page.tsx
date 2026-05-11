@@ -67,6 +67,7 @@ export default function AbastecimentoPage() {
 
   // Modal
   const [modal,         setModal]         = useState(false);
+  const [editando,      setEditando]      = useState<Abastecimento | null>(null);
   const [salvando,      setSalvando]      = useState(false);
   const [erroModal,     setErroModal]     = useState("");
 
@@ -134,7 +135,7 @@ export default function AbastecimentoPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // ─── Auto-fill custo médio ao selecionar bomba ─────────────────────────────
+  // ─── Auto-fill custo médio + gerar CP ao selecionar bomba ────────────────────
   useEffect(() => {
     if (!fBomba) return;
     const bomba = bombas.find(b => b.id === fBomba);
@@ -144,6 +145,12 @@ export default function AbastecimentoPage() {
       bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
     );
     if (insumo?.custo_medio) setFValUnit(String(insumo.custo_medio.toFixed(4)));
+    // Auto-set fGerarCP based on bomb type
+    if (bomba.consume_estoque === false) {
+      setFGerarCP(true);
+    } else {
+      setFGerarCP(false);
+    }
   }, [fBomba, bombas, insumos]);
 
   const valorTotal = (parseFloat(fQuantidade) || 0) * (parseFloat(fValUnit) || 0);
@@ -170,90 +177,134 @@ export default function AbastecimentoPage() {
     if (!fData)         return setErroModal("Informe a data.");
 
     const bomba = bombas.find(b => b.id === fBomba)!;
-    if (qtd > bomba.estoque_atual_l) {
-      return setErroModal(`Estoque insuficiente na bomba. Disponível: ${fmtNum(bomba.estoque_atual_l)} L`);
-    }
 
     setSalvando(true);
     try {
-      const total = qtd * vUnit;
-
-      // 1. Inserir abastecimento
-      const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
-      const payload: Record<string, unknown> = {
-        fazenda_id:      fazendaId,
-        bomba_id:        fBomba,
-        maquina_id:      fDestTipo === "maquina"      ? fMaquina      || null : null,
-        funcionario_id:  fDestTipo === "funcionario"  ? fFuncionario  || null : null,
-        destino_livre:   fDestTipo === "livre"        ? fDestLivre    || null : null,
-        quantidade_l:    qtd,
-        valor_unitario:  vUnit,
-        valor_total:     total,
-        data:            fData,
-        horimetro:       horimetroVal,
-        observacao:      fObs || null,
-        lancamento_id:   null,
-      };
-
-      const { data: abs, error: errAbs } = await supabase
-        .from("abastecimentos").insert(payload).select("id").single();
-      if (errAbs) throw new Error(errAbs.message);
-
-      // 2. Deduzir estoque da bomba
-      await supabase.from("bombas_combustivel")
-        .update({ estoque_atual_l: bomba.estoque_atual_l - qtd })
-        .eq("id", fBomba);
-
-      // 3. Deduzir estoque do insumo correspondente (se encontrar)
-      const insumo = insumos.find(i =>
-        i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
-        bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
-      );
-      if (insumo) {
-        const novoEstoque = Math.max(0, insumo.estoque - qtd);
-        await supabase.from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-        await supabase.from("movimentacoes_estoque").insert({
-          fazenda_id:      fazendaId,
-          insumo_id:       insumo.id,
-          tipo:            "saida",
-          motivo:          "abastecimento",
-          quantidade:      qtd,
-          valor_unitario:  vUnit,
-          data:            fData,
-          auto:            false,
-          observacao:      `Abastecimento — ${nomeDestino()} ${fObs ? "· " + fObs : ""}`.trim(),
-        });
+      if (editando) {
+        await salvarEdicao(editando, qtd, vUnit, bomba);
+      } else {
+        if (qtd > bomba.estoque_atual_l) {
+          setSalvando(false);
+          return setErroModal(`Estoque insuficiente na bomba. Disponível: ${fmtNum(bomba.estoque_atual_l)} L`);
+        }
+        await inserirNovo(qtd, vUnit, bomba);
       }
-
-      // 4. Gerar CP (opcional)
-      let lancId: string | null = null;
-      if (fGerarCP) {
-        const { data: lanc, error: errL } = await supabase.from("lancamentos").insert({
-          fazenda_id:       fazendaId,
-          tipo:             "pagar",
-          descricao:        `Abastecimento ${COMB_LABEL[bomba.combustivel] ?? bomba.combustivel} — ${nomeDestino()}`,
-          categoria:        "combustivel",
-          data_lancamento:  fData,
-          data_vencimento:  fVencimento,
-          valor:            total,
-          moeda:            "BRL",
-          status:           "em_aberto",
-          auto:             false,
-        }).select("id").single();
-        if (!errL && lanc) lancId = lanc.id;
-      }
-
-      // 5. Vincular lancamento ao abastecimento
-      if (lancId) {
-        await supabase.from("abastecimentos").update({ lancamento_id: lancId }).eq("id", abs!.id);
-      }
-
       fecharModal();
       await carregar();
     } catch (e) {
       setErroModal((e as Error).message);
     }
     setSalvando(false);
+  }
+
+  async function salvarEdicao(ab: Abastecimento, qtdNova: number, vUnit: number, bomba: BombaCombustivel) {
+    if (!fazendaId) return;
+    const totalNovo = qtdNova * vUnit;
+    const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
+
+    // 1. UPDATE abastecimento
+    const { error: errUpd } = await supabase.from("abastecimentos").update({
+      maquina_id:      fDestTipo === "maquina"      ? fMaquina      || null : null,
+      funcionario_id:  fDestTipo === "funcionario"  ? fFuncionario  || null : null,
+      destino_livre:   fDestTipo === "livre"        ? fDestLivre    || null : null,
+      quantidade_l:    qtdNova,
+      valor_unitario:  vUnit,
+      valor_total:     totalNovo,
+      data:            fData,
+      horimetro:       horimetroVal,
+      observacao:      fObs || null,
+    }).eq("id", ab.id);
+    if (errUpd) throw new Error(errUpd.message);
+
+    // 2. Ajustar estoque da bomba pelo delta
+    const deltaLitros = qtdNova - ab.quantidade_l;
+    if (deltaLitros !== 0) {
+      const novoEstoqueBomba = bomba.estoque_atual_l - deltaLitros;
+      await supabase.from("bombas_combustivel")
+        .update({ estoque_atual_l: novoEstoqueBomba })
+        .eq("id", ab.bomba_id);
+    }
+
+    // 3. Atualizar lançamento vinculado (se existir)
+    if (ab.lancamento_id) {
+      await supabase.from("lancamentos").update({
+        valor:           totalNovo,
+        data_lancamento: fData,
+      }).eq("id", ab.lancamento_id);
+    }
+  }
+
+  async function inserirNovo(qtd: number, vUnit: number, bomba: BombaCombustivel) {
+    if (!fazendaId) return;
+    const total = qtd * vUnit;
+    const horimetroVal = fHorimetro ? parseFloat(fHorimetro.replace(",", ".")) : null;
+    const payload: Record<string, unknown> = {
+      fazenda_id:      fazendaId,
+      bomba_id:        fBomba,
+      maquina_id:      fDestTipo === "maquina"      ? fMaquina      || null : null,
+      funcionario_id:  fDestTipo === "funcionario"  ? fFuncionario  || null : null,
+      destino_livre:   fDestTipo === "livre"        ? fDestLivre    || null : null,
+      quantidade_l:    qtd,
+      valor_unitario:  vUnit,
+      valor_total:     total,
+      data:            fData,
+      horimetro:       horimetroVal,
+      observacao:      fObs || null,
+      lancamento_id:   null,
+    };
+
+    const { data: abs, error: errAbs } = await supabase
+      .from("abastecimentos").insert(payload).select("id").single();
+    if (errAbs) throw new Error(errAbs.message);
+
+    // Deduzir estoque da bomba
+    await supabase.from("bombas_combustivel")
+      .update({ estoque_atual_l: bomba.estoque_atual_l - qtd })
+      .eq("id", fBomba);
+
+    // Deduzir estoque do insumo correspondente (se encontrar)
+    const insumo = insumos.find(i =>
+      i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
+      bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
+    );
+    if (insumo) {
+      const novoEstoque = Math.max(0, insumo.estoque - qtd);
+      await supabase.from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
+      await supabase.from("movimentacoes_estoque").insert({
+        fazenda_id:      fazendaId,
+        insumo_id:       insumo.id,
+        tipo:            "saida",
+        motivo:          "abastecimento",
+        quantidade:      qtd,
+        valor_unitario:  vUnit,
+        data:            fData,
+        auto:            false,
+        observacao:      `Abastecimento — ${nomeDestino()} ${fObs ? "· " + fObs : ""}`.trim(),
+      });
+    }
+
+    // Gerar CP (opcional)
+    let lancId: string | null = null;
+    if (fGerarCP) {
+      const { data: lanc, error: errL } = await supabase.from("lancamentos").insert({
+        fazenda_id:       fazendaId,
+        tipo:             "pagar",
+        descricao:        `Abastecimento ${COMB_LABEL[bomba.combustivel] ?? bomba.combustivel} — ${nomeDestino()}`,
+        categoria:        "combustivel",
+        data_lancamento:  fData,
+        data_vencimento:  fVencimento,
+        valor:            total,
+        moeda:            "BRL",
+        status:           "em_aberto",
+        auto:             false,
+      }).select("id").single();
+      if (!errL && lanc) lancId = lanc.id;
+    }
+
+    // Vincular lancamento ao abastecimento
+    if (lancId) {
+      await supabase.from("abastecimentos").update({ lancamento_id: lancId }).eq("id", abs!.id);
+    }
   }
 
   function nomeDestino(): string {
@@ -298,13 +349,31 @@ export default function AbastecimentoPage() {
   }
 
   function abrirModal() {
+    setEditando(null);
     setFBomba(""); setFDestTipo("maquina"); setFMaquina(""); setFFuncionario(""); setFDestLivre("");
     setFQuantidade(""); setFValUnit(""); setFObs(""); setFHorimetro(""); setFGerarCP(false);
     setFData(new Date().toISOString().split("T")[0]);
     setFVencimento(new Date().toISOString().split("T")[0]);
     setErroModal(""); setModal(true);
   }
-  function fecharModal() { setModal(false); setSalvando(false); }
+
+  function abrirEditar(ab: Abastecimento) {
+    setEditando(ab);
+    setFBomba(ab.bomba_id);
+    if (ab.maquina_id) { setFDestTipo("maquina"); setFMaquina(ab.maquina_id); setFFuncionario(""); setFDestLivre(""); }
+    else if (ab.funcionario_id) { setFDestTipo("funcionario"); setFFuncionario(ab.funcionario_id); setFMaquina(""); setFDestLivre(""); }
+    else { setFDestTipo("livre"); setFDestLivre(ab.destino_livre ?? ""); setFMaquina(""); setFFuncionario(""); }
+    setFQuantidade(String(ab.quantidade_l));
+    setFValUnit(String(ab.valor_unitario));
+    setFData(ab.data);
+    setFHorimetro(ab.horimetro != null ? String(ab.horimetro) : "");
+    setFObs(ab.observacao ?? "");
+    setFGerarCP(!!ab.lancamento_id);
+    setFVencimento(ab.data);
+    setErroModal(""); setModal(true);
+  }
+
+  function fecharModal() { setModal(false); setSalvando(false); setEditando(null); }
 
   return (
     <>
@@ -411,7 +480,7 @@ export default function AbastecimentoPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
-                  {["Data", "Bomba / Combustível", "Destino", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
+                  {["Data", "Bomba / Combustível", "Veículo / Máquina", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
                     <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -455,15 +524,26 @@ export default function AbastecimentoPage() {
                         )}
                       </td>
                       <td style={{ padding: "10px 14px" }}>
-                        <button
-                          onClick={() => excluir(h)}
-                          title="Excluir abastecimento (e CP/pendência vinculados)"
-                          style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "#888", lineHeight: 1 }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#FEE2E2"; (e.currentTarget as HTMLButtonElement).style.color = "#991B1B"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#FCA5A5"; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
-                        >
-                          🗑
-                        </button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => abrirEditar(h)}
+                            title="Editar abastecimento"
+                            style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "#888", lineHeight: 1 }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EAF3FB"; (e.currentTarget as HTMLButtonElement).style.color = "#1A4870"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#B8D0EE"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
+                          >
+                            ✏
+                          </button>
+                          <button
+                            onClick={() => excluir(h)}
+                            title="Excluir abastecimento (e CP/pendência vinculados)"
+                            style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "#888", lineHeight: 1 }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#FEE2E2"; (e.currentTarget as HTMLButtonElement).style.color = "#991B1B"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#FCA5A5"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
+                          >
+                            🗑
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -490,8 +570,8 @@ export default function AbastecimentoPage() {
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(0,0,0,0.20)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #EEF1F6" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>Registrar Abastecimento</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Consumo da bomba da fazenda</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>{editando ? "Editar Abastecimento" : "Registrar Abastecimento"}</div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{editando ? "Atualize os dados do abastecimento" : "Consumo da bomba da fazenda"}</div>
               </div>
               <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
             </div>
@@ -501,24 +581,43 @@ export default function AbastecimentoPage() {
               {/* Bomba */}
               <div>
                 <label style={lbl}>Bomba / Tanque *</label>
-                <select
-                  value={fBomba}
-                  onChange={e => setFBomba(e.target.value)}
-                  style={inp}
-                >
-                  <option value="">Selecione a bomba...</option>
-                  {bombas.filter(b => b.ativa).map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.nome} — {COMB_LABEL[b.combustivel]} · {fmtNum(b.estoque_atual_l, 0)} L disponíveis
-                    </option>
-                  ))}
-                </select>
-                {bombaSelecionada && (
+                {editando ? (
+                  <div style={{ ...inp, background: "#F8FAFB", color: "#555", cursor: "default" }}>
+                    {bombaSelecionada?.nome ?? editando.bomba_nome ?? "—"}
+                    {bombaSelecionada && <span style={{ marginLeft: 8, fontSize: 11, color: "#888" }}>({COMB_LABEL[bombaSelecionada.combustivel] ?? bombaSelecionada.combustivel})</span>}
+                  </div>
+                ) : (
+                  <select
+                    value={fBomba}
+                    onChange={e => setFBomba(e.target.value)}
+                    style={inp}
+                  >
+                    <option value="">Selecione a bomba...</option>
+                    {bombas.filter(b => b.ativa).map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.nome} — {COMB_LABEL[b.combustivel]} · {fmtNum(b.estoque_atual_l, 0)} L disponíveis
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {bombaSelecionada && !editando && (
                   <div style={{ marginTop: 6, padding: "8px 12px", background: "#F0F8FF", borderRadius: 8, fontSize: 12, color: "#0B2D50" }}>
                     <strong>Estoque atual:</strong> {fmtNum(bombaSelecionada.estoque_atual_l, 0)} L
                     {bombaSelecionada.capacidade_l && ` de ${fmtNum(bombaSelecionada.capacidade_l, 0)} L`}
                     {bombaSelecionada.estoque_atual_l < 100 && <span style={{ color: "#9D4900", fontWeight: 600 }}> — ⚠ Nível baixo</span>}
                   </div>
+                )}
+                {/* Info badge: tipo de bomba */}
+                {bombaSelecionada && (
+                  bombaSelecionada.consume_estoque === false ? (
+                    <div style={{ marginTop: 6, padding: "7px 12px", background: "#FFF8E1", border: "0.5px solid #FFD54F", borderRadius: 8, fontSize: 12, color: "#7B4A00", fontWeight: 600 }}>
+                      ⛽ Posto externo — gera Conta a Pagar
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 6, padding: "7px 12px", background: "#EAF3FB", border: "0.5px solid #B8D0EE", borderRadius: 8, fontSize: 12, color: "#0B2D50", fontWeight: 600 }}>
+                      🏠 Bomba interna — custo pelo estoque, sem CP novo
+                    </div>
+                  )
                 )}
               </div>
 
@@ -668,7 +767,7 @@ export default function AbastecimentoPage() {
                   disabled={salvando}
                   style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "#aaa" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}
                 >
-                  {salvando ? "Salvando..." : "✓ Confirmar Abastecimento"}
+                  {salvando ? "Salvando..." : editando ? "✓ Salvar Alterações" : "✓ Confirmar Abastecimento"}
                 </button>
               </div>
             </div>

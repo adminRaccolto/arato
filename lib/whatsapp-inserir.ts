@@ -208,57 +208,124 @@ export async function executarInsercao(
 
 // ── Abastecimento ───────────────────────────────────────────────────────────
 async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
-  const qtdUsuario = Number(dados.quantidade ?? 0);
-  if (!qtdUsuario || qtdUsuario === 0) {
-    return { ok: false, mensagem: "❓ Quantos litros foram abastecidos?" };
+  const hoje = new Date().toISOString().split("T")[0];
+
+  // 1. Bomba obrigatória
+  const bombaStr = String(dados.bomba_nome ?? "").trim();
+  if (!bombaStr) {
+    return { ok: false, mensagem: "❓ Qual bomba ou posto foi usado? (ex: *Bomba Fazenda*, *Posto Shell*)" };
   }
-  const valor      = parseValor(String(dados.valor ?? 0));
+
+  // 2. Buscar bomba no banco
+  type BombaRow = { id: string; consume_estoque: boolean; estoque_atual_l: number; combustivel: string; nome: string };
+  const { data: bombaData } = await sb().from("bombas_combustivel")
+    .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
+    .eq("fazenda_id", fazendaId)
+    .ilike("nome", `%${bombaStr}%`)
+    .limit(1).maybeSingle();
+  const bomba = bombaData as BombaRow | null;
+
+  const qtdUsuario = Number(dados.quantidade ?? 0);
+
+  // 3. BOMBA INTERNA (consume_estoque === true)
+  if (bomba && bomba.consume_estoque !== false) {
+    // Buscar insumo correspondente pelo tipo de combustível
+    const insumo = await buscarInsumo(fazendaId, bomba.combustivel.replace(/_/g, " "));
+    const custoMedio = Number(insumo?.custo_medio ?? insumo?.valor_unitario ?? 0);
+
+    // Quantidade obrigatória
+    if (!qtdUsuario || qtdUsuario === 0) {
+      return { ok: false, mensagem: "❓ Quantos litros foram abastecidos?" };
+    }
+
+    const valorInterno = custoMedio * qtdUsuario;
+
+    // Lookup máquina
+    const { data: maqData } = await sb().from("maquinas")
+      .select("id")
+      .eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
+      .limit(1).maybeSingle();
+
+    // Inserir abastecimento sem CP
+    await sb().from("abastecimentos").insert({
+      fazenda_id:     fazendaId,
+      bomba_id:       bomba.id,
+      maquina_id:     maqData?.id ?? null,
+      quantidade_l:   qtdUsuario,
+      valor_unitario: custoMedio,
+      valor_total:    valorInterno,
+      data:           hoje,
+      observacao:     String(dados.veiculo ?? "") || null,
+      lancamento_id:  null,
+    });
+
+    // Deduzir estoque da bomba
+    await sb().from("bombas_combustivel")
+      .update({ estoque_atual_l: bomba.estoque_atual_l - qtdUsuario })
+      .eq("id", bomba.id);
+
+    // Deduzir insumo de estoque + movimentação
+    if (insumo) {
+      const novoEstoque = Math.max(0, Number(insumo.estoque ?? 0) - qtdUsuario);
+      await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
+      await sb().from("movimentacoes_estoque").insert({
+        fazenda_id:     fazendaId,
+        insumo_id:      insumo.id,
+        tipo:           "saida",
+        motivo:         "abastecimento",
+        quantidade:     qtdUsuario,
+        valor_unitario: custoMedio,
+        data:           hoje,
+        auto:           false,
+        observacao:     `Abastecimento via WhatsApp — ${String(dados.veiculo ?? bomba.nome)}`,
+      });
+    }
+
+    const custoLabel = custoMedio > 0
+      ? `R$ ${valorInterno.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (custo médio R$ ${custoMedio.toLocaleString("pt-BR", { minimumFractionDigits: 4 })}/L)`
+      : "custo médio não cadastrado";
+
+    return {
+      ok: true,
+      mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${bomba.combustivel.replace(/_/g, " ")} — *${bomba.nome}*${dados.veiculo ? `\n• Máquina: ${dados.veiculo}` : ""}\n• Custo: ${custoLabel}\n• Sem Conta a Pagar (bomba interna — custo pelo estoque)`,
+    };
+  }
+
+  // 4. POSTO EXTERNO (consume_estoque === false ou bomba não encontrada)
+  const valor = parseValor(String(dados.valor ?? 0));
   if (!valor || valor === 0) {
     return { ok: false, mensagem: "❓ Qual o valor total do abastecimento? (ex: R$ 180,00)" };
   }
 
-  const vencimento = parseData(String(dados.vencimento ?? "hoje"));
-  const unidadeUsuario = String(dados.unidade ?? "L");
-  const hoje       = new Date().toISOString().split("T")[0];
+  if (!qtdUsuario || qtdUsuario === 0) {
+    return { ok: false, mensagem: "❓ Quantos litros foram abastecidos?" };
+  }
 
-  // ja_pago: "sim" explícito, à vista, ou forma de pagamento imediata (dinheiro, débito, PIX)
+  const vencimento = parseData(String(dados.vencimento ?? "hoje"));
   const jaVStr = String(dados.ja_pago ?? "").toLowerCase();
   const formaPag = String(dados.forma_pagamento ?? "").toLowerCase();
   const jaPago = jaVStr === "true" || jaVStr === "sim" || jaVStr === "yes" ||
     String(dados.vencimento ?? "").toLowerCase().includes("vista") ||
     formaPag.includes("dinheiro") || formaPag.includes("débito") || formaPag.includes("debito") || formaPag.includes("pix");
 
-  // Conta bancária e ciclo vigente
-  const conta  = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
+  const conta   = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
   const cicloAb = await buscarCicloVigente(fazendaId, hoje);
 
-  // Bomba (lookup por nome) — permite registrar no histórico de abastecimentos
-  const bombaStr = String(dados.bomba_nome ?? "");
-  let bomba: { id: string; consume_estoque: boolean } | null = null;
-  if (bombaStr) {
-    const { data: bombaData } = await sb().from("bombas_combustivel")
-      .select("id, consume_estoque")
-      .eq("fazenda_id", fazendaId)
-      .ilike("nome", `%${bombaStr}%`)
-      .limit(1).maybeSingle();
-    bomba = bombaData ?? null;
-  }
-
-  // CP
   const cpPayload: Record<string, unknown> = {
-    fazenda_id: fazendaId,
-    tipo: "pagar",
-    descricao: `Abastecimento ${dados.produto ?? "combustível"} — ${dados.veiculo ?? dados.bomba_nome ?? dados.tipo_destino ?? "direto"}`,
-    categoria: "combustivel",
+    fazenda_id:      fazendaId,
+    tipo:            "pagar",
+    descricao:       `Abastecimento ${dados.produto ?? "combustível"} — ${dados.veiculo ?? bombaStr ?? "direto"}`,
+    categoria:       "combustivel",
     data_lancamento: hoje,
     data_vencimento: vencimento,
-    valor, moeda: "BRL",
-    status: jaPago ? "baixado" : "em_aberto",
-    conta_bancaria: conta?.id ?? null,
-    safra_id:      cicloAb?.id ?? null,
-    ano_safra_id:  cicloAb?.ano_safra_id ?? null,
-    observacao:    "Inserido via Arato-IA",
-    auto: false,
+    valor, moeda:    "BRL",
+    status:          jaPago ? "baixado" : "em_aberto",
+    conta_bancaria:  conta?.id ?? null,
+    safra_id:        cicloAb?.id ?? null,
+    ano_safra_id:    cicloAb?.ano_safra_id ?? null,
+    observacao:      "Inserido via Arato-IA",
+    auto:            false,
   };
   if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
 
@@ -268,71 +335,45 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
   }
 
-  // Registra no histórico de abastecimentos (sempre, bomba_id pode ser null para posto externo)
-  {
-    const { data: maqData } = await sb().from("maquinas")
-      .select("id")
-      .eq("fazenda_id", fazendaId)
-      .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
-      .limit(1).maybeSingle();
+  // Histórico de abastecimentos
+  const { data: maqExtData } = await sb().from("maquinas")
+    .select("id")
+    .eq("fazenda_id", fazendaId)
+    .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
+    .limit(1).maybeSingle();
 
-    await sb().from("abastecimentos").insert({
-      fazenda_id: fazendaId,
-      bomba_id: bomba?.id ?? null,
-      maquina_id: maqData?.id ?? null,
-      quantidade_l: qtdUsuario,
-      valor_unitario: qtdUsuario > 0 ? valor / qtdUsuario : 0,
-      valor_total: valor,
-      data: hoje,
-      observacao: String(dados.veiculo ?? "") || null,
-      lancamento_id: lancRow?.id ?? null,
-    });
-  }
-
-  // Pendência fiscal — aguardando NF do abastecimento
-  await sb().from("pendencias_fiscais").insert({
-    fazenda_id: fazendaId,
-    lancamento_id: lancRow?.id ?? null,
-    tipo: "abastecimento",
-    status: "aguardando",
-    descricao: String(cpPayload.descricao),
-    valor,
-    data_operacao: hoje,
-    fornecedor_nome: String(dados.veiculo ?? dados.bomba_nome ?? ""),
-    origem: "whatsapp",
+  await sb().from("abastecimentos").insert({
+    fazenda_id:     fazendaId,
+    bomba_id:       bomba?.id ?? null,
+    maquina_id:     maqExtData?.id ?? null,
+    quantidade_l:   qtdUsuario,
+    valor_unitario: qtdUsuario > 0 ? valor / qtdUsuario : 0,
+    valor_total:    valor,
+    data:           hoje,
+    observacao:     String(dados.veiculo ?? "") || null,
+    lancamento_id:  lancRow?.id ?? null,
   });
 
-  // Movimentação de estoque: apenas se tipo_destino=estoque E a bomba não for de posto externo
-  const deveMovEstoque = dados.tipo_destino === "estoque" && (bomba ? bomba.consume_estoque !== false : true);
-  if (deveMovEstoque) {
-    const insumo = await buscarInsumo(fazendaId, String(dados.produto ?? ""));
-
-    if (insumo) {
-      const unidadeInsumo = String(insumo.unidade ?? "L");
-      const qtdNativa = converterUnidade(qtdUsuario, unidadeUsuario, unidadeInsumo);
-      const novoEstoque = Number(insumo.estoque ?? 0) + qtdNativa;
-      const custoMedioAtual = Number(insumo.custo_medio ?? insumo.valor_unitario ?? 0);
-      const novoMedio = qtdNativa > 0
-        ? (custoMedioAtual * Number(insumo.estoque ?? 0) + valor) / novoEstoque
-        : custoMedioAtual;
-
-      await sb().from("insumos").update({ estoque: novoEstoque, custo_medio: novoMedio }).eq("id", insumo.id);
-      await sb().from("movimentacoes_estoque").insert({
-        fazenda_id: fazendaId, insumo_id: insumo.id, tipo: "entrada",
-        quantidade: qtdNativa, valor_unitario: qtdNativa > 0 ? valor / qtdNativa : 0,
-        motivo: "compra", observacao: `Abastecimento via WhatsApp — ${insumo.nome}`,
-        data: hoje, auto: false,
-      });
-    }
-  }
+  // Pendência fiscal — aguardando NF do posto
+  await sb().from("pendencias_fiscais").insert({
+    fazenda_id:      fazendaId,
+    lancamento_id:   lancRow?.id ?? null,
+    tipo:            "abastecimento",
+    status:          "aguardando",
+    descricao:       String(cpPayload.descricao),
+    valor,
+    data_operacao:   hoje,
+    fornecedor_nome: bombaStr || String(dados.veiculo ?? ""),
+    origem:          "whatsapp",
+  });
 
   const statusLabel = jaPago
     ? `Pago ✓${conta ? ` — debitado de *${conta.nome}*` : ""}`
     : `A vencer: ${vencimento}`;
-  const localLabel = bomba ? ` via *${bombaStr}*` : "";
+
   return {
     ok: true,
-    mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${dados.produto ?? "combustível"}${localLabel}${dados.veiculo ? ` — ${dados.veiculo}` : ""}\n• Valor: R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• Status: ${statusLabel}`,
+    mensagem: `✅ Abastecimento registrado!\n• ${qtdUsuario} L de ${dados.produto ?? "combustível"} — *${bombaStr}*${dados.veiculo ? `\n• Máquina: ${dados.veiculo}` : ""}\n• Valor: R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n• CP: ${statusLabel}`,
   };
 }
 

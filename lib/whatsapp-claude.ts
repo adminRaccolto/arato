@@ -94,22 +94,22 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "registrar_abastecimento",
-    description: "Registra abastecimento de combustível. Lança CP (já pago ou a vencer) e movimenta estoque. Chame com os dados que tiver — a ferramenta pede o que faltar.",
+    description: "Registra abastecimento de combustível. Se bomba interna (fazenda), usa custo médio do estoque sem gerar CP. Se posto externo, gera CP. **Sempre obrigatório informar a bomba.** Chame com os dados que tiver — a ferramenta pede o que faltar.",
     input_schema: {
       type: "object" as const,
       properties: {
         produto: { type: "string", description: "diesel s10, gasolina, etanol, arla etc" },
         quantidade: { type: "number", description: "Litros abastecidos" },
-        valor: { type: "number", description: "Valor total em R$. Se informado preço/litro, calcule: quantidade × preço" },
+        valor: { type: "number", description: "Valor total em R$. Necessário apenas para posto externo (fazenda usa custo do estoque automaticamente)." },
         veiculo: { type: "string", description: "Nome, placa ou descrição do veículo/máquina (opcional)" },
-        bomba_nome: { type: "string", description: "Nome da bomba ou posto usado. Informe quando o usuário mencionar onde abasteceu (ex: 'Posto', 'Bomba 1', 'Posto Shell'). Isso registra o abastecimento no histórico." },
+        bomba_nome: { type: "string", description: "Nome da bomba ou posto usado. **OBRIGATÓRIO** — sempre informe (ex: 'Bomba Fazenda', 'Posto Shell'). Pergunta ao usuário antes de chamar se não foi mencionado." },
         tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "'estoque': comprou para repor o tanque interno da fazenda (deduz estoque). 'direto': abasteceu em posto externo ou direto na máquina sem passar pelo estoque — não há dedução de estoque. Padrão: direto." },
         vencimento: { type: "string", description: "Data de vencimento: hoje, amanhã, dd/mm/aaaa ou 'à vista'" },
         ja_pago: { type: "string", enum: ["sim", "nao"], description: "PAGAMENTO já feito (dinheiro transferido). Use 'sim' quando o usuário disser que já pagou, é à vista, pagou em dinheiro, débito ou PIX. IMPORTANTE: 'ja_pago' refere-se ao dinheiro pago, NÃO à nota fiscal — mesmo que a NF chegue depois, se o dinheiro já saiu use 'sim'." },
         forma_pagamento: { type: "string", description: "Forma de pagamento: dinheiro, PIX, débito, boleto etc" },
         conta_bancaria: { type: "string", description: "Nome da conta bancária usada para pagamento (ex: Sicredi, Bradesco, Caixa, Caixa Fazenda). Só preencha quando o usuário mencionar a conta." },
       },
-      required: ["produto"],
+      required: ["produto", "bomba_nome"],
     },
   },
   {
