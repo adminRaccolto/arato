@@ -508,7 +508,8 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
     const infoCusto = custoTotal > 0
-      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)` : "";
+      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
+      : (insumo && custoMedio === 0 ? `\n⚠️ _Insumo sem preço cadastrado — atualize o custo médio em Estoque para registrar custos futuros._` : "");
 
     return {
       ok: true,
@@ -582,7 +583,8 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Consumido: ${totalNativo.toFixed(2)} ${unidadeInsumo} — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
     const infoCusto = custoTotal > 0
-      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)` : "";
+      ? `\n• Custo: R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
+      : (insumo && custoMedio === 0 ? `\n⚠️ _Insumo sem preço cadastrado — atualize o custo médio em Estoque._` : "");
 
     return {
       ok: true,
@@ -656,7 +658,8 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     const infoEstoque = insumo
       ? `\n• Semente: ${totalNativo.toFixed(2)} ${unidadeInsumo} (${quantidadeKg.toFixed(1)} kg) — estoque restante: ${Math.max(0, estoqueRestante ?? 0).toFixed(2)} ${unidadeInsumo}` : "";
     const infoCusto = custoSementes > 0
-      ? `\n• Custo sementes: R$ ${custoSementes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)` : "";
+      ? `\n• Custo sementes: R$ ${custoSementes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (CP lançado)`
+      : (insumo && custoMedio === 0 ? `\n⚠️ _Semente sem preço cadastrado — atualize o custo médio em Estoque._` : "");
 
     return {
       ok: true,

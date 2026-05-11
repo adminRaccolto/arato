@@ -216,13 +216,25 @@ export default function PulverizacaoPage() {
                           {p.calda_total_l ? `${fmtN(p.calda_total_l)} L` : "—"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#E24B4A" }}>
-                          {p.custo_total ? fmtBRL(p.custo_total) : "—"}
+                          {p.custo_total ? fmtBRL(p.custo_total) : (
+                            <span style={{ color: "#EF9F27", fontSize: 11 }} title="Insumo sem preço no momento do registro">⚠️ s/ custo</span>
+                          )}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <button style={btnE} onClick={async () => {
                               const itensList = await listarPulverizacaoItens(p.id);
-                              setDetalhe({ pulv: p, itens: itensList });
+                              // Recalcula com preço atual quando custo armazenado é zero
+                              const itensRecalc = itensList.map(it => {
+                                if ((it.custo_total ?? 0) > 0) return it;
+                                const ins = insumos.find(i => i.id === it.insumo_id);
+                                const vu = ins?.custo_medio ?? ins?.valor_unitario ?? 0;
+                                if (!vu) return it;
+                                const dose = it.dose_ha ?? 0;
+                                const total = it.total_consumido ?? 0;
+                                return { ...it, valor_unitario: vu, custo_ha: vu * dose, custo_total: vu * total };
+                              });
+                              setDetalhe({ pulv: p, itens: itensRecalc });
                             }}>Produtos</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPulverizacao(p.id).then(() => setPulverizacoes(x => x.filter(r => r.id !== p.id))); }}>✕</button>
                           </div>
@@ -242,9 +254,14 @@ export default function PulverizacaoPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
             <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) ? 8 : 18 }}>
               {TIPOS[detalhe.pulv.tipo].label} · {fmtData(detalhe.pulv.data_inicio)} · {fmtN(detalhe.pulv.area_ha)} ha
             </div>
+            {detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) && (
+              <div style={{ background: "#FBF3E0", border: "0.5px solid #EF9F27", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#7A5200", marginBottom: 14 }}>
+                ⚠️ Custo recalculado com o preço atual do insumo — valor original era R$0,00 (insumo sem preço no momento do registro).
+              </div>
+            )}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "#F3F6F9" }}>

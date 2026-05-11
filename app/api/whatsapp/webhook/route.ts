@@ -224,19 +224,33 @@ export async function POST(req: NextRequest) {
     textoParaIA = `[SISTEMA — OBRIGATÓRIO: O produtor confirmou pagamento já efetuado. Use ja_pago='sim' em TODAS as ferramentas desta mensagem, sem exceção.]\n${textoParaIA}`;
   }
 
-  // ── Contexto multi-fazenda: obrigatório confirmar fazenda antes de registros ──
+  // ── Contexto multi-fazenda ──────────────────────────────────────────────────
+  // Quando há múltiplas fazendas, informar fazenda ativa SEM bloquear registros.
+  // Auto-confirma a fazenda quando detecta intenção de registro para não conflitar
+  // com tool_choice:any — bloqueio via [SISTEMA OBRIGATÓRIO] impede tool_use.
+  let autoConfirmFarm = false;
   if (todasFazendas.length > 1) {
-    const fazendaConfirmadaId = sessao?.dados?.fazenda_confirmada_id as string | undefined;
-    const jaConfirmou = fazendaConfirmadaId === fazendaId;
-    const listaFaz = todasFazendas.map(f => `• *${f.nome}*${f.id === fazendaId ? " ✓" : ""}`).join("\n");
+    const fazendaConfirmadaSessao = sessao?.dados?.fazenda_confirmada_id as string | undefined;
+    const jaConfirmou = fazendaConfirmadaSessao === fazendaId;
+    const outrasNomes = todasFazendas.filter(f => f.id !== fazendaId).map(f => f.nome).join(", ");
 
-    if (jaConfirmou) {
-      // Fazenda já confirmada nesta sessão — apenas lembrete sutil
-      textoParaIA = `[SISTEMA: Fazenda ativa confirmada: *${fazendaNome}*]\n${textoParaIA}`;
-    } else {
-      // Fazenda ainda não confirmada — OBRIGATÓRIO pedir antes de qualquer registro
-      textoParaIA = `[SISTEMA OBRIGATÓRIO — MULTI-FAZENDA: Este produtor tem ${todasFazendas.length} fazendas:\n${listaFaz}\nFazenda ativa agora: *${fazendaNome}*.\nREGRA: antes de executar QUALQUER ferramenta de registro (operação agrícola, financeiro, estoque), você DEVE perguntar: "Esta operação é para a fazenda *${fazendaNome}*? (responda SIM ou diga o nome de outra fazenda)". Se o usuário confirmar com SIM ou variante, inclua [FAZENDA_OK] no início da resposta e prossiga. Para CONSULTAS, pode prosseguir sem confirmar.]\n${textoParaIA}`;
+    // Detecta intenção de registro (mesma lógica de deveForcarFerramenta no Claude)
+    const regKw = [
+      "plantio","plantei","plantou","plantar",
+      "pulveriz","apliquei","aplicou","aplicar",
+      "abasteç","abasteceu","abasteci","abastecimento",
+      "adub","fertiliz","correção de solo","calcário","calcario","gessagem",
+      "registrar","registrei","registrou","lançar",
+      "conta a pagar","cp de","cr de","conta a receber",
+      "comprei","compra de","paguei","recebi","gastei",
+    ];
+    const ehRegistro = regKw.some(k => textLower.includes(k));
+
+    if (!jaConfirmou && ehRegistro) {
+      // Registro detectado → auto-confirma fazenda desta sessão sem bloquear
+      autoConfirmFarm = true;
     }
+    textoParaIA = `[SISTEMA: Fazenda ativa: *${fazendaNome}*${outrasNomes ? `. Outras fazendas: ${outrasNomes}. Para trocar, diga "trocar para [nome]".` : "."}]\n${textoParaIA}`;
   }
 
   // ── Claude processa com tool use ────────────────────────────────────────────
@@ -260,6 +274,8 @@ export async function POST(req: NextRequest) {
     fazendaConfirmadaId = fazendaId;
     respostaLimpa = resposta.replace(/\[FAZENDA_OK\]\s*/g, "").trim();
   }
+  // Auto-confirma a fazenda quando detectamos intenção de registro no webhook
+  if (autoConfirmFarm) fazendaConfirmadaId = fazendaId;
 
   // Salva histórico ANTES de enviar — elimina race condition
   const novoHistorico: Mensagem[] = [
