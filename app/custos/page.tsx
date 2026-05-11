@@ -10,7 +10,7 @@ import type { Safra } from "../../lib/supabase";
 type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 
 interface AnoSafra   { id: string; descricao: string }
-interface Ciclo      { id: string; ano_safra_id: string; cultura: string; descricao: string; area_ha?: number }
+interface Ciclo      { id: string; ano_safra_id: string; cultura: string; descricao: string; area_plantada_ha?: number }
 interface CntSimples { id: string; ciclo_id?: string; produto: string; moeda: string; preco: number; quantidade_sc: number; confirmado?: boolean; status: string }
 interface MovSimples { id: string; insumo_id: string; quantidade: number; safra?: string; motivo?: string }
 interface InsSimples { id: string; custo_medio: number; categoria: string; nome: string }
@@ -95,7 +95,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   const ciclosPorAno = ciclos.filter(c => c.ano_safra_id === anoSafraId);
   const ciclosFiltrados = ciclosPorAno.length > 0 ? ciclosPorAno : ciclos;
   const ciclosSel = ciclos.filter(c => cicloIds.includes(c.id));
-  const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_ha ?? 0), 0);
+  const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
   return (
     <div style={{ background: "#F8FAFD", borderBottom: "0.5px solid #D4DCE8", padding: "12px 22px" }}>
@@ -126,7 +126,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                     color: sel ? "#0B2D50" : "#555",
                     cursor: "pointer", fontSize: 12, fontWeight: sel ? 600 : 400,
                   }}>
-                  {c.descricao}{c.area_ha ? ` · ${fmtNum(c.area_ha)} ha` : ""}
+                  {c.descricao}{c.area_plantada_ha ? ` · ${fmtNum(c.area_plantada_ha)} ha` : ""}
                 </button>
               );
             })}
@@ -174,7 +174,7 @@ function CustosInner() {
     Promise.all([
       listarSafras(fazendaId),
       supabase.from("anos_safra").select("id,descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-      supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_ha").eq("fazenda_id", fazendaId).order("descricao"),
+      supabase.from("ciclos").select("id,ano_safra_id,cultura,descricao,area_plantada_ha").eq("fazenda_id", fazendaId).order("descricao"),
     ]).then(([sfrs, aR, cR]) => {
       setSafras(sfrs);
       const as = (aR.data ?? []) as AnoSafra[];
@@ -238,7 +238,7 @@ function CustosInner() {
   // ═══════════════════════════════════════════════════════════
 
   const ciclosSel = ciclos.filter(c => cicloIds.includes(c.id));
-  const areaHa    = ciclosSel.reduce((s, c) => s + (c.area_ha ?? 0), 0);
+  const areaHa    = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
   // 1. RECEITA — contratos confirmados por ciclo
   const receitaBRL    = contratos.filter(c => c.moeda === "BRL").reduce((s, c) => s + c.preco * c.quantidade_sc, 0);

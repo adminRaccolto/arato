@@ -217,16 +217,26 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   }
 
   // 2. Buscar bomba no banco — multi-tentativa para nomes parciais
-  type BombaRow = { id: string; consume_estoque: boolean; estoque_atual_l: number; combustivel: string; nome: string };
+  // combustivel = campo "combustivel" (novo) com fallback para "tipo" (antigo)
+  type BombaRow = { id: string; consume_estoque: boolean; estoque_atual_l: number | null; combustivel: string; tipo: string; nome: string };
   let bomba: BombaRow | null = null;
+
+  const normalBomba = (raw: Record<string, unknown>): BombaRow => ({
+    id:               String(raw.id ?? ""),
+    nome:             String(raw.nome ?? ""),
+    tipo:             String(raw.tipo ?? "diesel_s10"),
+    combustivel:      String(raw.combustivel ?? raw.tipo ?? "diesel_s10"),
+    consume_estoque:  raw.consume_estoque !== false,
+    estoque_atual_l:  Number(raw.estoque_atual_l ?? 0),
+  });
 
   // 2a. Match completo da string
   { const { data } = await sb().from("bombas_combustivel")
-      .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
+      .select("id, consume_estoque, estoque_atual_l, combustivel, tipo, nome")
       .eq("fazenda_id", fazendaId)
       .ilike("nome", `%${bombaStr}%`)
       .limit(1).maybeSingle();
-    if (data) bomba = data as BombaRow;
+    if (data) bomba = normalBomba(data as BombaRow);
   }
 
   // 2b. Match por cada palavra (ex: "bomba fazenda" → tenta "bomba", depois "fazenda")
@@ -234,11 +244,11 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     const palavras = bombaStr.split(/\s+/).filter(w => w.length > 2);
     for (const palavra of palavras) {
       const { data } = await sb().from("bombas_combustivel")
-        .select("id, consume_estoque, estoque_atual_l, combustivel, nome")
+        .select("id, consume_estoque, estoque_atual_l, combustivel, tipo, nome")
         .eq("fazenda_id", fazendaId)
         .ilike("nome", `%${palavra}%`)
         .limit(1).maybeSingle();
-      if (data) { bomba = data as BombaRow; break; }
+      if (data) { bomba = normalBomba(data as BombaRow); break; }
     }
   }
 
@@ -294,8 +304,9 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     });
 
     // Deduzir estoque da bomba
+    const estoqueAtualBomba = Number(bomba.estoque_atual_l ?? 0);
     await sb().from("bombas_combustivel")
-      .update({ estoque_atual_l: bomba.estoque_atual_l - qtdUsuario })
+      .update({ estoque_atual_l: estoqueAtualBomba - qtdUsuario })
       .eq("id", bomba.id);
 
     // Deduzir insumo de estoque + movimentação
