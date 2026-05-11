@@ -5,7 +5,8 @@ import { extrairEntidade } from "./whatsapp-ai";
 export type FluxoNome =
   | "abastecimento" | "operacao_lavoura" | "entrada_estoque"
   | "saida_estoque" | "lancar_cp" | "baixar_cp"
-  | "lancar_cr" | "baixar_cr" | "romaneio" | "vincular_nf";
+  | "lancar_cr" | "baixar_cr" | "romaneio" | "vincular_nf"
+  | "nf_compra_foto";
 
 export type Sessao = {
   id: string;
@@ -170,6 +171,10 @@ const FLUXOS: Record<FluxoNome, { etapas: EtapaConfig[]; resumo: (d: Record<stri
       { campo: "busca",       pergunta: "Trecho da descrição do lançamento para localizar (ex: 'abastecimento diesel'):" },
     ],
     resumo: (d) => `📎 *Vincular NF*\n• NF: ${d.nf_numero}\n• Emitente: ${d.nf_emitente || "não informado"}\n• Lançamento: "${d.busca}"\n\nConfirma? Responda *SIM* ou *NÃO*`,
+  },
+  nf_compra_foto: {
+    etapas: [],
+    resumo: () => "NF registrada via foto.",
   },
 };
 

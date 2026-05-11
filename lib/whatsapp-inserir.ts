@@ -202,6 +202,7 @@ export async function executarInsercao(
     case "baixar_cr":          return baixarLancamento("receber", dados, fazendaId);
     case "romaneio":           return inserirRomaneio(dados, fazendaId);
     case "vincular_nf":        return vincularNF(dados, fazendaId);
+    case "nf_compra_foto":     return inserirNfCompraFoto(dados, fazendaId);
     default:                   return { ok: false, mensagem: "Fluxo desconhecido." };
   }
 }
@@ -1115,4 +1116,150 @@ async function inserirRomaneio(dados: Record<string, unknown>, fazendaId: string
     ok: true,
     mensagem: `✅ Romaneio registrado!\n• ${dados.commodity} — Placa ${dados.placa}\n• Líquido: ${liquido.toLocaleString("pt-BR")} kg (${sacas.toFixed(0)} sc)`,
   };
+}
+
+// ── NF de compra por foto ────────────────────────────────────────────────────
+async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const cnpj        = String(dados.cnpj_emitente ?? "").replace(/\D/g, "");
+  const razao       = String(dados.razao_social ?? "Fornecedor").trim();
+  const numeroNf    = String(dados.numero_nf ?? "");
+  const dataEmissao = String(dados.data_emissao ?? new Date().toISOString().split("T")[0]);
+  const valorTotal  = Number(dados.valor_total ?? 0);
+  const vencimento  = parseData(String(dados.vencimento ?? "hoje"));
+  const confirmado  = dados.confirmado === true;
+
+  type ItemNF = { descricao: string; quantidade: number; unidade: string; valor_unitario: number };
+  const itens: ItemNF[] = Array.isArray(dados.itens)
+    ? (dados.itens as ItemNF[]).filter(i => i?.descricao)
+    : [];
+
+  const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ── Preview — aguarda confirmação do usuário ─────────────────────────────
+  if (!confirmado) {
+    const itensTxt = itens.slice(0, 4).map(i => {
+      const vt = (Number(i.quantidade) || 1) * (Number(i.valor_unitario) || 0);
+      return `  • ${i.descricao} — ${i.quantidade} ${i.unidade || "UN"} · R$ ${fmtBRL(vt)}`;
+    }).join("\n");
+    const mais = itens.length > 4 ? `\n  _...+${itens.length - 4} itens_` : "";
+    const cnpjFmt = cnpj.length === 14
+      ? `${cnpj.slice(0,2)}.${cnpj.slice(2,5)}.${cnpj.slice(5,8)}/${cnpj.slice(8,12)}-${cnpj.slice(12)}`
+      : cnpj || "—";
+
+    return {
+      ok: false,
+      mensagem: [
+        `📋 *NF nº ${numeroNf || "—"}* — ${razao}`,
+        `• CNPJ: ${cnpjFmt}`,
+        `• Emissão: ${dataEmissao}  ·  Venc. CP: ${vencimento}`,
+        `• *Total: R$ ${fmtBRL(valorTotal)}*`,
+        itens.length > 0 ? `\nItens:\n${itensTxt}${mais}` : "",
+        `\n✅ Será criado: Fornecedor + NF Entrada + Conta a Pagar`,
+        `\n*Confirma? Responda "sim" para registrar.*`,
+      ].filter(Boolean).join("\n"),
+    };
+  }
+
+  // ── Salvar ──────────────────────────────────────────────────────────────
+  const hoje = new Date().toISOString().split("T")[0];
+
+  // 1. Upsert Pessoa (fornecedor) por CNPJ
+  let pessoaId: string | null = null;
+  let pessoaNova = false;
+  if (cnpj) {
+    const { data: existente } = await sb().from("pessoas")
+      .select("id").eq("fazenda_id", fazendaId).eq("cpf_cnpj", cnpj).maybeSingle();
+    if (existente) {
+      pessoaId = existente.id;
+    } else {
+      const { data: nova, error: errP } = await sb().from("pessoas").insert({
+        fazenda_id: fazendaId,
+        nome:       razao,
+        tipo:       "pj",
+        cpf_cnpj:   cnpj,
+        fornecedor: true,
+        cliente:    false,
+      }).select("id").maybeSingle();
+      if (!errP && nova) { pessoaId = nova.id; pessoaNova = true; }
+    }
+  }
+
+  // 2. Criar NF Entrada
+  const { data: nfRow, error: errNf } = await sb().from("nf_entradas").insert({
+    fazenda_id:        fazendaId,
+    numero:            numeroNf || "0",
+    serie:             "1",
+    emitente_nome:     razao,
+    emitente_cnpj:     cnpj || null,
+    pessoa_id:         pessoaId,
+    data_emissao:      dataEmissao,
+    data_entrada:      hoje,
+    valor_total:       valorTotal,
+    status:            "pendente",
+    origem:            "manual",
+    tipo_entrada:      "insumos",
+    data_vencimento_cp: vencimento,
+  }).select("id").maybeSingle();
+
+  if (errNf || !nfRow) return { ok: false, mensagem: `❌ Erro ao criar NF: ${errNf?.message ?? "sem retorno"}` };
+  const nfId = nfRow.id;
+
+  // 3. Criar itens
+  if (itens.length > 0) {
+    await sb().from("nf_entrada_itens").insert(itens.map(i => ({
+      nf_entrada_id:    nfId,
+      fazenda_id:       fazendaId,
+      descricao_produto: String(i.descricao).slice(0, 200),
+      descricao_nf:     String(i.descricao).slice(0, 200),
+      unidade:          String(i.unidade || "UN"),
+      quantidade:       Number(i.quantidade) || 1,
+      valor_unitario:   Number(i.valor_unitario) || 0,
+      valor_total:      (Number(i.quantidade) || 1) * (Number(i.valor_unitario) || 0),
+      tipo_apropiacao:  "direto",
+      alerta_preco:     false,
+    })));
+  }
+
+  // 4. Criar CP lançamento
+  const { data: lancRow } = await sb().from("lancamentos").insert({
+    fazenda_id:      fazendaId,
+    tipo:            "pagar",
+    descricao:       `NF ${numeroNf ? `nº ${numeroNf} ` : ""}— ${razao}`,
+    categoria:       "outros",
+    valor:           valorTotal,
+    moeda:           "BRL",
+    data_lancamento: hoje,
+    data_vencimento: vencimento,
+    status:          "em_aberto",
+    observacao:      "Lançado via foto NF — WhatsApp",
+    auto:            false,
+  }).select("id").maybeSingle();
+
+  // 5. Vincular lancamento → NF
+  if (lancRow?.id) {
+    await sb().from("nf_entradas").update({ lancamento_id: lancRow.id }).eq("id", nfId);
+  }
+
+  // 6. Pendência fiscal
+  await sb().from("pendencias_fiscais").insert({
+    fazenda_id:    fazendaId,
+    lancamento_id: lancRow?.id ?? null,
+    tipo:          "nf_entrada",
+    status:        "aguardando",
+    descricao:     `NF ${numeroNf || "s/n"} — ${razao}`,
+    valor:         valorTotal,
+    data_operacao: hoje,
+    origem:        "whatsapp",
+  });
+
+  const linhas = [
+    `✅ *NF registrada com sucesso!*`,
+    `• Fornecedor: *${razao}*${pessoaNova ? " _(cadastrado agora)_" : ""}`,
+    `• NF nº ${numeroNf || "—"}  ·  R$ ${fmtBRL(valorTotal)}`,
+    `• CP lançado — vence ${vencimento}`,
+    itens.length > 0 ? `• ${itens.length} item(ns) na NF Entrada` : "",
+    `• Pendência fiscal criada — aguardando conferência`,
+  ].filter(Boolean);
+
+  return { ok: true, mensagem: linhas.join("\n") };
 }

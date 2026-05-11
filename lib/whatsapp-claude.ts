@@ -177,6 +177,37 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["nf_numero"],
     },
   },
+  {
+    name: "registrar_nf_compra",
+    description: "Registra uma NF de compra extraída de foto. SEMPRE chame com confirmado=false primeiro para mostrar preview ao usuário. Só use confirmado=true após o usuário dizer 'sim'. Cria automaticamente: Fornecedor (Pessoa), NF Entrada, itens e Conta a Pagar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        razao_social:    { type: "string",  description: "Razão social do emitente/fornecedor" },
+        cnpj_emitente:   { type: "string",  description: "CNPJ do emitente (apenas dígitos ou formatado)" },
+        numero_nf:       { type: "string",  description: "Número da nota fiscal" },
+        data_emissao:    { type: "string",  description: "Data de emissão no formato YYYY-MM-DD" },
+        valor_total:     { type: "number",  description: "Valor total da nota em R$" },
+        vencimento:      { type: "string",  description: "Data de vencimento para CP: hoje, amanhã, dd/mm/aaaa" },
+        confirmado:      { type: "boolean", description: "false = apenas preview (padrão). true = salvar no sistema. Só use true após o usuário confirmar." },
+        itens: {
+          type: "array",
+          description: "Lista de itens da nota fiscal",
+          items: {
+            type: "object" as const,
+            properties: {
+              descricao:      { type: "string", description: "Descrição do produto/serviço" },
+              quantidade:     { type: "number", description: "Quantidade" },
+              unidade:        { type: "string", description: "Unidade (PC, UN, KG, L etc)" },
+              valor_unitario: { type: "number", description: "Valor unitário em R$" },
+            },
+            required: ["descricao"],
+          },
+        },
+      },
+      required: ["razao_social", "valor_total"],
+    },
+  },
 ];
 
 // ── Executor das ferramentas ────────────────────────────────────────────────
@@ -271,6 +302,19 @@ async function executarFerramenta(
         }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
+      case "registrar_nf_compra": {
+        const res = await executarInsercao("nf_compra_foto", {
+          razao_social:  input.razao_social,
+          cnpj_emitente: input.cnpj_emitente ?? "",
+          numero_nf:     input.numero_nf ?? "",
+          data_emissao:  input.data_emissao ?? "",
+          valor_total:   input.valor_total ?? 0,
+          vencimento:    input.vencimento ?? "hoje",
+          itens:         input.itens ?? [],
+          confirmado:    input.confirmado === true,
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+        return res.mensagem;
+      }
       case "vincular_nf": {
         const res = await executarInsercao("vincular_nf", {
           nf_numero:   input.nf_numero,
@@ -297,6 +341,9 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
   const t = texto.toLowerCase();
 
   // Intenção de registro na mensagem atual
+  // Foto de NF injetada → sempre força ferramenta
+  if (t.includes("[usuário enviou uma imagem. dados extraídos:")) return true;
+
   const kw = [
     "plantio", "plantei", "plantou", "plantar", "fiz o plantio",
     "pulveriz", "apliquei", "aplicou", "aplicar", "apliquei herbicida",
@@ -360,6 +407,14 @@ REGRA #5 — CONTEXTO CONTÍNUO:
 - Ao responder, leia o histórico completo da conversa.
 - Se a ferramenta pediu uma informação e o usuário respondeu, use os dados acumulados na próxima chamada.
 - NUNCA peça novamente algo que o usuário já informou.
+
+REGRA #6 — FOTO DE NOTA FISCAL:
+Quando a mensagem começar com "[Usuário enviou uma imagem. Dados extraídos:" significa que o sistema leu uma NF por foto.
+- IMEDIATAMENTE chame a ferramenta registrar_nf_compra com confirmado=false e TODOS os dados extraídos (razao_social, cnpj_emitente, numero_nf, data_emissao, valor_total, itens, vencimento).
+- A ferramenta vai mostrar um resumo e perguntar ao usuário se confirma.
+- Quando o usuário responder "sim" ou confirmar → chame registrar_nf_compra novamente com os MESMOS dados + confirmado=true.
+- NUNCA resuma os dados por conta própria — sempre passe pela ferramenta para o preview.
+- Se não houver data de vencimento na NF, use "hoje" como padrão.
 
 COMPORTAMENTO GERAL:
 - Seu nome é Arato. Responda em português, direto e prático.
