@@ -445,12 +445,15 @@ export default function Contratos() {
         observacao_interna: fC.observacao_interna || undefined,
         observacao: fC.observacao || undefined,
         status: editContrato?.status ?? "aberto",
-        // cessão
-        dado_em_cessao: fC.dado_em_cessao || false,
-        cessao_fornecedor_id: fC.cessao_fornecedor_id || undefined,
-        cessao_fornecedor_nome: fC.cessao_fornecedor_nome || undefined,
-        cessao_data: fC.cessao_data || undefined,
-        cessao_obs: fC.cessao_obs || undefined,
+        // cessão — só inclui no payload se o usuário marcou o checkbox
+        // (evita erro de coluna inexistente antes da migration 78 ser executada)
+        ...(fC.dado_em_cessao ? {
+          dado_em_cessao: true,
+          cessao_fornecedor_id: fC.cessao_fornecedor_id || undefined,
+          cessao_fornecedor_nome: fC.cessao_fornecedor_nome || undefined,
+          cessao_data: fC.cessao_data || undefined,
+          cessao_obs: fC.cessao_obs || undefined,
+        } : {}),
       };
       let salvo: Contrato;
       if (editContrato) {
