@@ -50,6 +50,9 @@ export default function PendenciasFiscaisPage() {
   const [busca,        setBusca]        = useState("");
 
   // Modal de anexar NF
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [excluindo,    setExcluindo]   = useState(false);
+
   const [modal,       setModal]       = useState<Pendencia | null>(null);
   const [modoAnexo,   setModoAnexo]   = useState<"chave" | "foto">("chave");
   const [chaveInput,  setChaveInput]  = useState("");
@@ -165,6 +168,45 @@ export default function PendenciasFiscaisPage() {
     setConsultando(false);
   }
 
+  // ── Excluir pendências ───────────────────────────────────────────────────
+  async function excluirSelecionados() {
+    if (selecionados.size === 0) return;
+    const confirmado = window.confirm(
+      `Excluir ${selecionados.size} pendência${selecionados.size > 1 ? "s" : ""} permanentemente?\n\nEsta ação não pode ser desfeita.`
+    );
+    if (!confirmado) return;
+    setExcluindo(true);
+    await supabase.from("pendencias_fiscais")
+      .delete()
+      .in("id", Array.from(selecionados));
+    setSelecionados(new Set());
+    setExcluindo(false);
+    await carregar();
+  }
+
+  async function excluirUma(id: string) {
+    const confirmado = window.confirm("Excluir esta pendência permanentemente?");
+    if (!confirmado) return;
+    await supabase.from("pendencias_fiscais").delete().eq("id", id);
+    await carregar();
+  }
+
+  function toggleSelecionado(id: string) {
+    setSelecionados(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleTodos() {
+    if (selecionados.size === pendenciasFiltradas.length) {
+      setSelecionados(new Set());
+    } else {
+      setSelecionados(new Set(pendenciasFiltradas.map(p => p.id)));
+    }
+  }
+
   // ── Dispensar pendência ──────────────────────────────────────────────────
   async function dispensar(id: string, obs: string) {
     await supabase.from("pendencias_fiscais")
@@ -234,6 +276,19 @@ export default function PendenciasFiscaisPage() {
           onChange={e => setBusca(e.target.value)}
           style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "#fff", minWidth: 240 }}
         />
+        {selecionados.size > 0 && (
+          <button
+            onClick={excluirSelecionados}
+            disabled={excluindo}
+            style={{
+              marginLeft: "auto", padding: "5px 16px", borderRadius: 8,
+              border: "0.5px solid #E24B4A", background: "#FCEBEB",
+              color: "#C0392B", fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            {excluindo ? "Excluindo..." : `Excluir ${selecionados.size} selecionada${selecionados.size > 1 ? "s" : ""}`}
+          </button>
+        )}
       </div>
 
       {/* Tabela */}
@@ -248,6 +303,14 @@ export default function PendenciasFiscaisPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
+                <th style={{ padding: "10px 14px", width: 36 }}>
+                  <input
+                    type="checkbox"
+                    checked={pendenciasFiltradas.length > 0 && selecionados.size === pendenciasFiltradas.length}
+                    onChange={toggleTodos}
+                    style={{ cursor: "pointer", width: 14, height: 14 }}
+                  />
+                </th>
                 {["Data", "Tipo", "Descrição", "Fornecedor", "Valor", "Origem", "Status", ""].map(h => (
                   <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
@@ -256,8 +319,17 @@ export default function PendenciasFiscaisPage() {
             <tbody>
               {pendenciasFiltradas.map((p, idx) => {
                 const st = STATUS_LABEL[p.status];
+                const sel = selecionados.has(p.id);
                 return (
-                  <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                  <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: sel ? "#FFF8F0" : idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                    <td style={{ padding: "10px 14px" }}>
+                      <input
+                        type="checkbox"
+                        checked={sel}
+                        onChange={() => toggleSelecionado(p.id)}
+                        style={{ cursor: "pointer", width: 14, height: 14 }}
+                      />
+                    </td>
                     <td style={{ padding: "10px 14px", fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>
                       {new Date(p.data_operacao + "T12:00").toLocaleDateString("pt-BR")}
                     </td>
@@ -294,20 +366,32 @@ export default function PendenciasFiscaisPage() {
                       </span>
                     </td>
                     <td style={{ padding: "10px 14px" }}>
-                      {p.status === "aguardando" && (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {p.status === "aguardando" && (
+                          <button
+                            onClick={() => abrirModal(p)}
+                            style={{
+                              padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B",
+                              background: "#FBF3E0", color: "#9D4900", fontSize: 12, cursor: "pointer", fontWeight: 600,
+                            }}
+                          >
+                            Anexar NF
+                          </button>
+                        )}
+                        {p.status === "recebida" && p.xml_storage_path && (
+                          <span style={{ fontSize: 12, color: "#166534" }}>XML salvo</span>
+                        )}
                         <button
-                          onClick={() => abrirModal(p)}
+                          onClick={() => excluirUma(p.id)}
+                          title="Excluir pendência"
                           style={{
-                            padding: "5px 12px", borderRadius: 8, border: "0.5px solid #C9921B",
-                            background: "#FBF3E0", color: "#9D4900", fontSize: 12, cursor: "pointer", fontWeight: 600,
+                            padding: "4px 8px", borderRadius: 6, border: "0.5px solid #E8C2C2",
+                            background: "#FFF5F5", color: "#C0392B", fontSize: 13, cursor: "pointer", lineHeight: 1,
                           }}
                         >
-                          Anexar NF
+                          🗑
                         </button>
-                      )}
-                      {p.status === "recebida" && p.xml_storage_path && (
-                        <span style={{ fontSize: 12, color: "#166534" }}>XML salvo</span>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 );
