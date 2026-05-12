@@ -66,6 +66,7 @@ interface Cte {
   motorista_cpf?: string | null;
   nfe_chave?: string | null;
   carregamento_id?: string | null;
+  xml_url?: string | null;
   status: StatusCte;
   observacao?: string | null;
   created_at?: string;
@@ -92,10 +93,153 @@ const CFOPS_CTE = [
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 
 // ─────────────────────────────────────────────────────────────
+// DACTE — Documento Auxiliar do CT-e Modelo 57
+// ─────────────────────────────────────────────────────────────
+function imprimirDacte(c: Cte, logoUrl?: string | null) {
+  const chave44   = (c.chave_acesso ?? "").replace(/\D/g, "");
+  const chaveBlocks = chave44
+    ? chave44.replace(/(.{4})/g, "$1 ").trim()
+    : "— aguardando autorização SEFAZ —";
+  const dataFmt   = c.data_emissao ? new Date(c.data_emissao + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+  const valorFmt  = c.valor_frete.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+  const numFmt    = c.numero_cte.padStart(9, "0").replace(/(\d{3})(\d{3})(\d{3})/, "$1.$2.$3");
+  const icmsFmt   = c.valor_icms.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>DACTE CT-e ${numFmt} — Série ${c.serie}</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:7pt;color:#000;background:#fff}
+.page{width:210mm;margin:0 auto;padding:4mm;border:0.3mm solid #000}
+.box{border:0.3mm solid #000;padding:2mm}
+.row{display:flex;gap:0}
+.row .box{flex:1}
+.lbl{font-size:6pt;color:#333;display:block;margin-bottom:1mm}
+.val{font-size:8pt;font-weight:700}
+.title{font-size:9pt;font-weight:700;text-align:center;border:0.3mm solid #000;padding:1mm;background:#eee}
+.section{border:0.5mm solid #000;margin-bottom:1.5mm}
+.section-header{background:#ddd;font-size:7pt;font-weight:700;padding:1mm 2mm;border-bottom:0.3mm solid #000}
+table{width:100%;border-collapse:collapse;font-size:7pt}
+th{background:#eee;border:0.3mm solid #000;padding:1mm;text-align:left;font-size:6.5pt}
+td{border:0.3mm solid #000;padding:1mm}
+.barcode-area{text-align:center;padding:3mm;border-top:0.3mm solid #000;margin-top:2mm}
+@page{size:A4;margin:5mm}
+@media print{body{margin:0}}
+</style></head><body>
+<div class="page">
+
+  <!-- CABEÇALHO -->
+  <div class="row" style="margin-bottom:1.5mm;align-items:stretch">
+    <div class="box" style="flex:0 0 45mm;display:flex;align-items:center;justify-content:center;padding:2mm">
+      ${logoUrl ? `<img src="${logoUrl}" style="max-width:40mm;max-height:18mm;object-fit:contain" />` : `<span style="font-size:9pt;font-weight:700;color:#1A4870">DACTE</span>`}
+    </div>
+    <div class="box" style="flex:1;text-align:center">
+      <div style="font-size:11pt;font-weight:700">DACTE</div>
+      <div style="font-size:8pt">DOCUMENTO AUXILIAR DO CONHECIMENTO DE TRANSPORTE ELETRÔNICO</div>
+      <div style="margin-top:1mm;font-size:7pt">MODELO <strong>57</strong> · SÉRIE <strong>${c.serie}</strong> · Nº <strong>${numFmt}</strong></div>
+      <div style="font-size:7pt">Emissão: <strong>${dataFmt}</strong> · CFOP: <strong>${c.cfop}</strong></div>
+    </div>
+    <div class="box" style="flex:0 0 50mm;font-size:7pt;padding:2mm">
+      <div class="lbl">NATUREZA DA PRESTAÇÃO</div>
+      <div class="val" style="font-size:7pt">${c.natureza_operacao}</div>
+      <div class="lbl" style="margin-top:2mm">TOMADOR DO SERVIÇO</div>
+      <div class="val" style="font-size:7pt">${{ remetente:"Remetente (0)", expedidor:"Expedidor (1)", recebedor:"Recebedor (2)", destinatario:"Destinatário (3)" }[c.tomador_tipo] ?? c.tomador_tipo}</div>
+    </div>
+  </div>
+
+  <!-- REMETENTE / DESTINATÁRIO -->
+  <div class="section" style="margin-bottom:1.5mm">
+    <div class="section-header">REMETENTE E DESTINATÁRIO</div>
+    <div class="row">
+      <div class="box" style="flex:2">
+        <span class="lbl">REMETENTE (Quem envia)</span>
+        <span class="val">${c.remetente_nome}</span>
+        ${c.remetente_cnpj ? `<div style="font-size:6pt;color:#555">CNPJ/CPF: ${c.remetente_cnpj}</div>` : ""}
+        <div style="font-size:6.5pt;color:#444">${c.municipio_origem} — ${c.uf_origem}</div>
+      </div>
+      <div class="box" style="flex:2">
+        <span class="lbl">DESTINATÁRIO (Quem recebe)</span>
+        <span class="val">${c.destinatario_nome}</span>
+        ${c.destinatario_cnpj ? `<div style="font-size:6pt;color:#555">CNPJ/CPF: ${c.destinatario_cnpj}</div>` : ""}
+        <div style="font-size:6.5pt;color:#444">${c.municipio_destino} — ${c.uf_destino}</div>
+      </div>
+      <div class="box" style="flex:1">
+        <span class="lbl">PERCURSO</span>
+        <span class="val" style="font-size:7pt">${c.municipio_origem}/${c.uf_origem}</span>
+        <div style="font-size:9pt;text-align:center;color:#555">→</div>
+        <span class="val" style="font-size:7pt">${c.municipio_destino}/${c.uf_destino}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VALORES DA PRESTAÇÃO -->
+  <div class="section" style="margin-bottom:1.5mm">
+    <div class="section-header">VALORES DA PRESTAÇÃO DO SERVIÇO</div>
+    <div class="row">
+      <div class="box"><span class="lbl">VALOR TOTAL DA PRESTAÇÃO</span><span class="val">R$ ${valorFmt}</span></div>
+      <div class="box"><span class="lbl">BASE DE CÁLCULO ICMS</span><span class="val">R$ ${valorFmt}</span></div>
+      <div class="box"><span class="lbl">ALÍQUOTA ICMS</span><span class="val">${c.aliquota_icms.toFixed(2)}%</span></div>
+      <div class="box"><span class="lbl">VALOR ICMS</span><span class="val">R$ ${icmsFmt}</span></div>
+      <div class="box"><span class="lbl">VALOR MERCADORIA</span><span class="val">R$ ${c.valor_mercadoria.toLocaleString("pt-BR",{minimumFractionDigits:2})}</span></div>
+    </div>
+  </div>
+
+  <!-- CARGA -->
+  <div class="section" style="margin-bottom:1.5mm">
+    <div class="section-header">INFORMAÇÕES DA CARGA</div>
+    <div class="row">
+      <div class="box" style="flex:2"><span class="lbl">PRODUTO PREDOMINANTE</span><span class="val">${c.produto_descricao}</span></div>
+      <div class="box"><span class="lbl">QUANTIDADE</span><span class="val">${c.quantidade.toLocaleString("pt-BR")} ${c.unidade}</span></div>
+      <div class="box"><span class="lbl">PESO BRUTO (kg)</span><span class="val">${c.peso_bruto_kg.toLocaleString("pt-BR")}</span></div>
+      <div class="box"><span class="lbl">PESO LÍQUIDO (kg)</span><span class="val">${c.peso_liquido_kg.toLocaleString("pt-BR")}</span></div>
+    </div>
+  </div>
+
+  <!-- MODAL RODOVIÁRIO -->
+  <div class="section" style="margin-bottom:1.5mm">
+    <div class="section-header">MODAL RODOVIÁRIO</div>
+    <div class="row">
+      <div class="box" style="flex:2"><span class="lbl">MOTORISTA</span><span class="val">${c.motorista_nome}</span>${c.motorista_cpf ? `<div style="font-size:6pt">CPF: ${c.motorista_cpf}</div>` : ""}</div>
+      <div class="box"><span class="lbl">PLACA DO VEÍCULO</span><span class="val" style="font-size:10pt;letter-spacing:1px">${c.veiculo_placa}</span></div>
+      <div class="box"><span class="lbl">TIPO DO VEÍCULO</span><span class="val">${c.veiculo_tipo ?? "—"}</span></div>
+    </div>
+  </div>
+
+  ${c.nfe_chave ? `<!-- NF-e DOCUMENTADA -->
+  <div class="section" style="margin-bottom:1.5mm">
+    <div class="section-header">DOCUMENTOS ORIGINÁRIOS</div>
+    <div class="box"><span class="lbl">CHAVE DA NF-e</span><span style="font-size:7pt;font-family:monospace">${c.nfe_chave}</span></div>
+  </div>` : ""}
+
+  ${c.observacao ? `<div class="section" style="margin-bottom:1.5mm"><div class="section-header">INFORMAÇÕES COMPLEMENTARES</div><div class="box" style="font-size:7.5pt">${c.observacao}</div></div>` : ""}
+
+  <!-- CÓDIGO DE BARRAS -->
+  <div class="barcode-area">
+    <div style="font-size:6pt;color:#555;margin-bottom:2mm">CHAVE DE ACESSO</div>
+    <svg id="barcode"></svg>
+    <div style="font-size:7pt;font-family:monospace;letter-spacing:1px;margin-top:1mm">${chaveBlocks}</div>
+    ${chave44.length === 44 ? "" : `<div style="font-size:7pt;color:#E24B4A;font-weight:700;margin-top:2mm">⚠ CT-e ainda não autorizado pela SEFAZ — aguardando transmissão</div>`}
+  </div>
+</div>
+
+<script>
+window.onload = function() {
+  ${chave44.length === 44 ? `try { JsBarcode("#barcode","${chave44}",{format:"CODE128",width:1.2,height:35,displayValue:false,margin:0}); } catch(e){}` : ""}
+  setTimeout(function(){ window.print(); }, 400);
+};
+<\/script>
+</body></html>`;
+
+  const w = window.open("", "_blank", "width=900,height=700");
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Componente
 // ─────────────────────────────────────────────────────────────
 export default function CtePage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, logoCliente } = useAuth();
 
   const [ctes,      setCtes]      = useState<Cte[]>([]);
   const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
@@ -284,11 +428,62 @@ export default function CtePage() {
     }
   }
 
-  // ── Autorizar (simulado) ─────────────────────────────────
+  // ── Autorizar — transmissão real SEFAZ ──────────────────
   async function autorizar(c: Cte) {
-    const chave = `35${c.data_emissao.replace(/-/g,"").slice(2,6)}00000000000000000000000${c.numero_cte.padStart(9,"0")}1`;
-    await supabase.from("ctes").update({ status: "autorizado", chave_acesso: chave }).eq("id", c.id);
-    await carregar();
+    if (!fazendaId) return;
+    if (!confirm(`Transmitir CT-e ${c.numero_cte} para a SEFAZ?\nAmbiente configurado em Parâmetros → CT-e.`)) return;
+
+    // Monta ibge do município se disponível
+    const payload = {
+      fazenda_id:         fazendaId,
+      remetente:          { nome: c.remetente_nome,    cpf_cnpj: c.remetente_cnpj    ?? undefined },
+      destinatario:       { nome: c.destinatario_nome, cpf_cnpj: c.destinatario_cnpj ?? undefined },
+      municipio_ini_ibge: "0000000",
+      municipio_ini_nome: c.municipio_origem,
+      uf_ini:             c.uf_origem,
+      municipio_fim_ibge: "0000000",
+      municipio_fim_nome: c.municipio_destino,
+      uf_fim:             c.uf_destino,
+      cfop:               c.cfop,
+      natureza:           c.natureza_operacao,
+      valor_prestacao:    c.valor_frete,
+      valor_receber:      c.valor_frete,
+      componentes:        [{ nome: "Frete Peso", valor: c.valor_frete }],
+      produto_descricao:  c.produto_descricao,
+      ncm:                c.ncm ?? undefined,
+      peso_bruto_kg:      c.peso_bruto_kg,
+      peso_liquido_kg:    c.peso_liquido_kg,
+      valor_mercadoria:   c.valor_mercadoria,
+      aliquota_icms:      c.aliquota_icms,
+      veiculo_placa:      c.veiculo_placa,
+      motorista_nome:     c.motorista_nome,
+      motorista_cpf:      c.motorista_cpf ?? "",
+      nfe_chave:          c.nfe_chave   ?? undefined,
+      tomador_tipo:       "3" as const,
+      observacao:         c.observacao  ?? undefined,
+    };
+
+    try {
+      const res  = await fetch("/api/fiscal/emitir-cte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await res.json() as { sucesso: boolean; chave?: string; numero?: string; protocolo?: string; cStat: string; xMotivo: string; xmlUrl?: string };
+
+      await supabase.from("ctes").update({
+        status:       data.sucesso ? "autorizado" : "rascunho",
+        chave_acesso: data.chave   ?? null,
+        xml_url:      data.xmlUrl  ?? null,
+        numero_cte:   data.numero  ?? c.numero_cte,
+      }).eq("id", c.id);
+
+      await carregar();
+
+      if (data.sucesso) {
+        alert(`✓ CT-e autorizado!\nNúmero: ${data.numero}\nProtocolo: ${data.protocolo ?? "—"}\nChave: ${data.chave ?? "—"}`);
+      } else {
+        alert(`⚠ CT-e rejeitado pela SEFAZ\ncStat ${data.cStat}: ${data.xMotivo}`);
+      }
+    } catch (e) {
+      alert("Erro ao transmitir: " + (e instanceof Error ? e.message : String(e)));
+    }
   }
 
   async function cancelar(c: Cte) {
@@ -402,9 +597,12 @@ export default function CtePage() {
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                           {c.status === "rascunho" && (
                             <button onClick={() => autorizar(c)} style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#1A6B3C", cursor: "pointer", fontSize: 11, color: "#fff", fontWeight: 600 }}>
-                              Autorizar
+                              Autorizar SEFAZ
                             </button>
                           )}
+                          <button onClick={() => imprimirDacte(c, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                            DACTE
+                          </button>
                           {c.status !== "cancelado" && (
                             <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>
                               Editar

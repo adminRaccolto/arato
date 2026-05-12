@@ -77,18 +77,30 @@ const NAV: NavItem[] = [
   },
 
   {
-    type: "group", id: "compras-estoque", label: "Compras & Estoque", minStep: 5,
+    type: "group", id: "compras", label: "Compras", minStep: 5,
     children: [
-      { id: "comp-pedidos",  label: "Pedidos de Compra",  path: "/compras"  },
+      { id: "comp-pedidos", label: "Pedidos de Compra", path: "/compras" },
       {
-        type: "subgroup", id: "sg-entrada-nf", label: "Entrada de Notas Fiscais",
+        type: "subgroup", id: "sg-entrada-nf", label: "Entrada Manual de NF",
         children: [
           { id: "comp-nf",         label: "NF de Produtos", path: "/compras/nf"         },
           { id: "comp-nf-servico", label: "NF de Serviços", path: "/compras/nf-servico" },
         ],
       },
-      { id: "comp-estoque",       label: "Posição de Estoque",        path: "/estoque"                },
-      { id: "comp-abastecimento", label: "Abastecimento de Máquinas", path: "/estoque/abastecimento"  },
+      {
+        type: "subgroup", id: "sg-entrada-automatica", label: "Entrada Automática (SEFAZ)",
+        children: [
+          { id: "comp-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
+        ],
+      },
+    ],
+  },
+
+  {
+    type: "group", id: "estoque", label: "Estoque", minStep: 5,
+    children: [
+      { id: "est-posicao",       label: "Posição de Estoque",        path: "/estoque"               },
+      { id: "est-abastecimento", label: "Abastecimento de Máquinas", path: "/estoque/abastecimento" },
     ],
   },
 
@@ -148,12 +160,6 @@ const NAV: NavItem[] = [
           { id: "fiscal-devolucao",    label: "Nota de Devolução",    path: "/fiscal?aba=devolucao"    },
           { id: "fiscal-cancelamento", label: "Cancelamento de Nota", path: "/fiscal?aba=cancelamento" },
           { id: "fiscal-complemento",  label: "Nota de Complemento",  path: "/fiscal?aba=complemento" },
-        ],
-      },
-      {
-        type: "subgroup", id: "sg-notas-entrada", label: "Notas de Entrada",
-        children: [
-          { id: "fiscal-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
         ],
       },
       { id: "fiscal-pendencias", label: "Pendências Fiscais", path: "/fiscal/pendencias" },
@@ -232,7 +238,8 @@ const NAV_MODULE_MAP: Record<string, string> = {
   "cadastros":       "cadastros",
   "comercial":       "comercial",
   "transporte":      "transporte",
-  "compras-estoque": "estoque",
+  "compras":         "estoque",
+  "estoque":         "estoque",
   "financeiro":      "financeiro",
   "lavoura":         "lavoura",
   "fiscal":          "fiscal",
@@ -251,13 +258,12 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [fazenda,          setFazenda]          = useState<Fazenda | null>(null);
   const [logoArato,        setLogoArato]        = useState<string | null>(null);
   const [nomeArato,        setNomeArato]        = useState("Arato");
-  const [logoFazenda,      setLogoFazenda]      = useState<string | null>(null);
   const [fazendas,         setFazendas]         = useState<Fazenda[]>([]);
   const [farmSwitcherOpen, setFarmSwitcherOpen] = useState(false);
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, logoCliente } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -290,12 +296,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   }, []);
 
   useEffect(() => {
-    if (!fazendaId) return;
-    const lf = localStorage.getItem(`fazenda_logo_${fazendaId}`);
-    if (lf) setLogoFazenda(lf);
-  }, [fazendaId]);
-
-  useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setDropdown(null);
@@ -324,7 +324,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "cadastros")       return pathname === "/cadastros";
     if (item.id === "comercial")       return pathname === "/contratos" || pathname.startsWith("/expedicao") || pathname.startsWith("/contratos");
     if (item.id === "transporte")      return pathname.startsWith("/transporte");
-    if (item.id === "compras-estoque") return pathname.startsWith("/compras") || pathname === "/estoque";
+    if (item.id === "compras")  return pathname.startsWith("/compras") || pathname === "/fiscal/manifestacao";
+    if (item.id === "estoque")  return pathname === "/estoque" || pathname.startsWith("/estoque");
     if (item.id === "financeiro")      return pathname.startsWith("/financeiro");
     if (item.id === "lavoura")         return pathname.startsWith("/lavoura");
     if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname.startsWith("/fiscal");
@@ -475,8 +476,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 style={{ display: "flex", alignItems: "center", gap: 10, cursor: fazendas.length > 1 ? "pointer" : "default", borderRadius: 8, padding: "4px 8px", background: farmSwitcherOpen ? "#F3F6F9" : "transparent" }}
                 onClick={() => fazendas.length > 1 && setFarmSwitcherOpen(o => !o)}
               >
-                {logoFazenda ? (
-                  <img src={logoFazenda} alt="Logo fazenda" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", border: "0.5px solid #D4DCE8" }} />
+                {logoCliente ? (
+                  <img src={logoCliente} alt="Logo fazenda" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", border: "0.5px solid #D4DCE8" }} />
                 ) : (
                   <div style={{ width: 36, height: 36, borderRadius: 9, background: "#F3F6F9", border: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1A4870" }}>
                     {iniciaisFazenda}

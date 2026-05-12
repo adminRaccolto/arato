@@ -76,9 +76,11 @@ const secHeader = (label: string) => (
 
 // ─── Abas ─────────────────────────────────────────────────────────────────────
 const TABS = [
+  { id: "aparencia",   label: "Aparência" },
   { id: "fiscal",      label: "Fiscal — NF-e" },
   { id: "tributacao",  label: "Tributação NCM" },
   { id: "operacoes",   label: "Operações Fiscais" },
+  { id: "cte",         label: "CT-e" },
   { id: "mdfe",        label: "MDF-e" },
   { id: "transportes", label: "Transportes" },
   { id: "integracoes", label: "Integrações" },
@@ -119,6 +121,18 @@ const MDFE_FIELDS: FieldDef[] = [
   { key: "tpEmit",         label: "Tipo Emitente",          type: "select", options: ["1","2","3"], labels: ["1 – Transp. Autônomo","2 – ETC","3 – CTC"] },
   { key: "uf_ini",         label: "UF Início padrão",       type: "text",   placeholder: "MT" },
   { key: "uf_fim",         label: "UF Fim padrão",          type: "text",   placeholder: "PR" },
+];
+
+const CTE_BASE_FIELDS: FieldDef[] = [
+  { key: "ambiente",       label: "Ambiente CT-e",         type: "select", options: ["producao","homologacao"], labels: ["Produção","Homologação"] },
+  { key: "serie_cte",      label: "Série CT-e",            type: "text",   placeholder: "001" },
+  { key: "numero_inicial", label: "Próx. Número CT-e",     type: "number", placeholder: "1" },
+  { key: "rntrc",          label: "RNTRC (Transportador)", type: "text",   placeholder: "12345678" },
+];
+
+const CTE_CERT_FIELDS: FieldDef[] = [
+  { key: "cert_a1_path",  label: "Certificado A1 — Caminho (opcional — usa o do NF-e se vazio)", type: "text",     placeholder: "" },
+  { key: "cert_a1_senha", label: "Senha do Certificado A1 (opcional)",                           type: "password", placeholder: "" },
 ];
 
 const INTEG_FIELDS: FieldDef[] = [
@@ -339,9 +353,9 @@ const NCM_MODAL_VAZIO: Omit<NcmTributacao, "id"> = {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function ParametrosSistemaContent() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId, setLogoCliente } = useAuth();
   const searchParams = useSearchParams();
-  const [aba, setAba] = useState(() => searchParams.get("aba") ?? "fiscal");
+  const [aba, setAba] = useState(() => searchParams.get("aba") ?? "aparencia");
 
   useEffect(() => {
     const abaParam = searchParams.get("aba");
@@ -365,6 +379,11 @@ function ParametrosSistemaContent() {
   const [operacoes, setOperacoes] = useState<OperacaoFiscal[]>([]);
   const [modalOp, setModalOp] = useState<(Partial<OperacaoFiscal> & { id?: string }) | null>(null);
   const [carregandoOps, setCarregandoOps] = useState(false);
+
+  // ── Aparência / Logo
+  const [logoUrl,        setLogoUrl]        = useState<string | null>(null);
+  const [logoUploading,  setLogoUploading]  = useState(false);
+  const [logoOk,         setLogoOk]         = useState(false);
 
   // ── Transportes
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
@@ -401,6 +420,41 @@ function ParametrosSistemaContent() {
     supabase.from("veiculos").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setVeiculos(data));
     supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setMotoristas(data));
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (!contaId) return;
+    supabase.from("contas").select("logo_url").eq("id", contaId).maybeSingle()
+      .then(({ data }) => { if (data?.logo_url) setLogoUrl(data.logo_url); });
+  }, [contaId]);
+
+  // ── Upload de logo do cliente
+  const uploadLogo = async (file: File) => {
+    if (!contaId) return;
+    setLogoUploading(true);
+    try {
+      const ext  = file.name.split(".").pop() ?? "png";
+      const path = `clientes/${contaId}/logo.${ext}`;
+      const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("logos").getPublicUrl(path);
+      // cache-busting para forçar recarga imediata
+      const url = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from("contas").update({ logo_url: urlData.publicUrl }).eq("id", contaId);
+      setLogoUrl(url);
+      setLogoCliente(url);
+      setLogoOk(true);
+      setTimeout(() => setLogoOk(false), 2500);
+    } catch (e) {
+      alert("Erro ao fazer upload: " + (e instanceof Error ? e.message : String(e)));
+    } finally { setLogoUploading(false); }
+  };
+
+  const removerLogo = async () => {
+    if (!contaId || !confirm("Remover a logo?")) return;
+    await supabase.from("contas").update({ logo_url: null }).eq("id", contaId);
+    setLogoUrl(null);
+    setLogoCliente(null);
+  };
 
   // ── Mutations
   const setCfg = (modulo: string, key: string, value: string | number | boolean) => {
@@ -540,10 +594,16 @@ function ParametrosSistemaContent() {
             style={{ padding: "7px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {carregandoOps ? "Carregando..." : "Carregar Operações Padrão (MT)"}
           </button>
-          <button onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
-            style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            + Nova Operação
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => window.print()} className="no-print"
+              style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              🖨 Imprimir
+            </button>
+            <button onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
+              style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              + Nova Operação
+            </button>
+          </div>
         </div>
 
         <div style={{ overflowX: "auto" }}>
@@ -1132,11 +1192,125 @@ function ParametrosSistemaContent() {
 
         <div style={{ background: "#fff", borderRadius: 12, padding: 28, border: "0.5px solid #DDE2EE" }}>
 
+          {aba === "aparencia" && (
+            <div>
+              <div style={{ marginBottom: 24 }}>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Identidade Visual</h2>
+                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "start" }}>
+                {/* Preview */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 160, height: 100, border: "1.5px dashed #DDE2EE", borderRadius: 12, background: "#F8FAFB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    {logoUrl
+                      ? <img src={logoUrl} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }} />
+                      : <span style={{ fontSize: 12, color: "#aaa" }}>Sem logo</span>
+                    }
+                  </div>
+                  {logoUrl && (
+                    <button onClick={removerLogo} style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                      Remover
+                    </button>
+                  )}
+                </div>
+
+                {/* Upload */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 13, color: "#333" }}>
+                      Formatos aceitos: <strong>PNG, JPG, SVG, WebP</strong> · Tamanho recomendado: 400 × 200 px · Fundo transparente (PNG/SVG).
+                    </p>
+                    <label style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      padding: "10px 20px", borderRadius: 8, cursor: "pointer",
+                      background: logoUploading ? "#DDE2EE" : "#1A4870", color: "#fff",
+                      fontSize: 13, fontWeight: 600,
+                    }}>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                        style={{ display: "none" }}
+                        disabled={logoUploading || !contaId}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }}
+                      />
+                      {logoUploading ? "Enviando…" : "↑ Escolher arquivo"}
+                    </label>
+                    {!contaId && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#E24B4A" }}>Conta não identificada — recarregue a página.</p>}
+                  </div>
+
+                  {logoOk && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#E8F5E9", borderRadius: 8, fontSize: 13, color: "#1A6B3C", fontWeight: 600 }}>
+                      ✓ Logo salva com sucesso — já aparece no cabeçalho.
+                    </div>
+                  )}
+
+                  <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
+                    <strong>Bucket Supabase:</strong> <code>logos</code> (público) · Caminho: <code>clientes/{"{conta_id}"}/logo.{"{ext}"}</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {aba === "fiscal" && renderFiscalTab()}
 
           {aba === "tributacao" && renderTributacaoTab()}
 
           {aba === "operacoes" && renderOperacoesTab()}
+
+          {aba === "cte" && (
+            <div>
+              <div style={{ marginBottom: 20 }}>
+                <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros CT-e 3.00</h2>
+                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+                  Conhecimento de Transporte Eletrônico — Modelo 57. Emitido pela frota própria do produtor.
+                  MT usa SVRS (RS) como autorizador.
+                </p>
+              </div>
+
+              {/* Ref. ao emitente fiscal */}
+              <div style={{ background: "#EFF6FF", border: "0.5px solid #378ADD", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#1A4870", lineHeight: 1.6 }}>
+                <strong>Emitente:</strong> o CT-e usa a mesma identidade (CNPJ/CPF, endereço, IE) e o mesmo certificado A1 do módulo NF-e selecionado abaixo.
+                Só preencha Certificado A1 CT-e se for usar um certificado diferente.
+              </div>
+
+              {/* modulo_fiscal_ref — select dos emissores cadastrados */}
+              {(() => {
+                const emitters: EmitterEntry[] = [
+                  ...empresas.map(e => ({ type: "empresa" as const, id: e.id, nome: e.razao_social ?? e.nome ?? "Empresa", cpf_cnpj: e.cnpj, moduloKey: `fiscal_emp_${e.id}` })),
+                  ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${p.id}` })),
+                ];
+                const cteC = cfgs["cte"] ?? {};
+                const currentRef = String(cteC.modulo_fiscal_ref ?? "");
+                return (
+                  <div style={{ marginBottom: 20 }}>
+                    {campo("Emitente NF-e de referência", (
+                      <select
+                        value={currentRef}
+                        onChange={e => setCfgs(prev => ({ ...prev, cte: { ...(prev["cte"] ?? {}), modulo_fiscal_ref: e.target.value } }))}
+                        style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff", outline: "none", width: "100%" }}
+                      >
+                        <option value="">— selecione o emitente —</option>
+                        {emitters.map(em => (
+                          <option key={em.moduloKey} value={em.moduloKey}>
+                            {em.nome}{em.cpf_cnpj ? ` — ${em.cpf_cnpj}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    ), true)}
+                  </div>
+                );
+              })()}
+
+              {renderFields("cte", CTE_BASE_FIELDS)}
+
+              <div style={{ marginTop: 20 }}>
+                {secHeader("Certificado A1 (opcional)")}
+                {renderFields("cte", CTE_CERT_FIELDS)}
+              </div>
+            </div>
+          )}
 
           {aba === "mdfe" && (
             <div>

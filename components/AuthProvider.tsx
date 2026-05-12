@@ -15,6 +15,7 @@ type AuthCtx = {
   emailUsuario:           string | null;
   userRole:               string | null;   // 'client' | 'raccotlo' | null
   nomeFazendaSelecionada: string | null;
+  logoCliente:            string | null;   // logo da conta (por cliente SaaS)
   onboardingAtivo:        boolean;
   stepsCompletos:         number;
   // Permissões por módulo do grupo do usuário
@@ -25,6 +26,7 @@ type AuthCtx = {
   refetchOnboarding:      () => void;
   selectFazenda:          (id: string, nome: string) => void;
   setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
+  setLogoCliente:         (url: string | null) => void;
   clearFazenda:           () => void;
   signOut:                () => Promise<void>;
 };
@@ -36,6 +38,7 @@ const Ctx = createContext<AuthCtx>({
   emailUsuario:           null,
   userRole:               null,
   nomeFazendaSelecionada: null,
+  logoCliente:            null,
   onboardingAtivo:        false,
   stepsCompletos:         0,
   permissoes:             {},
@@ -44,6 +47,7 @@ const Ctx = createContext<AuthCtx>({
   refetchOnboarding:      () => {},
   selectFazenda:          () => {},
   setFazendaAtiva:        async () => {},
+  setLogoCliente:         () => {},
   clearFazenda:           () => {},
   signOut:                async () => {},
 });
@@ -60,6 +64,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [onboardingAtivo,        setOnboardingAtivo]        = useState<boolean>(false);
   const [stepsCompletos,         setStepsCompletos]         = useState<number>(0);
   const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
+  const [logoCliente,            setLogoCliente]            = useState<string | null>(null);
   const router = useRouter();
 
   const selectFazenda = useCallback((id: string, nome: string) => {
@@ -165,11 +170,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data: conta } = await supabase
         .from("contas")
-        .select("onboarding_ativo")
+        .select("onboarding_ativo, logo_url")
         .eq("id", cid)
         .maybeSingle();
       const ativo = conta?.onboarding_ativo ?? false;
       setOnboardingAtivo(ativo);
+      if (conta?.logo_url) setLogoCliente(conta.logo_url);
       if (ativo) {
         const completos = await calcularStepsCompletos(fid);
         setStepsCompletos(completos);
@@ -219,7 +225,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       fazendaId, contaId, nomeUsuario, emailUsuario, userRole,
-      nomeFazendaSelecionada, onboardingAtivo, stepsCompletos, refetchOnboarding,
+      nomeFazendaSelecionada, logoCliente, setLogoCliente,
+      onboardingAtivo, stepsCompletos, refetchOnboarding,
       permissoes, podeAcessar, podeEscrever,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>

@@ -69,7 +69,7 @@ interface DanfeCfg {
   municipio?: string; uf?: string; cep?: string; fone?: string;
   ambiente?: string;
 }
-function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}) {
+function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}, logoUrl?: string | null) {
   const dataFmt  = new Date(nota.data_emissao + "T12:00:00").toLocaleDateString("pt-BR");
   const valorFmt = nota.valor_total.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const chave44  = (nota.chave_acesso ?? "").replace(/\D/g, "");
@@ -137,6 +137,7 @@ ${isHomolog ? '<div class="homolog">⚠ AMBIENTE DE HOMOLOGAÇÃO — SEM VALOR 
   <!-- Emitente -->
   <div class="p br" style="flex:0 0 55mm">
     <span class="lbl" style="font-size:5pt;font-style:italic">IDENTIFICAÇÃO DO EMITENTE</span>
+    ${logoUrl ? `<div style="margin:3px 0 4px"><img src="${logoUrl}" alt="logo" style="max-height:24px;max-width:48mm;object-fit:contain;display:block"></div>` : ""}
     <div style="font-size:9pt;font-weight:900;margin:2px 0">${emiNome}</div>
     <div style="font-size:6pt">${emiEnd}</div>
     <div style="font-size:6pt">${emiBairro ? emiBairro + " — " : ""}${emiCep}</div>
@@ -456,7 +457,7 @@ function TabelaNFe({ notas, onCancelar, onComplementar, onConsultarSefaz, onImpr
 
 // ── Página principal ──────────────────────────────────────────────────────────
 function FiscalInner() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, logoCliente } = useAuth();
   const searchParams = useSearchParams();
   const abaParam = searchParams.get("aba") as Aba | null;
   const [notas, setNotas] = useState<NotaFiscal[]>([]);
@@ -893,7 +894,7 @@ function FiscalInner() {
                     onCancelar={n => setModalCancelamento(n)}
                     onComplementar={n => { setModalComplemento(n); setAba("complemento"); }}
                     onConsultarSefaz={consultarSefaz}
-                    onImprimirDanfe={n => imprimirDanfe(n, danfeCfg)}
+                    onImprimirDanfe={n => imprimirDanfe(n, danfeCfg, logoCliente)}
                   />
                   <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#444" }}>

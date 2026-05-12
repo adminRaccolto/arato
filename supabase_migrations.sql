@@ -3788,3 +3788,8 @@ CREATE POLICY logs_insercao ON logs_sistema
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 87: logo_url na tabela contas (logo por cliente SaaS)
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
+NOTIFY pgrst, 'reload schema';

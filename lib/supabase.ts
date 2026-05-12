@@ -13,6 +13,7 @@ export type Conta = {
   id: string;
   nome: string;
   tipo: "pf" | "pj" | "grupo";
+  logo_url?: string;
   onboarding_ativo?: boolean;
   created_at?: string;
 };
