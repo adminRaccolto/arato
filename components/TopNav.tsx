@@ -372,8 +372,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           onMouseLeave={() => setOpenSub(null)}
         >
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "8px 14px", cursor: "default", gap: 24,
+            display: "flex", alignItems: "center",
+            padding: "8px 14px", cursor: "default", gap: 8, whiteSpace: "nowrap",
             background: isOpen ? "#EBF5FF" : temAtivo ? "#F0F8FF" : "transparent",
             borderLeft: temAtivo ? "3px solid #1A4870" : "3px solid transparent",
           }}>
@@ -406,6 +406,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                     style={{
                       display: "flex", alignItems: "center",
                       padding: "8px 14px", textDecoration: "none", fontSize: 13,
+                      whiteSpace: "nowrap",
                       color: ativoGc ? "#0B2D50" : "#222",
                       fontWeight: ativoGc ? 600 : 400,
                       background: ativoGc ? "#D5E8F5" : "transparent",
@@ -433,6 +434,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         style={{
           display: "flex", alignItems: "center",
           padding: "8px 14px", textDecoration: "none", fontSize: 13,
+          whiteSpace: "nowrap",
           color: ativoLink ? "#0B2D50" : "#222",
           fontWeight: ativoLink ? 600 : 400,
           background: ativoLink ? "#D5E8F5" : "transparent",
