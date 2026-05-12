@@ -3792,4 +3792,73 @@ NOTIFY pgrst, 'reload schema';
 -- Seção 87: logo_url na tabela contas (logo por cliente SaaS)
 ALTER TABLE contas ADD COLUMN IF NOT EXISTS logo_url TEXT;
 
+-- ============================================================
+-- Seção 88: Funcionários — remuneração, encargos, premiações, férias
+-- ============================================================
+
+-- Expand tabela funcionarios
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS rg                    TEXT,
+  ADD COLUMN IF NOT EXISTS data_nascimento       DATE,
+  ADD COLUMN IF NOT EXISTS pis_nis               TEXT,
+  ADD COLUMN IF NOT EXISTS ctps_numero           TEXT,
+  ADD COLUMN IF NOT EXISTS ctps_serie            TEXT,
+  ADD COLUMN IF NOT EXISTS ctps_uf               CHAR(2),
+  ADD COLUMN IF NOT EXISTS data_demissao         DATE,
+  ADD COLUMN IF NOT EXISTS salario_base          NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS piso_categoria        NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS fgts_pct              NUMERIC(6,2) DEFAULT 8,
+  ADD COLUMN IF NOT EXISTS inss_empregador_pct   NUMERIC(6,2) DEFAULT 20,
+  ADD COLUMN IF NOT EXISTS sat_rat_pct           NUMERIC(6,2) DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS sistema_s_pct         NUMERIC(6,2) DEFAULT 5.8,
+  ADD COLUMN IF NOT EXISTS provisao_13_pct       NUMERIC(6,2) DEFAULT 8.33,
+  ADD COLUMN IF NOT EXISTS provisao_ferias_pct   NUMERIC(6,2) DEFAULT 11.11,
+  ADD COLUMN IF NOT EXISTS usar_funrural         BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS banco_pagamento       TEXT,
+  ADD COLUMN IF NOT EXISTS agencia_pagamento     TEXT,
+  ADD COLUMN IF NOT EXISTS conta_pagamento       TEXT;
+
+-- Premiações / salário variável
+CREATE TABLE IF NOT EXISTS funcionario_premiacoes (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcionario_id     UUID NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  fazenda_id         UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  mes_referencia     TEXT,           -- YYYY-MM
+  data_pagamento     DATE,
+  descricao          TEXT NOT NULL,
+  valor              NUMERIC(12,2) NOT NULL,
+  lancado_financeiro BOOLEAN DEFAULT FALSE,
+  lancamento_id      UUID,
+  created_at         TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE funcionario_premiacoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "fazenda_owner" ON funcionario_premiacoes
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+-- Períodos de férias
+CREATE TABLE IF NOT EXISTS funcionario_ferias (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  funcionario_id     UUID NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+  fazenda_id         UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  periodo_inicio     DATE NOT NULL,
+  periodo_fim        DATE NOT NULL,
+  status             TEXT NOT NULL DEFAULT 'aquisindo'
+                       CHECK (status IN ('aquisindo','disponivel','concedido','gozado','vencido')),
+  data_inicio_gozo   DATE,
+  data_fim_gozo      DATE,
+  dias_gozados       INT,
+  abono_pecuniario   BOOLEAN DEFAULT FALSE,
+  dias_abono         INT,
+  valor_ferias       NUMERIC(12,2),
+  valor_abono        NUMERIC(12,2),
+  lancado_financeiro BOOLEAN DEFAULT FALSE,
+  obs                TEXT,
+  created_at         TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE funcionario_ferias ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "fazenda_owner" ON funcionario_ferias
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
 NOTIFY pgrst, 'reload schema';

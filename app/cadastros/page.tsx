@@ -16,6 +16,8 @@ import {
   listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina,
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
   listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario,
+  listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao,
+  listarFeriasFuncionario, salvarFeriasGozo, sincronizarPeriodosFerias, processarFolhaMensal,
   listarGrupos, criarGrupo, atualizarGrupo, excluirGrupo,
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarDepositos, criarDeposito, atualizarDeposito, excluirDeposito,
@@ -39,7 +41,7 @@ import type {
   Fazenda as FazendaDB, Talhao,
   Produtor, Empresa, MatriculaImovel, Pessoa,
   AnoSafra, Ciclo, CicloTalhao, Maquina, BombaCombustivel,
-  Funcionario, GrupoUsuario, Usuario, Deposito,
+  Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria,
 } from "../../lib/supabase";
@@ -278,10 +280,27 @@ function CadastrosInner() {
   const [fBomba, setFBomba]           = useState({ nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true });
 
   // ── Funcionários ──
-  const [funcs, setFuncs]             = useState<Funcionario[]>([]);
-  const [modalFunc, setModalFunc]     = useState(false);
-  const [editFunc, setEditFunc]       = useState<Funcionario | null>(null);
-  const [fFunc, setFFunc]             = useState({ nome: "", cpf: "", tipo: "clt" as Funcionario["tipo"], funcao: "", data_admissao: "" });
+  const [funcs, setFuncs]                   = useState<Funcionario[]>([]);
+  const [modalFunc, setModalFunc]           = useState(false);
+  const [editFunc, setEditFunc]             = useState<Funcionario | null>(null);
+  const [abaFunc, setAbaFunc]               = useState<"dados"|"remuneracao"|"premiacoes"|"ferias">("dados");
+  const [fFunc, setFFunc]                   = useState({
+    nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
+    ctps_numero: "", ctps_serie: "", ctps_uf: "",
+    tipo: "clt" as Funcionario["tipo"], funcao: "", data_admissao: "", data_demissao: "", ativo: true,
+    salario_base: "", piso_categoria: "",
+    fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
+    provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
+    banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
+  });
+  const [premiacoes, setPremiacoes]         = useState<FuncionarioPremiacao[]>([]);
+  const [ferias, setFerias]                 = useState<FuncionarioFerias[]>([]);
+  const [modalPremiacao, setModalPremiacao] = useState(false);
+  const [fPremiacao, setFPremiacao]         = useState({ mes_referencia: "", data_pagamento: "", descricao: "", valor: "" });
+  const [modalGozo, setModalGozo]           = useState<FuncionarioFerias | null>(null);
+  const [fGozo, setFGozo]                   = useState({ data_inicio_gozo: "", data_fim_gozo: "", dias_gozados: "30", abono_pecuniario: false, dias_abono: "10" });
+  const [mesProcessar, setMesProcessar]     = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; });
+  const [processando, setProcessando]       = useState(false);
 
   // ── Depósitos ──
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
@@ -1105,18 +1124,114 @@ function CadastrosInner() {
   });
 
   // ─────────────── FUNCIONÁRIOS ───────────────
-  const abrirModalFunc = (f?: Funcionario) => {
+  const abrirModalFunc = async (f?: Funcionario) => {
     setEditFunc(f ?? null);
-    setFFunc(f ? { nome: f.nome, cpf: f.cpf ?? "", tipo: f.tipo, funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "" } : { nome: "", cpf: "", tipo: "clt", funcao: "", data_admissao: "" });
+    setAbaFunc("dados");
+    setFFunc(f ? {
+      nome: f.nome, cpf: f.cpf ?? "", rg: f.rg ?? "", data_nascimento: f.data_nascimento ?? "",
+      pis_nis: f.pis_nis ?? "", ctps_numero: f.ctps_numero ?? "", ctps_serie: f.ctps_serie ?? "", ctps_uf: f.ctps_uf ?? "",
+      tipo: f.tipo, funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
+      salario_base: f.salario_base ? String(f.salario_base) : "",
+      piso_categoria: f.piso_categoria ? String(f.piso_categoria) : "",
+      fgts_pct: String(f.fgts_pct ?? 8), inss_empregador_pct: String(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)),
+      sat_rat_pct: String(f.sat_rat_pct ?? 1), sistema_s_pct: String(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)),
+      provisao_13_pct: String(f.provisao_13_pct ?? 8.33), provisao_ferias_pct: String(f.provisao_ferias_pct ?? 11.11),
+      usar_funrural: f.usar_funrural ?? false,
+      banco_pagamento: f.banco_pagamento ?? "", agencia_pagamento: f.agencia_pagamento ?? "", conta_pagamento: f.conta_pagamento ?? "",
+    } : {
+      nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
+      ctps_numero: "", ctps_serie: "", ctps_uf: "",
+      tipo: "clt" as Funcionario["tipo"], funcao: "", data_admissao: "", data_demissao: "", ativo: true,
+      salario_base: "", piso_categoria: "",
+      fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
+      provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
+      banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
+    });
+    if (f) {
+      const [p, fer] = await Promise.all([listarPremiacoesFuncionario(f.id), listarFeriasFuncionario(f.id)]);
+      setPremiacoes(p); setFerias(fer);
+    } else { setPremiacoes([]); setFerias([]); }
     setModalFunc(true);
   };
+
   const salvarFunc = () => salvar(async () => {
     if (!fFunc.nome.trim()) return;
-    const payload = { fazenda_id: fazendaId!, nome: fFunc.nome.trim(), cpf: fFunc.cpf || undefined, tipo: fFunc.tipo, funcao: fFunc.funcao || undefined, data_admissao: fFunc.data_admissao || undefined, ativo: true };
-    if (editFunc) { await atualizarFuncionario(editFunc.id, payload); setFuncs(p => p.map(x => x.id === editFunc.id ? { ...x, ...payload } : x)); }
-    else { const n = await criarFuncionario(payload); setFuncs(p => [...p, n]); }
+    const payload: Omit<Funcionario, "id" | "created_at"> = {
+      fazenda_id: fazendaId!, nome: fFunc.nome.trim(), cpf: fFunc.cpf || undefined,
+      rg: fFunc.rg || undefined, data_nascimento: fFunc.data_nascimento || undefined,
+      pis_nis: fFunc.pis_nis || undefined, ctps_numero: fFunc.ctps_numero || undefined,
+      ctps_serie: fFunc.ctps_serie || undefined, ctps_uf: fFunc.ctps_uf || undefined,
+      tipo: fFunc.tipo, funcao: fFunc.funcao || undefined,
+      data_admissao: fFunc.data_admissao || undefined, data_demissao: fFunc.data_demissao || undefined,
+      ativo: fFunc.ativo,
+      salario_base: fFunc.salario_base ? Number(fFunc.salario_base) : undefined,
+      piso_categoria: fFunc.piso_categoria ? Number(fFunc.piso_categoria) : undefined,
+      fgts_pct: Number(fFunc.fgts_pct) || 8,
+      inss_empregador_pct: Number(fFunc.inss_empregador_pct) || (fFunc.usar_funrural ? 1.5 : 20),
+      sat_rat_pct: Number(fFunc.sat_rat_pct) || 1,
+      sistema_s_pct: Number(fFunc.sistema_s_pct) || (fFunc.usar_funrural ? 0.2 : 5.8),
+      provisao_13_pct: Number(fFunc.provisao_13_pct) || 8.33,
+      provisao_ferias_pct: Number(fFunc.provisao_ferias_pct) || 11.11,
+      usar_funrural: fFunc.usar_funrural,
+      banco_pagamento: fFunc.banco_pagamento || undefined,
+      agencia_pagamento: fFunc.agencia_pagamento || undefined,
+      conta_pagamento: fFunc.conta_pagamento || undefined,
+    };
+    let funcId: string;
+    if (editFunc) {
+      await atualizarFuncionario(editFunc.id, payload);
+      setFuncs(p => p.map(x => x.id === editFunc.id ? { ...x, ...payload } : x));
+      funcId = editFunc.id;
+    } else {
+      const n = await criarFuncionario(payload);
+      setFuncs(p => [...p, n]);
+      funcId = n.id;
+    }
+    if (fFunc.data_admissao) {
+      await sincronizarPeriodosFerias(funcId, fazendaId!, fFunc.data_admissao);
+    }
     setModalFunc(false);
   });
+
+  const salvarPremiacao = () => salvar(async () => {
+    if (!editFunc || !fPremiacao.descricao || !fPremiacao.valor) return;
+    const p = await criarPremiacao({
+      funcionario_id: editFunc.id, fazenda_id: fazendaId!,
+      mes_referencia: fPremiacao.mes_referencia,
+      data_pagamento: fPremiacao.data_pagamento || undefined,
+      descricao: fPremiacao.descricao, valor: Number(fPremiacao.valor),
+      lancado_financeiro: false,
+    });
+    setPremiacoes(prev => [p, ...prev]);
+    setModalPremiacao(false);
+    setFPremiacao({ mes_referencia: "", data_pagamento: "", descricao: "", valor: "" });
+  });
+
+  const salvarGozo = () => salvar(async () => {
+    if (!modalGozo) return;
+    const dados: Partial<FuncionarioFerias> = {
+      data_inicio_gozo: fGozo.data_inicio_gozo || undefined,
+      data_fim_gozo: fGozo.data_fim_gozo || undefined,
+      dias_gozados: Number(fGozo.dias_gozados) || 30,
+      abono_pecuniario: fGozo.abono_pecuniario,
+      dias_abono: fGozo.abono_pecuniario ? (Number(fGozo.dias_abono) || 10) : 0,
+      status: "concedido",
+    };
+    await salvarFeriasGozo(modalGozo.id, dados);
+    setFerias(prev => prev.map(f => f.id === modalGozo.id ? { ...f, ...dados } : f));
+    setModalGozo(null);
+  });
+
+  async function processarFolha() {
+    if (!fazendaId) return;
+    setProcessando(true);
+    try {
+      const { gerados } = await processarFolhaMensal(fazendaId, mesProcessar);
+      alert(`${gerados} lançamento(s) gerado(s) em Contas a Pagar para ${mesProcessar}.`);
+    } catch (e: unknown) {
+      alert("Erro: " + (e instanceof Error ? e.message : String(e)));
+    } finally { setProcessando(false); }
+  }
 
   // ─────────────── GRUPOS ───────────────
   const abrirModalGrupo = (g?: GrupoUsuario) => {
@@ -2564,37 +2679,57 @@ function CadastrosInner() {
 
           {/* ══ FUNCIONÁRIOS ══ */}
           {aba === "funcionarios" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Funcionários <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({funcs.filter(f => f.ativo).length} ativos)</span></div>
-                <button style={btnV} onClick={() => abrirModalFunc()}>+ Novo Funcionário</button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Cabeçalho + controles */}
+              <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>
+                    Funcionários <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({funcs.filter(f => f.ativo).length} ativos)</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 12, color: "#555" }}>Processar folha:</span>
+                    <input type="month" value={mesProcessar} onChange={e => setMesProcessar(e.target.value)} style={{ ...inp, width: 140, padding: "6px 10px" }} />
+                    <button style={{ ...btnV, background: "#C9921B", borderColor: "#C9921B", opacity: processando ? 0.6 : 1 }} disabled={processando} onClick={processarFolha}>
+                      {processando ? "Processando…" : "Gerar Folha →"}
+                    </button>
+                    <button style={btnV} onClick={() => abrirModalFunc()}>+ Novo</button>
+                  </div>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <TH cols={["Nome", "Vínculo", "Função", "Admissão", "Salário Base", "Custo Total Est.", "Status", ""]} />
+                  <tbody>
+                    {funcs.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
+                    {funcs.map((f, i) => {
+                      const corVinc: Record<string, [string,string]> = { clt: ["#D5E8F5","#0B2D50"], diarista: ["#FAEEDA","#633806"], empreiteiro: ["#E6F1FB","#0C447C"], outro: ["#F1EFE8","#555"] };
+                      const [bg, cl] = corVinc[f.tipo] ?? ["#F1EFE8","#555"];
+                      const sal = f.salario_base ?? 0;
+                      const encargos = sal > 0 ? sal * (
+                        (Number(f.fgts_pct ?? 8) + Number(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)) +
+                         Number(f.sat_rat_pct ?? 1) + Number(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)) +
+                         Number(f.provisao_13_pct ?? 8.33) + Number(f.provisao_ferias_pct ?? 11.11)) / 100
+                      ) : 0;
+                      const custoTotal = sal + encargos;
+                      return (
+                        <tr key={f.id} style={{ borderBottom: i < funcs.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                          <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{f.nome}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.tipo.toUpperCase(), bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{f.funcao || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{f.data_admissao || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", color: "#1a1a1a" }}>{sal > 0 ? `R$ ${sal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", color: custoTotal > 0 ? "#C9921B" : "#888", fontWeight: custoTotal > 0 ? 600 : 400 }}>{custoTotal > 0 ? `R$ ${custoTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.ativo ? "Ativo" : "Inativo", f.ativo ? "#D5E8F5" : "#F1EFE8", f.ativo ? "#0B2D50" : "#555")}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <button style={btnE} onClick={() => abrirModalFunc(f)}>Editar</button>
+                              <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirFuncionario(f.id).then(() => setFuncs(x => x.filter(r => r.id !== f.id))); }}>✕</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome", "CPF", "Vínculo", "Função", "Admissão", "Status", ""]} />
-                <tbody>
-                  {funcs.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum funcionário cadastrado</td></tr>}
-                  {funcs.map((f, i) => {
-                    const corVinc: Record<string, [string,string]> = { clt: ["#D5E8F5","#0B2D50"], diarista: ["#FAEEDA","#633806"], empreiteiro: ["#E6F1FB","#0C447C"], outro: ["#F1EFE8","#555"] };
-                    const [bg, cl] = corVinc[f.tipo] ?? ["#F1EFE8","#555"];
-                    return (
-                      <tr key={f.id} style={{ borderBottom: i < funcs.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{f.nome}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{f.cpf || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.tipo.toUpperCase(), bg, cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{f.funcao || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{f.data_admissao || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(f.ativo ? "Ativo" : "Inativo", f.ativo ? "#D5E8F5" : "#F1EFE8", f.ativo ? "#0B2D50" : "#555")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => abrirModalFunc(f)}>Editar</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirFuncionario(f.id).then(() => setFuncs(x => x.filter(r => r.id !== f.id))); }}>✕</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
             </div>
           )}
 
@@ -4674,27 +4809,272 @@ function CadastrosInner() {
         </Modal>
       )}
 
-      {/* Modal Funcionário */}
-      {modalFunc && (
-        <Modal titulo={editFunc ? "Editar Funcionário" : "Novo Funcionário"} onClose={() => setModalFunc(false)} width={780}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} value={fFunc.nome} onChange={e => setFFunc(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div><label style={lbl}>CPF</label><input style={inp} value={fFunc.cpf} onChange={e => setFFunc(p => ({ ...p, cpf: maskCpfCnpj(e.target.value, "pf") }))} placeholder="000.000.000-00" /></div>
-            <div>
-              <label style={lbl}>Vínculo *</label>
-              <select style={inp} value={fFunc.tipo} onChange={e => setFFunc(p => ({ ...p, tipo: e.target.value as Funcionario["tipo"] }))}>
-                <option value="clt">CLT</option>
-                <option value="diarista">Diarista</option>
-                <option value="empreiteiro">Empreiteiro</option>
-                <option value="outro">Outro</option>
-              </select>
+      {/* Modal Funcionário — 4 abas */}
+      {modalFunc && (() => {
+        const sal   = Number(fFunc.salario_base) || 0;
+        const funrural = fFunc.usar_funrural;
+        const encFgts    = sal * (Number(fFunc.fgts_pct) / 100);
+        const encInss    = sal * (Number(fFunc.inss_empregador_pct) / 100);
+        const encSat     = sal * (Number(fFunc.sat_rat_pct) / 100);
+        const encSistS   = sal * (Number(fFunc.sistema_s_pct) / 100);
+        const encProv13  = sal * (Number(fFunc.provisao_13_pct) / 100);
+        const encProvFer = sal * (Number(fFunc.provisao_ferias_pct) / 100);
+        const totalEncargos = encFgts + encInss + encSat + encSistS + encProv13 + encProvFer;
+        const custoTotal = sal + totalEncargos;
+        const R = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const hoje = new Date();
+        const ferDisp = ferias.filter(f => f.status === "disponivel" || f.status === "vencido").length;
+
+        return (
+          <Modal titulo={editFunc ? `Funcionário — ${editFunc.nome}` : "Novo Funcionário"} onClose={() => setModalFunc(false)} width={920}>
+            {/* Tabs */}
+            <div style={{ display: "flex", borderBottom: "0.5px solid #DEE5EE", marginBottom: 20, gap: 0 }}>
+              {(["dados","remuneracao","premiacoes","ferias"] as const).map(t => {
+                const labels: Record<string, string> = { dados: "Dados Pessoais", remuneracao: "Remuneração", premiacoes: `Premiações (${premiacoes.length})`, ferias: `Férias${ferDisp > 0 ? ` ⚠ ${ferDisp}` : ""}` };
+                return (
+                  <button key={t} onClick={() => setAbaFunc(t)} style={{ padding: "8px 18px", fontSize: 12, fontWeight: abaFunc === t ? 700 : 400, color: abaFunc === t ? "#1A4870" : "#666", background: "none", border: "none", borderBottom: abaFunc === t ? "2px solid #1A4870" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    {labels[t]}
+                  </button>
+                );
+              })}
             </div>
-            <div><label style={lbl}>Função / Cargo</label><input style={inp} value={fFunc.funcao} onChange={e => setFFunc(p => ({ ...p, funcao: e.target.value }))} /></div>
-            <div><label style={lbl}>Data de admissão</label><input style={inp} type="date" value={fFunc.data_admissao} onChange={e => setFFunc(p => ({ ...p, data_admissao: e.target.value }))} /></div>
+
+            {/* ABA DADOS */}
+            {abaFunc === "dados" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome completo *</label><input style={inp} value={fFunc.nome} onChange={e => setFFunc(p => ({ ...p, nome: e.target.value }))} /></div>
+                <div><label style={lbl}>CPF</label><input style={inp} value={fFunc.cpf} onChange={e => setFFunc(p => ({ ...p, cpf: maskCpfCnpj(e.target.value, "pf") }))} placeholder="000.000.000-00" /></div>
+                <div><label style={lbl}>RG</label><input style={inp} value={fFunc.rg} onChange={e => setFFunc(p => ({ ...p, rg: e.target.value }))} placeholder="00.000.000-0" /></div>
+                <div><label style={lbl}>Data de nascimento</label><input style={inp} type="date" value={fFunc.data_nascimento} onChange={e => setFFunc(p => ({ ...p, data_nascimento: e.target.value }))} /></div>
+                <div><label style={lbl}>PIS / NIS</label><input style={inp} value={fFunc.pis_nis} onChange={e => setFFunc(p => ({ ...p, pis_nis: e.target.value }))} placeholder="000.00000.00-0" /></div>
+                <div><label style={lbl}>CTPS Número</label><input style={inp} value={fFunc.ctps_numero} onChange={e => setFFunc(p => ({ ...p, ctps_numero: e.target.value }))} /></div>
+                <div><label style={lbl}>CTPS Série</label><input style={inp} value={fFunc.ctps_serie} onChange={e => setFFunc(p => ({ ...p, ctps_serie: e.target.value }))} /></div>
+                <div><label style={lbl}>CTPS UF</label>
+                  <select style={inp} value={fFunc.ctps_uf} onChange={e => setFFunc(p => ({ ...p, ctps_uf: e.target.value }))}>
+                    <option value="">—</option>
+                    {["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"].map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                </div>
+                <div><label style={lbl}>Vínculo *</label>
+                  <select style={inp} value={fFunc.tipo} onChange={e => setFFunc(p => ({ ...p, tipo: e.target.value as Funcionario["tipo"] }))}>
+                    <option value="clt">CLT</option>
+                    <option value="diarista">Diarista / Volante</option>
+                    <option value="empreiteiro">Empreiteiro</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div><label style={lbl}>Função / Cargo</label><input style={inp} value={fFunc.funcao} onChange={e => setFFunc(p => ({ ...p, funcao: e.target.value }))} placeholder="Operador de máquina, tratorista…" /></div>
+                <div><label style={lbl}>Data de admissão</label><input style={inp} type="date" value={fFunc.data_admissao} onChange={e => setFFunc(p => ({ ...p, data_admissao: e.target.value }))} /></div>
+                <div><label style={lbl}>Data de demissão</label><input style={inp} type="date" value={fFunc.data_demissao} onChange={e => setFFunc(p => ({ ...p, data_demissao: e.target.value }))} /></div>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={lbl}>Banco para pagamento</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr", gap: 10 }}>
+                    <input style={inp} value={fFunc.banco_pagamento} onChange={e => setFFunc(p => ({ ...p, banco_pagamento: e.target.value }))} placeholder="Banco" />
+                    <input style={inp} value={fFunc.agencia_pagamento} onChange={e => setFFunc(p => ({ ...p, agencia_pagamento: e.target.value }))} placeholder="Agência" />
+                    <input style={inp} value={fFunc.conta_pagamento} onChange={e => setFFunc(p => ({ ...p, conta_pagamento: e.target.value }))} placeholder="Conta" />
+                  </div>
+                </div>
+                <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 8 }}>
+                  <input type="checkbox" id="funcAtivo" checked={fFunc.ativo} onChange={e => setFFunc(p => ({ ...p, ativo: e.target.checked }))} />
+                  <label htmlFor="funcAtivo" style={{ fontSize: 12, color: "#555" }}>Funcionário ativo</label>
+                </div>
+              </div>
+            )}
+
+            {/* ABA REMUNERAÇÃO */}
+            {abaFunc === "remuneracao" && (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
+                  <div><label style={lbl}>Salário base (R$)</label><input style={inp} type="number" step="0.01" value={fFunc.salario_base} onChange={e => setFFunc(p => ({ ...p, salario_base: e.target.value }))} placeholder="0,00" /></div>
+                  <div><label style={lbl}>Piso da categoria (R$)</label><input style={inp} type="number" step="0.01" value={fFunc.piso_categoria} onChange={e => setFFunc(p => ({ ...p, piso_categoria: e.target.value }))} placeholder="referência" /></div>
+                  <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 4 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#555", cursor: "pointer" }}>
+                      <input type="checkbox" checked={fFunc.usar_funrural} onChange={e => {
+                        const v = e.target.checked;
+                        setFFunc(p => ({ ...p, usar_funrural: v, inss_empregador_pct: v ? "1.5" : "20", sistema_s_pct: v ? "0.2" : "5.8" }));
+                      }} />
+                      Empregador rural (Funrural)
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 12 }}>Encargos trabalhistas — valores editáveis</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    {[
+                      { key: "fgts_pct", label: "FGTS (%)", valor: encFgts },
+                      { key: "inss_empregador_pct", label: funrural ? "Funrural (%)" : "INSS Empregador (%)", valor: encInss },
+                      { key: "sat_rat_pct", label: "SAT / RAT (%)", valor: encSat },
+                      { key: "sistema_s_pct", label: funrural ? "SENAR (%)" : "Sistema S (%)", valor: encSistS },
+                      { key: "provisao_13_pct", label: "Provisão 13º (%)", valor: encProv13 },
+                      { key: "provisao_ferias_pct", label: "Provisão Férias + 1/3 (%)", valor: encProvFer },
+                    ].map(({ key, label, valor }) => (
+                      <div key={key}>
+                        <label style={lbl}>{label}</label>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input style={{ ...inp, width: 80 }} type="number" step="0.01" value={(fFunc as unknown as Record<string,string>)[key]} onChange={e => setFFunc(p => ({ ...p, [key]: e.target.value }))} />
+                          <span style={{ fontSize: 11, color: "#888" }}>{sal > 0 ? `= R$ ${R(valor)}` : ""}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {sal > 0 && (
+                  <div style={{ background: "#EDF4FB", border: "0.5px solid #B0CEEA", borderRadius: 10, padding: "14px 18px" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>Custo mensal estimado</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 12 }}>
+                      <div><span style={{ color: "#555" }}>Salário base:</span> <strong>R$ {R(sal)}</strong></div>
+                      <div><span style={{ color: "#555" }}>Total encargos:</span> <strong>R$ {R(totalEncargos)}</strong></div>
+                      <div><span style={{ color: "#C9921B" }}>Custo total:</span> <strong style={{ color: "#C9921B", fontSize: 14 }}>R$ {R(custoTotal)}</strong></div>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 11, color: "#666" }}>
+                      Percentual de encargos sobre salário: {sal > 0 ? ((totalEncargos/sal)*100).toFixed(1) : 0}% — Custo/hora (220h): R$ {R(custoTotal/220)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ABA PREMIAÇÕES */}
+            {abaFunc === "premiacoes" && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <span style={{ fontSize: 12, color: "#555" }}>Prêmios e gratificações variáveis (não ocorrem todo mês)</span>
+                  {editFunc && <button style={btnV} onClick={() => setModalPremiacao(true)}>+ Registrar Premiação</button>}
+                </div>
+                {!editFunc && <div style={{ padding: "20px", textAlign: "center", color: "#888", fontSize: 12 }}>Salve o funcionário primeiro para registrar premiações.</div>}
+                {editFunc && premiacoes.length === 0 && <div style={{ padding: "20px", textAlign: "center", color: "#888", fontSize: 12 }}>Nenhuma premiação registrada.</div>}
+                {premiacoes.length > 0 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#F4F6FA" }}>
+                        {["Mês ref.", "Descrição", "Dt. Pagamento", "Valor", ""].map((h, i) => (
+                          <th key={i} style={{ padding: "8px 12px", textAlign: i > 2 ? "right" : "left", fontWeight: 600, color: "#555", fontSize: 11, borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {premiacoes.map((p, i) => (
+                        <tr key={p.id} style={{ borderBottom: i < premiacoes.length-1 ? "0.5px solid #F0F2F6" : "none" }}>
+                          <td style={{ padding: "8px 12px", color: "#555" }}>{p.mes_referencia}</td>
+                          <td style={{ padding: "8px 12px", color: "#1a1a1a" }}>{p.descricao}</td>
+                          <td style={{ padding: "8px 12px", color: "#555" }}>{p.data_pagamento || "—"}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>R$ {R(p.valor)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right" }}>
+                            <button style={btnX} onClick={() => { if (confirm("Excluir?")) excluirPremiacao(p.id).then(() => setPremiacoes(x => x.filter(r => r.id !== p.id))); }}>✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {premiacoes.length > 0 && (
+                  <div style={{ marginTop: 12, padding: "10px 14px", background: "#F8FAFD", borderRadius: 8, display: "flex", justifyContent: "flex-end", fontSize: 12 }}>
+                    <span>Total premiações: <strong>R$ {R(premiacoes.reduce((s,p) => s + p.valor, 0))}</strong></span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ABA FÉRIAS */}
+            {abaFunc === "ferias" && (
+              <div>
+                {ferias.length === 0 && <div style={{ padding: "20px", textAlign: "center", color: "#888", fontSize: 12 }}>{editFunc ? "Nenhum período aquisitivo encontrado. Salve com data de admissão para calcular automaticamente." : "Salve o funcionário com data de admissão para calcular períodos de férias."}</div>}
+                {ferias.length > 0 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#F4F6FA" }}>
+                        {["Período aquisitivo", "Vencimento", "Status", "Gozo", "Dias", ""].map((h, i) => (
+                          <th key={i} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "#555", fontSize: 11, borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ferias.map((fer, i) => {
+                        const vencConc = new Date(fer.periodo_fim);
+                        vencConc.setFullYear(vencConc.getFullYear() + 1);
+                        const diasRestVenc = Math.ceil((vencConc.getTime() - hoje.getTime()) / 86400000);
+                        const corStatus: Record<string, [string,string]> = {
+                          aquisindo: ["#EDF4FB","#0B3A6B"], disponivel: ["#D5F0E0","#145C33"],
+                          concedido: ["#FBF3E0","#7A5000"], gozado: ["#F4F6FA","#555"], vencido: ["#FDECEA","#8B1A1A"],
+                        };
+                        const [bgS, clS] = corStatus[fer.status] ?? ["#F4F6FA","#555"];
+                        return (
+                          <tr key={fer.id} style={{ borderBottom: i < ferias.length-1 ? "0.5px solid #F0F2F6" : "none" }}>
+                            <td style={{ padding: "10px 12px", color: "#1a1a1a" }}>{fer.periodo_inicio} → {fer.periodo_fim}</td>
+                            <td style={{ padding: "10px 12px", color: diasRestVenc < 60 && fer.status !== "gozado" ? "#C9331B" : "#555" }}>
+                              {vencConc.toISOString().slice(0,10)}
+                              {fer.status === "disponivel" && diasRestVenc < 60 && <span style={{ marginLeft: 4, fontSize: 10, color: "#C9331B", fontWeight: 700 }}> ⚠ {diasRestVenc}d</span>}
+                            </td>
+                            <td style={{ padding: "10px 12px" }}>{badge(fer.status.toUpperCase(), bgS, clS)}</td>
+                            <td style={{ padding: "10px 12px", color: "#555" }}>
+                              {fer.data_inicio_gozo ? `${fer.data_inicio_gozo} → ${fer.data_fim_gozo || "?"}` : "—"}
+                            </td>
+                            <td style={{ padding: "10px 12px", color: "#1a1a1a" }}>
+                              {fer.dias_gozados ? `${fer.dias_gozados}d${fer.abono_pecuniario ? ` + ${fer.dias_abono}d abono` : ""}` : "30d"}
+                            </td>
+                            <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                              {(fer.status === "disponivel" || fer.status === "vencido") && (
+                                <button style={btnE} onClick={() => { setModalGozo(fer); setFGozo({ data_inicio_gozo: "", data_fim_gozo: "", dias_gozados: "30", abono_pecuniario: false, dias_abono: "10" }); }}>
+                                  Conceder
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20, borderTop: "0.5px solid #EEF1F6", paddingTop: 16 }}>
+              <button style={btnR} onClick={() => setModalFunc(false)}>Cancelar</button>
+              <button style={{ ...btnV, opacity: salvando || !fFunc.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fFunc.nome.trim()} onClick={salvarFunc}>{salvando ? "Salvando…" : "Salvar Funcionário"}</button>
+            </div>
+          </Modal>
+        );
+      })()}
+
+      {/* Modal Nova Premiação */}
+      {modalPremiacao && (
+        <Modal titulo="Registrar Premiação" onClose={() => setModalPremiacao(false)} width={500}>
+          <div style={{ display: "grid", gap: 14 }}>
+            <div><label style={lbl}>Mês de referência</label><input style={inp} type="month" value={fPremiacao.mes_referencia} onChange={e => setFPremiacao(p => ({ ...p, mes_referencia: e.target.value }))} /></div>
+            <div><label style={lbl}>Descrição *</label><input style={inp} value={fPremiacao.descricao} onChange={e => setFPremiacao(p => ({ ...p, descricao: e.target.value }))} placeholder="Prêmio produtividade, gratificação safra…" /></div>
+            <div><label style={lbl}>Valor (R$) *</label><input style={inp} type="number" step="0.01" value={fPremiacao.valor} onChange={e => setFPremiacao(p => ({ ...p, valor: e.target.value }))} /></div>
+            <div><label style={lbl}>Data de pagamento</label><input style={inp} type="date" value={fPremiacao.data_pagamento} onChange={e => setFPremiacao(p => ({ ...p, data_pagamento: e.target.value }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-            <button style={btnR} onClick={() => setModalFunc(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fFunc.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fFunc.nome.trim()} onClick={salvarFunc}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={btnR} onClick={() => setModalPremiacao(false)}>Cancelar</button>
+            <button style={{ ...btnV, opacity: salvando || !fPremiacao.descricao || !fPremiacao.valor ? 0.5 : 1 }} disabled={salvando || !fPremiacao.descricao || !fPremiacao.valor} onClick={salvarPremiacao}>{salvando ? "Salvando…" : "Salvar"}</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Concessão de Férias */}
+      {modalGozo && (
+        <Modal titulo={`Conceder Férias — Período ${modalGozo.periodo_inicio}`} onClose={() => setModalGozo(null)} width={500}>
+          <div style={{ display: "grid", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div><label style={lbl}>Início do gozo</label><input style={inp} type="date" value={fGozo.data_inicio_gozo} onChange={e => { const v = e.target.value; setFGozo(p => ({ ...p, data_inicio_gozo: v })); }} /></div>
+              <div><label style={lbl}>Fim do gozo</label><input style={inp} type="date" value={fGozo.data_fim_gozo} onChange={e => setFGozo(p => ({ ...p, data_fim_gozo: e.target.value }))} /></div>
+            </div>
+            <div><label style={lbl}>Dias de gozo</label><input style={inp} type="number" value={fGozo.dias_gozados} onChange={e => setFGozo(p => ({ ...p, dias_gozados: e.target.value }))} /></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="checkbox" id="abonoPec" checked={fGozo.abono_pecuniario} onChange={e => setFGozo(p => ({ ...p, abono_pecuniario: e.target.checked }))} />
+              <label htmlFor="abonoPec" style={{ fontSize: 12, color: "#555" }}>Abono pecuniário (venda de 1/3 dos dias)</label>
+            </div>
+            {fGozo.abono_pecuniario && (
+              <div><label style={lbl}>Dias de abono</label><input style={inp} type="number" value={fGozo.dias_abono} onChange={e => setFGozo(p => ({ ...p, dias_abono: e.target.value }))} /></div>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+            <button style={btnR} onClick={() => setModalGozo(null)}>Cancelar</button>
+            <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarGozo}>{salvando ? "Salvando…" : "Confirmar"}</button>
           </div>
         </Modal>
       )}

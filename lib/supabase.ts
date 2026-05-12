@@ -588,10 +588,64 @@ export type Funcionario = {
   fazenda_id: string;
   nome: string;
   cpf?: string;
+  rg?: string;
+  data_nascimento?: string;
+  pis_nis?: string;
+  ctps_numero?: string;
+  ctps_serie?: string;
+  ctps_uf?: string;
   tipo: "clt" | "diarista" | "empreiteiro" | "outro";
   funcao?: string;
   data_admissao?: string;
+  data_demissao?: string;
   ativo: boolean;
+  // Remuneração
+  salario_base?: number;
+  piso_categoria?: number;
+  // Encargos (%)
+  fgts_pct?: number;
+  inss_empregador_pct?: number;
+  sat_rat_pct?: number;
+  sistema_s_pct?: number;
+  provisao_13_pct?: number;
+  provisao_ferias_pct?: number;
+  usar_funrural?: boolean;
+  // Pagamento
+  banco_pagamento?: string;
+  agencia_pagamento?: string;
+  conta_pagamento?: string;
+  created_at?: string;
+};
+
+export type FuncionarioPremiacao = {
+  id: string;
+  funcionario_id: string;
+  fazenda_id: string;
+  mes_referencia: string;   // YYYY-MM
+  data_pagamento?: string;
+  descricao: string;
+  valor: number;
+  lancado_financeiro?: boolean;
+  lancamento_id?: string;
+  created_at?: string;
+};
+
+export type FuncionarioFerias = {
+  id: string;
+  funcionario_id: string;
+  fazenda_id: string;
+  periodo_inicio: string;
+  periodo_fim: string;
+  status: "aquisindo" | "disponivel" | "concedido" | "gozado" | "vencido";
+  data_inicio_gozo?: string;
+  data_fim_gozo?: string;
+  dias_gozados?: number;
+  abono_pecuniario?: boolean;
+  dias_abono?: number;
+  valor_ferias?: number;
+  valor_abono?: number;
+  lancado_financeiro?: boolean;
+  obs?: string;
   created_at?: string;
 };
 

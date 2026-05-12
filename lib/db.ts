@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -689,6 +689,102 @@ export async function atualizarFuncionario(id: string, f: Partial<Funcionario>):
 export async function excluirFuncionario(id: string): Promise<void> {
   const { error } = await supabase.from("funcionarios").delete().eq("id", id);
   if (error) throw error;
+}
+
+// — Premiações —
+export async function listarPremiacoesFuncionario(funcionario_id: string): Promise<FuncionarioPremiacao[]> {
+  const { data, error } = await supabase.from("funcionario_premiacoes").select("*").eq("funcionario_id", funcionario_id).order("mes_referencia", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+export async function criarPremiacao(p: Omit<FuncionarioPremiacao, "id" | "created_at">): Promise<FuncionarioPremiacao> {
+  const { data, error } = await supabase.from("funcionario_premiacoes").insert(p).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function excluirPremiacao(id: string): Promise<void> {
+  const { error } = await supabase.from("funcionario_premiacoes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// — Férias —
+export async function listarFeriasFuncionario(funcionario_id: string): Promise<FuncionarioFerias[]> {
+  const { data, error } = await supabase.from("funcionario_ferias").select("*").eq("funcionario_id", funcionario_id).order("periodo_inicio");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function salvarFeriasGozo(id: string, dados: Partial<FuncionarioFerias>): Promise<void> {
+  const { error } = await supabase.from("funcionario_ferias").update(dados).eq("id", id);
+  if (error) throw error;
+}
+export async function sincronizarPeriodosFerias(funcionario_id: string, fazenda_id: string, data_admissao: string): Promise<void> {
+  const admissao = new Date(data_admissao);
+  const hoje = new Date();
+  const { data: existentes } = await supabase.from("funcionario_ferias").select("periodo_inicio").eq("funcionario_id", funcionario_id);
+  const existentesSet = new Set((existentes ?? []).map((r: { periodo_inicio: string }) => r.periodo_inicio.slice(0, 10)));
+
+  const inserir: object[] = [];
+  let ano = 1;
+  while (true) {
+    const inicio = new Date(admissao);
+    inicio.setFullYear(inicio.getFullYear() + (ano - 1));
+    const fim = new Date(inicio);
+    fim.setFullYear(fim.getFullYear() + 1);
+    fim.setDate(fim.getDate() - 1);
+    if (inicio > hoje) break;
+    const isoInicio = inicio.toISOString().slice(0, 10);
+    if (!existentesSet.has(isoInicio)) {
+      const status = fim > hoje ? "aquisindo" : "disponivel";
+      inserir.push({ funcionario_id, fazenda_id, periodo_inicio: isoInicio, periodo_fim: fim.toISOString().slice(0, 10), status });
+    }
+    ano++;
+    if (ano > 50) break;
+  }
+  if (inserir.length > 0) await supabase.from("funcionario_ferias").insert(inserir);
+}
+
+// — Folha mensal —
+export async function processarFolhaMensal(fazenda_id: string, mes_referencia: string): Promise<{ gerados: number }> {
+  const { data: funcs } = await supabase.from("funcionarios").select("*").eq("fazenda_id", fazenda_id).eq("ativo", true);
+  if (!funcs || funcs.length === 0) return { gerados: 0 };
+
+  const anoMes = mes_referencia; // YYYY-MM
+  let gerados = 0;
+
+  for (const f of funcs) {
+    if (!f.salario_base) continue;
+    const sal = Number(f.salario_base);
+    const fgts     = sal * (Number(f.fgts_pct ?? 8) / 100);
+    const inss     = sal * (Number(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)) / 100);
+    const sat      = sal * (Number(f.sat_rat_pct ?? 1) / 100);
+    const sistS    = sal * (Number(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)) / 100);
+    const prov13   = sal * (Number(f.provisao_13_pct ?? 8.33) / 100);
+    const provFer  = sal * (Number(f.provisao_ferias_pct ?? 11.11) / 100);
+
+    const dataComp = `${anoMes}-01`;
+    const lancamentos = [
+      { descricao: `Salário — ${f.nome}`, valor: sal, operacao: "Salários" },
+      { descricao: `FGTS — ${f.nome}`, valor: fgts, operacao: "FGTS Empregador" },
+      { descricao: `INSS/Funrural — ${f.nome}`, valor: inss, operacao: f.usar_funrural ? "Funrural" : "INSS Empregador" },
+      { descricao: `SAT/RAT — ${f.nome}`, valor: sat, operacao: "SAT/RAT" },
+      { descricao: `Sistema S — ${f.nome}`, valor: sistS, operacao: f.usar_funrural ? "SENAR" : "Sistema S" },
+      { descricao: `Provisão 13º — ${f.nome}`, valor: prov13, operacao: "Provisão 13º Salário" },
+      { descricao: `Provisão Férias — ${f.nome}`, valor: provFer, operacao: "Provisão Férias" },
+    ];
+
+    for (const l of lancamentos) {
+      const { data: existing } = await supabase.from("contas_pagar").select("id").eq("fazenda_id", fazenda_id).eq("descricao", l.descricao).eq("data_competencia", dataComp).maybeSingle();
+      if (existing) continue;
+      await supabase.from("contas_pagar").insert({
+        fazenda_id, descricao: l.descricao, valor: l.valor,
+        data_vencimento: `${anoMes}-05`, data_competencia: dataComp,
+        status: "pendente", operacao_gerencial: l.operacao,
+        credor: f.nome, tipo: "folha",
+      });
+      gerados++;
+    }
+  }
+  return { gerados };
 }
 
 // ————————————————————————————————————————
