@@ -130,7 +130,7 @@ export async function baixarXmlsSieg(
 
     const res = await fetch(`${SIEG_BASE}/BaixarXmls?api_key=${encodeURIComponent(apiKey)}`, {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "APIKey": apiKey },
       body:    JSON.stringify(body),
     });
 
