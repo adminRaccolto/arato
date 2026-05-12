@@ -3,13 +3,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
-// Fallback enquanto a foto do Supabase não carrega
 const FOTO_FALLBACK = "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=1920&q=80";
 
+type Modo = "login" | "recuperar";
+
 export default function Login() {
+  const [modo,       setModo]       = useState<Modo>("login");
   const [email,      setEmail]      = useState("");
   const [senha,      setSenha]      = useState("");
   const [erro,       setErro]       = useState<string | null>(null);
+  const [sucesso,    setSucesso]    = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [logoUrl,      setLogoUrl]      = useState("/Logo_Arato.png");
   const [fotoUrl,      setFotoUrl]      = useState(FOTO_FALLBACK);
@@ -36,6 +39,24 @@ export default function Login() {
     if (error) { setErro("E-mail ou senha incorretos."); setCarregando(false); return; }
     router.push("/");
     router.refresh();
+  }
+
+  async function recuperarSenha(e: React.FormEvent) {
+    e.preventDefault();
+    setCarregando(true);
+    setErro(null);
+    setSucesso(null);
+    const redirectTo = `${window.location.origin}/auth/nova-senha`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    setCarregando(false);
+    if (error) { setErro("Não foi possível enviar o e-mail. Verifique o endereço."); return; }
+    setSucesso("Link enviado! Verifique sua caixa de entrada.");
+  }
+
+  function voltarLogin() {
+    setModo("login");
+    setErro(null);
+    setSucesso(null);
   }
 
   return (
@@ -101,10 +122,12 @@ export default function Login() {
         <div style={{ padding: "32px 40px 36px" }}>
 
           <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>
-            Bem-vindo
+            {modo === "login" ? "Bem-vindo" : "Recuperar senha"}
           </h2>
           <p style={{ margin: "0 0 28px", fontSize: 13, color: "#888" }}>
-            Entre com sua conta para acessar o sistema
+            {modo === "login"
+              ? "Entre com sua conta para acessar o sistema"
+              : "Informe seu e-mail para receber o link de redefinição"}
           </p>
 
           {erro && (
@@ -117,7 +140,17 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={entrar}>
+          {sucesso && (
+            <div style={{
+              background: "#EDFAF3", border: "0.5px solid rgba(22,163,74,0.4)",
+              borderRadius: 8, padding: "9px 12px", marginBottom: 20,
+              fontSize: 12, color: "#145C33",
+            }}>
+              {sucesso}
+            </div>
+          )}
+
+          <form onSubmit={modo === "login" ? entrar : recuperarSenha}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
                 E-MAIL
@@ -140,43 +173,77 @@ export default function Login() {
               />
             </div>
 
-            <div style={{ marginBottom: 28 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
-                SENHA
-              </label>
-              <input
-                type="password"
-                value={senha}
-                onChange={e => setSenha(e.target.value)}
-                required
-                placeholder="••••••••"
-                style={{
-                  width: "100%", padding: "11px 14px",
-                  border: "1px solid #E0E6EE", borderRadius: 10,
-                  fontSize: 13, outline: "none", boxSizing: "border-box",
-                  color: "#1a1a1a", background: "#F7F9FB",
-                }}
-                onFocus={e => e.target.style.borderColor = "#1A4870"}
-                onBlur={e => e.target.style.borderColor = "#E0E6EE"}
-              />
-            </div>
+            {modo === "login" && (
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
+                  SENHA
+                </label>
+                <input
+                  type="password"
+                  value={senha}
+                  onChange={e => setSenha(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  style={{
+                    width: "100%", padding: "11px 14px",
+                    border: "1px solid #E0E6EE", borderRadius: 10,
+                    fontSize: 13, outline: "none", boxSizing: "border-box",
+                    color: "#1a1a1a", background: "#F7F9FB",
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#1A4870"}
+                  onBlur={e => e.target.style.borderColor = "#E0E6EE"}
+                />
+              </div>
+            )}
+
+            {modo === "login" && (
+              <div style={{ textAlign: "right", marginBottom: 20 }}>
+                <button
+                  type="button"
+                  onClick={() => { setModo("recuperar"); setErro(null); setSucesso(null); }}
+                  style={{
+                    background: "none", border: "none", padding: 0,
+                    fontSize: 12, color: "#1A4870", cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Esqueceu sua senha?
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={carregando}
+              disabled={carregando || (modo === "recuperar" && !!sucesso)}
               style={{
                 width: "100%",
-                background: carregando ? "#aaa" : "#1A5C38",
+                background: carregando || (modo === "recuperar" && !!sucesso) ? "#aaa" : "#1A5C38",
                 color: "#fff", border: "none", borderRadius: 10,
                 padding: "13px", fontSize: 14, fontWeight: 700,
-                cursor: carregando ? "not-allowed" : "pointer",
+                cursor: carregando || (modo === "recuperar" && !!sucesso) ? "not-allowed" : "pointer",
                 letterSpacing: "0.02em",
-                transition: "background 0.15s, transform 0.1s",
+                transition: "background 0.15s",
                 boxShadow: carregando ? "none" : "0 4px 14px rgba(26,92,56,0.4)",
               }}
             >
-              {carregando ? "Entrando…" : "Entrar"}
+              {modo === "login"
+                ? (carregando ? "Entrando…" : "Entrar")
+                : (carregando ? "Enviando…" : "Enviar link de recuperação")}
             </button>
+
+            {modo === "recuperar" && (
+              <button
+                type="button"
+                onClick={voltarLogin}
+                style={{
+                  width: "100%", background: "none", border: "0.5px solid #DDE2EE",
+                  borderRadius: 10, padding: "11px", marginTop: 10,
+                  fontSize: 13, color: "#555", cursor: "pointer",
+                }}
+              >
+                Voltar ao login
+              </button>
+            )}
           </form>
         </div>
 

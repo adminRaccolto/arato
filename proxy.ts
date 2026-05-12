@@ -7,6 +7,7 @@ export async function proxy(request: NextRequest) {
   // Rotas públicas — passa direto
   if (
     pathname.startsWith("/login") ||
+    pathname.startsWith("/auth/") ||
     pathname.startsWith("/alterar-senha") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
