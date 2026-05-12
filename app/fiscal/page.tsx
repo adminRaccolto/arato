@@ -507,6 +507,11 @@ function FiscalInner() {
 
   const TODAY = new Date().toISOString().slice(0, 10);
 
+  // ── Emitente ativo (modulo_key selecionado para emissão) ────────
+  const [moduloKeyAtivo, setModuloKeyAtivo] = useState<string>("");
+  type EmissorOpcao = { key: string; label: string };
+  const [emissores, setEmissores] = useState<EmissorOpcao[]>([]);
+
   // ── Certificado A1 — carregado de configuracoes_modulo ──────────
   type CertInfo = { modulo: string; arquivo_nome: string; storage_path: string; produtor_id: string; produtor_nome: string; cpf_cnpj: string; data_vencimento: string | null };
   const [certs, setCerts] = useState<CertInfo[]>([]);
@@ -600,6 +605,15 @@ function FiscalInner() {
           municipio: c.municipio, uf: c.uf, cep: c.cep, fone: c.fone,
           ambiente: c.ambiente,
         });
+        // Monta lista de emissores disponíveis (PF e PJ com CPF/CNPJ configurado)
+        const lista: EmissorOpcao[] = cfgs
+          .filter(cfg => (cfg.config as Record<string, string>)?.cpf_cnpj_emitente)
+          .map(cfg => {
+            const cc = cfg.config as Record<string, string>;
+            return { key: cfg.modulo, label: `${cc.razao_social ?? cfg.modulo} (${cc.cpf_cnpj_emitente})` };
+          });
+        setEmissores(lista);
+        if (lista.length > 0 && !moduloKeyAtivo) setModuloKeyAtivo(lista[0].key);
       }
     }
     catch (e: unknown) { setErro(e instanceof Error ? e.message : "Erro ao carregar"); }
@@ -622,25 +636,74 @@ function FiscalInner() {
     return `${String(Math.floor(n / 1000)).padStart(3, "0")}.${String(n % 1000).padStart(3, "0")}`;
   };
 
-  // Emitir NF-e de Venda
+  // Emitir NF-e de Venda — build → sign → transmit SEFAZ
   const emitirVenda = async () => {
     if (!fVenda.destinatario || !fVenda.quantidade || !fVenda.valorUnitario) return;
-    const valor = Math.round(Number(fVenda.quantidade) * desmascarar(fVenda.valorUnitario) * 100) / 100;
-    const nat = NATUREZAS_VENDA.find(n => n.codigo === fVenda.cfop);
+    if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
+    const quantidade = Number(fVenda.quantidade);
+    const valorUnit  = desmascarar(fVenda.valorUnitario);
+    const valor      = Math.round(quantidade * valorUnit * 100) / 100;
+    const nat        = NATUREZAS_VENDA.find(n => n.codigo === fVenda.cfop);
+    const ncmDesc    = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
     setSalvando(true);
     try {
-      await criarNotaFiscal({
-        fazenda_id: fazendaId!, numero: proximoNumero(), serie: "1", tipo: "saida",
-        cfop: fVenda.cfop, natureza: nat?.descricao ?? fVenda.cfop,
-        destinatario: fVenda.destinatario, cnpj_destinatario: fVenda.cnpj || undefined,
-        valor_total: valor, data_emissao: TODAY, status: "em_digitacao",
-        observacao: fVenda.observacao || undefined, auto: false,
+      const res = await fetch("/api/fiscal/emitir-nfe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id:   fazendaId,
+          modulo_key:   moduloKeyAtivo,
+          destinatario: { nome: fVenda.destinatario, cpf_cnpj: fVenda.cnpj || undefined },
+          itens: [{
+            descricao:      ncmDesc,
+            ncm:            fVenda.ncm,
+            cfop:           fVenda.cfop,
+            unidade:        fVenda.unidade.toUpperCase(),
+            quantidade,
+            valor_unitario: valorUnit,
+          }],
+          natureza: nat?.descricao ?? fVenda.cfop,
+          inf_cpl:  fVenda.observacao || undefined,
+          frete:    "9",
+          tipo:     "1",
+        }),
       });
-      setFVenda({ destinatario: "", cnpj: "", ncm: "1201.10.00", cfop: "6.101", quantidade: "", unidade: "sc", valorUnitario: "", observacao: NATUREZAS_VENDA[0].obs });
-      setModalVenda(false);
+      const resultado = await res.json() as {
+        sucesso: boolean; chave?: string; numero?: string; protocolo?: string;
+        dhRecbto?: string; xmlUrl?: string; cStat: string; xMotivo: string;
+      };
+
+      // Persiste a nota no banco com o resultado real da SEFAZ
+      await criarNotaFiscal({
+        fazenda_id:        fazendaId!,
+        numero:            resultado.numero ?? proximoNumero(),
+        serie:             "1",
+        tipo:              "saida",
+        cfop:              fVenda.cfop,
+        natureza:          nat?.descricao ?? fVenda.cfop,
+        destinatario:      fVenda.destinatario,
+        cnpj_destinatario: fVenda.cnpj || undefined,
+        valor_total:       valor,
+        data_emissao:      TODAY,
+        status:            resultado.sucesso ? "autorizada" : "rejeitada",
+        chave_acesso:      resultado.chave  ?? undefined,
+        xml_url:           resultado.xmlUrl ?? undefined,
+        observacao:        fVenda.observacao || undefined,
+        auto:              false,
+      });
+
       await carregar();
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
-    finally { setSalvando(false); }
+
+      if (resultado.sucesso) {
+        setFVenda({ destinatario: "", cnpj: "", ncm: "1201.10.00", cfop: "6.101", quantidade: "", unidade: "sc", valorUnitario: "", observacao: NATUREZAS_VENDA[0].obs });
+        setModalVenda(false);
+        alert(`✓ NF-e autorizada!\nNúmero: ${resultado.numero}\nProtocolo: ${resultado.protocolo ?? "—"}\nChave: ${resultado.chave ?? "—"}`);
+      } else {
+        alert(`⚠ NF-e rejeitada pela SEFAZ\ncStat ${resultado.cStat}: ${resultado.xMotivo}\n\nA nota foi salva como "Rejeitada" para análise e reenvio.`);
+      }
+    } catch (e: unknown) {
+      alert("Erro na emissão: " + (e instanceof Error ? e.message : String(e)));
+    } finally { setSalvando(false); }
   };
 
   // Emitir NF-e de Devolução
@@ -1197,6 +1260,26 @@ function FiscalInner() {
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Nova NF-e de Venda</div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>Emissão avulsa. NF-e vinculadas a contratos são emitidas automaticamente.</div>
 
+            {emissores.length === 0 && (
+              <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#791F1F", marginBottom: 14 }}>
+                ⚠ Nenhum emitente configurado com CNPJ/CPF. Acesse <strong>Configurações → Parâmetros do Sistema → Fiscal</strong> para configurar.
+              </div>
+            )}
+            {emissores.length > 1 && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelSt}>Emitente *</label>
+                <select style={inputSt} value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}>
+                  {emissores.map(op => <option key={op.key} value={op.key}>{op.label}</option>)}
+                </select>
+              </div>
+            )}
+            {emissores.length === 1 && (
+              <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#555", marginBottom: 14, display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ color: "#888" }}>Emitente:</span>
+                <strong style={{ color: "#1a1a1a" }}>{emissores[0].label}</strong>
+              </div>
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 14, marginBottom: 14 }}>
               <div><label style={labelSt}>Destinatário *</label><input style={inputSt} placeholder="Bunge Alimentos S.A." value={fVenda.destinatario} onChange={e => setFVenda(p => ({ ...p, destinatario: e.target.value }))} /></div>
               <div><label style={labelSt}>CNPJ / CPF</label><input style={inputSt} placeholder="00.000.000/0001-00" value={fVenda.cnpj} onChange={e => setFVenda(p => ({ ...p, cnpj: e.target.value }))} /></div>
@@ -1226,8 +1309,8 @@ function FiscalInner() {
             <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50", marginBottom: 16 }}>⟳ Após salvar, a NF-e será assinada e transmitida à SEFAZ automaticamente.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setModalVenda(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={emitirVenda} disabled={!fVenda.destinatario || !fVenda.quantidade || !fVenda.valorUnitario || salvando} style={{ padding: "8px 18px", background: fVenda.destinatario && fVenda.quantidade && fVenda.valorUnitario && !salvando ? "#1A4870" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Emitindo…" : "⟳ Emitir NF-e"}
+              <button onClick={emitirVenda} disabled={!fVenda.destinatario || !fVenda.quantidade || !fVenda.valorUnitario || !moduloKeyAtivo || salvando} style={{ padding: "8px 18px", background: fVenda.destinatario && fVenda.quantidade && fVenda.valorUnitario && moduloKeyAtivo && !salvando ? "#1A4870" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                {salvando ? "Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
               </button>
             </div>
           </div>
