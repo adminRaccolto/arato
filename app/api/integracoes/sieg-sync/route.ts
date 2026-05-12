@@ -1,6 +1,10 @@
 /**
  * POST /api/integracoes/sieg-sync
  * Busca documentos novos no Sieg DFe Monitor e importa como NF de Entrada.
+ *
+ * A API Key Sieg é GLOBAL (Raccolto) — lida de process.env.SIEG_API_KEY.
+ * Cada fazenda filtra pelo próprio CNPJ/CPF (cnpj_destino em configuracoes_modulo).
+ *
  * Retorna: { importados_nfe, duplicados_nfe, erros, total_xmls }
  */
 
@@ -23,9 +27,18 @@ export async function POST(req: NextRequest) {
     const { fazenda_id } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
 
+    // ── API Key global — gerenciada pela Raccolto ────────────────────────────
+    const apiKey = process.env.SIEG_API_KEY ?? "";
+    if (!apiKey) {
+      return NextResponse.json(
+        { erro: "SIEG_API_KEY não configurada nas variáveis de ambiente da Vercel" },
+        { status: 500 }
+      );
+    }
+
     const db = sb();
 
-    // ── 1. Carregar config Sieg ──────────────────────────────────────────────
+    // ── 1. Config desta fazenda ──────────────────────────────────────────────
     const { data: row } = await db
       .from("configuracoes_modulo")
       .select("config")
@@ -35,10 +48,29 @@ export async function POST(req: NextRequest) {
 
     const cfg = (row?.config ?? {}) as Record<string, string>;
 
-    const apiKey = cfg.api_key ?? "";
-    if (!apiKey) return NextResponse.json({ erro: "API Key Sieg não configurada — acesse Configurações → Integrações → Sieg" }, { status: 400 });
+    // CNPJ/CPF da fazenda — obrigatório para filtrar os documentos certos
+    let cnpjDest = cfg.cnpj_destino || "";
+    if (!cnpjDest) {
+      // Tenta buscar automaticamente do primeiro módulo fiscal configurado
+      const { data: fiscalRows } = await db
+        .from("configuracoes_modulo")
+        .select("config")
+        .eq("fazenda_id", fazenda_id)
+        .like("modulo", "fiscal%")
+        .limit(1);
+      cnpjDest = (fiscalRows?.[0]?.config as Record<string, string>)?.cpf_cnpj_emitente ?? "";
+    }
 
-    const cnpjDest  = cfg.cnpj_destino  || undefined;
+    if (!cnpjDest) {
+      return NextResponse.json(
+        { erro: "CNPJ/CPF da fazenda não configurado — acesse Configurações → Integrações → Sieg e informe o documento." },
+        { status: 400 }
+      );
+    }
+
+    // Apenas dígitos
+    const cnpjDestLimpo = cnpjDest.replace(/\D/g, "");
+
     // Data inicial: última sync ou 30 dias atrás
     const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
     const dataInicio = cfg.ultima_sync_data ?? trintaDiasAtras;
@@ -51,7 +83,7 @@ export async function POST(req: NextRequest) {
         XmlType:           1,
         DataEmissaoInicio: dataInicio,
         DataEmissaoFim:    dataFim,
-        CnpjDest:          cnpjDest,
+        CnpjDest:          cnpjDestLimpo,
       });
     } catch (e) {
       return NextResponse.json({ erro: `Falha na comunicação com Sieg: ${e}` }, { status: 502 });
@@ -82,28 +114,28 @@ export async function POST(req: NextRequest) {
         .from("nf_entradas")
         .insert({
           fazenda_id,
-          numero:          nfe.numero,
-          serie:           nfe.serie,
-          chave_acesso:    nfe.chave,
-          data_emissao:    nfe.data_emissao,
-          emitente_nome:   nfe.nome_emitente,
-          emitente_cnpj:   nfe.cnpj_emitente,
-          valor_total:     nfe.valor_total,
-          natureza:        nfe.natureza,
-          cfop:            nfe.cfop,
-          status:          "pendente",
-          origem:          "sieg",
-          observacao:      `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")} — IE: ${nfe.ie_emitente || "—"}`,
+          numero:        nfe.numero,
+          serie:         nfe.serie,
+          chave_acesso:  nfe.chave,
+          data_emissao:  nfe.data_emissao,
+          emitente_nome: nfe.nome_emitente,
+          emitente_cnpj: nfe.cnpj_emitente,
+          valor_total:   nfe.valor_total,
+          natureza:      nfe.natureza,
+          cfop:          nfe.cfop,
+          status:        "pendente",
+          origem:        "sieg",
+          observacao:    `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
         })
         .select("id")
         .single();
 
       if (nfErr || !nfRow) {
-        erros.push(`NF ${nfe.numero} (${nfe.chave.slice(-8)}): ${nfErr?.message ?? "erro ao salvar"}`);
+        erros.push(`NF ${nfe.numero} (…${nfe.chave.slice(-8)}): ${nfErr?.message ?? "erro ao salvar"}`);
         continue;
       }
 
-      // Inserir itens da NF
+      // Inserir itens
       if (nfe.itens.length > 0) {
         const { error: iErr } = await db.from("nf_entrada_itens").insert(
           nfe.itens.map(item => ({
@@ -128,12 +160,13 @@ export async function POST(req: NextRequest) {
       importados_nfe++;
     }
 
-    // ── 4. Atualizar config com data/hora da última sync ─────────────────────
+    // ── 4. Persistir última sync ─────────────────────────────────────────────
     const novoCfg: Record<string, string> = {
       ...cfg,
-      ultima_sync_data:   new Date().toISOString().slice(0, 10),
-      ultima_sync_ts:     new Date().toISOString(),
-      total_importado:    String((parseInt(cfg.total_importado || "0") + importados_nfe)),
+      cnpj_destino:     cnpjDestLimpo,
+      ultima_sync_data: new Date().toISOString().slice(0, 10),
+      ultima_sync_ts:   new Date().toISOString(),
+      total_importado:  String((parseInt(cfg.total_importado || "0") + importados_nfe)),
     };
 
     await db

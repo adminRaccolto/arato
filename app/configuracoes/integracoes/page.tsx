@@ -32,7 +32,6 @@ interface IntegracaoFazenda {
 }
 
 interface SiegCfg {
-  api_key:          string;
   cnpj_destino:     string;
   ultima_sync_data?: string;
   ultima_sync_ts?:   string;
@@ -102,9 +101,11 @@ function ModalSieg({
   }
 
   async function sincronizar() {
-    if (!cfg.api_key) { alert("Informe a API Key antes de sincronizar."); return; }
+    if (!cfg.cnpj_destino) { alert("Informe o CNPJ/CPF antes de sincronizar."); return; }
     setSyncing(true);
     setResult(null);
+    // Salva o CNPJ antes de sincronizar
+    await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: cfg });
     try {
       const res = await fetch("/api/integracoes/sieg-sync", {
         method:  "POST",
@@ -148,32 +149,23 @@ function ModalSieg({
           para o CNPJ do produtor. A sincronização importa automaticamente as NF de Entrada pendentes.
         </p>
 
-        {/* Info banner */}
-        <div style={{ background: "#EFF6FF", border: "0.5px solid #378ADD", borderRadius: 8,
-                      padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#1A4870", lineHeight: 1.6 }}>
-          Obtenha a API Key em <strong>app.sieg.com.br → Minha Conta → Integrações API Sieg</strong>.
-          Configure para expirar em 60 meses. Limite: 30 req/min.
+        {/* Info banner — API Key gerenciada pela Raccolto */}
+        <div style={{ background: "#F0FFF4", border: "0.5px solid #86EFAC", borderRadius: 8,
+                      padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#15803D", lineHeight: 1.6 }}>
+          <strong>API Key gerenciada pela Raccolto.</strong> Você não precisa contratar o Sieg — ele já está
+          ativo na plataforma. Informe apenas o CNPJ ou CPF desta fazenda para filtrar os documentos corretos.
         </div>
 
-        {/* Campos */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
-                          letterSpacing: "0.05em", marginBottom: 4 }}>
-              API Key <span style={{ color: "#E24B4A" }}>*</span>
-            </div>
-            {inp(cfg.api_key, v => set("api_key", v), "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "password")}
+        {/* Campo CNPJ */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+                        letterSpacing: "0.05em", marginBottom: 4 }}>
+            CNPJ / CPF da fazenda <span style={{ color: "#E24B4A" }}>*</span>
           </div>
-
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
-                          letterSpacing: "0.05em", marginBottom: 4 }}>
-              CNPJ / CPF Destinatário (opcional — filtra somente NF-e para este documento)
-            </div>
-            {inp(cfg.cnpj_destino, v => set("cnpj_destino", v), "00000000000000 — deixe vazio para receber tudo")}
-            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-              Sem filtro, o Sieg retorna todas as NF vinculadas à sua conta Sieg.
-            </div>
+          {inp(cfg.cnpj_destino, v => set("cnpj_destino", v.replace(/\D/g, "")), "00000000000000 — somente números")}
+          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+            O Sieg filtrará somente as NF-e emitidas para este CNPJ/CPF.
+            Se o campo estiver vazio, o sistema tentará usar o CNPJ configurado no módulo Fiscal.
           </div>
         </div>
 
@@ -219,7 +211,7 @@ function ModalSieg({
         <div style={{ display: "flex", gap: 10, marginTop: 28, justifyContent: "space-between", alignItems: "center" }}>
           <button
             onClick={sincronizar}
-            disabled={syncing || !cfg.api_key}
+            disabled={syncing || !cfg.cnpj_destino}
             style={{ padding: "9px 22px", background: syncing ? "#DDE2EE" : "#16A34A",
                      color: "#fff", border: "none", borderRadius: 8, fontSize: 13,
                      fontWeight: 600, cursor: syncing ? "not-allowed" : "pointer" }}
@@ -244,11 +236,8 @@ function ModalSieg({
         {/* Dica de cron */}
         <div style={{ marginTop: 20, padding: "10px 14px", background: "#F4F6FA",
                       border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666" }}>
-          💡 Para sincronização automática diária, configure um Cron Job na Vercel apontando para{" "}
-          <code style={{ background: "#E8ECF4", padding: "1px 5px", borderRadius: 4 }}>
-            /api/integracoes/sieg-sync
-          </code>{" "}
-          com o header <code style={{ background: "#E8ECF4", padding: "1px 5px", borderRadius: 4 }}>fazenda_id</code>.
+          💡 A sincronização automática diária já está configurada via Cron Job na Vercel.
+          Use o botão acima para sincronizar manualmente a qualquer momento.
         </div>
       </div>
     </div>
@@ -450,7 +439,7 @@ export default function IntegracoesPage() {
   const [modal,    setModal]    = useState<IntegracaoCatalogo | null>(null);
 
   // Sieg — config vinda do configuracoes_modulo
-  const [siegCfg,   setSiegCfg]   = useState<SiegCfg>({ api_key: "", cnpj_destino: "" });
+  const [siegCfg,   setSiegCfg]   = useState<SiegCfg>({ cnpj_destino: "" });
   const [siegAtivo, setSiegAtivo] = useState(false);
   const [modalSieg, setModalSieg] = useState(false);
 
@@ -467,7 +456,7 @@ export default function IntegracoesPage() {
     if (siegRow?.config) {
       const c = siegRow.config as SiegCfg;
       setSiegCfg(c);
-      setSiegAtivo(!!(c.api_key));
+      setSiegAtivo(!!(c.cnpj_destino));
     }
     setLoading(false);
   }
@@ -690,7 +679,7 @@ export default function IntegracoesPage() {
           fazendaId={fazendaId}
           cfgInicial={siegCfg}
           onClose={() => setModalSieg(false)}
-          onSaved={cfg => { setSiegCfg(cfg); setSiegAtivo(!!(cfg.api_key)); }}
+          onSaved={cfg => { setSiegCfg(cfg); setSiegAtivo(!!(cfg.cnpj_destino)); }}
         />
       )}
 
