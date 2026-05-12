@@ -29,21 +29,31 @@ async function syncFazenda(db: ReturnType<typeof sb>, fazenda_id: string, apiKey
     .eq("modulo", "sieg")
     .maybeSingle();
 
-  const cfg = (row?.config ?? {}) as Record<string, string>;
-  const cnpjDest = cfg.cnpj_destino?.replace(/\D/g, "");
-  if (!cnpjDest) return { importados: 0, duplicados: 0, erros: 0 };
+  const cfg = (row?.config ?? {}) as Record<string, unknown>;
+
+  // Suporta array (novo) e string única (legado)
+  let cnpjs: string[] = [];
+  if (Array.isArray(cfg.cnpjs_destino)) {
+    cnpjs = (cfg.cnpjs_destino as string[]).map(c => c.replace(/\D/g, "")).filter(Boolean);
+  } else if (cfg.cnpj_destino) {
+    cnpjs = [String(cfg.cnpj_destino).replace(/\D/g, "")];
+  }
+  if (cnpjs.length === 0) return { importados: 0, duplicados: 0, erros: 0 };
 
   const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-  const dataInicio = cfg.ultima_sync_data ?? trintaDiasAtras;
+  const dataInicio = String(cfg.ultima_sync_data ?? trintaDiasAtras);
   const dataFim    = new Date().toISOString();
 
-  let xmlsNFe: string[];
-  try {
-    xmlsNFe = await baixarXmlsSieg(apiKey, {
-      XmlType: 1, DataEmissaoInicio: dataInicio, DataEmissaoFim: dataFim, CnpjDest: cnpjDest,
-    });
-  } catch {
-    return { importados: 0, duplicados: 0, erros: 1 };
+  const xmlsNFe: string[] = [];
+  for (const cnpj of cnpjs) {
+    try {
+      const docs = await baixarXmlsSieg(apiKey, {
+        XmlType: 1, DataEmissaoInicio: dataInicio, DataEmissaoFim: dataFim, CnpjDest: cnpj,
+      });
+      xmlsNFe.push(...docs);
+    } catch {
+      return { importados: 0, duplicados: 0, erros: 1 };
+    }
   }
 
   let importados = 0, duplicados = 0, erros = 0;
@@ -90,7 +100,7 @@ async function syncFazenda(db: ReturnType<typeof sb>, fazenda_id: string, apiKey
       ...cfg,
       ultima_sync_data: new Date().toISOString().slice(0, 10),
       ultima_sync_ts:   new Date().toISOString(),
-      total_importado:  String((parseInt(cfg.total_importado || "0") + importados)),
+      total_importado:  String((parseInt(String(cfg.total_importado ?? "0")) + importados)),
     },
   });
 

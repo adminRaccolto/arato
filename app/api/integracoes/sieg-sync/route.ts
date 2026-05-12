@@ -48,45 +48,49 @@ export async function POST(req: NextRequest) {
 
     const cfg = (row?.config ?? {}) as Record<string, string>;
 
-    // CNPJ/CPF da fazenda — obrigatório para filtrar os documentos certos
-    let cnpjDest = cfg.cnpj_destino || "";
-    if (!cnpjDest) {
-      // Tenta buscar automaticamente do primeiro módulo fiscal configurado
+    // CPFs/CNPJs monitorados — suporta array (novo) e string única (legado)
+    let cnpjs: string[] = [];
+    if (Array.isArray(cfg.cnpjs_destino)) {
+      cnpjs = (cfg.cnpjs_destino as unknown as string[]).map(c => c.replace(/\D/g, "")).filter(Boolean);
+    } else if (cfg.cnpj_destino) {
+      cnpjs = [cfg.cnpj_destino.replace(/\D/g, "")];
+    }
+
+    if (cnpjs.length === 0) {
+      // Tenta auto-detectar do módulo fiscal
       const { data: fiscalRows } = await db
         .from("configuracoes_modulo")
         .select("config")
         .eq("fazenda_id", fazenda_id)
         .like("modulo", "fiscal%")
         .limit(1);
-      cnpjDest = (fiscalRows?.[0]?.config as Record<string, string>)?.cpf_cnpj_emitente ?? "";
+      const doc = (fiscalRows?.[0]?.config as Record<string, string>)?.cpf_cnpj_emitente?.replace(/\D/g, "");
+      if (doc) cnpjs = [doc];
     }
 
-    if (!cnpjDest) {
+    if (cnpjs.length === 0) {
       return NextResponse.json(
-        { erro: "CNPJ/CPF da fazenda não configurado — acesse Configurações → Integrações → Sieg e informe o documento." },
+        { erro: "Nenhum CPF/CNPJ configurado — acesse Configurações → Integrações → Sieg." },
         { status: 400 }
       );
     }
-
-    // Apenas dígitos
-    const cnpjDestLimpo = cnpjDest.replace(/\D/g, "");
 
     // Data inicial: última sync ou 30 dias atrás
     const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
     const dataInicio = cfg.ultima_sync_data ?? trintaDiasAtras;
     const dataFim    = new Date().toISOString();
 
-    // ── 2. Buscar NF-e no Sieg ───────────────────────────────────────────────
-    let xmlsNFe: string[];
-    try {
-      xmlsNFe = await baixarXmlsSieg(apiKey, {
-        XmlType:           1,
-        DataEmissaoInicio: dataInicio,
-        DataEmissaoFim:    dataFim,
-        CnpjDest:          cnpjDestLimpo,
-      });
-    } catch (e) {
-      return NextResponse.json({ erro: `Falha na comunicação com Sieg: ${e}` }, { status: 502 });
+    // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
+    const xmlsNFe: string[] = [];
+    for (const cnpj of cnpjs) {
+      try {
+        const docs = await baixarXmlsSieg(apiKey, {
+          XmlType: 1, DataEmissaoInicio: dataInicio, DataEmissaoFim: dataFim, CnpjDest: cnpj,
+        });
+        xmlsNFe.push(...docs);
+      } catch (e) {
+        return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}` }, { status: 502 });
+      }
     }
 
     // ── 3. Processar cada XML ────────────────────────────────────────────────
@@ -161,12 +165,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 4. Persistir última sync ─────────────────────────────────────────────
-    const novoCfg: Record<string, string> = {
+    const novoCfg = {
       ...cfg,
-      cnpj_destino:     cnpjDestLimpo,
+      cnpjs_destino:    cnpjs,
       ultima_sync_data: new Date().toISOString().slice(0, 10),
       ultima_sync_ts:   new Date().toISOString(),
-      total_importado:  String((parseInt(cfg.total_importado || "0") + importados_nfe)),
+      total_importado:  String((parseInt(String(cfg.total_importado || "0")) + importados_nfe)),
     };
 
     await db

@@ -32,10 +32,25 @@ interface IntegracaoFazenda {
 }
 
 interface SiegCfg {
-  cnpj_destino:     string;
+  cnpjs_destino:    string[];   // lista de CPF/CNPJ monitorados
+  cnpj_destino?:    string;     // legado — migrado automaticamente
   ultima_sync_data?: string;
   ultima_sync_ts?:   string;
   total_importado?:  string;
+}
+
+function normalizarSiegCfg(raw: Record<string, unknown>): SiegCfg {
+  const base: SiegCfg = {
+    cnpjs_destino:    [],
+    ultima_sync_data: raw.ultima_sync_data as string | undefined,
+    ultima_sync_ts:   raw.ultima_sync_ts   as string | undefined,
+    total_importado:  raw.total_importado  as string | undefined,
+  };
+  if (Array.isArray(raw.cnpjs_destino)) {
+    return { ...base, cnpjs_destino: (raw.cnpjs_destino as string[]).map(c => c.replace(/\D/g, "")).filter(Boolean) };
+  }
+  const legacy = String(raw.cnpj_destino ?? "").replace(/\D/g, "");
+  return { ...base, cnpjs_destino: legacy ? [legacy] : [] };
 }
 
 interface SiegSyncResult {
@@ -79,38 +94,46 @@ function ModalSieg({
   onClose: () => void;
   onSaved: (cfg: SiegCfg) => void;
 }) {
-  const [cfg,     setCfg]     = useState<SiegCfg>(cfgInicial);
-  const [saving,  setSaving]  = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [result,  setResult]  = useState<SiegSyncResult | null>(null);
+  const [cfg,      setCfg]     = useState<SiegCfg>(cfgInicial);
+  const [novoDoc,  setNovoDoc] = useState("");
+  const [saving,   setSaving]  = useState(false);
+  const [syncing,  setSyncing] = useState(false);
+  const [result,   setResult]  = useState<SiegSyncResult | null>(null);
 
-  function set(k: keyof SiegCfg, v: string) {
-    setCfg(prev => ({ ...prev, [k]: v }));
+  function adicionarDoc() {
+    const limpo = novoDoc.replace(/\D/g, "");
+    if (!limpo || cfg.cnpjs_destino.includes(limpo)) { setNovoDoc(""); return; }
+    setCfg(prev => ({ ...prev, cnpjs_destino: [...prev.cnpjs_destino, limpo] }));
+    setNovoDoc("");
+  }
+
+  function removerDoc(doc: string) {
+    setCfg(prev => ({ ...prev, cnpjs_destino: prev.cnpjs_destino.filter(d => d !== doc) }));
+  }
+
+  function formatarDoc(d: string) {
+    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+    return d;
   }
 
   async function salvar() {
     setSaving(true);
-    await supabase.from("configuracoes_modulo").upsert({
-      fazenda_id: fazendaId,
-      modulo:     "sieg",
-      config:     cfg,
-    });
+    await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: cfg });
     setSaving(false);
     onSaved(cfg);
     onClose();
   }
 
   async function sincronizar() {
-    if (!cfg.cnpj_destino) { alert("Informe o CNPJ/CPF antes de sincronizar."); return; }
+    if (cfg.cnpjs_destino.length === 0) { alert("Adicione ao menos um CPF ou CNPJ antes de sincronizar."); return; }
     setSyncing(true);
     setResult(null);
-    // Salva o CNPJ antes de sincronizar
     await supabase.from("configuracoes_modulo").upsert({ fazenda_id: fazendaId, modulo: "sieg", config: cfg });
     try {
       const res = await fetch("/api/integracoes/sieg-sync", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ fazenda_id: fazendaId }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId }),
       });
       const data = await res.json() as SiegSyncResult;
       setResult(data);
@@ -118,12 +141,10 @@ function ModalSieg({
         setCfg(prev => ({
           ...prev,
           ultima_sync_data: new Date().toISOString().slice(0, 10),
-          total_importado:  String((parseInt(prev.total_importado || "0") + (data.importados_nfe ?? 0))),
+          total_importado: String((parseInt(prev.total_importado || "0") + (data.importados_nfe ?? 0))),
         }));
       }
-    } catch (e) {
-      setResult({ erro: String(e) });
-    }
+    } catch (e) { setResult({ erro: String(e) }); }
     setSyncing(false);
   }
 
@@ -145,28 +166,68 @@ function ModalSieg({
         </div>
 
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
-          O Sieg monitora a distribuição DFe da SEFAZ e disponibiliza via API todas as NF-e emitidas
-          para o CNPJ do produtor. A sincronização importa automaticamente as NF de Entrada pendentes.
+          O Sieg monitora a distribuição DFe da SEFAZ e importa automaticamente as NF-e recebidas
+          para cada CPF/CNPJ cadastrado abaixo.
         </p>
 
-        {/* Info banner — API Key gerenciada pela Raccolto */}
+        {/* Banner API Key */}
         <div style={{ background: "#F0FFF4", border: "0.5px solid #86EFAC", borderRadius: 8,
-                      padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#15803D", lineHeight: 1.6 }}>
-          <strong>API Key gerenciada pela Raccolto.</strong> Você não precisa contratar o Sieg — ele já está
-          ativo na plataforma. Informe apenas o CNPJ ou CPF desta fazenda para filtrar os documentos corretos.
+                      padding: "10px 14px", marginBottom: 24, fontSize: 12, color: "#15803D", lineHeight: 1.6 }}>
+          <strong>API Key gerenciada pela Raccolto.</strong> Informe apenas os CPFs/CNPJs
+          dos produtores desta fazenda para filtrar os documentos corretos.
         </div>
 
-        {/* Campo CNPJ */}
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
-                        letterSpacing: "0.05em", marginBottom: 4 }}>
-            CNPJ / CPF da fazenda <span style={{ color: "#E24B4A" }}>*</span>
+        {/* Lista de documentos */}
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+                      letterSpacing: "0.05em", marginBottom: 8 }}>
+          CPF / CNPJ monitorados <span style={{ color: "#E24B4A" }}>*</span>
+        </div>
+
+        {/* Tags dos docs já adicionados */}
+        {cfg.cnpjs_destino.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            {cfg.cnpjs_destino.map(doc => (
+              <div key={doc} style={{ display: "flex", alignItems: "center", gap: 6,
+                                      padding: "5px 10px 5px 12px", background: "#EFF6FF",
+                                      border: "0.5px solid #378ADD", borderRadius: 20, fontSize: 13 }}>
+                <span style={{ fontFamily: "monospace", color: "#1A4870", fontWeight: 600 }}>
+                  {formatarDoc(doc)}
+                </span>
+                <span style={{ fontSize: 11, color: "#888" }}>
+                  {doc.length === 11 ? "CPF" : "CNPJ"}
+                </span>
+                <button onClick={() => removerDoc(doc)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A",
+                           fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-          {inp(cfg.cnpj_destino, v => set("cnpj_destino", v.replace(/\D/g, "")), "00000000000000 — somente números")}
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-            O Sieg filtrará somente as NF-e emitidas para este CNPJ/CPF.
-            Se o campo estiver vazio, o sistema tentará usar o CNPJ configurado no módulo Fiscal.
-          </div>
+        )}
+
+        {/* Input para adicionar */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={novoDoc}
+            onChange={e => setNovoDoc(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={e => e.key === "Enter" && adicionarDoc()}
+            maxLength={14}
+            placeholder="Digite o CPF (11 dígitos) ou CNPJ (14 dígitos)"
+            style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "0.5px solid #DDE2EE",
+                     fontSize: 13, outline: "none", fontFamily: "monospace" }}
+          />
+          <button onClick={adicionarDoc}
+            disabled={novoDoc.length < 11}
+            style={{ padding: "8px 18px", background: novoDoc.length >= 11 ? "#1A4870" : "#F4F6FA",
+                     color: novoDoc.length >= 11 ? "#fff" : "#888",
+                     border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 13,
+                     fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
+            + Adicionar
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+          Pressione Enter ou clique Adicionar. Você pode cadastrar quantos CPFs/CNPJs precisar.
         </div>
 
         {/* Status última sync */}
@@ -209,16 +270,13 @@ function ModalSieg({
 
         {/* Ações */}
         <div style={{ display: "flex", gap: 10, marginTop: 28, justifyContent: "space-between", alignItems: "center" }}>
-          <button
-            onClick={sincronizar}
-            disabled={syncing || !cfg.cnpj_destino}
-            style={{ padding: "9px 22px", background: syncing ? "#DDE2EE" : "#16A34A",
-                     color: "#fff", border: "none", borderRadius: 8, fontSize: 13,
-                     fontWeight: 600, cursor: syncing ? "not-allowed" : "pointer" }}
-          >
+          <button onClick={sincronizar} disabled={syncing || cfg.cnpjs_destino.length === 0}
+            style={{ padding: "9px 22px",
+                     background: syncing || cfg.cnpjs_destino.length === 0 ? "#DDE2EE" : "#16A34A",
+                     color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                     cursor: syncing || cfg.cnpjs_destino.length === 0 ? "not-allowed" : "pointer" }}>
             {syncing ? "Sincronizando…" : "⟳ Sincronizar Agora"}
           </button>
-
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={onClose}
               style={{ padding: "9px 20px", background: "#fff", border: "0.5px solid #DDE2EE",
@@ -233,7 +291,6 @@ function ModalSieg({
           </div>
         </div>
 
-        {/* Dica de cron */}
         <div style={{ marginTop: 20, padding: "10px 14px", background: "#F4F6FA",
                       border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666" }}>
           💡 A sincronização automática diária já está configurada via Cron Job na Vercel.
@@ -439,7 +496,7 @@ export default function IntegracoesPage() {
   const [modal,    setModal]    = useState<IntegracaoCatalogo | null>(null);
 
   // Sieg — config vinda do configuracoes_modulo
-  const [siegCfg,   setSiegCfg]   = useState<SiegCfg>({ cnpj_destino: "" });
+  const [siegCfg,   setSiegCfg]   = useState<SiegCfg>({ cnpjs_destino: [] });
   const [siegAtivo, setSiegAtivo] = useState(false);
   const [modalSieg, setModalSieg] = useState(false);
 
@@ -454,9 +511,9 @@ export default function IntegracoesPage() {
     setCatalogo((cat ?? []) as IntegracaoCatalogo[]);
     setConfigs((cfg ?? []) as IntegracaoFazenda[]);
     if (siegRow?.config) {
-      const c = siegRow.config as SiegCfg;
+      const c = normalizarSiegCfg(siegRow.config as Record<string, unknown>);
       setSiegCfg(c);
-      setSiegAtivo(!!(c.cnpj_destino));
+      setSiegAtivo(c.cnpjs_destino.length > 0);
     }
     setLoading(false);
   }
@@ -679,7 +736,7 @@ export default function IntegracoesPage() {
           fazendaId={fazendaId}
           cfgInicial={siegCfg}
           onClose={() => setModalSieg(false)}
-          onSaved={cfg => { setSiegCfg(cfg); setSiegAtivo(!!(cfg.cnpj_destino)); }}
+          onSaved={cfg => { setSiegCfg(cfg); setSiegAtivo(cfg.cnpjs_destino.length > 0); }}
         />
       )}
 
