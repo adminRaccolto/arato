@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
+import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -799,6 +799,11 @@ export default function ContasPagar() {
                                   >
                                     ✓ Confirmar
                                   </button>
+                                ) : l.moeda === "barter" ? (
+                                  /* Barter: liquidado no fechamento da safra, não via baixa manual */
+                                  <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", whiteSpace: "nowrap" }}>
+                                    🌾 Liquidar na Safra
+                                  </span>
                                 ) : l.status !== "baixado" ? (
                                   <button
                                     onClick={() => abrirBaixa(l)}
@@ -807,6 +812,20 @@ export default function ContasPagar() {
                                     ◈ Baixar
                                   </button>
                                 ) : null}
+                                {/* Excluir lançamento automático gerado por pedido barter incorretamente em R$ */}
+                                {l.auto && l.pedido_compra_id && l.moeda !== "barter" && l.status === "em_aberto" && (
+                                  <button
+                                    title="Excluir lançamento gerado erroneamente (pedido barter)"
+                                    onClick={async () => {
+                                      if (!confirm("Excluir este lançamento automático?")) return;
+                                      await excluirLancamento(l.id);
+                                      setLancamentos(prev => prev.filter(x => x.id !== l.id));
+                                    }}
+                                    style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "transparent", color: "#E24B4A", border: "0.5px solid #E24B4A", lineHeight: 1 }}
+                                  >
+                                    ×
+                                  </button>
+                                )}
                                 {!l.auto && (
                                   <button
                                     onClick={() => abrirEditar(l)}
