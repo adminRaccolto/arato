@@ -107,8 +107,9 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", minStep: 6,
     children: [
-      { id: "fin-pagar",   label: "Contas a Pagar",   path: "/financeiro/pagar"   },
-      { id: "fin-receber", label: "Contas a Receber",  path: "/financeiro/receber" },
+      { id: "fin-pagar",    label: "Contas a Pagar",      path: "/financeiro/pagar"    },
+      { id: "fin-receber",  label: "Contas a Receber",    path: "/financeiro/receber"  },
+      { id: "fin-contratos", label: "Contratos Financeiros", path: "/financeiro/contratos" },
       {
         type: "subgroup", id: "sg-tesouraria", label: "Tesouraria",
         children: [
@@ -116,7 +117,6 @@ const NAV: NavItem[] = [
           { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",  path: "/financeiro/tesouraria/operacoes" },
           { id: "fin-mutuo",           label: "Mútuos entre Empresas",    path: "/financeiro/tesouraria/mutuo"     },
           { id: "fin-conciliacao",     label: "Conciliação Bancária",     path: "/financeiro/conciliacao"          },
-          { id: "fin-contratos",       label: "Contratos Financeiros",    path: "/financeiro/contratos"            },
         ],
       },
       {
