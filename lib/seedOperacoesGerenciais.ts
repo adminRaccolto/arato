@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Seed — Operações Gerenciais (Plano de Contas Gerencial)
 //
-// Estrutura fiel ao Agrosoft — 5 níveis de classificação:
+// Estrutura de classificação gerencial — 5 níveis:
 //   1.xx.xx.xx.xxx  RECEITAS
 //   2.xx.xx.xx.xxx  DESPESAS
 //   3.xx            ENTRADAS ECONÔMICAS
@@ -97,7 +97,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     obs_legal: "ICMS DIFERIDO CONFORME ART. 1º DO ANEXO V DO RICMS/MT",
     natureza_receita: "VENDA DE PRODUÇÃO RURAL - SOJA",
     conta_debito: "1.1.2.1", conta_credito: "4.1.1",
-    agrosoft_id: 17,
+    ref_id: 17,
   }),
   rec("1.01.01.01.002", "VENDA DE MILHO", {
     permite_notas_fiscais: true, permite_pedidos_venda: true,
@@ -107,7 +107,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     obs_legal: "ICMS DIFERIDO CONFORME ART. 1º DO ANEXO V DO RICMS/MT",
     natureza_receita: "VENDA DE PRODUÇÃO RURAL - MILHO",
     conta_debito: "1.1.2.1", conta_credito: "4.1.1",
-    agrosoft_id: 19,
+    ref_id: 19,
   }),
   rec("1.01.01.01.003", "VENDA DE ALGODÃO", {
     permite_notas_fiscais: true, permite_pedidos_venda: true,
@@ -116,14 +116,14 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     impostos: ["funrural", "senar"],
     natureza_receita: "VENDA DE PRODUÇÃO RURAL - ALGODÃO",
     conta_debito: "1.1.2.1", conta_credito: "4.1.1",
-    agrosoft_id: 698,
+    ref_id: 698,
   }),
   rec("1.01.01.01.004", "VENDA DE SORGO", {
     permite_notas_fiscais: true, permite_pedidos_venda: true,
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1", impostos: ["funrural", "senar"],
     natureza_receita: "VENDA DE PRODUÇÃO RURAL - SORGO",
-    agrosoft_id: 700,
+    ref_id: 700,
   }),
   rec("1.01.01.01.005", "VENDA DE TRIGO", {
     permite_notas_fiscais: true, permite_pedidos_venda: true,
@@ -136,47 +136,47 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1", impostos: ["funrural", "senar"],
     obs_legal: "VENDA A FIXAR - PREÇO A SER DEFINIDO CONFORME CONTRATO",
-    agrosoft_id: 648,
+    ref_id: 648,
   }),
   rec("1.01.01.01.007", "VENDA P/ BARTER", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1", impostos: ["funrural", "senar"],
-    agrosoft_id: 821,
+    ref_id: 821,
   }),
   rec("1.01.01.01.008", "VENDA DE SOJA PJ", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1", impostos: ["funrural", "senar"],
     natureza_receita: "VENDA DE PRODUÇÃO RURAL - SOJA (PJ)",
-    agrosoft_id: 908,
+    ref_id: 908,
   }),
   rec("1.01.01.01.009", "VENDA DE MILHO PJ", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1", impostos: ["funrural", "senar"],
     natureza_receita: "VENDA DE PRODUÇÃO RURAL - MILHO (PJ)",
-    agrosoft_id: 909,
+    ref_id: 909,
   }),
   rec("1.01.01.01.010", "REMESSA PARA ARMAZENAGEM", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
     tipo_lcdpr: "1",
     obs_legal: "REMESSA DE PRODUÇÃO RURAL PARA ARMAZENAGEM - ICMS DIFERIDO",
-    agrosoft_id: 701,
+    ref_id: 701,
   }),
   rec("1.01.01.01.011", "VENDA DE PRODUÇÃO PARA EXPORTAÇÃO", {
     permite_notas_fiscais: true, permite_pedidos_venda: true,
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1",
     obs_legal: "SAÍDA PARA O EXTERIOR - IMUNE AO ICMS E PIS/COFINS",
-    agrosoft_id: 922,
+    ref_id: 922,
   }),
   rec("1.01.01.01.012", "REMESSA POR CONTA E ORDEM", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
     obs_legal: "REMESSA POR CONTA E ORDEM DE TERCEIROS",
-    agrosoft_id: 921,
+    ref_id: 921,
   }),
   rec("1.01.01.01.013", "COLHEITA PRÓPRIA - ENTRADA ESTOQUE", {
     permite_estoque: true,
@@ -184,7 +184,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     atualizar_custo_estoque: true,
     conta_debito: "1.1.3.1", conta_credito: "1.1.4.1",
-    agrosoft_id: 38,
+    ref_id: 38,
   }),
 
   // 1.01.01.02 — Produção Pecuária
@@ -193,24 +193,24 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "contrato",
     tipo_lcdpr: "1", impostos: ["funrural", "senar"],
-    agrosoft_id: 32,
+    ref_id: 32,
   }),
 
   // 1.01.01.03 — Armazenagem
   grp("1.01.01.03",   "ARMAZENAGEM",                     "receita"),
   rec("1.01.01.03.001", "SECAGEM E ARMAZENAGEM", {
     permite_cp_cr: true, permite_tesouraria: false,
-    tipo_lcdpr: "1", agrosoft_id: 778,
+    tipo_lcdpr: "1", ref_id: 778,
   }),
   rec("1.01.01.03.002", "VENDA DE RESÍDUOS", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "gasto",
-    tipo_lcdpr: "1", agrosoft_id: 622,
+    tipo_lcdpr: "1", ref_id: 622,
   }),
   rec("1.01.01.03.003", "RETORNO DE REMESSA PARA ARMAZENAGEM", {
     permite_notas_fiscais: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    agrosoft_id: 765,
+    ref_id: 765,
   }),
 
   // 1.01.01.05 — Deduções das Receitas
@@ -219,42 +219,42 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     tipo: "despesa",
     permite_notas_fiscais: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    tipo_lcdpr: "1", agrosoft_id: 675,
+    tipo_lcdpr: "1", ref_id: 675,
     conta_debito: "4.1.1", conta_credito: "1.1.2.1",
   }),
   desp("1.01.01.05.003", "FETHAB", {
     permite_cp_cr: true, permite_notas_fiscais: false,
     custo_absorcao: false, tipo_lcdpr: "4",
-    agrosoft_id: 580,
+    ref_id: 580,
     conta_debito: "4.2.2", conta_credito: "2.1.3.2",
   }),
   desp("1.01.01.05.004", "IAGRO", {
     permite_cp_cr: true, permite_notas_fiscais: false,
     custo_absorcao: false, tipo_lcdpr: "4",
-    agrosoft_id: 578,
+    ref_id: 578,
     conta_debito: "4.2.2", conta_credito: "2.1.3.2",
   }),
   desp("1.01.01.05.005", "SENAR", {
     permite_cp_cr: true, permite_notas_fiscais: false,
     custo_absorcao: false, tipo_lcdpr: "4",
-    agrosoft_id: 809,
+    ref_id: 809,
     conta_debito: "4.2.1", conta_credito: "2.1.3.1",
   }),
   desp("1.01.01.05.006", "FESA", {
     permite_cp_cr: true, permite_notas_fiscais: false,
     custo_absorcao: false, tipo_lcdpr: "4",
-    agrosoft_id: 817,
+    ref_id: 817,
     conta_debito: "4.2.2", conta_credito: "2.1.3.2",
   }),
   desp("1.01.01.05.007", "GTA", {
     permite_cp_cr: true, permite_notas_fiscais: false,
     custo_absorcao: false, tipo_lcdpr: "4",
-    agrosoft_id: 818,
+    ref_id: 818,
   }),
   desp("1.01.01.05.008", "INPECMT", {
     permite_cp_cr: true, permite_notas_fiscais: false,
     custo_absorcao: false, tipo_lcdpr: "4",
-    agrosoft_id: 819,
+    ref_id: 819,
   }),
 
   // 1.01.02 — Receitas com Transportes
@@ -262,11 +262,11 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   grp("1.01.02.01",   "TRANSPORTES",                     "receita"),
   rec("1.01.02.01.001", "PRESTAÇÃO DE SERVIÇO DE FRETE (CT-E)", {
     permite_notas_fiscais: true, tipo_lcdpr: "1",
-    agrosoft_id: 914,
+    ref_id: 914,
   }),
   rec("1.01.02.01.002", "SERVIÇO DE TERRAPLANAGEM", {
     permite_notas_fiscais: true, tipo_lcdpr: "1",
-    agrosoft_id: 915,
+    ref_id: 915,
   }),
 
   // 1.02 — Receitas Não Operacionais
@@ -274,19 +274,19 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   grp("1.02.01",      "OUTRAS RECEITAS",                 "receita"),
   grp("1.02.01.01",   "RECEITAS SECUNDÁRIAS",            "receita"),
   rec("1.02.01.01.001", "ARRENDAMENTO PARA TERCEIROS", {
-    permite_cp_cr: true, tipo_lcdpr: "1", agrosoft_id: 776,
+    permite_cp_cr: true, tipo_lcdpr: "1", ref_id: 776,
   }),
   rec("1.02.01.01.002", "FRETE PARA TERCEIROS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "1", agrosoft_id: 47,
+    permite_notas_fiscais: true, tipo_lcdpr: "1", ref_id: 47,
   }),
   rec("1.02.01.01.003", "PRESTAÇÃO DE SERVIÇO", {
-    permite_notas_fiscais: true, tipo_lcdpr: "1", agrosoft_id: 520,
+    permite_notas_fiscais: true, tipo_lcdpr: "1", ref_id: 520,
   }),
   rec("1.02.01.01.004", "ADIANTAMENTO DE CLIENTES", {
-    permite_adiantamentos: true, tipo_lcdpr: "5", agrosoft_id: 541,
+    permite_adiantamentos: true, tipo_lcdpr: "5", ref_id: 541,
   }),
   rec("1.02.01.01.005", "CRÉDITO COM FORNECEDOR", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", agrosoft_id: 338,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", ref_id: 338,
   }),
   rec("1.02.01.01.006", "OUTRAS RECEITAS", {
     permite_notas_fiscais: true, permite_cp_cr: true,
@@ -297,14 +297,14 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   // 1.02.01.02 — Venda Imobilizado
   grp("1.02.01.02",   "VENDA IMOBILIZADO",               "receita"),
   rec("1.02.01.02.001", "VENDA DE MÁQUINAS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", agrosoft_id: 401,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", ref_id: 401,
     conta_debito: "1.1.1.2", conta_credito: "4.3",
   }),
   rec("1.02.01.02.002", "VENDA DE VEÍCULOS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", agrosoft_id: 801,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", ref_id: 801,
   }),
   rec("1.02.01.02.003", "VENDA DE IMÓVEIS", {
-    permite_cp_cr: true, tipo_lcdpr: "2", agrosoft_id: 441,
+    permite_cp_cr: true, tipo_lcdpr: "2", ref_id: 441,
   }),
 
   // 1.02.01.03 — Devoluções (entradas)
@@ -312,29 +312,29 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   rec("1.02.01.03.001", "DEVOLUÇÃO DE PEÇAS E INSUMOS", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    agrosoft_id: 465,
+    ref_id: 465,
   }),
   rec("1.02.01.03.002", "DEVOLUÇÃO DE ITENS DE CONSUMO", {
-    permite_notas_fiscais: true, agrosoft_id: 736,
+    permite_notas_fiscais: true, ref_id: 736,
   }),
 
   // 1.02.01.04 — Remessas e Transferências
   grp("1.02.01.04",   "REMESSAS E TRANSFERÊNCIAS",       "receita"),
   rec("1.02.01.04.001", "REMESSA PARA CONSERTO", {
-    permite_notas_fiscais: true, agrosoft_id: 759,
+    permite_notas_fiscais: true, ref_id: 759,
   }),
   rec("1.02.01.04.002", "SAÍDA DE GRÃOS DE TERCEIROS", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    agrosoft_id: 767,
+    ref_id: 767,
   }),
   rec("1.02.01.04.003", "ENTRADA DE GRÃOS DE TERCEIROS", {
     permite_notas_fiscais: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 766,
+    gerar_financeiro: false, ref_id: 766,
   }),
   rec("1.02.01.04.004", "OUTRAS SAÍDAS", {
-    permite_notas_fiscais: true, informa_complemento: true, agrosoft_id: 896,
+    permite_notas_fiscais: true, informa_complemento: true, ref_id: 896,
   }),
 
   // 1.03 — Receitas Financeiras
@@ -342,35 +342,35 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   grp("1.03.01",      "RECEBIMENTOS",                    "receita"),
   grp("1.03.01.01",   "EMPRÉSTIMOS",                     "receita"),
   rec("1.03.01.01.001", "RECEBIMENTO EGF", {
-    permite_cp_cr: true, tipo_lcdpr: "3", agrosoft_id: 396,
+    permite_cp_cr: true, tipo_lcdpr: "3", ref_id: 396,
   }),
   rec("1.03.01.01.002", "RECEBIMENTO EMPRÉSTIMO", {
-    permite_cp_cr: true, tipo_lcdpr: "3", agrosoft_id: 66,
+    permite_cp_cr: true, tipo_lcdpr: "3", ref_id: 66,
   }),
   grp("1.03.01.02",   "RESSARCIMENTOS",                  "receita"),
   rec("1.03.01.02.001", "CRÉDITO REF. REEMBOLSO DE FORNECEDOR", {
-    permite_tesouraria: true, agrosoft_id: 332,
+    permite_tesouraria: true, ref_id: 332,
   }),
   rec("1.03.01.02.002", "OUTROS DESCONTOS OBTIDOS", {
-    permite_tesouraria: true, agrosoft_id: 61,
+    permite_tesouraria: true, ref_id: 61,
   }),
   grp("1.03.01.03",   "RENDIMENTOS",                     "receita"),
   rec("1.03.01.03.001", "RENDIMENTO POUPANÇA", {
-    permite_tesouraria: true, gerar_financeiro: false, agrosoft_id: 69,
+    permite_tesouraria: true, gerar_financeiro: false, ref_id: 69,
   }),
   rec("1.03.01.03.002", "RENDIMENTO APLICAÇÃO FINANCEIRA", {
-    permite_tesouraria: true, gerar_financeiro: false, agrosoft_id: 73,
+    permite_tesouraria: true, gerar_financeiro: false, ref_id: 73,
   }),
   rec("1.03.01.03.003", "RESGATE DE TÍTULO DE CAPITALIZAÇÃO", {
-    permite_cp_cr: true, agrosoft_id: 620,
+    permite_cp_cr: true, ref_id: 620,
   }),
   rec("1.03.01.03.004", "OUTROS ACRÉSCIMOS RECEBIDOS", {
-    permite_cp_cr: true, informa_complemento: true, agrosoft_id: 254,
+    permite_cp_cr: true, informa_complemento: true, ref_id: 254,
   }),
   rec("1.03.01.03.005", "CRÉDITO REF. TRANSF. DE VALORES", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
-    agrosoft_id: 691,
+    ref_id: 691,
   }),
 
   // ═══════════════════════════════════════════════════════════
@@ -387,52 +387,52 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
     conta_debito: "5", conta_credito: "2.1.1.1",
-    agrosoft_id: 720,
+    ref_id: 720,
   }),
   desp("2.01.01.01.002", "COMPRA DE CORRETIVOS", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
-    agrosoft_id: 722,
+    ref_id: 722,
   }),
   desp("2.01.01.01.003", "COMPRA DE SEMENTES", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
     conta_debito: "5", conta_credito: "2.1.1.1",
-    agrosoft_id: 721,
+    ref_id: 721,
   }),
   desp("2.01.01.01.004", "COMPRA DE ADUBOS E FERTILIZANTES", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
     conta_debito: "5", conta_credito: "2.1.1.1",
-    agrosoft_id: 87,
+    ref_id: 87,
   }),
   desp("2.01.01.01.005", "COMPRA DE DEFENSIVOS - ENT. FUTURA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true,
-    agrosoft_id: 750,
+    ref_id: 750,
   }),
   desp("2.01.01.01.006", "COMPRA DE CORRETIVOS - ENT. FUTURA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true,
-    agrosoft_id: 751,
+    ref_id: 751,
   }),
   desp("2.01.01.01.007", "COMPRA DE SEMENTES - ENT. FUTURA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true,
-    agrosoft_id: 753,
+    ref_id: 753,
   }),
   desp("2.01.01.01.008", "COMPRA DE ADUBOS E FERT. - ENT. FUTURA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true,
-    agrosoft_id: 752,
+    ref_id: 752,
   }),
   desp("2.01.01.01.009", "BONIFICAÇÃO DE COMPRA", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    tipo_lcdpr: "1", agrosoft_id: 723,
+    tipo_lcdpr: "1", ref_id: 723,
   }),
   desp("2.01.01.01.010", "GASTO DE INSUMOS (BAIXA ESTOQUE)", {
     permite_estoque: true,
@@ -440,7 +440,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: true, custo_abc: true,
     conta_debito: "5", conta_credito: "1.1.3.4",
-    agrosoft_id: 783,
+    ref_id: 783,
   }),
 
   // 2.01.01.02 — Combustíveis
@@ -450,24 +450,24 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, atualizar_custo_estoque: true,
     conta_debito: "5.5", conta_credito: "2.1.1.1",
-    agrosoft_id: 728,
+    ref_id: 728,
   }),
   desp("2.01.01.02.002", "COMPRA DE ADITIVOS E LUBRIFICANTES", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 729,
+    ref_id: 729,
   }),
   desp("2.01.01.02.003", "COMPRA DE LENHA PARA SECADOR", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true,
-    agrosoft_id: 802,
+    ref_id: 802,
   }),
   desp("2.01.01.02.099", "GASTO COMBUSTÍVEL - CUSTO FAZENDA", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "gasto",
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 264,
+    ref_id: 264,
   }),
 
   // 2.01.01.03 — Manutenção e Reparos
@@ -476,35 +476,35 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_notas_fiscais: true, permite_manutencao: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, manutencao_reparos: true,
     conta_debito: "5.5", conta_credito: "2.1.1.2",
-    agrosoft_id: 732,
+    ref_id: 732,
   }),
   desp("2.01.01.03.002", "MANUTENÇÃO DE VEÍCULOS", {
     permite_notas_fiscais: true, permite_manutencao: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, manutencao_reparos: true,
-    agrosoft_id: 823,
+    ref_id: 823,
   }),
   desp("2.01.01.03.003", "MANUTENÇÃO DE INFRAESTRUTURA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 665,
+    ref_id: 665,
   }),
   desp("2.01.01.03.004", "COMPRA DE PEÇAS PARA ESTOQUE", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, atualizar_custo_estoque: true,
-    agrosoft_id: 562,
+    ref_id: 562,
   }),
   desp("2.01.01.03.005", "MATERIAIS E FERRAMENTAS P/ OFICINA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 804,
+    ref_id: 804,
   }),
   desp("2.01.01.03.006", "GASTO DE PEÇAS (BAIXA ESTOQUE)", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "gasto",
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: true, custo_abc: true, manutencao_reparos: true,
-    agrosoft_id: 260,
+    ref_id: 260,
   }),
 
   // 2.01.01.04 — Despesas Agricultura
@@ -513,62 +513,62 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_cp_cr: true, permite_contrato_financeiro: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true, valida_propriedade: true,
     conta_debito: "6.1", conta_credito: "2.1.1.3",
-    agrosoft_id: 125,
+    ref_id: 125,
   }),
   desp("2.01.01.04.002", "ANÁLISE DE SEMENTES", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 117,
+    ref_id: 117,
   }),
   desp("2.01.01.04.003", "ANÁLISE DE SOLOS", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 119,
+    ref_id: 119,
   }),
   desp("2.01.01.04.004", "ASSESSORIA AMBIENTAL", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 626,
+    ref_id: 626,
   }),
   desp("2.01.01.04.005", "ROYALTIES", {
     permite_cp_cr: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 123,
+    ref_id: 123,
   }),
   desp("2.01.01.04.006", "ENERGIA ELÉTRICA IRRIGAÇÃO", {
     permite_cp_cr: true, permite_energia_eletrica: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 115,
+    ref_id: 115,
   }),
   desp("2.01.01.04.007", "TAXA DE SECAGEM E ARMAZENAGEM", {
     permite_cp_cr: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 417,
+    ref_id: 417,
   }),
   desp("2.01.01.04.008", "ASSESSORIA AGRONÔMICA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 870,
+    ref_id: 870,
   }),
   desp("2.01.01.04.009", "SERVIÇOS TERCEIRIZADOS (LAVOURA)", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 874,
+    ref_id: 874,
   }),
   desp("2.01.01.04.010", "CORRETAGEM", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 884,
+    ref_id: 884,
   }),
   desp("2.01.01.04.011", "ENCERRAMENTO DE SAFRA - AJUSTE DE CAIXA", {
     permite_cp_cr: true, informa_complemento: true,
     tipo_lcdpr: "5", custo_absorcao: false,
-    agrosoft_id: 900,
+    ref_id: 900,
   }),
   desp("2.01.01.04.012", "ANÁLISE DE FERTILIZANTES", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 905,
+    ref_id: 905,
   }),
   desp("2.01.01.04.099", "OUTRAS DESPESAS DE PRODUÇÃO", {
     permite_notas_fiscais: true, permite_cp_cr: true,
@@ -581,25 +581,25 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true,
-    agrosoft_id: 670,
+    ref_id: 670,
   }),
   desp("2.01.01.05.002", "VACINAS E MEDICAMENTOS P/ ANIMAIS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "1", custo_absorcao: true, agrosoft_id: 659,
+    permite_notas_fiscais: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 659,
   }),
   desp("2.01.01.05.003", "RAÇÃO E SUPLEMENTAÇÃO P/ ANIMAIS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "1", custo_absorcao: true, agrosoft_id: 663,
+    permite_notas_fiscais: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 663,
   }),
   desp("2.01.01.05.004", "ARRENDAMENTO PECUÁRIO", {
-    permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, agrosoft_id: 411,
+    permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 411,
   }),
 
   // 2.01.01.06 — Produção de Sementes
   grp("2.01.01.06",   "PRODUÇÃO DE SEMENTES",            "despesa"),
   desp("2.01.01.06.001", "EMBALAGENS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "1", custo_absorcao: true, agrosoft_id: 128,
+    permite_notas_fiscais: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 128,
   }),
   desp("2.01.01.06.002", "TAXAS DE SEMENTES", {
-    permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, agrosoft_id: 142,
+    permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 142,
   }),
 
   // 2.01.01.07 — Fretes
@@ -608,30 +608,30 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
     conta_debito: "5.5.4", conta_credito: "2.1.1.2",
-    agrosoft_id: 153,
+    ref_id: 153,
   }),
   desp("2.01.01.07.002", "FRETES INSUMOS", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 768,
+    ref_id: 768,
   }),
   desp("2.01.01.07.003", "FRETES CORRETIVOS", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 769,
+    ref_id: 769,
   }),
   desp("2.01.01.07.004", "FRETES SEMENTES", {
     permite_notas_fiscais: true,
     operacao_estoque: "saida", tipo_custo_estoque: "gasto",
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 770,
+    ref_id: 770,
   }),
   desp("2.01.01.07.005", "FRETES DIVERSOS", {
     permite_cp_cr: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 771,
+    ref_id: 771,
   }),
 
   // 2.01.01.08 — Máquinas Terceirizadas
@@ -640,22 +640,22 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
     conta_debito: "5.5", conta_credito: "2.1.1.2",
-    agrosoft_id: 157,
+    ref_id: 157,
   }),
   desp("2.01.01.08.002", "COLHEITA TERCEIRIZADA", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 686,
+    ref_id: 686,
   }),
   desp("2.01.01.08.003", "PLANTIO TERCEIRIZADO", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 687,
+    ref_id: 687,
   }),
   desp("2.01.01.08.004", "LOCAÇÃO DE MAQ. / EQUIP. / IMPLEM.", {
     permite_notas_fiscais: true,
     tipo_lcdpr: "1", custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 734,
+    ref_id: 734,
   }),
   desp("2.01.01.08.005", "PULVERIZAÇÃO TERCEIRIZADA", {
     permite_notas_fiscais: true,
@@ -666,12 +666,12 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   grp("2.01.01.09",   "ADIANTAMENTOS",                   "despesa"),
   desp("2.01.01.09.001", "ADIANTAMENTO PARA FORNECEDOR", {
     permite_adiantamentos: true,
-    gerar_financeiro: true, custo_absorcao: false, agrosoft_id: 328,
+    gerar_financeiro: true, custo_absorcao: false, ref_id: 328,
     historico_tesouraria_id: 1, historico_tesouraria_nome: "PAGAMENTO CONTAS",
   }),
   desp("2.01.01.09.002", "ADIANTAMENTO PARA FUNCIONÁRIO", {
     permite_adiantamentos: true,
-    gerar_financeiro: true, custo_absorcao: false, agrosoft_id: 324,
+    gerar_financeiro: true, custo_absorcao: false, ref_id: 324,
     historico_tesouraria_id: 1, historico_tesouraria_nome: "PAGAMENTO CONTAS",
   }),
 
@@ -681,7 +681,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_cp_cr: true, tipo_lcdpr: "3",
     custo_absorcao: true, custo_abc: true,
     conta_debito: "5.6", conta_credito: "2.1.1.2",
-    // agrosoft_id: (não tinha SALARIOS-FAZ explícito, apenas 13º, rescisão, etc.)
+    // ref_id: (não tinha SALARIOS-FAZ explícito, apenas 13º, rescisão, etc.)
   }),
   desp("2.01.01.10.002", "FÉRIAS - FAZ", {
     permite_cp_cr: true, tipo_lcdpr: "3",
@@ -690,42 +690,42 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.01.01.10.003", "13º SALÁRIO - FAZ", {
     permite_cp_cr: true, tipo_lcdpr: "3",
     custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 841,
+    ref_id: 841,
   }),
   desp("2.01.01.10.004", "PRÊMIO FUNCIONÁRIOS - FAZ", {
     permite_cp_cr: true, tipo_lcdpr: "5",
     custo_absorcao: true, custo_abc: true,
-    agrosoft_id: 844,
+    ref_id: 844,
   }),
   desp("2.01.01.10.005", "DIARISTAS - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 848,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 848,
   }),
   desp("2.01.01.10.006", "COMPLEMENTO SALARIAL - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 852,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 852,
   }),
   desp("2.01.01.10.007", "PLANO DE SAÚDE - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 847,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 847,
   }),
   desp("2.01.01.10.008", "RESCISÃO - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 842,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 842,
   }),
   desp("2.01.01.10.009", "UNIFORMES E EPIs - FAZ", {
-    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 846,
+    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 846,
   }),
   desp("2.01.01.10.010", "MEDICINA E SEG. DO TRABALHO - FAZ", {
-    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 843,
+    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 843,
   }),
   desp("2.01.01.10.011", "CONTRIBUIÇÃO SINDICAL - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 845,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 845,
   }),
   desp("2.01.01.10.012", "IRRF - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: true, agrosoft_id: 854,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: true, ref_id: 854,
   }),
   desp("2.01.01.10.013", "FGTS - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 849,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 849,
   }),
   desp("2.01.01.10.014", "INSS EMPREGADOR - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 850,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 850,
   }),
   desp("2.01.01.10.015", "SAT/RAT - FAZ", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true,
@@ -749,7 +749,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     conta_debito: "4.2.1", conta_credito: "2.1.3.1",
   }),
   desp("2.01.01.10.020", "SEGURO DE VIDA - FAZ", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, agrosoft_id: 859,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: true, ref_id: 859,
     historico_tesouraria_id: undefined, historico_tesouraria_nome: undefined,
   }),
 
@@ -760,67 +760,67 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   // 2.02.01.01 — Outras Despesas
   grp("2.02.01.01",   "OUTRAS DESPESAS",                 "despesa"),
   desp("2.02.01.01.001", "ÁGUA", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 433,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 433,
   }),
   desp("2.02.01.01.002", "ENERGIA ELÉTRICA", {
     permite_cp_cr: true, permite_energia_eletrica: true,
     tipo_lcdpr: "1", custo_absorcao: false,
     conta_debito: "6.4", conta_credito: "2.1.1.1",
-    agrosoft_id: 103,
+    ref_id: 103,
   }),
   desp("2.02.01.01.003", "TELEFONE", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 99,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 99,
   }),
   desp("2.02.01.01.004", "CORREIOS", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 640,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 640,
   }),
   desp("2.02.01.01.005", "CARTÓRIOS", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 642,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 642,
   }),
   desp("2.02.01.01.006", "ALUGUÉIS E CONDOMÍNIOS", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 755,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 755,
   }),
   desp("2.02.01.01.007", "ASSINATURAS E MENSALIDADES", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 618,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 618,
   }),
   desp("2.02.01.01.008", "SEGURANÇA E VIGILÂNCIA", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 756,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 756,
   }),
   desp("2.02.01.01.009", "MATERIAL EXPEDIENTE", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 96,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 96,
   }),
   desp("2.02.01.01.010", "PROVEDOR DE INTERNET", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 920,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 920,
   }),
   desp("2.02.01.01.011", "DOAÇÃO", {
-    permite_tesouraria: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 863,
+    permite_tesouraria: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 863,
   }),
   desp("2.02.01.01.012", "DÉBITO NO CAIXA REF. TROCO", {
-    permite_tesouraria: true, custo_absorcao: false, agrosoft_id: 508,
+    permite_tesouraria: true, custo_absorcao: false, ref_id: 508,
   }),
   desp("2.02.01.01.013", "OUTROS DESCONTOS CONCEDIDOS", {
-    permite_notas_fiscais: true, custo_absorcao: false, agrosoft_id: 364,
+    permite_notas_fiscais: true, custo_absorcao: false, ref_id: 364,
   }),
 
   // 2.02.01.02 — Serviços de Terceiros
   grp("2.02.01.02",   "SERVIÇOS DE TERCEIROS",           "despesa"),
   desp("2.02.01.02.001", "ASSESSORIA JURÍDICA", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 405,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 405,
   }),
   desp("2.02.01.02.002", "ASSESSORIA CONTÁBIL", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 159,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 159,
   }),
   desp("2.02.01.02.003", "ASSESSORIA SISTEMA", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 162,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 162,
   }),
   desp("2.02.01.02.004", "ASSISTÊNCIA TÉCNICA", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 407,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 407,
   }),
   desp("2.02.01.02.005", "CONSULTORIA FINANCEIRA", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 872,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 872,
   }),
   desp("2.02.01.02.006", "CONSULTORIAS", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 878,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 878,
   }),
 
   // 2.02.01.03 — Recursos Humanos ADM
@@ -828,46 +828,46 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.02.01.03.001", "SALÁRIOS - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
     conta_debito: "6.4.1", conta_credito: "2.1.1.2",
-    agrosoft_id: 129,
+    ref_id: 129,
   }),
   desp("2.02.01.03.002", "FÉRIAS - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 131,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 131,
   }),
   desp("2.02.01.03.003", "13º SALÁRIO - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 134,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 134,
   }),
   desp("2.02.01.03.004", "PRÊMIO FUNCIONÁRIOS - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 409,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 409,
   }),
   desp("2.02.01.03.005", "DIARISTAS - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 431,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 431,
   }),
   desp("2.02.01.03.006", "COMPLEMENTO SALARIAL - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 382,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 382,
   }),
   desp("2.02.01.03.007", "PLANO DE SAÚDE - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 429,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 429,
   }),
   desp("2.02.01.03.008", "RESCISÃO - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 136,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 136,
   }),
   desp("2.02.01.03.009", "UNIFORMES E EPIs - ADM", {
-    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 427,
+    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 427,
   }),
   desp("2.02.01.03.010", "MEDICINA E SEG. DO TRABALHO - ADM", {
-    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 141,
+    permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 141,
   }),
   desp("2.02.01.03.011", "CONTRIBUIÇÃO SINDICAL - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 421,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 421,
   }),
   desp("2.02.01.03.012", "IRRF - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 680,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 680,
   }),
   desp("2.02.01.03.013", "FGTS - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 449,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 449,
   }),
   desp("2.02.01.03.014", "INSS EMPREGADOR - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 451,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 451,
   }),
   desp("2.02.01.03.015", "SAT/RAT - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
@@ -876,7 +876,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
   }),
   desp("2.02.01.03.017", "PRÓ-LABORE", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 456,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 456,
   }),
   desp("2.02.01.03.018", "PROVISÃO 13º SALÁRIO - ADM", {
     permite_cp_cr: true, gerar_financeiro: false, gerar_financeiro_gerencial: true,
@@ -890,7 +890,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false,
   }),
   desp("2.02.01.03.021", "SEGURO DE VIDA - ADM", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 860,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 860,
   }),
 
   // 2.02.01.04 — Impostos e Taxas
@@ -898,64 +898,64 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.02.01.04.001", "ITR / CCIR", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false,
     conta_debito: "6.6.1", conta_credito: "2.1.3.4",
-    agrosoft_id: 350,
+    ref_id: 350,
   }),
   desp("2.02.01.04.002", "IPTU", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 584,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 584,
   }),
   desp("2.02.01.04.003", "PIS", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 586,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 586,
   }),
   desp("2.02.01.04.004", "COFINS", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 573,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 573,
   }),
   desp("2.02.01.04.005", "CSLL", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 576,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 576,
   }),
   desp("2.02.01.04.006", "DIFAL", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 820,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 820,
   }),
   desp("2.02.01.04.007", "FUNRURAL (GUIA)", {
     permite_cp_cr: true, tipo_lcdpr: "4",
     custo_absorcao: false,
     conta_debito: "4.2.1", conta_credito: "2.1.3.1",
-    agrosoft_id: 121,
+    ref_id: 121,
   }),
   desp("2.02.01.04.008", "TAXAS DIVERSAS", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 816,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 816,
   }),
   desp("2.02.01.04.009", "TARIFA BANCÁRIA", {
     permite_tesouraria: true,
     gerar_financeiro: true, custo_absorcao: false,
     conta_debito: "6.5.2", conta_credito: "1.1.1.2",
-    agrosoft_id: 876,
+    ref_id: 876,
   }),
   desp("2.02.01.04.010", "ICMS", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 882,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 882,
   }),
   desp("2.02.01.04.011", "ALVARÁ", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 861,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 861,
   }),
   desp("2.02.01.04.012", "ITCD", {
-    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, agrosoft_id: 929,
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 929,
   }),
 
   // 2.02.01.05 — Frota de Veículos
   grp("2.02.01.05",   "FROTA DE VEÍCULOS",               "despesa"),
   desp("2.02.01.05.001", "ABASTECIMENTO POSTO", {
-    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 730,
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 730,
   }),
   desp("2.02.01.05.002", "IPVA / SEGURO OBRIG. / TAXAS", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 403,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 403,
   }),
   desp("2.02.01.05.003", "DESLOCAMENTO / VIAGEM", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 105,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 105,
   }),
   desp("2.02.01.05.004", "PEDÁGIO", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 868,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 868,
   }),
   desp("2.02.01.05.005", "MULTAS DE TRÂNSITO", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 865,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 865,
   }),
 
   // 2.03 — Despesas Financeiras
@@ -963,81 +963,81 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   grp("2.03.01",      "DESPESAS BANCÁRIAS",              "despesa"),
   grp("2.03.01.01",   "MOVIMENTOS",                      "despesa"),
   desp("2.03.01.01.001", "IOF", {
-    permite_tesouraria: true, custo_absorcao: false, agrosoft_id: 757,
+    permite_tesouraria: true, custo_absorcao: false, ref_id: 757,
   }),
   desp("2.03.01.01.002", "TARIFAS BANCÁRIAS", {
     permite_tesouraria: true,
     gerar_financeiro: true, custo_absorcao: false,
     conta_debito: "6.5.2", conta_credito: "1.1.1.2",
-    agrosoft_id: 147,
+    ref_id: 147,
   }),
   desp("2.03.01.01.003", "TARIFA DE ESTUDO", {
-    permite_tesouraria: true, custo_absorcao: false, agrosoft_id: 504,
+    permite_tesouraria: true, custo_absorcao: false, ref_id: 504,
   }),
   desp("2.03.01.01.004", "COMPENSAÇÃO DE CHEQUE", {
     permite_tesouraria: true,
     historico_tesouraria_id: 2, historico_tesouraria_nome: "COMPENSAÇÃO CHEQUE PRÓPRIO",
-    custo_absorcao: false, agrosoft_id: 524,
+    custo_absorcao: false, ref_id: 524,
   }),
   desp("2.03.01.01.005", "DÉBITO REF. TRANSF. DE VALORES", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
-    custo_absorcao: false, agrosoft_id: 607,
+    custo_absorcao: false, ref_id: 607,
   }),
   desp("2.03.01.01.006", "DÉBITO REF. APLICAÇÃO", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
-    custo_absorcao: false, agrosoft_id: 791,
+    custo_absorcao: false, ref_id: 791,
   }),
 
   // 2.03.01.02 — Financiamentos e Empréstimos
   grp("2.03.01.02",   "FINANCIAMENTOS E EMPRÉSTIMOS",    "despesa"),
   desp("2.03.01.02.001", "PAGAMENTO EGF", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 615,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 615,
     conta_debito: "2.1.4", conta_credito: "1.1.1.2", tipo_formula: "baixas",
   }),
   desp("2.03.01.02.002", "PAGAMENTO CUSTEIOS", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 250,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 250,
     conta_debito: "2.1.4", conta_credito: "1.1.1.2", tipo_formula: "baixas",
   }),
   desp("2.03.01.02.003", "PAGAMENTO CPR", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 613,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 613,
     tipo_formula: "baixas",
   }),
   desp("2.03.01.02.004", "PAGAMENTO FINAME", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 460,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 460,
     tipo_formula: "baixas",
   }),
   desp("2.03.01.02.005", "PAGAMENTO EMPRÉSTIMOS", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 252,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 252,
     tipo_formula: "baixas",
   }),
   desp("2.03.01.02.006", "TÍTULOS DE CAPITALIZAÇÃO", {
-    permite_cp_cr: true, custo_absorcao: false, agrosoft_id: 632,
+    permite_cp_cr: true, custo_absorcao: false, ref_id: 632,
   }),
 
   // 2.03.01.03 — Juros e Encargos
   grp("2.03.01.03",   "JUROS E ENCARGOS",                "despesa"),
   desp("2.03.01.03.001", "JUROS EGF", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 548,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 548,
     conta_debito: "6.5.1", conta_credito: "2.1.4",
   }),
   desp("2.03.01.03.002", "JUROS CUSTEIOS", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 156,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 156,
     conta_debito: "6.5.1", conta_credito: "2.1.4",
   }),
   desp("2.03.01.03.003", "JUROS CPR", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 546,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 546,
   }),
   desp("2.03.01.03.004", "JUROS FINAME", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 676,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 676,
   }),
   desp("2.03.01.03.005", "JUROS EMPRÉSTIMO", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 256,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 256,
   }),
   desp("2.03.01.03.006", "OUTROS ACRÉSCIMOS PAGOS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
-    informa_complemento: true, agrosoft_id: 166,
+    informa_complemento: true, ref_id: 166,
   }),
 
   // 2.03.01.05 — Despesas Particulares
@@ -1045,40 +1045,40 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.03.01.05.001", "DESPESAS PARTICULARES", {
     permite_cp_cr: true, tipo_lcdpr: "5",
     custo_absorcao: false, informa_complemento: true,
-    agrosoft_id: 898,
+    ref_id: 898,
   }),
 
   // 2.03.02 — Despesas Patrimoniais
   grp("2.03.02",      "DESPESAS PATRIMONIAIS",           "despesa"),
   grp("2.03.02.01",   "INVESTIMENTOS",                   "despesa"),
   desp("2.03.02.01.001", "COMPRA DE IMÓVEIS", {
-    permite_cp_cr: true, tipo_lcdpr: "2", custo_absorcao: false, agrosoft_id: 630,
+    permite_cp_cr: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 630,
     conta_debito: "6.3.2", conta_credito: "2.1.1.2",
   }),
   desp("2.03.02.01.002", "CONSTRUÇÃO E REFORMA", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, agrosoft_id: 445,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 445,
   }),
   desp("2.03.02.01.003", "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM.", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, agrosoft_id: 246,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 246,
     conta_debito: "6.3.1", conta_credito: "2.1.1.1", informa_complemento: true,
   }),
   desp("2.03.02.01.004", "AQUISIÇÃO DE VEÍCULOS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, agrosoft_id: 248,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 248,
   }),
   desp("2.03.02.01.005", "AQUISIÇÃO DE MÓVEIS E UTENSÍLIOS", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, agrosoft_id: 735,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 735,
   }),
   desp("2.03.02.01.006", "CONSÓRCIOS NÃO CONTEMPLADOS", {
-    permite_cp_cr: true, custo_absorcao: false, agrosoft_id: 473,
+    permite_cp_cr: true, custo_absorcao: false, ref_id: 473,
   }),
   desp("2.03.02.01.007", "CONSÓRCIOS CONTEMPLADOS", {
-    permite_cp_cr: true, custo_absorcao: false, agrosoft_id: 866,
+    permite_cp_cr: true, custo_absorcao: false, ref_id: 866,
   }),
   desp("2.03.02.01.008", "TARIFAS CONSÓRCIOS", {
-    permite_cp_cr: true, custo_absorcao: false, agrosoft_id: 885,
+    permite_cp_cr: true, custo_absorcao: false, ref_id: 885,
   }),
   desp("2.03.02.01.009", "REFLORESTAMENTO", {
-    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, agrosoft_id: 793,
+    permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 793,
   }),
 
   // 2.03.02.02 — Depreciações e Perdas
@@ -1088,20 +1088,20 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: false, gerar_depreciacao: true, inativo: true,
     conta_debito: "6.2.1", conta_credito: "1.2.2.1",
-    agrosoft_id: 342,
+    ref_id: 342,
   }),
   desp("2.03.02.02.002", "DEPRECIAÇÃO MÁQUINAS", {
     permite_cp_cr: false, permite_tesouraria: false,
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: false, gerar_depreciacao: true, inativo: true,
     conta_debito: "6.2.1", conta_credito: "1.2.2.1",
-    agrosoft_id: 294,
+    ref_id: 294,
   }),
   desp("2.03.02.02.003", "SAÍDA REF. AJUSTE DE ESTOQUE", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
-    custo_absorcao: false, agrosoft_id: 435,
+    custo_absorcao: false, ref_id: 435,
   }),
 
   // 2.03.02.03 — Seguros
@@ -1109,13 +1109,13 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.03.02.03.001", "SEGUROS MÁQUINAS", {
     permite_cp_cr: true, tipo_lcdpr: "1",
     custo_absorcao: true, conta_debito: "6.7.1", conta_credito: "2.1.1.1",
-    agrosoft_id: 380,
+    ref_id: 380,
   }),
   desp("2.03.02.03.002", "SEGUROS BENFEITORIAS", {
-    permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, agrosoft_id: 378,
+    permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 378,
   }),
   desp("2.03.02.03.003", "SEGUROS VEÍCULOS", {
-    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, agrosoft_id: 692,
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 692,
   }),
   desp("2.03.02.03.004", "SEGURO AGRÍCOLA (LAVOURA)", {
     permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true,
@@ -1125,13 +1125,13 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   // 2.03.02.04 — Juros sobre Patrimônio
   grp("2.03.02.04",   "JUROS SOBRE PATRIMÔNIO",          "despesa"),
   desp("2.03.02.04.001", "JUROS SOBRE BENFEITORIAS", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 356,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 356,
   }),
   desp("2.03.02.04.002", "JUROS SOBRE MÁQUINAS", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 358,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 358,
   }),
   desp("2.03.02.04.003", "JUROS SOBRE PROPRIEDADE", {
-    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, agrosoft_id: 360,
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 360,
   }),
 
   // ═══════════════════════════════════════════════════════════
@@ -1142,52 +1142,52 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_baixas: true,
     tipo_formula: "baixas",
     historico_tesouraria_id: 3, historico_tesouraria_nome: "RECEBIMENTO CONTAS",
-    gerar_financeiro: false, agrosoft_id: 558,
+    gerar_financeiro: false, ref_id: 558,
   }),
   rec("3.02",  "ENTRADA REF. TAXA ARMAZÉM", {
     permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 781,
+    gerar_financeiro: false, ref_id: 781,
   }),
   rec("3.03",  "ENTRADA DE GRÃOS DE TERCEIROS", {
     permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 766,
+    gerar_financeiro: false, ref_id: 766,
   }),
   rec("3.04",  "RETORNO DE REMESSA P/ ARMAZENAGEM", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 765,
+    gerar_financeiro: false, ref_id: 765,
   }),
   rec("3.05",  "ENTRADA REF. TRANSF. DE DEPÓSITO", {
     permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 388,
+    gerar_financeiro: false, ref_id: 388,
   }),
   rec("3.06",  "IMPLANTAÇÃO DE SALDO CRÉDITO", {
     permite_tesouraria: true,
     historico_tesouraria_id: 387, historico_tesouraria_nome: "IMPLANTAÇÃO DE SALDO C",
-    gerar_financeiro: false, agrosoft_id: 346,
+    gerar_financeiro: false, ref_id: 346,
   }),
   rec("3.07",  "CRÉDITO REF. RESGATE DE APLICAÇÃO", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
-    gerar_financeiro: false, agrosoft_id: 790,
+    gerar_financeiro: false, ref_id: 790,
   }),
   rec("3.08",  "RECEBIMENTO DE TERCEIROS", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 40,
+    gerar_financeiro: false, ref_id: 40,
   }),
   rec("3.09",  "SIMPLES REMESSA DE COMPRA", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 754,
+    gerar_financeiro: false, ref_id: 754,
   }),
   rec("3.10",  "TRANSFERÊNCIA CAIXA P/ ESTOQUE", {
     permite_estoque: true,
     operacao_estoque: "entrada", tipo_custo_estoque: "ajuste",
-    gerar_financeiro: false, agrosoft_id: 384,
+    gerar_financeiro: false, ref_id: 384,
   }),
 
   // ═══════════════════════════════════════════════════════════
@@ -1198,63 +1198,63 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     permite_baixas: true,
     tipo_formula: "baixas",
     historico_tesouraria_id: 1, historico_tesouraria_nome: "PAGAMENTO CONTAS",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 560,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 560,
   }),
   desp("4.02", "SAÍDA REF. TAXA ARMAZÉM", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 780,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 780,
   }),
   desp("4.03", "SAÍDA DE GRÃOS DE TERCEIROS", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 763,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 763,
   }),
   desp("4.04", "REMESSA PARA ARMAZENAGEM (SAÍDA)", {
     permite_notas_fiscais: true, permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 701,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 701,
   }),
   desp("4.05", "SAÍDA REF. TRANSF. DE DEPÓSITO", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 275,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 275,
   }),
   desp("4.06", "IMPLANTAÇÃO DE SALDO DÉBITO", {
     permite_tesouraria: true,
     historico_tesouraria_id: 386, historico_tesouraria_nome: "IMPLANTAÇÃO DE SALDO D",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 689,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 689,
   }),
   desp("4.07", "DÉBITO REF. APLICAÇÃO", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 791,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 791,
   }),
   desp("4.08", "SAQUES", {
     permite_tesouraria: true,
     historico_tesouraria_id: 1, historico_tesouraria_nome: "PAGAMENTO CONTAS",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 892,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 892,
   }),
   desp("4.09", "SAÍDA DO BANCO PARA DEPÓSITO EM CONTA", {
     permite_tesouraria: true,
     historico_tesouraria_id: 1, historico_tesouraria_nome: "PAGAMENTO CONTAS",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 498,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 498,
   }),
   desp("4.10", "SAÍDA DO BANCO PARA O CAIXA", {
     permite_tesouraria: true,
     historico_tesouraria_id: 1, historico_tesouraria_nome: "PAGAMENTO CONTAS",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 500,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 500,
   }),
   desp("4.11", "DIFERENÇA DE CLASSIFICAÇÃO NO ROMANEIO", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
-    custo_absorcao: false, gerar_financeiro: false, agrosoft_id: 565,
+    custo_absorcao: false, gerar_financeiro: false, ref_id: 565,
   }),
   desp("4.12", "DISTRIBUIÇÃO DE LUCROS", {
     permite_cp_cr: true,
     custo_absorcao: false,
     historico_tesouraria_id: undefined, historico_tesouraria_nome: undefined,
-    agrosoft_id: 924,
+    ref_id: 924,
   }),
 ];
 
@@ -1330,8 +1330,8 @@ export function getDreGrupo(classificacao: string): string {
 }
 
 // ── CFOP Seed ────────────────────────────────────────────────────────────────
-// 352 registros extraídos do Agrosoft (Historico_Fiscal)
-// Chave: agrosoft_op_id == operacoes_gerenciais.agrosoft_id
+// 352 registros de vínculos CFOP x Operação Gerencial
+// Chave: op_ref_id == operacoes_gerenciais.ref_id
 type CfopRecord = {
   cfop: string;
   descricao_cfop: string;
@@ -1939,22 +1939,22 @@ const CFOP_SEED: Record<number, CfopRecord[]> = {
   ],
 };
 
-// Importa CFOPs padrão do Agrosoft para a tabela operacao_cfop_fiscal
+// Importa CFOPs padrão para a tabela operacao_cfop_fiscal
 // Deve ser chamada APÓS seedOperacoesGerenciais (pois precisa dos UUIDs)
 export async function seedCfopsFiscais(fazenda_id: string): Promise<{ inseridos: number; ignorados: number }> {
   const db = supabase;
 
-  // 1. Buscar mapeamento agrosoft_id → uuid das operações desta fazenda
+  // 1. Buscar mapeamento ref_id → uuid das operações desta fazenda
   const { data: ops, error: opErr } = await db
     .from("operacoes_gerenciais")
-    .select("id, agrosoft_id")
+    .select("id, ref_id")
     .eq("fazenda_id", fazenda_id)
-    .not("agrosoft_id", "is", null);
+    .not("ref_id", "is", null);
   if (opErr) throw new Error(`Erro ao buscar operações: ${opErr.message}`);
 
-  const agrosoftToUuid: Record<number, string> = {};
+  const refToUuid: Record<number, string> = {};
   for (const op of ops ?? []) {
-    if (op.agrosoft_id) agrosoftToUuid[op.agrosoft_id] = op.id;
+    if (op.ref_id) refToUuid[op.ref_id] = op.id;
   }
 
   // 2. Limpar registros anteriores desta fazenda
@@ -1964,8 +1964,8 @@ export async function seedCfopsFiscais(fazenda_id: string): Promise<{ inseridos:
   const rows: object[] = [];
   let ignorados = 0;
   for (const [opIdStr, cfops] of Object.entries(CFOP_SEED)) {
-    const agrosoftId = Number(opIdStr);
-    const uuid = agrosoftToUuid[agrosoftId];
+    const refId = Number(opIdStr);
+    const uuid = refToUuid[refId];
     if (!uuid) { ignorados += cfops.length; continue; }
     for (const c of cfops) {
       rows.push({

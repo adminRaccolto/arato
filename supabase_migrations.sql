@@ -3871,7 +3871,7 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE operacoes_gerenciais
   ADD COLUMN IF NOT EXISTS historico_tesouraria_id   INTEGER,
   ADD COLUMN IF NOT EXISTS historico_tesouraria_nome TEXT,
-  ADD COLUMN IF NOT EXISTS agrosoft_id               INTEGER;
+  ADD COLUMN IF NOT EXISTS ref_id               INTEGER;
 
 -- Tabela de Histórico Fiscal: CFOPs e CSTs válidos por operação gerencial
 CREATE TABLE IF NOT EXISTS operacao_cfop_fiscal (

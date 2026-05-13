@@ -1336,7 +1336,7 @@ export type RateioGlobalCiclo = {
 };
 
 // ── Operações Gerenciais / Plano de Contas ───────────────────
-// Equivalente ao "Cadastro de Operações" do Agrosoft
+// Cadastro de Operações Gerenciais
 export type OperacaoGerencial = {
   id: string;
   fazenda_id: string;
@@ -1394,18 +1394,18 @@ export type OperacaoGerencial = {
   conta_credito?: string;   // código da conta contábil de crédito
 
   // ── Histórico Tesouraria ──
-  // Liga a operação ao tipo de movimentação na Tesouraria (conforme Agrosoft)
+  // Liga a operação ao tipo de movimentação na Tesouraria
   historico_tesouraria_id?: number;    // ex: 1=PAGAMENTO CONTAS, 3=RECEBIMENTO CONTAS, 345=TRANSF. VALORES
   historico_tesouraria_nome?: string;  // ex: "PAGAMENTO CONTAS"
 
-  // ── Dados de referência do Agrosoft ──
-  agrosoft_id?: number;   // ID original no Agrosoft (para rastreabilidade)
+  // ── Dados de referência internos ──
+  ref_id?: number;
 
   created_at?: string;
 };
 
 // ── Histórico Fiscal (CFOP × Operação Gerencial) ─────────────
-// Equivalente ao "Histórico Fiscal" do Agrosoft — define CFOPs e CSTs válidos por operação
+// Histórico Fiscal — define CFOPs e CSTs válidos por operação
 export type OperacaoCfopFiscal = {
   id: string;
   operacao_gerencial_id: string;

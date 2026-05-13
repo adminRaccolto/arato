@@ -2,7 +2,7 @@
 # RacTech — Contexto Completo do Projeto
 
 > Este arquivo é o cérebro do projeto. Leia-o inteiro antes de qualquer tarefa.
-> Ele contém a análise real do sistema de referência (Agrosoft) e todas as
+> Ele contém a análise real do sistema de referência (ERP de referência) e todas as
 > decisões de produto tomadas até agora. O dono do projeto não programa —
 > o Claude é o único desenvolvedor.
 
@@ -18,15 +18,15 @@ Projeto rodando em `localhost:3000` com Next.js 16.
 
 ---
 
-## 2. O SISTEMA DE REFERÊNCIA — AGROSOFT / AGROGESTÃO 4
+## 2. O SISTEMA DE REFERÊNCIA — ERP DE REFERÊNCIA
 
-### 2.1 O que é o Agrosoft
+### 2.1 O que é o ERP de referência
 
 Sistema ERP agrícola desktop brasileiro, desenvolvido em **Delphi (Embarcadero XE2)**,
 banco de dados **Firebird 2.5** (arquivo `.FDB`).
 Distribuído como instalador Windows com múltiplos executáveis e DLLs.
 É um sistema **local** — roda na máquina do cliente, não na nuvem.
-Versão analisada: **AgroGestão 4 / versão 5.x** (baseado nos informativos de versão).
+Versão analisada: **versão analisada** (baseado nos informativos de versão).
 
 O pacote completo foi entregue em um arquivo RAR de **260MB (272.552.665 bytes)**
 contendo 5.747 arquivos identificados via leitura do binário do RAR
@@ -36,17 +36,17 @@ contendo 5.747 arquivos identificados via leitura do binário do RAR
 
 | Executável | Função |
 |---|---|
-| `AgroGestao4.exe` | ERP central — gestão geral, cadastros, financeiro |
-| `AgroLavoura4.exe` | Gestão de lavoura — safras, talhões, operações, colheita |
-| `AgroPecuario4.exe` | Gestão pecuária — rebanho, lotes, pesagens, reprodução |
-| `AgroSementes4.exe` | Gestão de sementes — UBS, beneficiamento, qualidade |
-| `AgroCerealista4.exe` | Trading de grãos — compra, venda, armazenagem, romaneio |
-| `AgroGestaoNet.exe` | Versão em rede — acesso multi-estação local |
-| `AgroRestServer.exe` | Servidor REST — já tinham API própria! |
-| `AgroExpEDINeoGrid.exe` | Exportação EDI — integração com tradings |
+| `erp_gestao.exe` | ERP central — gestão geral, cadastros, financeiro |
+| `erp_lavoura.exe` | Gestão de lavoura — safras, talhões, operações, colheita |
+| `erp_pecuario.exe` | Gestão pecuária — rebanho, lotes, pesagens, reprodução |
+| `erp_sementes.exe` | Gestão de sementes — UBS, beneficiamento, qualidade |
+| `erp_cerealista.exe` | Trading de grãos — compra, venda, armazenagem, romaneio |
+| `erp_rede.exe` | Versão em rede — acesso multi-estação local |
+| `erp_rest.exe` | Servidor REST — já tinham API própria! |
+| `erp_edi.exe` | Exportação EDI — integração com tradings |
 | `ServicoEnvioAtualizacoes.exe` | Serviço de atualização automática |
 
-**Conclusão crítica:** o Agrosoft já era modular. Cada executável é um módulo
+**Conclusão crítica:** o ERP de referência já era modular. Cada executável é um módulo
 independente. Nossa missão é unificar tudo em uma única aplicação web.
 
 ### 2.3 Arquitetura interna — pacotes BPL (Delphi)
@@ -55,45 +55,45 @@ O sistema usa arquitetura em camadas bem definida, revelada pelos nomes dos paco
 
 #### Camada de domínio
 ```
-Agro1.TiposPrimitivos.bpl          tipos base (enums, constantes)
-Agro1.Modelo.Agricola.Intf.bpl     interfaces do modelo agrícola
-Agro1.Modelo.Geografico.Intf.bpl   interfaces do modelo geográfico
-Agro1.Visual.Agricola.Intf.bpl     interfaces visuais agrícolas
-Agro1.Visual.Geografico.Intf.bpl   interfaces visuais geográficas
+[pacote-dominio].bpl          tipos base (enums, constantes)
+[pacote-dominio].bpl     interfaces do modelo agrícola
+[pacote-dominio].bpl   interfaces do modelo geográfico
+[pacote-dominio].bpl     interfaces visuais agrícolas
+[pacote-dominio].bpl   interfaces visuais geográficas
 ```
 
 #### Camada de regras de negócio
 ```
-Agro1.Regra.Agricola.Impl.bpl      regras agrícolas
-Agro1.Regra.Geografico.Impl.bpl    regras geográficas
-Agro1.VCL.Agricola.Impl.bpl        UI agrícola
-Agro1.VCL.Geografico.Impl.bpl      UI geográfica
+[pacote-dominio].bpl      regras agrícolas
+[pacote-dominio].bpl    regras geográficas
+[pacote-dominio].bpl        UI agrícola
+[pacote-dominio].bpl      UI geográfica
 ```
 
 #### Camada de banco de dados
 ```
-Agro1.BD.Modelo.Agricola.Impl.bpl     acesso a dados agrícolas
-Agro1.BD.Modelo.Geografico.Impl.bpl   acesso a dados geográficos
+[pacote-dominio].bpl     acesso a dados agrícolas
+[pacote-dominio].bpl   acesso a dados geográficos
 ```
 
 #### Pacotes funcionais (os módulos de negócio reais)
 ```
-pkgImplementacoesAgro1.bpl               base agrícola
-pkgImplementacoesERP.bpl                 ERP geral
-pkgImplementacoesGestao.bpl              gestão
-pkgImplementacoesContabil.bpl            contabilidade integrada
-pkgImplementacoesPecuario.bpl            pecuária
-pkgImplementacoesSementes.bpl            sementes
-pkgImplementacoesVinculos.bpl            vínculos entre entidades
-pkgImplementacoesNotaFiscal.bpl          nota fiscal
-pkgImplementacoesItensEstoque.bpl        itens de estoque
-pkgImplementacoesContasPagarReceber.bpl  contas a pagar e receber
-pkgImplementacoesDePara.bpl              tabelas de conversão (De/Para)
-pkgLegadoAgro1.bpl                       código legado módulo 1
-pkgLegadoAgroGestao.bpl                  legado gestão
-pkgLegadoAgroLavoura.bpl                 legado lavoura
-pkgLegadoAgroPecuario.bpl                legado pecuária
-pkgLegadoAgroSementes.bpl                legado sementes
+[pacote-base-agricola].bpl               base agrícola
+[pacote-negocio].bpl                 ERP geral
+[pacote-negocio].bpl              gestão
+[pacote-negocio].bpl            contabilidade integrada
+[pacote-negocio].bpl            pecuária
+[pacote-negocio].bpl            sementes
+[pacote-negocio].bpl            vínculos entre entidades
+[pacote-negocio].bpl          nota fiscal
+[pacote-negocio].bpl        itens de estoque
+[pacote-negocio].bpl  contas a pagar e receber
+[pacote-negocio].bpl              tabelas de conversão (De/Para)
+[pacote-legado-base].bpl                       código legado módulo 1
+[pacote-legado].bpl                  legado gestão
+[pacote-legado].bpl                 legado lavoura
+[pacote-legado].bpl                legado pecuária
+[pacote-legado].bpl                legado sementes
 ```
 
 **O que isso nos diz:**
@@ -113,11 +113,11 @@ pkgLegadoAgroSementes.bpl                legado sementes
 - Porta padrão: 3050 (script de firewall incluso: `script_firewall_firebird.cmd`)
 
 **Nossa decisão:** PostgreSQL via Supabase. A estrutura de tabelas será
-construída inferindo da lógica de negócio do Agrosoft.
+construída inferindo da lógica de negócio do ERP de referência.
 
 ### 2.5 Módulo Fiscal — escopo completo identificado
 
-Este é o ponto mais forte do Agrosoft. Suporta toda a cadeia fiscal brasileira.
+Este é o ponto mais forte do ERP de referência. Suporta toda a cadeia fiscal brasileira.
 
 #### Documentos eletrônicos com schemas XSD encontrados
 ```
@@ -181,7 +181,7 @@ DANFE SIMPLIFICADO - ETIQUETA - NT2020.004    Etiqueta simplificada
 ```
 
 #### Biblioteca fiscal usada
-`AgrosACBr.bpl` — integração com **ACBr** (Automação Comercial Brasil),
+`biblioteca-fiscal.bpl` — integração com **ACBr** (Automação Comercial Brasil),
 biblioteca open source mais usada no Brasil para emissão de documentos fiscais.
 
 **Nossa decisão:** usar biblioteca Node.js equivalente ao ACBr para emissão
@@ -235,7 +235,7 @@ agrogestaonet.ini        configurações da versão em rede
 IBConfig.ini             configurações do banco Firebird
 ```
 
-**`AnaliseSensibilidade.ini`** — prova que o Agrosoft tem um simulador
+**`AnaliseSensibilidade.ini`** — prova que o ERP de referência tem um simulador
 financeiro de análise de sensibilidade de preços e custos. Funcionalidade
 valiosa a replicar no RacTech como diferencial.
 
@@ -249,7 +249,7 @@ AgroGestao4.Acesso.2026.04.09.08.35.33.411.log  ← do dia da análise!
 ```
 
 O log de **09/04/2026 às 08h35** é do próprio dia que analisamos o sistema.
-O Agrosoft estava em uso ativo enquanto o pacote era extraído.
+O ERP de referência estava em uso ativo enquanto o pacote era extraído.
 Sistema real, em produção, com usuários reais.
 
 ### 2.9 Sistema de atualização automática
@@ -339,7 +339,7 @@ As regras de negócio são profundas, testadas e validadas por usuários reais.
 
 ---
 
-## 3. O QUE O AGROSOFT FAZ MAL — NOSSAS OPORTUNIDADES
+## 3. O QUE O ERP DE REFERÊNCIA FAZ MAL — NOSSAS OPORTUNIDADES
 
 1. **100% manual** — cada NF-e, cada lançamento, cada relatório exige ação
    explícita. Zero automação proativa.
@@ -379,9 +379,9 @@ As regras de negócio são profundas, testadas e validadas por usuários reais.
 > **"O sistema pode fazer isso automaticamente?"**
 > Se sim → automatizar. Se precisar do usuário → 1 clique, nunca mais.
 
-### Comparativo direto vs Agrosoft
+### Comparativo direto vs ERP de referência
 
-| Situação | Agrosoft | RacTech |
+| Situação | ERP de referência | RacTech |
 |---|---|---|
 | Venda de grão | Usuário emite NF-e manualmente | NF-e gerada e transmitida ao confirmar contrato |
 | Vencimento de conta | Usuário verifica manualmente | Alerta 7, 3 e 1 dia antes |
@@ -419,7 +419,7 @@ As regras de negócio são profundas, testadas e validadas por usuários reais.
 |---|---|---|
 | Dashboard com automações | `app/page.tsx` | ✅ Pronto |
 | Propriedades e Talhões | `app/propriedades/page.tsx` | ✅ Pronto |
-| AgroLavoura — Safras | `app/lavoura/page.tsx` | ✅ Pronto |
+| Lavoura — Safras | `app/lavoura/page.tsx` | ✅ Pronto |
 | Fiscal / NF-e | `app/fiscal/page.tsx` | ✅ Pronto |
 
 ### Fase 2
@@ -575,7 +575,7 @@ arato/
 ## 12. HISTÓRICO
 
 ### Sessão 1 — 9 de abril de 2026
-- Analisado pacote Agrosoft RAR 260MB (5.747 arquivos via leitura binária)
+- Analisado pacote ERP de referência RAR 260MB (5.747 arquivos via leitura binária)
 - Identificados 9 executáveis, 30+ BPLs, esquema fiscal completo
 - Log de acesso do próprio dia confirmado — sistema em produção ativa
 - Definido nome RacTech e filosofia de automação máxima
@@ -649,7 +649,7 @@ arato/
 
 ### Sessão 10 — 11 de abril de 2026
 - Todos os modais de `app/cadastros/page.tsx` alargados (720–960px) com grids 3 colunas — sem rolagem vertical nem horizontal
-- `app/contratos/page.tsx` ✅ reescrito — Módulo de Comercialização de Grãos fiel ao Agrosoft:
+- `app/contratos/page.tsx` ✅ reescrito — Módulo de Comercialização de Grãos fiel ao ERP de referência:
   - Aba **Principal**: Nº Lançamento, Nº Contrato, Safra, Autorização, Tipo, flags Confirmado/À Fixar/Venda a Ordem, Produtor, Cliente, Nr. Contrato Cliente, Contato Broker, Grupo Vendedor, Vendedor, Modalidade Preço, Natureza Operação, CFOP, Saldo Tipo, Frete, Valor Frete
   - Aba **Adicionais**: Propriedade, Empreendimento, Seguradora, Corretora, CT-e, Terceiro, Depósito Carregamento, Depósito Fiscal, Obs., Obs. Interna
   - Grid de itens editável com add/remove e cálculo automático de totais

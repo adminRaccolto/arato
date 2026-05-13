@@ -2210,11 +2210,11 @@ function CadastrosInner() {
                     style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: seedingCfop ? "not-allowed" : "pointer", fontSize: 13, opacity: seedingCfop ? 0.6 : 1 }}
                     disabled={seedingCfop}
                     onClick={async () => {
-                      if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão Agrosoft (352 registros). Continuar?")) return;
+                      if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão do sistema (352 registros). Continuar?")) return;
                       setSeedingCfop(true);
                       try {
                         const { inseridos, ignorados } = await seedCfopsFiscais(fazendaId!);
-                        alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados (operações sem agrosoft_id correspondente)` : ""}.`);
+                        alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados (operações sem ref_id correspondente)` : ""}.`);
                       } catch (e: unknown) {
                         const msg = e instanceof Error
                           ? e.message
@@ -2378,7 +2378,7 @@ function CadastrosInner() {
                       <button
                         disabled={seedingCfop}
                         onClick={async () => {
-                          if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão Agrosoft (352 registros). Continuar?")) return;
+                          if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão do sistema (352 registros). Continuar?")) return;
                           setSeedingCfop(true);
                           try {
                             const { inseridos, ignorados } = await seedCfopsFiscais(fazendaId!);
@@ -2439,7 +2439,7 @@ function CadastrosInner() {
                   {loadingHisFiscal && <div style={{ textAlign: "center", padding: 40, color: "#888" }}>Carregando…</div>}
                   {!loadingHisFiscal && hisFiscal.length === 0 && (
                     <div style={{ textAlign: "center", padding: 32, color: "#888", fontSize: 13 }}>
-                      Nenhum CFOP vinculado. Clique em <strong>"↓ Importar CFOPs Padrão"</strong> acima para carregar os 352 registros padrão do Agrosoft.
+                      Nenhum CFOP vinculado. Clique em <strong>"↓ Importar CFOPs Padrão"</strong> acima para carregar os 352 registros padrão do sistema.
                     </div>
                   )}
                   {!loadingHisFiscal && hisFiscal.length > 0 && gruposArr.length === 0 && (
