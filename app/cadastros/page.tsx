@@ -80,7 +80,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -104,6 +104,7 @@ const TAB_GROUPS: TabGroup[] = [
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
     { key: "operacoes_gerenciais", label: "Operações Gerenciais" },
+    { key: "historico_fiscal",     label: "Histórico Fiscal (CFOPs)" },
     { key: "formas_pagamento",     label: "Formas de Pagamento"  },
     { key: "contas_bancarias",     label: "Contas Bancárias"     },
   ]},
@@ -390,6 +391,21 @@ function CadastrosInner() {
   const [seedingOpGer, setSeedingOpGer] = useState(false);
   const [seedingCfop, setSeedingCfop] = useState(false);
 
+  // ── Histórico Fiscal (leitura) ──
+  type HisFiscalRow = {
+    id: string; cfop: string; descricao_cfop: string | null;
+    operacao_nf: string | null; tipo_pessoa: string | null;
+    cst_pis: string | null; cst_cofins: string | null;
+    ncm: string | null; fins_exportacao: boolean; compoe_faturamento: boolean;
+    op_classificacao: string; op_descricao: string; op_tipo: string;
+  };
+  const [hisFiscal, setHisFiscal]           = useState<HisFiscalRow[]>([]);
+  const [loadingHisFiscal, setLoadingHisFiscal] = useState(false);
+  const [hfBusca, setHfBusca]               = useState("");
+  const [hfFiltroCfop, setHfFiltroCfop]     = useState("");
+  const [hfFiltroTipo, setHfFiltroTipo]     = useState<""|"receita"|"despesa">("");
+  const [hfFiltroNf, setHfFiltroNf]         = useState("");
+
   // ── Formas de Pagamento ──
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [modalFP, setModalFP]                 = useState(false);
@@ -493,6 +509,37 @@ function CadastrosInner() {
       listarPlanoContas(fazendaId).then(r => setPlanoContasDB(r.length > 0 ? r : planoContasPadrao)).catch(() => setPlanoContasDB(planoContasPadrao));
     }
     if (aba === "padroes_classificacao") supabase.from("padroes_classificacao").select("*").eq("fazenda_id", fazendaId).order("commodity").order("nome_padrao").then(({ data, error }) => { if (error) setErro(error.message); else setPadroesCls((data ?? []) as PadraoClassificacao[]); });
+    if (aba === "historico_fiscal") {
+      setLoadingHisFiscal(true);
+      supabase
+        .from("operacao_cfop_fiscal")
+        .select("*, operacoes_gerenciais(classificacao, descricao, tipo)")
+        .eq("fazenda_id", fazendaId)
+        .eq("ativo", true)
+        .order("cfop")
+        .then(({ data, error }) => {
+          setLoadingHisFiscal(false);
+          if (error) { setErro(error.message); return; }
+          setHisFiscal((data ?? []).map((r: Record<string, unknown>) => {
+            const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {};
+            return {
+              id:               String(r.id),
+              cfop:             String(r.cfop ?? ""),
+              descricao_cfop:   r.descricao_cfop as string | null,
+              operacao_nf:      r.operacao_nf as string | null,
+              tipo_pessoa:      r.tipo_pessoa as string | null,
+              cst_pis:          r.cst_pis as string | null,
+              cst_cofins:       r.cst_cofins as string | null,
+              ncm:              r.ncm as string | null,
+              fins_exportacao:  Boolean(r.fins_exportacao),
+              compoe_faturamento: Boolean(r.compoe_faturamento),
+              op_classificacao: op.classificacao ?? "—",
+              op_descricao:     op.descricao ?? "—",
+              op_tipo:          op.tipo ?? "",
+            };
+          }));
+        });
+    }
   }, [aba, fazendaId]);
 
   // Carrega talhões/matrículas ao expandir fazenda
@@ -2295,6 +2342,139 @@ function CadastrosInner() {
               </table>
             </div>
           )}
+
+          {/* ══ HISTÓRICO FISCAL (CFOPs) ══ */}
+          {aba === "historico_fiscal" && (() => {
+            const opNfOptions = Array.from(new Set(hisFiscal.map(r => r.operacao_nf).filter(Boolean))).sort() as string[];
+            const linhas = hisFiscal.filter(r => {
+              const buscaOk = !hfBusca || r.op_classificacao.includes(hfBusca) || r.op_descricao.toLowerCase().includes(hfBusca.toLowerCase()) || r.cfop.includes(hfBusca) || (r.descricao_cfop ?? "").toLowerCase().includes(hfBusca.toLowerCase());
+              const cfopOk  = !hfFiltroCfop || r.cfop.startsWith(hfFiltroCfop);
+              const tipoOk  = !hfFiltroTipo || r.op_tipo === hfFiltroTipo;
+              const nfOk    = !hfFiltroNf   || r.operacao_nf === hfFiltroNf;
+              return buscaOk && cfopOk && tipoOk && nfOk;
+            });
+
+            // Agrupar por operação
+            const grupos = new Map<string, { classificacao: string; descricao: string; tipo: string; rows: typeof linhas }>();
+            for (const r of linhas) {
+              const key = r.op_classificacao;
+              if (!grupos.has(key)) grupos.set(key, { classificacao: r.op_classificacao, descricao: r.op_descricao, tipo: r.op_tipo, rows: [] });
+              grupos.get(key)!.rows.push(r);
+            }
+            const gruposArr = Array.from(grupos.values()).sort((a, b) => a.classificacao.localeCompare(b.classificacao));
+
+            return (
+              <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                {/* Cabeçalho */}
+                <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Histórico Fiscal — CFOPs vinculados às Operações Gerenciais</div>
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                        {loadingHisFiscal ? "Carregando…" : `${hisFiscal.length} registros · ${grupos.size || gruposArr.length} operações · ${linhas.length} exibidos`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setLoadingHisFiscal(true); supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", fazendaId!).eq("ativo", true).order("cfop").then(({ data }) => { setLoadingHisFiscal(false); setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; })); }); }}
+                      style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}
+                    >↺ Atualizar</button>
+                  </div>
+                  {/* Filtros */}
+                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <input
+                      value={hfBusca} onChange={e => setHfBusca(e.target.value)}
+                      placeholder="Buscar operação, CFOP ou descrição…"
+                      style={{ flex: "1 1 220px", minWidth: 180, padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13 }}
+                    />
+                    <input
+                      value={hfFiltroCfop} onChange={e => setHfFiltroCfop(e.target.value)}
+                      placeholder="Filtra por CFOP ex: 5101"
+                      style={{ width: 130, padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13 }}
+                    />
+                    <select value={hfFiltroTipo} onChange={e => setHfFiltroTipo(e.target.value as ""| "receita"|"despesa")}
+                      style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13 }}>
+                      <option value="">Receita + Despesa</option>
+                      <option value="receita">Receitas</option>
+                      <option value="despesa">Despesas</option>
+                    </select>
+                    <select value={hfFiltroNf} onChange={e => setHfFiltroNf(e.target.value)}
+                      style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, maxWidth: 220 }}>
+                      <option value="">Todas as operações NF</option>
+                      {opNfOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    {(hfBusca || hfFiltroCfop || hfFiltroTipo || hfFiltroNf) && (
+                      <button onClick={() => { setHfBusca(""); setHfFiltroCfop(""); setHfFiltroTipo(""); setHfFiltroNf(""); }}
+                        style={{ padding: "7px 12px", border: "0.5px solid #E24B4A", borderRadius: 8, background: "#FFF0F0", color: "#E24B4A", fontSize: 12, cursor: "pointer" }}>
+                        ✕ Limpar filtros
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Corpo */}
+                <div style={{ padding: "12px 18px" }}>
+                  {loadingHisFiscal && <div style={{ textAlign: "center", padding: 40, color: "#888" }}>Carregando…</div>}
+                  {!loadingHisFiscal && hisFiscal.length === 0 && (
+                    <div style={{ textAlign: "center", padding: 32, color: "#888", fontSize: 13 }}>
+                      Nenhum CFOP vinculado. Use o botão <strong>"↓ Importar CFOPs Padrão"</strong> na aba Operações Gerenciais.
+                    </div>
+                  )}
+                  {!loadingHisFiscal && hisFiscal.length > 0 && gruposArr.length === 0 && (
+                    <div style={{ textAlign: "center", padding: 24, color: "#888", fontSize: 13 }}>Nenhum resultado para os filtros aplicados.</div>
+                  )}
+                  {gruposArr.map(g => (
+                    <div key={g.classificacao} style={{ marginBottom: 20 }}>
+                      {/* Cabeçalho do grupo */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, padding: "6px 0" }}>
+                        <span style={{ fontFamily: "monospace", fontSize: 11, color: "#888", minWidth: 90 }}>{g.classificacao}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{g.descricao}</span>
+                        {badge(g.tipo === "receita" ? "Receita" : "Despesa",
+                          g.tipo === "receita" ? "#EBF5EB" : "#FCEBEB",
+                          g.tipo === "receita" ? "#1A5C1A" : "#791F1F")}
+                        <span style={{ fontSize: 11, color: "#888" }}>{g.rows.length} CFOP{g.rows.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      {/* Tabela de CFOPs */}
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#F8FAFD", borderRadius: 8, overflow: "hidden" }}>
+                        <thead>
+                          <tr style={{ background: "#EEF3FA" }}>
+                            {["CFOP","Descrição do CFOP","Operação NF","CST PIS","CST COFINS","NCM","Fins Exp.","Comp. Fat."].map(h => (
+                              <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontWeight: 600, color: "#555", fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {g.rows.sort((a, b) => a.cfop.localeCompare(b.cfop)).map((r, i) => (
+                            <tr key={r.id} style={{ borderTop: i > 0 ? "0.5px solid #DDE5EF" : "none", background: i % 2 === 0 ? "#F8FAFD" : "#fff" }}>
+                              <td style={{ padding: "6px 10px", fontFamily: "monospace", fontWeight: 700, color: "#1A4870" }}>{r.cfop}</td>
+                              <td style={{ padding: "6px 10px", color: "#333", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao_cfop ?? "—"}</td>
+                              <td style={{ padding: "6px 10px", color: "#555", whiteSpace: "nowrap" }}>{r.operacao_nf ?? "—"}</td>
+                              <td style={{ padding: "6px 10px", textAlign: "center" }}>
+                                {r.cst_pis ? <span style={{ fontFamily: "monospace", background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{r.cst_pis}</span> : <span style={{ color: "#ccc" }}>—</span>}
+                              </td>
+                              <td style={{ padding: "6px 10px", textAlign: "center" }}>
+                                {r.cst_cofins ? <span style={{ fontFamily: "monospace", background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{r.cst_cofins}</span> : <span style={{ color: "#ccc" }}>—</span>}
+                              </td>
+                              <td style={{ padding: "6px 10px", fontFamily: "monospace", color: "#666" }}>{r.ncm ?? "—"}</td>
+                              <td style={{ padding: "6px 10px", textAlign: "center" }}>
+                                {r.fins_exportacao
+                                  ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A10", padding: "2px 6px", borderRadius: 4 }}>Sim</span>
+                                  : <span style={{ color: "#ccc", fontSize: 11 }}>—</span>}
+                              </td>
+                              <td style={{ padding: "6px 10px", textAlign: "center" }}>
+                                {r.compoe_faturamento
+                                  ? <span style={{ fontSize: 10, background: "#EBF5EB", color: "#1A5C1A", padding: "2px 6px", borderRadius: 4 }}>Sim</span>
+                                  : <span style={{ fontSize: 10, background: "#F3F3F3", color: "#888", padding: "2px 6px", borderRadius: 4 }}>Não</span>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ══ FORMAS DE PAGAMENTO ══ */}
           {aba === "formas_pagamento" && (
