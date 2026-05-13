@@ -81,7 +81,7 @@ interface ItemRascunho {
   centro_custo_id: string;
 }
 
-interface PedidoMin { id: string; nr_pedido?: string; fornecedor_id?: string; status: string; }
+interface PedidoMin { id: string; nr_pedido?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; }
 
 const ITEM_VAZIO = (): ItemRascunho => ({
   key: crypto.randomUUID(),
@@ -243,7 +243,7 @@ export default function NfCompraPage() {
     try {
       const { data } = await supabase
         .from("pedidos_compra")
-        .select("id, nr_pedido, fornecedor_id, status")
+        .select("id, nr_pedido, fornecedor_id, contato_fornecedor, status")
         .eq("fazenda_id", fazendaId)
         .in("status", ["rascunho", "aprovado", "entregue"])
         .order("created_at", { ascending: false });
@@ -1087,7 +1087,11 @@ export default function NfCompraPage() {
                         <select value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
                           <option value="">Sem pedido vinculado</option>
                           {pedidos.map(p => (
-                            <option key={p.id} value={p.id}>{p.nr_pedido ?? p.id.substring(0,8)} — {p.status}</option>
+                            <option key={p.id} value={p.id}>{(() => {
+                              const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
+                              const nr = p.nr_pedido ?? p.id.substring(0, 8);
+                              return `${forn} — PC ${nr}`;
+                            })()}</option>
                           ))}
                         </select>
                       </div>
