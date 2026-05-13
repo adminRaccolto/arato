@@ -281,6 +281,11 @@ export async function criarLancamento(l: Omit<Lancamento, "id" | "created_at">):
   return data;
 }
 
+export async function excluirLancamento(id: string): Promise<void> {
+  const { error } = await supabase.from("lancamentos").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // Cria múltiplas parcelas do mesmo lançamento com agrupador único
 export async function criarParcelamento(
   base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador">,

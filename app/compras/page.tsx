@@ -7,7 +7,7 @@ import {
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
-  listarOperacoesGerenciais, criarLancamento,
+  listarOperacoesGerenciais, criarLancamento, excluirLancamento,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial } from "../../lib/supabase";
 
@@ -121,7 +121,7 @@ type FormPedido = {
   operacao: string; operacao_nf: string; operacao_nf_auto: boolean;
   ano_safra_id: string; ciclo_id: string;
   data_vencimento: string;
-  meio_pagamento: string; barter_ano_safra_id: string; barter_ciclo_id: string;
+  meio_pagamento: string; barter_ano_safra_id: string; barter_ciclo_id: string; barter_preco_saca: string;
   aprovador: string; nr_pedido: string; nr_solicitacao: string;
   fornecedor_id: string; nr_pedido_fornecedor: string; variacao_cambial: string;
   deposito_previsao: string; contato_fornecedor: string;
@@ -139,7 +139,7 @@ const PEDIDO_VAZIO: FormPedido = {
   operacao: "", operacao_nf: "", operacao_nf_auto: true,
   ano_safra_id: "", ciclo_id: "",
   data_vencimento: "",
-  meio_pagamento: "", barter_ano_safra_id: "", barter_ciclo_id: "",
+  meio_pagamento: "", barter_ano_safra_id: "", barter_ciclo_id: "", barter_preco_saca: "",
   aprovador: "", nr_pedido: "", nr_solicitacao: "",
   fornecedor_id: "", nr_pedido_fornecedor: "", variacao_cambial: "",
   deposito_previsao: "", contato_fornecedor: "",
@@ -267,7 +267,7 @@ export default function ComprasPage() {
       ano_safra_id: ped.ano_safra_id ?? "", ciclo_id: ped.ciclo_id ?? "",
       data_vencimento: ped.data_vencimento ?? "",
       meio_pagamento: ped.meio_pagamento ?? "",
-      barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "",
+      barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "", barter_preco_saca: String(ped.barter_preco_saca ?? ""),
       aprovador: ped.aprovador ?? "", nr_pedido: ped.nr_pedido ?? "",
       nr_solicitacao: ped.nr_solicitacao ?? "",
       fornecedor_id: ped.fornecedor_id ?? "", nr_pedido_fornecedor: ped.nr_pedido_fornecedor ?? "",
@@ -311,6 +311,7 @@ export default function ComprasPage() {
         meio_pagamento: (f.meio_pagamento as PedidoCompra["meio_pagamento"]) || undefined,
         barter_ano_safra_id: f.barter_ano_safra_id || undefined,
         barter_ciclo_id: f.barter_ciclo_id || undefined,
+        barter_preco_saca: f.barter_preco_saca ? parseFloat(f.barter_preco_saca) : undefined,
         aprovador: f.aprovador || undefined, nr_pedido: f.nr_pedido || undefined,
         nr_solicitacao: f.nr_solicitacao || undefined,
         fornecedor_id: f.fornecedor_id || undefined,
@@ -362,35 +363,71 @@ export default function ComprasPage() {
         }));
       await salvarPedidoCompraItens(pedidoId, fazendaId, itensSalvar);
 
-      // Gera CP em Contas a Pagar quando pedido é aprovado
+      // Gera lançamento quando pedido é aprovado
       const pedidoExistente = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit) : null;
-      const deveGerarCP = f.status === "aprovado" && totalItens > 0 && !pedidoExistente?.lancamento_id;
-      if (deveGerarCP) {
-        const isUSD = f.cotacao_moeda === "USD";
+      const isBarter = f.meio_pagamento === "barter";
+
+      // Se havia lançamento em R$/USD e agora é barter → excluir o lançamento incorreto
+      if (isBarter && pedidoExistente?.lancamento_id) {
+        try {
+          await excluirLancamento(pedidoExistente.lancamento_id);
+          await atualizarPedidoCompra(pedidoId, { lancamento_id: undefined });
+          pedidoExistente.lancamento_id = undefined;
+        } catch { /* ignora */ }
+      }
+
+      const deveGerarLancamento = f.status === "aprovado" && totalItens > 0 && !pedidoExistente?.lancamento_id;
+      if (deveGerarLancamento) {
         const fornecedorNome = pessoas.find(p => p.id === f.fornecedor_id)?.nome ?? f.contato_fornecedor ?? "Fornecedor";
-        // Usa data_vencimento se informada; caso contrário, previsão de entrega ou data de registro
         const vencimento = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
         try {
-          const lanc = await criarLancamento({
-            fazenda_id:        fazendaId!,
-            tipo:              "pagar",
-            moeda:             isUSD ? "USD" : "BRL",
-            cotacao_usd:       isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
-            descricao:         `Pedido de Compra nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fornecedorNome}`,
-            categoria:         "Insumos",
-            data_lancamento:   f.data_registro,
-            data_vencimento:   vencimento,
-            valor:             totalItens,
-            status:            "em_aberto",
-            auto:              true,
-            pessoa_id:         f.fornecedor_id || undefined,
-            origem_lancamento: "pedido_compra",
-            pedido_compra_id:  pedidoId,
-          });
-          await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
+          if (isBarter) {
+            // Barter: lançamento com moeda="barter" — não compõe fluxo de caixa em R$
+            // Valor em sacas = total R$ ÷ preço/sc (negociado ou projeção do ciclo)
+            const cicloSelecionado = ciclos.find(c => c.id === f.barter_ciclo_id);
+            const precoBarter = parseFloat(f.barter_preco_saca) || cicloSelecionado?.preco_esperado_sc || 0;
+            const sacasComprometidas = precoBarter > 0 ? Math.ceil((totalItens / precoBarter) * 100) / 100 : totalItens;
+            const lanc = await criarLancamento({
+              fazenda_id:        fazendaId!,
+              tipo:              "pagar",
+              moeda:             "barter",
+              descricao:         `Barter — PC nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fornecedorNome}`,
+              categoria:         "Insumos",
+              data_lancamento:   f.data_registro,
+              data_vencimento:   vencimento,
+              valor:             sacasComprometidas,
+              status:            "em_aberto",
+              auto:              true,
+              pessoa_id:         f.fornecedor_id || undefined,
+              origem_lancamento: "pedido_compra",
+              pedido_compra_id:  pedidoId,
+              ciclo_id:          f.barter_ciclo_id || f.ciclo_id || undefined,
+            });
+            await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
+          } else {
+            // Pagamento normal (PIX / Boleto / Transferência) → CP em R$ ou USD
+            const isUSD = f.cotacao_moeda === "USD";
+            const lanc = await criarLancamento({
+              fazenda_id:        fazendaId!,
+              tipo:              "pagar",
+              moeda:             isUSD ? "USD" : "BRL",
+              cotacao_usd:       isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
+              descricao:         `Pedido de Compra nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fornecedorNome}`,
+              categoria:         "Insumos",
+              data_lancamento:   f.data_registro,
+              data_vencimento:   vencimento,
+              valor:             totalItens,
+              status:            "em_aberto",
+              auto:              true,
+              pessoa_id:         f.fornecedor_id || undefined,
+              origem_lancamento: "pedido_compra",
+              pedido_compra_id:  pedidoId,
+            });
+            await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
+          }
         } catch (lancErr: unknown) {
           const msg = (lancErr as { message?: string })?.message ?? String(lancErr);
-          setErro(`Pedido salvo, mas erro ao gerar CP: ${msg}. Execute a migration de rastreabilidade no Supabase.`);
+          setErro(`Pedido salvo, mas erro ao gerar lançamento: ${msg}.`);
         }
       }
 
@@ -769,7 +806,7 @@ export default function ComprasPage() {
                         <div style={{ fontSize: 11, color: "#7A5200", fontWeight: 600, marginBottom: 8 }}>
                           Barter — compromete saldo de grãos na safra indicada
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                           <div>
                             <label style={{ ...lbl, color: "#7A5200" }}>Ano Safra (Barter)</label>
                             <select style={inp} value={f.barter_ano_safra_id} onChange={e => setF(p => ({ ...p, barter_ano_safra_id: e.target.value, barter_ciclo_id: "" }))}>
@@ -787,9 +824,36 @@ export default function ComprasPage() {
                               })}
                             </select>
                           </div>
+                          <div>
+                            <label style={{ ...lbl, color: "#7A5200" }}>Preço negociado (R$/sc)</label>
+                            <input
+                              style={inp} type="number" min="0" step="0.01"
+                              placeholder={(() => {
+                                const c = ciclos.find(x => x.id === f.barter_ciclo_id);
+                                return c?.preco_esperado_sc ? `Projeção: R$ ${c.preco_esperado_sc.toFixed(2)}` : "R$/sc";
+                              })()}
+                              value={f.barter_preco_saca}
+                              onChange={e => setF(p => ({ ...p, barter_preco_saca: e.target.value }))}
+                            />
+                          </div>
                         </div>
-                        <div style={{ fontSize: 10, color: "#7A5200", marginTop: 6 }}>
-                          Contrato de Barter criado automaticamente ao aprovar o pedido
+                        {/* Sacas estimadas */}
+                        {(() => {
+                          const cicloB = ciclos.find(c => c.id === f.barter_ciclo_id);
+                          const preco = parseFloat(f.barter_preco_saca) || cicloB?.preco_esperado_sc || 0;
+                          if (!preco || !totalItens) return null;
+                          const sacas = Math.ceil((totalItens / preco) * 100) / 100;
+                          return (
+                            <div style={{ marginTop: 8, fontSize: 12, color: "#7A5200", fontWeight: 600 }}>
+                              ≈ {sacas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} sc comprometidas
+                              {!f.barter_preco_saca && cicloB?.preco_esperado_sc && (
+                                <span style={{ fontWeight: 400, marginLeft: 6 }}>(baseado na projeção do ciclo)</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        <div style={{ fontSize: 10, color: "#9A6200", marginTop: 6 }}>
+                          Não compõe fluxo de caixa em R$. Registrado como compromisso de grãos (moeda Barter).
                         </div>
                       </div>
                     )}

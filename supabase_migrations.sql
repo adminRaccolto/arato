@@ -3902,3 +3902,15 @@ CREATE POLICY "fazenda_owner" ON operacao_cfop_fiscal
          OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 95 — pedidos_compra: campo barter_preco_saca
+-- ============================================================
+ALTER TABLE pedidos_compra
+  ADD COLUMN IF NOT EXISTS barter_preco_saca DECIMAL(12,2);
+
+-- Renomeia agrosoft_id → ref_id (se ainda não foi feito manualmente)
+ALTER TABLE operacoes_gerenciais
+  RENAME COLUMN agrosoft_id TO ref_id;
+
+NOTIFY pgrst, 'reload schema';
