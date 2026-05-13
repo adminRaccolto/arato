@@ -265,7 +265,14 @@ export default function ContasPagar() {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
-      listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
+      listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" }).then(ops =>
+        // Exclui grupos 3/4 (movimentos econômicos/bancários) e operações fiscais
+        // (compra de insumos via NF é registrada em NF de Compra, não em CP manual)
+        setOpGerenciais(ops.filter(o => {
+          const cls = o.classificacao ?? "";
+          return !cls.startsWith("3.") && !cls.startsWith("4.") && !o.permite_notas_fiscais;
+        }))
+      ).catch(() => {});
       supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
     }
