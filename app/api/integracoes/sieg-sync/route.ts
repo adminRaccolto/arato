@@ -14,6 +14,17 @@ import { baixarXmlsSieg, parseNFeXml } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
+// GET — health check / validação de URL pelo portal Sieg
+export async function GET() {
+  return Response.json({
+    servico: "Arato — Integração Sieg DFe Monitor",
+    status:  "ativo",
+    metodo:  "POST",
+    descricao: "Endpoint de importação de NF-e via Sieg DFe Monitor. Envie POST com { fazenda_id } para acionar a sincronização.",
+    documentacao: "https://arato.agr.br",
+  });
+}
+
 function sb() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
