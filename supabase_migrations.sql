@@ -3909,8 +3909,4 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE pedidos_compra
   ADD COLUMN IF NOT EXISTS barter_preco_saca DECIMAL(12,2);
 
--- Renomeia agrosoft_id → ref_id (se ainda não foi feito manualmente)
-ALTER TABLE operacoes_gerenciais
-  RENAME COLUMN agrosoft_id TO ref_id;
-
 NOTIFY pgrst, 'reload schema';
