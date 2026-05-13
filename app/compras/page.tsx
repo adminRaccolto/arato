@@ -631,7 +631,13 @@ export default function ComprasPage() {
                         const autoNf = !!op?.permite_notas_fiscais;
                         setF(p => ({ ...p, operacao: id, operacao_nf: autoNf ? id : p.operacao_nf, operacao_nf_auto: autoNf }));
                       }}
-                      options={operacoes.filter(o => o.tipo === "despesa" && o.permite_cp_cr && !o.inativo).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                      options={operacoes.filter(o => {
+                        const cls = o.classificacao ?? "";
+                        // Pedido de Compra: apenas compras reais de insumos/serviços (2.01.* e 2.02.*)
+                        // Exclui: baixas automáticas de estoque, deduções tributárias, financiamentos
+                        return !o.inativo && o.gerar_financeiro !== false &&
+                          (cls.startsWith("2.01.") || cls.startsWith("2.02."));
+                      }).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
                       placeholder="— Selecionar —"
                       emptyMessage="Configure em Cadastros → Operações Gerenciais"
                     />
@@ -769,7 +775,12 @@ export default function ComprasPage() {
                       <SearchableSelect
                         value={f.operacao_nf}
                         onChange={id => setF(p => ({ ...p, operacao_nf: id, operacao_nf_auto: false }))}
-                        options={operacoes.filter(o => o.tipo === "despesa" && o.permite_notas_fiscais && !o.inativo).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
+                        options={operacoes.filter(o => {
+                          const cls = o.classificacao ?? "";
+                          // Operação NF em Pedido de Compra: mesma restrição + exige NF
+                          return !o.inativo && o.permite_notas_fiscais && o.gerar_financeiro !== false &&
+                            (cls.startsWith("2.01.") || cls.startsWith("2.02."));
+                        }).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
                         placeholder="— Selecionar —"
                         emptyMessage="Configure em Cadastros → Operações Gerenciais"
                       />
