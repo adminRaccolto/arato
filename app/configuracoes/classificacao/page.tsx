@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarRegrasClassificacao, criarRegraClassificacao,
   atualizarRegraClassificacao, excluirRegraClassificacao,
-  listarCentrosCustoGeral, listarOperacoesGerenciais,
+  listarCentrosCustoGeral, listarOperacoesGerenciaisAtivas,
 } from "../../../lib/db";
 import type { RegraClassificacao, CentroCusto, OperacaoGerencial } from "../../../lib/supabase";
 
@@ -48,7 +48,7 @@ export default function ClassificacaoPage() {
       const [r, cc, op] = await Promise.all([
         listarRegrasClassificacao(fazendaId),
         listarCentrosCustoGeral(fazendaId),
-        listarOperacoesGerenciais(fazendaId),
+        listarOperacoesGerenciaisAtivas(fazendaId),
       ]);
       setRegras(r);
       setCcs(cc);
@@ -356,7 +356,17 @@ export default function ClassificacaoPage() {
                     <label style={lbl}>Operação Gerencial</label>
                     <select style={inp} value={f.operacao_gerencial_id} onChange={e => setF(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
                       <option value="">— Não sugerir —</option>
-                      {ops.map(o => <option key={o.id} value={o.id}>{o.descricao}</option>)}
+                      {Object.entries(
+                        ops.reduce((acc, o) => {
+                          const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                          (acc[k] = acc[k] ?? []).push(o);
+                          return acc;
+                        }, {} as Record<string, typeof ops>)
+                      ).map(([k, items]) => (
+                        <optgroup key={k} label={k}>
+                          {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                   </div>
                   <div>

@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra } from "../../../lib/supabase";
-import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra } from "../../../lib/db";
+import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos
@@ -181,15 +181,8 @@ export default function NfServicoPage() {
 
     // Operações gerenciais (despesas que permitem NF)
     try {
-      const { data } = await supabase
-        .from("operacoes_gerenciais")
-        .select("id, classificacao, descricao")
-        .eq("fazenda_id", fazendaId)
-        .eq("tipo", "despesa")
-        .eq("inativo", false)
-        .eq("permite_notas_fiscais", true)
-        .order("classificacao");
-      setOpsGer((data ?? []) as OpGerencial[]);
+      const ops = await listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "notas_fiscais" });
+      setOpsGer(ops as OpGerencial[]);
     } catch {}
 
     // Pedidos de compra
@@ -715,7 +708,17 @@ export default function NfServicoPage() {
                       <label style={lbl}>Operação Gerencial *</label>
                       <select value={cab.operacao_gerencial_id} onChange={e => setCab(p=>({...p,operacao_gerencial_id:e.target.value}))} style={inp}>
                         <option value="">Selecionar operação…</option>
-                        {opsGer.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                        {Object.entries(
+                          opsGer.reduce((acc, o) => {
+                            const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                            (acc[k] = acc[k] ?? []).push(o);
+                            return acc;
+                          }, {} as Record<string, typeof opsGer>)
+                        ).map(([k, items]) => (
+                          <optgroup key={k} label={k}>
+                            {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                          </optgroup>
+                        ))}
                       </select>
                     </div>
                     <div>

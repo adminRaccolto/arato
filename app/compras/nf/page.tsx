@@ -13,7 +13,7 @@ import {
   listarCentrosCustoGeral,
   listarRegrasClassificacao,
   aplicarRegraClassificacao,
-  listarOperacoesGerenciais,
+  listarOperacoesGerenciaisAtivas,
   verificarExclusaoNf,
   excluirNfEntrada,
   listarMaquinas,
@@ -235,7 +235,7 @@ export default function NfCompraPage() {
 
     // Operações gerenciais (para modal de reclassificação)
     try {
-      const ops = await listarOperacoesGerenciais(fazendaId);
+      const ops = await listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" });
       setReclassOps(ops);
     } catch {}
 
@@ -1680,8 +1680,16 @@ export default function NfCompraPage() {
                     style={inp}
                   >
                     <option value="">— sem operação —</option>
-                    {reclassOps.map(op => (
-                      <option key={op.id} value={op.id}>{op.descricao}</option>
+                    {Object.entries(
+                      reclassOps.reduce((acc, o) => {
+                        const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                        (acc[k] = acc[k] ?? []).push(o);
+                        return acc;
+                      }, {} as Record<string, typeof reclassOps>)
+                    ).map(([k, items]) => (
+                      <optgroup key={k} label={k}>
+                        {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                      </optgroup>
                     ))}
                   </select>
                 </div>
