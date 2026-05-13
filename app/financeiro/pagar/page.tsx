@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciais } from "../../../lib/db";
+import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -255,7 +255,7 @@ export default function ContasPagar() {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
-      listarOperacoesGerenciais(fazendaId).then(ops => setOpGerenciais(ops.filter(o => !o.inativo))).catch(() => {});
+      listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
       supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
     }
@@ -947,8 +947,17 @@ export default function ContasPagar() {
                 <label style={lbl}>Operação Gerencial</label>
                 <select value={editForm.operacao_gerencial_id} onChange={e => setEditForm(f => ({ ...f, operacao_gerencial_id: e.target.value }))} style={inp}>
                   <option value="">— Sem vínculo contábil —</option>
-                  {opGerenciais.filter(o => o.tipo === "despesa").map(o => (
-                    <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
+                  {Object.entries(
+                    opGerenciais.reduce((acc, o) => {
+                      const parts = (o.classificacao ?? "").split(".");
+                      const grpKey = parts.slice(0, 3).join(".");
+                      (acc[grpKey] = acc[grpKey] ?? []).push(o);
+                      return acc;
+                    }, {} as Record<string, typeof opGerenciais>)
+                  ).map(([grpKey, ops]) => (
+                    <optgroup key={grpKey} label={grpKey}>
+                      {ops.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                    </optgroup>
                   ))}
                 </select>
                 {editForm.operacao_gerencial_id && (() => {
@@ -1419,8 +1428,17 @@ export default function ContasPagar() {
                   <select style={inp} value={form.operacao_gerencial_id}
                     onChange={e => setForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
                     <option value="">— Sem vínculo contábil —</option>
-                    {opGerenciais.filter(o => o.tipo === "despesa").map(o => (
-                      <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>
+                    {Object.entries(
+                      opGerenciais.reduce((acc, o) => {
+                        const parts = (o.classificacao ?? "").split(".");
+                        const grpKey = parts.slice(0, 3).join(".");
+                        (acc[grpKey] = acc[grpKey] ?? []).push(o);
+                        return acc;
+                      }, {} as Record<string, typeof opGerenciais>)
+                    ).map(([grpKey, ops]) => (
+                      <optgroup key={grpKey} label={grpKey}>
+                        {ops.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                      </optgroup>
                     ))}
                   </select>
                   {form.operacao_gerencial_id && (() => {

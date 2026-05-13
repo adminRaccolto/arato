@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import { listarFazendas } from "../../../lib/db";
 import type { Fazenda } from "../../../lib/supabase";
+import { getDreGrupo } from "../../../lib/seedOperacoesGerenciais";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type AnoSafra   = { id: string; ano: string; fazenda_id?: string };
@@ -192,8 +193,47 @@ export default function DrePage() {
         supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
         supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).maybeSingle(),
         supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
-        supabase.from("contas_pagar").select("valor, categoria").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
       ]);
+
+      // ── Mapear operacao_gerencial_id → classificacao (batch) ──
+      const cpRows = cpData ?? [];
+      const ogIds = [...new Set(cpRows.map((c: { operacao_gerencial_id?: string }) => c.operacao_gerencial_id).filter(Boolean))] as string[];
+      const ogClassMap: Record<string, string> = {};
+      if (ogIds.length > 0) {
+        const { data: ogs } = await supabase
+          .from("operacoes_gerenciais")
+          .select("id, classificacao")
+          .in("id", ogIds);
+        for (const og of ogs ?? []) ogClassMap[og.id] = og.classificacao;
+      }
+
+      // Helper: resolve DRE group for a CP row (uses classificacao when available, falls back to categoria)
+      function cpGrupo(cp: { categoria?: string; operacao_gerencial_id?: string }): string {
+        if (cp.operacao_gerencial_id && ogClassMap[cp.operacao_gerencial_id]) {
+          return getDreGrupo(ogClassMap[cp.operacao_gerencial_id]);
+        }
+        const cat = cp.categoria ?? "";
+        if (cat === "operacoes_mecanizadas") return "cpv_agricultura";
+        if (cat === "combustivel")           return "cpv_combustivel";
+        if (cat === "manutencao")            return "cpv_manutencao";
+        if (cat === "arrendamento")          return "arrendamento";
+        if (cat === "mao_obra" || cat === "trabalhista") return "cpv_rh_faz";
+        if (cat === "administrativo")        return "desp_adm";
+        if (cat === "seguro")                return "seguro_lavoura";
+        if (cat === "assistencia_tecnica")   return "assistencia_tecnica";
+        if (cat === "juros_custeio")         return "juros_custeio";
+        if (cat === "juros")                 return "desp_financeira";
+        return "outros";
+      }
+
+      // Acumular por grupo DRE
+      const grp: Record<string, number> = {};
+      for (const cp of cpRows) {
+        const g = cpGrupo(cp as { categoria?: string; operacao_gerencial_id?: string });
+        grp[g] = (grp[g] ?? 0) + ((cp.valor as number) ?? 0);
+      }
+
       // ── Receitas ──
       const totalSacas = (colheitasData ?? []).reduce((s, r) => s + (r.sacas_liquidas ?? 0), 0);
       const totalAreaHa = (plantiosData ?? []).reduce((s, r) => s + (r.area_ha ?? 0), 0) ||
@@ -222,24 +262,29 @@ export default function DrePage() {
       const defensivos = (pulvsData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0);
       const correcao_solo = (corrData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0);
 
-      // Operações mecanizadas + combustível + manutenção via contas a pagar categorizadas
-      const cpRows = cpData ?? [];
-      const operacoes_mecanizadas = cpRows.filter(c => c.categoria === "operacoes_mecanizadas").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const combustivel = cpRows.filter(c => c.categoria === "combustivel").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const manutencao = cpRows.filter(c => c.categoria === "manutencao").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const cpv_total = sementes + fertilizantes + defensivos + correcao_solo + operacoes_mecanizadas + combustivel + manutencao;
+      // ── Agrupar CPs por grupo DRE (usando classificação hierárquica quando disponível) ──
+      const operacoes_mecanizadas =
+        (grp["cpv_agricultura"]  ?? 0) +
+        (grp["cpv_mecanizacao"]  ?? 0) +
+        (grp["cpv_fretes"]       ?? 0) +
+        (grp["cpv_outros"]       ?? 0);
+      const combustivel          = grp["cpv_combustivel"]     ?? 0;
+      const manutencao           = grp["cpv_manutencao"]      ?? 0;
+      // insumos comprados diretamente (CP com operação gerencial de insumo) → acrescentam aos insumos de lavoura
+      const insumos_cp           = grp["cpv_insumos"]         ?? 0;
+      const cpv_total = sementes + (fertilizantes + insumos_cp) + defensivos + correcao_solo + operacoes_mecanizadas + combustivel + manutencao;
 
       // ── Despesas Operacionais ──
-      const arrendamento = cpRows.filter(c => c.categoria === "arrendamento").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const mao_obra = cpRows.filter(c => c.categoria === "mao_obra" || c.categoria === "trabalhista").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const administrativo = cpRows.filter(c => c.categoria === "administrativo").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const seguro_lavoura = cpRows.filter(c => c.categoria === "seguro").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const assistencia_tecnica = cpRows.filter(c => c.categoria === "assistencia_tecnica").reduce((s, c) => s + (c.valor ?? 0), 0);
+      const arrendamento         = grp["arrendamento"]        ?? 0;
+      const mao_obra             = (grp["cpv_rh_faz"]         ?? 0) + (grp["desp_rh_adm"] ?? 0);
+      const administrativo       = (grp["desp_adm"]           ?? 0) + (grp["desp_impostos"] ?? 0) + (grp["desp_frota"] ?? 0);
+      const seguro_lavoura       = grp["seguro_lavoura"]      ?? 0;
+      const assistencia_tecnica  = grp["assistencia_tecnica"] ?? 0;
       const desp_operacionais_total = arrendamento + mao_obra + administrativo + seguro_lavoura + assistencia_tecnica;
 
       // ── Despesas Financeiras ──
-      const juros_custeio = cpRows.filter(c => c.categoria === "juros_custeio").reduce((s, c) => s + (c.valor ?? 0), 0);
-      const juros_outros = cpRows.filter(c => c.categoria === "juros").reduce((s, c) => s + (c.valor ?? 0), 0);
+      const juros_custeio        = grp["juros_custeio"]       ?? 0;
+      const juros_outros         = (grp["desp_financeira"]    ?? 0) + (grp["patrimonial"] ?? 0);
       const desp_financeiras_total = juros_custeio + juros_outros;
 
       // ── Resultados ──

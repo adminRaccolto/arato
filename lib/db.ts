@@ -748,6 +748,12 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
   const { data: funcs } = await supabase.from("funcionarios").select("*").eq("fazenda_id", fazenda_id).eq("ativo", true);
   if (!funcs || funcs.length === 0) return { gerados: 0 };
 
+  // Busca IDs das operações gerenciais por classificação (FAZ = 2.01.01.10, ADM = 2.02.01.03)
+  const { data: opsData } = await supabase.from("operacoes_gerenciais")
+    .select("id, classificacao").eq("fazenda_id", fazenda_id);
+  const opsByClass: Record<string, string> = {};
+  for (const op of (opsData ?? [])) opsByClass[op.classificacao] = op.id;
+
   const anoMes = mes_referencia; // YYYY-MM
   let gerados = 0;
 
@@ -761,25 +767,40 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
     const prov13   = sal * (Number(f.provisao_13_pct ?? 8.33) / 100);
     const provFer  = sal * (Number(f.provisao_ferias_pct ?? 11.11) / 100);
 
+    // FAZ = funcionários da fazenda, ADM = administrativos
+    const prefixo = f.tipo_contrato === "clt_adm" ? "2.02.01.03" : "2.01.01.10";
     const dataComp = `${anoMes}-01`;
+
     const lancamentos = [
-      { descricao: `Salário — ${f.nome}`, valor: sal, operacao: "Salários" },
-      { descricao: `FGTS — ${f.nome}`, valor: fgts, operacao: "FGTS Empregador" },
-      { descricao: `INSS/Funrural — ${f.nome}`, valor: inss, operacao: f.usar_funrural ? "Funrural" : "INSS Empregador" },
-      { descricao: `SAT/RAT — ${f.nome}`, valor: sat, operacao: "SAT/RAT" },
-      { descricao: `Sistema S — ${f.nome}`, valor: sistS, operacao: f.usar_funrural ? "SENAR" : "Sistema S" },
-      { descricao: `Provisão 13º — ${f.nome}`, valor: prov13, operacao: "Provisão 13º Salário" },
-      { descricao: `Provisão Férias — ${f.nome}`, valor: provFer, operacao: "Provisão Férias" },
+      { descricao: `Salário — ${f.nome}`, valor: sal,    class: `${prefixo}.001`, label: "SALÁRIOS" },
+      { descricao: `FGTS — ${f.nome}`, valor: fgts,      class: `${prefixo}.013`, label: "FGTS" },
+      { descricao: f.usar_funrural ? `Funrural — ${f.nome}` : `INSS Empregador — ${f.nome}`,
+        valor: inss,
+        class: f.usar_funrural ? `${prefixo}.019` : `${prefixo}.014`, label: "INSS/FUNRURAL" },
+      { descricao: `SAT/RAT — ${f.nome}`, valor: sat,    class: `${prefixo}.015`, label: "SAT/RAT" },
+      { descricao: f.usar_funrural ? `SENAR — ${f.nome}` : `Sistema S — ${f.nome}`,
+        valor: sistS,
+        class: `${prefixo}.016`, label: "SISTEMA S" },
+      { descricao: `Provisão 13º — ${f.nome}`, valor: prov13, class: `${prefixo}.017`, label: "PROVISÃO 13º" },
+      { descricao: `Provisão Férias — ${f.nome}`, valor: provFer, class: `${prefixo}.018`, label: "PROVISÃO FÉRIAS" },
     ];
 
     for (const l of lancamentos) {
+      if (l.valor <= 0) continue;
       const { data: existing } = await supabase.from("contas_pagar").select("id").eq("fazenda_id", fazenda_id).eq("descricao", l.descricao).eq("data_competencia", dataComp).maybeSingle();
       if (existing) continue;
       await supabase.from("contas_pagar").insert({
-        fazenda_id, descricao: l.descricao, valor: l.valor,
-        data_vencimento: `${anoMes}-05`, data_competencia: dataComp,
-        status: "pendente", operacao_gerencial: l.operacao,
-        credor: f.nome, tipo: "folha",
+        fazenda_id,
+        descricao:  l.descricao,
+        valor:      l.valor,
+        data_vencimento: `${anoMes}-05`,
+        data_competencia: dataComp,
+        status: "pendente",
+        operacao_gerencial_id: opsByClass[l.class] ?? null,
+        operacao_gerencial: l.label,
+        credor: f.nome,
+        tipo: "folha",
+        categoria: "mao_obra",
       });
       gerados++;
     }
@@ -2767,6 +2788,73 @@ export async function excluirFormaPagamento(id: string): Promise<void> {
 
 export async function listarOperacoesGerenciais(fazenda_id: string): Promise<OperacaoGerencial[]> {
   const { data, error } = await supabase.from("operacoes_gerenciais").select("*").eq("fazenda_id", fazenda_id).order("classificacao");
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Retorna apenas operações folha (com gerar_financeiro=true e não grupos)
+export async function listarOperacoesGerenciaisAtivas(
+  fazenda_id: string,
+  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" }
+): Promise<OperacaoGerencial[]> {
+  let q = supabase.from("operacoes_gerenciais").select("*")
+    .eq("fazenda_id", fazenda_id)
+    .eq("inativo", false)
+    .order("classificacao");
+  if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
+  if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
+  if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
+  if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
+  if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
+  const { data, error } = await q;
+  if (error) throw error;
+  // Exclui nós de grupo (não têm gerar_financeiro E não têm permite_cp_cr/nf)
+  return (data ?? []).filter(op =>
+    op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
+    op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
+  );
+}
+
+// ── CFOP Fiscal ──────────────────────────────────────────────────────────────
+import type { OperacaoCfopFiscal } from "./supabase";
+
+export async function listarCfopsPorOperacao(operacao_gerencial_id: string): Promise<OperacaoCfopFiscal[]> {
+  const { data, error } = await supabase.from("operacao_cfop_fiscal")
+    .select("*")
+    .eq("operacao_gerencial_id", operacao_gerencial_id)
+    .eq("ativo", true)
+    .order("cfop");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function buscarCstPorCfop(operacao_gerencial_id: string, cfop: string): Promise<OperacaoCfopFiscal | null> {
+  const { data } = await supabase.from("operacao_cfop_fiscal")
+    .select("*")
+    .eq("operacao_gerencial_id", operacao_gerencial_id)
+    .eq("cfop", cfop)
+    .eq("ativo", true)
+    .maybeSingle();
+  return data ?? null;
+}
+
+export async function salvarCfopFiscal(cfop: Omit<OperacaoCfopFiscal, "id" | "created_at">): Promise<OperacaoCfopFiscal> {
+  const { data, error } = await supabase.from("operacao_cfop_fiscal").insert(cfop).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function excluirCfopFiscal(id: string): Promise<void> {
+  const { error } = await supabase.from("operacao_cfop_fiscal").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarTodosCfops(fazenda_id: string): Promise<OperacaoCfopFiscal[]> {
+  const { data, error } = await supabase.from("operacao_cfop_fiscal")
+    .select("*, operacoes_gerenciais(classificacao, descricao)")
+    .eq("fazenda_id", fazenda_id)
+    .eq("ativo", true)
+    .order("cfop");
   if (error) throw error;
   return data ?? [];
 }

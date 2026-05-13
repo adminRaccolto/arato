@@ -1393,6 +1393,33 @@ export type OperacaoGerencial = {
   conta_debito?: string;    // código da conta contábil de débito
   conta_credito?: string;   // código da conta contábil de crédito
 
+  // ── Histórico Tesouraria ──
+  // Liga a operação ao tipo de movimentação na Tesouraria (conforme Agrosoft)
+  historico_tesouraria_id?: number;    // ex: 1=PAGAMENTO CONTAS, 3=RECEBIMENTO CONTAS, 345=TRANSF. VALORES
+  historico_tesouraria_nome?: string;  // ex: "PAGAMENTO CONTAS"
+
+  // ── Dados de referência do Agrosoft ──
+  agrosoft_id?: number;   // ID original no Agrosoft (para rastreabilidade)
+
+  created_at?: string;
+};
+
+// ── Histórico Fiscal (CFOP × Operação Gerencial) ─────────────
+// Equivalente ao "Histórico Fiscal" do Agrosoft — define CFOPs e CSTs válidos por operação
+export type OperacaoCfopFiscal = {
+  id: string;
+  operacao_gerencial_id: string;
+  fazenda_id: string;
+  cfop: string;                     // ex: "5101"
+  descricao_cfop?: string;          // ex: "VENDA DE PRODUÇÃO DO ESTABELECIMENTO"
+  cst_pis?: string;                 // ex: "08"
+  cst_cofins?: string;              // ex: "08"
+  tipo_pessoa?: string;             // "PF" | "PJ" | "Indiferente"
+  ncm?: string;                     // NCM do produto (quando específico)
+  operacao_nf?: string;             // ex: "Normal (Compra e Venda)"
+  fins_exportacao?: boolean;
+  compoe_faturamento?: boolean;
+  ativo?: boolean;
   created_at?: string;
 };
 

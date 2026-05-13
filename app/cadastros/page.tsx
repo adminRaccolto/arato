@@ -359,8 +359,12 @@ function CadastrosInner() {
   const [planoContasDB, setPlanoContasDB] = useState<ContaContabil[]>([]);
   const [modalOpGer, setModalOpGer]   = useState(false);
   const [editOpGer, setEditOpGer]     = useState<OperacaoGerencial | null>(null);
-  const [abaOpGer, setAbaOpGer]       = useState<"principal"|"estoque"|"fiscal"|"financeiro"|"contabilidade">("principal");
+  const [abaOpGer, setAbaOpGer]       = useState<"principal"|"estoque"|"fiscal"|"financeiro"|"contabilidade"|"cfop">("principal");
   const [erroOpGer, setErroOpGer]     = useState<string | null>(null);
+  const [cfopsOp, setCfopsOp]         = useState<import("../../lib/supabase").OperacaoCfopFiscal[]>([]);
+  const [loadingCfops, setLoadingCfops] = useState(false);
+  const [modalCfop, setModalCfop]     = useState(false);
+  const [fCfop, setFCfop]             = useState({ cfop: "", descricao_cfop: "", cst_pis: "08", cst_cofins: "08", tipo_pessoa: "Indiferente", ncm: "", fins_exportacao: false, compoe_faturamento: true });
   const OG_VAZIO = {
     parent_id: "",
     classificacao: "", descricao: "", tipo: "despesa" as OperacaoGerencial["tipo"],
@@ -378,6 +382,8 @@ function CadastrosInner() {
     tipo_formula: "" as OperacaoGerencial["tipo_formula"] | "", modelo_contabil: "",
     inativo: false, informa_complemento: false,
     conta_debito: "", conta_credito: "",
+    historico_tesouraria_id: "" as number | "",
+    historico_tesouraria_nome: "",
   };
   const [fOG, setFOG] = useState({ ...OG_VAZIO });
 
@@ -2159,7 +2165,7 @@ function CadastrosInner() {
                 </div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Código / Descrição", "Tipo", "Telas", "Ativo", ""]} />
+                <TH cols={["Código / Descrição", "Tipo", "Telas", "Tesouraria", "Ativo", ""]} />
                 <tbody>
                   {opGers.length === 0 && <tr><td colSpan={4} style={{ padding: 32, textAlign: "center", color: "#888" }}>Nenhuma operação cadastrada. Clique em "+ Nova Operação" para começar.</td></tr>}
                   {[...opGers].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: false })).map((o, i, arr) => {
@@ -2191,6 +2197,11 @@ function CadastrosInner() {
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                             {telas.map(t => <span key={t} style={{ fontSize: 10, background: "#F3F6F9", color: "#555", padding: "2px 6px", borderRadius: 4 }}>{t}</span>)}
                           </div>
+                        </td>
+                        <td style={{ padding: "9px 14px", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
+                          {o.historico_tesouraria_nome
+                            ? <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 4 }}>{o.historico_tesouraria_nome}</span>
+                            : <span style={{ color: "#ccc" }}>—</span>}
                         </td>
                         <td style={{ padding: "9px 14px", textAlign: "center" }}>
                           <button
@@ -2245,8 +2256,12 @@ function CadastrosInner() {
                                 tipo_formula: o.tipo_formula ?? "", modelo_contabil: o.modelo_contabil ?? "",
                                 inativo: o.inativo ?? false, informa_complemento: o.informa_complemento ?? false,
                                 conta_debito: o.conta_debito ?? "", conta_credito: o.conta_credito ?? "",
+                                historico_tesouraria_id: o.historico_tesouraria_id ?? "",
+                                historico_tesouraria_nome: o.historico_tesouraria_nome ?? "",
                               });
-                              setAbaOpGer("principal"); setModalOpGer(true);
+                              setAbaOpGer("principal");
+                              setCfopsOp([]);
+                              setModalOpGer(true);
                             }}>Editar</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir operação?")) excluirOperacaoGerencial(o.id).then(() => setOpGers(x => x.filter(r => r.id !== o.id))); }}>✕</button>
                           </div>
@@ -4441,8 +4456,17 @@ function CadastrosInner() {
               { key: "fiscal",        label: "Fiscal"            },
               { key: "financeiro",    label: "Financeiro/Custos" },
               { key: "contabilidade", label: "Contabilidade"     },
+              { key: "cfop",          label: "Histórico Fiscal"  },
             ] as { key: typeof abaOpGer; label: string }[]).map(a => (
-              <button key={a.key} onClick={() => setAbaOpGer(a.key)} style={{
+              <button key={a.key} onClick={() => {
+                setAbaOpGer(a.key);
+                if (a.key === "cfop" && editOpGer && cfopsOp.length === 0 && !loadingCfops) {
+                  setLoadingCfops(true);
+                  import("../../lib/db").then(m => m.listarCfopsPorOperacao(editOpGer.id))
+                    .then(d => { setCfopsOp(d); setLoadingCfops(false); })
+                    .catch(() => setLoadingCfops(false));
+                }
+              }} style={{
                 padding: "7px 18px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                 borderBottom: abaOpGer === a.key ? "2px solid #1A5CB8" : "2px solid transparent",
                 color: abaOpGer === a.key ? "#1A5CB8" : "#555",
@@ -4677,6 +4701,174 @@ function CadastrosInner() {
             </div>
           )}
 
+          {/* ── Aba Histórico Fiscal (CFOPs) ── */}
+          {abaOpGer === "cfop" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: "#555" }}>CFOPs e CSTs PIS/COFINS válidos para esta operação</div>
+                {editOpGer && (
+                  <button style={{ ...btnV, fontSize: 12, padding: "6px 14px" }} onClick={() => {
+                    setFCfop({ cfop: "", descricao_cfop: "", cst_pis: "08", cst_cofins: "08", tipo_pessoa: "Indiferente", ncm: "", fins_exportacao: false, compoe_faturamento: true });
+                    setModalCfop(true);
+                  }}>+ Adicionar CFOP</button>
+                )}
+              </div>
+              {!editOpGer && <div style={{ padding: 16, background: "#FBF3E0", borderRadius: 8, color: "#7A5A10", fontSize: 12 }}>Salve a operação primeiro para adicionar CFOPs.</div>}
+              {loadingCfops && <div style={{ textAlign: "center", padding: 20, color: "#888" }}>Carregando…</div>}
+              {!loadingCfops && cfopsOp.length === 0 && editOpGer && <div style={{ textAlign: "center", padding: 20, color: "#888", fontSize: 12 }}>Nenhum CFOP cadastrado. Adicione para habilitar preenchimento automático nas NFs.</div>}
+              {cfopsOp.length > 0 && (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: "#F8FAFD", borderBottom: "0.5px solid #D4DCE8" }}>
+                      {["CFOP","Descrição","CST PIS","CST COFINS","Tipo Pessoa","Fins Exp.","Comp. Fat.",""].map(h => (
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cfopsOp.map((c, i) => (
+                      <tr key={c.id} style={{ borderBottom: "0.5px solid #F0F0F0" }}>
+                        <td style={{ padding: "7px 10px", fontFamily: "monospace", fontWeight: 600 }}>{c.cfop}</td>
+                        <td style={{ padding: "7px 10px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.descricao_cfop ?? "—"}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "center" }}>{c.cst_pis ?? "—"}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "center" }}>{c.cst_cofins ?? "—"}</td>
+                        <td style={{ padding: "7px 10px" }}>{c.tipo_pessoa ?? "Indiferente"}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "center" }}>{c.fins_exportacao ? "Sim" : "Não"}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "center" }}>{c.compoe_faturamento ? "Sim" : "Não"}</td>
+                        <td style={{ padding: "7px 10px" }}>
+                          <button style={btnX} onClick={() => {
+                            if (!confirm("Remover este CFOP?")) return;
+                            import("../../lib/db").then(m => m.excluirCfopFiscal(c.id))
+                              .then(() => setCfopsOp(x => x.filter(r => r.id !== c.id)));
+                          }}>✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {/* Campo Tesouraria na mesma aba */}
+              <div style={{ marginTop: 16, borderTop: "0.5px solid #D4DCE8", paddingTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>HISTÓRICO TESOURARIA</div>
+                <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12 }}>
+                  <div>
+                    <label style={lbl}>ID Tesouraria</label>
+                    <select style={inp} value={String(fOG.historico_tesouraria_id ?? "")}
+                      onChange={e => {
+                        const id = e.target.value;
+                        const nomes: Record<string,string> = { "1": "PAGAMENTO CONTAS", "2": "COMPENSAÇÃO CHEQUE PRÓPRIO", "3": "RECEBIMENTO CONTAS", "4": "DEPÓSITO BANCÁRIO", "345": "TRANSF. VALORES", "386": "IMPLANTAÇÃO DE SALDO D", "387": "IMPLANTAÇÃO DE SALDO C" };
+                        setFOG(p => ({ ...p, historico_tesouraria_id: id ? Number(id) : "", historico_tesouraria_nome: nomes[id] ?? "" }));
+                      }}>
+                      <option value="">— Nenhum —</option>
+                      <option value="1">1 — PAGAMENTO CONTAS</option>
+                      <option value="2">2 — COMPENSAÇÃO CHEQUE PRÓPRIO</option>
+                      <option value="3">3 — RECEBIMENTO CONTAS</option>
+                      <option value="4">4 — DEPÓSITO BANCÁRIO</option>
+                      <option value="345">345 — TRANSF. VALORES</option>
+                      <option value="386">386 — IMPLANTAÇÃO DE SALDO D</option>
+                      <option value="387">387 — IMPLANTAÇÃO DE SALDO C</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Nome Histórico</label>
+                    <input style={inp} readOnly value={fOG.historico_tesouraria_nome} placeholder="Preenchido automaticamente" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Modal CFOP ── */}
+          {modalCfop && editOpGer && (
+            <div style={{ position: "fixed", inset: 0, background: "#00000060", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: 520, boxShadow: "0 8px 32px #0003" }}>
+                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>Adicionar CFOP — {fOG.classificacao} {fOG.descricao}</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <label style={lbl}>CFOP *</label>
+                    <input style={{ ...inp, fontFamily: "monospace" }} maxLength={4} placeholder="5101"
+                      value={fCfop.cfop} onChange={e => setFCfop(p => ({ ...p, cfop: e.target.value.replace(/\D/g, "") }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Descrição CFOP</label>
+                    <input style={inp} placeholder="Ex: VENDA DE PRODUÇÃO DO ESTABELECIMENTO"
+                      value={fCfop.descricao_cfop} onChange={e => setFCfop(p => ({ ...p, descricao_cfop: e.target.value }))} />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <label style={lbl}>CST PIS</label>
+                    <select style={inp} value={fCfop.cst_pis} onChange={e => setFCfop(p => ({ ...p, cst_pis: e.target.value }))}>
+                      <option value="07">07 — Isenta</option>
+                      <option value="08">08 — Sem incidência</option>
+                      <option value="49">49 — Outras saídas</option>
+                      <option value="50">50 — Com crédito básico</option>
+                      <option value="70">70 — Aquisição suspenção</option>
+                      <option value="99">99 — Outras operações</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>CST COFINS</label>
+                    <select style={inp} value={fCfop.cst_cofins} onChange={e => setFCfop(p => ({ ...p, cst_cofins: e.target.value }))}>
+                      <option value="07">07 — Isenta</option>
+                      <option value="08">08 — Sem incidência</option>
+                      <option value="49">49 — Outras saídas</option>
+                      <option value="50">50 — Com crédito básico</option>
+                      <option value="70">70 — Aquisição suspenção</option>
+                      <option value="99">99 — Outras operações</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Tipo Pessoa</label>
+                    <select style={inp} value={fCfop.tipo_pessoa} onChange={e => setFCfop(p => ({ ...p, tipo_pessoa: e.target.value }))}>
+                      <option value="Indiferente">Indiferente</option>
+                      <option value="PF">PF</option>
+                      <option value="PJ">PJ</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                  <div>
+                    <label style={lbl}>NCM (opcional)</label>
+                    <input style={inp} placeholder="Ex: 12019000" value={fCfop.ncm}
+                      onChange={e => setFCfop(p => ({ ...p, ncm: e.target.value }))} />
+                  </div>
+                  <div style={{ display: "flex", gap: 20, alignItems: "flex-end", paddingBottom: 4 }}>
+                    <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
+                      <input type="checkbox" checked={fCfop.fins_exportacao} onChange={e => setFCfop(p => ({ ...p, fins_exportacao: e.target.checked }))} />
+                      Fins Exportação
+                    </label>
+                    <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13 }}>
+                      <input type="checkbox" checked={fCfop.compoe_faturamento} onChange={e => setFCfop(p => ({ ...p, compoe_faturamento: e.target.checked }))} />
+                      Compõe Faturamento
+                    </label>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <button style={btnR} onClick={() => setModalCfop(false)}>Cancelar</button>
+                  <button style={btnV} disabled={!fCfop.cfop} onClick={async () => {
+                    if (!fCfop.cfop || !fazendaId) return;
+                    const novo = await import("../../lib/db").then(m => m.salvarCfopFiscal({
+                      operacao_gerencial_id: editOpGer.id,
+                      fazenda_id: fazendaId,
+                      cfop: fCfop.cfop,
+                      descricao_cfop: fCfop.descricao_cfop || undefined,
+                      cst_pis: fCfop.cst_pis || undefined,
+                      cst_cofins: fCfop.cst_cofins || undefined,
+                      tipo_pessoa: fCfop.tipo_pessoa,
+                      ncm: fCfop.ncm || undefined,
+                      fins_exportacao: fCfop.fins_exportacao,
+                      compoe_faturamento: fCfop.compoe_faturamento,
+                      ativo: true,
+                    }));
+                    setCfopsOp(x => [...x, novo]);
+                    setModalCfop(false);
+                  }}>Salvar CFOP</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Footer */}
           {erroOpGer && (
             <div style={{ margin: "0 0 10px", padding: "8px 14px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 8, color: "#791F1F", fontSize: 12 }}>
@@ -4724,6 +4916,8 @@ function CadastrosInner() {
                     modelo_contabil: fOG.modelo_contabil || undefined,
                     conta_debito: fOG.conta_debito || undefined,
                     conta_credito: fOG.conta_credito || undefined,
+                    historico_tesouraria_id: fOG.historico_tesouraria_id !== "" ? Number(fOG.historico_tesouraria_id) : undefined,
+                    historico_tesouraria_nome: fOG.historico_tesouraria_nome || undefined,
                   };
                   if (editOpGer) {
                     await atualizarOperacaoGerencial(editOpGer.id, payload);

@@ -3862,3 +3862,43 @@ CREATE POLICY "fazenda_owner" ON funcionario_ferias
          OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 89: Operações Gerenciais — novos campos + tabela operacao_cfop_fiscal
+-- ============================================================
+
+-- Novos campos na tabela operacoes_gerenciais
+ALTER TABLE operacoes_gerenciais
+  ADD COLUMN IF NOT EXISTS historico_tesouraria_id   INTEGER,
+  ADD COLUMN IF NOT EXISTS historico_tesouraria_nome TEXT,
+  ADD COLUMN IF NOT EXISTS agrosoft_id               INTEGER;
+
+-- Tabela de Histórico Fiscal: CFOPs e CSTs válidos por operação gerencial
+CREATE TABLE IF NOT EXISTS operacao_cfop_fiscal (
+  id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  operacao_gerencial_id    UUID NOT NULL REFERENCES operacoes_gerenciais(id) ON DELETE CASCADE,
+  fazenda_id               UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  cfop                     TEXT NOT NULL,
+  descricao_cfop           TEXT,
+  cst_pis                  TEXT,   -- ex: '08'
+  cst_cofins               TEXT,   -- ex: '08'
+  tipo_pessoa              TEXT DEFAULT 'Indiferente',
+  ncm                      TEXT,
+  operacao_nf              TEXT DEFAULT 'Normal (Compra e Venda)',
+  fins_exportacao          BOOLEAN DEFAULT FALSE,
+  compoe_faturamento       BOOLEAN DEFAULT TRUE,
+  ativo                    BOOLEAN DEFAULT TRUE,
+  created_at               TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cfop_fiscal_op ON operacao_cfop_fiscal(operacao_gerencial_id, cfop);
+CREATE INDEX IF NOT EXISTS idx_cfop_fiscal_faz ON operacao_cfop_fiscal(fazenda_id, cfop);
+
+ALTER TABLE operacao_cfop_fiscal ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "fazenda_owner" ON operacao_cfop_fiscal
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  WITH CHECK (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+         OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
