@@ -2374,10 +2374,33 @@ function CadastrosInner() {
                         {loadingHisFiscal ? "Carregando…" : `${hisFiscal.length} registros · ${grupos.size || gruposArr.length} operações · ${linhas.length} exibidos`}
                       </div>
                     </div>
-                    <button
-                      onClick={() => { setLoadingHisFiscal(true); supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", fazendaId!).eq("ativo", true).order("cfop").then(({ data }) => { setLoadingHisFiscal(false); setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; })); }); }}
-                      style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}
-                    >↺ Atualizar</button>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        disabled={seedingCfop}
+                        onClick={async () => {
+                          if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão Agrosoft (352 registros). Continuar?")) return;
+                          setSeedingCfop(true);
+                          try {
+                            const { inseridos, ignorados } = await seedCfopsFiscais(fazendaId!);
+                            alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados` : ""}.`);
+                            // Recarregar
+                            setLoadingHisFiscal(true);
+                            const { data } = await supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", fazendaId!).eq("ativo", true).order("cfop");
+                            setLoadingHisFiscal(false);
+                            setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; }));
+                          } catch (e: unknown) {
+                            alert("Erro: " + (e instanceof Error ? e.message : JSON.stringify(e)));
+                          } finally {
+                            setSeedingCfop(false);
+                          }
+                        }}
+                        style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5A10", cursor: seedingCfop ? "not-allowed" : "pointer", fontWeight: 600, opacity: seedingCfop ? 0.6 : 1 }}
+                      >{seedingCfop ? "Importando…" : "↓ Importar CFOPs Padrão"}</button>
+                      <button
+                        onClick={() => { setLoadingHisFiscal(true); supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", fazendaId!).eq("ativo", true).order("cfop").then(({ data }) => { setLoadingHisFiscal(false); setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; })); }); }}
+                        style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}
+                      >↺ Atualizar</button>
+                    </div>
                   </div>
                   {/* Filtros */}
                   <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -2416,7 +2439,7 @@ function CadastrosInner() {
                   {loadingHisFiscal && <div style={{ textAlign: "center", padding: 40, color: "#888" }}>Carregando…</div>}
                   {!loadingHisFiscal && hisFiscal.length === 0 && (
                     <div style={{ textAlign: "center", padding: 32, color: "#888", fontSize: 13 }}>
-                      Nenhum CFOP vinculado. Use o botão <strong>"↓ Importar CFOPs Padrão"</strong> na aba Operações Gerenciais.
+                      Nenhum CFOP vinculado. Clique em <strong>"↓ Importar CFOPs Padrão"</strong> acima para carregar os 352 registros padrão do Agrosoft.
                     </div>
                   )}
                   {!loadingHisFiscal && hisFiscal.length > 0 && gruposArr.length === 0 && (
