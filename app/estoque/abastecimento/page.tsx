@@ -323,7 +323,8 @@ export default function AbastecimentoPage() {
     linhas.push("", "Esta ação não pode ser desfeita.");
     if (!confirm(linhas.join("\n"))) return;
 
-    // 1. Pendências fiscais vinculadas ao lançamento
+    // 1. Pendências fiscais — por abastecimento_id (cascade) ou lancamento_id (legado)
+    await supabase.from("pendencias_fiscais").delete().eq("abastecimento_id", ab.id);
     if (ab.lancamento_id) {
       await supabase.from("pendencias_fiscais").delete().eq("lancamento_id", ab.lancamento_id);
       // 2. Lançamento (CP)

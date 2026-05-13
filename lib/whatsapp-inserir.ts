@@ -388,7 +388,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
     .limit(1).maybeSingle();
 
-  await sb().from("abastecimentos").insert({
+  const { data: absRow } = await sb().from("abastecimentos").insert({
     fazenda_id:     fazendaId,
     bomba_id:       bomba?.id ?? null,
     maquina_id:     maqExtData?.id ?? null,
@@ -398,12 +398,13 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     data:           hoje,
     observacao:     String(dados.veiculo ?? "") || null,
     lancamento_id:  lancRow?.id ?? null,
-  });
+  }).select("id").maybeSingle();
 
   // Pendência fiscal — aguardando NF do posto
   await sb().from("pendencias_fiscais").insert({
     fazenda_id:      fazendaId,
     lancamento_id:   lancRow?.id ?? null,
+    abastecimento_id: absRow?.id ?? null,
     tipo:            "abastecimento",
     status:          "aguardando",
     descricao:       String(cpPayload.descricao),
@@ -1242,14 +1243,15 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
 
   // 6. Pendência fiscal
   await sb().from("pendencias_fiscais").insert({
-    fazenda_id:    fazendaId,
-    lancamento_id: lancRow?.id ?? null,
-    tipo:          "nf_entrada",
-    status:        "aguardando",
-    descricao:     `NF ${numeroNf || "s/n"} — ${razao}`,
-    valor:         valorTotal,
-    data_operacao: hoje,
-    origem:        "whatsapp",
+    fazenda_id:      fazendaId,
+    lancamento_id:   lancRow?.id ?? null,
+    tipo:            "entrada_estoque",
+    status:          "aguardando",
+    descricao:       `NF ${numeroNf || "s/n"} — ${razao}`,
+    valor:           valorTotal,
+    data_operacao:   hoje,
+    fornecedor_nome: razao,
+    origem:          "whatsapp",
   });
 
   const linhas = [

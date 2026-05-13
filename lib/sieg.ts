@@ -3,7 +3,7 @@
  * Cliente da API Sieg DFe Monitor.
  * POST https://api.sieg.com/BaixarXmls?api_key=<KEY>
  * Retorna array de documentos com XML em Base64.
- * Paginação por Skip/Take (max 50 por página).
+ * Paginação por Skip/Take (max 50 por página). Rate limit: 20 req/min.
  */
 
 const SIEG_BASE = "https://api.sieg.com";

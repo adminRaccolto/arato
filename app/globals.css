@@ -15,6 +15,18 @@ input, select, textarea, button {
   font-family: inherit;
 }
 
+/* ── Impressão ───────────────────────────────────────────────── */
+@media print {
+  header, nav, .no-print { display: none !important; }
+  body { background: #fff !important; font-size: 11px; }
+  .print-area { display: block !important; }
+  table { page-break-inside: auto; border-collapse: collapse; width: 100%; }
+  tr    { page-break-inside: avoid; }
+  th, td { border: 0.5px solid #ccc; padding: 5px 8px; }
+  thead { display: table-header-group; }
+  @page { size: A4 landscape; margin: 1.5cm; }
+}
+
 /* ── Lavoura Mobile App Shell ────────────────────────────────── */
 .lavoura-app-shell {
   min-height: 100vh;

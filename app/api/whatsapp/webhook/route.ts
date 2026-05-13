@@ -144,12 +144,47 @@ export async function POST(req: NextRequest) {
     }
 
   } else if (messageType === "imageMessage") {
+    // Legenda da foto (se o usuário escreveu algo junto)
+    const legenda = String(
+      (message.imageMessage as Record<string, unknown> | undefined)?.caption ?? ""
+    ).trim();
+    if (legenda) textoMensagem = legenda;
     try {
       const { base64, mimetype } = await baixarMidiaBase64({ key, message });
       imagemBase64 = base64;
       imagemMime   = mimetype || "image/jpeg";
     } catch {
       await enviarTexto(telefone, "❌ Não consegui baixar a imagem. Tente novamente.");
+      return NextResponse.json({ ok: true });
+    }
+
+  } else if (messageType === "documentMessage") {
+    // Arquivo enviado — verificar se é imagem (HEIC, PNG, JPEG etc.)
+    const doc = message.documentMessage as Record<string, unknown> | undefined;
+    const docMime = String(doc?.mimetype ?? "").toLowerCase();
+    const legenda = String(doc?.caption ?? "").trim();
+    if (legenda) textoMensagem = legenda;
+
+    if (docMime.startsWith("image/")) {
+      if (docMime.includes("heic") || docMime.includes("heif")) {
+        // HEIC não é suportado pelo Claude Vision — orientar o usuário
+        await enviarTexto(telefone,
+          "📎 _Arquivo HEIC recebido, mas esse formato não é lido automaticamente._\n\n" +
+          "Por favor, envie a NF como *foto* (não como arquivo): segure o botão da câmera no WhatsApp e tire a foto direto, ou escolha da galeria sem usar o ícone de clipe 📎.\n\n" +
+          "O WhatsApp converte automaticamente para JPEG e consigo ler! 📷"
+        );
+        return NextResponse.json({ ok: true });
+      }
+      // Outros tipos de imagem como documento (PNG, JPEG) — tenta processar
+      try {
+        const { base64, mimetype } = await baixarMidiaBase64({ key, message });
+        imagemBase64 = base64;
+        imagemMime   = mimetype || "image/jpeg";
+      } catch {
+        await enviarTexto(telefone, "❌ Não consegui abrir o arquivo. Tente enviar como foto.");
+        return NextResponse.json({ ok: true });
+      }
+    } else {
       return NextResponse.json({ ok: true });
     }
   } else {
@@ -207,16 +242,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // ── Imagem — tenta ler como nota fiscal e injeta o texto no contexto ────────
+  // ── Imagem — passa diretamente para Claude (sem pré-extração) ────────────────
   let textoParaIA = textoMensagem;
   if (imagemBase64) {
-    try {
-      await enviarTexto(telefone, "🔍 Lendo a imagem...");
-      const nfDados = await lerNotaFiscal(imagemBase64, imagemMime ?? "image/jpeg");
-      textoParaIA = `[Usuário enviou uma imagem. Dados extraídos: ${JSON.stringify(nfDados)}]\n${textoMensagem}`.trim();
-    } catch {
-      textoParaIA = "[Usuário enviou uma imagem mas não foi possível lê-la.]";
-    }
+    await enviarTexto(telefone, "🔍 Lendo a imagem...");
+    // textoParaIA continua sendo a legenda/texto do usuário
+    // A imagem vai como content block separado no processarMensagemIA
   }
 
   // ── Pagamento já efetuado: injeta hint obrigatório antes de Claude ─────────
@@ -261,13 +292,14 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Claude processa com tool use ────────────────────────────────────────────
-  console.log("[WH] processando com Claude:", textoParaIA.slice(0, 80));
+  console.log("[WH] processando com Claude:", textoParaIA.slice(0, 80), imagemBase64 ? "(+ imagem)" : "");
   let resposta: string;
   try {
     resposta = await processarMensagemIA(
       textoParaIA,
       { fazendaId, fazendaNome, usuarioId, usuarioNome, usuarioWhatsapp },
       historico,
+      imagemBase64 ? { base64: imagemBase64, mime: imagemMime ?? "image/jpeg" } : undefined,
     );
   } catch (err) {
     console.error("[WH] ERRO Claude:", err);
@@ -285,9 +317,13 @@ export async function POST(req: NextRequest) {
   if (autoConfirmFarm) fazendaConfirmadaId = fazendaId;
 
   // Salva histórico ANTES de enviar — elimina race condition
+  // Quando havia imagem, salva apenas o texto (não o base64) para não explodir o storage
+  const textoHistorico = imagemBase64
+    ? `[usuário enviou foto de NF]${textoParaIA ? `\n${textoParaIA}` : ""}`
+    : textoParaIA;
   const novoHistorico: Mensagem[] = [
     ...historico,
-    { role: "user" as const, content: textoParaIA },
+    { role: "user" as const, content: textoHistorico },
     { role: "assistant" as const, content: respostaLimpa },
   ].slice(-20);
   console.log("[WH] salvando histórico:", novoHistorico.length, "msgs para telefone:", telefone);

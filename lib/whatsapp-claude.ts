@@ -369,6 +369,7 @@ export async function processarMensagemIA(
   texto: string,
   contexto: { fazendaId: string; fazendaNome: string; usuarioId: string; usuarioNome?: string; usuarioWhatsapp?: string },
   historico: Mensagem[],
+  imagem?: { base64: string; mime: string },
 ): Promise<string> {
   const { fazendaId, fazendaNome, usuarioId, usuarioNome = "", usuarioWhatsapp = "" } = contexto;
   const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
@@ -409,12 +410,13 @@ REGRA #5 — CONTEXTO CONTÍNUO:
 - NUNCA peça novamente algo que o usuário já informou.
 
 REGRA #6 — FOTO DE NOTA FISCAL:
-Quando a mensagem começar com "[Usuário enviou uma imagem. Dados extraídos:" significa que o sistema leu uma NF por foto.
-- IMEDIATAMENTE chame a ferramenta registrar_nf_compra com confirmado=false e TODOS os dados extraídos (razao_social, cnpj_emitente, numero_nf, data_emissao, valor_total, itens, vencimento).
-- A ferramenta vai mostrar um resumo e perguntar ao usuário se confirma.
-- Quando o usuário responder "sim" ou confirmar → chame registrar_nf_compra novamente com os MESMOS dados + confirmado=true.
-- NUNCA resuma os dados por conta própria — sempre passe pela ferramenta para o preview.
-- Se não houver data de vencimento na NF, use "hoje" como padrão.
+Quando o usuário enviar uma imagem (a mensagem pode conter uma imagem diretamente, ou o texto pode incluir "[IMAGEM_NF]"):
+- LEIA a imagem para extrair: razão social do emitente, CNPJ, número da NF, data de emissão, valor total, itens (descrição/quantidade/unidade/valor).
+- IMEDIATAMENTE chame registrar_nf_compra com confirmado=false e todos os dados que conseguiu ler + vencimento do texto do usuário (se mencionado) ou "hoje".
+- Mesmo que a imagem esteja girada, torta ou parcialmente legível — extraia o que conseguir e chame a ferramenta. NÃO diga "não consegui ler". Use os dados parciais.
+- A ferramenta mostra resumo e pede confirmação.
+- Quando usuário responder "sim" → chame com confirmado=true e os MESMOS dados.
+- Se a imagem vier junto com texto ("vencimento 30/05/2026", "conta caixa") → use essas informações nos campos da ferramenta.
 
 COMPORTAMENTO GERAL:
 - Seu nome é Arato. Responda em português, direto e prático.
@@ -424,14 +426,30 @@ COMPORTAMENTO GERAL:
 - Nunca invente dados financeiros. Se não souber, use as ferramentas.
 - Quando o usuário disser "cancelar" ou "sair", encerre educadamente.`;
 
+  // Monta conteúdo da mensagem — com imagem se presente
+  let userContent: string | Anthropic.ContentBlockParam[];
+  if (imagem) {
+    const supportedMime = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    const mime = supportedMime.includes(imagem.mime) ? imagem.mime : "image/jpeg";
+    userContent = [
+      {
+        type: "image",
+        source: { type: "base64", media_type: mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: imagem.base64 },
+      },
+      ...(texto ? [{ type: "text" as const, text: texto }] : []),
+    ];
+  } else {
+    userContent = texto;
+  }
+
   const messages: Anthropic.MessageParam[] = [
     ...historico.map(m => ({ role: m.role, content: m.content })),
-    { role: "user", content: texto },
+    { role: "user", content: userContent },
   ];
 
   // Força tool_choice=any quando detecta intenção de registro
   // Isso impede Claude de gerar ✅ sem chamar a ferramenta (stop_reason=end_turn)
-  const forcaTool = deveForcarFerramenta(texto, historico);
+  const forcaTool = imagem ? true : deveForcarFerramenta(texto, historico);
   const toolChoice = forcaTool
     ? { type: "any" as const }
     : { type: "auto" as const };
