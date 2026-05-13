@@ -191,34 +191,34 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
     children: [
-      { type: "divider", label: "Cadastro" },
-      { id: "conf-empresa",     label: "Empresa",        path: "/configuracoes?tab=empresa"     },
-      { id: "conf-certificado", label: "Certificado A1", path: "/configuracoes?tab=certificado" },
-      {
-        type: "subgroup", id: "sg-parametros", label: "Parâmetros",
-        children: [
-          { id: "conf-modulos",       label: "Parâmetros do Sistema",    path: "/configuracoes/modulos"          },
-          { id: "conf-plano-contas",  label: "Plano de Contas",          path: "/configuracoes?tab=plano_contas" },
-          { id: "conf-classificacao", label: "Classificação Automática", path: "/configuracoes/classificacao"    },
-          { id: "conf-op-fiscais",    label: "Operações Fiscais",        path: "/configuracoes/modulos?aba=operacoes" },
-          { id: "conf-op-gerenciais", label: "Operações Gerenciais",     path: "/cadastros?tab=operacoes_gerenciais" },
-          { id: "conf-formas-pgto",   label: "Formas de Pagamento",      path: "/cadastros?tab=formas_pagamento"     },
-        ],
-      },
-      {
-        type: "subgroup", id: "sg-contabilidade-conf", label: "Contabilidade",
-        children: [
-          { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade" },
-        ],
-      },
+      { type: "divider", label: "Empresa" },
+      { id: "conf-empresa",     label: "Dados da Empresa",  path: "/configuracoes?tab=empresa"     },
+      { id: "conf-certificado", label: "Certificado A1",    path: "/configuracoes?tab=certificado" },
+
+      { type: "divider", label: "Fiscal" },
+      { id: "conf-modulos",       label: "Parâmetros NF-e / MDF-e",   path: "/configuracoes/modulos"               },
+      { id: "conf-op-fiscais",    label: "Operações Fiscais",          path: "/configuracoes/modulos?aba=operacoes" },
+      { id: "conf-historico-cfop", label: "Histórico Fiscal (CFOPs)", path: "/cadastros?tab=historico_fiscal"      },
+      { id: "conf-classificacao", label: "Classificação Automática",   path: "/configuracoes/classificacao"         },
+
+      { type: "divider", label: "Financeiro" },
+      { id: "conf-plano-contas",  label: "Plano de Contas",       path: "/configuracoes?tab=plano_contas"     },
+      { id: "conf-op-gerenciais", label: "Operações Gerenciais",  path: "/cadastros?tab=operacoes_gerenciais" },
+      { id: "conf-formas-pgto",   label: "Formas de Pagamento",   path: "/cadastros?tab=formas_pagamento"     },
+
+      { type: "divider", label: "Contabilidade" },
+      { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade" },
+
+      { type: "divider", label: "Sistema" },
       { id: "conf-integracoes",  label: "Integrações",           path: "/configuracoes/integracoes" },
-      { id: "conf-automacoes",   label: "Automações",           path: "/configuracoes/automacoes"  },
-      { id: "conf-backup",       label: "Backup & Restauração", path: "/configuracoes/backup"      },
-      { id: "conf-importacao",   label: "Importações",          path: "/configuracoes/importacao"  },
+      { id: "conf-automacoes",   label: "Automações",            path: "/configuracoes/automacoes"  },
+      { id: "conf-backup",       label: "Backup & Restauração",  path: "/configuracoes/backup"      },
+      { id: "conf-importacao",   label: "Importações",           path: "/configuracoes/importacao"  },
+
       { type: "divider", label: "Ferramentas do Sistema" },
-      { id: "conf-usuarios", label: "Usuários & Permissões", path: "/admin/usuarios" },
-      { id: "conf-logs",     label: "Log do Sistema",        path: "/admin/logs"     },
-      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"  },
+      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/admin/usuarios" },
+      { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs"     },
+      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"   },
     ],
   },
 
