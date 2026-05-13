@@ -80,7 +80,7 @@ function SearchableSelect({
 
 const fmtBRL = (v?: number | null) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtUSD = (v?: number | null) => `US$ ${(v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const fmtMoeda = (v: number | null | undefined, moeda: string) => moeda === "USD" ? fmtUSD(v) : fmtBRL(v);
+const fmtMoeda = (v: number | null | undefined, moeda: string) => moeda === "USD" ? fmtUSD(v) : moeda === "barter" ? `${fmtN(v, 2)} sc` : fmtBRL(v);
 const fmtN   = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
@@ -697,10 +697,14 @@ export default function ComprasPage() {
                   </div>
                   <div>
                     <label style={lbl}>Cotação Moeda</label>
-                    <select style={inp} value={f.cotacao_moeda} onChange={e => setF(p => ({ ...p, cotacao_moeda: e.target.value }))}>
-                      <option value="R$">R$</option>
-                      <option value="USD">USD</option>
-                    </select>
+                    {f.meio_pagamento === "barter" ? (
+                      <div style={{ ...inp, background: "#FBF3E0", color: "#7A5200", fontWeight: 600 }}>Barter (sc)</div>
+                    ) : (
+                      <select style={inp} value={f.cotacao_moeda} onChange={e => setF(p => ({ ...p, cotacao_moeda: e.target.value }))}>
+                        <option value="R$">R$</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label style={lbl}>Nr. Solicitação</label>
@@ -1048,8 +1052,25 @@ export default function ComprasPage() {
               {/* Footer */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid #D4DCE8" }}>
                 <div style={{ fontSize: 13, color: "#555" }}>
-                  Total Financeiro: <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
-                  {"  ·  "}Total Prod+Serviços: <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
+                  {f.meio_pagamento === "barter" ? (() => {
+                    const cicloB = ciclos.find(c => c.id === f.barter_ciclo_id);
+                    const preco  = parseFloat(f.barter_preco_saca) || cicloB?.preco_esperado_sc || 0;
+                    const sacas  = preco > 0 ? Math.ceil((totalItens / preco) * 100) / 100 : null;
+                    return <>
+                      Compromisso Barter:{" "}
+                      <strong style={{ color: "#C9921B", fontSize: 15 }}>
+                        {sacas != null ? `≈ ${fmtN(sacas, 2)} sc` : "— sc"}
+                      </strong>
+                      <span style={{ color: "#888", fontSize: 12, marginLeft: 8 }}>
+                        (ref. {fmtBRL(totalItens)})
+                      </span>
+                    </>;
+                  })() : <>
+                    Total Financeiro:{" "}
+                    <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
+                    {"  ·  "}Total Prod+Serviços:{" "}
+                    <strong style={{ color: "#1A4870", fontSize: 15 }}>{fmtMoeda(totalItens, f.cotacao_moeda)}</strong>
+                  </>}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
