@@ -1328,3 +1328,669 @@ export function getDreGrupo(classificacao: string): string {
   }
   return "outros";
 }
+
+// ── CFOP Seed ────────────────────────────────────────────────────────────────
+// 352 registros extraídos do Agrosoft (Historico_Fiscal)
+// Chave: agrosoft_op_id == operacoes_gerenciais.agrosoft_id
+type CfopRecord = {
+  cfop: string;
+  descricao_cfop: string;
+  operacao_nf: string;
+  tipo_pessoa: string;
+  cst_pis: string | null;
+  cst_cofins: string | null;
+  ncm: string | null;
+  fins_exportacao: boolean;
+  compoe_faturamento: boolean;
+};
+
+const CFOP_SEED: Record<number, CfopRecord[]> = {
+  17: [
+    { cfop: "5132", descricao_cfop: "FIXAÇÃO DE PREÇO DE PRODUÇÃO", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO DE VENDA DE GRÃOS", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6118", descricao_cfop: "VENDA DE PRODUÇÃO ENTREGUE POR CONTA E ORDEM DO ADQUIRENTE", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5118", descricao_cfop: "VENDA DE PRODUÇÃO ENTREGUE POR CONTA E ORDEM DO ADQUIRENTE", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "7101", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTABELECIMENTO EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "6501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5105", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTAB. QUE NAO DEVA POR ELE TRANSITAR", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  19: [
+    { cfop: "5901", descricao_cfop: "REMESSA PARA INDUSTRIALIZAçãO POR ENCOMENDA", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5132", descricao_cfop: "FIXAÇÃO DE PREÇO DE PRODUÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO DE VENDA DE GRÃOS", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUÇÃO NO MERC. INTERNO P/ EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6118", descricao_cfop: "VENDA DE PRODUÇÃO ENTREGUE POR CONTA E ORDEM DO ADQUIRENTE", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5118", descricao_cfop: "VENDA DE PRODUÇÃO ENTREGUE POR CONTA E ORDEM DO ADQUIRENTE", operacao_nf: "Entrega Futura por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "7101", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTABELECIMENTO EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5105", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTAB. QUE NAO DEVA POR ELE TRANSITAR", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "6501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  32: [
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  38: [
+    { cfop: "1151", descricao_cfop: "TRANSF. RECEBIDA DE PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  47: [
+    { cfop: "6932", descricao_cfop: "PRESTAçãO DE SERVIçO DE TRANSPORTE INICIADA EM UNIDADE DA FEDERAçãO DIVERSA DAQU", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5932", descricao_cfop: "PRESTAçãO DE SERVIçO DE TRANSPORTE INICIADA EM UNIDADE DA FEDERAçãO DIVERSA DAQU", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6356", descricao_cfop: "PRESTAÇÃO DE SERVIÇO DE TRANSPORTE A PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5356", descricao_cfop: "PRESTAÇÃO DE SERVIÇO DE TRANSPORTE A PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  87: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  96: [
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  99: [
+    { cfop: "2306", descricao_cfop: "AQUISIçãO DE SERVIçO DE COMUNICAçãO POR ESTABELECIMENTO DE PRODUTOR RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "70", cst_cofins: "70", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1306", descricao_cfop: "AQUISIçãO DE SERVIçO DE COMUNICAçãO POR ESTABELECIMENTO DE PRODUTOR RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "70", cst_cofins: "70", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  103: [
+    { cfop: "1256", descricao_cfop: "COMPRA DE ENERGIA ELETRICA ESTABELIMENTO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "70", cst_cofins: "70", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  115: [
+    { cfop: "2256", descricao_cfop: "COMPRA DE ENERGIA ELETRICA ESTABELIMENTO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1256", descricao_cfop: "COMPRA DE ENERGIA ELETRICA ESTABELIMENTO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  117: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  119: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  128: [
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  141: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  153: [
+    { cfop: "2356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  157: [
+    { cfop: "2555", descricao_cfop: "ENTRADA DE BEM DO ATIVO IMOBILIZADO DE TERCEIRO, REMETIDO PARA USO NO ESTABELECI", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1555", descricao_cfop: "ENTRADA DE BENS DO ATIVO IMOBILIZADO DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  159: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  162: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  246: [
+    { cfop: "2551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  248: [
+    { cfop: "2551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  401: [
+    { cfop: "6551", descricao_cfop: "VENDA DE BEM DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5551", descricao_cfop: "VENDA DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  405: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  407: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  413: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  423: [
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  425: [
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2306", descricao_cfop: "AQUISIçãO DE SERVIçO DE COMUNICAçãO POR ESTABELECIMENTO DE PRODUTOR RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "70", cst_cofins: "70", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1306", descricao_cfop: "AQUISIçãO DE SERVIçO DE COMUNICAçãO POR ESTABELECIMENTO DE PRODUTOR RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "70", cst_cofins: "70", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  427: [
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  433: [
+    { cfop: "1949", descricao_cfop: "OUTRA ENTRADA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "70", cst_cofins: "70", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  441: [
+    { cfop: "6551", descricao_cfop: "VENDA DE BEM DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5551", descricao_cfop: "VENDA DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  445: [
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2555", descricao_cfop: "ENTRADA DE BEM DO ATIVO IMOBILIZADO DE TERCEIRO, REMETIDO PARA USO NO ESTABELECI", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1555", descricao_cfop: "ENTRADA DE BENS DO ATIVO IMOBILIZADO DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: null, cst_cofins: null, ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  465: [
+    { cfop: "5412", descricao_cfop: "DEVOLUÇÃO DE BEM DO ATIVO SUBST. TRIBUTARIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6413", descricao_cfop: "DEVOLUÇÃO DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6553", descricao_cfop: "DEVOLUçãO DE COMPRA DE BEM DO ATIVO IMOBILIZADO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6556", descricao_cfop: "DEVOLUçãO DE COMPRA DE MATERIAL DE USO OU CONSUMO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6412", descricao_cfop: "DEVOLUÇÃO DE BEM DO ATIVO SUBST. TRIBUTARIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5413", descricao_cfop: "DEVOLUÇÃO DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5553", descricao_cfop: "DEVOLUCAO DE COMPRA DE BENS DO ATIVO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5556", descricao_cfop: "DEVOLUCAO DE MATERIAL DE USO CONSUMO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6201", descricao_cfop: "DEVOLUÇÃO DE COMPRA PARA PRODUÇÃO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5201", descricao_cfop: "DEVOLUÇÃO DE COMPRA PARA PRODUÇÃO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  520: [
+    { cfop: "5933", descricao_cfop: "PRESTAçãO DE SERVIçO TRIBUTADO PELO ISSQN", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  562: [
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  626: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  648: [
+    { cfop: "5131", descricao_cfop: "REMESSA DE PRODUÇÃO DE MILHO COM PREVISÃO DE AJUSTE", operacao_nf: "A Fixar", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5131", descricao_cfop: "REMESSA DE PRODUÇÃO DE SOJA COM PREVISÃO DE AJUSTE", operacao_nf: "A Fixar", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  659: [
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  663: [
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  665: [
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  667: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  670: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  675: [
+    { cfop: "1213", descricao_cfop: "DEVOLUÇÃO DE REMESSA DE PRODUÇÃO COM PREVISÃO DE AJUSTE", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "999", descricao_cfop: "ESTORNO DE NFE NÃO CANCELADA NO PRAZO LEGAL", operacao_nf: "Estorno", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2201", descricao_cfop: "DEVOLUCAO DE VENDA DA PRODUCAO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "1201", descricao_cfop: "DEVOLUCAO DE VENDA DA PRODUCAO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  686: [
+    { cfop: "2555", descricao_cfop: "ENTRADA DE BEM DO ATIVO IMOBILIZADO DE TERCEIRO, REMETIDO PARA USO NO ESTABELECI", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1555", descricao_cfop: "ENTRADA DE BENS DO ATIVO IMOBILIZADO DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  687: [
+    { cfop: "2555", descricao_cfop: "ENTRADA DE BEM DO ATIVO IMOBILIZADO DE TERCEIRO, REMETIDO PARA USO NO ESTABELECI", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1555", descricao_cfop: "ENTRADA DE BENS DO ATIVO IMOBILIZADO DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  698: [
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO DE VENDA DE GRÃOS", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "7101", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTABELECIMENTO EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  699: [
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO DE VENDA DE GRÃOS", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5105", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTAB. QUE NAO DEVA POR ELE TRANSITAR", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  700: [
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO DE VENDA DE GRÃOS", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5105", descricao_cfop: "VENDA DE PRODUÇÃO DO ESTAB. QUE NAO DEVA POR ELE TRANSITAR", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  701: [
+    { cfop: "6131", descricao_cfop: "REMESSA DE PRODUÇÃO DE SOJA COM PREVISÃO DE AJUSTE FORA DO MT", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5131", descricao_cfop: "REMESSA DE PRODUÇÃO DE SOJA COM PREVISÃO DE AJUSTE", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6905", descricao_cfop: "REMESSA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6934", descricao_cfop: "REMESSA SIMBÓLICA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5934", descricao_cfop: "REMESSA SIMBÓLICA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5905", descricao_cfop: "REMESSA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  702: [
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  713: [
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO VALOR DE VENDA BOVINO REGISTRADO P.O", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO VALOR DE VENDA BOVINO", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  720: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  721: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  722: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  723: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  728: [
+    { cfop: "2653", descricao_cfop: "COMPRA DE COMBUSTíVEL E LUBRIFICANTE POR CONSUMIDOR OU USUáRIO FINAL.", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1653", descricao_cfop: "COMPRA DE COMBUSTÍVEL OU LUBRIFICANTE POR CONSUMIDOR OU USUÁRIO FINAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  729: [
+    { cfop: "1653", descricao_cfop: "COMPRA DE COMBUSTÍVEL OU LUBRIFICANTE POR CONSUMIDOR OU USUÁRIO FINAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  730: [
+    { cfop: "2653", descricao_cfop: "COMPRA DE COMBUSTíVEL E LUBRIFICANTE POR CONSUMIDOR OU USUáRIO FINAL.", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "1653", descricao_cfop: "COMPRA DE COMBUSTÍVEL OU LUBRIFICANTE POR CONSUMIDOR OU USUÁRIO FINAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  732: [
+    { cfop: "6915", descricao_cfop: "REMESSA DE MERCADORIA OU BEM PARA CONSERTO OU REPARO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  734: [
+    { cfop: "2555", descricao_cfop: "ENTRADA DE BEM DO ATIVO IMOBILIZADO DE TERCEIRO, REMETIDO PARA USO NO ESTABELECI", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1555", descricao_cfop: "ENTRADA DE BENS DO ATIVO IMOBILIZADO DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  735: [
+    { cfop: "1406", descricao_cfop: "COMPRA DE BEM PARA O ATIVO IMOBILIZADO SUBST. TRIBUTARIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2406", descricao_cfop: "COMPRA DE BEM PARA O ATIVO IMOBILIZADO SUBST. TRIBUTARIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  736: [
+    { cfop: "5412", descricao_cfop: "DEVOLUÇÃO DE BEM DO ATIVO SUBST. TRIBUTARIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6413", descricao_cfop: "DEVOLUÇÃO DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6553", descricao_cfop: "DEVOLUçãO DE COMPRA DE BEM DO ATIVO IMOBILIZADO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6556", descricao_cfop: "DEVOLUçãO DE COMPRA DE MATERIAL DE USO OU CONSUMO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6412", descricao_cfop: "DEVOLUÇÃO DE BEM DO ATIVO SUBST. TRIBUTARIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5413", descricao_cfop: "DEVOLUÇÃO DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5553", descricao_cfop: "DEVOLUCAO DE COMPRA DE BENS DO ATIVO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5556", descricao_cfop: "DEVOLUCAO DE MATERIAL DE USO CONSUMO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6201", descricao_cfop: "DEVOLUÇÃO DE COMPRA PARA PRODUÇÃO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5201", descricao_cfop: "DEVOLUÇÃO DE COMPRA PARA PRODUÇÃO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  750: [
+    { cfop: "2922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  751: [
+    { cfop: "2922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  752: [
+    { cfop: "2922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  753: [
+    { cfop: "2922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  754: [
+    { cfop: "2116", descricao_cfop: "REMESSA DE MERC. ORIGINADA DE COMPRA P/ RECEB. FUTURO", operacao_nf: "Remessa", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1116", descricao_cfop: "REMESSA DE MERC. ORIGINADA DE COMPRA P/ RECEB. FUTURO", operacao_nf: "Remessa", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  756: [
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  758: [
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  759: [
+    { cfop: "6949", descricao_cfop: "OUTRA SAÍDA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5949", descricao_cfop: "OUTRA SAÍDA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6915", descricao_cfop: "REMESSA DE MERCADORIA OU BEM PARA CONSERTO OU REPARO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5915", descricao_cfop: "REMESSA DE MERCADORIA OU BEM PARA CONSERTO OU REPARO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  760: [
+    { cfop: "2949", descricao_cfop: "OUTRA ENTRADA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1949", descricao_cfop: "OUTRA ENTRADA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2916", descricao_cfop: "RETORNO DE MERCADORIA OU BEM REMETIDO PARA CONSERTO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1916", descricao_cfop: "RETORNO DE MERCADORIA OU BEM REMETIDO PARA CONSERTO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  765: [
+    { cfop: "2906", descricao_cfop: "RETORNO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2907", descricao_cfop: "RETORNO SIMBÓLICO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1906", descricao_cfop: "RETORNO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1907", descricao_cfop: "RETORNO SIMBÓLICO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  766: [
+    { cfop: "2934", descricao_cfop: "ENTRADA SIMBÓLICA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1934", descricao_cfop: "ENTRADA SIMBÓLICA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2905", descricao_cfop: "ENTRADA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1905", descricao_cfop: "ENTRADA DE MERC. PARA DEPÓSITO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  767: [
+    { cfop: "6907", descricao_cfop: "RETORNO SIMBÓLICO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5907", descricao_cfop: "RETORNO SIMBÓLICO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "6906", descricao_cfop: "RETORNO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5906", descricao_cfop: "RETORNO DE MERC. REMETIDA PARA DEPÓSITO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  768: [
+    { cfop: "2356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  769: [
+    { cfop: "2356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  770: [
+    { cfop: "2356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  771: [
+    { cfop: "2356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1356", descricao_cfop: "AQUISIÇÃO DE SERVIÇO DE TRANSPORTE POR PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  772: [
+    { cfop: "6555", descricao_cfop: "DEVOLUÇÃO DE BEM DE TERCEIRO, PARA USO NO ESTABELECIMENTO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5555", descricao_cfop: "DEVOLUÇÃO DE BEM DE TERCEIRO, PARA USO NO ESTABELECIMENTO", operacao_nf: "Devolução", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  784: [
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  785: [
+    { cfop: "6923", descricao_cfop: "REMESSA DE MERCADORIA POR CONTA E ORDEM DE TERCEIROS", operacao_nf: "Remessa", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5923", descricao_cfop: "REMESSA DE MERCADORIA POR CONTA E ORDEM DE TERCEIROS", operacao_nf: "Remessa", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  786: [
+    { cfop: "5151", descricao_cfop: "TRANSF. DE PRODUCAO", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  788: [
+    { cfop: "2912", descricao_cfop: "ENTRADA DE MERCADORIA OU BEM RECEBIDO PARA DEMONSTRAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1912", descricao_cfop: "ENTRADA DE MERCADORIA OU BEM RECEBIDO PARA DEMONSTRAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  789: [
+    { cfop: "5913", descricao_cfop: "RETORNO DE MERCADORIA OU BEM RECEBIDO PARA DEMONSTRAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6913", descricao_cfop: "RETORNO DE MERCADORIA OU BEM RECEBIDO PARA DEMONSTRAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  793: [
+    { cfop: "2555", descricao_cfop: "ENTRADA DE BEM DO ATIVO IMOBILIZADO DE TERCEIRO, REMETIDO PARA USO NO ESTABELECI", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1555", descricao_cfop: "ENTRADA DE BENS DO ATIVO IMOBILIZADO DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  797: [
+    { cfop: "6206", descricao_cfop: "ANULAçãO DE VALOR RELATIVO à AQUISIçãO DE SERVIçO DE TRANSPORTE", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5206", descricao_cfop: "ANULAçãO DE VALOR RELATIVO à AQUISIçãO DE SERVIçO DE TRANSPORTE", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  801: [
+    { cfop: "6551", descricao_cfop: "VENDA DE BEM DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5551", descricao_cfop: "VENDA DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  802: [
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  804: [
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1551", descricao_cfop: "COMPRA DE BENS P/ ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  805: [
+    { cfop: "5552", descricao_cfop: "TRANSF. DE BENS DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  807: [
+    { cfop: "5152", descricao_cfop: "TRANSF. DE MERC. ADQUIRIDA DE TERCEIROS", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  808: [
+    { cfop: "5456", descricao_cfop: "SAIDA REFERENTE REMUNERACAO PRODUTOR - SISTEMA DE INTEGRACA E PARCERIA RURA", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5151", descricao_cfop: "TRANSF. DE PRODUCAO DE SORGO", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5151", descricao_cfop: "TRANSF. DE PRODUCAO DE MILHETO", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5151", descricao_cfop: "TRANSF. DE PRODUCAO DE MILHO", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5151", descricao_cfop: "TRANSF. DE PRODUCAO DE SOJA", operacao_nf: "Transferência", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  814: [
+    { cfop: "5949", descricao_cfop: "OUTRA SAÍDA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  815: [
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  821: [
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  822: [
+    { cfop: "6920", descricao_cfop: "REMESSA DE VASILHAME OU SACARIA", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5920", descricao_cfop: "REMESSA DE VASILHAME OU SACARIA", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  823: [
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  843: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  846: [
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  853: [
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  855: [
+    { cfop: "2922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1922", descricao_cfop: "FATURAMENTO DE COMPRA PARA RECEBIMENTO FUTURO", operacao_nf: "Entrega Futura", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  857: [
+    { cfop: "1653", descricao_cfop: "COMPRA DE COMBUSTÍVEL OU LUBRIFICANTE POR CONSUMIDOR OU USUÁRIO FINAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  858: [
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  864: [
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  872: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: null, cst_cofins: null, ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  874: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  884: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  887: [
+    { cfop: "5901", descricao_cfop: "REMESSA P/ INDUSTRIALIZACAO DE SOJA", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5901", descricao_cfop: "REMESSA P/ INDUSTRIALIZACAO DE MILHO", operacao_nf: "Depósito", tipo_pessoa: "Indiferente", cst_pis: "07", cst_cofins: "07", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  896: [
+    { cfop: "5949", descricao_cfop: "OUTRA SAÍDA DE MERC. OU SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  899: [
+    { cfop: "5551", descricao_cfop: "VENDA DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "6551", descricao_cfop: "VENDA DE BEM DO ATIVO IMOBILIZADO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  905: [
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  908: [
+    { cfop: "5501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "09", cst_cofins: "09", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "09", cst_cofins: "09", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+  ],
+  909: [
+    { cfop: "6501", descricao_cfop: "REMESSA DE PRODUÇÃO COM FINS ESPECIFICO DE EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5501", descricao_cfop: "VENDA DE PRODUÇÃO PARA EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUÇÃO NO MERC. INTERNO P/ EXPORTAÇÃO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: true, compoe_faturamento: true },
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  914: [
+    { cfop: "6356", descricao_cfop: "PRESTAÇÃO DE SERVIÇO DE TRANSPORTE A PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5360", descricao_cfop: "PRESTAçãO DE SERVIçO DE TRANSPORTE A CONTRIBUINTE SUBSTITUTO EM RELAçãO AO SERVI", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5352", descricao_cfop: "PRESTAçãO DE SERVIçO DE TRANSPORTE A ESTABELECIMENTO INDUSTRIAL.", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5356", descricao_cfop: "PRESTAÇÃO DE SERVIÇO DE TRANSPORTE A PRODUTOR RURAL", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  915: [
+    { cfop: "9101", descricao_cfop: "PRESTAÇÕES DE SERVIÇO REALIZADAS PARA TOMADOR OU DESTINATÁRIO ESTABELECIDO", operacao_nf: "Prestação de Serviço", tipo_pessoa: "Indiferente", cst_pis: "01", cst_cofins: "01", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  916: [
+    { cfop: "6118", descricao_cfop: "VENDA DE PRODUÇÃO ENTREGUE POR CONTA E ORDEM DO ADQUIRENTE", operacao_nf: "Entrega Futura por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5118", descricao_cfop: "VENDA DE PRODUÇÃO ENTREGUE POR CONTA E ORDEM DO ADQUIRENTE", operacao_nf: "Entrega Futura por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  917: [
+    { cfop: "6923", descricao_cfop: "REMESSA DE MERCADORIA POR CONTA E ORDEM DE TERCEIROS", operacao_nf: "Remessa por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5923", descricao_cfop: "REMESSA DE MERCADORIA POR CONTA E ORDEM DE TERCEIROS", operacao_nf: "Remessa por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  918: [
+    { cfop: "6101", descricao_cfop: "COMPLEMENTO VALOR DE VENDA", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5101", descricao_cfop: "COMPLEMENTO DE VALOR", operacao_nf: "Complemento", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  919: [
+    { cfop: "1101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "2101", descricao_cfop: "COMPRA PARA PRODUCAO RURAL", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "98", cst_cofins: "98", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  921: [
+    { cfop: "6923", descricao_cfop: "REMESSA DE MERCADORIA POR CONTA E ORDEM DE TERCEIROS", operacao_nf: "Remessa por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "5923", descricao_cfop: "REMESSA DE MERCADORIA POR CONTA E ORDEM DE TERCEIROS", operacao_nf: "Remessa por Conta e Ordem", tipo_pessoa: "Indiferente", cst_pis: "08", cst_cofins: "08", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+  922: [
+    { cfop: "6101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+    { cfop: "5101", descricao_cfop: "VENDA DE PRODUCAO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "49", cst_cofins: "49", ncm: null, fins_exportacao: false, compoe_faturamento: true },
+  ],
+  935: [
+    { cfop: "1407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2407", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO SUBST. TRIBUTRIO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1933", descricao_cfop: "AQUISIÇÃO DE SERVIÇO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "2556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+    { cfop: "1556", descricao_cfop: "COMPRA DE MATERIAL P/ USO OU CONSUMO", operacao_nf: "Normal (Compra e Venda)", tipo_pessoa: "Indiferente", cst_pis: "99", cst_cofins: "99", ncm: null, fins_exportacao: false, compoe_faturamento: false },
+  ],
+};
+
+// Importa CFOPs padrão do Agrosoft para a tabela operacao_cfop_fiscal
+// Deve ser chamada APÓS seedOperacoesGerenciais (pois precisa dos UUIDs)
+export async function seedCfopsFiscais(fazenda_id: string): Promise<{ inseridos: number; ignorados: number }> {
+  const db = supabase;
+
+  // 1. Buscar mapeamento agrosoft_id → uuid das operações desta fazenda
+  const { data: ops, error: opErr } = await db
+    .from("operacoes_gerenciais")
+    .select("id, agrosoft_id")
+    .eq("fazenda_id", fazenda_id)
+    .not("agrosoft_id", "is", null);
+  if (opErr) throw new Error(`Erro ao buscar operações: ${opErr.message}`);
+
+  const agrosoftToUuid: Record<number, string> = {};
+  for (const op of ops ?? []) {
+    if (op.agrosoft_id) agrosoftToUuid[op.agrosoft_id] = op.id;
+  }
+
+  // 2. Limpar registros anteriores desta fazenda
+  await db.from("operacao_cfop_fiscal").delete().eq("fazenda_id", fazenda_id);
+
+  // 3. Montar rows a inserir
+  const rows: object[] = [];
+  let ignorados = 0;
+  for (const [opIdStr, cfops] of Object.entries(CFOP_SEED)) {
+    const agrosoftId = Number(opIdStr);
+    const uuid = agrosoftToUuid[agrosoftId];
+    if (!uuid) { ignorados += cfops.length; continue; }
+    for (const c of cfops) {
+      rows.push({
+        operacao_gerencial_id: uuid,
+        fazenda_id,
+        cfop:              c.cfop,
+        descricao_cfop:    c.descricao_cfop,
+        operacao_nf:       c.operacao_nf,
+        tipo_pessoa:       c.tipo_pessoa,
+        cst_pis:           c.cst_pis,
+        cst_cofins:        c.cst_cofins,
+        ncm:               c.ncm,
+        fins_exportacao:   c.fins_exportacao,
+        compoe_faturamento: c.compoe_faturamento,
+        ativo: true,
+      });
+    }
+  }
+
+  // 4. Inserir em lotes de 50
+  for (let i = 0; i < rows.length; i += 50) {
+    const lote = rows.slice(i, i + 50);
+    const { error } = await db.from("operacao_cfop_fiscal").insert(lote);
+    if (error) throw new Error(`Erro ao inserir CFOPs (lote ${i}): ${error.message}`);
+  }
+
+  return { inseridos: rows.length, ignorados };
+}

@@ -36,7 +36,7 @@ import {
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { planoContasPadrao, labelConta, type ContaContabil } from "../../lib/planoContas";
-import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
+import { seedOperacoesGerenciais, seedCfopsFiscais } from "../../lib/seedOperacoesGerenciais";
 import type {
   Fazenda as FazendaDB, Talhao,
   Produtor, Empresa, MatriculaImovel, Pessoa,
@@ -388,6 +388,7 @@ function CadastrosInner() {
   const [fOG, setFOG] = useState({ ...OG_VAZIO });
 
   const [seedingOpGer, setSeedingOpGer] = useState(false);
+  const [seedingCfop, setSeedingCfop] = useState(false);
 
   // ── Formas de Pagamento ──
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
@@ -2158,6 +2159,27 @@ function CadastrosInner() {
                       }
                     }}
                   >{seedingOpGer ? "Importando…" : "↓ Importar Plano Padrão"}</button>
+                  <button
+                    style={{ padding: "8px 16px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: seedingCfop ? "not-allowed" : "pointer", fontSize: 13, opacity: seedingCfop ? 0.6 : 1 }}
+                    disabled={seedingCfop}
+                    onClick={async () => {
+                      if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão Agrosoft (352 registros). Continuar?")) return;
+                      setSeedingCfop(true);
+                      try {
+                        const { inseridos, ignorados } = await seedCfopsFiscais(fazendaId!);
+                        alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados (operações sem agrosoft_id correspondente)` : ""}.`);
+                      } catch (e: unknown) {
+                        const msg = e instanceof Error
+                          ? e.message
+                          : (e && typeof e === "object" && "message" in e)
+                            ? String((e as Record<string, unknown>).message)
+                            : JSON.stringify(e);
+                        alert("Erro ao importar CFOPs:\n" + msg);
+                      } finally {
+                        setSeedingCfop(false);
+                      }
+                    }}
+                  >{seedingCfop ? "Importando CFOPs…" : "↓ Importar CFOPs Padrão"}</button>
                   <button onClick={() => window.print()} className="no-print" style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600 }}>
                     🖨 Imprimir
                   </button>

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Arquivos de referência locais (PDFs, Excel, binários Agrosoft)
+Arquivos_locais/
