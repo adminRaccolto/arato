@@ -18,19 +18,25 @@ const TODAY       = new Date().toISOString().split("T")[0];
 const COTACAO_USD = 5.12;
 
 const CATS_CR = [
-  "Venda de grãos",
-  "Venda de insumos",
-  "Venda de animais",
-  "Venda de imóveis",
-  "Prestação de serviços",
-  "Arrendamento recebido",
-  "Captação de Custeio",
-  "Captação de Financiamento",
-  "Captação de Empréstimo",
-  "Sinistro de Seguro",
-  "Consórcio — Carta de Crédito",
-  "Outros recebimentos",
+  "Venda de grãos", "Venda de insumos", "Venda de animais", "Venda de imóveis",
+  "Prestação de serviços", "Arrendamento recebido", "Captação de Custeio",
+  "Captação de Financiamento", "Captação de Empréstimo", "Sinistro de Seguro",
+  "Consórcio — Carta de Crédito", "Outros recebimentos",
 ];
+
+function derivarCategoriaReceita(classificacao: string): string {
+  const c = classificacao ?? "";
+  if (c.startsWith("1.01.01.01")) return "Venda de grãos";
+  if (c.startsWith("1.01.01.02")) return "Venda de animais";
+  if (c.startsWith("1.01.01.03")) return "Arrendamento recebido";
+  if (c.startsWith("1.01.02"))    return "Prestação de serviços";
+  if (c.startsWith("1.02.01.02")) return "Venda de imóveis";
+  if (c.startsWith("1.02.01"))    return "Outros recebimentos";
+  if (c.startsWith("1.03"))       return "Outros recebimentos";
+  if (c.startsWith("2.03.01.02")) return "Captação de Custeio";
+  if (c.startsWith("2.03.01.01")) return "Captação de Financiamento";
+  return "Outros recebimentos";
+}
 
 const FORMAS_RECEBIMENTO = ["PIX", "TED", "DOC", "Boleto", "Dinheiro", "Cheque", "Cartão de Crédito", "Débito Automático", "Outros"];
 
@@ -902,10 +908,40 @@ export default function ContasReceber() {
                 </select>
               </div>
               <div style={{ gridColumn: "2 / -1" }}>
-                <label style={lbl}>Categoria *</label>
-                <select style={inp} value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}>
-                  {CATS_CR.map(c => <option key={c}>{c}</option>)}
+                <label style={lbl}>Operação Gerencial <span style={{ color: "#888", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
+                <select style={inp} value={form.operacao_gerencial_id}
+                  onChange={e => {
+                    const id = e.target.value;
+                    const op = opGerenciais.find(o => o.id === id);
+                    setForm(p => ({
+                      ...p,
+                      operacao_gerencial_id: id,
+                      categoria: op ? derivarCategoriaReceita(op.classificacao ?? "") : p.categoria,
+                    }));
+                  }}>
+                  <option value="">— Selecionar operação —</option>
+                  {Object.entries(
+                    opGerenciais.reduce((acc, o) => {
+                      const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                      (acc[k] = acc[k] ?? []).push(o);
+                      return acc;
+                    }, {} as Record<string, typeof opGerenciais>)
+                  ).map(([k, items]) => (
+                    <optgroup key={k} label={k}>
+                      {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                    </optgroup>
+                  ))}
                 </select>
+                {form.operacao_gerencial_id && (() => {
+                  const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                  if (!op?.conta_debito && !op?.conta_credito) return null;
+                  return (
+                    <div style={{ marginTop: 4, padding: "5px 10px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 16 }}>
+                      <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
+                      <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{ gridColumn: "1/-1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
@@ -1033,35 +1069,6 @@ export default function ContasReceber() {
             <div style={{ marginTop: 18, borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 12 }}>Adicionais — LCDPR e vínculos</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Operação Gerencial <span style={{ color: "#888", fontWeight: 400 }}>(débito / crédito contábil)</span></label>
-                  <select style={inp} value={form.operacao_gerencial_id}
-                    onChange={e => setForm(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
-                    <option value="">— Sem vínculo contábil —</option>
-                    {Object.entries(
-                      opGerenciais.reduce((acc, o) => {
-                        const parts = (o.classificacao ?? "").split(".");
-                        const grpKey = parts.slice(0, 3).join(".");
-                        (acc[grpKey] = acc[grpKey] ?? []).push(o);
-                        return acc;
-                      }, {} as Record<string, typeof opGerenciais>)
-                    ).map(([grpKey, ops]) => (
-                      <optgroup key={grpKey} label={grpKey}>
-                        {ops.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                      </optgroup>
-                    ))}
-                  </select>
-                  {form.operacao_gerencial_id && (() => {
-                    const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
-                    if (!op) return null;
-                    return (
-                      <div style={{ marginTop: 4, padding: "6px 10px", background: "#F0FFF4", borderRadius: 7, border: "0.5px solid #BBF7D0", fontSize: 11, color: "#166534", display: "flex", gap: 16 }}>
-                        <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
-                        <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
-                      </div>
-                    );
-                  })()}
-                </div>
                 <div>
                   <label style={lbl}>Tipo Documento LCDPR</label>
                   <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
