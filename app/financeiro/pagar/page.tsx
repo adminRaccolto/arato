@@ -268,13 +268,9 @@ export default function ContasPagar() {
       listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" }).then(ops =>
         setOpGerenciais(ops.filter(o => {
           const cls = o.classificacao ?? "";
-          // Grupos 3/4: movimentos econômicos/bancários
+          // Grupos 3/4: movimentos econômicos (armazenagem, remessa — não são CP)
           if (cls.startsWith("3.") || cls.startsWith("4.")) return false;
-          // Operações fiscais: entram via NF de Compra
-          if (o.permite_notas_fiscais) return false;
-          // Tesouraria / Financiamentos / Juros: entram via Tesouraria ou Contratos Financeiros
-          if (cls.startsWith("2.03.01.")) return false;
-          // Baixas de estoque e custo fazenda: gerados automaticamente pelo módulo de Estoque
+          // Baixas de estoque e lançamentos automáticos de custo: não são CP manuais
           if (o.gerar_financeiro === false) return false;
           return true;
         }))

@@ -292,7 +292,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
       .limit(1).maybeSingle();
 
     // Inserir abastecimento sem CP
-    await sb().from("abastecimentos").insert({
+    const { data: abastRec, error: abastErr } = await sb().from("abastecimentos").insert({
       fazenda_id:     fazendaId,
       bomba_id:       bomba.id,
       maquina_id:     maqData?.id ?? null,
@@ -302,13 +302,18 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
       data:           hoje,
       observacao:     String(dados.veiculo ?? "") || null,
       lancamento_id:  null,
-    });
+    }).select("id").single();
+
+    if (abastErr || !abastRec) {
+      return { ok: false, mensagem: `❌ Erro ao registrar abastecimento: ${abastErr?.message ?? "falha desconhecida"}` };
+    }
 
     // Deduzir estoque da bomba
     const estoqueAtualBomba = Number(bomba.estoque_atual_l ?? 0);
-    await sb().from("bombas_combustivel")
+    const { error: bombaErr } = await sb().from("bombas_combustivel")
       .update({ estoque_atual_l: estoqueAtualBomba - qtdUsuario })
       .eq("id", bomba.id);
+    if (bombaErr) console.error("[abastecimento] erro ao atualizar estoque bomba:", bombaErr.message);
 
     // Deduzir insumo de estoque + movimentação
     if (insumo) {
