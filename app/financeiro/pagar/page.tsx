@@ -152,6 +152,7 @@ export default function ContasPagar() {
 
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo,  setModalNovo]  = useState(false);
+  const [modalTab,   setModalTab]   = useState<"principal"|"parcelas"|"vinculos"|"adicionais">("principal");
   const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
 
   // ── Modal Editar ──────────────────────────────────────────────
@@ -231,13 +232,16 @@ export default function ContasPagar() {
     condicao: "avista" as "avista" | "prazo",
     qtdParcelas: "2", frequencia: "1",
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
-    juros_pct: "", multa_pct: "", desconto_pct: "",
+    juros_pct: "", multa_pct: "", desconto_pct: "", meses_diferido: "0",
     chave_xml: "", centro_custo: "",
     ano_safra_id: "", produtor_id: "", ciclo_id: "",
     operacao_gerencial_id: "",
     natureza: "real" as "real" | "previsao",
     forma_pagamento: "PIX",
     conta_pagamento: "",
+    data_emissao: TODAY,
+    numero_documento: "",
+    serie: "",
   });
 
   // grid editável de parcelas (prazo)
@@ -545,7 +549,7 @@ export default function ContasPagar() {
               onChange={e => setPeriodoFim(e.target.value)}
               style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
             <button
-              onClick={() => { setFormFazendaId(fazendaId); setModalNovo(true); }}
+              onClick={() => { setFormFazendaId(fazendaId); setModalTab("principal"); setModalNovo(true); }}
               style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginLeft: 4 }}
             >
               ↑ Nova Conta a Pagar
@@ -1251,308 +1255,373 @@ export default function ContasPagar() {
       {modalNovo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
-              <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Nova Conta a Pagar</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column" }}>
+
+            {/* ── Cabeçalho ── */}
+            <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid #DEE5EE" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Nova Conta a Pagar</span>
+                  <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+                    {(["real", "previsao"] as const).map(n => (
+                      <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
+                        style={{ padding: "4px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
+                          background: form.natureza === n ? (n === "previsao" ? "#1A5CB8" : "#C9921B") : "#fff",
+                          color: form.natureza === n ? "#fff" : "#666" }}>
+                        {n === "real" ? "Real" : "Previsão"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <FazendaSelector contaId={contaId} value={fid} onChange={setFormFazendaId} />
-                <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
-                {(["real", "previsao"] as const).map(n => (
-                  <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
-                    style={{ padding: "5px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
-                      background: form.natureza === n ? (n === "previsao" ? "#1A5CB8" : "#C9921B") : "#fff",
-                      color: form.natureza === n ? "#fff" : "#666" }}>
-                    {n === "real" ? "Real" : "Previsão"}
+              </div>
+
+              {/* Abas */}
+              <div style={{ display: "flex", gap: 0 }}>
+                {([
+                  { id: "principal",  label: "Principal"  },
+                  { id: "parcelas",   label: "Parcelas"   },
+                  { id: "vinculos",   label: "Vínculos"   },
+                  { id: "adicionais", label: "Adicionais" },
+                ] as const).map(t => (
+                  <button key={t.id} onClick={() => setModalTab(t.id)}
+                    style={{ padding: "7px 20px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
+                      fontWeight: modalTab === t.id ? 700 : 400,
+                      color: modalTab === t.id ? "#1A4870" : "#666",
+                      borderBottom: modalTab === t.id ? "2px solid #1A4870" : "2px solid transparent" }}>
+                    {t.label}
                   </button>
                 ))}
-                </div>
               </div>
-            </div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>
-              {form.natureza === "previsao"
-                ? "Previsão de custo — não gera movimentação financeira real. Confirme quando a compra for efetivada."
-                : "Lançamentos de insumos e serviços são criados automaticamente a partir das operações de lavoura."}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-              <div>
-                <label style={lbl}>Moeda</label>
-                <select style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
-                  <option value="BRL">Real (R$)</option>
-                  <option value="USD">Dólar (US$)</option>
-                  <option value="barter">Barter</option>
-                </select>
-              </div>
-              <div style={{ gridColumn: "2 / -1" }}>
-                <label style={lbl}>Operação Gerencial <span style={{ color: "#888", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
-                <select style={inp} value={form.operacao_gerencial_id}
-                  onChange={e => {
-                    const id = e.target.value;
-                    const op = opGerenciais.find(o => o.id === id);
-                    setForm(p => ({
-                      ...p,
-                      operacao_gerencial_id: id,
-                      categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria,
-                    }));
-                  }}>
-                  <option value="">— Selecionar operação —</option>
-                  {Object.entries(
-                    opGerenciais.reduce((acc, o) => {
-                      const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                      (acc[k] = acc[k] ?? []).push(o);
-                      return acc;
-                    }, {} as Record<string, typeof opGerenciais>)
-                  ).map(([k, items]) => (
-                    <optgroup key={k} label={k}>
-                      {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-                {form.operacao_gerencial_id && (() => {
-                  const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
-                  if (!op?.conta_debito && !op?.conta_credito) return null;
-                  return (
-                    <div style={{ marginTop: 4, padding: "5px 10px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 16 }}>
-                      <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
-                      <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
+            {/* ── Corpo das abas ── */}
+            <div style={{ padding: "20px 24px", flex: 1, overflowY: "auto" as const }}>
+
+              {/* ─── Aba Principal ─── */}
+              {modalTab === "principal" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                  {/* Linha 1: Moeda | OG (3) | Data Emissão */}
+                  <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 140px", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Moeda</label>
+                      <select style={inp} value={form.moeda} onChange={e => setForm(p => ({ ...p, moeda: e.target.value as Moeda, valorMask: "", sacasMask: "" }))}>
+                        <option value="BRL">Real (R$)</option>
+                        <option value="USD">Dólar (US$)</option>
+                        <option value="barter">Barter</option>
+                      </select>
                     </div>
-                  );
-                })()}
-              </div>
-              <div style={{ gridColumn: "1/-1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Fornecedor / Credor</label>
-                  <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
-                    <option value="">— Selecionar do cadastro —</option>
-                    {pessoas.filter(p => p.fornecedor || (!p.cliente && !p.fornecedor)).map(p => (
-                      <option key={p.id} value={p.id}>{p.nome}{p.cliente ? " (Cli/Forn)" : ""}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>Descrição {!form.pessoa_id && <span style={{ color: "#E24B4A" }}>*</span>}</label>
-                  <input style={inp} placeholder="Ex: Compra de herbicida — Talhão 3" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
-                </div>
-              </div>
-              <div>
-                <label style={lbl}>1º Vencimento *</label>
-                <input style={inp} type="date" value={form.vencimento} onChange={e => setForm(p => ({ ...p, vencimento: e.target.value }))} />
-              </div>
-              <div>
-                <label style={lbl}>Forma de Pagamento</label>
-                <select style={inp} value={form.forma_pagamento} onChange={e => setForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
-                  {FORMAS_PAGAMENTO.map(f => <option key={f}>{f}</option>)}
-                </select>
-              </div>
-              <div style={{ gridColumn: "1/-1" }}>
-                <label style={lbl}>Conta de Pagamento</label>
-                <select style={inp} value={form.conta_pagamento} onChange={e => setForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
-                  <option value="">— Selecionar conta —</option>
-                  {contas.map(c => {
-                    const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                    return <option key={c.id} value={label}>{label}</option>;
-                  })}
-                  {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Safra</label>
-                <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
-                  <option value="">Sem vínculo</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Ciclo / Empreendimento</label>
-                <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
-                  <option value="">— Sem ciclo —</option>
-                  {ciclos
-                    .filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
-                    .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)
-                  }
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Centro de Custo</label>
-                <input style={inp} placeholder="Ex: Talhão 3 / Maquinário" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
-              </div>
-              <div>
-                <label style={lbl}>Produtor</label>
-                <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
-                  <option value="">Sem vínculo</option>
-                  {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
-              </div>
+                    <div style={{ gridColumn: "2 / 4" }}>
+                      <label style={lbl}>Operação Gerencial <span style={{ color: "#888", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
+                      <select style={inp} value={form.operacao_gerencial_id}
+                        onChange={e => {
+                          const id = e.target.value;
+                          const op = opGerenciais.find(o => o.id === id);
+                          setForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria }));
+                        }}>
+                        <option value="">— Selecionar operação —</option>
+                        {Object.entries(
+                          opGerenciais.reduce((acc, o) => {
+                            const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                            (acc[k] = acc[k] ?? []).push(o);
+                            return acc;
+                          }, {} as Record<string, typeof opGerenciais>)
+                        ).map(([k, items]) => (
+                          <optgroup key={k} label={k}>
+                            {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Data Emissão</label>
+                      <input style={inp} type="date" value={form.data_emissao} onChange={e => setForm(p => ({ ...p, data_emissao: e.target.value }))} />
+                    </div>
+                  </div>
 
-              {form.moeda === "BRL" && (
-                <div>
-                  <label style={lbl}>Valor Total (R$) *</label>
-                  <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={form.valorMask} onChange={e => setForm(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
-                </div>
-              )}
-              {form.moeda === "USD" && (
-                <>
-                  <div>
-                    <label style={lbl}>Valor (US$) *</label>
-                    <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={form.valorMask} onChange={e => setForm(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                  {/* Badge débito/crédito da OG */}
+                  {form.operacao_gerencial_id && (() => {
+                    const op = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!op?.conta_debito && !op?.conta_credito) return null;
+                    return (
+                      <div style={{ padding: "5px 12px", background: "#F0F7FF", borderRadius: 7, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 20 }}>
+                        <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
+                        <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Linha 2: Fornecedor (2) | Nº Documento | Série | Tipo Doc LCDPR */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 140px 90px 160px", gap: 12 }}>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label style={lbl}>Fornecedor / Credor</label>
+                      <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
+                        <option value="">— Selecionar do cadastro —</option>
+                        {pessoas.filter(p => p.fornecedor || (!p.cliente && !p.fornecedor)).map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}{p.cliente ? " (Cli/Forn)" : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Nº Documento</label>
+                      <input style={inp} placeholder="Ex: 001234" value={form.numero_documento} onChange={e => setForm(p => ({ ...p, numero_documento: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Série</label>
+                      <input style={inp} placeholder="1" value={form.serie} onChange={e => setForm(p => ({ ...p, serie: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Tipo Doc LCDPR</label>
+                      <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
+                        <option value="RECIBO">Recibo</option><option value="NF">Nota Fiscal</option>
+                        <option value="DUPLICATA">Duplicata</option><option value="CHEQUE">Cheque</option>
+                        <option value="PIX">PIX</option><option value="TED">TED</option><option value="OUTROS">Outros</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label style={lbl}>Cotação R$/US$</label>
-                    <input style={inp} type="text" inputMode="numeric" placeholder="5,12" value={form.cotacaoMask} onChange={e => setForm(p => ({ ...p, cotacaoMask: aplicarMascara(e.target.value) }))} />
+
+                  {/* Linha 3: Descrição (2) | 1º Vencimento | Forma Pgto | Conta Pgto */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 160px 160px 1fr", gap: 12 }}>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label style={lbl}>Descrição {!form.pessoa_id && <span style={{ color: "#E24B4A" }}>*</span>}</label>
+                      <input style={inp} placeholder="Ex: Compra de herbicida — Talhão 3" value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>1º Vencimento *</label>
+                      <input style={inp} type="date" value={form.vencimento} onChange={e => setForm(p => ({ ...p, vencimento: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Forma de Pagamento</label>
+                      <select style={inp} value={form.forma_pagamento} onChange={e => setForm(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                        {FORMAS_PAGAMENTO.map(f => <option key={f}>{f}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Conta de Pagamento</label>
+                      <select style={inp} value={form.conta_pagamento} onChange={e => setForm(p => ({ ...p, conta_pagamento: e.target.value }))}>
+                        <option value="">— Selecionar —</option>
+                        {contas.map(c => {
+                          const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                          return <option key={c.id} value={label}>{label}</option>;
+                        })}
+                        {contas.length === 0 && <option disabled>Cadastre contas em Cadastros</option>}
+                      </select>
+                    </div>
                   </div>
-                  {form.valorMask && form.cotacaoMask && (
-                    <div style={{ gridColumn: "1/-1", background: "#FEF3E2", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#7A4300" }}>
-                      Equivalente: <strong>{fmtBRL(desmascarar(form.valorMask) * desmascarar(form.cotacaoMask))}</strong>
+
+                  {/* Linha 4: Valor (por moeda) */}
+                  {form.moeda === "BRL" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Valor Total (R$) *</label>
+                        <input style={{ ...inp, fontWeight: 600 }} type="text" inputMode="numeric" placeholder="0,00" value={form.valorMask} onChange={e => setForm(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                      </div>
                     </div>
                   )}
-                </>
+                  {form.moeda === "USD" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "200px 200px 1fr", gap: 12, alignItems: "end" }}>
+                      <div>
+                        <label style={lbl}>Valor (US$) *</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={form.valorMask} onChange={e => setForm(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Cotação R$/US$</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="5,12" value={form.cotacaoMask} onChange={e => setForm(p => ({ ...p, cotacaoMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                      {form.valorMask && form.cotacaoMask && (
+                        <div style={{ background: "#FEF3E2", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#7A4300" }}>
+                          Equivalente: <strong>{fmtBRL(desmascarar(form.valorMask) * desmascarar(form.cotacaoMask))}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {form.moeda === "barter" && (
+                    <div style={{ display: "grid", gridTemplateColumns: "160px 160px 200px 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Quantidade (sacas) *</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="0" value={form.sacasMask} onChange={e => setForm(p => ({ ...p, sacasMask: e.target.value.replace(/\D/g, "") }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Cultura</label>
+                        <select style={inp} value={form.culturaBarter} onChange={e => setForm(p => ({ ...p, culturaBarter: e.target.value }))}>
+                          <option value="soja">Soja</option><option value="milho">Milho</option><option value="algodão">Algodão</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Preço referência (R$/sc)</label>
+                        <input style={inp} type="text" inputMode="numeric" placeholder="120,00" value={form.precoSacaMask} onChange={e => setForm(p => ({ ...p, precoSacaMask: aplicarMascara(e.target.value) }))} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
-              {form.moeda === "barter" && (
-                <>
-                  <div>
-                    <label style={lbl}>Quantidade (sacas) *</label>
-                    <input style={inp} type="text" inputMode="numeric" placeholder="0" value={form.sacasMask} onChange={e => setForm(p => ({ ...p, sacasMask: e.target.value.replace(/\D/g, "") }))} />
+
+              {/* ─── Aba Parcelas ─── */}
+              {modalTab === "parcelas" && (
+                <div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                    {(["avista", "prazo"] as const).map(v => (
+                      <button key={v} type="button"
+                        onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v === "avista") setParcelas([]); }}
+                        style={{ flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                          border: "0.5px solid " + (form.condicao === v ? "#C9921B" : "#D4DCE8"),
+                          background: form.condicao === v ? "#FBF3E0" : "#fff",
+                          color: form.condicao === v ? "#7A5200" : "#555" }}>
+                        {v === "avista" ? "À Vista" : "Parcelado"}
+                      </button>
+                    ))}
                   </div>
+
+                  {form.condicao === "avista" && (
+                    <div style={{ fontSize: 12, color: "#888", padding: "12px 16px", background: "#F4F6FA", borderRadius: 8 }}>
+                      Pagamento em parcela única. Defina o vencimento na aba Principal.
+                    </div>
+                  )}
+
+                  {form.condicao === "prazo" && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "160px 200px auto", gap: 12, alignItems: "end", marginBottom: 16 }}>
+                        <div>
+                          <label style={lbl}>Nº de parcelas</label>
+                          <input style={inp} type="number" min="2" max="120" value={form.qtdParcelas} onChange={e => setForm(p => ({ ...p, qtdParcelas: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Frequência</label>
+                          <select style={inp} value={form.frequencia} onChange={e => setForm(p => ({ ...p, frequencia: e.target.value }))}>
+                            <option value="1">Mensal</option>
+                            <option value="2">Bimestral</option>
+                            <option value="3">Trimestral</option>
+                            <option value="6">Semestral</option>
+                            <option value="12">Anual</option>
+                          </select>
+                        </div>
+                        <button type="button"
+                          onClick={() => gerarParcelas(form.vencimento, Number(form.qtdParcelas), Number(form.frequencia), desmascarar(form.valorMask))}
+                          disabled={!form.vencimento || !form.valorMask}
+                          style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !form.vencimento || !form.valorMask ? 0.4 : 1 }}>
+                          Gerar parcelas
+                        </button>
+                      </div>
+
+                      {parcelas.length === 0 && (
+                        <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7 }}>
+                          Preencha 1º Vencimento e Valor na aba Principal, depois clique em "Gerar parcelas".
+                        </div>
+                      )}
+                      {parcelas.length > 0 && (
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: "#F3F6F9" }}>
+                                {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                                  <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {parcelas.map((p, i) => (
+                                <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                                  <td style={{ padding: "4px 10px", textAlign: "center", color: "#555", fontSize: 11, width: 50 }}>{i + 1}/{parcelas.length}</td>
+                                  <td style={{ padding: "4px 10px" }}>
+                                    <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
+                                      onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
+                                  </td>
+                                  <td style={{ padding: "4px 10px" }}>
+                                    <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
+                                      onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ background: "#F3F6F9" }}>
+                                <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
+                                <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                                  {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ─── Aba Vínculos ─── */}
+              {modalTab === "vinculos" && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
                   <div>
-                    <label style={lbl}>Cultura</label>
-                    <select style={inp} value={form.culturaBarter} onChange={e => setForm(p => ({ ...p, culturaBarter: e.target.value }))}>
-                      <option value="soja">Soja</option><option value="milho">Milho</option><option value="algodão">Algodão</option>
+                    <label style={lbl}>Safra</label>
+                    <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                      <option value="">Sem vínculo</option>
+                      {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={lbl}>Preço de referência (R$/sc)</label>
-                    <input style={inp} type="text" inputMode="numeric" placeholder="120,00" value={form.precoSacaMask} onChange={e => setForm(p => ({ ...p, precoSacaMask: aplicarMascara(e.target.value) }))} />
+                    <label style={lbl}>Ciclo / Empreendimento</label>
+                    <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
+                      <option value="">— Sem ciclo —</option>
+                      {ciclos.filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
+                        .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                    </select>
                   </div>
-                </>
+                  <div>
+                    <label style={lbl}>Centro de Custo</label>
+                    <input style={inp} placeholder="Ex: Talhão 3 / Maquinário" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Produtor</label>
+                    <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
+                      <option value="">Sem vínculo</option>
+                      {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Aba Adicionais ─── */}
+              {modalTab === "adicionais" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>% Juros a.m.</label>
+                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.juros_pct} onChange={e => setForm(p => ({ ...p, juros_pct: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>% Multa por atraso</label>
+                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.multa_pct} onChange={e => setForm(p => ({ ...p, multa_pct: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>% Desc. Pontualidade</label>
+                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.desconto_pct} onChange={e => setForm(p => ({ ...p, desconto_pct: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Meses Diferido</label>
+                      <input style={inp} type="number" min="0" placeholder="0" value={form.meses_diferido} onChange={e => setForm(p => ({ ...p, meses_diferido: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Chave XML / NF-e</label>
+                      <input style={inp} placeholder="Opcional" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Observação</label>
+                      <input style={inp} placeholder="Opcional" value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Condição de Pagamento */}
-            <div style={{ marginTop: 18, borderTop: "0.5px solid #DEE5EE", paddingTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Condição de Pagamento</div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                {(["avista", "prazo"] as const).map(v => (
-                  <button key={v} type="button"
-                    onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v === "avista") setParcelas([]); }}
-                    style={{
-                      flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                      border: "0.5px solid " + (form.condicao === v ? "#C9921B" : "#D4DCE8"),
-                      background: form.condicao === v ? "#FBF3E0" : "#fff",
-                      color: form.condicao === v ? "#7A5200" : "#555",
-                    }}>
-                    {v === "avista" ? "À Vista" : "Parcelado"}
-                  </button>
-                ))}
-              </div>
-
-              {form.condicao === "prazo" && (<>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, alignItems: "end", marginBottom: 12 }}>
-                  <div>
-                    <label style={lbl}>Nº de parcelas</label>
-                    <input style={inp} type="number" min="2" max="120" value={form.qtdParcelas}
-                      onChange={e => setForm(p => ({ ...p, qtdParcelas: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={lbl}>Frequência</label>
-                    <select style={inp} value={form.frequencia} onChange={e => setForm(p => ({ ...p, frequencia: e.target.value }))}>
-                      <option value="1">Mensal</option>
-                      <option value="2">Bimestral</option>
-                      <option value="3">Trimestral</option>
-                      <option value="6">Semestral</option>
-                      <option value="12">Anual</option>
-                    </select>
-                  </div>
-                  <button type="button"
-                    onClick={() => gerarParcelas(form.vencimento, Number(form.qtdParcelas), Number(form.frequencia), desmascarar(form.valorMask))}
-                    disabled={!form.vencimento || !form.valorMask}
-                    style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !form.vencimento || !form.valorMask ? 0.4 : 1 }}>
-                    Gerar parcelas
-                  </button>
-                </div>
-
-                {parcelas.length > 0 && (
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 8 }}>
-                      <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
-                          {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
-                            <th key={i} style={{ padding: "5px 8px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {parcelas.map((p, i) => (
-                          <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
-                            <td style={{ padding: "4px 8px", textAlign: "center", color: "#555", fontSize: 11, width: 40 }}>{i + 1}/{parcelas.length}</td>
-                            <td style={{ padding: "4px 8px" }}>
-                              <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
-                                onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
-                            </td>
-                            <td style={{ padding: "4px 8px" }}>
-                              <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
-                                onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr style={{ background: "#F3F6F9" }}>
-                          <td colSpan={2} style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
-                          <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
-                            {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
-                {parcelas.length === 0 && (
-                  <div style={{ fontSize: 11, color: "#888", padding: "8px 12px", background: "#F4F6FA", borderRadius: 7 }}>
-                    Preencha 1º Vencimento e Valor, depois clique em "Gerar parcelas" para editar as datas individualmente.
-                  </div>
-                )}
-              </>)}
-            </div>
-
-            {/* Adicionais */}
-            <div style={{ marginTop: 18, borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 12 }}>Adicionais — LCDPR, encargos e vínculos</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Tipo Documento LCDPR</label>
-                  <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
-                    <option value="RECIBO">Recibo</option><option value="NF">Nota Fiscal</option>
-                    <option value="DUPLICATA">Duplicata</option><option value="CHEQUE">Cheque</option>
-                    <option value="PIX">PIX</option><option value="TED">TED</option><option value="OUTROS">Outros</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>Chave XML / NF-e</label>
-                  <input style={inp} placeholder="Opcional" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={lbl}>Centro de Custo</label>
-                  <input style={inp} placeholder="Ex: Talhão 3 / Safra soja 26" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={lbl}>% Juros a.m.</label>
-                  <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.juros_pct} onChange={e => setForm(p => ({ ...p, juros_pct: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={lbl}>% Multa por atraso</label>
-                  <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.multa_pct} onChange={e => setForm(p => ({ ...p, multa_pct: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={lbl}>Observação</label>
-                  <input style={inp} placeholder="Opcional" value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalNovo(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+            {/* ── Rodapé ── */}
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DEE5EE", display: "flex", gap: 8, justifyContent: "flex-end", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
+              <button onClick={() => setModalNovo(false)} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={adicionarLancamento} disabled={disabled}
-                style={{ padding: "8px 18px", background: disabled ? "#666" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Salvando…" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : "◈ Salvar"}
               </button>
             </div>
