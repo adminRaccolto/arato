@@ -106,7 +106,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const nome = perfil?.nome || user.email || null;
       setNomeUsuario(nome);
 
-      const role = (perfil as { role?: string } | null)?.role ?? "client";
+      const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
+      const role = isRaccoltoEmail ? "raccotlo" : ((perfil as { role?: string } | null)?.role ?? "client");
       setUserRole(role);
 
       if (role === "raccotlo") {

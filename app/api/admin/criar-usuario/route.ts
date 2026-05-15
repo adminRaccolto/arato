@@ -64,7 +64,9 @@ export async function POST(req: Request) {
 
     // ── 2. Criar perfil (upsert — nunca sobrescreve role raccotlo) ──
     const { data: perfilExistente } = await supabase.from("perfis").select("role").eq("user_id", authUserId).maybeSingle();
-    const roleFinal = perfilExistente?.role === "raccotlo" ? "raccotlo" : "client";
+    const emailLower = (user_email ?? "").toLowerCase();
+    const roleFinal = (perfilExistente?.role === "raccotlo" || emailLower.endsWith("@raccolto.com.br"))
+      ? "raccotlo" : "client";
     const { error: perfErr } = await supabase.from("perfis").upsert({
       user_id:    authUserId,
       fazenda_id: fazenda_id,
