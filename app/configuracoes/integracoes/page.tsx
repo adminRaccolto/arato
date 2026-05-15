@@ -117,6 +117,8 @@ function ModalSieg({
   const [certCte,     setCertCte]     = useState(true);
   const [certSaving,  setCertSaving]  = useState(false);
   const [certResults, setCertResults] = useState<CertResult[]>([]);
+  const [diagResult,  setDiagResult]  = useState<Record<string, unknown> | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
 
   function adicionarDoc() {
     const limpo = novoDoc.replace(/\D/g, "");
@@ -183,6 +185,17 @@ function ModalSieg({
       setCertResults(prev => [...prev, { erro: String(e), cnpj: cnpj.replace(/\D/g, "") }]);
     }
     setCertSaving(false);
+  }
+
+  async function testarDiagnostico() {
+    setDiagLoading(true);
+    setDiagResult(null);
+    try {
+      const res = await fetch(`/api/integracoes/sieg-test?fazenda_id=${fazendaId}`);
+      const data = await res.json() as Record<string, unknown>;
+      setDiagResult(data);
+    } catch (e) { setDiagResult({ erro_rede: String(e) }); }
+    setDiagLoading(false);
   }
 
   async function registrarTodos() {
@@ -481,6 +494,53 @@ function ModalSieg({
                           lineHeight: 1.6 }}>
               💡 Se os CNPJs já foram registrados anteriormente no portal Sieg, este botão apenas
               confirma o registro (não causa duplicatas). Pode executar quantas vezes precisar.
+            </div>
+
+            {/* Diagnóstico */}
+            <div style={{ marginTop: 20, borderTop: "0.5px solid #DDE2EE", paddingTop: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                            marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#555" }}>Diagnóstico da chave</div>
+                <button onClick={testarDiagnostico} disabled={diagLoading}
+                  style={{ padding: "6px 14px", background: diagLoading ? "#F4F6FA" : "#fff",
+                           border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12,
+                           cursor: diagLoading ? "not-allowed" : "pointer", color: "#1A4870", fontWeight: 600 }}>
+                  {diagLoading ? "Testando…" : "Testar chave agora"}
+                </button>
+              </div>
+              {diagResult && (
+                <div style={{ padding: "14px 16px", background: diagResult.sieg_ok ? "#F0FFF4" : "#FFF5F5",
+                              border: `0.5px solid ${diagResult.sieg_ok ? "#86EFAC" : "#FCA5A5"}`,
+                              borderRadius: 8, fontSize: 12 }}>
+                  {/* keyDiag */}
+                  {diagResult.keyDiag && (() => {
+                    const k = diagResult.keyDiag as Record<string, unknown>;
+                    return (
+                      <div style={{ fontFamily: "monospace", color: "#555", marginBottom: 10,
+                                    lineHeight: 1.8 }}>
+                        <span style={{ fontWeight: 700 }}>Fonte:</span> {String(k.fonte)}<br />
+                        <span style={{ fontWeight: 700 }}>Comprimento:</span> {String(k.comprimento)} chars<br />
+                        <span style={{ fontWeight: 700 }}>Início:</span> {String(k.inicio)} &nbsp;
+                        <span style={{ fontWeight: 700 }}>Fim:</span> {String(k.fim)}<br />
+                        {k.foi_decoded && <span style={{ color: "#EF9F27" }}>⚠ Chave tinha URL-encoding — corrigida automaticamente</span>}
+                      </div>
+                    );
+                  })()}
+                  {/* Resultado Sieg */}
+                  <div style={{ fontWeight: 700, color: diagResult.sieg_ok ? "#16A34A" : "#E24B4A",
+                                marginBottom: 4 }}>
+                    HTTP {String(diagResult.sieg_status ?? "—")} — {diagResult.sieg_ok ? "Autenticado ✓" : "Falha na autenticação ✗"}
+                  </div>
+                  <div style={{ fontFamily: "monospace", color: "#555", wordBreak: "break-all" }}>
+                    {typeof diagResult.sieg_resposta === "string"
+                      ? diagResult.sieg_resposta
+                      : JSON.stringify(diagResult.sieg_resposta)}
+                  </div>
+                  {diagResult.erro_rede && (
+                    <div style={{ color: "#E24B4A", marginTop: 6 }}>{String(diagResult.erro_rede)}</div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
