@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Diagnóstico: mostra de onde veio a chave e os primeiros/últimos 4 chars
+    const keyInfo = `${apiKeyFazenda ? "fazenda" : "env-global"} — ${apiKey.length} chars — início: "${apiKey.slice(0, 4)}" fim: "${apiKey.slice(-4)}"`;
+    console.log(`[sieg-sync] API Key: ${keyInfo}`);
+
     // CPFs/CNPJs monitorados — suporta array (novo) e string única (legado)
     let cnpjs: string[] = [];
     if (Array.isArray(cfg.cnpjs_destino)) {
@@ -103,7 +107,7 @@ export async function POST(req: NextRequest) {
         });
         xmlsNFe.push(...docs);
       } catch (e) {
-        return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}` }, { status: 502 });
+        return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}`, diagnostico: keyInfo }, { status: 502 });
       }
     }
 

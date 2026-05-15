@@ -129,10 +129,13 @@ export async function baixarXmlsSieg(
   for (let page = 0; page < 100; page++) {    // limite de segurança: 5.000 docs
     const body = { ...params, Take: take, Skip: skip, Downloadevent: false };
 
-    // Sieg aceita a chave somente via query param — não enviar header duplicado
+    // Sieg: chave via query param + header api-key (ambos os formatos aceitos)
     const res = await fetch(`${SIEG_BASE}/BaixarXmls?api_key=${encodeURIComponent(key)}`, {
       method:  "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "api-key":       key,
+      },
       body:    JSON.stringify(body),
     });
 
