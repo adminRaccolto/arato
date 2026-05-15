@@ -59,10 +59,7 @@ export default function SeletorCliente() {
       const json = await res.json();
       if (json.ok) {
         setResultado({ ok: true, email: fCliente.user_email });
-        // Recarregar lista de fazendas após criar
-        supabase.from("fazendas").select("id, nome, municipio, estado, area_total_ha")
-          .eq("raccolto_acesso", true).order("nome")
-          .then(({ data }) => setFazendas(data ?? []));
+        carregarFazendas();
       } else {
         setResultado({ ok: false, erro: json.error ?? "Erro desconhecido" });
       }
@@ -72,16 +69,22 @@ export default function SeletorCliente() {
     setCriando(false);
   }
 
-  // ── Carregar fazendas ────────────────────────────────────────────────────
+  // ── Carregar fazendas via API (service role — ignora RLS) ────────────────
+  async function carregarFazendas() {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
+    const res = await fetch("/api/fazenda/listar-clientes", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    setFazendas(json.fazendas ?? []);
+    setLoading(false);
+  }
+
   useEffect(() => {
     if (userRole === null) return;
     if (userRole !== "raccotlo") { router.push("/"); return; }
-    supabase
-      .from("fazendas")
-      .select("id, nome, municipio, estado, area_total_ha")
-      .eq("raccolto_acesso", true)
-      .order("nome", { ascending: true })
-      .then(({ data }) => { setFazendas(data ?? []); setLoading(false); });
+    carregarFazendas();
   }, [userRole, router]);
 
   const lista = fazendas.filter(f =>

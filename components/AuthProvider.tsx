@@ -107,8 +107,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setNomeUsuario(nome);
 
       const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
-      const role = isRaccoltoEmail ? "raccotlo" : ((perfil as { role?: string } | null)?.role ?? "client");
+      const dbRole = (perfil as { role?: string } | null)?.role ?? "client";
+      const role = isRaccoltoEmail ? "raccotlo" : dbRole;
       setUserRole(role);
+
+      // Garante que o banco reflete o role correto para @raccolto.com.br
+      if (isRaccoltoEmail && dbRole !== "raccotlo") {
+        supabase.from("perfis").update({ role: "raccotlo" }).eq("user_id", user.id).then(() => {});
+      }
 
       if (role === "raccotlo") {
         // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
