@@ -93,17 +93,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Data inicial: última sync ou 30 dias atrás
-    const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-    const dataInicio = cfg.ultima_sync_data ?? trintaDiasAtras;
-    const dataFim    = new Date().toISOString();
+    // Data inicial: última sync ou 30 dias atrás (sempre datetime completo — API Sieg exige)
+    const toISO = (d: string) => d.length === 10 ? d + "T00:00:00.000Z" : d;
+    const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const uploadInicio = cfg.ultima_sync_ts ?? cfg.ultima_sync_data
+      ? toISO(cfg.ultima_sync_ts ?? cfg.ultima_sync_data!)
+      : trintaDiasAtras;
+    const uploadFim = new Date().toISOString();
 
     // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
     const xmlsNFe: string[] = [];
     for (const cnpj of cnpjs) {
       try {
         const docs = await baixarXmlsSieg(apiKey, {
-          XmlType: 1, DataEmissaoInicio: dataInicio, DataEmissaoFim: dataFim, CnpjDest: cnpj,
+          XmlType: 1,
+          DataUploadInicio: uploadInicio,
+          DataUploadFim:    uploadFim,
+          CnpjDest:         cnpj,
         });
         xmlsNFe.push(...docs);
       } catch (e) {

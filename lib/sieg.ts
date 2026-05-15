@@ -11,14 +11,16 @@ const SIEG_BASE = "https://api.sieg.com";
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
 export interface SiegBaixarParams {
-  XmlType:           1 | 2 | 3 | 4; // 1=NFe 2=CTe 3=NFSe 4=NFCe
-  Take?:             number;          // max 50
-  Skip?:             number;
-  DataEmissaoInicio: string;          // ISO "YYYY-MM-DD" ou datetime
-  DataEmissaoFim?:   string;
-  CnpjDest?:         string;          // CNPJ destinatário (filtra documentos recebidos)
-  CnpjEmit?:         string;
-  Downloadevent?:    boolean;
+  XmlType:             1 | 2 | 3 | 4; // 1=NFe 2=CTe 3=NFSe 4=NFCe
+  Take?:               number;         // max 50
+  Skip?:               number;
+  DataEmissaoInicio?:  string;         // ISO datetime "YYYY-MM-DDTHH:mm:ss.sssZ"
+  DataEmissaoFim?:     string;
+  DataUploadInicio?:   string;         // ISO datetime — data em que o Sieg recebeu o documento
+  DataUploadFim?:      string;
+  CnpjDest?:           string;         // CNPJ destinatário (filtra documentos recebidos)
+  CnpjEmit?:           string;
+  Downloadevent?:      boolean;
 }
 
 // ─── Extração de tags XML (servidor) ─────────────────────────────────────────
@@ -144,8 +146,19 @@ export async function baixarXmlsSieg(
       throw new Error(`Sieg API HTTP ${res.status}: ${txt.slice(0, 200)}`);
     }
 
-    const data = await res.json() as unknown[];
-    if (!Array.isArray(data) || data.length === 0) break;
+    const raw = await res.json() as unknown;
+
+    // Resposta pode ser array (documentos) ou objeto {Status, Codigo, Mensagens} (sem docs / aviso)
+    if (!Array.isArray(raw)) {
+      const obj = raw as Record<string, unknown>;
+      if (obj.Mensagens || obj.Status) {
+        // Sem documentos ou mensagem informativa — encerra paginação
+        break;
+      }
+      break;
+    }
+    const data = raw as unknown[];
+    if (data.length === 0) break;
 
     for (const item of data) {
       if (typeof item !== "object" || !item) continue;
