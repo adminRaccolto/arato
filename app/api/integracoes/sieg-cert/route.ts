@@ -4,8 +4,9 @@
  * Endpoint Sieg: POST https://api.sieg.com/api/Certificado/Registrar?api_key=<KEY>
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { createClient }              from "@supabase/supabase-js";
+import { NextRequest, NextResponse }  from "next/server";
+import { createClient }               from "@supabase/supabase-js";
+import { normalizarApiKeySieg }       from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -19,8 +20,8 @@ function sb() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
-      fazenda_id:   string;
-      cnpj:         string;
+      fazenda_id:    string;
+      cnpj:          string;
       consulta_nfe?: boolean;
       consulta_cte?: boolean;
     };
@@ -39,14 +40,20 @@ export async function POST(req: NextRequest) {
       .eq("modulo", "sieg")
       .maybeSingle();
 
-    const cfg = (row?.config ?? {}) as Record<string, string>;
-    const apiKeyFazenda = (cfg.api_key ?? "").trim();
-    const apiKeyGlobal  = (process.env.SIEG_API_KEY ?? "").trim();
-    const apiKey        = apiKeyFazenda || apiKeyGlobal;
-    const keySource     = apiKeyFazenda ? "fazenda" : "global";
+    const cfg           = (row?.config ?? {}) as Record<string, string>;
+    const apiKeyFazRaw  = (cfg.api_key ?? "").trim();
+    const apiKeyGlbRaw  = (process.env.SIEG_API_KEY ?? "").trim();
+    const apiKeyRaw     = apiKeyFazRaw || apiKeyGlbRaw;
+    const apiKey        = normalizarApiKeySieg(apiKeyRaw);
+    const keySource     = apiKeyFazRaw ? "fazenda" : "global (Vercel)";
+    const keyDecodedOk  = apiKeyRaw !== apiKey;
+    const keyInfo       = `${keySource} — ${apiKey.length} chars — início: "${apiKey.slice(0, 4)}" fim: "${apiKey.slice(-4)}"${keyDecodedOk ? " [URL-decoded]" : ""}`;
 
     if (!apiKey) {
-      return NextResponse.json({ erro: "API Key Sieg não configurada" }, { status: 400 });
+      return NextResponse.json(
+        { erro: "API Key Sieg não configurada", cnpj: cnpj.replace(/\D/g, "") },
+        { status: 400 }
+      );
     }
 
     const cnpjLimpo = cnpj.replace(/\D/g, "");
@@ -57,9 +64,9 @@ export async function POST(req: NextRequest) {
         method:  "POST",
         headers: { "Content-Type": "application/json", "api-key": apiKey },
         body:    JSON.stringify({
-          Cnpj:         cnpjLimpo,
-          ConsultaNfe:  body.consulta_nfe ?? true,
-          ConsultaCte:  body.consulta_cte ?? true,
+          Cnpj:        cnpjLimpo,
+          ConsultaNfe: body.consulta_nfe ?? true,
+          ConsultaCte: body.consulta_cte ?? true,
         }),
       }
     );
@@ -70,12 +77,23 @@ export async function POST(req: NextRequest) {
 
     if (!res.ok) {
       return NextResponse.json(
-        { erro: `Sieg API HTTP ${res.status}: ${text.slice(0, 300)}`, key_source: keySource },
+        {
+          erro:       `Sieg API HTTP ${res.status}: ${text.slice(0, 300)}`,
+          key_source: keySource,
+          key_info:   keyInfo,
+          cnpj:       cnpjLimpo,
+        },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ sucesso: true, resposta, key_source: keySource, cnpj: cnpjLimpo });
+    return NextResponse.json({
+      sucesso:    true,
+      resposta,
+      key_source: keySource,
+      key_info:   keyInfo,
+      cnpj:       cnpjLimpo,
+    });
 
   } catch (err) {
     console.error("[sieg-cert]", err);

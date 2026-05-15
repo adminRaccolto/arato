@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
-import { baixarXmlsSieg, parseNFeXml } from "../../../../lib/sieg";
+import { baixarXmlsSieg, parseNFeXml, normalizarApiKeySieg } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -51,9 +51,10 @@ export async function POST(req: NextRequest) {
     const cfg = (row?.config ?? {}) as Record<string, string>;
 
     // ── API Key: por fazenda (configuracoes_modulo) OU global (env) ──────────
-    const apiKeyFazenda = (cfg.api_key ?? "").trim();
-    const apiKeyGlobal  = (process.env.SIEG_API_KEY ?? "").trim();
-    const apiKey        = apiKeyFazenda || apiKeyGlobal;
+    const apiKeyFazendaRaw = (cfg.api_key ?? "").trim();
+    const apiKeyGlobalRaw  = (process.env.SIEG_API_KEY ?? "").trim();
+    const apiKeyRaw        = apiKeyFazendaRaw || apiKeyGlobalRaw;
+    const apiKey           = normalizarApiKeySieg(apiKeyRaw);
 
     if (!apiKey) {
       return NextResponse.json(
@@ -62,8 +63,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Diagnóstico: mostra de onde veio a chave e os primeiros/últimos 4 chars
-    const keyInfo = `${apiKeyFazenda ? "fazenda" : "env-global"} — ${apiKey.length} chars — início: "${apiKey.slice(0, 4)}" fim: "${apiKey.slice(-4)}"`;
+    const keySource    = apiKeyFazendaRaw ? "fazenda" : "env-global";
+    const keyDecodedOk = apiKeyRaw !== apiKey; // true = tinha URL-encoding, foi corrigido
+    const keyInfo      = `${keySource} — ${apiKey.length} chars — início: "${apiKey.slice(0, 4)}" fim: "${apiKey.slice(-4)}"${keyDecodedOk ? " [URL-decoded automaticamente]" : ""}`;
     console.log(`[sieg-sync] API Key: ${keyInfo}`);
 
     // CPFs/CNPJs monitorados — suporta array (novo) e string única (legado)

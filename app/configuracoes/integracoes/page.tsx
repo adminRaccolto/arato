@@ -88,6 +88,7 @@ interface CertResult {
   resposta?: unknown;
   erro?: string;
   key_source?: string;
+  key_info?: string;
   cnpj?: string;
 }
 
@@ -444,10 +445,14 @@ function ModalSieg({
                                   color: r.sucesso ? "#16A34A" : "#E24B4A" }}>
                       {r.cnpj ? formatarDoc(r.cnpj) : "—"} — {r.sucesso ? "Registrado com sucesso" : "Erro"}
                     </div>
-                    {r.sucesso && r.key_source && (
+                    {r.key_info && (
+                      <div style={{ fontSize: 11, color: r.sucesso ? "#555" : "#b45309",
+                                    marginTop: 3, fontFamily: "monospace" }}>
+                        Chave: {r.key_info}
+                      </div>
+                    )}
+                    {r.sucesso && (
                       <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>
-                        Chave usada: {r.key_source === "fazenda" ? "desta fazenda" : "global (Vercel)"}
-                        &nbsp;·&nbsp;
                         Resposta: {typeof r.resposta === "string" ? r.resposta : JSON.stringify(r.resposta)}
                       </div>
                     )}

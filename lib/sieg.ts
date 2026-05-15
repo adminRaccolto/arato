@@ -117,13 +117,24 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
   }
 }
 
+// ─── Normaliza API key (remove espaços, decodifica URL-encoding acidental) ─────
+
+export function normalizarApiKeySieg(raw: string): string {
+  let k = raw.trim();
+  // Chaves Sieg são base64 — não contêm %. Se contém %, foi copiada URL-encoded.
+  if (/%[0-9A-Fa-f]{2}/.test(k)) {
+    try { k = decodeURIComponent(k); } catch { /* mantém original */ }
+  }
+  return k;
+}
+
 // ─── Busca paginada de XMLs ───────────────────────────────────────────────────
 
 export async function baixarXmlsSieg(
   apiKey:  string,
   params:  Omit<SiegBaixarParams, "Take" | "Skip">
 ): Promise<string[]> {
-  const key  = apiKey.trim();           // remove espaços invisíveis
+  const key  = normalizarApiKeySieg(apiKey);
   const xmls: string[] = [];
   let skip = 0;
   const take = 50;
