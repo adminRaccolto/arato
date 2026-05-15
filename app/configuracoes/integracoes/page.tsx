@@ -83,6 +83,14 @@ const inp = (v: string, onChange: (v: string) => void, placeholder?: string, typ
   />
 );
 
+interface CertResult {
+  sucesso?: boolean;
+  resposta?: unknown;
+  erro?: string;
+  key_source?: string;
+  cnpj?: string;
+}
+
 // ─── Modal Sieg ───────────────────────────────────────────────────────────────
 function ModalSieg({
   fazendaId,
@@ -100,6 +108,14 @@ function ModalSieg({
   const [saving,   setSaving]  = useState(false);
   const [syncing,  setSyncing] = useState(false);
   const [result,   setResult]  = useState<SiegSyncResult | null>(null);
+  const [tab,      setTab]     = useState<"config" | "cert">("config");
+
+  // Registro de certificado
+  const [certCnpj,    setCertCnpj]    = useState("");
+  const [certNfe,     setCertNfe]     = useState(true);
+  const [certCte,     setCertCte]     = useState(true);
+  const [certSaving,  setCertSaving]  = useState(false);
+  const [certResults, setCertResults] = useState<CertResult[]>([]);
 
   function adicionarDoc() {
     const limpo = novoDoc.replace(/\D/g, "");
@@ -149,16 +165,44 @@ function ModalSieg({
     setSyncing(false);
   }
 
+  async function registrarCnpj(cnpj: string) {
+    setCertSaving(true);
+    try {
+      const res = await fetch("/api/integracoes/sieg-cert", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, cnpj, consulta_nfe: certNfe, consulta_cte: certCte }),
+      });
+      const data = await res.json() as CertResult;
+      setCertResults(prev => {
+        const idx = prev.findIndex(r => r.cnpj === cnpj.replace(/\D/g, ""));
+        if (idx >= 0) { const next = [...prev]; next[idx] = data; return next; }
+        return [...prev, data];
+      });
+    } catch (e) {
+      setCertResults(prev => [...prev, { erro: String(e), cnpj: cnpj.replace(/\D/g, "") }]);
+    }
+    setCertSaving(false);
+  }
+
+  async function registrarTodos() {
+    const lista = certCnpj ? [certCnpj] : cfg.cnpjs_destino;
+    if (lista.length === 0) { alert("Nenhum CNPJ/CPF cadastrado."); return; }
+    setCertResults([]);
+    for (const cnpj of lista) await registrarCnpj(cnpj);
+  }
+
   const fmtData = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+
+  const temChaveFazenda = !!(cfg.api_key?.trim());
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000,
                   display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 680,
-                    maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+      <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 700,
+                    maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
           <div style={{ fontSize: 32 }}>📥</div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>Sieg DFe Monitor</div>
@@ -166,149 +210,275 @@ function ModalSieg({
           </div>
         </div>
 
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
-          O Sieg monitora a distribuição DFe da SEFAZ e importa automaticamente as NF-e recebidas
-          para cada CPF/CNPJ cadastrado abaixo.
-        </p>
-
-        {/* Campo API Key por fazenda */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
-                        letterSpacing: "0.05em", marginBottom: 6 }}>
-            API Key Sieg <span style={{ fontWeight: 400, color: "#888", textTransform: "none" }}>(obtenha em sieg.com.br → Minha conta → API)</span>
-          </div>
-          <input
-            type="password"
-            placeholder="Cole aqui a API Key da sua conta Sieg"
-            value={cfg.api_key ?? ""}
-            onChange={e => setCfg(prev => ({ ...prev, api_key: e.target.value }))}
-            style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
-                     fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
-          />
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-            Se deixar em branco, será usada a chave global configurada pela Raccolto na Vercel.
-          </div>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "0.5px solid #DDE2EE" }}>
+          {([
+            { id: "config", label: "Configuração" },
+            { id: "cert",   label: "Registro no Sieg" },
+          ] as const).map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{ padding: "9px 20px", border: "none", background: "transparent",
+                       borderBottom: tab === t.id ? "2px solid #1A4870" : "2px solid transparent",
+                       color: tab === t.id ? "#1A4870" : "#666",
+                       fontWeight: tab === t.id ? 700 : 400, fontSize: 13, cursor: "pointer" }}>
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Lista de documentos */}
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
-                      letterSpacing: "0.05em", marginBottom: 8 }}>
-          CPF / CNPJ monitorados <span style={{ color: "#E24B4A" }}>*</span>
-        </div>
+        {/* ── Aba Configuração ── */}
+        {tab === "config" && (
+          <>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
+              O Sieg monitora a distribuição DFe da SEFAZ e importa automaticamente as NF-e recebidas
+              para cada CPF/CNPJ cadastrado abaixo.
+            </p>
 
-        {/* Tags dos docs já adicionados */}
-        {cfg.cnpjs_destino.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-            {cfg.cnpjs_destino.map(doc => (
-              <div key={doc} style={{ display: "flex", alignItems: "center", gap: 6,
-                                      padding: "5px 10px 5px 12px", background: "#EFF6FF",
-                                      border: "0.5px solid #378ADD", borderRadius: 20, fontSize: 13 }}>
-                <span style={{ fontFamily: "monospace", color: "#1A4870", fontWeight: 600 }}>
-                  {formatarDoc(doc)}
+            {/* API Key */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+                            letterSpacing: "0.05em", marginBottom: 6 }}>
+                API Key Sieg
+                <span style={{ fontWeight: 400, color: "#888", textTransform: "none", marginLeft: 6 }}>
+                  (obtenha em sieg.com.br → Minha conta → API)
                 </span>
-                <span style={{ fontSize: 11, color: "#888" }}>
-                  {doc.length === 11 ? "CPF" : "CNPJ"}
-                </span>
-                <button onClick={() => removerDoc(doc)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A",
-                           fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>
-                  ×
-                </button>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Input para adicionar */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            value={novoDoc}
-            onChange={e => setNovoDoc(e.target.value.replace(/\D/g, ""))}
-            onKeyDown={e => e.key === "Enter" && adicionarDoc()}
-            maxLength={14}
-            placeholder="Digite o CPF (11 dígitos) ou CNPJ (14 dígitos)"
-            style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "0.5px solid #DDE2EE",
-                     fontSize: 13, outline: "none", fontFamily: "monospace" }}
-          />
-          <button onClick={adicionarDoc}
-            disabled={novoDoc.length < 11}
-            style={{ padding: "8px 18px", background: novoDoc.length >= 11 ? "#1A4870" : "#F4F6FA",
-                     color: novoDoc.length >= 11 ? "#fff" : "#888",
-                     border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 13,
-                     fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
-            + Adicionar
-          </button>
-        </div>
-        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-          Pressione Enter ou clique Adicionar. Você pode cadastrar quantos CPFs/CNPJs precisar.
-        </div>
-
-        {/* Status última sync */}
-        {cfg.ultima_sync_data && (
-          <div style={{ marginTop: 20, padding: "12px 16px", background: "#F0FFF4",
-                        border: "0.5px solid #86EFAC", borderRadius: 8 }}>
-            <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>
-              Última sincronização: {fmtData(cfg.ultima_sync_data)}
+              <input
+                type="password"
+                placeholder="Cole aqui a API Key da sua conta Sieg"
+                value={cfg.api_key ?? ""}
+                onChange={e => setCfg(prev => ({ ...prev, api_key: e.target.value }))}
+                style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                         fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
+              />
+              {/* Diagnóstico de qual chave está ativa */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                            marginTop: 6 }}>
+                <div style={{ fontSize: 11, color: temChaveFazenda ? "#EF9F27" : "#16A34A" }}>
+                  {temChaveFazenda
+                    ? "⚠ Chave desta fazenda será usada (sobrepõe a chave global da Vercel)"
+                    : "✓ Será usada a chave global configurada pela Raccolto na Vercel"}
+                </div>
+                {temChaveFazenda && (
+                  <button
+                    onClick={() => setCfg(prev => ({ ...prev, api_key: "" }))}
+                    style={{ fontSize: 11, color: "#E24B4A", background: "none", border: "none",
+                             cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                    Limpar (usar global)
+                  </button>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
-              Total importado: {cfg.total_importado ?? "0"} NF-e
-            </div>
-          </div>
-        )}
 
-        {/* Resultado sync */}
-        {result && (
-          <div style={{ marginTop: 16, padding: "14px 18px", borderRadius: 8,
-                        background: result.sucesso ? "#F0FFF4" : "#FFF5F5",
-                        border: `0.5px solid ${result.sucesso ? "#86EFAC" : "#FCA5A5"}` }}>
-            {result.sucesso ? (
-              <div style={{ fontSize: 13, color: "#16A34A" }}>
-                <strong>Sincronização concluída.</strong><br />
-                XMLs recebidos: {result.total_xmls} &nbsp;·&nbsp;
-                Importados: <strong>{result.importados_nfe}</strong> &nbsp;·&nbsp;
-                Duplicados ignorados: {result.duplicados_nfe}
-                {result.erros && result.erros.length > 0 && (
-                  <div style={{ marginTop: 8, color: "#EF9F27", fontSize: 12 }}>
-                    Avisos: {result.erros.join("; ")}
+            {/* CPFs/CNPJs */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+                          letterSpacing: "0.05em", marginBottom: 8 }}>
+              CPF / CNPJ monitorados <span style={{ color: "#E24B4A" }}>*</span>
+            </div>
+
+            {cfg.cnpjs_destino.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                {cfg.cnpjs_destino.map(doc => (
+                  <div key={doc} style={{ display: "flex", alignItems: "center", gap: 6,
+                                          padding: "5px 10px 5px 12px", background: "#EFF6FF",
+                                          border: "0.5px solid #378ADD", borderRadius: 20, fontSize: 13 }}>
+                    <span style={{ fontFamily: "monospace", color: "#1A4870", fontWeight: 600 }}>
+                      {formatarDoc(doc)}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#888" }}>{doc.length === 11 ? "CPF" : "CNPJ"}</span>
+                    <button onClick={() => removerDoc(doc)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A",
+                               fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={novoDoc}
+                onChange={e => setNovoDoc(e.target.value.replace(/\D/g, ""))}
+                onKeyDown={e => e.key === "Enter" && adicionarDoc()}
+                maxLength={14}
+                placeholder="CPF (11 dígitos) ou CNPJ (14 dígitos)"
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "0.5px solid #DDE2EE",
+                         fontSize: 13, outline: "none", fontFamily: "monospace" }}
+              />
+              <button onClick={adicionarDoc} disabled={novoDoc.length < 11}
+                style={{ padding: "8px 18px",
+                         background: novoDoc.length >= 11 ? "#1A4870" : "#F4F6FA",
+                         color: novoDoc.length >= 11 ? "#fff" : "#888",
+                         border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 13,
+                         fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
+                + Adicionar
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+              Pressione Enter ou clique Adicionar. Pode cadastrar quantos CPFs/CNPJs precisar.
+            </div>
+
+            {/* Última sync */}
+            {cfg.ultima_sync_data && (
+              <div style={{ marginTop: 20, padding: "12px 16px", background: "#F0FFF4",
+                            border: "0.5px solid #86EFAC", borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>
+                  Última sincronização: {fmtData(cfg.ultima_sync_data)}
+                </div>
+                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
+                  Total importado: {cfg.total_importado ?? "0"} NF-e
+                </div>
+              </div>
+            )}
+
+            {/* Resultado sync */}
+            {result && (
+              <div style={{ marginTop: 16, padding: "14px 18px", borderRadius: 8,
+                            background: result.sucesso ? "#F0FFF4" : "#FFF5F5",
+                            border: `0.5px solid ${result.sucesso ? "#86EFAC" : "#FCA5A5"}` }}>
+                {result.sucesso ? (
+                  <div style={{ fontSize: 13, color: "#16A34A" }}>
+                    <strong>Sincronização concluída.</strong><br />
+                    XMLs recebidos: {result.total_xmls} &nbsp;·&nbsp;
+                    Importados: <strong>{result.importados_nfe}</strong> &nbsp;·&nbsp;
+                    Duplicados ignorados: {result.duplicados_nfe}
+                    {result.erros && result.erros.length > 0 && (
+                      <div style={{ marginTop: 8, color: "#EF9F27", fontSize: 12 }}>
+                        Avisos: {result.erros.join("; ")}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 13, color: "#E24B4A" }}>
+                    <strong>Erro:</strong> {result.erro}
                   </div>
                 )}
               </div>
-            ) : (
-              <div style={{ fontSize: 13, color: "#E24B4A" }}>
-                <strong>Erro:</strong> {result.erro}
-              </div>
             )}
-          </div>
+
+            {/* Ações */}
+            <div style={{ display: "flex", gap: 10, marginTop: 28, justifyContent: "space-between",
+                          alignItems: "center" }}>
+              <button onClick={sincronizar} disabled={syncing || cfg.cnpjs_destino.length === 0}
+                style={{ padding: "9px 22px",
+                         background: syncing || cfg.cnpjs_destino.length === 0 ? "#DDE2EE" : "#16A34A",
+                         color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                         cursor: syncing || cfg.cnpjs_destino.length === 0 ? "not-allowed" : "pointer" }}>
+                {syncing ? "Sincronizando…" : "⟳ Sincronizar Agora"}
+              </button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={onClose}
+                  style={{ padding: "9px 20px", background: "#fff", border: "0.5px solid #DDE2EE",
+                           borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                  Cancelar
+                </button>
+                <button onClick={salvar} disabled={saving}
+                  style={{ padding: "9px 24px", background: "#1A4870", color: "#fff",
+                           border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {saving ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 20, padding: "10px 14px", background: "#F4F6FA",
+                          border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666" }}>
+              💡 A sincronização automática diária já está configurada via Cron Job na Vercel.
+              Use o botão acima para sincronizar manualmente a qualquer momento.
+            </div>
+          </>
         )}
 
-        {/* Ações */}
-        <div style={{ display: "flex", gap: 10, marginTop: 28, justifyContent: "space-between", alignItems: "center" }}>
-          <button onClick={sincronizar} disabled={syncing || cfg.cnpjs_destino.length === 0}
-            style={{ padding: "9px 22px",
-                     background: syncing || cfg.cnpjs_destino.length === 0 ? "#DDE2EE" : "#16A34A",
-                     color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600,
-                     cursor: syncing || cfg.cnpjs_destino.length === 0 ? "not-allowed" : "pointer" }}>
-            {syncing ? "Sincronizando…" : "⟳ Sincronizar Agora"}
-          </button>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={onClose}
-              style={{ padding: "9px 20px", background: "#fff", border: "0.5px solid #DDE2EE",
-                       borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
-              Cancelar
-            </button>
-            <button onClick={salvar} disabled={saving}
-              style={{ padding: "9px 24px", background: "#1A4870", color: "#fff",
-                       border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-              {saving ? "Salvando…" : "Salvar"}
-            </button>
-          </div>
-        </div>
+        {/* ── Aba Registro no Sieg ── */}
+        {tab === "cert" && (
+          <>
+            <div style={{ padding: "14px 18px", background: "#F0F4FF", border: "0.5px solid #7C8FD9",
+                          borderRadius: 8, fontSize: 13, color: "#3B5BDB", marginBottom: 24, lineHeight: 1.6 }}>
+              <strong>Por que registrar?</strong><br />
+              O Sieg precisa saber quais CNPJs/CPFs monitorar na distribuição da SEFAZ.
+              Sem o registro, a API retorna erro 401 mesmo com a chave correta.
+              Registre cada documento que deseja monitorar.
+            </div>
 
-        <div style={{ marginTop: 20, padding: "10px 14px", background: "#F4F6FA",
-                      border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666" }}>
-          💡 A sincronização automática diária já está configurada via Cron Job na Vercel.
-          Use o botão acima para sincronizar manualmente a qualquer momento.
-        </div>
+            {/* Opção: CNPJ específico ou todos */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+                            letterSpacing: "0.05em", marginBottom: 8 }}>
+                CNPJ / CPF a registrar
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  value={certCnpj}
+                  onChange={e => setCertCnpj(e.target.value.replace(/\D/g, ""))}
+                  maxLength={14}
+                  placeholder="Deixe em branco para registrar todos da lista"
+                  style={{ flex: 1, padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                           fontSize: 13, fontFamily: "monospace", boxSizing: "border-box" }}
+                />
+              </div>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 5 }}>
+                CNPJs cadastrados: {cfg.cnpjs_destino.length === 0 ? "nenhum" : cfg.cnpjs_destino.map(d => formatarDoc(d)).join(", ")}
+              </div>
+            </div>
+
+            {/* Flags */}
+            <div style={{ display: "flex", gap: 24, marginBottom: 24 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+                <input type="checkbox" checked={certNfe} onChange={e => setCertNfe(e.target.checked)}
+                  style={{ width: 16, height: 16 }} />
+                Monitorar NF-e (Modelo 55)
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+                <input type="checkbox" checked={certCte} onChange={e => setCertCte(e.target.checked)}
+                  style={{ width: 16, height: 16 }} />
+                Monitorar CT-e
+              </label>
+            </div>
+
+            {/* Resultados */}
+            {certResults.length > 0 && (
+              <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+                {certResults.map((r, i) => (
+                  <div key={i} style={{ padding: "12px 16px", borderRadius: 8,
+                                        background: r.sucesso ? "#F0FFF4" : "#FFF5F5",
+                                        border: `0.5px solid ${r.sucesso ? "#86EFAC" : "#FCA5A5"}` }}>
+                    <div style={{ fontSize: 12, fontWeight: 700,
+                                  color: r.sucesso ? "#16A34A" : "#E24B4A" }}>
+                      {r.cnpj ? formatarDoc(r.cnpj) : "—"} — {r.sucesso ? "Registrado com sucesso" : "Erro"}
+                    </div>
+                    {r.sucesso && r.key_source && (
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>
+                        Chave usada: {r.key_source === "fazenda" ? "desta fazenda" : "global (Vercel)"}
+                        &nbsp;·&nbsp;
+                        Resposta: {typeof r.resposta === "string" ? r.resposta : JSON.stringify(r.resposta)}
+                      </div>
+                    )}
+                    {!r.sucesso && (
+                      <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 3 }}>{r.erro}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={registrarTodos} disabled={certSaving}
+              style={{ width: "100%", padding: "11px 0",
+                       background: certSaving ? "#DDE2EE" : "#1A4870",
+                       color: "#fff", border: "none", borderRadius: 8, fontSize: 14,
+                       fontWeight: 700, cursor: certSaving ? "not-allowed" : "pointer" }}>
+              {certSaving
+                ? "Registrando…"
+                : certCnpj
+                  ? `Registrar ${formatarDoc(certCnpj)} no Sieg`
+                  : `Registrar ${cfg.cnpjs_destino.length} CNPJ(s) no Sieg`}
+            </button>
+
+            <div style={{ marginTop: 16, padding: "10px 14px", background: "#F4F6FA",
+                          border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666",
+                          lineHeight: 1.6 }}>
+              💡 Se os CNPJs já foram registrados anteriormente no portal Sieg, este botão apenas
+              confirma o registro (não causa duplicatas). Pode executar quantas vezes precisar.
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
