@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -125,6 +125,16 @@ export default function ContasReceber() {
   const [erro,     setErro]     = useState<string | null>(null);
   const [filtro,   setFiltro]   = useState<Filtro>("aberto");
 
+  // ── Janela de 6 meses por padrão ────────────────────────────
+  const [periodoInicio, setPeriodoInicio] = useState(() => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 6);
+    return d.toISOString().split("T")[0];
+  });
+  const [periodoFim, setPeriodoFim] = useState(() => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 7); d.setDate(0);
+    return d.toISOString().split("T")[0];
+  });
+
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo,  setModalNovo]  = useState(false);
 
@@ -169,6 +179,11 @@ export default function ContasReceber() {
   useEffect(() => {
     if (fazendaId) {
       carregar();
+    }
+  }, [fazendaId, periodoInicio, periodoFim]);
+
+  useEffect(() => {
+    if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarProdutores(fazendaId).then(setProdutores).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
@@ -181,8 +196,8 @@ export default function ContasReceber() {
     setLoading(true);
     setErro(null);
     try {
-      const todos = await listarLancamentos(fazendaId!);
-      setLancamentos(todos.filter(l => l.tipo === "receber"));
+      const dados = await listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim, "receber");
+      setLancamentos(dados);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
@@ -391,12 +406,22 @@ export default function ContasReceber() {
               <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>Contas a Receber</h1>
               <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>Vendas de grãos, serviços, arrendamentos e outros recebimentos — ordenados por vencimento</p>
             </div>
-            <button
-              onClick={() => { setFormFazendaId(fazendaId); setModalNovo(true); }}
-              style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-            >
-              ↓ Nova Conta a Receber
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "#555" }}>Período:</span>
+              <input type="date" value={periodoInicio}
+                onChange={e => setPeriodoInicio(e.target.value)}
+                style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
+              <span style={{ fontSize: 11, color: "#888" }}>até</span>
+              <input type="date" value={periodoFim}
+                onChange={e => setPeriodoFim(e.target.value)}
+                style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
+              <button
+                onClick={() => { setFormFazendaId(fazendaId); setModalNovo(true); }}
+                style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginLeft: 4 }}
+              >
+                ↓ Nova Conta a Receber
+              </button>
+            </div>
           </div>
         </header>
 

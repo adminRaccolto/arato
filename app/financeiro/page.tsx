@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
-import { listarLancamentos, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao } from "../../lib/db";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao } from "../../lib/supabase";
 
@@ -9,7 +9,7 @@ import type { Lancamento, Simulacao } from "../../lib/supabase";
 type TipoLanc   = "receber" | "pagar";
 type Moeda      = "BRL" | "USD" | "barter";
 type Aba        = "lancamentos" | "fluxo" | "conciliacao";
-type SubAbaFluxo = "horizontal" | "vertical";
+type SubAbaFluxo = "horizontal" | "vertical" | "prevreal";
 type FiltroCP   = "todos" | "receber" | "pagar" | "vencidos" | "baixados" | "barter";
 
 type Previsao = {
@@ -21,7 +21,7 @@ type Previsao = {
   valor: number;
 };
 
-const TODAY        = "2026-04-09";
+const TODAY        = new Date().toISOString().split("T")[0];
 const COTACAO_USD  = 5.12;
 
 // ── formatação ───────────────────────────────────────────────
@@ -126,6 +126,17 @@ export default function Financeiro() {
   const [salvando, setSalvando] = useState(false);
   const [aba, setAba]           = useState<Aba>("lancamentos");
   const [filtro, setFiltro]     = useState<FiltroCP>("todos");
+
+  // ── Período de consulta (12 meses: -3 meses até +9 meses) ────
+  const [periodoInicio, setPeriodoInicio] = useState(() => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 3);
+    return d.toISOString().split("T")[0];
+  });
+  const [periodoFim, setPeriodoFim] = useState(() => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 10); d.setDate(0);
+    return d.toISOString().split("T")[0];
+  });
+  const [periodoTemp, setPeriodoTemp] = useState({ inicio: "", fim: "" });
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo, setModalNovo]   = useState(false);
 
@@ -160,13 +171,18 @@ export default function Financeiro() {
   });
 
   // ── carga ──────────────────────────────────────────────────
-  useEffect(() => { if (fazendaId) carregarDados(); }, [fazendaId]);
+  useEffect(() => {
+    if (fazendaId) {
+      setPeriodoTemp({ inicio: periodoInicio, fim: periodoFim });
+      carregarDados();
+    }
+  }, [fazendaId, periodoInicio, periodoFim]);
 
   async function carregarDados() {
     try {
       setLoading(true);
       setErro(null);
-      const lans = await listarLancamentos(fazendaId!);
+      const lans = await listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim);
       setLancamentos(lans);
       // Simulações em tabela separada — carrega sem bloquear caso a tabela ainda não exista
       listarSimulacoes(fazendaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
@@ -175,6 +191,13 @@ export default function Financeiro() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function aplicarPeriodo() {
+    if (!periodoTemp.inicio || !periodoTemp.fim) return;
+    if (periodoTemp.inicio > periodoTemp.fim) return;
+    setPeriodoInicio(periodoTemp.inicio);
+    setPeriodoFim(periodoTemp.fim);
   }
 
   // ── ações ──────────────────────────────────────────────────
@@ -352,16 +375,22 @@ export default function Financeiro() {
     return true;
   });
 
-  // ── DFC Horizontal — 6 meses ──────────────────────────────
-  const mesesDFC = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(TODAY);
-    d.setDate(1);
-    d.setMonth(d.getMonth() - 1 + i); // começa no mês anterior
-    const ano = d.getFullYear();
-    const mes = d.getMonth() + 1;
-    const keyMes = `${ano}-${String(mes).padStart(2, "0")}`;
-    return { label: nomeMes(ano, mes), keyMes, passado: i < 1 };
-  });
+  // ── DFC Horizontal — meses do período selecionado ────────
+  const mesesDFC = (() => {
+    const meses: { label: string; keyMes: string; passado: boolean }[] = [];
+    const cur = new Date(periodoInicio + "T00:00:00");
+    cur.setDate(1);
+    const fim = new Date(periodoFim + "T00:00:00");
+    const hojeKey = TODAY.slice(0, 7);
+    while (cur <= fim) {
+      const ano = cur.getFullYear();
+      const mes = cur.getMonth() + 1;
+      const keyMes = `${ano}-${String(mes).padStart(2, "0")}`;
+      meses.push({ label: nomeMes(ano, mes), keyMes, passado: keyMes < hojeKey });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return meses;
+  })();
 
   const somaMesCategoria = (keyMes: string, tipo: TipoLanc, categoria: string) =>
     lancamentos
@@ -423,16 +452,37 @@ export default function Financeiro() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Fluxo de Caixa</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Projeção dia a dia, DFC mensal e conciliação bancária</p>
+        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px 0 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 10 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Fluxo de Caixa</h1>
+              <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Projeção dia a dia, DFC mensal e análise Previsto × Realizado</p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "#555" }}>Cotação: <strong style={{ color: "#7A4300" }}>US$ 1 = R$ {COTACAO_USD.toFixed(2)}</strong></span>
+              <button onClick={() => setModalNovo(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                ◈ Novo lançamento
+              </button>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: "#555" }}>Cotação: <strong style={{ color: "#7A4300" }}>US$ 1 = R$ {COTACAO_USD.toFixed(2)}</strong></span>
-            <button onClick={() => setModalNovo(true)} style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-              ◈ Novo lançamento
+          {/* Barra de período */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10, borderTop: "0.5px solid #F0F3F8", paddingTop: 8 }}>
+            <span style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>Período:</span>
+            <input type="date" value={periodoTemp.inicio || periodoInicio}
+              onChange={e => setPeriodoTemp(p => ({ ...p, inicio: e.target.value }))}
+              style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none", background: "#fff" }} />
+            <span style={{ fontSize: 11, color: "#888" }}>até</span>
+            <input type="date" value={periodoTemp.fim || periodoFim}
+              onChange={e => setPeriodoTemp(p => ({ ...p, fim: e.target.value }))}
+              style={{ fontSize: 12, padding: "4px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none", background: "#fff" }} />
+            <button onClick={aplicarPeriodo}
+              style={{ fontSize: 12, padding: "4px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600 }}>
+              Carregar
             </button>
+            <span style={{ fontSize: 10, color: "#888" }}>
+              {lancamentos.length} lançamentos no período
+              {loading && " · carregando…"}
+            </span>
           </div>
         </header>
 
@@ -638,8 +688,8 @@ export default function Financeiro() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE" }}>
                         <div style={{ display: "flex", gap: 4 }}>
                           {([
-                            { key: "vertical",   label: "↕ Dia a dia"    },
-                            { key: "horizontal", label: "↔ DFC Mensal"   },
+                            { key: "vertical", label: "↕ Dia a dia"       },
+                            { key: "prevreal", label: "⇆ Previsto × Real" },
                           ] as { key: SubAbaFluxo; label: string }[]).map(s => (
                             <button key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
                               padding: "6px 14px", borderRadius: 8, border: "0.5px solid",
@@ -675,9 +725,9 @@ export default function Financeiro() {
                         )}
                       </div>
 
-                      {/* ── VISÃO: DFC MENSAL ── */}
-                      {subAbaFluxo === "horizontal" && (
-                        <div style={{ overflowX: "auto", padding: "0 0 4px" }}>
+                      {/* DFC Mensal removido — use Previsto × Realizado */}
+                      {false && (
+                        <div>
                           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                             <thead>
                               <tr style={{ background: "#F3F6F9" }}>
@@ -803,6 +853,144 @@ export default function Financeiro() {
                           </div>
                         </div>
                       )}
+
+                      {/* ── VISÃO: PREVISTO × REALIZADO ── */}
+                      {subAbaFluxo === "prevreal" && (() => {
+                        const hojeKey = TODAY.slice(0, 7);
+
+                        // Previsto = todos os lançamentos (por data_vencimento)
+                        // Realizado = apenas baixados (usa data_baixa se disponível, senão data_vencimento)
+                        const prevReal = mesesDFC.map(m => {
+                          const lMes = lancamentos.filter(l => l.moeda !== "barter" && (l.data_vencimento ?? "").startsWith(m.keyMes));
+                          // baixados usando data_baixa ou data_vencimento
+                          const baixadosMes = lancamentos.filter(l => {
+                            if (l.moeda === "barter") return false;
+                            if (l.status !== "baixado") return false;
+                            const refDate = l.data_baixa ?? l.data_vencimento ?? "";
+                            return refDate.startsWith(m.keyMes);
+                          });
+
+                          const entPrev  = lMes.filter(l => l.tipo === "receber").reduce((a, l) => a + paraBRL(l), 0);
+                          const entReal  = baixadosMes.filter(l => l.tipo === "receber").reduce((a, l) => a + (l.valor_pago ?? paraBRL(l)), 0);
+                          const saiPrev  = lMes.filter(l => l.tipo === "pagar").reduce((a, l) => a + paraBRL(l), 0);
+                          const saiReal  = baixadosMes.filter(l => l.tipo === "pagar").reduce((a, l) => a + (l.valor_pago ?? paraBRL(l)), 0);
+                          const saldoPrev = entPrev - saiPrev;
+                          const saldoReal = entReal - saiReal;
+                          const isFuturo = m.keyMes > hojeKey;
+                          return { ...m, entPrev, entReal, saiPrev, saiReal, saldoPrev, saldoReal, isFuturo };
+                        });
+
+                        const pct = (real: number, prev: number) => {
+                          if (prev === 0) return null;
+                          const v = ((real - prev) / Math.abs(prev)) * 100;
+                          return v;
+                        };
+                        const fmtPct = (v: number | null) => {
+                          if (v === null) return "—";
+                          const cor = Math.abs(v) < 5 ? "#16A34A" : v < 0 ? "#E24B4A" : "#EF9F27";
+                          return <span style={{ color: cor, fontSize: 10, fontWeight: 600 }}>{v > 0 ? "+" : ""}{v.toFixed(0)}%</span>;
+                        };
+
+                        const LINHAS: { key: keyof typeof prevReal[0]; label: string; tipo: "ent" | "sai" | "sal" }[] = [
+                          { key: "entPrev",   label: "Entradas Previstas",  tipo: "ent" },
+                          { key: "entReal",   label: "Entradas Realizadas", tipo: "ent" },
+                          { key: "saiPrev",   label: "Saídas Previstas",    tipo: "sai" },
+                          { key: "saiReal",   label: "Saídas Realizadas",   tipo: "sai" },
+                          { key: "saldoPrev", label: "Saldo Previsto",      tipo: "sal" },
+                          { key: "saldoReal", label: "Saldo Realizado",     tipo: "sal" },
+                        ];
+
+                        return (
+                          <div style={{ overflowX: "auto", padding: "0 0 8px 0" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                              <thead>
+                                <tr style={{ background: "#F3F6F9" }}>
+                                  <th style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", width: 190, position: "sticky", left: 0, background: "#F3F6F9" }}>Linha</th>
+                                  {prevReal.map(m => (
+                                    <th key={m.keyMes} style={{ padding: "9px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: m.isFuturo ? "#888" : "#1a1a1a", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>
+                                      {m.label}
+                                      {m.isFuturo && <div style={{ fontSize: 9, color: "#aaa", fontWeight: 400 }}>previsto</div>}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {/* Entradas */}
+                                <tr style={{ background: "#EAF3FB" }}>
+                                  <td colSpan={prevReal.length + 1} style={{ padding: "5px 16px", fontSize: 10, fontWeight: 700, color: "#1A4870", letterSpacing: "0.05em", borderBottom: "0.5px solid #D4DCE8" }}>
+                                    ▲ ENTRADAS (CR)
+                                  </td>
+                                </tr>
+                                {(["entPrev", "entReal"] as const).map(k => (
+                                  <tr key={k} style={{ borderBottom: k === "entReal" ? "2px solid #D4DCE8" : "0.5px solid #f0f3f8" }}>
+                                    <td style={{ padding: "7px 16px", fontSize: 11, color: "#1a1a1a", position: "sticky", left: 0, background: "#fff" }}>
+                                      {k === "entPrev" ? "Previstas" : "Realizadas"}
+                                    </td>
+                                    {prevReal.map(m => {
+                                      const val = m[k] as number;
+                                      return (
+                                        <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: val > 0 ? "#1A4870" : "#888", fontWeight: k === "entReal" ? 600 : 400 }}>
+                                          {val > 0 ? fmtBRL(val) : "—"}
+                                          {k === "entReal" && !m.isFuturo && <div style={{ marginTop: 1 }}>{fmtPct(pct(m.entReal, m.entPrev))}</div>}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+
+                                {/* Saídas */}
+                                <tr style={{ background: "#FEF3F3" }}>
+                                  <td colSpan={prevReal.length + 1} style={{ padding: "5px 16px", fontSize: 10, fontWeight: 700, color: "#791F1F", letterSpacing: "0.05em", borderBottom: "0.5px solid #D4DCE8" }}>
+                                    ▼ SAÍDAS (CP)
+                                  </td>
+                                </tr>
+                                {(["saiPrev", "saiReal"] as const).map(k => (
+                                  <tr key={k} style={{ borderBottom: k === "saiReal" ? "2px solid #D4DCE8" : "0.5px solid #f0f3f8" }}>
+                                    <td style={{ padding: "7px 16px", fontSize: 11, color: "#1a1a1a", position: "sticky", left: 0, background: "#fff" }}>
+                                      {k === "saiPrev" ? "Previstas" : "Realizadas"}
+                                    </td>
+                                    {prevReal.map(m => {
+                                      const val = m[k] as number;
+                                      return (
+                                        <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: val > 0 ? "#E24B4A" : "#888", fontWeight: k === "saiReal" ? 600 : 400 }}>
+                                          {val > 0 ? fmtBRL(val) : "—"}
+                                          {k === "saiReal" && !m.isFuturo && <div style={{ marginTop: 1 }}>{fmtPct(pct(m.saiReal, m.saiPrev))}</div>}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+
+                                {/* Saldo */}
+                                <tr style={{ background: "#F3F6F9", borderTop: "0.5px solid #D4DCE8" }}>
+                                  <td colSpan={prevReal.length + 1} style={{ padding: "5px 16px", fontSize: 10, fontWeight: 700, color: "#555", letterSpacing: "0.05em", borderBottom: "0.5px solid #D4DCE8" }}>
+                                    ⇄ SALDO DO PERÍODO
+                                  </td>
+                                </tr>
+                                {(["saldoPrev", "saldoReal"] as const).map(k => (
+                                  <tr key={k} style={{ borderBottom: "0.5px solid #f0f3f8", background: k === "saldoReal" ? "#F9F9F6" : "#fff" }}>
+                                    <td style={{ padding: "8px 16px", fontSize: 12, fontWeight: 600, color: "#1a1a1a", position: "sticky", left: 0, background: k === "saldoReal" ? "#F9F9F6" : "#fff" }}>
+                                      {k === "saldoPrev" ? "Saldo Previsto" : "Saldo Realizado"}
+                                    </td>
+                                    {prevReal.map(m => {
+                                      const val = m[k] as number;
+                                      return (
+                                        <td key={m.keyMes} style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 600, color: val >= 0 ? "#1A4870" : "#E24B4A" }}>
+                                          {fmtBRL(val)}
+                                          {k === "saldoReal" && !m.isFuturo && <div style={{ marginTop: 1 }}>{fmtPct(pct(m.saldoReal, m.saldoPrev))}</div>}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            <div style={{ padding: "8px 16px", fontSize: 10, color: "#666" }}>
+                              Previsto = todos os lançamentos por data de vencimento · Realizado = baixados por data de baixa · % = desvio realizado vs previsto · meses futuros não têm realizado
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* ── VISÃO: DIA A DIA ── */}
                       {subAbaFluxo === "vertical" && (() => {

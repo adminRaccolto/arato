@@ -288,6 +288,34 @@ export async function listarLancamentos(fazenda_id: string): Promise<Lancamento[
   return all;
 }
 
+export async function listarLancamentosPeriodo(
+  fazenda_id: string,
+  dataInicio: string,
+  dataFim: string,
+  tipo?: "pagar" | "receber",
+): Promise<Lancamento[]> {
+  const PAGE = 1000;
+  let all: Lancamento[] = [];
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("lancamentos")
+      .select("*")
+      .eq("fazenda_id", fazenda_id)
+      .gte("data_vencimento", dataInicio)
+      .lte("data_vencimento", dataFim)
+      .order("data_vencimento")
+      .range(from, from + PAGE - 1);
+    if (tipo) q = q.eq("tipo", tipo);
+    const { data, error } = await q;
+    if (error) throw error;
+    all = all.concat(data ?? []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 export async function criarLancamento(l: Omit<Lancamento, "id" | "created_at">): Promise<Lancamento> {
   const { data, error } = await supabase.from("lancamentos").insert(l).select().single();
   if (error) throw error;
