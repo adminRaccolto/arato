@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       `https://api.sieg.com/api/Certificado/Registrar?api_key=${encodeURIComponent(apiKey)}`,
       {
         method:  "POST",
-        headers: { "Content-Type": "application/json", "api-key": apiKey },
+        headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           Cnpj:        cnpjLimpo,
           ConsultaNfe: body.consulta_nfe ?? true,
