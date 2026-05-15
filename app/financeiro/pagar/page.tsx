@@ -140,13 +140,13 @@ export default function ContasPagar() {
   const [erro,     setErro]     = useState<string | null>(null);
   const [filtro,   setFiltro]   = useState<Filtro>("aberto");
 
-  // ── Janela de 6 meses por padrão ────────────────────────────
+  // ── Janela padrão: 1º do mês atual até 12 meses à frente ────
   const [periodoInicio, setPeriodoInicio] = useState(() => {
-    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 6);
+    const d = new Date(); d.setDate(1);
     return d.toISOString().split("T")[0];
   });
   const [periodoFim, setPeriodoFim] = useState(() => {
-    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 7); d.setDate(0);
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 13); d.setDate(0);
     return d.toISOString().split("T")[0];
   });
 
