@@ -38,15 +38,6 @@ export async function POST(req: NextRequest) {
     const { fazenda_id } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
 
-    // ── API Key global — gerenciada pela Raccolto ────────────────────────────
-    const apiKey = process.env.SIEG_API_KEY ?? "";
-    if (!apiKey) {
-      return NextResponse.json(
-        { erro: "SIEG_API_KEY não configurada nas variáveis de ambiente da Vercel" },
-        { status: 500 }
-      );
-    }
-
     const db = sb();
 
     // ── 1. Config desta fazenda ──────────────────────────────────────────────
@@ -58,6 +49,18 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     const cfg = (row?.config ?? {}) as Record<string, string>;
+
+    // ── API Key: por fazenda (configuracoes_modulo) OU global (env) ──────────
+    const apiKeyFazenda = (cfg.api_key ?? "").trim();
+    const apiKeyGlobal  = (process.env.SIEG_API_KEY ?? "").trim();
+    const apiKey        = apiKeyFazenda || apiKeyGlobal;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { erro: "Chave Sieg não configurada. Acesse Configurações → Integrações → Sieg e informe a API Key, ou configure SIEG_API_KEY nas variáveis de ambiente da Vercel." },
+        { status: 500 }
+      );
+    }
 
     // CPFs/CNPJs monitorados — suporta array (novo) e string única (legado)
     let cnpjs: string[] = [];

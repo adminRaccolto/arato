@@ -37,6 +37,7 @@ interface SiegCfg {
   ultima_sync_data?: string;
   ultima_sync_ts?:   string;
   total_importado?:  string;
+  api_key?:          string;    // chave por fazenda (sobrepõe env global)
 }
 
 function normalizarSiegCfg(raw: Record<string, unknown>): SiegCfg {
@@ -170,11 +171,23 @@ function ModalSieg({
           para cada CPF/CNPJ cadastrado abaixo.
         </p>
 
-        {/* Banner API Key */}
-        <div style={{ background: "#F0FFF4", border: "0.5px solid #86EFAC", borderRadius: 8,
-                      padding: "10px 14px", marginBottom: 24, fontSize: 12, color: "#15803D", lineHeight: 1.6 }}>
-          <strong>API Key gerenciada pela Raccolto.</strong> Informe apenas os CPFs/CNPJs
-          dos produtores desta fazenda para filtrar os documentos corretos.
+        {/* Campo API Key por fazenda */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+                        letterSpacing: "0.05em", marginBottom: 6 }}>
+            API Key Sieg <span style={{ fontWeight: 400, color: "#888", textTransform: "none" }}>(obtenha em sieg.com.br → Minha conta → API)</span>
+          </div>
+          <input
+            type="password"
+            placeholder="Cole aqui a API Key da sua conta Sieg"
+            value={cfg.api_key ?? ""}
+            onChange={e => setCfg(prev => ({ ...prev, api_key: e.target.value }))}
+            style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                     fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
+          />
+          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+            Se deixar em branco, será usada a chave global configurada pela Raccolto na Vercel.
+          </div>
         </div>
 
         {/* Lista de documentos */}

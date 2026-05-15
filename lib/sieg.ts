@@ -121,6 +121,7 @@ export async function baixarXmlsSieg(
   apiKey:  string,
   params:  Omit<SiegBaixarParams, "Take" | "Skip">
 ): Promise<string[]> {
+  const key  = apiKey.trim();           // remove espaços invisíveis
   const xmls: string[] = [];
   let skip = 0;
   const take = 50;
@@ -128,9 +129,10 @@ export async function baixarXmlsSieg(
   for (let page = 0; page < 100; page++) {    // limite de segurança: 5.000 docs
     const body = { ...params, Take: take, Skip: skip, Downloadevent: false };
 
-    const res = await fetch(`${SIEG_BASE}/BaixarXmls?api_key=${encodeURIComponent(apiKey)}`, {
+    // Sieg aceita a chave somente via query param — não enviar header duplicado
+    const res = await fetch(`${SIEG_BASE}/BaixarXmls?api_key=${encodeURIComponent(key)}`, {
       method:  "POST",
-      headers: { "Content-Type": "application/json", "APIKey": apiKey },
+      headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(body),
     });
 
