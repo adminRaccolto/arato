@@ -508,39 +508,40 @@ function ModalSieg({
                   {diagLoading ? "Testando…" : "Testar chave agora"}
                 </button>
               </div>
-              {diagResult && (
-                <div style={{ padding: "14px 16px", background: diagResult.sieg_ok ? "#F0FFF4" : "#FFF5F5",
-                              border: `0.5px solid ${diagResult.sieg_ok ? "#86EFAC" : "#FCA5A5"}`,
-                              borderRadius: 8, fontSize: 12 }}>
-                  {/* keyDiag */}
-                  {diagResult.keyDiag && (() => {
-                    const k = diagResult.keyDiag as Record<string, unknown>;
-                    return (
+              {diagResult && (() => {
+                const ok      = Boolean(diagResult.sieg_ok);
+                const status  = String(diagResult.sieg_status ?? "—");
+                const kd      = diagResult.keyDiag as Record<string, unknown> | undefined;
+                const resp    = typeof diagResult.sieg_resposta === "string"
+                  ? diagResult.sieg_resposta
+                  : JSON.stringify(diagResult.sieg_resposta);
+                const errNet  = diagResult.erro_rede ? String(diagResult.erro_rede) : null;
+                return (
+                  <div style={{ padding: "14px 16px", background: ok ? "#F0FFF4" : "#FFF5F5",
+                                border: `0.5px solid ${ok ? "#86EFAC" : "#FCA5A5"}`,
+                                borderRadius: 8, fontSize: 12 }}>
+                    {kd && (
                       <div style={{ fontFamily: "monospace", color: "#555", marginBottom: 10,
                                     lineHeight: 1.8 }}>
-                        <span style={{ fontWeight: 700 }}>Fonte:</span> {String(k.fonte)}<br />
-                        <span style={{ fontWeight: 700 }}>Comprimento:</span> {String(k.comprimento)} chars<br />
-                        <span style={{ fontWeight: 700 }}>Início:</span> {String(k.inicio)} &nbsp;
-                        <span style={{ fontWeight: 700 }}>Fim:</span> {String(k.fim)}<br />
-                        {k.foi_decoded && <span style={{ color: "#EF9F27" }}>⚠ Chave tinha URL-encoding — corrigida automaticamente</span>}
+                        <span style={{ fontWeight: 700 }}>Fonte:</span> {String(kd.fonte)}<br />
+                        <span style={{ fontWeight: 700 }}>Comprimento:</span> {String(kd.comprimento)} chars<br />
+                        <span style={{ fontWeight: 700 }}>Início:</span> {String(kd.inicio)} &nbsp;
+                        <span style={{ fontWeight: 700 }}>Fim:</span> {String(kd.fim)}<br />
+                        {Boolean(kd.foi_decoded) && (
+                          <span style={{ color: "#EF9F27" }}>⚠ Chave tinha URL-encoding — corrigida automaticamente</span>
+                        )}
                       </div>
-                    );
-                  })()}
-                  {/* Resultado Sieg */}
-                  <div style={{ fontWeight: 700, color: diagResult.sieg_ok ? "#16A34A" : "#E24B4A",
-                                marginBottom: 4 }}>
-                    HTTP {String(diagResult.sieg_status ?? "—")} — {diagResult.sieg_ok ? "Autenticado ✓" : "Falha na autenticação ✗"}
+                    )}
+                    <div style={{ fontWeight: 700, color: ok ? "#16A34A" : "#E24B4A", marginBottom: 4 }}>
+                      HTTP {status} — {ok ? "Autenticado ✓" : "Falha na autenticação ✗"}
+                    </div>
+                    <div style={{ fontFamily: "monospace", color: "#555", wordBreak: "break-all" }}>
+                      {resp as string}
+                    </div>
+                    {errNet && <div style={{ color: "#E24B4A", marginTop: 6 }}>{errNet}</div>}
                   </div>
-                  <div style={{ fontFamily: "monospace", color: "#555", wordBreak: "break-all" }}>
-                    {typeof diagResult.sieg_resposta === "string"
-                      ? diagResult.sieg_resposta
-                      : JSON.stringify(diagResult.sieg_resposta)}
-                  </div>
-                  {diagResult.erro_rede && (
-                    <div style={{ color: "#E24B4A", marginTop: 6 }}>{String(diagResult.erro_rede)}</div>
-                  )}
-                </div>
-              )}
+                );
+              })()}
             </div>
           </>
         )}
