@@ -6,7 +6,7 @@ export type FluxoNome =
   | "abastecimento" | "operacao_lavoura" | "entrada_estoque"
   | "saida_estoque" | "lancar_cp" | "baixar_cp"
   | "lancar_cr" | "baixar_cr" | "romaneio" | "vincular_nf"
-  | "nf_compra_foto";
+  | "nf_compra_foto" | "cadastrar_fornecedor" | "cadastrar_insumo";
 
 export type Sessao = {
   id: string;
@@ -175,6 +175,14 @@ const FLUXOS: Record<FluxoNome, { etapas: EtapaConfig[]; resumo: (d: Record<stri
   nf_compra_foto: {
     etapas: [],
     resumo: () => "NF registrada via foto.",
+  },
+  cadastrar_fornecedor: {
+    etapas: [],
+    resumo: (d) => `Fornecedor: ${d.nome ?? "—"}`,
+  },
+  cadastrar_insumo: {
+    etapas: [],
+    resumo: (d) => `Produto: ${d.nome ?? "—"}`,
   },
 };
 

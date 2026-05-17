@@ -203,6 +203,8 @@ export async function executarInsercao(
     case "romaneio":           return inserirRomaneio(dados, fazendaId);
     case "vincular_nf":        return vincularNF(dados, fazendaId);
     case "nf_compra_foto":     return inserirNfCompraFoto(dados, fazendaId);
+    case "cadastrar_fornecedor": return inserirNovoFornecedor(dados, fazendaId);
+    case "cadastrar_insumo":     return inserirNovoInsumo(dados, fazendaId);
     default:                   return { ok: false, mensagem: "Fluxo desconhecido." };
   }
 }
@@ -1124,6 +1126,111 @@ async function inserirRomaneio(dados: Record<string, unknown>, fazendaId: string
   };
 }
 
+// ── Helpers para cadastro via bot ───────────────────────────────────────────
+
+function inferirCategoria(nome: string): string {
+  const n = nome.toLowerCase();
+  if (/sement|milho|soja|algodão|trigo|girassol/.test(n)) return "semente";
+  if (/ureia|uréia|superfosfato|kcl|potassio|npk|map|dap|fertiliz|adubo|sulfato amônico|nitrato|borão|boro/.test(n)) return "fertilizante";
+  if (/herbicida|fungicida|inseticida|roundup|glifosato|priori|nativo|engeo|belt|karate|nematicida|acaricida|dessec|azoxistrobina|epoxiconazol|tiametoxam|piraclostrobina/.test(n)) return "defensivo";
+  if (/diesel|gasolina|etanol|arla|combustível/.test(n)) return "combustivel";
+  if (/inoculante|rizobio|bioestimulante/.test(n)) return "inoculante";
+  return "outros";
+}
+
+function pareceServico(nome: string): boolean {
+  const n = nome.toLowerCase();
+  return /frete|entrega|transporte|taxa de|desconto|desctos|juros|encargo|^ipi$|^icms$|serviço|servico/.test(n);
+}
+
+function mapearUnidade(u: string): string {
+  const n = normUnit(u ?? "").toLowerCase();
+  if (n === "l" || n.startsWith("litro")) return "L";
+  if (n === "ml" || n.startsWith("mili")) return "mL";
+  if (n === "kg" || n.startsWith("quilo") || n.startsWith("kilo")) return "kg";
+  if (n === "g" || n.startsWith("grama")) return "g";
+  if (n === "t" || n.startsWith("tonelada")) return "t";
+  if (n === "sc" || n.startsWith("saca")) return "sc";
+  if (n === "cx" || n.startsWith("caixa")) return "cx";
+  if (n === "m2" || n === "m²") return "m2";
+  if (n === "m") return "m";
+  if (n === "par") return "par";
+  if (n === "pc" || n === "pç" || n === "peca") return "pc";
+  return "un";
+}
+
+// ── Cadastrar fornecedor standalone ─────────────────────────────────────────
+async function inserirNovoFornecedor(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const nome = String(dados.nome ?? "").trim();
+  if (!nome) return { ok: false, mensagem: "❓ Qual o nome do fornecedor?" };
+
+  const cnpj = String(dados.cnpj ?? "").replace(/\D/g, "");
+  const tipo = cnpj.length === 11 ? "pf" : "pj";
+
+  if (cnpj) {
+    const { data: existente } = await sb().from("pessoas")
+      .select("id, nome").eq("fazenda_id", fazendaId).eq("cpf_cnpj", cnpj).maybeSingle();
+    if (existente) return { ok: true, mensagem: `ℹ️ Fornecedor já cadastrado: *${existente.nome}*` };
+  }
+
+  const { error } = await sb().from("pessoas").insert({
+    fazenda_id: fazendaId,
+    nome,
+    tipo,
+    cpf_cnpj:   cnpj || null,
+    telefone:   String(dados.telefone ?? "") || null,
+    email:      String(dados.email ?? "") || null,
+    fornecedor: true,
+    cliente:    false,
+  });
+  if (error) return { ok: false, mensagem: `❌ Erro: ${error.message}` };
+
+  const cnpjFmt = cnpj.length === 14
+    ? `${cnpj.slice(0,2)}.${cnpj.slice(2,5)}.${cnpj.slice(5,8)}/${cnpj.slice(8,12)}-${cnpj.slice(12)}`
+    : cnpj || "—";
+  return { ok: true, mensagem: `✅ Fornecedor cadastrado!\n• *${nome}*\n• CNPJ/CPF: ${cnpjFmt}` };
+}
+
+// ── Cadastrar insumo/produto standalone ──────────────────────────────────────
+async function inserirNovoInsumo(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const nome = String(dados.nome ?? "").trim();
+  if (!nome) return { ok: false, mensagem: "❓ Qual o nome do produto a cadastrar?" };
+
+  const existente = await buscarInsumo(fazendaId, nome);
+  if (existente) {
+    return { ok: true, mensagem: `ℹ️ Produto já existe: *${existente.nome}* — Estoque: ${existente.estoque} ${existente.unidade}` };
+  }
+
+  const unidade        = mapearUnidade(String(dados.unidade ?? "un"));
+  const categoria      = String(dados.categoria ?? inferirCategoria(nome));
+  const valorUnitario  = Number(dados.valor_unitario ?? 0);
+  const estoqueInicial = Number(dados.estoque_inicial ?? 0);
+
+  const { error } = await sb().from("insumos").insert({
+    fazenda_id:    fazendaId,
+    nome,
+    tipo:          "insumo",
+    categoria,
+    unidade,
+    estoque:       estoqueInicial,
+    estoque_minimo: 0,
+    valor_unitario: valorUnitario,
+    custo_medio:    valorUnitario,
+  });
+  if (error) return { ok: false, mensagem: `❌ Erro: ${error.message}` };
+
+  return {
+    ok: true,
+    mensagem: [
+      `✅ Produto cadastrado no estoque!`,
+      `• *${nome}*`,
+      `• Categoria: ${categoria}  ·  Unidade: ${unidade}`,
+      estoqueInicial > 0 ? `• Estoque inicial: ${estoqueInicial} ${unidade}` : "",
+      valorUnitario > 0 ? `• Valor unitário: R$ ${valorUnitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "",
+    ].filter(Boolean).join("\n"),
+  };
+}
+
 // ── NF de compra por foto ────────────────────────────────────────────────────
 async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
   const cnpj        = String(dados.cnpj_emitente ?? "").replace(/\D/g, "");
@@ -1233,8 +1340,9 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   if (errNf || !nfRow) return { ok: false, mensagem: `❌ Erro ao criar NF: ${errNf?.message ?? "sem retorno"}` };
   const nfId = nfRow.id;
 
-  // 3. Criar itens e movimentar estoque quando insumo encontrado
+  // 3. Criar itens, auto-criar insumo se não existir e movimentar estoque
   let vinculados = 0;
+  let criados    = 0;
   let diretos    = 0;
   for (const i of itensComInsumo) {
     const qtd    = Number(i.quantidade) || 1;
@@ -1242,9 +1350,30 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     const vlTotal = qtd * vlUnit;
 
     // Re-lê insumo fresh para evitar saldo desatualizado em itens repetidos
-    const insumo = i.insumo
+    let insumo: InsumoRow | null = i.insumo
       ? await buscarInsumo(fazendaId, i.insumo.nome)
       : null;
+
+    // Se não existe e não parece ser serviço/frete → cria automaticamente
+    if (!insumo && !pareceServico(String(i.descricao))) {
+      const unidade = mapearUnidade(String(i.unidade ?? "un"));
+      const { data: novoRow } = await sb().from("insumos").insert({
+        fazenda_id:    fazendaId,
+        nome:          String(i.descricao).slice(0, 150),
+        tipo:          "insumo",
+        categoria:     inferirCategoria(String(i.descricao)),
+        unidade,
+        estoque:       0,
+        estoque_minimo: 0,
+        valor_unitario: vlUnit,
+        custo_medio:   vlUnit,
+      }).select("id, nome, unidade, custo_medio, valor_unitario, estoque").maybeSingle();
+
+      if (novoRow) {
+        insumo = novoRow as InsumoRow;
+        criados++;
+      }
+    }
 
     await sb().from("nf_entrada_itens").insert({
       nf_entrada_id:    nfId,
@@ -1328,8 +1457,9 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     `• Fornecedor: *${razao}*${pessoaNova ? " _(cadastrado agora)_" : ""}`,
     `• NF nº ${numeroNf || "—"}  ·  R$ ${fmtBRL(valorTotal)}`,
     `• CP lançado — vence ${vencimento}`,
-    vinculados > 0 ? `• ✅ ${vinculados} item(ns) → entrada automática no estoque` : "",
-    diretos > 0    ? `• ⚠️ ${diretos} item(ns) sem cadastro → não movimentou estoque` : "",
+    criados > 0    ? `• 🆕 ${criados} produto(s) cadastrado(s) no estoque` : "",
+    vinculados > 0 ? `• ✅ ${vinculados} item(ns) → entrada no estoque registrada` : "",
+    diretos > 0    ? `• ⚠️ ${diretos} item(ns) como serviço/frete → sem movimentação de estoque` : "",
     `• Pendência fiscal criada — aguardando conferência`,
   ].filter(Boolean);
 

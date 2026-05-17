@@ -179,7 +179,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "registrar_nf_compra",
-    description: "Registra uma NF de compra extraída de foto. SEMPRE chame com confirmado=false primeiro para mostrar preview ao usuário. Só use confirmado=true após o usuário dizer 'sim'. Cria automaticamente: Fornecedor (Pessoa), NF Entrada, itens e Conta a Pagar.",
+    description: "Registra uma NF de compra extraída de foto ou PDF. SEMPRE chame com confirmado=false primeiro para mostrar preview. Só use confirmado=true após o usuário dizer 'sim'/'confirmo'. Esta ferramenta faz TUDO: (1) cadastra fornecedor automaticamente se não existir, (2) cadastra produto no estoque se não existir, (3) lança entrada no estoque, (4) lança Conta a Pagar no financeiro. Use esta ferramenta quando o usuário pedir para cadastrar fornecedor+produto+estoque+financeiro a partir de uma NF.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -206,6 +206,35 @@ const TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ["razao_social", "valor_total"],
+    },
+  },
+  {
+    name: "cadastrar_fornecedor",
+    description: "Cadastra um fornecedor (Pessoa) na fazenda. Use quando o usuário pedir para cadastrar um fornecedor, parceiro comercial ou prestador de serviço sem estar no contexto de uma NF.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        nome:     { type: "string", description: "Nome ou razão social do fornecedor" },
+        cnpj:     { type: "string", description: "CNPJ (14 dígitos) ou CPF (11 dígitos)" },
+        telefone: { type: "string", description: "Telefone de contato (opcional)" },
+        email:    { type: "string", description: "E-mail (opcional)" },
+      },
+      required: ["nome"],
+    },
+  },
+  {
+    name: "cadastrar_insumo",
+    description: "Cadastra um produto/insumo no estoque da fazenda. Use quando o usuário pedir para cadastrar um produto, insumo, semente, fertilizante, defensivo ou qualquer item no estoque, sem estar no contexto de uma NF.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        nome:             { type: "string", description: "Nome do produto/insumo" },
+        unidade:          { type: "string", description: "Unidade de medida: kg, L, mL, g, t, sc, un, cx, pc etc" },
+        categoria:        { type: "string", description: "semente, fertilizante, defensivo, combustivel, inoculante, outros (opcional — inferido automaticamente se omitido)" },
+        valor_unitario:   { type: "number", description: "Preço unitário em R$ (opcional)" },
+        estoque_inicial:  { type: "number", description: "Quantidade inicial em estoque (opcional, padrão 0)" },
+      },
+      required: ["nome"],
     },
   },
 ];
@@ -323,6 +352,25 @@ async function executarFerramenta(
         }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
+      case "cadastrar_fornecedor": {
+        const res = await executarInsercao("cadastrar_fornecedor", {
+          nome:     input.nome,
+          cnpj:     input.cnpj ?? "",
+          telefone: input.telefone ?? "",
+          email:    input.email ?? "",
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+        return res.mensagem;
+      }
+      case "cadastrar_insumo": {
+        const res = await executarInsercao("cadastrar_insumo", {
+          nome:            input.nome,
+          unidade:         input.unidade ?? "un",
+          categoria:       input.categoria ?? "",
+          valor_unitario:  input.valor_unitario ?? 0,
+          estoque_inicial: input.estoque_inicial ?? 0,
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+        return res.mensagem;
+      }
       default:
         return "Ferramenta não reconhecida.";
     }
@@ -338,9 +386,8 @@ export type Mensagem = { role: "user" | "assistant"; content: string };
 // ── Detecta intenção de registro para forçar tool_choice: any ───────────────
 // Sem isso, Claude pode fabricar ✅ sem chamar a ferramenta (stop_reason=end_turn)
 function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
-  const t = texto.toLowerCase();
+  const t = texto.toLowerCase().trim();
 
-  // Intenção de registro na mensagem atual
   // Foto de NF injetada → sempre força ferramenta
   if (t.includes("[usuário enviou uma imagem. dados extraídos:")) return true;
 
@@ -354,12 +401,18 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
     "registrar", "registrei", "registrou", "lançar", "lançamento",
     "conta a pagar", "cp de", "cr de", "conta a receber",
     "comprei", "compra de", "paguei", "recebi", "gastei",
+    "cadastrar", "cadastra ", "cadastre", "cadastrei",
   ];
   if (kw.some(k => t.includes(k))) return true;
 
-  // Histórico: último turno do assistente fez pergunta — usuário está respondendo
+  // Histórico: último turno do assistente fez pergunta → usuário respondendo
   const ultimoAss = [...historico].reverse().find(m => m.role === "assistant");
-  if (ultimoAss?.content.includes("❓")) return true;
+  const ultimoTxt = typeof ultimoAss?.content === "string" ? ultimoAss.content : "";
+  if (ultimoTxt.includes("❓")) return true;
+
+  // Usuário confirmando preview de NF ("sim", "confirmo", "pode registrar", "ok registra")
+  const confirma = /^(sim|confirmo|confirmar|pode|pode registrar|ok|registra|isso)[\s!.]*$/.test(t);
+  if (confirma && ultimoTxt.includes("Confirma?")) return true;
 
   return false;
 }
@@ -410,13 +463,18 @@ REGRA #5 — CONTEXTO CONTÍNUO:
 - NUNCA peça novamente algo que o usuário já informou.
 
 REGRA #6 — FOTO DE NOTA FISCAL:
-Quando o usuário enviar uma imagem (a mensagem pode conter uma imagem diretamente, ou o texto pode incluir "[IMAGEM_NF]"):
-- LEIA a imagem para extrair: razão social do emitente, CNPJ, número da NF, data de emissão, valor total, itens (descrição/quantidade/unidade/valor).
-- IMEDIATAMENTE chame registrar_nf_compra com confirmado=false e todos os dados que conseguiu ler + vencimento do texto do usuário (se mencionado) ou "hoje".
-- Mesmo que a imagem esteja girada, torta ou parcialmente legível — extraia o que conseguir e chame a ferramenta. NÃO diga "não consegui ler". Use os dados parciais.
-- A ferramenta mostra resumo e pede confirmação.
-- Quando usuário responder "sim" → chame com confirmado=true e os MESMOS dados.
-- Se a imagem vier junto com texto ("vencimento 30/05/2026", "conta caixa") → use essas informações nos campos da ferramenta.
+Quando o usuário enviar uma imagem/PDF ou pedir para registrar uma NF de compra:
+- LEIA a imagem/PDF para extrair: razão social, CNPJ, número da NF, data de emissão, valor total, itens (descrição/quantidade/unidade/valor).
+- IMEDIATAMENTE chame registrar_nf_compra com confirmado=false e todos os dados extraídos + vencimento do texto do usuário (se mencionado) ou "hoje".
+- Mesmo que a imagem esteja girada, torta ou parcialmente legível — use os dados parciais. NUNCA diga "não consigo ler" ou "não tenho essa função".
+- A ferramenta faz TUDO automaticamente: cadastra o fornecedor, cadastra os produtos no estoque, lança entrada no estoque e cria Conta a Pagar. Você NÃO precisa chamar outras ferramentas separadas.
+- Quando usuário responder "sim", "confirmo" ou similar → chame com confirmado=true e os MESMOS dados.
+- Se a imagem vier junto com texto ("vencimento 30/05/2026", "conta caixa") → use essas informações nos campos.
+
+REGRA #7 — CADASTRO SEM NF:
+- Se o usuário pedir para cadastrar um fornecedor sem foto/NF → use cadastrar_fornecedor.
+- Se o usuário pedir para cadastrar um produto/insumo no estoque sem foto/NF → use cadastrar_insumo.
+- NUNCA diga "não tenho essa função" para cadastros. Sempre use a ferramenta correta.
 
 COMPORTAMENTO GERAL:
 - Seu nome é Arato. Responda em português, direto e prático.
