@@ -426,16 +426,25 @@ COMPORTAMENTO GERAL:
 - Nunca invente dados financeiros. Se não souber, use as ferramentas.
 - Quando o usuário disser "cancelar" ou "sair", encerre educadamente.`;
 
-  // Monta conteúdo da mensagem — com imagem se presente
+  // Monta conteúdo da mensagem — com imagem ou PDF se presente
   let userContent: string | Anthropic.ContentBlockParam[];
   if (imagem) {
-    const supportedMime = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    const mime = supportedMime.includes(imagem.mime) ? imagem.mime : "image/jpeg";
+    const mediaBlock: Anthropic.ContentBlockParam =
+      imagem.mime === "application/pdf"
+        ? {
+            type: "document",
+            source: { type: "base64", media_type: "application/pdf", data: imagem.base64 },
+          } as unknown as Anthropic.ContentBlockParam
+        : (() => {
+            const supportedMime = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+            const mime = supportedMime.includes(imagem.mime) ? imagem.mime : "image/jpeg";
+            return {
+              type: "image",
+              source: { type: "base64", media_type: mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: imagem.base64 },
+            };
+          })();
     userContent = [
-      {
-        type: "image",
-        source: { type: "base64", media_type: mime as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: imagem.base64 },
-      },
+      mediaBlock,
       ...(texto ? [{ type: "text" as const, text: texto }] : []),
     ];
   } else {

@@ -167,7 +167,6 @@ export async function POST(req: NextRequest) {
 
     if (docMime.startsWith("image/")) {
       if (docMime.includes("heic") || docMime.includes("heif")) {
-        // HEIC não é suportado pelo Claude Vision — orientar o usuário
         await enviarTexto(telefone,
           "📎 _Arquivo HEIC recebido, mas esse formato não é lido automaticamente._\n\n" +
           "Por favor, envie a NF como *foto* (não como arquivo): segure o botão da câmera no WhatsApp e tire a foto direto, ou escolha da galeria sem usar o ícone de clipe 📎.\n\n" +
@@ -175,7 +174,6 @@ export async function POST(req: NextRequest) {
         );
         return NextResponse.json({ ok: true });
       }
-      // Outros tipos de imagem como documento (PNG, JPEG) — tenta processar
       try {
         const { base64, mimetype } = await baixarMidiaBase64({ key, message });
         imagemBase64 = base64;
@@ -184,6 +182,17 @@ export async function POST(req: NextRequest) {
         await enviarTexto(telefone, "❌ Não consegui abrir o arquivo. Tente enviar como foto.");
         return NextResponse.json({ ok: true });
       }
+
+    } else if (docMime === "application/pdf") {
+      try {
+        const { base64 } = await baixarMidiaBase64({ key, message });
+        imagemBase64 = base64;
+        imagemMime   = "application/pdf";
+      } catch {
+        await enviarTexto(telefone, "❌ Não consegui abrir o PDF. Tente enviar novamente.");
+        return NextResponse.json({ ok: true });
+      }
+
     } else {
       return NextResponse.json({ ok: true });
     }
