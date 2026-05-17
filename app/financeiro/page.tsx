@@ -114,6 +114,76 @@ const DFC_SAIDAS = [
   "Outros",
 ];
 
+// ── Plano de Contas DFC ──────────────────────────────────────
+type PlanoRow = { id: string; label: string; nivel: 1|2|3; sinal: 1|-1; cat?: string[] };
+const PLANO_DFC: PlanoRow[] = [
+  { id:"1",       label:"1. RECEITAS",                       nivel:1, sinal:1  },
+  { id:"1.01",    label:"1.01. Receitas Operacionais",       nivel:2, sinal:1  },
+  { id:"1.01.01", label:"Venda de Grãos",                    nivel:3, sinal:1,  cat:["Venda de grãos","receita_graos"] },
+  { id:"1.01.02", label:"Complemento / Fixação",             nivel:3, sinal:1,  cat:["Complemento Fixação","Venda Fixação"] },
+  { id:"1.01.99", label:"Outros Operacionais",               nivel:3, sinal:1,  cat:["Outros recebimentos","outros"] },
+  { id:"1.02",    label:"1.02. Receitas Financeiras",        nivel:2, sinal:1  },
+  { id:"1.02.01", label:"Empréstimos / Custeio Recebido",    nivel:3, sinal:1,  cat:["receita_financeira","Custeio Recebido","Empréstimo Recebido"] },
+  { id:"1.02.02", label:"Rendimentos",                       nivel:3, sinal:1,  cat:["Rendimento","Rendimento Aplicação"] },
+  { id:"1.02.99", label:"Outras Receitas Financeiras",       nivel:3, sinal:1,  cat:[] },
+  { id:"2",       label:"2. DESPESAS",                       nivel:1, sinal:-1 },
+  { id:"2.01",    label:"2.01. Insumos",                     nivel:2, sinal:-1 },
+  { id:"2.01.01", label:"Defensivos",                        nivel:3, sinal:-1, cat:["Insumos — Defensivos","Defensivos"] },
+  { id:"2.01.02", label:"Fertilizantes",                     nivel:3, sinal:-1, cat:["Insumos — Fertilizantes","Fertilizantes"] },
+  { id:"2.01.03", label:"Sementes",                          nivel:3, sinal:-1, cat:["Insumos — Sementes","Sementes"] },
+  { id:"2.01.04", label:"Corretivos / Cal",                  nivel:3, sinal:-1, cat:["Insumos — Corretivos","Corretivos","Calcário"] },
+  { id:"2.01.05", label:"Inoculantes",                       nivel:3, sinal:-1, cat:["Insumos — Inoculantes","Inoculantes"] },
+  { id:"2.01.06", label:"Herbicidas",                        nivel:3, sinal:-1, cat:["Insumos — Herbicidas","Herbicidas"] },
+  { id:"2.02",    label:"2.02. Combustíveis e Lubrificantes",nivel:2, sinal:-1 },
+  { id:"2.02.01", label:"Combustível Fazenda",               nivel:3, sinal:-1, cat:["Insumos — Combustíveis","Combustíveis"] },
+  { id:"2.02.02", label:"Lubrificantes",                     nivel:3, sinal:-1, cat:["Insumos — Lubrificantes","Lubrificantes"] },
+  { id:"2.03",    label:"2.03. Manutenção e Reparo",         nivel:2, sinal:-1 },
+  { id:"2.03.01", label:"Manutenção de Máquinas",            nivel:3, sinal:-1, cat:["Manutenção de Máquinas","Manutenção"] },
+  { id:"2.03.02", label:"Manutenção de Benfeitorias",        nivel:3, sinal:-1, cat:["Manutenção de Benfeitorias"] },
+  { id:"2.03.03", label:"Manutenção de Veículos",            nivel:3, sinal:-1, cat:["Manutenção de Veículos"] },
+  { id:"2.04",    label:"2.04. Fretes e Transportes",        nivel:2, sinal:-1, cat:["Fretes e Transportes","Frete","Fretes"] },
+  { id:"2.05",    label:"2.05. Serviços Terceirizados",      nivel:2, sinal:-1 },
+  { id:"2.05.01", label:"Colheita Terceirizada",             nivel:3, sinal:-1, cat:["Colheita Terceirizada"] },
+  { id:"2.05.02", label:"Serviços Agrícolas",                nivel:3, sinal:-1, cat:["Serviços Agrícolas"] },
+  { id:"2.05.99", label:"Outros Serviços",                   nivel:3, sinal:-1, cat:["Prestação de Serviço"] },
+  { id:"2.06",    label:"2.06. Arrendamento",                nivel:2, sinal:-1, cat:["Arrendamento de Terra","Arrendamento"] },
+  { id:"2.07",    label:"2.07. Seguros",                     nivel:2, sinal:-1, cat:["Seguro Produção","Seguro Máquinas","Seguro Veículos","Seguros","Seguro Milho"] },
+  { id:"2.08",    label:"2.08. Despesas Administrativas",    nivel:2, sinal:-1 },
+  { id:"2.08.01", label:"Material / Expediente",             nivel:3, sinal:-1, cat:["Despesas Administrativas","Material Escritório","Papelaria"] },
+  { id:"2.08.02", label:"Energia / Internet / TI",           nivel:3, sinal:-1, cat:["Energia Elétrica","Internet/Sistemas","Sistema/TI","Despesas fixas"] },
+  { id:"2.08.03", label:"Associações / Sindicatos",          nivel:3, sinal:-1, cat:["Associações"] },
+  { id:"2.08.99", label:"Outros ADM",                        nivel:3, sinal:-1, cat:["Administrativo"] },
+  { id:"2.09",    label:"2.09. Serviços Terceiros ADM",      nivel:2, sinal:-1, cat:["Consultoria","Assessoria Contábil","Assessoria Sistema/TI"] },
+  { id:"2.10",    label:"2.10. Recursos Humanos",            nivel:2, sinal:-1 },
+  { id:"2.10.01", label:"Salários",                          nivel:3, sinal:-1, cat:["Salários","Remuneração"] },
+  { id:"2.10.02", label:"Pró-labore",                        nivel:3, sinal:-1, cat:["Pró-labore"] },
+  { id:"2.10.03", label:"Encargos (INSS / FGTS)",            nivel:3, sinal:-1, cat:["Encargos","INSS","FGTS"] },
+  { id:"2.10.04", label:"Benefícios / Plano de Saúde",       nivel:3, sinal:-1, cat:["Plano de Saúde","Benefícios"] },
+  { id:"2.10.99", label:"Outros RH",                         nivel:3, sinal:-1, cat:["RH","Recursos Humanos","Comissão"] },
+  { id:"2.11",    label:"2.11. Impostos e Taxas",            nivel:2, sinal:-1, cat:["Impostos","Impostos e Taxas","ITR","Funrural","IPVA","Licenciamento"] },
+  { id:"2.12",    label:"2.12. Despesas Financeiras",        nivel:2, sinal:-1 },
+  { id:"2.12.01", label:"Principal Empréstimos / CPR",       nivel:3, sinal:-1, cat:["Amortização de Dívida","Pagamento Custeio","Pagamento CPR","Principal","pagamento_divida"] },
+  { id:"2.12.02", label:"Juros e Encargos Financeiros",      nivel:3, sinal:-1, cat:["Juros e IOF","Juros","IOF","juros"] },
+  { id:"2.12.03", label:"Tarifas Bancárias",                 nivel:3, sinal:-1, cat:["Tarifas Bancárias"] },
+  { id:"2.13",    label:"2.13. Investimentos",               nivel:2, sinal:-1, cat:["Investimentos","Aquisição de Máquinas"] },
+  { id:"2.14",    label:"2.14. Adiantamentos",               nivel:2, sinal:-1, cat:["Adiantamento a Fornecedor","Adiantamentos"] },
+  { id:"2.99",    label:"2.99. Outros",                      nivel:2, sinal:-1, cat:["Outros","outros","Compras Gerais","Despesas Gerais","Particular","Despesas Particulares"] },
+];
+
+function dfcDirectChildren(nodeId: string) {
+  return PLANO_DFC.filter(n => {
+    if (!n.id.startsWith(nodeId + ".")) return false;
+    const rest = n.id.slice(nodeId.length + 1);
+    return !rest.includes(".");
+  });
+}
+function dfcAncestors(nodeId: string): string[] {
+  const parts = nodeId.split(".");
+  const ancs: string[] = [];
+  for (let i = 1; i < parts.length; i++) ancs.push(parts.slice(0, i).join("."));
+  return ancs;
+}
+
 // ── conciliação estática (OFX será integrado no futuro) ───────
 const conciliados: { data: string; descricao: string; valor: number; tipo: "credito" | "debito"; conciliado: boolean; lancRef: string }[] = [];
 
@@ -152,6 +222,11 @@ export default function Financeiro() {
   const [modalGerenciarSim, setModalGerenciarSim] = useState(false);
   const [modalConverterPrev, setModalConverterPrev] = useState<Previsao | null>(null);
   const [abaPrevisao, setAbaPrevisao]       = useState<"lista" | "nova">("lista");
+
+  // DFC horizontal
+  const [modoDFC, setModoDFC]               = useState<"previsto" | "realizado">("realizado");
+  const [dfcColapsados, setDfcColapsados]   = useState<Set<string>>(new Set());
+  const [dfcApenasMov, setDfcApenasMov]     = useState(true);
 
   const [novaPrevisao, setNovaPrevisao] = useState({ tipo: "pagar" as TipoLanc, descricao: "", categoria: "Insumos — Defensivos", data: "", valorMask: "" });
   const [novaSim, setNovaSim]           = useState({ tipo: "pagar" as TipoLanc, descricao: "", valorMask: "", data: TODAY });
@@ -701,8 +776,9 @@ export default function Financeiro() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE" }}>
                         <div style={{ display: "flex", gap: 4 }}>
                           {([
-                            { key: "vertical", label: "↕ Dia a dia"       },
-                            { key: "prevreal", label: "⇆ Previsto × Real" },
+                            { key: "horizontal", label: "⊞ DFC Mensal"      },
+                            { key: "vertical",   label: "↕ Dia a dia"        },
+                            { key: "prevreal",   label: "⇆ Previsto × Real"  },
                           ] as { key: SubAbaFluxo; label: string }[]).map(s => (
                             <button key={s.key} onClick={() => setSubAbaFluxo(s.key)} style={{
                               padding: "6px 14px", borderRadius: 8, border: "0.5px solid",
@@ -738,7 +814,240 @@ export default function Financeiro() {
                         )}
                       </div>
 
-                      {/* DFC Mensal removido — use Previsto × Realizado */}
+                      {/* ── VISÃO: DFC MENSAL HIERÁRQUICO ── */}
+                      {subAbaFluxo === "horizontal" && (() => {
+                        // Todas as categorias explicitamente mapeadas
+                        const allMappedCats = new Set(
+                          PLANO_DFC.filter(n => n.cat !== undefined).flatMap(n => n.cat!)
+                        );
+
+                        // Compute leaf value
+                        const leafVal = (node: PlanoRow, keyMes: string): number => {
+                          let cats = node.cat ?? [];
+                          // catch-all captura categorias não mapeadas
+                          if (node.id.endsWith(".99") || node.id === "2.99") {
+                            const unassigned = [...new Set(
+                              lancamentos
+                                .filter(l => node.sinal === 1 ? l.tipo === "receber" : l.tipo === "pagar")
+                                .map(l => l.categoria).filter(c => c && !allMappedCats.has(c))
+                            )];
+                            cats = [...cats, ...unassigned];
+                          }
+                          return lancamentos.filter(l => {
+                            if (l.moeda === "barter") return false;
+                            if (node.sinal === 1 ? l.tipo !== "receber" : l.tipo !== "pagar") return false;
+                            if (!cats.includes(l.categoria)) return false;
+                            if (modoDFC === "realizado") {
+                              if (l.status !== "baixado") return false;
+                              const ref = l.data_baixa ?? l.data_vencimento ?? "";
+                              return ref.startsWith(keyMes);
+                            }
+                            return (l.data_vencimento ?? "").startsWith(keyMes);
+                          }).reduce((a, l) => a + paraBRL(l), 0);
+                        };
+
+                        // Build allValues: leaf first, then parents bottom-up
+                        const allVals: Record<string, Record<string, number>> = {};
+                        for (const node of PLANO_DFC) {
+                          if (node.cat !== undefined) {
+                            const v: Record<string, number> = {};
+                            for (const m of mesesDFC) v[m.keyMes] = leafVal(node, m.keyMes);
+                            allVals[node.id] = v;
+                          }
+                        }
+                        for (const node of [...PLANO_DFC].reverse()) {
+                          if (node.cat === undefined) {
+                            const ch = dfcDirectChildren(node.id);
+                            const v: Record<string, number> = {};
+                            for (const m of mesesDFC) v[m.keyMes] = ch.reduce((a, c) => a + (allVals[c.id]?.[m.keyMes] ?? 0), 0);
+                            allVals[node.id] = v;
+                          }
+                        }
+
+                        const nodeTotal = (id: string) => mesesDFC.reduce((a, m) => a + (allVals[id]?.[m.keyMes] ?? 0), 0);
+                        const hasMov = (id: string) => mesesDFC.some(m => (allVals[id]?.[m.keyMes] ?? 0) !== 0);
+
+                        const isHidden = (nodeId: string) =>
+                          dfcAncestors(nodeId).some(a => dfcColapsados.has(a));
+
+                        const toggleCollapse = (id: string) =>
+                          setDfcColapsados(prev => {
+                            const next = new Set(prev);
+                            next.has(id) ? next.delete(id) : next.add(id);
+                            return next;
+                          });
+
+                        // Footer
+                        const totEntradas = (keyMes: string) => allVals["1"]?.[keyMes] ?? 0;
+                        const totSaidas   = (keyMes: string) => allVals["2"]?.[keyMes] ?? 0;
+                        const diferenca   = (keyMes: string) => totEntradas(keyMes) - totSaidas(keyMes);
+                        let saldoAcumDFC = saldoZero ? 0 : saldoAnterior;
+                        const saldosAcum: Record<string, number> = {};
+                        for (const m of mesesDFC) {
+                          saldoAcumDFC += diferenca(m.keyMes);
+                          saldosAcum[m.keyMes] = saldoAcumDFC;
+                        }
+
+                        const fmtVal = (v: number, sinal: 1|-1) => {
+                          if (v === 0) return <span style={{ color: "#ccc" }}>—</span>;
+                          const display = sinal === 1 ? v : -v;
+                          return <span style={{ color: display >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(display)}</span>;
+                        };
+
+                        const NIVEL_STYLE: Record<number, React.CSSProperties> = {
+                          1: { background: "#1A4870", color: "#fff", fontWeight: 700, fontSize: 12 },
+                          2: { background: "#EEF3FA", color: "#1a1a1a", fontWeight: 600, fontSize: 11 },
+                          3: { background: "#fff",    color: "#333",    fontWeight: 400, fontSize: 11 },
+                        };
+                        const NIVEL_INDENT: Record<number, number> = { 1: 0, 2: 12, 3: 26 };
+
+                        return (
+                          <div>
+                            {/* Toolbar */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 16px", borderBottom: "0.5px solid #DEE5EE", background: "#F9FAFB" }}>
+                              <span style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>Modo:</span>
+                              {(["realizado","previsto"] as const).map(m => (
+                                <button key={m} onClick={() => setModoDFC(m)} style={{
+                                  fontSize: 11, padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontWeight: modoDFC === m ? 600 : 400,
+                                  border: `0.5px solid ${modoDFC === m ? "#1A4870" : "#D4DCE8"}`,
+                                  background: modoDFC === m ? "#D5E8F5" : "transparent",
+                                  color: modoDFC === m ? "#0B2D50" : "#555",
+                                }}>
+                                  {m === "realizado" ? "Realizado" : "Previsto"}
+                                </button>
+                              ))}
+                              <span style={{ width: 1, height: 16, background: "#D4DCE8" }} />
+                              <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", cursor: "pointer" }}>
+                                <input type="checkbox" checked={dfcApenasMov} onChange={e => setDfcApenasMov(e.target.checked)} style={{ cursor: "pointer", accentColor: "#1A4870" }} />
+                                Apenas com movimento
+                              </label>
+                              <span style={{ marginLeft: "auto", fontSize: 10, color: "#888" }}>
+                                {modoDFC === "realizado" ? "Lançamentos baixados por data de baixa" : "Todos os lançamentos por data de vencimento"}
+                              </span>
+                            </div>
+
+                            {/* Table */}
+                            <div style={{ overflowX: "auto" }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+                                <thead>
+                                  <tr style={{ background: "#F3F6F9" }}>
+                                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", minWidth: 240, position: "sticky", left: 0, background: "#F3F6F9", zIndex: 2 }}>
+                                      Conta / Descrição
+                                    </th>
+                                    {mesesDFC.map(m => (
+                                      <th key={m.keyMes} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: m.passado ? "#555" : "#1a1a1a", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap", minWidth: 110 }}>
+                                        {m.label}
+                                        {m.passado && <div style={{ fontSize: 9, color: "#888", fontWeight: 400 }}>{modoDFC}</div>}
+                                      </th>
+                                    ))}
+                                    <th style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#1a1a1a", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap", minWidth: 120, background: "#F3F6F9" }}>
+                                      Total
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {PLANO_DFC.map(node => {
+                                    if (isHidden(node.id)) return null;
+                                    if (dfcApenasMov && !hasMov(node.id)) return null;
+                                    const hasChildren = node.cat === undefined;
+                                    const collapsed = dfcColapsados.has(node.id);
+                                    const s = NIVEL_STYLE[node.nivel];
+                                    const indent = NIVEL_INDENT[node.nivel];
+                                    const total = nodeTotal(node.id);
+                                    return (
+                                      <tr key={node.id} style={{ borderBottom: "0.5px solid #E8ECF2" }}>
+                                        <td
+                                          onClick={() => hasChildren && toggleCollapse(node.id)}
+                                          style={{ ...s, padding: "7px 14px", paddingLeft: 14 + indent, position: "sticky", left: 0, zIndex: 1, cursor: hasChildren ? "pointer" : "default", whiteSpace: "nowrap", minWidth: 240, userSelect: "none" }}
+                                        >
+                                          <span style={{ marginRight: 6, fontSize: 10, opacity: hasChildren ? 1 : 0 }}>
+                                            {collapsed ? "▶" : "▼"}
+                                          </span>
+                                          {node.label}
+                                        </td>
+                                        {mesesDFC.map(m => {
+                                          const v = allVals[node.id]?.[m.keyMes] ?? 0;
+                                          return (
+                                            <td key={m.keyMes} style={{ ...s, padding: "7px 10px", textAlign: "right" }}>
+                                              {v !== 0 ? fmtVal(v, node.sinal) : <span style={{ color: node.nivel === 1 ? "#ffffff44" : "#ccc" }}>—</span>}
+                                            </td>
+                                          );
+                                        })}
+                                        <td style={{ ...s, padding: "7px 10px", textAlign: "right", fontWeight: 700 }}>
+                                          {total !== 0 ? fmtVal(total, node.sinal) : <span style={{ color: node.nivel === 1 ? "#ffffff44" : "#ccc" }}>—</span>}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+
+                                  {/* ── Rodapé ── */}
+                                  <tr style={{ background: "#F3F6F9", borderTop: "2px solid #D4DCE8" }}>
+                                    <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 600, color: "#555", position: "sticky", left: 0, background: "#F3F6F9", zIndex: 1 }}>Saldo Anterior</td>
+                                    <td colSpan={mesesDFC.length + 1} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: saldoAnterior >= 0 ? "#1A4870" : "#E24B4A" }}>
+                                      {saldoZero ? "Iniciando em R$ 0,00" : fmtBRL(saldoAnterior)}
+                                    </td>
+                                  </tr>
+                                  <tr style={{ background: "#E4F0F9" }}>
+                                    <td style={{ padding: "7px 14px", fontSize: 11, fontWeight: 600, color: "#0B2D50", position: "sticky", left: 0, background: "#E4F0F9", zIndex: 1 }}>▲ Total Entradas</td>
+                                    {mesesDFC.map(m => (
+                                      <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: totEntradas(m.keyMes) > 0 ? "#1A4870" : "#888" }}>
+                                        {totEntradas(m.keyMes) > 0 ? fmtBRL(totEntradas(m.keyMes)) : "—"}
+                                      </td>
+                                    ))}
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#1A4870" }}>
+                                      {fmtBRL(mesesDFC.reduce((a, m) => a + totEntradas(m.keyMes), 0))}
+                                    </td>
+                                  </tr>
+                                  <tr style={{ background: "#FEF3F3" }}>
+                                    <td style={{ padding: "7px 14px", fontSize: 11, fontWeight: 600, color: "#791F1F", position: "sticky", left: 0, background: "#FEF3F3", zIndex: 1 }}>▼ Total Saídas</td>
+                                    {mesesDFC.map(m => (
+                                      <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: totSaidas(m.keyMes) > 0 ? "#E24B4A" : "#888" }}>
+                                        {totSaidas(m.keyMes) > 0 ? fmtBRL(-totSaidas(m.keyMes)) : "—"}
+                                      </td>
+                                    ))}
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#E24B4A" }}>
+                                      {fmtBRL(-mesesDFC.reduce((a, m) => a + totSaidas(m.keyMes), 0))}
+                                    </td>
+                                  </tr>
+                                  <tr style={{ background: "#F8F9FB", borderTop: "0.5px solid #D4DCE8" }}>
+                                    <td style={{ padding: "7px 14px", fontSize: 11, fontWeight: 600, color: "#555", position: "sticky", left: 0, background: "#F8F9FB", zIndex: 1 }}>= Diferença</td>
+                                    {mesesDFC.map(m => {
+                                      const d = diferenca(m.keyMes);
+                                      return (
+                                        <td key={m.keyMes} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: d > 0 ? "#16A34A" : d < 0 ? "#E24B4A" : "#888" }}>
+                                          {d !== 0 ? fmtBRL(d) : "—"}
+                                        </td>
+                                      );
+                                    })}
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#555" }}>
+                                      {fmtBRL(mesesDFC.reduce((a, m) => a + diferenca(m.keyMes), 0))}
+                                    </td>
+                                  </tr>
+                                  <tr style={{ background: "#1A4870" }}>
+                                    <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 700, color: "#fff", position: "sticky", left: 0, background: "#1A4870", zIndex: 1 }}>Saldo Acumulado</td>
+                                    {mesesDFC.map(m => {
+                                      const s = saldosAcum[m.keyMes] ?? 0;
+                                      return (
+                                        <td key={m.keyMes} style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 700, color: s >= 0 ? "#A8D8F0" : "#FFAAAA" }}>
+                                          {fmtBRL(s)}
+                                        </td>
+                                      );
+                                    })}
+                                    <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#fff" }}>
+                                      {fmtBRL(saldoAcumDFC)}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                            <div style={{ padding: "6px 14px", fontSize: 10, color: "#666", background: "#F9FAFB", borderTop: "0.5px solid #E8ECF2" }}>
+                              Barter excluído · USD convertido à cotação vigente · clique nos grupos para expandir/recolher
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* DFC MENSAL (legado desativado) */}
                       {false && (
                         <div>
                           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
