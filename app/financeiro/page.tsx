@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao } from "../../lib/db";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao } from "../../lib/supabase";
 
@@ -137,6 +137,8 @@ export default function Financeiro() {
     return d.toISOString().split("T")[0];
   });
   const [periodoTemp, setPeriodoTemp] = useState({ inicio: "", fim: "" });
+  const [saldoZero, setSaldoZero]   = useState(false);
+  const [saldoAnterior, setSaldoAnterior] = useState(0);
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo, setModalNovo]   = useState(false);
 
@@ -182,9 +184,11 @@ export default function Financeiro() {
     try {
       setLoading(true);
       setErro(null);
-      const lans = await listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim);
+      const [lans] = await Promise.all([
+        listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim),
+        calcularSaldoAnterior(fazendaId!, periodoInicio).then(setSaldoAnterior).catch(() => setSaldoAnterior(0)),
+      ]);
       setLancamentos(lans);
-      // Simulações em tabela separada — carrega sem bloquear caso a tabela ainda não exista
       listarSimulacoes(fazendaId!).then(setSimulacoes).catch(() => setSimulacoes([]));
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar lançamentos");
@@ -405,8 +409,8 @@ export default function Financeiro() {
   const somaSaidas = (keyMes: string) =>
     lancamentos.filter(l => l.moeda !== "barter" && l.tipo === "pagar" && (l.data_vencimento ?? "").startsWith(keyMes)).reduce((a, l) => a + paraBRL(l), 0);
 
-  // saldo acumulado: começa em 0 para o mês mais antigo
-  let saldoAcum = 0;
+  // saldo acumulado: começa no saldo anterior ao período (ou 0 se toggle ativo)
+  let saldoAcum = saldoZero ? 0 : saldoAnterior;
   const saldosMes = mesesDFC.map(m => {
     const s = saldoAcum + somaEntradas(m.keyMes) - somaSaidas(m.keyMes);
     const anterior = saldoAcum;
@@ -479,6 +483,15 @@ export default function Financeiro() {
               style={{ fontSize: 12, padding: "4px 14px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600 }}>
               Carregar
             </button>
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", cursor: "pointer", userSelect: "none" }}>
+              <input type="checkbox" checked={saldoZero} onChange={e => setSaldoZero(e.target.checked)} style={{ cursor: "pointer", accentColor: "#1A4870" }} />
+              Iniciar com saldo 0
+            </label>
+            {!saldoZero && saldoAnterior !== 0 && (
+              <span style={{ fontSize: 11, color: saldoAnterior >= 0 ? "#1A4870" : "#E24B4A", fontWeight: 600 }}>
+                Saldo anterior: {fmtBRL(saldoAnterior)}
+              </span>
+            )}
             <span style={{ fontSize: 10, color: "#888" }}>
               {lancamentos.length} lançamentos no período
               {loading && " · carregando…"}
@@ -994,8 +1007,9 @@ export default function Financeiro() {
 
                       {/* ── VISÃO: DIA A DIA ── */}
                       {subAbaFluxo === "vertical" && (() => {
-                        // grid: col1=40% (4fr) | Status(1fr) | CR | CP | Sim | Saldo (1.5fr cada)
-                        const GRID = "4fr 1fr 1.5fr 1.5fr 1.5fr 1.5fr";
+                        // grid: col1=40% (4fr) | Status(1fr) | CR | CP | Sim | Saldo dia | Saldo acum (1.5fr cada)
+                        const GRID = "4fr 1fr 1.5fr 1.5fr 1.5fr 1.5fr 1.5fr";
+                        let saldoAcumDia = saldoZero ? 0 : saldoAnterior;
 
                         return (
                           <div style={{ background: "#F3F6F9" }}>
@@ -1030,6 +1044,11 @@ export default function Financeiro() {
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#E24B4A", textAlign: "right", paddingRight: 6 }}>CP — Saídas</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#C9921B", textAlign: "right", paddingRight: 6 }}>Simulação</div>
                               <div style={{ fontSize: 11, fontWeight: 600, color: "#555", textAlign: "right" }}>Saldo do dia</div>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textAlign: "right" }}>
+                                Saldo acum.
+                                {saldoZero && <div style={{ fontSize: 9, color: "#888", fontWeight: 400 }}>partindo de 0</div>}
+                                {!saldoZero && saldoAnterior !== 0 && <div style={{ fontSize: 9, color: "#888", fontWeight: 400 }}>{fmtBRL(saldoAnterior)}</div>}
+                              </div>
                             </div>
 
                             {/* Lista de dias */}
@@ -1043,6 +1062,8 @@ export default function Financeiro() {
                                 const totalCP  = lDia.filter(l => l.tipo === "pagar").reduce((a, l) => a + paraBRL(l), 0)  + pDia.filter(p => p.tipo === "pagar").reduce((a, p) => a + p.valor, 0);
                                 const saldoSim = sDia.reduce((a, s) => a + (s.tipo === "receber" ? s.valor : -s.valor), 0);
                                 const saldoDia = totalCR - totalCP + saldoSim;
+                                saldoAcumDia += saldoDia;
+                                const saldoAcumulado = saldoAcumDia;
 
                                 const temLancamentos = lDia.length > 0 || pDia.length > 0;
                                 const temSim         = sDia.length > 0;
@@ -1115,6 +1136,10 @@ export default function Financeiro() {
                                       <div style={{ textAlign: "right", fontSize: 12, fontWeight: 600, color: !temEventos ? "#666" : saldoDia >= 0 ? "#1a1a1a" : "#E24B4A" }}>
                                         {temEventos ? fmtBRL(saldoDia) : "—"}
                                       </div>
+                                      {/* Saldo acumulado */}
+                                      <div style={{ textAlign: "right", fontSize: 12, fontWeight: 700, color: saldoAcumulado >= 0 ? "#1A4870" : "#E24B4A" }}>
+                                        {fmtBRL(saldoAcumulado)}
+                                      </div>
                                     </div>
 
                                     {/* ── Linhas de detalhe — uma por item, mesma grid ── */}
@@ -1146,10 +1171,16 @@ export default function Financeiro() {
                                             <div style={{ textAlign: "right", paddingRight: 6, fontSize: 11, fontWeight: 600, color: "#C9921B" }}>
                                               {item.simVal !== undefined ? `${item.simVal >= 0 ? "+" : "−"} ${fmtBRL(Math.abs(item.simVal))}` : ""}
                                             </div>
-                                            {/* Saldo acumulado — só na última linha */}
+                                            {/* Saldo do dia — só na última linha */}
                                             <div style={{ textAlign: "right" }}>
                                               {idx === linhas.length - 1 && (
                                                 <span style={{ fontSize: 11, fontWeight: 600, color: saldoDia >= 0 ? "#1a1a1a" : "#E24B4A" }}>{fmtBRL(saldoDia)}</span>
+                                              )}
+                                            </div>
+                                            {/* Saldo acumulado — só na última linha */}
+                                            <div style={{ textAlign: "right" }}>
+                                              {idx === linhas.length - 1 && (
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: saldoAcumulado >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(saldoAcumulado)}</span>
                                               )}
                                             </div>
                                           </div>

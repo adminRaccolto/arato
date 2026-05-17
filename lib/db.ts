@@ -316,6 +316,23 @@ export async function listarLancamentosPeriodo(
   return all;
 }
 
+// Soma líquida de todos os lançamentos baixados ANTES de dataInicio (saldo anterior ao período)
+export async function calcularSaldoAnterior(fazenda_id: string, dataInicio: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("lancamentos")
+    .select("tipo, valor, valor_pago, cotacao_usd, moeda")
+    .eq("fazenda_id", fazenda_id)
+    .eq("status", "baixado")
+    .lt("data_vencimento", dataInicio)
+    .neq("moeda", "barter");
+  if (error) throw error;
+  return (data ?? []).reduce((acc, l) => {
+    const v = l.valor_pago ?? l.valor ?? 0;
+    const brl = l.moeda === "USD" ? v * (l.cotacao_usd ?? 5.12) : v;
+    return acc + (l.tipo === "receber" ? brl : -brl);
+  }, 0);
+}
+
 export async function criarLancamento(l: Omit<Lancamento, "id" | "created_at">): Promise<Lancamento> {
   const { data, error } = await supabase.from("lancamentos").insert(l).select().single();
   if (error) throw error;
