@@ -1,0 +1,38 @@
+[
+  {
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "FAZENDA RIO BONITO",
+    "ABREVIATURA": "RIO B",
+    "LOCALIZACAO": null,
+    "CD_CIDADE": 4160,
+    "MATRICULA": null,
+    "AREA_TOTAL": 695,
+    "ST_ATIVO": "S",
+    "CIDADE": "RIBEIRAO CASCALHEIRA",
+    "ESTADO": "MT"
+  },
+  {
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "FAZENDA SAPEZAL",
+    "ABREVIATURA": "SPZ",
+    "LOCALIZACAO": null,
+    "CD_CIDADE": 1005,
+    "MATRICULA": null,
+    "AREA_TOTAL": 1396,
+    "ST_ATIVO": "S",
+    "CIDADE": "CANARANA",
+    "ESTADO": "MT"
+  },
+  {
+    "CD_PROPRIEDADE": 3,
+    "DESCRICAO": "FAZENDA S�O CARLOS",
+    "ABREVIATURA": "SC 2",
+    "LOCALIZACAO": null,
+    "CD_CIDADE": 1005,
+    "MATRICULA": null,
+    "AREA_TOTAL": 695,
+    "ST_ATIVO": "S",
+    "CIDADE": "CANARANA",
+    "ESTADO": "MT"
+  }
+]

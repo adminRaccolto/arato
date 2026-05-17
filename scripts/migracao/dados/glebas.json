@@ -1,0 +1,47 @@
+[
+  {
+    "CD_GLEBA": 59,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "BRUETO/ PLANALTO",
+    "AREA_TOTAL": 134,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 134,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 60,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "FAUSTO",
+    "AREA_TOTAL": 265,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 265,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 58,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "SAPEZAL",
+    "AREA_TOTAL": 502.9,
+    "AREA_PROPRIA": 502.9,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 63,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "RIO BONITO",
+    "AREA_TOTAL": 695,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 695,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 64,
+    "CD_PROPRIEDADE": 3,
+    "DESCRICAO": "FAZ. S�O CARLOS",
+    "AREA_TOTAL": 665,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 665,
+    "ST_ATIVO": "S"
+  }
+]

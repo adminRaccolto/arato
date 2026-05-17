@@ -1,0 +1,79 @@
+[
+  {
+    "CD_CONTA": 15,
+    "DESCRICAO": "BANCO BRASIL CLEBER",
+    "NUM_CONTA": "18188-9",
+    "CD_AGENCIA": 2,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 4,
+    "DESCRICAO": "BANCO BRASIL PEDRO",
+    "NUM_CONTA": "7733X",
+    "CD_AGENCIA": 2,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 3,
+    "DESCRICAO": "BRADESCO PEDRO",
+    "NUM_CONTA": "110-4",
+    "CD_AGENCIA": 1,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 7,
+    "DESCRICAO": "CAIXA ECONOMICA  PEDRO",
+    "NUM_CONTA": "20083-3",
+    "CD_AGENCIA": 5,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 10,
+    "DESCRICAO": "CREDISIS PEDRO",
+    "NUM_CONTA": "5000742",
+    "CD_AGENCIA": 6,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 8,
+    "DESCRICAO": "ITAU",
+    "NUM_CONTA": "58337-6",
+    "CD_AGENCIA": 7,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 14,
+    "DESCRICAO": "SICOB CLEBER",
+    "NUM_CONTA": "13.308-6",
+    "CD_AGENCIA": 4,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 13,
+    "DESCRICAO": "SICOOB CLEBER",
+    "NUM_CONTA": "13308-6",
+    "CD_AGENCIA": 4,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 6,
+    "DESCRICAO": "SICOOB PEDRO",
+    "NUM_CONTA": "13819-3",
+    "CD_AGENCIA": 4,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 9,
+    "DESCRICAO": "SICRED CLEBER",
+    "NUM_CONTA": "041629",
+    "CD_AGENCIA": 3,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 5,
+    "DESCRICAO": "SICRED PEDRO",
+    "NUM_CONTA": "4645",
+    "CD_AGENCIA": 3,
+    "TIPO_CONTA": "C"
+  }
+]
