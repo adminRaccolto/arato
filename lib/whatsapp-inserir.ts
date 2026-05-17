@@ -1141,16 +1141,37 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
 
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // Busca insumos correspondentes para todos os itens (preview e save)
+  type ItemComInsumo = ItemNF & { insumo: InsumoRow | null };
+  const itensComInsumo: ItemComInsumo[] = await Promise.all(
+    itens.map(async (i) => ({
+      ...i,
+      insumo: await buscarInsumo(fazendaId, String(i.descricao ?? "")),
+    }))
+  );
+
+  const nVinculados = itensComInsumo.filter(i => i.insumo).length;
+  const nDireto     = itensComInsumo.filter(i => !i.insumo).length;
+
   // ── Preview — aguarda confirmação do usuário ─────────────────────────────
   if (!confirmado) {
-    const itensTxt = itens.slice(0, 4).map(i => {
-      const vt = (Number(i.quantidade) || 1) * (Number(i.valor_unitario) || 0);
-      return `  • ${i.descricao} — ${i.quantidade} ${i.unidade || "UN"} · R$ ${fmtBRL(vt)}`;
-    }).join("\n");
-    const mais = itens.length > 4 ? `\n  _...+${itens.length - 4} itens_` : "";
     const cnpjFmt = cnpj.length === 14
       ? `${cnpj.slice(0,2)}.${cnpj.slice(2,5)}.${cnpj.slice(5,8)}/${cnpj.slice(8,12)}-${cnpj.slice(12)}`
       : cnpj || "—";
+
+    const itensTxt = itensComInsumo.slice(0, 5).map(i => {
+      const vt = (Number(i.quantidade) || 1) * (Number(i.valor_unitario) || 0);
+      const tag = i.insumo ? ` ✅ _→ ${i.insumo.nome}_` : " ⚠️ _sem cadastro_";
+      return `  • ${i.descricao} — ${i.quantidade} ${i.unidade || "UN"} · R$ ${fmtBRL(vt)}${tag}`;
+    }).join("\n");
+    const mais = itensComInsumo.length > 5 ? `\n  _...+${itensComInsumo.length - 5} itens_` : "";
+
+    const resumoEstoque = nVinculados > 0
+      ? `\n✅ ${nVinculados} item(ns) já cadastrado(s) → entrada automática no estoque`
+      : "";
+    const resumoDireto = nDireto > 0
+      ? `\n⚠️ ${nDireto} item(ns) sem cadastro → tipo "direto" (não movimenta estoque)`
+      : "";
 
     return {
       ok: false,
@@ -1159,7 +1180,9 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
         `• CNPJ: ${cnpjFmt}`,
         `• Emissão: ${dataEmissao}  ·  Venc. CP: ${vencimento}`,
         `• *Total: R$ ${fmtBRL(valorTotal)}*`,
-        itens.length > 0 ? `\nItens:\n${itensTxt}${mais}` : "",
+        itensComInsumo.length > 0 ? `\nItens:\n${itensTxt}${mais}` : "",
+        resumoEstoque,
+        resumoDireto,
         `\n✅ Será criado: Fornecedor + NF Entrada + Conta a Pagar`,
         `\n*Confirma? Responda "sim" para registrar.*`,
       ].filter(Boolean).join("\n"),
@@ -1210,20 +1233,61 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   if (errNf || !nfRow) return { ok: false, mensagem: `❌ Erro ao criar NF: ${errNf?.message ?? "sem retorno"}` };
   const nfId = nfRow.id;
 
-  // 3. Criar itens
-  if (itens.length > 0) {
-    await sb().from("nf_entrada_itens").insert(itens.map(i => ({
+  // 3. Criar itens e movimentar estoque quando insumo encontrado
+  let vinculados = 0;
+  let diretos    = 0;
+  for (const i of itensComInsumo) {
+    const qtd    = Number(i.quantidade) || 1;
+    const vlUnit = Number(i.valor_unitario) || 0;
+    const vlTotal = qtd * vlUnit;
+
+    // Re-lê insumo fresh para evitar saldo desatualizado em itens repetidos
+    const insumo = i.insumo
+      ? await buscarInsumo(fazendaId, i.insumo.nome)
+      : null;
+
+    await sb().from("nf_entrada_itens").insert({
       nf_entrada_id:    nfId,
       fazenda_id:       fazendaId,
       descricao_produto: String(i.descricao).slice(0, 200),
       descricao_nf:     String(i.descricao).slice(0, 200),
       unidade:          String(i.unidade || "UN"),
-      quantidade:       Number(i.quantidade) || 1,
-      valor_unitario:   Number(i.valor_unitario) || 0,
-      valor_total:      (Number(i.quantidade) || 1) * (Number(i.valor_unitario) || 0),
-      tipo_apropiacao:  "direto",
+      quantidade:       qtd,
+      valor_unitario:   vlUnit,
+      valor_total:      vlTotal,
+      tipo_apropiacao:  insumo ? "estoque" : "direto",
+      insumo_id:        insumo?.id ?? null,
       alerta_preco:     false,
-    })));
+    });
+
+    if (insumo) {
+      const saldoAtual  = Number(insumo.estoque ?? 0);
+      const novoEstoque = saldoAtual + qtd;
+      const custoAtual  = Number(insumo.custo_medio ?? 0);
+      const novoMedio   = qtd > 0 && vlUnit > 0
+        ? (custoAtual * saldoAtual + vlTotal) / novoEstoque
+        : custoAtual;
+
+      await sb().from("insumos").update({
+        estoque:     novoEstoque,
+        custo_medio: novoMedio > 0 ? novoMedio : custoAtual,
+      }).eq("id", insumo.id);
+
+      await sb().from("movimentacoes_estoque").insert({
+        fazenda_id:    fazendaId,
+        insumo_id:     insumo.id,
+        tipo:          "entrada",
+        quantidade:    qtd,
+        valor_unitario: vlUnit,
+        motivo:        "compra",
+        observacao:    `NF ${numeroNf || "s/n"} — ${razao} (via WhatsApp)`,
+        data:          hoje,
+        auto:          false,
+      });
+      vinculados++;
+    } else {
+      diretos++;
+    }
   }
 
   // 4. Criar CP lançamento
@@ -1264,7 +1328,8 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     `• Fornecedor: *${razao}*${pessoaNova ? " _(cadastrado agora)_" : ""}`,
     `• NF nº ${numeroNf || "—"}  ·  R$ ${fmtBRL(valorTotal)}`,
     `• CP lançado — vence ${vencimento}`,
-    itens.length > 0 ? `• ${itens.length} item(ns) na NF Entrada` : "",
+    vinculados > 0 ? `• ✅ ${vinculados} item(ns) → entrada automática no estoque` : "",
+    diretos > 0    ? `• ⚠️ ${diretos} item(ns) sem cadastro → não movimentou estoque` : "",
     `• Pendência fiscal criada — aguardando conferência`,
   ].filter(Boolean);
 
