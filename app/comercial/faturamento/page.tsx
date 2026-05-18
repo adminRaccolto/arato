@@ -3,11 +3,11 @@ import React, { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import {
   listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe,
-  listarProdutores, listarPessoas, listarContratos, listarItensContrato,
+  listarProdutores, listarPessoas, listarContratos,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import type { NotaFiscal, Produtor, Pessoa, Contrato } from "../../../lib/supabase";
+import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio } from "../../../lib/supabase";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -35,6 +35,12 @@ const NCM_PRODUTO: Record<string, string> = {
   "Soja": "1201.10.00", "Milho 1ª": "1005.10.90", "Milho 2ª (Safrinha)": "1005.10.90",
   "Algodão": "5201.00.20", "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
 };
+// kg por saca de referência para conversão de preço R$/sc → R$/kg
+const KG_SACA: Record<string, number> = {
+  "Soja": 60, "Milho 1ª": 60, "Milho 2ª (Safrinha)": 60,
+  "Sorgo": 60, "Trigo": 60, "Feijão": 60, "Algodão": 15,
+};
+const kgSaca = (produto: string) => KG_SACA[produto] ?? 60;
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type NFeItem = {
@@ -43,7 +49,7 @@ type NFeItem = {
   valor_total: number; valor_financeiro: number; cclass_trib: string;
 };
 type TabNFe = "produtor" | "destinatario" | "operacoes" | "transportador" | "retirada" | "fiscal" | "obs" | "pontualidade";
-type Passo  = "origem" | "contrato" | "form";
+type Passo  = "origem" | "contrato" | "romaneio" | "form";
 type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 
 // ── Estado inicial do formulário ───────────────────────────────────────────────
@@ -68,6 +74,8 @@ const FVENDA_INICIAL = {
   observacao: NATUREZAS_VENDA[0].obs,
   ncm: "1201.10.00", unidade: "sc", quantidade: "", valorUnitario: "",
   contrato_numero: "", // referência ao contrato faturado
+  romaneio_id:     "", // id do romaneio faturado
+  romaneio_numero: "", // nº do romaneio para obs da NF
 };
 
 const FRETES = [
@@ -112,10 +120,12 @@ export default function Faturamento() {
   const [buscaNota, setBuscaNota] = useState("");
 
   // ── Modal de emissão ─────────────────────────────────────────────────────
-  const [modalAberto, setModalAberto] = useState(false);
-  const [passo,        setPasso]       = useState<Passo>("origem");
-  const [tipoAvulsa,   setTipoAvulsa]  = useState<TipoAvulsa>("");
-  const [buscaContrato,setBuscaContrato]=useState("");
+  const [modalAberto,         setModalAberto]         = useState(false);
+  const [passo,                setPasso]               = useState<Passo>("origem");
+  const [tipoAvulsa,           setTipoAvulsa]          = useState<TipoAvulsa>("");
+  const [buscaContrato,        setBuscaContrato]       = useState("");
+  const [contratoSelecionado,  setContratoSelecionado] = useState<Contrato | null>(null);
+  const [romaneios,            setRomaneios]           = useState<Romaneio[]>([]);
   const [tabNFe,       setTabNFe]      = useState<TabNFe>("produtor");
   const [fVenda,       setFVenda]      = useState(() => ({
     ...FVENDA_INICIAL,
@@ -161,17 +171,38 @@ export default function Faturamento() {
     setPasso("origem");
     setTipoAvulsa("");
     setBuscaContrato("");
+    setContratoSelecionado(null);
+    setRomaneios([]);
     setErroForm(null);
     setModalAberto(true);
   }
 
-  // ── Pré-preencher de contrato ─────────────────────────────────────────────
-  async function preencherDeContrato(contrato: Contrato) {
+  // ── Selecionar contrato → carrega romaneios e vai ao passo romaneio ─────────
+  async function selecionarContrato(contrato: Contrato) {
+    setContratoSelecionado(contrato);
+    // Carrega romaneios deste contrato
+    const { data } = await supabase
+      .from("romaneios")
+      .select("*")
+      .eq("contrato_id", contrato.id)
+      .order("data", { ascending: false });
+    setRomaneios(data ?? []);
+    setPasso("romaneio");
+  }
+
+  // ── Pré-preencher de contrato + romaneio (em kg) ──────────────────────────
+  function preencherDeRomaneio(romaneio: Romaneio) {
+    const contrato = contratoSelecionado!;
     const comprador = pessoas.find(p => p.id === contrato.pessoa_id);
-    // Normaliza CFOP: "6501" → "6.501"
-    const cfopRaw = contrato.cfop ?? "6.501";
+    const cfopRaw  = contrato.cfop ?? "6.501";
     const cfopNorm = cfopRaw.includes(".") ? cfopRaw : cfopRaw.replace(/^(\d)(\d{3})$/, "$1.$2");
-    const nat = NATUREZAS_VENDA.find(n => n.codigo.replace(".", "").slice(0, 4) === cfopNorm.replace(".", "").slice(0, 4));
+    const nat = NATUREZAS_VENDA.find(n => n.codigo.replace(/\./g,"").slice(0,4) === cfopNorm.replace(/\./g,"").slice(0,4));
+
+    // Peso classificado (após descontos) é o peso a faturar em kg
+    const pesoKg     = romaneio.peso_classificado_kg ?? romaneio.peso_liquido_kg ?? 0;
+    // Converte R$/saca → R$/kg
+    const precoKg    = (contrato.preco ?? 0) / kgSaca(contrato.produto);
+    const valorTotal = +(pesoKg * precoKg).toFixed(2);
 
     const hoje  = new Date().toISOString().slice(0, 10);
     const agora = new Date().toTimeString().slice(0, 8);
@@ -195,47 +226,32 @@ export default function Faturamento() {
       grupo_vendedor:  contrato.grupo_vendedor ?? "",
       comprador:       comprador?.nome ?? contrato.comprador ?? "",
       propriedade:     contrato.propriedade ?? "",
+      // Transportador — vem do romaneio
+      placa:           romaneio.placa ?? "",
+      peso_bruto:      aplicarMascara(String(Math.round((romaneio.peso_bruto_kg ?? 0) * 100))),
+      peso_liquido:    aplicarMascara(String(Math.round(pesoKg * 100))),
+      especie:         "Granel",
       data_emissao:    hoje,
       data_saida:      hoje,
       hora_saida:      agora,
       contrato_numero: contrato.numero ?? "",
+      romaneio_id:     romaneio.id,
+      romaneio_numero: romaneio.numero ?? "",
     });
 
-    // Carrega itens do contrato
-    try {
-      const its = await listarItensContrato(contrato.id);
-      if (its.length > 0) {
-        setNfeItens(its.map(i => ({
-          id: crypto.randomUUID(),
-          tipo_item: "Produto",
-          item: i.produto,
-          ncm: NCM_PRODUTO[i.produto] ?? "1201.10.00",
-          quantidade: String(i.quantidade),
-          unidade: i.unidade ?? "sc",
-          valor_unitario: aplicarMascara(String(Math.round((i.valor_unitario ?? 0) * 100))),
-          valor_total: i.valor_total ?? 0,
-          valor_financeiro: i.valor_total ?? 0,
-          cclass_trib: "",
-        })));
-      } else {
-        // fallback: dados principais do contrato
-        const vt = (contrato.quantidade_sc ?? 0) * (contrato.preco ?? 0);
-        setNfeItens([{
-          id: crypto.randomUUID(),
-          tipo_item: "Produto",
-          item: contrato.produto,
-          ncm: NCM_PRODUTO[contrato.produto] ?? "1201.10.00",
-          quantidade: String(contrato.quantidade_sc ?? ""),
-          unidade: "sc",
-          valor_unitario: aplicarMascara(String(Math.round((contrato.preco ?? 0) * 100))),
-          valor_total: vt,
-          valor_financeiro: vt,
-          cclass_trib: "",
-        }]);
-      }
-    } catch {
-      setNfeItens([]);
-    }
+    // Item único em kg — peso classificado após descontos
+    setNfeItens([{
+      id: crypto.randomUUID(),
+      tipo_item: "Produto",
+      item:      contrato.produto,
+      ncm:       NCM_PRODUTO[contrato.produto] ?? "1201.10.00",
+      quantidade: String(pesoKg),
+      unidade:   "kg",
+      valor_unitario: aplicarMascara(String(Math.round(precoKg * 100))),
+      valor_total: valorTotal,
+      valor_financeiro: valorTotal,
+      cclass_trib: "",
+    }]);
 
     setPasso("form");
   }
@@ -872,7 +888,7 @@ export default function Faturamento() {
                   return (
                     <div
                       key={c.id}
-                      onClick={() => preencherDeContrato(c)}
+                      onClick={() => selecionarContrato(c)}
                       style={{ padding:"14px 24px", borderBottom:"0.5px solid #F0F2F6", cursor:"pointer", display:"flex", alignItems:"center", gap:16, transition:"background 0.1s" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "#F4F8FF")}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
@@ -904,13 +920,111 @@ export default function Faturamento() {
             </div>
           )}
 
+          {/* ── PASSO 2b: Selecionar Romaneio ── */}
+          {passo === "romaneio" && contratoSelecionado && (
+            <div style={{ background:"#fff", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 16px 48px rgba(0,0,0,0.22)", overflow:"hidden" }}>
+              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
+                <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:16, fontWeight:700, color:"#1a1a1a" }}>Selecionar Carga (Romaneio)</div>
+                  <div style={{ fontSize:12, color:"#666", marginTop:2 }}>
+                    Contrato <strong>{contratoSelecionado.numero}</strong> · {contratoSelecionado.comprador} · {contratoSelecionado.produto}
+                    &nbsp;· R$ {(contratoSelecionado.preco ?? 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}/sc
+                    &nbsp;= R$ {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto)).toLocaleString("pt-BR", { minimumFractionDigits:4 })}/kg
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ overflowY:"auto", flex:1 }}>
+                {romaneios.length === 0 ? (
+                  <div style={{ padding:40, textAlign:"center" }}>
+                    <div style={{ fontSize:32, marginBottom:12 }}>🚛</div>
+                    <div style={{ fontSize:14, color:"#555", fontWeight:600, marginBottom:8 }}>Nenhum romaneio registrado para este contrato</div>
+                    <div style={{ fontSize:12, color:"#888" }}>Registre as cargas em Comercial → Contratos de Grãos antes de emitir a NF-e.</div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ padding:"8px 24px", background:"#F8FAFD", borderBottom:"0.5px solid #D4DCE8", display:"flex", gap:32, fontSize:11, color:"#555" }}>
+                      <span>Total de cargas: <strong>{romaneios.length}</strong></span>
+                      <span>Já faturadas: <strong>{romaneios.filter(r => r.nfe_status === "autorizada").length}</strong></span>
+                      <span>Pendentes: <strong style={{ color:"#C9921B" }}>{romaneios.filter(r => r.nfe_status !== "autorizada").length}</strong></span>
+                    </div>
+                    {romaneios.map(rom => {
+                      const pesoKg   = rom.peso_classificado_kg ?? rom.peso_liquido_kg ?? 0;
+                      const jaFatQry = rom.nfe_status === "autorizada";
+                      return (
+                        <div
+                          key={rom.id}
+                          onClick={() => !jaFatQry && preencherDeRomaneio(rom)}
+                          style={{
+                            padding:"14px 24px", borderBottom:"0.5px solid #F0F2F6",
+                            cursor: jaFatQry ? "default" : "pointer",
+                            opacity: jaFatQry ? 0.55 : 1,
+                            display:"flex", alignItems:"center", gap:16,
+                            background: jaFatQry ? "#F8FAFD" : "transparent",
+                            transition:"background 0.1s",
+                          }}
+                          onMouseEnter={e => { if (!jaFatQry) e.currentTarget.style.background = "#F4F8FF"; }}
+                          onMouseLeave={e => { if (!jaFatQry) e.currentTarget.style.background = "transparent"; }}
+                        >
+                          <div style={{ flex:"0 0 110px" }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>Rom. {rom.numero}</div>
+                            <div style={{ fontSize:11, color:"#888" }}>{rom.data ? fmtData(rom.data) : "—"}</div>
+                          </div>
+                          <div style={{ flex:"0 0 100px" }}>
+                            <div style={{ fontSize:11, color:"#555" }}>Placa</div>
+                            <div style={{ fontSize:13, fontWeight:600 }}>{rom.placa ?? "—"}</div>
+                          </div>
+                          <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
+                            <div>
+                              <div style={{ fontSize:10, color:"#888" }}>Peso Bruto</div>
+                              <div style={{ fontSize:12, fontWeight:600 }}>{(rom.peso_bruto_kg ?? 0).toLocaleString("pt-BR")} kg</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize:10, color:"#888" }}>Tara</div>
+                              <div style={{ fontSize:12 }}>{(rom.tara_kg ?? 0).toLocaleString("pt-BR")} kg</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize:10, color:"#888" }}>Peso Líquido</div>
+                              <div style={{ fontSize:12 }}>{(rom.peso_liquido_kg ?? 0).toLocaleString("pt-BR")} kg</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize:10, color:"#555", fontWeight:600 }}>Peso Classificado</div>
+                              <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>{pesoKg.toLocaleString("pt-BR")} kg</div>
+                            </div>
+                          </div>
+                          <div style={{ flex:"0 0 130px", textAlign:"right" }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                              {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto) * pesoKg).toLocaleString("pt-BR", { style:"currency", currency:"BRL" })}
+                            </div>
+                            <div style={{ fontSize:10, color:"#888" }}>valor da carga</div>
+                          </div>
+                          <div style={{ flex:"0 0 100px", textAlign:"right" }}>
+                            {jaFatQry ? (
+                              <span style={{ fontSize:11, background:"#D5E8F5", color:"#0B2D50", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>✓ Faturada</span>
+                            ) : (
+                              <span style={{ fontSize:11, background:"#FBF3E0", color:"#7A5A12", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>Faturar →</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+              <div style={{ padding:"12px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", gap:10 }}>
+                <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+
           {/* ── PASSO 3: Formulário 8 abas ── */}
           {passo === "form" && (
             <div style={{ background:"#fff", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 16px 48px rgba(0,0,0,0.22)", overflow:"hidden" }}>
 
               {/* Barra de título */}
               <div style={{ background:"#1A4870", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-                <button style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "contrato")}>←</button>
+                <button style={{ background:"none", border:"none", color:"rgba(255,255,255,0.7)", fontSize:16, cursor:"pointer", padding:"0 4px" }} onClick={() => setPasso(tipoAvulsa ? "origem" : "romaneio")}>←</button>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:15, fontWeight:700 }}>
                     {fVenda.contrato_numero ? `NF-e por Contrato — ${fVenda.contrato_numero}` : `NF-e Avulsa — ${tipoAvulsa === "remessa" ? "Remessa" : tipoAvulsa === "devolucao" ? "Devolução/Retorno" : "Venda"}`}
