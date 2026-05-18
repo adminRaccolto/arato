@@ -2975,7 +2975,7 @@ function CadastrosInner() {
 
           {/* ══ PADRÕES DE CLASSIFICAÇÃO ══ */}
           {aba === "padroes_classificacao" && (() => {
-            const COMMODITIES = ["Soja","Milho 1ª","Milho 2ª (Safrinha)","Algodão","Sorgo","Trigo"];
+            const COMMODITIES = ["Soja","Milho","Algodão","Sorgo","Trigo"];
             const isSoja  = (c: string) => c === "Soja";
             const isMilho = (c: string) => c.startsWith("Milho");
 
@@ -3069,8 +3069,7 @@ function CadastrosInner() {
                       onClick={async () => {
                         const defaults = [
                           { commodity: "Soja", nome_padrao: "ABIOVE 2025", ativo: true, umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, ardidos_max: 8, mofados_max: null, esverdeados_max: 8, quebrados_max: 30, ph_minimo: 78, carunchados_max: null, kg_saca: 60 },
-                          { commodity: "Milho 1ª", nome_padrao: "IN MAPA 60/2011", ativo: true, umidade_padrao: 14.5, impureza_padrao: 1, avariados_padrao: 6, ardidos_max: 3, mofados_max: null, esverdeados_max: null, quebrados_max: null, ph_minimo: 74, carunchados_max: 3, kg_saca: 60 },
-                          { commodity: "Milho 2ª (Safrinha)", nome_padrao: "IN MAPA 60/2011", ativo: true, umidade_padrao: 14.5, impureza_padrao: 1, avariados_padrao: 6, ardidos_max: 3, mofados_max: null, esverdeados_max: null, quebrados_max: null, ph_minimo: 74, carunchados_max: 3, kg_saca: 60 },
+                          { commodity: "Milho", nome_padrao: "IN MAPA 60/2011", ativo: true, umidade_padrao: 14.5, impureza_padrao: 1, avariados_padrao: 6, ardidos_max: 3, mofados_max: null, esverdeados_max: null, quebrados_max: null, ph_minimo: 74, carunchados_max: 3, kg_saca: 60 },
                         ].map(d => ({ ...d, fazenda_id: fazendaId! }));
                         const { data } = await supabase.from("padroes_classificacao").insert(defaults).select();
                         if (data) setPadroesCls(data as PadraoClassificacao[]);
