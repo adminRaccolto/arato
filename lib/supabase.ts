@@ -428,6 +428,25 @@ export type NotaFiscal = {
   danfe_url?: string;
   observacao?: string;  // infCpl — Informações Complementares (textos legais: ICMS Diferido, Funrural, etc.)
   auto: boolean;
+  // Dados completos para preview DANFE (salvos no momento da emissão)
+  itens_json?: Array<{
+    item: string; ncm: string; cfop: string; unidade: string;
+    quantidade: number; valor_unitario: number; valor_total: number;
+  }>;
+  dados_nf_json?: {
+    // emitente
+    emit_razao?: string; emit_cnpj?: string; emit_ie?: string;
+    emit_endereco?: string; emit_municipio?: string; emit_uf?: string;
+    // destinatário
+    dest_tipo_pessoa?: string; dest_ie?: string;
+    dest_endereco?: string; dest_numero?: string; dest_cidade?: string; dest_uf?: string;
+    // transporte
+    frete_conta?: string; transportadora?: string; placa?: string; uf_placa?: string;
+    peso_bruto?: number; peso_liquido?: number; especie?: string;
+    // referências
+    contrato_numero?: string; romaneio_numero?: string;
+    data_saida?: string; hora_saida?: string;
+  };
   created_at?: string;
 };
 

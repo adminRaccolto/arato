@@ -3927,3 +3927,12 @@ ALTER TABLE colheita_romaneios
   ADD COLUMN IF NOT EXISTS outros_avariados_pct    numeric(5,2);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 97 — notas_fiscais: itens_json + dados_nf_json para DANFE preview
+-- ============================================================
+ALTER TABLE notas_fiscais
+  ADD COLUMN IF NOT EXISTS itens_json    jsonb,
+  ADD COLUMN IF NOT EXISTS dados_nf_json jsonb;
+
+NOTIFY pgrst, 'reload schema';

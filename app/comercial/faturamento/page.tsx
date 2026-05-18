@@ -311,6 +311,15 @@ export default function Faturamento() {
       const qtdTotal = nfeItens.reduce((s, i) => s + (parseFloat(i.quantidade) || 0), 0);
       const valorTotal = nfeItens.reduce((s, i) => s + i.valor_total, 0);
 
+      // Busca dados do emitente para salvar no DANFE
+      const { data: cfgFiscal } = await supabase
+        .from("configuracoes_modulo")
+        .select("configuracoes")
+        .eq("fazenda_id", fazendaId)
+        .eq("modulo", "fiscal")
+        .maybeSingle();
+      const emit = cfgFiscal?.configuracoes ?? {};
+
       const payload: Omit<NotaFiscal, "id" | "created_at"> = {
         fazenda_id:        fazendaId,
         tipo:              "saida",
@@ -325,6 +334,40 @@ export default function Faturamento() {
         valor_total:       valorTotal,
         observacao:        [fVenda.observacao, fVenda.obs_manual].filter(Boolean).join("\n\n") || undefined,
         auto:              false,
+        itens_json: nfeItens.map(i => ({
+          item:           i.item,
+          ncm:            i.ncm,
+          cfop:           fVenda.cfop,
+          unidade:        i.unidade.toUpperCase(),
+          quantidade:     parseFloat(i.quantidade) || 0,
+          valor_unitario: desmascarar(i.valor_unitario),
+          valor_total:    i.valor_total,
+        })),
+        dados_nf_json: {
+          emit_razao:      emit.razao_social ?? emit.nome_emitente ?? "",
+          emit_cnpj:       emit.cnpj ?? "",
+          emit_ie:         emit.inscricao_estadual ?? emit.ie ?? "",
+          emit_endereco:   emit.logradouro ?? emit.endereco ?? "",
+          emit_municipio:  emit.municipio ?? "",
+          emit_uf:         emit.uf ?? "",
+          dest_tipo_pessoa: fVenda.dest_tipo_pessoa,
+          dest_ie:         fVenda.dest_ie,
+          dest_endereco:   fVenda.dest_endereco,
+          dest_numero:     fVenda.dest_numero,
+          dest_cidade:     fVenda.dest_cidade,
+          dest_uf:         fVenda.dest_uf,
+          frete_conta:     fVenda.frete_conta,
+          transportadora:  fVenda.transportadora,
+          placa:           fVenda.placa,
+          uf_placa:        fVenda.uf_placa,
+          peso_bruto:      desmascarar(fVenda.peso_bruto),
+          peso_liquido:    desmascarar(fVenda.peso_liquido),
+          especie:         fVenda.especie,
+          contrato_numero: fVenda.contrato_numero,
+          romaneio_numero: fVenda.romaneio_numero,
+          data_saida:      fVenda.data_saida,
+          hora_saida:      fVenda.hora_saida,
+        },
       };
 
       const nova = await criarNotaFiscal(payload);
@@ -769,7 +812,7 @@ export default function Faturamento() {
                       <div style={{ display:"flex", gap:6 }}>
                         <button
                           style={{ padding:"4px 10px", fontSize:11, background:"#F4F6FA", color:"#1A4870", border:"0.5px solid #D4DCE8", borderRadius:6, cursor:"pointer" }}
-                          onClick={() => setNotaVer(nota)}>
+                          onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           Visualizar
                         </button>
                         {nota.status === "em_digitacao" && (
