@@ -339,6 +339,7 @@ function CadastrosInner() {
   const [gruposInsumo, setGruposInsumo]       = useState<GrupoInsumo[]>([]);
   const [subgruposInsumo, setSubgruposInsumo] = useState<SubgrupoInsumo[]>([]);
   const [seedingGrupos, setSeedingGrupos]     = useState(false);
+  const [seedingSafras, setSeedingSafras]     = useState(false);
   const [tiposPessoa, setTiposPessoa]         = useState<TipoPessoa[]>([]);
   const [centrosCusto, setCentrosCusto]       = useState<CentroCusto[]>([]);
   const [categoriasLanc, setCategoriasLanc]   = useState<CategoriaLancamento[]>([]);
@@ -1026,6 +1027,32 @@ function CadastrosInner() {
   };
 
   // ─────────────── SAFRAS ───────────────
+  const seederSafras = async () => {
+    if (!fazendaId) return;
+    setSeedingSafras(true);
+    try {
+      const safrasPadrao = [
+        { descricao: "SAFRA 2026/2027", data_inicio: "2026-07-01", data_fim: "2027-06-30" },
+        { descricao: "SAFRA 2027/2028", data_inicio: "2027-07-01", data_fim: "2028-06-30" },
+        { descricao: "SAFRA 2028/2029", data_inicio: "2028-07-01", data_fim: "2029-06-30" },
+        { descricao: "SAFRA 2029/2030", data_inicio: "2029-07-01", data_fim: "2030-06-30" },
+        { descricao: "SAFRA 2030/2031", data_inicio: "2030-07-01", data_fim: "2031-06-30" },
+        { descricao: "SAFRA 2031/2032", data_inicio: "2031-07-01", data_fim: "2032-06-30" },
+        { descricao: "SAFRA 2032/2033", data_inicio: "2032-07-01", data_fim: "2033-06-30" },
+        { descricao: "SAFRA 2033/2034", data_inicio: "2033-07-01", data_fim: "2034-06-30" },
+        { descricao: "SAFRA 2034/2035", data_inicio: "2034-07-01", data_fim: "2035-06-30" },
+      ];
+      const existentes = new Set(anosSafra.map(a => a.descricao));
+      for (const s of safrasPadrao) {
+        if (!existentes.has(s.descricao)) {
+          const n = await criarAnoSafra({ ...s, fazenda_id: fazendaId });
+          setAnosSafra(p => [...p, n]);
+        }
+      }
+    } finally {
+      setSeedingSafras(false);
+    }
+  };
   const abrirModalAno = (a?: AnoSafra) => {
     setEditAno(a ?? null);
     setFAno(a ? { descricao: a.descricao, data_inicio: a.data_inicio, data_fim: a.data_fim } : { descricao: "", data_inicio: "", data_fim: "" });
@@ -1700,7 +1727,12 @@ function CadastrosInner() {
               <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <div style={{ padding: "13px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 13 }}>Anos Safra</div>
-                  <button style={{ ...btnV, padding: "6px 12px", fontSize: 12 }} onClick={() => abrirModalAno()}>+ Novo</button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{ ...btnE, padding: "6px 12px", fontSize: 12, opacity: seedingSafras ? 0.6 : 1 }} disabled={seedingSafras} onClick={seederSafras}>
+                      {seedingSafras ? "Carregando…" : "↺ Pré-carregar safras"}
+                    </button>
+                    <button style={{ ...btnV, padding: "6px 12px", fontSize: 12 }} onClick={() => abrirModalAno()}>+ Novo</button>
+                  </div>
                 </div>
                 {anosSafra.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum ano safra cadastrado</div>}
                 {anosSafra.map(a => (
