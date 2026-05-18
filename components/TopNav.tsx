@@ -62,9 +62,10 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "comercial", label: "Comercial", minStep: 4,
     children: [
-      { id: "com-contratos",     label: "Contratos de Grãos",       path: "/contratos"              },
-      { id: "com-arrendamentos", label: "Contratos de Arrendamento", path: "/contratos/arrendamento" },
-      { id: "com-expedicao",     label: "Expedição de Grãos",        path: "/expedicao"              },
+      { id: "com-faturamento",   label: "Faturamento — NF-e de Saída", path: "/comercial/faturamento" },
+      { id: "com-contratos",     label: "Contratos de Grãos",           path: "/contratos"              },
+      { id: "com-arrendamentos", label: "Contratos de Arrendamento",     path: "/contratos/arrendamento" },
+      { id: "com-expedicao",     label: "Expedição de Grãos",            path: "/expedicao"              },
     ],
   },
 
@@ -85,12 +86,6 @@ const NAV: NavItem[] = [
         children: [
           { id: "comp-nf",         label: "NF de Produtos", path: "/compras/nf"         },
           { id: "comp-nf-servico", label: "NF de Serviços", path: "/compras/nf-servico" },
-        ],
-      },
-      {
-        type: "subgroup", id: "sg-entrada-automatica", label: "Entrada Automática (SEFAZ)",
-        children: [
-          { id: "comp-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
         ],
       },
     ],
@@ -153,22 +148,15 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "fiscal", label: "Fiscal", minStep: 7,
     children: [
+      { id: "fiscal-monitor",    label: "Monitor NF-e Emitidas",   path: "/fiscal"                  },
+      { id: "fiscal-pendencias", label: "Pendências Fiscais",       path: "/fiscal/pendencias"       },
       {
-        type: "subgroup", id: "sg-notas-saida", label: "Notas de Saída",
+        type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais",
         children: [
-          { id: "fiscal-venda",        label: "Notas de Venda",       path: "/fiscal?aba=venda"        },
-          { id: "fiscal-devolucao",    label: "Nota de Devolução",    path: "/fiscal?aba=devolucao"    },
-          { id: "fiscal-cancelamento", label: "Cancelamento de Nota", path: "/fiscal?aba=cancelamento" },
-          { id: "fiscal-complemento",  label: "Nota de Complemento",  path: "/fiscal?aba=complemento" },
-        ],
-      },
-      { id: "fiscal-pendencias", label: "Pendências Fiscais", path: "/fiscal/pendencias" },
-      {
-        type: "subgroup", id: "sg-obrigacoes", label: "Obrigações Acessórias",
-        children: [
-          { id: "fiscal-lcdpr",        label: "LCDPR",               path: "/lcdpr"                },
-          { id: "fiscal-sped-contabil",label: "SPED ECD — Contábil", path: "/fiscal/sped-contabil" },
-          { id: "fiscal-ibs",          label: "IBS / CBS — 2027",    path: "/ibs"                  },
+          { id: "fiscal-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
+          { id: "fiscal-lcdpr",        label: "LCDPR",                        path: "/lcdpr"               },
+          { id: "fiscal-sped-contabil",label: "SPED ECD — Contábil",         path: "/fiscal/sped-contabil"},
+          { id: "fiscal-ibs",          label: "IBS / CBS — 2027",             path: "/ibs"                 },
         ],
       },
       { id: "fiscal-certificado", label: "Certificado Digital", path: "/fiscal?aba=certificado" },
@@ -322,7 +310,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   const grupoAtivo = (item: Extract<NavItem, { type: "group" }>) => {
     if (item.id === "cadastros")       return pathname === "/cadastros";
-    if (item.id === "comercial")       return pathname === "/contratos" || pathname.startsWith("/expedicao") || pathname.startsWith("/contratos");
+    if (item.id === "comercial")       return pathname === "/contratos" || pathname.startsWith("/expedicao") || pathname.startsWith("/contratos") || pathname.startsWith("/comercial");
     if (item.id === "transporte")      return pathname.startsWith("/transporte");
     if (item.id === "compras")  return pathname.startsWith("/compras") || pathname === "/fiscal/manifestacao";
     if (item.id === "estoque")  return pathname === "/estoque" || pathname.startsWith("/estoque");
