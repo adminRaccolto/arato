@@ -611,7 +611,7 @@ export default function Contratos() {
         placa:                 fRom.placa.toUpperCase(),
         peso_bruto_kg:         Number(fRom.pesoBruto),
         tara_kg:               Number(fRom.tara),
-        peso_liquido_kg:       plCalc,
+        // peso_liquido_kg é GENERATED ALWAYS no banco (peso_bruto - tara)
         // classificação — comuns
         umidade_pct:           romUmidade   || undefined,
         umidade_padrao_pct:    temClassif ? clsComm.umidade_padrao  : undefined,
@@ -1508,11 +1508,32 @@ export default function Contratos() {
             {plCalc > 0 && (
               <>
                 {/* ── Cabeçalho da seção de classificação ── */}
-                <div style={{ fontSize:12, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", paddingBottom:6, marginBottom:12 }}>
-                  Classificação do Grão
-                  <span style={{ marginLeft:10, fontSize:10, fontWeight:400, color:"#888" }}>
-                    Padrão {produto_rom}: Umidade {clsComm.umidade_padrao}% · Impureza {clsComm.impureza_padrao}% · Avariados {clsComm.avariados_padrao}%
-                  </span>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"0.5px solid #D4DCE8", paddingBottom:6, marginBottom:12 }}>
+                  <div>
+                    <span style={{ fontSize:12, fontWeight:600, color:"#555" }}>Classificação do Grão</span>
+                    <span style={{ marginLeft:10, fontSize:10, fontWeight:400, color:"#888" }}>
+                      Padrão {produto_rom}: Umidade {clsComm.umidade_padrao}% · Impureza {clsComm.impureza_padrao}% · Avariados {clsComm.avariados_padrao}%
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFRom(p => ({
+                      ...p,
+                      umidade:          String(clsComm.umidade_padrao),
+                      impureza:         String(clsComm.impureza_padrao),
+                      ardidos:          "0",
+                      mofados:          "0",
+                      fermentados:      "0",
+                      germinados:       "0",
+                      esverdeados:      "0",
+                      quebrados:        "0",
+                      carunchados:      "0",
+                      outros_avariados: "0",
+                    }))}
+                    style={{ fontSize:11, fontWeight:600, color:"#1A4870", background:"#D5E8F5", border:"0.5px solid #A8C8E8", borderRadius:6, padding:"4px 10px", cursor:"pointer", whiteSpace:"nowrap" }}
+                  >
+                    ✦ Class. Padrão
+                  </button>
                 </div>
 
                 {/* ── Umidade + Impureza + PH ── */}

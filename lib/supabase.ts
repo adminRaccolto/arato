@@ -359,7 +359,7 @@ export type Romaneio = {
   placa: string;
   peso_bruto_kg: number;
   tara_kg: number;
-  peso_liquido_kg: number;
+  peso_liquido_kg?: number;   // GENERATED ALWAYS no banco (peso_bruto - tara)
   // Classificação do grão no romaneio de expedição
   umidade_pct?: number;           // % umidade medida
   umidade_padrao_pct?: number;    // padrão: 14% soja, 14.5% milho, 12% algodão…
