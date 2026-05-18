@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -3174,6 +3174,112 @@ export async function seedPlanoContas(fazenda_id: string, contas: ContaContabil[
     .from("plano_contas")
     .upsert(rows, { onConflict: "fazenda_id,codigo" });
   if (error) throw error;
+}
+
+// ————————————————————————————————————————
+// PRINCÍPIOS ATIVOS + NOMES COMERCIAIS
+// ————————————————————————————————————————
+
+export async function listarPrincipiosAtivos(): Promise<PrincipioAtivo[]> {
+  const { data, error } = await supabase
+    .from("principios_ativos").select("*").order("categoria").order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarPrincipioAtivo(p: Omit<PrincipioAtivo, "id" | "created_at">): Promise<PrincipioAtivo> {
+  const { data, error } = await supabase.from("principios_ativos").insert(p).select().single();
+  if (error) throw error;
+  return data as PrincipioAtivo;
+}
+
+export async function atualizarPrincipioAtivo(id: string, p: Partial<PrincipioAtivo>): Promise<void> {
+  const { error } = await supabase.from("principios_ativos").update(p).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirPrincipioAtivo(id: string): Promise<void> {
+  const { error } = await supabase.from("principios_ativos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarNomesComerciais(principio_ativo_id?: string): Promise<NomeComercial[]> {
+  let q = supabase.from("nomes_comerciais")
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)")
+    .order("nome_comercial");
+  if (principio_ativo_id) q = q.eq("principio_ativo_id", principio_ativo_id) as typeof q;
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as NomeComercial[];
+}
+
+export async function salvarNomeComercial(n: Omit<NomeComercial, "id" | "created_at" | "principio_ativo">): Promise<NomeComercial> {
+  const { data, error } = await supabase
+    .from("nomes_comerciais")
+    .upsert({ ...n }, { onConflict: "nome_comercial" })
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)")
+    .single();
+  if (error) throw error;
+  return data as NomeComercial;
+}
+
+export async function excluirNomeComercial(id: string): Promise<void> {
+  const { error } = await supabase.from("nomes_comerciais").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Resolve um nome comercial para o insumo correspondente na fazenda.
+ * Fluxo: nome → nomes_comerciais → principio_ativo → insumo da fazenda com esse principio_ativo_id
+ * Retorna { principioAtivo, insumo } — insumo pode ser null se a fazenda não tem cadastro.
+ */
+export async function resolverNomeComercial(
+  nomeProduto: string,
+  fazendaId: string
+): Promise<{ principioAtivo: PrincipioAtivo; insumo: Insumo | null } | null> {
+  if (!nomeProduto?.trim()) return null;
+
+  // Busca por match exato ou parcial no nome comercial
+  const termos = nomeProduto.trim().split(/\s+/).filter(w => w.length > 2);
+  const tentativas = [nomeProduto, ...termos];
+
+  for (const termo of tentativas) {
+    const { data } = await supabase
+      .from("nomes_comerciais")
+      .select("*, principio_ativo:principios_ativos(*)")
+      .ilike("nome_comercial", `%${termo}%`)
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.principio_ativo) {
+      const pa = data.principio_ativo as PrincipioAtivo;
+
+      // Busca insumo da fazenda vinculado a esse princípio ativo
+      const { data: ins } = await supabase
+        .from("insumos")
+        .select("*")
+        .eq("fazenda_id", fazendaId)
+        .eq("principio_ativo_id", pa.id)
+        .limit(1)
+        .maybeSingle();
+
+      // Fallback: busca insumo pelo nome do princípio ativo
+      if (!ins) {
+        const { data: ins2 } = await supabase
+          .from("insumos")
+          .select("*")
+          .eq("fazenda_id", fazendaId)
+          .ilike("nome", `%${pa.nome.split(" ")[0]}%`)
+          .limit(1)
+          .maybeSingle();
+        return { principioAtivo: pa, insumo: (ins2 as Insumo | null) };
+      }
+
+      return { principioAtivo: pa, insumo: ins as Insumo };
+    }
+  }
+
+  return null;
 }
 
 // ————————————————————————————————————————

@@ -32,6 +32,8 @@ import {
   listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
   listarContas, criarConta, atualizarConta, excluirConta,
   listarPlanoContas,
+  listarPrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
+  listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -44,6 +46,7 @@ import type {
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria,
+  PrincipioAtivo, NomeComercial,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -80,7 +83,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -100,6 +103,7 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "combustivel",             label: "Combustíveis & Bombas"     },
     { key: "grupos_insumo",           label: "Grupos de Insumos"         },
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
+    { key: "principios_ativos",       label: "Princípios Ativos (BOT)"   },
   ]},
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
@@ -423,6 +427,19 @@ function CadastrosInner() {
   const [editUser, setEditUser]       = useState<Usuario | null>(null);
   const [fUser, setFUser]             = useState({ nome: "", email: "", grupo_id: "", whatsapp: "" });
 
+  // ── Princípios Ativos ──
+  const [principios, setPrincipios]         = useState<PrincipioAtivo[]>([]);
+  const [nomesComerciais, setNomesComerciais] = useState<NomeComercial[]>([]);
+  const [paBusca, setPaBusca]               = useState("");
+  const [paCategoria, setPaCategoria]       = useState("");
+  const [paExpandido, setPaExpandido]       = useState<string | null>(null); // id do PA expandido
+  const [modalPA, setModalPA]               = useState(false);
+  const [editPA, setEditPA]                 = useState<PrincipioAtivo | null>(null);
+  const [fPA, setFPA]                       = useState({ nome: "", categoria: "herbicida" as PrincipioAtivo["categoria"], unidade: "L" as PrincipioAtivo["unidade"], observacao: "" });
+  const [modalNC, setModalNC]               = useState<string | null>(null); // principio_ativo_id
+  const [fNC, setFNC]                       = useState({ nome_comercial: "" });
+  const [salvandobotPA, setSalvandoPA]      = useState(false);
+
   // ── Padrões de Classificação ──
   const [padroesCls, setPadroesCls]     = useState<PadraoClassificacao[]>([]);
   const [modalPCls, setModalPCls]       = useState(false);
@@ -509,6 +526,10 @@ function CadastrosInner() {
       listarPlanoContas(fazendaId).then(r => setPlanoContasDB(r.length > 0 ? r : planoContasPadrao)).catch(() => setPlanoContasDB(planoContasPadrao));
     }
     if (aba === "padroes_classificacao") supabase.from("padroes_classificacao").select("*").eq("fazenda_id", fazendaId).order("commodity").order("nome_padrao").then(({ data, error }) => { if (error) setErro(error.message); else setPadroesCls((data ?? []) as PadraoClassificacao[]); });
+    if (aba === "principios_ativos") {
+      listarPrincipiosAtivos().then(setPrincipios).catch(e => setErro(e.message));
+      listarNomesComerciais().then(setNomesComerciais).catch(() => {});
+    }
     if (aba === "historico_fiscal") {
       setLoadingHisFiscal(true);
       supabase
@@ -3390,6 +3411,216 @@ function CadastrosInner() {
             </div>
           )}
 
+          {/* ══════════════════════════════════════════════════════════════════
+              ABA — PRINCÍPIOS ATIVOS (BOT + NF de Entrada)
+          ══════════════════════════════════════════════════════════════════ */}
+          {aba === "principios_ativos" && (() => {
+            const CATEGORIAS_PA: PrincipioAtivo["categoria"][] = ["herbicida","fungicida","inseticida","acaricida","fertilizante","inoculante","outro"];
+            const COR_CAT: Record<string, { bg: string; color: string }> = {
+              herbicida:    { bg: "#DCF5E8", color: "#14532D" },
+              fungicida:    { bg: "#D5E8F5", color: "#0B2D50" },
+              inseticida:   { bg: "#FBF3E0", color: "#7A5A12" },
+              acaricida:    { bg: "#F5E8F5", color: "#5B1B8A" },
+              fertilizante: { bg: "#E8F5DC", color: "#2D5314" },
+              inoculante:   { bg: "#DCF5F0", color: "#0B4D3A" },
+              outro:        { bg: "#F4F6FA", color: "#555"    },
+            };
+
+            const paFiltrados = principios
+              .filter(p => !paCategoria || p.categoria === paCategoria)
+              .filter(p => !paBusca || p.nome.toLowerCase().includes(paBusca.toLowerCase()));
+
+            const ncsPorPA = (paId: string) => nomesComerciais.filter(n => n.principio_ativo_id === paId);
+
+            const preCarregarPA = async () => {
+              if (!confirm("Isso irá adicionar os princípios ativos mais usados no MT + principais nomes comerciais. Continuar?")) return;
+              setSalvandoPA(true);
+              try {
+                const precarga: Array<{ nome: string; categoria: PrincipioAtivo["categoria"]; unidade: PrincipioAtivo["unidade"]; nomes: string[] }> = [
+                  // Herbicidas
+                  { nome: "Glifosato 480 g/L",       categoria: "herbicida",    unidade: "L",  nomes: ["Eficaz","Roundup Transorb","Roundup Original","Zapp Qi 480","Trop","Glifosato Nortox","Roundup WG","Kilo","GT Plus","Agrisato"] },
+                  { nome: "Glifosato 720 g/L",        categoria: "herbicida",    unidade: "L",  nomes: ["Roundup Original DI","Roundup Ultramax","Zapp Qi 620"] },
+                  { nome: "Atrazina 500 g/L",         categoria: "herbicida",    unidade: "L",  nomes: ["Gesaprim 500","Atrazina Nortox","Primoleo","Atranex"] },
+                  { nome: "Clomazone 500 g/L",        categoria: "herbicida",    unidade: "L",  nomes: ["Gamit 360","Clomazone Nortox","Range"] },
+                  { nome: "Haloxifope-P 120 g/L",     categoria: "herbicida",    unidade: "L",  nomes: ["Verdict","Haloxifope Nortox"] },
+                  { nome: "Imazetapir 100 g/L",       categoria: "herbicida",    unidade: "L",  nomes: ["Pivot H","Imazo","Imazetapir Nortox"] },
+                  { nome: "Lactofen 240 g/L",         categoria: "herbicida",    unidade: "L",  nomes: ["Cobra","Lactofen Nortox"] },
+                  { nome: "Diclosulam 840 g/kg",      categoria: "herbicida",    unidade: "kg", nomes: ["Spider","Diclosulam Nortox"] },
+                  { nome: "Flumioxazina 500 g/kg",    categoria: "herbicida",    unidade: "kg", nomes: ["Flumyzin 500","Stag"] },
+                  { nome: "Clorimurom-etílico 250 g/kg", categoria: "herbicida", unidade: "kg", nomes: ["Classic","Clorimurom Nortox"] },
+                  { nome: "S-Metolacloro 960 g/L",    categoria: "herbicida",    unidade: "L",  nomes: ["Dual Gold","Pampa Gold"] },
+                  // Fungicidas
+                  { nome: "Azoxistrobina+Ciproconazol 200+80 g/L", categoria: "fungicida", unidade: "L", nomes: ["Priori Xtra","Opera Ultra","Cypress","Ativum"] },
+                  { nome: "Piraclostrobina+Epoxiconazol 133+50 g/L", categoria: "fungicida", unidade: "L", nomes: ["Opera","Fusão"] },
+                  { nome: "Carbendazim 500 g/L",      categoria: "fungicida",    unidade: "L",  nomes: ["Derosal 500","Benzamin","Carbendazim Nortox"] },
+                  { nome: "Tebuconazol 200 g/L",      categoria: "fungicida",    unidade: "L",  nomes: ["Folicur","Triade","Tebuconazol Nortox","Elite"] },
+                  { nome: "Mancozebe 800 g/kg",       categoria: "fungicida",    unidade: "kg", nomes: ["Manzate 800","Dithane NT","Unizeb Gold"] },
+                  { nome: "Trifloxistrobina+Protioconazol 150+175 g/L", categoria: "fungicida", unidade: "L", nomes: ["Fox","Fox Xpro"] },
+                  { nome: "Fluxapiroxade+Piraclostrobina 50+100 g/L", categoria: "fungicida", unidade: "L", nomes: ["Orkestra SC"] },
+                  { nome: "Benzovindiflupir+Azoxistrobina 75+300 g/kg", categoria: "fungicida", unidade: "kg", nomes: ["Elatus"] },
+                  // Inseticidas
+                  { nome: "Imidacloprido 700 g/kg",   categoria: "inseticida",   unidade: "kg", nomes: ["Gaucho 700","Imidacloprid Nortox","Nipsit Inside"] },
+                  { nome: "Lambdacialotrina 50 g/L",  categoria: "inseticida",   unidade: "L",  nomes: ["Karate Zeon","Karis","Lambda-Cy","Kaiso"] },
+                  { nome: "Tiametoxam 250 g/L",       categoria: "inseticida",   unidade: "L",  nomes: ["Actara","Engeo Pleno S"] },
+                  { nome: "Clorpirifós 480 g/L",      categoria: "inseticida",   unidade: "L",  nomes: ["Lorsban 480 BR","Clorpirifós Nortox","Pirinex"] },
+                  { nome: "Acefato 750 g/kg",         categoria: "inseticida",   unidade: "kg", nomes: ["Orthene 750","Acefato Nortox","Staron"] },
+                  { nome: "Metamidofós 600 g/L",      categoria: "inseticida",   unidade: "L",  nomes: ["Hamidop","Tamaron BR","Metamidofós Nortox"] },
+                  { nome: "Beta-Ciflutrina+Imidacloprido 12.5+100 g/L", categoria: "inseticida", unidade: "L", nomes: ["Connect"] },
+                  { nome: "Espinosade 480 g/L",       categoria: "inseticida",   unidade: "L",  nomes: ["Tracer","Spinoace"] },
+                  // Acaricidas
+                  { nome: "Abamectina 18 g/L",        categoria: "acaricida",    unidade: "L",  nomes: ["Vertimec","Avert","Abamex"] },
+                  { nome: "Espirodiclofeno 240 g/L",  categoria: "acaricida",    unidade: "L",  nomes: ["Envidor"] },
+                  // Fertilizantes foliares
+                  { nome: "Boro 150 g/L",             categoria: "fertilizante", unidade: "L",  nomes: ["Borogran","Solubor","Bórax Nortox"] },
+                  { nome: "Molibdênio+Cobalto",       categoria: "fertilizante", unidade: "L",  nomes: ["CoMo","Vital Micro","Metalosate Combi"] },
+                  // Inoculantes
+                  { nome: "Bradyrhizobium japonicum",  categoria: "inoculante",  unidade: "L",  nomes: ["Masterfix Soja","Nitrobacter","Cell Tech","Gelfix Super"] },
+                  { nome: "Azospirillum brasilense",   categoria: "inoculante",  unidade: "L",  nomes: ["Nitragin AZ","Masterfix Gramíneas"] },
+                ];
+                for (const item of precarga) {
+                  let pa: PrincipioAtivo;
+                  const existente = principios.find(p => p.nome === item.nome);
+                  if (existente) {
+                    pa = existente;
+                  } else {
+                    pa = await criarPrincipioAtivo({ nome: item.nome, categoria: item.categoria, unidade: item.unidade });
+                  }
+                  for (const nc of item.nomes) {
+                    const jaExiste = nomesComerciais.find(n => n.nome_comercial.toLowerCase() === nc.toLowerCase());
+                    if (!jaExiste) {
+                      await salvarNomeComercial({ nome_comercial: nc, principio_ativo_id: pa.id, confirmado: true });
+                    }
+                  }
+                }
+                const [pas, ncs] = await Promise.all([listarPrincipiosAtivos(), listarNomesComerciais()]);
+                setPrincipios(pas);
+                setNomesComerciais(ncs);
+              } catch(e: unknown) { alert((e as Error).message); }
+              finally { setSalvandoPA(false); }
+            };
+
+            return (
+              <div>
+                {/* Cabeçalho */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                      Princípios Ativos
+                      <span style={{ fontSize: 11, color: "#555", fontWeight: 400, marginLeft: 6 }}>
+                        ({principios.length} cadastrados · {nomesComerciais.length} nomes comerciais mapeados)
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                      Mapeamento nome comercial → princípio ativo. Usado pelo BOT e na entrada de NF para deduzir o estoque correto.
+                      Sementes <strong>não</strong> usam este mapeamento — cada variedade é um produto distinto.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{ ...btnV, background: "#F4F6FA", color: "#555", border: "0.5px solid #D4DCE8" }}
+                      onClick={preCarregarPA} disabled={salvandobotPA}>
+                      {salvandobotPA ? "Carregando..." : "Pré-carregar (MT)"}
+                    </button>
+                    <button style={btnV} onClick={() => { setEditPA(null); setFPA({ nome: "", categoria: "herbicida", unidade: "L", observacao: "" }); setModalPA(true); }}>
+                      + Novo Princípio Ativo
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filtros */}
+                <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                  <input
+                    placeholder="Buscar por nome..."
+                    value={paBusca} onChange={e => setPaBusca(e.target.value)}
+                    style={{ ...inp, width: 240, fontSize: 12, padding: "6px 10px" }}
+                  />
+                  <select value={paCategoria} onChange={e => setPaCategoria(e.target.value)} style={{ ...inp, fontSize: 12, padding: "6px 10px" }}>
+                    <option value="">Todas as categorias</option>
+                    {CATEGORIAS_PA.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+                  </select>
+                </div>
+
+                {/* Lista */}
+                {paFiltrados.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "56px 0", color: "#888", fontSize: 13 }}>
+                    {principios.length === 0
+                      ? <span>Nenhum princípio ativo cadastrado. Clique em <strong>Pré-carregar (MT)</strong> para adicionar os defensivos mais usados.</span>
+                      : "Nenhum resultado para os filtros selecionados"}
+                  </div>
+                ) : (
+                  <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                    {paFiltrados.map((pa, idx) => {
+                      const cor = COR_CAT[pa.categoria] ?? COR_CAT.outro;
+                      const ncs = ncsPorPA(pa.id);
+                      const expandido = paExpandido === pa.id;
+                      return (
+                        <div key={pa.id} style={{ borderBottom: idx < paFiltrados.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
+                          {/* Linha principal */}
+                          <div style={{ display: "flex", alignItems: "center", padding: "10px 14px", background: expandido ? "#F8FAFB" : idx % 2 === 0 ? "#fff" : "#FAFBFD", gap: 12 }}>
+                            <button
+                              onClick={() => setPaExpandido(expandido ? null : pa.id)}
+                              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#888", width: 20, flexShrink: 0 }}>
+                              {expandido ? "▼" : "▶"}
+                            </button>
+                            <div style={{ flex: 1, fontWeight: 600, color: "#1a1a1a", fontSize: 13 }}>{pa.nome}</div>
+                            <span style={{ ...cor, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 600 }}>{pa.categoria}</span>
+                            <span style={{ background: "#F4F6FA", color: "#555", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{pa.unidade}</span>
+                            <span style={{ fontSize: 11, color: "#888" }}>
+                              {ncs.length} {ncs.length === 1 ? "nome" : "nomes"}
+                            </span>
+                            <button style={btnX} onClick={() => setModalNC(pa.id)}>+ Nome Comercial</button>
+                            <button style={btnX} onClick={() => {
+                              setEditPA(pa);
+                              setFPA({ nome: pa.nome, categoria: pa.categoria, unidade: pa.unidade, observacao: pa.observacao ?? "" });
+                              setModalPA(true);
+                            }}>Editar</button>
+                            <button style={{ ...btnX, color: "#E24B4A" }} onClick={async () => {
+                              if (!confirm(`Excluir "${pa.nome}" e todos os seus nomes comerciais?`)) return;
+                              await excluirPrincipioAtivo(pa.id);
+                              setPrincipios(x => x.filter(r => r.id !== pa.id));
+                              setNomesComerciais(x => x.filter(r => r.principio_ativo_id !== pa.id));
+                            }}>Excluir</button>
+                          </div>
+
+                          {/* Nomes comerciais expandidos */}
+                          {expandido && (
+                            <div style={{ background: "#F4F6FA", borderTop: "0.5px solid #E5E9F2", padding: "10px 14px 14px 48px" }}>
+                              {ncs.length === 0 ? (
+                                <div style={{ fontSize: 12, color: "#888", fontStyle: "italic" }}>
+                                  Nenhum nome comercial cadastrado. Clique em "+ Nome Comercial" para adicionar.
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                  {ncs.map(nc => (
+                                    <div key={nc.id} style={{
+                                      display: "flex", alignItems: "center", gap: 6,
+                                      background: nc.confirmado ? "#fff" : "#FBF3E0",
+                                      border: `0.5px solid ${nc.confirmado ? "#D4DCE8" : "#F6C87A"}`,
+                                      borderRadius: 8, padding: "4px 10px", fontSize: 12
+                                    }}>
+                                      <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{nc.nome_comercial}</span>
+                                      {!nc.confirmado && <span style={{ fontSize: 10, color: "#C9921B" }}>pendente</span>}
+                                      <button
+                                        onClick={async () => {
+                                          if (!confirm(`Remover "${nc.nome_comercial}"?`)) return;
+                                          await excluirNomeComercial(nc.id);
+                                          setNomesComerciais(x => x.filter(r => r.id !== nc.id));
+                                        }}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
         </div>
       </main>
 
@@ -5561,6 +5792,92 @@ function CadastrosInner() {
           </div>
         </Modal>
       )}
+      {/* Modal Princípio Ativo */}
+      {modalPA && (
+        <Modal titulo={editPA ? "Editar Princípio Ativo" : "Novo Princípio Ativo"} onClose={() => setModalPA(false)} width={560}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={lbl}>Nome completo (com concentração) *</label>
+              <input style={inp} placeholder="Ex: Glifosato 480 g/L" value={fPA.nome} onChange={e => setFPA(p => ({ ...p, nome: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>Categoria *</label>
+              <select style={inp} value={fPA.categoria} onChange={e => setFPA(p => ({ ...p, categoria: e.target.value as PrincipioAtivo["categoria"] }))}>
+                {(["herbicida","fungicida","inseticida","acaricida","fertilizante","inoculante","outro"] as PrincipioAtivo["categoria"][]).map(c => (
+                  <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Unidade de estoque *</label>
+              <select style={inp} value={fPA.unidade} onChange={e => setFPA(p => ({ ...p, unidade: e.target.value as PrincipioAtivo["unidade"] }))}>
+                {(["L","kg","g","mL","un"] as PrincipioAtivo["unidade"][]).map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={lbl}>Observação</label>
+              <input style={inp} placeholder="Ex: MAPA registro nº 12345" value={fPA.observacao} onChange={e => setFPA(p => ({ ...p, observacao: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", marginTop: 14, fontSize: 12, color: "#555", lineHeight: 1.6 }}>
+            <strong>Não cadastrar sementes aqui.</strong> Cada variedade de semente (TMG 3770, Brasmax Lança, etc.) é um produto distinto no estoque — use a aba Insumos.
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+            <button style={btnR} onClick={() => setModalPA(false)}>Cancelar</button>
+            <button style={{ ...btnV, opacity: !fPA.nome.trim() ? 0.5 : 1 }} disabled={!fPA.nome.trim()} onClick={async () => {
+              setSalvandoPA(true);
+              try {
+                if (editPA) {
+                  await atualizarPrincipioAtivo(editPA.id, { nome: fPA.nome, categoria: fPA.categoria, unidade: fPA.unidade, observacao: fPA.observacao });
+                  setPrincipios(x => x.map(p => p.id === editPA.id ? { ...p, ...fPA } : p));
+                } else {
+                  const novo = await criarPrincipioAtivo({ nome: fPA.nome, categoria: fPA.categoria, unidade: fPA.unidade, observacao: fPA.observacao });
+                  setPrincipios(x => [...x, novo]);
+                }
+                setModalPA(false);
+              } catch(e: unknown) { alert((e as Error).message); }
+              finally { setSalvandoPA(false); }
+            }}>
+              {salvandobotPA ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Novo Nome Comercial */}
+      {modalNC && (
+        <Modal titulo="Adicionar Nome Comercial" onClose={() => setModalNC(null)} width={480}>
+          {(() => {
+            const pa = principios.find(p => p.id === modalNC);
+            return (
+              <div>
+                <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0B2D50" }}>
+                  Princípio ativo: <strong>{pa?.nome}</strong> ({pa?.categoria} · {pa?.unidade})
+                </div>
+                <label style={lbl}>Nome Comercial *</label>
+                <input style={inp} placeholder="Ex: Eficaz, Roundup Transorb" value={fNC.nome_comercial} onChange={e => setFNC({ nome_comercial: e.target.value })} autoFocus />
+                <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+                  Digite exatamente como o agricultor costuma escrever. Pode adicionar um por vez. A busca é case-insensitive.
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+                  <button style={btnR} onClick={() => { setModalNC(null); setFNC({ nome_comercial: "" }); }}>Fechar</button>
+                  <button style={{ ...btnV, opacity: !fNC.nome_comercial.trim() ? 0.5 : 1 }} disabled={!fNC.nome_comercial.trim()} onClick={async () => {
+                    if (!modalNC) return;
+                    try {
+                      const novo = await salvarNomeComercial({ nome_comercial: fNC.nome_comercial.trim(), principio_ativo_id: modalNC, confirmado: true });
+                      setNomesComerciais(x => [...x.filter(n => n.id !== novo.id), novo]);
+                      setFNC({ nome_comercial: "" });
+                    } catch(e: unknown) { alert((e as Error).message); }
+                  }}>
+                    + Adicionar
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </Modal>
+      )}
+
     </div>
   );
 }

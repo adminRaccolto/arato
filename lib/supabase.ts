@@ -137,6 +137,7 @@ export type Insumo = {
   custo_medio?: number;
   deposito_id?: string;  // depósito padrão onde este item é armazenado
   bomba_id?: string;     // bomba de combustível associada (só para categoria combustivel)
+  principio_ativo_id?: string; // FK principios_ativos — para defensivos
   lote?: string;
   validade?: string;
   created_at?: string;
@@ -1175,6 +1176,27 @@ export type EstoqueTerceiro = {
 // ————————————————————————————————————————
 // Tabelas Auxiliares (dados mestres)
 // ————————————————————————————————————————
+
+export type PrincipioAtivo = {
+  id: string;
+  nome: string;                            // "Glifosato 480 g/L"
+  categoria: "herbicida" | "fungicida" | "inseticida" | "acaricida" | "fertilizante" | "inoculante" | "outro";
+  unidade: "L" | "kg" | "g" | "mL" | "un";
+  observacao?: string;
+  created_at?: string;
+};
+
+export type NomeComercial = {
+  id: string;
+  nome_comercial: string;                  // "Eficaz", "Roundup Transorb HC"
+  principio_ativo_id: string;
+  confirmado: boolean;
+  criado_por?: string;
+  fazenda_origem_id?: string;
+  created_at?: string;
+  // join
+  principio_ativo?: PrincipioAtivo;
+};
 
 export type GrupoInsumo = {
   id: string;

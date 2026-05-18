@@ -17,6 +17,7 @@ import {
   verificarExclusaoNf,
   excluirNfEntrada,
   listarMaquinas,
+  resolverNomeComercial,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -74,6 +75,9 @@ interface ItemRascunho {
   // Associação ao catálogo
   insumo_id: string;             // UUID do insumo associado
   fator_conversao: number;       // quantidade_nf × fator = quantidade_catálogo
+  // Resolução via princípio ativo (BOT mapping)
+  pa_nome?: string;              // nome do princípio ativo resolvido
+  pa_auto?: boolean;             // true = resolvido automaticamente
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
@@ -739,6 +743,28 @@ export default function NfCompraPage() {
     }));
   };
 
+  // ── Resolução automática via princípio ativo (BOT mapping) ──
+  // Chamado com debounce quando o usuário termina de digitar a descrição do item
+  const resolverItemPA = useCallback(async (key: string, descricao: string) => {
+    if (!fazendaId || !descricao.trim() || tipo !== "insumos") return;
+    // Não sobrescreve se o usuário já selecionou um insumo manualmente
+    const item = itens.find(it => it.key === key);
+    if (item?.insumo_id) return;
+
+    const res = await resolverNomeComercial(descricao, fazendaId);
+    if (!res) return;
+    setItens(prev => prev.map(it => {
+      if (it.key !== key) return it;
+      if (it.insumo_id) return it; // não sobrescreve escolha manual
+      return {
+        ...it,
+        insumo_id: res.insumo?.id ?? "",
+        pa_nome: res.principioAtivo.nome,
+        pa_auto: true,
+      };
+    }));
+  }, [fazendaId, tipo, itens]);
+
   // ── Auto-fill tipo_apropiacao por tipo de entrada ─────────
   const tipoAprpDefault = (t: TipoEntrada): NfEntradaItem["tipo_apropiacao"] =>
     t === "vef" ? "vef" : t === "remessa" ? "remessa" : t === "custo_direto" ? "direto" : "estoque";
@@ -1264,7 +1290,22 @@ export default function NfCompraPage() {
                         {tipo === "insumos" ? (
                           <>
                             <div style={{ padding: "6px 8px" }}>
-                              <input value={it.descricao_nf} onChange={e => setItem(it.key, { descricao_nf: e.target.value })} placeholder="Descrição na NF" style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <input
+                                value={it.descricao_nf}
+                                onChange={e => {
+                                  setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false });
+                                }}
+                                onBlur={e => resolverItemPA(it.key, e.target.value)}
+                                placeholder="Descrição na NF"
+                                style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
+                              />
+                              {it.pa_auto && it.pa_nome && (
+                                <div style={{ fontSize: 10, color: "#1A6B3C", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                                  <span>✓ PA:</span>
+                                  <strong>{it.pa_nome}</strong>
+                                  {!it.insumo_id && <span style={{ color: "#C9921B" }}> — insumo não vinculado</span>}
+                                </div>
+                              )}
                             </div>
                             <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
                               {/* Toggle Estoque / C. Custo */}

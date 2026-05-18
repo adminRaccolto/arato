@@ -3936,3 +3936,57 @@ ALTER TABLE notas_fiscais
   ADD COLUMN IF NOT EXISTS dados_nf_json jsonb;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================
+-- SEÇÃO 98 — Princípios Ativos + Nomes Comerciais
+-- Rodar no Supabase SQL Editor
+-- ============================================================
+
+-- Tabela global de princípios ativos (sem fazenda_id — gerida pelo backoffice)
+CREATE TABLE IF NOT EXISTS principios_ativos (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome          TEXT NOT NULL,
+  categoria     TEXT NOT NULL DEFAULT 'outro',
+  unidade       TEXT NOT NULL DEFAULT 'L',
+  observacao    TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (nome)
+);
+
+-- Tabela global de mapeamento nome comercial → princípio ativo
+CREATE TABLE IF NOT EXISTS nomes_comerciais (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome_comercial       TEXT NOT NULL,
+  principio_ativo_id   UUID NOT NULL REFERENCES principios_ativos(id) ON DELETE CASCADE,
+  confirmado           BOOLEAN DEFAULT TRUE,
+  criado_por           TEXT,
+  fazenda_origem_id    UUID,
+  created_at           TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (nome_comercial)
+);
+
+-- Link do insumo da fazenda ao princípio ativo global
+ALTER TABLE insumos
+  ADD COLUMN IF NOT EXISTS principio_ativo_id UUID REFERENCES principios_ativos(id) ON DELETE SET NULL;
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_nomes_comerciais_nome ON nomes_comerciais (lower(nome_comercial));
+CREATE INDEX IF NOT EXISTS idx_principios_ativos_nome ON principios_ativos (lower(nome));
+CREATE INDEX IF NOT EXISTS idx_insumos_principio ON insumos (principio_ativo_id) WHERE principio_ativo_id IS NOT NULL;
+
+-- RLS: leitura pública, escrita autenticada
+ALTER TABLE principios_ativos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nomes_comerciais  ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "leitura_publica_principios" ON principios_ativos;
+DROP POLICY IF EXISTS "leitura_publica_nomes"      ON nomes_comerciais;
+DROP POLICY IF EXISTS "escrita_autenticada_principios" ON principios_ativos;
+DROP POLICY IF EXISTS "escrita_autenticada_nomes"      ON nomes_comerciais;
+
+CREATE POLICY "leitura_publica_principios"     ON principios_ativos FOR SELECT USING (true);
+CREATE POLICY "leitura_publica_nomes"          ON nomes_comerciais  FOR SELECT USING (true);
+CREATE POLICY "escrita_autenticada_principios" ON principios_ativos FOR ALL    USING (auth.role() = 'authenticated');
+CREATE POLICY "escrita_autenticada_nomes"      ON nomes_comerciais  FOR ALL    USING (auth.role() = 'authenticated');
+
+NOTIFY pgrst, 'reload schema';

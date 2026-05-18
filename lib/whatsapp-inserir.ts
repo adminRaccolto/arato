@@ -83,13 +83,29 @@ type Resultado = { ok: boolean; mensagem: string };
 // ── Busca de insumo com fallback por palavras individuais ──────────────────
 type InsumoRow = { id: string; nome: string; unidade: string; custo_medio: number; valor_unitario: number; estoque: number };
 
-// ── Busca de insumo com fallback por palavras individuais ──────────────────
-// Aceita nomes parciais: "3770", "tmg 3770", "semente tmg" encontram "Semente Soja TMG 3770"
+// Aceita nomes parciais e nomes comerciais: "Eficaz" → Glifosato; "3770", "tmg 3770" → semente TMG 3770
 async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<InsumoRow | null> {
   if (!nomeProduto) return null;
   const cols = "id, nome, unidade, custo_medio, valor_unitario, estoque";
 
-  // 1. Match do termo completo
+  // 0. Tenta resolver via nomes_comerciais → principios_ativos → insumos (exceto sementes)
+  const termos = [nomeProduto, ...nomeProduto.split(/\s+/).filter(w => w.length > 2)];
+  for (const termo of termos) {
+    const { data: nc } = await sb()
+      .from("nomes_comerciais")
+      .select("principio_ativo_id")
+      .ilike("nome_comercial", `%${termo}%`)
+      .limit(1);
+    if (nc?.[0]?.principio_ativo_id) {
+      const { data: ins } = await sb().from("insumos").select(cols)
+        .eq("fazenda_id", fazendaId)
+        .eq("principio_ativo_id", nc[0].principio_ativo_id)
+        .limit(1);
+      if (ins?.[0]) return ins[0] as InsumoRow;
+    }
+  }
+
+  // 1. Match do termo completo no nome do insumo
   const { data: r1 } = await sb().from("insumos").select(cols)
     .eq("fazenda_id", fazendaId).ilike("nome", `%${nomeProduto}%`).limit(1);
   if (r1?.[0]) return r1[0] as InsumoRow;
