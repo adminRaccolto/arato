@@ -623,7 +623,7 @@ export default function Contratos() {
         avariados_padrao_pct:  temClassif ? clsComm.avariados_padrao : undefined,
         desconto_avariados_kg: descAvar     || undefined,
         peso_classificado_kg:  temClassif ? pesoClass : plCalc,
-        sacas:                 sacasCalc,
+        // sacas é GENERATED ALWAYS no banco (peso_classificado_kg / kg_saca)
         data:                  TODAY,
         // classificação — detalhada
         ph_hl:               parseFloat(fRom.ph)               || undefined,

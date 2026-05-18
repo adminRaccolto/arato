@@ -359,7 +359,7 @@ export type Romaneio = {
   placa: string;
   peso_bruto_kg: number;
   tara_kg: number;
-  peso_liquido_kg?: number;   // GENERATED ALWAYS no banco (peso_bruto - tara)
+  peso_liquido_kg?: number;     // GENERATED ALWAYS no banco (peso_bruto - tara)
   // Classificação do grão no romaneio de expedição
   umidade_pct?: number;           // % umidade medida
   umidade_padrao_pct?: number;    // padrão: 14% soja, 14.5% milho, 12% algodão…
@@ -370,8 +370,8 @@ export type Romaneio = {
   avariados_pct?: number;         // % grãos avariados medidos (total — soma dos sub)
   avariados_padrao_pct?: number;  // tolerância padrão por commodity
   desconto_avariados_kg?: number; // PL × (A – Apad) / 100
-  peso_classificado_kg?: number;  // PL – total descontos
-  sacas: number;                  // peso_classificado / kg_saca
+  peso_classificado_kg?: number;  // PL – total descontos (pode ser GENERATED no banco)
+  sacas?: number;                 // GENERATED ALWAYS no banco (peso_classificado / kg_saca)
   data: string;
   nfe_numero?: string;
   nfe_status?: "gerando" | "autorizada" | "cancelada" | "rejeitada";
