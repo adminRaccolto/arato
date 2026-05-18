@@ -1,8 +1,11 @@
 "use client";
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { calcularStepsCompletos } from "../lib/onboarding";
 import { useRouter } from "next/navigation";
+
+const INACTIVITY_MS  = 30 * 60 * 1000; // 30 minutos
+const LAST_ACTIVE_KEY = "ractech_last_active";
 
 // Permissões por módulo — values: 'escrita' | 'leitura' | 'nenhum'
 // Vazio = sem restrição (raccotlo ou usuário sem grupo)
@@ -66,6 +69,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
   const [logoCliente,            setLogoCliente]            = useState<string | null>(null);
   const router = useRouter();
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectFazenda = useCallback((id: string, nome: string) => {
     localStorage.setItem("raccotlo_fazenda_id",   id);
@@ -85,6 +89,22 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function init() {
+      // Se o usuário ficou ausente por mais de 30 min (aba fechada / navegador fechado),
+      // encerra a sessão ao retornar — cobre o caso "fechamento de navegador"
+      const lastActiveStr = localStorage.getItem(LAST_ACTIVE_KEY);
+      if (lastActiveStr) {
+        const elapsed = Date.now() - parseInt(lastActiveStr, 10);
+        if (elapsed > INACTIVITY_MS) {
+          localStorage.removeItem(LAST_ACTIVE_KEY);
+          localStorage.removeItem("raccotlo_fazenda_id");
+          localStorage.removeItem("raccotlo_fazenda_nome");
+          await supabase.auth.signOut(); // dispara SIGNED_OUT → redirect /login
+          return;
+        }
+      }
+      // Registra atividade ao iniciar a sessão
+      localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -201,6 +221,47 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     if (fazendaId && contaId) fetchOnboarding(fazendaId, contaId).catch(() => {});
   }, [fazendaId, contaId, fetchOnboarding]);
 
+  // Rastreamento de inatividade — ativo somente quando há sessão autenticada
+  useEffect(() => {
+    if (!fazendaId && !userRole) return; // ainda não autenticado
+
+    const doSignOut = async () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      localStorage.removeItem(LAST_ACTIVE_KEY);
+      localStorage.removeItem("raccotlo_fazenda_id");
+      localStorage.removeItem("raccotlo_fazenda_nome");
+      await supabase.auth.signOut();
+    };
+
+    const resetTimer = () => {
+      localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      inactivityTimer.current = setTimeout(doSignOut, INACTIVITY_MS);
+    };
+
+    // Ao voltar para a aba após ausência, verifica se o tempo expirou
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      const last = parseInt(localStorage.getItem(LAST_ACTIVE_KEY) ?? "0", 10);
+      if (last && Date.now() - last > INACTIVITY_MS) {
+        doSignOut().catch(() => {});
+      } else {
+        resetTimer();
+      }
+    };
+
+    const events = ["mousemove", "keydown", "scroll", "click", "touchstart"] as const;
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+    document.addEventListener("visibilitychange", handleVisibility);
+    resetTimer(); // inicia o contador
+
+    return () => {
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fazendaId, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const podeAcessar = useCallback((modulo: string) => {
     return permissoes[modulo] !== "nenhum";
   }, [permissoes]);
@@ -224,6 +285,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signOut() {
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    localStorage.removeItem(LAST_ACTIVE_KEY);
     localStorage.removeItem("raccotlo_fazenda_id");
     localStorage.removeItem("raccotlo_fazenda_nome");
     await supabase.auth.signOut();
