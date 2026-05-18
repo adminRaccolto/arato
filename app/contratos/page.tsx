@@ -107,6 +107,19 @@ const NATUREZAS_OPERACAO = [
   },
 ] as const;
 
+// ── Auto-sugestão de natureza de operação ────────────────────────────────────
+// Regras para MT: soja/milho exportados via trading → VFE (CFOP 6.501).
+// Demais commodities → venda produção própria (CFOP 6.101).
+const COMMODITIES_VFE = ["Soja", "Milho 1ª", "Milho 2ª (Safrinha)", "Sorgo", "Feijão"];
+function sugerirNatureza(produto: string, tipoPessoa: "pf" | "pj"): string {
+  const isVfe = COMMODITIES_VFE.includes(produto);
+  if (isVfe) return tipoPessoa === "pf" ? "VFE-PF" : "VFE-PJ";
+  return tipoPessoa === "pf" ? "VPE-PF" : "VPE-PJ";
+}
+function tipoProdutorDeCpfCnpj(cpfCnpj?: string | null): "pf" | "pj" {
+  return (cpfCnpj ?? "").replace(/\D/g, "").length <= 11 ? "pf" : "pj";
+}
+
 // ── Tabelas de classificação por commodity ────────────────────────────────────
 // Padrões ABIOVE/ANEC/MAPA para descontos no romaneio de expedição.
 // Fórmula umidade: PL × (U − Upad) / (100 − Upad)   [ABIOVE — correta para soja e milho]
@@ -255,6 +268,26 @@ export default function Contratos() {
 
   const [fC, setFC] = useState(fContratoVazio());
 
+  // ── sugestão automática de natureza ──────────────────────────
+  const [naturezaSugerida, setNaturezaSugerida] = useState<string>("");
+
+  useEffect(() => {
+    if (!modalContrato) return;
+    // Produto principal = primeiro item da grade
+    const produtoPrincipal = itens[0]?.produto ?? fC.produto;
+    const prod = produtores.find(p => p.id === fC.produtor_id);
+    const tipo = tipoProdutorDeCpfCnpj(prod?.cpf_cnpj);
+    const sugestao = sugerirNatureza(produtoPrincipal, tipo);
+    // Só aplica se campo vazio ou ainda na sugestão anterior (não foi editado manualmente nem é contrato existente)
+    if (naturezaSugerida === "__manual__") return; // contrato existente — não sobrescrever
+    if (!fC.natureza_codigo || fC.natureza_codigo === naturezaSugerida) {
+      const nat = NATUREZAS_OPERACAO.find(n => n.codigo === sugestao);
+      setFC(p => ({ ...p, natureza_codigo: sugestao, natureza_operacao: nat?.descricao ?? "", cfop: nat?.cfop_inter ?? p.cfop }));
+    }
+    setNaturezaSugerida(sugestao);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens[0]?.produto, fC.produtor_id, modalContrato]);
+
   // ── modal cessão ─────────────────────────────────────────────
   type LancItem = { id: string; descricao: string; data_vencimento: string; valor: number; status: string };
   const [modalCessao,      setModalCessao]      = useState(false);
@@ -325,6 +358,7 @@ export default function Contratos() {
     if (anosSafra[0]) vazio.safra = anosSafra[0].descricao;
     setFC(vazio);
     setItens([itemVazio()]);
+    setNaturezaSugerida(""); // sugestão será calculada pelo useEffect ao abrir
     setAbaForm("principal");
     setModalContrato(true);
   };
@@ -382,6 +416,8 @@ export default function Contratos() {
       for (const d of debs) sel[d.lancamento_id] = d.valor_cessao;
       setCessaoSelecionados(sel);
     } catch { setCessaoSelecionados({}); }
+    // contrato existente: natureza já salva — marca como "manual" para o useEffect não sobrescrever
+    setNaturezaSugerida("__manual__");
     setAbaForm("principal");
     setModalContrato(true);
   };
@@ -1130,10 +1166,18 @@ export default function Contratos() {
                   {/* Linha 4: Natureza de Operação | CFOP | Saldo Contrato | Frete | Valor Frete */}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 160px 160px 120px", gap:12, marginBottom:4 }}>
                     <div>
-                      <label style={lbl}>Natureza de Operação das Notas Fiscais</label>
+                      <label style={{ ...lbl, display:"flex", alignItems:"center", gap:6 }}>
+                        Natureza de Operação das Notas Fiscais
+                        {fC.natureza_codigo && fC.natureza_codigo === naturezaSugerida && (
+                          <span style={{ fontSize:9, background:"#D5F0E4", color:"#16703A", padding:"1px 6px", borderRadius:6, fontWeight:600 }}>
+                            ✦ sugerida automaticamente
+                          </span>
+                        )}
+                      </label>
                       <select style={inp} value={fC.natureza_codigo}
                         onChange={e => {
                           const nat = NATUREZAS_OPERACAO.find(n => n.codigo === e.target.value);
+                          setNaturezaSugerida(""); // usuário editou manualmente — cancela sugestão
                           setFC(p=>({
                             ...p,
                             natureza_codigo:   e.target.value,
