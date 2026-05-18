@@ -151,6 +151,8 @@ const NAV: NavItem[] = [
     children: [
       { id: "fiscal-monitor",    label: "Monitor NF-e Emitidas",   path: "/fiscal"                  },
       { id: "fiscal-pendencias", label: "Pendências Fiscais",       path: "/fiscal/pendencias"       },
+      { id: "fiscal-gnre",       label: "GNRE",                     path: "/fiscal/gnre"          },
+      { id: "fiscal-esocial",    label: "eSocial Rural",            path: "/fiscal/esocial"       },
       {
         type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais",
         children: [

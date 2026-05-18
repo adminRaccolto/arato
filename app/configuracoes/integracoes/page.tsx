@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
@@ -738,6 +739,7 @@ function ModalConfigurar({
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function IntegracoesPage() {
   const { fazendaId } = useAuth();
+  const router = useRouter();
   const [abaCat,  setAbaCat]  = useState<Categoria>("fiscal");
   const [catalogo, setCatalogo] = useState<IntegracaoCatalogo[]>([]);
   const [configs,  setConfigs]  = useState<IntegracaoFazenda[]>([]);
@@ -888,15 +890,61 @@ export default function IntegracoesPage() {
                   </button>
                 </div>
 
-                {/* Placeholder futuras integrações fiscais */}
-                <div style={{ background: "#F8FAFF", borderRadius: 12, border: "0.5px dashed #B0C8E8",
-                              padding: 20, display: "flex", flexDirection: "column", gap: 8,
-                              alignItems: "center", justifyContent: "center", minHeight: 160, color: "#888" }}>
-                  <div style={{ fontSize: 28 }}>🔜</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>Mais em breve</div>
-                  <div style={{ fontSize: 12, textAlign: "center" }}>
-                    Importação OFX, GNRE, eSocial Rural…
+                {/* OFX */}
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EAF3FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🏦</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Importação OFX</div>
+                      <div style={{ fontSize: 11, color: "#888" }}>Conciliação bancária automática</div>
+                    </div>
+                    <span style={{ marginLeft: "auto", background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700 }}>ATIVO</span>
                   </div>
+                  <div style={{ fontSize: 12, color: "#555", flex: 1, lineHeight: 1.6 }}>
+                    Importe extratos OFX de qualquer banco brasileiro. O sistema concilia automaticamente com CP/CR cadastrados.
+                  </div>
+                  <button onClick={() => router.push("/financeiro/conciliacao")}
+                    style={{ padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    Acessar Conciliação
+                  </button>
+                </div>
+
+                {/* GNRE */}
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📋</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>GNRE</div>
+                      <div style={{ fontSize: 11, color: "#888" }}>Guias Nacionais de Recolhimento</div>
+                    </div>
+                    <span style={{ marginLeft: "auto", background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700 }}>ATIVO</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#555", flex: 1, lineHeight: 1.6 }}>
+                    Emita e controle GNREs para DIFAL (EC 87/2015), substituição tributária e antecipação de ICMS nas operações interestaduais.
+                  </div>
+                  <button onClick={() => router.push("/fiscal/gnre")}
+                    style={{ padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    Acessar GNRE
+                  </button>
+                </div>
+
+                {/* eSocial Rural */}
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>👷</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>eSocial Rural</div>
+                      <div style={{ fontSize: 11, color: "#888" }}>Trabalhadores e eventos rurais</div>
+                    </div>
+                    <span style={{ marginLeft: "auto", background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700 }}>ATIVO</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#555", flex: 1, lineHeight: 1.6 }}>
+                    Gerencie CLT e avulsos rurais (TSVE), gere eventos eSocial (S-2200, S-2300, S-1200) e calcule a folha com FUNRURAL e SENAR.
+                  </div>
+                  <button onClick={() => router.push("/fiscal/esocial")}
+                    style={{ padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%" }}>
+                    Acessar eSocial
+                  </button>
                 </div>
               </div>
             )}

@@ -4053,3 +4053,103 @@ CREATE POLICY "movimentacoes_pa_all" ON movimentacoes_pa FOR ALL
   USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════
+-- Seção 100: GNRE + eSocial Rural
+-- Execução: Supabase SQL Editor
+-- ══════════════════════════════════════════════════════════════
+
+-- GNRE: Guias Nacionais de Recolhimento de Tributos Estaduais
+CREATE TABLE IF NOT EXISTS gnre_guias (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo_receita        TEXT NOT NULL,
+  descricao_receita   TEXT,
+  uf_favorecida       TEXT NOT NULL,
+  uf_emitente         TEXT DEFAULT 'MT',
+  documento_origem    TEXT,
+  competencia         DATE,
+  valor_principal     NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_juros         NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_multa         NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_total         NUMERIC(14,2) NOT NULL DEFAULT 0,
+  vencimento          DATE,
+  data_pagamento      DATE,
+  nosso_numero        TEXT,
+  status              TEXT NOT NULL DEFAULT 'rascunho'
+                      CHECK (status IN ('rascunho','emitida','paga','vencida','cancelada')),
+  obs                 TEXT,
+  created_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- eSocial: Trabalhadores
+CREATE TABLE IF NOT EXISTS esocial_trabalhadores (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id       UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome             TEXT NOT NULL,
+  cpf              TEXT,
+  data_nascimento  DATE,
+  pis              TEXT,
+  tipo_vinculo     TEXT NOT NULL DEFAULT 'avulso_rural'
+                   CHECK (tipo_vinculo IN ('clt','avulso_rural','tsve','meeiro','parceiro','estagiario')),
+  funcao           TEXT,
+  data_admissao    DATE,
+  data_demissao    DATE,
+  salario_base     NUMERIC(14,2),
+  status           TEXT NOT NULL DEFAULT 'ativo'
+                   CHECK (status IN ('ativo','inativo','afastado')),
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- eSocial: Eventos
+CREATE TABLE IF NOT EXISTS esocial_eventos (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id        UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  trabalhador_id    UUID REFERENCES esocial_trabalhadores(id) ON DELETE SET NULL,
+  codigo_evento     TEXT NOT NULL,
+  descricao_evento  TEXT,
+  competencia       TEXT,
+  status            TEXT NOT NULL DEFAULT 'pendente'
+                    CHECK (status IN ('pendente','transmitido','erro','excluido')),
+  protocolo         TEXT,
+  recibo            TEXT,
+  xml_gerado        TEXT,
+  erro_descricao    TEXT,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_gnre_fazenda         ON gnre_guias(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_gnre_status          ON gnre_guias(status);
+CREATE INDEX IF NOT EXISTS idx_esocial_trab_fazenda ON esocial_trabalhadores(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_esocial_evt_fazenda  ON esocial_eventos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_esocial_evt_trab     ON esocial_eventos(trabalhador_id);
+
+-- RLS
+ALTER TABLE gnre_guias             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE esocial_trabalhadores  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE esocial_eventos        ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "gnre_select"     ON gnre_guias;
+DROP POLICY IF EXISTS "gnre_all"        ON gnre_guias;
+DROP POLICY IF EXISTS "esoc_trab_sel"   ON esocial_trabalhadores;
+DROP POLICY IF EXISTS "esoc_trab_all"   ON esocial_trabalhadores;
+DROP POLICY IF EXISTS "esoc_evt_sel"    ON esocial_eventos;
+DROP POLICY IF EXISTS "esoc_evt_all"    ON esocial_eventos;
+
+CREATE POLICY "gnre_select" ON gnre_guias FOR SELECT
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+CREATE POLICY "gnre_all" ON gnre_guias FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+CREATE POLICY "esoc_trab_sel" ON esocial_trabalhadores FOR SELECT
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+CREATE POLICY "esoc_trab_all" ON esocial_trabalhadores FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+CREATE POLICY "esoc_evt_sel" ON esocial_eventos FOR SELECT
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+CREATE POLICY "esoc_evt_all" ON esocial_eventos FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+NOTIFY pgrst, 'reload schema';
