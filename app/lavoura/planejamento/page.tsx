@@ -292,15 +292,30 @@ export default function Planejamento() {
       supabase.from("adubacoes_base").select("custo_total").eq("ciclo_id", cicloSelOrc),
       supabase.from("pulverizacoes").select("custo_total").eq("ciclo_id", cicloSelOrc),
       supabase.from("correcoes_solo").select("custo_total").eq("ciclo_id", cicloSelOrc),
-    ]).then(([pR, adR, pulR, csR]) => {
+      // CPs liquidadas vinculadas ao ciclo (captura o que não está nas operações)
+      supabase.from("contas_pagar").select("valor, categoria").eq("ciclo_id", cicloSelOrc).eq("status", "pago"),
+    ]).then(([pR, adR, pulR, csR, cpR]) => {
       const sum = (arr: { custo_total?: number | null; custo_sementes?: number | null }[] | null, key: string) =>
         (arr ?? []).reduce((s, x) => s + (Number((x as Record<string,unknown>)[key]) || 0), 0);
+      // CPs por categoria financeira → mapeia para categoria do orçamento
+      const catMap: Record<string, CatOrc> = {
+        sementes: "sementes", fertilizante: "fertilizantes", defensivo: "defensivos",
+        correcao_solo: "correcao_solo", operacoes: "operacoes", maquinas: "operacoes",
+        arrendamento: "arrendamento",
+      };
+      const cpExtra: Record<CatOrc, number> = { sementes: 0, fertilizantes: 0, defensivos: 0, correcao_solo: 0, operacoes: 0, arrendamento: 0, outros: 0 };
+      for (const cp of cpR.data ?? []) {
+        const cat = catMap[(cp as { categoria?: string }).categoria ?? ""] ?? "outros";
+        cpExtra[cat] += Number((cp as { valor?: number }).valor) || 0;
+      }
       setRealizado({
-        sementes:      sum(pR.data, "custo_sementes"),
-        fertilizantes: sum(adR.data, "custo_total"),
-        defensivos:    sum(pulR.data, "custo_total"),
-        correcao_solo: sum(csR.data, "custo_total"),
-        operacoes: 0, arrendamento: 0, outros: 0,
+        sementes:      sum(pR.data, "custo_sementes")  + cpExtra.sementes,
+        fertilizantes: sum(adR.data, "custo_total")    + cpExtra.fertilizantes,
+        defensivos:    sum(pulR.data, "custo_total")   + cpExtra.defensivos,
+        correcao_solo: sum(csR.data, "custo_total")    + cpExtra.correcao_solo,
+        operacoes:     cpExtra.operacoes,
+        arrendamento:  cpExtra.arrendamento,
+        outros:        cpExtra.outros,
       });
     }).finally(() => setLoadingComp(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -431,13 +446,23 @@ export default function Planejamento() {
   });
 
   // ── cálculos orçamento ───────────────────────────────────
-  const totalOrc = orcItens.reduce((s, i) => s + (i.valor_total ?? 0), 0);
-  const areaHa   = orcamento?.area_ha ?? 0;
-  const custHa   = areaHa > 0 ? totalOrc / areaHa : 0;
-  const prodEsp  = orcamento?.produtividade_esperada ?? 0;
-  const precEsp  = orcamento?.preco_esperado_sc ?? 0;
-  const recBruta = areaHa > 0 && prodEsp > 0 && precEsp > 0 ? areaHa * prodEsp * precEsp : 0;
-  const margem   = recBruta > 0 ? recBruta - totalOrc : 0;
+  const totalOrc  = orcItens.reduce((s, i) => s + (i.valor_total ?? 0), 0);
+  const areaHa    = orcamento?.area_ha ?? 0;
+  const custHa    = areaHa > 0 ? totalOrc / areaHa : 0;
+  const prodEsp   = orcamento?.produtividade_esperada ?? 0;
+  const precEsp   = orcamento?.preco_esperado_sc ?? 0;
+  const recBruta  = areaHa > 0 && prodEsp > 0 && precEsp > 0 ? areaHa * prodEsp * precEsp : 0;
+  // Deduções fiscais sobre receita bruta
+  const funrural  = recBruta * 0.015;  // 1,5%
+  const senar     = recBruta * 0.002;  // 0,2%
+  const deducoes  = funrural + senar;
+  const recLiq    = recBruta - deducoes;
+  const margem    = recLiq > 0 ? recLiq - totalOrc : (recBruta > 0 ? recBruta - totalOrc : 0);
+  const lucrativ  = recLiq > 0 ? (margem / recLiq) * 100 : 0;
+  // Ponto de equilíbrio: quanto precisa produzir (sc/ha) para cobrir custos
+  const peSacHa   = areaHa > 0 && precEsp > 0 ? (totalOrc / precEsp) / areaHa : 0;
+  const folga     = prodEsp > 0 && peSacHa > 0 ? prodEsp - peSacHa : 0;
+  const viavel    = folga > 0;
 
   // ── cálculos comparativo ─────────────────────────────────
   const planejadoPorCat: Record<CatOrc, number> = { sementes: 0, fertilizantes: 0, defensivos: 0, correcao_solo: 0, operacoes: 0, arrendamento: 0, outros: 0 };
@@ -469,15 +494,46 @@ export default function Planejamento() {
               <button style={btnV} onClick={() => { setFOI(initOI()); setEditOrcItem(null); setModalOrcItem(true); }}>+ Item</button>
             )}
             {aba === "agenda" && (
-              <button style={btnV} onClick={() => { setEditTarefa(null); setFT(initFT()); setModalTarefa(true); }}>+ Nova Tarefa</button>
+              <button style={btnV} onClick={() => { setEditTarefa(null); setFT({ ...initFT(), ciclo_id: cicloSelOrc }); setModalTarefa(true); }}>+ Nova Tarefa</button>
             )}
             {aba === "recomendacoes" && (
-              <button style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR(initFR()); setModalRec(true); }}>+ Nova Recomendação</button>
+              <button style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR({ ...initFR(), ciclo_id: cicloSelOrc }); setModalRec(true); }}>+ Nova Recomendação</button>
             )}
           </div>
         </div>
 
         {erroInit && <div style={{ background: "#FCEBEB", color: "#791F1F", borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 16 }}>{erroInit}</div>}
+
+        {/* ── Seletor global de ciclo ── */}
+        {!loading && anosSafra.length === 0 ? (
+          <div style={{ background: "#FBF3E0", border: "0.5px solid #F0D9A0", borderRadius: 10, padding: "16px 20px", marginBottom: 18, fontSize: 13, color: "#7A5A12" }}>
+            <strong>Nenhum Ano Safra cadastrado.</strong> Para usar o Planejamento, primeiro acesse{" "}
+            <a href="/cadastros?tab=safras" style={{ color: "#C9921B", fontWeight: 600 }}>Cadastros → Safras</a>{" "}
+            e crie um Ano Safra e pelo menos um Ciclo.
+          </div>
+        ) : (
+          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ minWidth: 180 }}>
+              <label style={lbl}>Ano Safra</label>
+              <select style={inp} value={anoSelOrc} onChange={e => { setAnoSelOrc(e.target.value); setCicloSelOrc(""); }}>
+                <option value="">— Selecione —</option>
+                {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+              </select>
+            </div>
+            <div style={{ minWidth: 240 }}>
+              <label style={lbl}>Ciclo / Cultura</label>
+              <select style={inp} value={cicloSelOrc} onChange={e => setCicloSelOrc(e.target.value)} disabled={!anoSelOrc}>
+                <option value="">— Selecione —</option>
+                {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+              </select>
+            </div>
+            {cicloSelOrc && (
+              <div style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, paddingBottom: 2 }}>
+                {labelCiclo(cicloSelOrc)}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* abas */}
         <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid #DDE2EE" }}>
@@ -494,27 +550,9 @@ export default function Planejamento() {
         {/* ═══════════════ ABA ORÇAMENTO ═══════════════ */}
         {aba === "orcamento" && (
           <div>
-            {/* seletor de ciclo */}
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "16px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
-              <div style={{ minWidth: 180 }}>
-                <label style={lbl}>Ano Safra</label>
-                <select style={inp} value={anoSelOrc} onChange={e => { setAnoSelOrc(e.target.value); setCicloSelOrc(""); }}>
-                  <option value="">— Selecione —</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div style={{ minWidth: 240 }}>
-                <label style={lbl}>Ciclo / Cultura</label>
-                <select style={inp} value={cicloSelOrc} onChange={e => setCicloSelOrc(e.target.value)} disabled={!anoSelOrc}>
-                  <option value="">— Selecione —</option>
-                  {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
-                </select>
-              </div>
-            </div>
-
             {!cicloSelOrc && (
               <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "#888", fontSize: 13 }}>
-                Selecione um Ano Safra e um Ciclo para ver ou criar o orçamento
+                Selecione um Ano Safra e um Ciclo acima para ver ou criar o orçamento
               </div>
             )}
 
@@ -538,13 +576,13 @@ export default function Planejamento() {
 
               return (
                 <div>
-                  {/* cards de resumo */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+                  {/* cards de resumo — linha 1: custos */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 10 }}>
                     {[
-                      { label: "Custo Total",      valor: fmtR(totalOrc),                     bg: "#FCEBEB", color: "#791F1F"  },
-                      { label: "Custo / ha",        valor: areaHa > 0 ? fmtR(custHa) : "—",   bg: "#EBF3FC", color: "#0C447C"  },
-                      { label: "Receita Esperada",  valor: recBruta > 0 ? fmtR(recBruta) : "—", bg: "#ECFDF5", color: "#14532D" },
-                      { label: "Margem Esperada",   valor: margem > 0 ? fmtR(margem) : margem < 0 ? fmtR(margem) : "—", bg: margem >= 0 ? "#ECFDF5" : "#FCEBEB", color: margem >= 0 ? "#14532D" : "#791F1F" },
+                      { label: "Custo Total",          valor: fmtR(totalOrc),                           bg: "#FCEBEB", color: "#791F1F" },
+                      { label: "Custo / ha",            valor: areaHa > 0 ? fmtR(custHa) : "—",         bg: "#EBF3FC", color: "#0C447C" },
+                      { label: "Receita Bruta Esperada",valor: recBruta > 0 ? fmtR(recBruta) : "—",     bg: "#ECFDF5", color: "#14532D" },
+                      { label: "Receita Líquida (após Funrural+SENAR)", valor: recLiq > 0 ? fmtR(recLiq) : "—", bg: "#F0FDF4", color: "#166534" },
                     ].map(k => (
                       <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
@@ -552,6 +590,45 @@ export default function Planejamento() {
                       </div>
                     ))}
                   </div>
+
+                  {/* linha 2: viabilidade (só quando há receita configurada) */}
+                  {recBruta > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+                      {/* Margem líquida */}
+                      <div style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${viavel ? "#BBFFD4" : "#FFBBBB"}` }}>
+                        <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Margem Líquida</div>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: viavel ? "#14532D" : "#791F1F" }}>{fmtR(margem)}</div>
+                        <div style={{ fontSize: 11, color: viavel ? "#16A34A" : "#E24B4A", marginTop: 2 }}>{fmtN(lucrativ, 1)}% sobre receita líquida</div>
+                      </div>
+                      {/* Deduções */}
+                      <div style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                        <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Deduções Fiscais</div>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: "#555" }}>{fmtR(deducoes)}</div>
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Funrural 1,5% + SENAR 0,2%</div>
+                      </div>
+                      {/* Ponto de equilíbrio */}
+                      <div style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                        <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Ponto de Equilíbrio</div>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: "#0C447C" }}>{peSacHa > 0 ? `${fmtN(peSacHa, 1)} sc/ha` : "—"}</div>
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>para cobrir os custos</div>
+                      </div>
+                      {/* Folga acima do PE / viabilidade */}
+                      <div style={{ background: viavel ? "#ECFDF5" : "#FCEBEB", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${viavel ? "#BBF7D0" : "#FECACA"}` }}>
+                        <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{viavel ? "Folga acima do PE" : "Déficit abaixo do PE"}</div>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: viavel ? "#14532D" : "#791F1F" }}>
+                          {folga !== 0 ? `${folga > 0 ? "+" : ""}${fmtN(Math.abs(folga), 1)} sc/ha` : "—"}
+                        </div>
+                        <div style={{ fontSize: 11, color: viavel ? "#16A34A" : "#E24B4A", marginTop: 2, fontWeight: 600 }}>
+                          {viavel ? "Safra VIÁVEL" : "Safra INVIÁVEL no preço atual"}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {recBruta === 0 && (
+                    <div style={{ background: "#FBF3E0", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#7A5A12" }}>
+                      Configure área, produtividade esperada e preço no cabeçalho do orçamento para ver a análise de viabilidade financeira.
+                    </div>
+                  )}
 
                   {/* header do orçamento */}
                   <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 18px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -652,27 +729,9 @@ export default function Planejamento() {
         {/* ═══════════════ ABA PLANEJADO × REALIZADO ═══════════════ */}
         {aba === "comparativo" && (
           <div>
-            {/* seletor */}
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "16px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
-              <div style={{ minWidth: 180 }}>
-                <label style={lbl}>Ano Safra</label>
-                <select style={inp} value={anoSelOrc} onChange={e => { setAnoSelOrc(e.target.value); setCicloSelOrc(""); }}>
-                  <option value="">— Selecione —</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div style={{ minWidth: 240 }}>
-                <label style={lbl}>Ciclo / Cultura</label>
-                <select style={inp} value={cicloSelOrc} onChange={e => setCicloSelOrc(e.target.value)} disabled={!anoSelOrc}>
-                  <option value="">— Selecione —</option>
-                  {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
-                </select>
-              </div>
-            </div>
-
             {!cicloSelOrc ? (
               <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "#888", fontSize: 13 }}>
-                Selecione um Ano Safra e um Ciclo para ver o comparativo
+                Selecione um Ano Safra e um Ciclo acima para ver o comparativo
               </div>
             ) : loadingOrc || loadingComp ? (
               <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 13 }}>Carregando...</div>
