@@ -63,12 +63,31 @@ function calcRomaneio(
 }
 
 const PRODUTOS_PADRAO: Record<string, { umPad: number; label: string }> = {
-  "soja":    { umPad: 14, label: "Soja" },
-  "milho":   { umPad: 15, label: "Milho" },
-  "algodao": { umPad: 12, label: "Algodão" },
-  "trigo":   { umPad: 13, label: "Trigo" },
-  "sorgo":   { umPad: 14, label: "Sorgo" },
+  "soja":    { umPad: 14,   label: "Soja" },
+  "milho":   { umPad: 14.5, label: "Milho" },
+  "milho1":  { umPad: 14.5, label: "Milho 1ª" },
+  "milho2":  { umPad: 14.5, label: "Milho 2ª" },
+  "algodao": { umPad: 12,   label: "Algodão" },
+  "trigo":   { umPad: 13,   label: "Trigo" },
+  "sorgo":   { umPad: 13,   label: "Sorgo" },
 };
+
+type CommodityClass = { umidade_padrao: number; impureza_padrao: number; avariados_padrao: number; kg_saca: number };
+const CLASSE_COMMODITY: Record<string, CommodityClass> = {
+  "soja":    { umidade_padrao: 14.0, impureza_padrao: 1.0, avariados_padrao: 8.0, kg_saca: 60 },
+  "milho":   { umidade_padrao: 14.5, impureza_padrao: 1.0, avariados_padrao: 6.0, kg_saca: 60 },
+  "milho1":  { umidade_padrao: 14.5, impureza_padrao: 1.0, avariados_padrao: 6.0, kg_saca: 60 },
+  "milho2":  { umidade_padrao: 14.5, impureza_padrao: 1.0, avariados_padrao: 6.0, kg_saca: 60 },
+  "algodao": { umidade_padrao: 12.0, impureza_padrao: 1.5, avariados_padrao: 0.0, kg_saca: 15 },
+  "trigo":   { umidade_padrao: 13.0, impureza_padrao: 1.0, avariados_padrao: 2.0, kg_saca: 60 },
+  "sorgo":   { umidade_padrao: 13.0, impureza_padrao: 1.0, avariados_padrao: 6.0, kg_saca: 60 },
+};
+const getClasse = (produto: string): CommodityClass =>
+  CLASSE_COMMODITY[produto] ?? { umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, kg_saca: 60 };
+
+const calcDescUmid  = (pl: number, u: number, uPad: number) => u > uPad ? +(pl * (u - uPad) / (100 - uPad)).toFixed(2) : 0;
+const calcDescImp   = (pl: number, i: number, iPad: number) => i > iPad ? +(pl * (i - iPad) / 100).toFixed(2)          : 0;
+const calcDescAvar  = (pl: number, a: number, aPad: number) => a > aPad ? +(pl * (a - aPad) / 100).toFixed(2)          : 0;
 
 // ────────────────────────────────────────────────────────────
 // Tipos auxiliares
@@ -95,10 +114,19 @@ const ROMANEIO_VAZIO = {
   placa:              "",
   peso_bruto_kg:      0,
   tara_kg:            0,
-  umidade_pct:        14,
+  umidade_pct:        0,
   umidade_padrao_pct: 14,
   impureza_pct:       0,
   avariados_pct:      0,
+  ph:                 "",
+  ardidos:            "",
+  mofados:            "",
+  fermentados:        "",
+  germinados:         "",
+  esverdeados:        "",
+  quebrados:          "",
+  carunchados:        "",
+  outros_avariados:   "",
   data:               hoje(),
 };
 
@@ -222,14 +250,29 @@ export default function ColheitaPage() {
     setModalRomaneio(colheitaId);
   };
 
-  const calcRom = () => calcRomaneio(
-    formRomaneio.peso_bruto_kg,
-    formRomaneio.tara_kg,
-    formRomaneio.umidade_pct,
-    formRomaneio.umidade_padrao_pct,
-    formRomaneio.impureza_pct,
-    formRomaneio.avariados_pct,
-  );
+  const calcRom = () => {
+    const col     = colheitas.find(c => c.id === modalRomaneio);
+    const cls     = getClasse(col?.produto ?? "soja");
+    const pl      = Math.max(0, formRomaneio.peso_bruto_kg - formRomaneio.tara_kg);
+    // sub-parâmetros avariados
+    const pArd = parseFloat(formRomaneio.ardidos)          || 0;
+    const pMof = parseFloat(formRomaneio.mofados)          || 0;
+    const pFer = parseFloat(formRomaneio.fermentados)      || 0;
+    const pGer = parseFloat(formRomaneio.germinados)       || 0;
+    const pEsv = parseFloat(formRomaneio.esverdeados)      || 0;
+    const pQue = parseFloat(formRomaneio.quebrados)        || 0;
+    const pCar = parseFloat(formRomaneio.carunchados)      || 0;
+    const pOut = parseFloat(formRomaneio.outros_avariados) || 0;
+    const temSub   = pArd + pMof + pFer + pGer + pEsv + pQue + pCar + pOut > 0;
+    const avar_pct = temSub ? +(pArd + pMof + pFer + pGer + pEsv + pQue + pCar + pOut).toFixed(2) : formRomaneio.avariados_pct;
+    const d_umid   = calcDescUmid(pl, formRomaneio.umidade_pct, cls.umidade_padrao);
+    const d_imp    = calcDescImp (pl, formRomaneio.impureza_pct, cls.impureza_padrao);
+    const d_avar   = calcDescAvar(pl, avar_pct, cls.avariados_padrao);
+    const classificado = Math.max(0, pl - d_umid - d_imp - d_avar);
+    const sacas        = +(classificado / cls.kg_saca).toFixed(3);
+    return { cls, pl, d_umid, d_imp, d_avar, avar_pct, classificado, sacas,
+             pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub };
+  };
 
   const salvarRomaneio = async () => {
     if (!fazendaId || !modalRomaneio) return;
@@ -238,25 +281,37 @@ export default function ColheitaPage() {
     setSalvando(true);
     setErro(null);
     try {
-      const { pl, d_umid, d_imp, d_avar, classificado, sacas } = calcRom();
+      const { cls, pl, d_umid, d_imp, d_avar, avar_pct, classificado, sacas,
+              pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub } = calcRom();
+      const temClassif = formRomaneio.umidade_pct > 0 || formRomaneio.impureza_pct > 0 || avar_pct > 0;
       await criarColheitaRomaneio({
-        colheita_id:         modalRomaneio,
-        fazenda_id:          fazendaId,
-        numero:              formRomaneio.numero || undefined,
-        placa:               formRomaneio.placa.toUpperCase(),
-        peso_bruto_kg:       formRomaneio.peso_bruto_kg,
-        tara_kg:             formRomaneio.tara_kg,
-        peso_liquido_kg:     pl,
-        umidade_pct:         formRomaneio.umidade_pct,
-        umidade_padrao_pct:  formRomaneio.umidade_padrao_pct,
-        desconto_umidade_kg: d_umid,
-        impureza_pct:        formRomaneio.impureza_pct,
-        desconto_impureza_kg: d_imp,
-        avariados_pct:       formRomaneio.avariados_pct,
-        desconto_avariados_kg: d_avar,
-        peso_classificado_kg: classificado,
+        colheita_id:            modalRomaneio,
+        fazenda_id:             fazendaId,
+        numero:                 formRomaneio.numero || undefined,
+        placa:                  formRomaneio.placa.toUpperCase(),
+        peso_bruto_kg:          formRomaneio.peso_bruto_kg,
+        tara_kg:                formRomaneio.tara_kg,
+        peso_liquido_kg:        pl,
+        umidade_pct:            formRomaneio.umidade_pct || undefined,
+        umidade_padrao_pct:     temClassif ? cls.umidade_padrao : undefined,
+        desconto_umidade_kg:    d_umid || undefined,
+        impureza_pct:           formRomaneio.impureza_pct || undefined,
+        desconto_impureza_kg:   d_imp || undefined,
+        avariados_pct:          avar_pct || undefined,
+        avariados_padrao_pct:   temClassif ? cls.avariados_padrao : undefined,
+        desconto_avariados_kg:  d_avar || undefined,
+        ph_hl:                  parseFloat(formRomaneio.ph) || undefined,
+        ardidos_pct:            temSub ? pArd || undefined : undefined,
+        mofados_pct:            temSub ? pMof || undefined : undefined,
+        fermentados_pct:        temSub ? pFer || undefined : undefined,
+        germinados_pct:         temSub ? pGer || undefined : undefined,
+        esverdeados_pct:        temSub ? pEsv || undefined : undefined,
+        quebrados_pct:          temSub ? pQue || undefined : undefined,
+        carunchados_pct:        temSub ? pCar || undefined : undefined,
+        outros_avariados_pct:   temSub ? pOut || undefined : undefined,
+        peso_classificado_kg:   temClassif ? classificado : pl,
         sacas,
-        data:                formRomaneio.data,
+        data:                   formRomaneio.data,
       });
       setModalRomaneio(null);
       // Recarrega romaneios e totais
@@ -699,14 +754,42 @@ export default function ColheitaPage() {
           MODAL — Adicionar Romaneio
       ────────────────────────────────────────── */}
       {modalRomaneio && (() => {
-        const { pl, d_umid, d_imp, d_avar, classificado, sacas } = calcRom();
+        const { cls, pl, d_umid, d_imp, d_avar, avar_pct, classificado, sacas,
+                pArd, pMof, pFer, pGer, pEsv, pQue, pCar, pOut, temSub } = calcRom();
         const totalDescKg = d_umid + d_imp + d_avar;
         const pctDesconto = pl > 0 ? (totalDescKg / pl) * 100 : 0;
+        const temClassif  = formRomaneio.umidade_pct > 0 || formRomaneio.impureza_pct > 0 || avar_pct > 0;
+        const colheitaSel = colheitas.find(c => c.id === modalRomaneio);
+        const produto     = colheitaSel?.produto ?? "soja";
+        const isSoja      = produto === "soja";
+        const isMilho     = produto === "milho" || produto === "milho1" || produto === "milho2";
+
+        const applyPadrao = () => setFormRomaneio(f => ({
+          ...f,
+          umidade_pct:      cls.umidade_padrao,
+          impureza_pct:     cls.impureza_padrao,
+          ardidos:          "0",
+          mofados:          "0",
+          fermentados:      "0",
+          germinados:       "0",
+          esverdeados:      "0",
+          quebrados:        "0",
+          carunchados:      "0",
+          outros_avariados: "0",
+        }));
+
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setModalRomaneio(null); }}>
-            <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Lançar Romaneio</h2>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Romaneio de Entrada — Colheita</h2>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                    {PRODUTOS_PADRAO[produto]?.label ?? produto}
+                    {colheitaSel?.variedade ? ` — ${colheitaSel.variedade}` : ""}
+                    {" · "}Padrão: {cls.umidade_padrao}% umid · {cls.impureza_padrao}% imp · {cls.avariados_padrao}% avar
+                  </div>
+                </div>
                 <button onClick={() => setModalRomaneio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
               </div>
               <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
@@ -721,13 +804,7 @@ export default function ColheitaPage() {
                     </label>
                     <label>
                       <div style={lbStyle}>Placa do Caminhão *</div>
-                      <input
-                        value={formRomaneio.placa}
-                        onChange={e => setFormRomaneio(f => ({ ...f, placa: e.target.value.toUpperCase() }))}
-                        style={inpStyle}
-                        placeholder="ABC-1234"
-                        maxLength={8}
-                      />
+                      <input value={formRomaneio.placa} onChange={e => setFormRomaneio(f => ({ ...f, placa: e.target.value.toUpperCase() }))} style={inpStyle} placeholder="ABC1D234" maxLength={8} />
                     </label>
                     <label>
                       <div style={lbStyle}>Data</div>
@@ -742,30 +819,15 @@ export default function ColheitaPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                     <label>
                       <div style={lbStyle}>Peso Bruto (kg) *</div>
-                      <input
-                        type="number" value={formRomaneio.peso_bruto_kg || ""}
-                        onChange={e => setFormRomaneio(f => ({ ...f, peso_bruto_kg: parseFloat(e.target.value) || 0 }))}
-                        style={inpStyle} min={0} step={10}
-                        placeholder="Ex: 45000"
-                      />
+                      <input type="number" value={formRomaneio.peso_bruto_kg || ""} onChange={e => setFormRomaneio(f => ({ ...f, peso_bruto_kg: parseFloat(e.target.value) || 0 }))} style={inpStyle} min={0} step={10} placeholder="Ex: 45000" />
                     </label>
                     <label>
                       <div style={lbStyle}>Tara (kg) *</div>
-                      <input
-                        type="number" value={formRomaneio.tara_kg || ""}
-                        onChange={e => setFormRomaneio(f => ({ ...f, tara_kg: parseFloat(e.target.value) || 0 }))}
-                        style={inpStyle} min={0} step={10}
-                        placeholder="Ex: 14000"
-                      />
+                      <input type="number" value={formRomaneio.tara_kg || ""} onChange={e => setFormRomaneio(f => ({ ...f, tara_kg: parseFloat(e.target.value) || 0 }))} style={inpStyle} min={0} step={10} placeholder="Ex: 14000" />
                     </label>
                     <div>
-                      <div style={lbStyle}>Peso Líquido (auto)</div>
-                      <div style={{
-                        ...inpStyle,
-                        background: "#F3F6F9", fontWeight: 700, fontSize: 15,
-                        color: pl > 0 ? "#1A4870" : "#444",
-                        display: "flex", alignItems: "center",
-                      }}>
+                      <div style={lbStyle}>Peso Líquido (calculado)</div>
+                      <div style={{ ...inpStyle, background: "#F3F6F9", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#1A4870" : "#888", display: "flex", alignItems: "center" }}>
                         {fmt(pl)} kg
                       </div>
                     </div>
@@ -773,84 +835,156 @@ export default function ColheitaPage() {
                 </div>
 
                 {/* Seção 3 — Classificação do Grão */}
-                <div>
-                  <div style={secTitle}>Classificação do Grão</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 12 }}>
-                    <label>
-                      <div style={lbStyle}>Umidade medida (%)</div>
-                      <input
-                        type="number" value={formRomaneio.umidade_pct}
-                        onChange={e => setFormRomaneio(f => ({ ...f, umidade_pct: parseFloat(e.target.value) || 0 }))}
-                        style={{ ...inpStyle, color: formRomaneio.umidade_pct > formRomaneio.umidade_padrao_pct ? "#E24B4A" : "#1a1a1a" }}
-                        min={0} max={30} step={0.1}
-                      />
-                    </label>
-                    <label>
-                      <div style={lbStyle}>Umidade padrão (%)</div>
-                      <input
-                        type="number" value={formRomaneio.umidade_padrao_pct}
-                        onChange={e => setFormRomaneio(f => ({ ...f, umidade_padrao_pct: parseFloat(e.target.value) || 14 }))}
-                        style={inpStyle}
-                        min={10} max={20} step={0.5}
-                      />
-                    </label>
-                    <label>
-                      <div style={lbStyle}>Impureza / Sujeira (%)</div>
-                      <input
-                        type="number" value={formRomaneio.impureza_pct}
-                        onChange={e => setFormRomaneio(f => ({ ...f, impureza_pct: parseFloat(e.target.value) || 0 }))}
-                        style={{ ...inpStyle, color: formRomaneio.impureza_pct > 1 ? "#EF9F27" : "#1a1a1a" }}
-                        min={0} max={30} step={0.1}
-                      />
-                    </label>
-                    <label>
-                      <div style={lbStyle}>Avariados (%)</div>
-                      <input
-                        type="number" value={formRomaneio.avariados_pct}
-                        onChange={e => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(e.target.value) || 0 }))}
-                        style={{ ...inpStyle, color: formRomaneio.avariados_pct > 0.5 ? "#EF9F27" : "#1a1a1a" }}
-                        min={0} max={30} step={0.1}
-                      />
-                    </label>
-                  </div>
+                {pl > 0 && (
+                  <div>
+                    {/* cabeçalho com botão Class. Padrão */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #D4DCE8", paddingBottom: 6, marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Classificação do Grão</div>
+                      <button type="button" onClick={applyPadrao}
+                        style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", background: "#D5E8F5", border: "0.5px solid #A8C8E8", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+                        ✦ Class. Padrão
+                      </button>
+                    </div>
 
-                  {/* Preview descontos */}
-                  {pl > 0 && (
-                    <div style={{ background: "#F8FAFD", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase" }}>
-                        Resultado da Classificação
+                    {/* Umidade + Impureza + PH */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <label style={lbStyle}>Umidade (%)</label>
+                        <input style={{ ...inpStyle, color: formRomaneio.umidade_pct > cls.umidade_padrao ? "#E24B4A" : "#1a1a1a" }}
+                          type="number" step="0.1" min="0" max="40"
+                          placeholder={String(cls.umidade_padrao)}
+                          value={formRomaneio.umidade_pct || ""}
+                          onChange={e => setFormRomaneio(f => ({ ...f, umidade_pct: parseFloat(e.target.value) || 0 }))} />
+                        {d_umid > 0 && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>Desc: −{fmt(d_umid, 1)} kg</div>}
+                        {formRomaneio.umidade_pct > 0 && formRomaneio.umidade_pct <= cls.umidade_padrao && <div style={{ fontSize: 10, color: "#16A34A", marginTop: 2 }}>Dentro do padrão ✓</div>}
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 10 }}>
-                        <DescontoBox label="Desc. Umidade" valor={d_umid} />
-                        <DescontoBox label="Desc. Impureza" valor={d_imp} />
-                        <DescontoBox label="Desc. Avariados" valor={d_avar} />
+                      <div>
+                        <label style={lbStyle}>Impureza / Mat. Estranhas (%)</label>
+                        <input style={{ ...inpStyle, color: formRomaneio.impureza_pct > cls.impureza_padrao ? "#EF9F27" : "#1a1a1a" }}
+                          type="number" step="0.1" min="0" max="20"
+                          placeholder={String(cls.impureza_padrao)}
+                          value={formRomaneio.impureza_pct || ""}
+                          onChange={e => setFormRomaneio(f => ({ ...f, impureza_pct: parseFloat(e.target.value) || 0 }))} />
+                        {d_imp > 0 && <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 2 }}>Desc: −{fmt(d_imp, 1)} kg</div>}
+                        {formRomaneio.impureza_pct > 0 && formRomaneio.impureza_pct <= cls.impureza_padrao && <div style={{ fontSize: 10, color: "#16A34A", marginTop: 2 }}>Dentro do padrão ✓</div>}
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                        <div style={{ background: "#FFF5F5", borderRadius: 8, padding: 10, textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#E24B4A", marginBottom: 4 }}>Total Descontos</div>
-                          <div style={{ fontWeight: 700, color: "#E24B4A", fontSize: 14 }}>-{fmt(totalDescKg, 1)} kg</div>
-                          <div style={{ fontSize: 11, color: "#E24B4A" }}>-{fmt(pctDesconto, 1)}%</div>
-                        </div>
-                        <div style={{ background: "#D5E8F5", borderRadius: 8, padding: 10, textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#0B2D50", marginBottom: 4 }}>Peso Classificado</div>
-                          <div style={{ fontWeight: 700, color: "#0B2D50", fontSize: 14 }}>{fmt(classificado, 1)} kg</div>
-                          <div style={{ fontSize: 11, color: "#0B2D50" }}>{fmt(classificado / 1000, 3)} t</div>
-                        </div>
-                        <div style={{ background: "#D5E8F5", borderRadius: 8, padding: 10, textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#0B2D50", marginBottom: 4 }}>Sacas</div>
-                          <div style={{ fontWeight: 700, color: "#1A4870", fontSize: 18 }}>{fmt(sacas, 2)}</div>
-                          <div style={{ fontSize: 11, color: "#555" }}>sc de 60 kg</div>
-                        </div>
+                      <div>
+                        <label style={lbStyle}>PH — Peso Hectolítrico (kg/hl)</label>
+                        <input style={inpStyle} type="number" step="0.1" min="50" max="100"
+                          placeholder={isSoja ? "78" : isMilho ? "74" : "—"}
+                          value={formRomaneio.ph}
+                          onChange={e => setFormRomaneio(f => ({ ...f, ph: e.target.value }))} />
+                        {formRomaneio.ph && (
+                          <div style={{ fontSize: 10, color: parseFloat(formRomaneio.ph) >= (isSoja ? 78 : 74) ? "#16A34A" : "#EF9F27", marginTop: 2 }}>
+                            {parseFloat(formRomaneio.ph) >= (isSoja ? 78 : 74) ? "Dentro do padrão ✓" : "Abaixo do mínimo ↓"}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Avariados — detalhamento por commodity */}
+                    <div style={{ background: "#F8F9FC", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span>Avariados{isSoja ? " — ABIOVE / IN MAPA 11/2007" : isMilho ? " — IN MAPA 60/2011" : ""}</span>
+                        {avar_pct > 0 && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: avar_pct > cls.avariados_padrao ? "#E24B4A" : "#16A34A" }}>
+                            Total: {avar_pct.toFixed(2)}%
+                            {avar_pct > cls.avariados_padrao ? ` (desc: −${fmt(d_avar, 1)} kg)` : " ✓"}
+                          </span>
+                        )}
+                      </div>
+                      {(isSoja || !isMilho) ? (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                          {([
+                            { key: "ardidos",          label: "Ardidos / Queimados (%)" },
+                            { key: "mofados",          label: "Mofados (%)" },
+                            { key: "fermentados",      label: "Fermentados (%)" },
+                            { key: "germinados",       label: "Germinados (%)" },
+                            { key: "esverdeados",      label: "Esverdeados / Imaturos (%)" },
+                            { key: "quebrados",        label: "Quebrados / Amassados (%)" },
+                            { key: "outros_avariados", label: "Outros Avariados (%)" },
+                          ] as { key: keyof typeof formRomaneio; label: string }[]).map(({ key, label }) => (
+                            <div key={String(key)}>
+                              <label style={{ fontSize: 10, color: "#555", marginBottom: 3, display: "block" }}>{label}</label>
+                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                                value={formRomaneio[key] as string}
+                                onChange={e => setFormRomaneio(f => ({ ...f, [key]: e.target.value }))} />
+                            </div>
+                          ))}
+                          {/* Avariados direto (sem sub-parâmetros) */}
+                          {!temSub && (
+                            <div>
+                              <label style={{ fontSize: 10, color: "#888", marginBottom: 3, display: "block" }}>Total direto (%)</label>
+                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                                value={formRomaneio.avariados_pct || ""}
+                                onChange={e => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(e.target.value) || 0 }))} />
+                              <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>somente se não detalhar acima</div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                          {([
+                            { key: "ardidos",          label: "Ardidos e Brotados (%)" },
+                            { key: "mofados",          label: "Mofados (%)" },
+                            { key: "fermentados",      label: "Fermentados (%)" },
+                            { key: "carunchados",      label: "Carunchados / Atacados por Insetos (%)" },
+                            { key: "quebrados",        label: "Quebrados e Abaulados (%)" },
+                            { key: "outros_avariados", label: "Outros Avariados (%)" },
+                          ] as { key: keyof typeof formRomaneio; label: string }[]).map(({ key, label }) => (
+                            <div key={String(key)}>
+                              <label style={{ fontSize: 10, color: "#555", marginBottom: 3, display: "block" }}>{label}</label>
+                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                                value={formRomaneio[key] as string}
+                                onChange={e => setFormRomaneio(f => ({ ...f, [key]: e.target.value }))} />
+                            </div>
+                          ))}
+                          {!temSub && (
+                            <div>
+                              <label style={{ fontSize: 10, color: "#888", marginBottom: 3, display: "block" }}>Total direto (%)</label>
+                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                                value={formRomaneio.avariados_pct || ""}
+                                onChange={e => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(e.target.value) || 0 }))} />
+                              <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>somente se não detalhar acima</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Apuração */}
+                    <div style={{ background: temClassif && totalDescKg > 0 ? "#FFF3E0" : "#D5E8F5", borderRadius: 8, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#0B2D50", marginBottom: 8 }}>Apuração — Balança de Entrada (Fazenda)</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 10, color: "#555" }}>Peso Líquido</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(pl)} kg</div>
+                        </div>
+                        {temClassif && (
+                          <div style={{ textAlign: "center" }}>
+                            <div style={{ fontSize: 10, color: "#555" }}>Descontos (U+I+A)</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "#E24B4A" }}>−{fmt(totalDescKg, 1)} kg ({fmt(pctDesconto, 1)}%)</div>
+                          </div>
+                        )}
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 10, color: "#555" }}>Peso Classificado</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#0B2D50" }}>{fmt(temClassif ? classificado : pl, 1)} kg</div>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{ fontSize: 10, color: "#555" }}>Sacas ({cls.kg_saca} kg/sc)</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>{fmt(sacas, 2)} sc</div>
+                        </div>
+                      </div>
+                      {!temClassif && <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>Preencha a classificação para calcular descontos.</div>}
+                    </div>
+                  </div>
+                )}
 
                 {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                   <button onClick={() => setModalRomaneio(null)} style={btnCancelStyle}>Cancelar</button>
-                  <button onClick={salvarRomaneio} disabled={salvando} style={btnPrimStyle}>
+                  <button onClick={salvarRomaneio} disabled={salvando || pl <= 0} style={btnPrimStyle}>
                     {salvando ? "Salvando..." : "Confirmar Romaneio"}
                   </button>
                 </div>

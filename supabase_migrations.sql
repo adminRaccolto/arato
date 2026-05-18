@@ -3910,3 +3910,20 @@ ALTER TABLE pedidos_compra
   ADD COLUMN IF NOT EXISTS barter_preco_saca DECIMAL(12,2);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- SEÇÃO 96 — colheita_romaneios: sub-parâmetros avariados + PH
+-- ============================================================
+ALTER TABLE colheita_romaneios
+  ADD COLUMN IF NOT EXISTS avariados_padrao_pct    numeric(5,2),
+  ADD COLUMN IF NOT EXISTS ph_hl                   numeric(5,2),
+  ADD COLUMN IF NOT EXISTS ardidos_pct             numeric(5,2),
+  ADD COLUMN IF NOT EXISTS mofados_pct             numeric(5,2),
+  ADD COLUMN IF NOT EXISTS fermentados_pct         numeric(5,2),
+  ADD COLUMN IF NOT EXISTS germinados_pct          numeric(5,2),
+  ADD COLUMN IF NOT EXISTS esverdeados_pct         numeric(5,2),
+  ADD COLUMN IF NOT EXISTS quebrados_pct           numeric(5,2),
+  ADD COLUMN IF NOT EXISTS carunchados_pct         numeric(5,2),
+  ADD COLUMN IF NOT EXISTS outros_avariados_pct    numeric(5,2);
+
+NOTIFY pgrst, 'reload schema';

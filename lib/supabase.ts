@@ -1118,10 +1118,21 @@ export type ColheitaRomaneio = {
   desconto_umidade_kg?: number;         // ((U - U_pad) / (100 - U_pad)) × PL
   impureza_pct?: number;                // % impureza / sujeira
   desconto_impureza_kg?: number;        // impureza_pct/100 × PL
-  avariados_pct?: number;               // % grãos avariados
-  desconto_avariados_kg?: number;       // avariados_pct/100 × PL (acima da tolerância)
-  peso_classificado_kg: number;         // PL - D_umidade - D_impureza - D_avariados
-  sacas: number;                        // peso_classificado_kg / 60
+  avariados_pct?: number;               // % grãos avariados (soma dos sub-parâmetros)
+  avariados_padrao_pct?: number;
+  desconto_avariados_kg?: number;
+  ph_hl?: number;                       // peso hectolítrico (kg/hl)
+  // sub-parâmetros avariados
+  ardidos_pct?: number;
+  mofados_pct?: number;
+  fermentados_pct?: number;
+  germinados_pct?: number;
+  esverdeados_pct?: number;
+  quebrados_pct?: number;
+  carunchados_pct?: number;
+  outros_avariados_pct?: number;
+  peso_classificado_kg: number;
+  sacas: number;
   data?: string;
   created_at?: string;
 };
