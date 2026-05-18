@@ -4,6 +4,12 @@ import { useParams } from "next/navigation";
 import { supabase } from "../../../../../lib/supabase";
 import type { NotaFiscal } from "../../../../../lib/supabase";
 
+const NCM_PRODUTO: Record<string, string> = {
+  "Soja": "1201.10.00", "Milho": "1005.10.90", "Milho 1ª": "1005.10.90",
+  "Milho 2ª (Safrinha)": "1005.10.90", "Algodão": "5201.00.20",
+  "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
+};
+
 const fmtCNPJ = (v?: string) => {
   if (!v) return "";
   const d = v.replace(/\D/g, "");
@@ -20,6 +26,11 @@ const fmtVal = (n: number) =>
   n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPeso = (n?: number) =>
   n ? n.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : "";
+
+type DanfeItem = {
+  item: string; ncm: string; cfop: string; unidade: string;
+  quantidade: number; valor_unitario: number; valor_total: number;
+};
 
 // Estilos inline para o DANFE
 const S = {
@@ -52,7 +63,6 @@ const S = {
   cellLast: (flex = 1, extra: React.CSSProperties = {}) => ({
     flex,
     padding: "1mm 1.5mm",
-    ...extra,
   }),
   label: {
     fontSize: 6,
@@ -81,12 +91,53 @@ const S = {
 export default function DanfePage() {
   const params = useParams<{ id: string }>();
   const [nota, setNota] = useState<NotaFiscal | null>(null);
+  const [itens, setItens] = useState<DanfeItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!params.id) return;
-    supabase.from("notas_fiscais").select("*").eq("id", params.id).single()
-      .then(({ data }: { data: NotaFiscal | null }) => { setNota(data); setLoading(false); });
+    (async () => {
+      const { data: nf } = await supabase
+        .from("notas_fiscais").select("*").eq("id", params.id).single();
+      if (!nf) { setLoading(false); return; }
+      setNota(nf as NotaFiscal);
+
+      // Se já tem itens salvos, usa diretamente
+      if (nf.itens_json && (nf.itens_json as DanfeItem[]).length > 0) {
+        setItens(nf.itens_json as DanfeItem[]);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: busca romaneio via romaneio_id (preferencial) ou nfe_numero
+      const dadosJson = nf.dados_nf_json as { romaneio_id?: string } | null;
+      const romId = dadosJson?.romaneio_id;
+      const { data: rom } = await (
+        romId
+          ? supabase.from("romaneios").select("*, contratos(produto, preco)").eq("id", romId).maybeSingle()
+          : supabase.from("romaneios").select("*, contratos(produto, preco)").eq("fazenda_id", nf.fazenda_id).eq("nfe_numero", nf.numero).maybeSingle()
+      );
+
+      if (rom) {
+        const contrato = (rom as { contratos?: { produto?: string; preco?: number } }).contratos;
+        const produto = contrato?.produto ?? "Produto";
+        const precoKg = contrato?.preco ?? 0;
+        const pesoKg: number = (rom as { peso_classificado_kg?: number; sacas?: number }).peso_classificado_kg
+          ?? (((rom as { sacas?: number }).sacas ?? 0) * 60);
+        const valorUnit = pesoKg > 0 ? nf.valor_total / pesoKg : precoKg;
+        setItens([{
+          item:           produto,
+          ncm:            NCM_PRODUTO[produto] ?? "",
+          cfop:           nf.cfop ?? "",
+          unidade:        "KG",
+          quantidade:     pesoKg,
+          valor_unitario: valorUnit,
+          valor_total:    nf.valor_total,
+        }]);
+      }
+
+      setLoading(false);
+    })();
   }, [params.id]);
 
   if (loading) return (
@@ -100,11 +151,9 @@ export default function DanfePage() {
     </div>
   );
 
-  const d    = nota.dados_nf_json ?? {};
-  const itens = nota.itens_json ?? [];
+  const d = nota.dados_nf_json ?? {};
   const isPreview = nota.status !== "autorizada";
-
-  const totalProdutos = itens.reduce((s, i) => s + i.valor_total, 0);
+  const totalProdutos = itens.reduce((s, i) => s + i.valor_total, 0) || nota.valor_total;
 
   return (
     <>
@@ -270,8 +319,8 @@ export default function DanfePage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 7.5 }}>
             <thead>
               <tr style={{ background: "#f0f0f0", borderBottom: "0.3mm solid #000" }}>
-                {(["Cód.", "Descrição do Produto", "NCM", "CFOP", "Unid.", "Quantidade", "Valor Unit.", "Valor Total"] as string[]).map((h: string, i: number) => (
-                  <th key={i} style={{ padding: "1mm 1.5mm", textAlign: i >= 5 ? "right" : "left", fontWeight: "bold", whiteSpace: "nowrap", borderRight: i < 7 ? "0.3mm solid #ccc" : "none" }}>
+                {(["Cód.", "Descrição do Produto", "NCM", "CFOP", "Unid.", "Quantidade", "Valor Unit.", "Valor Total"] as string[]).map((h: string, idx: number) => (
+                  <th key={idx} style={{ padding: "1mm 1.5mm", textAlign: idx >= 5 ? "right" : "left", fontWeight: "bold", whiteSpace: "nowrap", borderRight: idx < 7 ? "0.3mm solid #ccc" : "none" }}>
                     {h}
                   </th>
                 ))}
@@ -284,7 +333,7 @@ export default function DanfePage() {
                     Nenhum item registrado
                   </td>
                 </tr>
-              ) : (itens as Array<{ item: string; ncm: string; cfop: string; unidade: string; quantidade: number; valor_unitario: number; valor_total: number }>).map((it, i) => (
+              ) : itens.map((it, i) => (
                 <tr key={i} style={{ borderBottom: "0.2mm solid #ddd", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                   <td style={{ padding: "1mm 1.5mm", borderRight: "0.3mm solid #ddd" }}>{String(i + 1).padStart(3, "0")}</td>
                   <td style={{ padding: "1mm 1.5mm", fontWeight: "bold", borderRight: "0.3mm solid #ddd" }}>{it.item}</td>

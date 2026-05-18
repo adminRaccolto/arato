@@ -444,7 +444,7 @@ export type NotaFiscal = {
     frete_conta?: string; transportadora?: string; placa?: string; uf_placa?: string;
     peso_bruto?: number; peso_liquido?: number; especie?: string;
     // referências
-    contrato_numero?: string; romaneio_numero?: string;
+    contrato_numero?: string; romaneio_numero?: string; romaneio_id?: string;
     data_saida?: string; hora_saida?: string;
   };
   created_at?: string;

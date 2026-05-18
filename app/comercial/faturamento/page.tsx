@@ -364,12 +364,21 @@ export default function Faturamento() {
           especie:         fVenda.especie,
           contrato_numero: fVenda.contrato_numero,
           romaneio_numero: fVenda.romaneio_numero,
+          romaneio_id:     fVenda.romaneio_id || undefined,
           data_saida:      fVenda.data_saida,
           hora_saida:      fVenda.hora_saida,
         },
       };
 
       const nova = await criarNotaFiscal(payload);
+
+      // Atualiza o romaneio com o nfe_numero para que o DANFE possa reconstruir os itens
+      if (fVenda.romaneio_id) {
+        await supabase.from("romaneios").update({
+          nfe_numero: nova.numero,
+          nfe_status:  "gerando",
+        }).eq("id", fVenda.romaneio_id);
+      }
 
       // Se tem API de SEFAZ configurada, tenta transmitir
       const { data: config } = await supabase
