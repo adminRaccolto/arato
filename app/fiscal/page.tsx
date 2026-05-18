@@ -62,6 +62,49 @@ const inputSt: React.CSSProperties = {
 };
 const labelSt: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
 
+// ── NF-e Saída — tipos ────────────────────────────────────────────────────────
+type NFeItem = { id: string; tipo_item: string; item: string; ncm: string; quantidade: string; unidade: string; valor_unitario: string; valor_total: number; valor_financeiro: number; cclass_trib: string };
+type TabNFe = "produtor"|"destinatario"|"operacoes"|"transportador"|"retirada"|"fiscal"|"obs"|"pontualidade";
+
+const FVENDA_INICIAL = {
+  // Produtor
+  tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "",
+  // Destinatário
+  destinatario: "", cnpj: "",
+  dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "",
+  dest_tipo_pessoa: "juridica" as "fisica"|"juridica", dest_ie: "", dest_deposito: false,
+  // Operações-CFOP
+  cfop: "6.101", natureza_texto: "", uso_imediato: false, modelo_nf: "55", serie: "1",
+  data_emissao: "", data_saida: "", hora_saida: "", dep_op: "",
+  nota_livre: false, impressa: false, fiscal: true, enviar_dt_saida: true,
+  // Transportador
+  transp_cadastrada: false, transportadora: "", frete_conta: "1",
+  transp_endereco: "", transp_numero: "", transp_cidade: "",
+  transp_tipo_pessoa: "juridica" as "fisica"|"juridica", transp_cpf_cnpj: "", transp_ie: "",
+  placa: "", uf_placa: "", peso_bruto: "0,00", peso_liquido: "0,00",
+  especie: "", marca: "", nr_volume: "", qt_volumes: "0,00",
+  // Retirada/Entrega
+  local_retirada: "", local_entrega: "",
+  // Fiscal
+  nr_guia_icms: "", num_nfp: "", serie_nfp: "", data_nfp: "",
+  situacao: "", nota_substituida: "", nota_substituta: "",
+  // Obs.
+  grupo_vendedor: "", comprador: "", data_lancamento: "", propriedade: "",
+  empreendimento: "", criterio_rateio: "", obs_manual: "", obs_legal: "",
+  observacoes: "", observacao: NATUREZAS_VENDA[0].obs,
+  // Item único (legado + adição rápida)
+  ncm: "1201.10.00", unidade: "sc", quantidade: "", valorUnitario: "",
+};
+
+const FRETES = [
+  { v: "0", l: "Por conta do Emitente (CIF)" },
+  { v: "1", l: "Por conta do Destinatário (FOB)" },
+  { v: "2", l: "Por conta de Terceiros" },
+  { v: "3", l: "Próprio por conta do Remetente" },
+  { v: "4", l: "Próprio por conta do Destinatário" },
+  { v: "9", l: "Sem frete" },
+];
+
 // ── Impressão DANFE — Modelo 55 ───────────────────────────────────────────────
 interface DanfeCfg {
   razao_social?: string; cpf_cnpj_emitente?: string; ie_emitente?: string;
@@ -481,12 +524,62 @@ function FiscalInner() {
   const [modalCancelamento, setModalCancelamento] = useState<NotaFiscal | null>(null);
   const [modalComplemento, setModalComplemento] = useState<NotaFiscal | null>(null);
 
-  // Formulário Venda
-  const [fVenda, setFVenda] = useState({
-    destinatario: "", cnpj: "", ncm: "1201.10.00",
-    cfop: "6.101", quantidade: "", unidade: "sc", valorUnitario: "",
-    observacao: NATUREZAS_VENDA[0].obs,
+  // Formulário NF-e Saída — 8 abas
+  const [fVenda, setFVenda] = useState<typeof FVENDA_INICIAL>(() => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const agora = new Date().toTimeString().slice(0, 8);
+    return { ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora };
   });
+  const fv = (k: Partial<typeof FVENDA_INICIAL>) => setFVenda(p => ({ ...p, ...k }));
+
+  // Itens do grid (aba inferior)
+  const [nfeItens, setNfeItens] = useState<NFeItem[]>([]);
+  const [editItemModal, setEditItemModal] = useState<NFeItem | null>(null);
+  const [novoItem, setNovoItem] = useState<Omit<NFeItem,"id"|"valor_total"|"valor_financeiro">>({
+    tipo_item: "Produto", item: "", ncm: "1201.10.00",
+    quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040",
+  });
+
+  // Aba ativa do modal de emissão
+  const [tabNFe, setTabNFe] = useState<TabNFe>("produtor");
+  const [subTabItem, setSubTabItem] = useState<"itens"|"servicos"|"comissoes"|"impostos">("itens");
+
+  // Safras/anos
+  const [anosSafra, setAnosSafra] = useState<{id: string; descricao: string}[]>([]);
+
+  // Totais do grid
+  const totalProdutos   = nfeItens.filter(i => i.tipo_item !== "Serviço").reduce((s, i) => s + i.valor_total, 0);
+  const totalServicos   = nfeItens.filter(i => i.tipo_item === "Serviço").reduce((s, i) => s + i.valor_total, 0);
+  const totalFinanceiro = nfeItens.reduce((s, i) => s + i.valor_financeiro, 0);
+  const totalNota       = totalProdutos + totalServicos;
+
+  // Helpers de itens
+  function calcItem(it: Omit<NFeItem,"id"|"valor_total"|"valor_financeiro">): NFeItem {
+    const vt = Math.round(Number(it.quantidade) * desmascarar(it.valor_unitario) * 100) / 100;
+    return { ...it, id: crypto.randomUUID(), valor_total: vt, valor_financeiro: vt };
+  }
+  function addItem() {
+    if (!novoItem.item || !novoItem.quantidade || !novoItem.valor_unitario) return;
+    setNfeItens(p => [...p, calcItem(novoItem)]);
+    setNovoItem({ tipo_item: "Produto", item: "", ncm: "1201.10.00", quantidade: "", unidade: "sc", valor_unitario: "", cclass_trib: "040" });
+  }
+  function removeItem(id: string) { setNfeItens(p => p.filter(i => i.id !== id)); }
+  function saveEditItem(updated: NFeItem) {
+    const vt = Math.round(Number(updated.quantidade) * desmascarar(updated.valor_unitario) * 100) / 100;
+    setNfeItens(p => p.map(i => i.id === updated.id ? { ...updated, valor_total: vt, valor_financeiro: vt } : i));
+    setEditItemModal(null);
+  }
+
+  // Auto-fill Produtor → dados do produtor
+  function onProdutorChange(prodId: string) {
+    setFVenda(p => ({ ...p, produtor_id: prodId, tipo_nota: "propria" }));
+  }
+
+  // Auto-fill CFOP → natureza + obs. legal
+  function onCfopChange(cfop: string) {
+    const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === cfop);
+    fv({ cfop, natureza_texto: nat?.descricao ?? "", observacao: nat?.obs ?? fVenda.observacao });
+  }
 
   // Formulário Devolução
   const [fDev, setFDev] = useState({
@@ -579,7 +672,10 @@ function FiscalInner() {
   useEffect(() => {
     if (!fazendaId) return;
     carregar();
-    listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) setCertProdId(d[0].id); }).catch(() => {});
+    listarProdutores(fazendaId).then(d => { setProdutores(d); if (d.length === 1) { setCertProdId(d[0].id); fv({ produtor_id: d[0].id }); } }).catch(() => {});
+    // Carrega anos_safra para o select do modal de emissão
+    supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
+      .then(({ data }) => { setAnosSafra(data ?? []); });
     // Carrega metadados de todos os certificados A1 via API (service role — sem RLS)
     void fetch(`/api/cert-meta?fazenda_id=${fazendaId}`)
       .then(r => r.json())
@@ -639,13 +735,26 @@ function FiscalInner() {
 
   // Emitir NF-e de Venda — build → sign → transmit SEFAZ
   const emitirVenda = async () => {
-    if (!fVenda.destinatario || !fVenda.quantidade || !fVenda.valorUnitario) return;
+    if (!fVenda.destinatario) { alert("Informe o Destinatário (aba Destinatário)."); return; }
     if (!moduloKeyAtivo) { alert("Selecione o emitente antes de continuar."); return; }
-    const quantidade = Number(fVenda.quantidade);
-    const valorUnit  = desmascarar(fVenda.valorUnitario);
-    const valor      = Math.round(quantidade * valorUnit * 100) / 100;
-    const nat        = NATUREZAS_VENDA.find(n => n.codigo === fVenda.cfop);
-    const ncmDesc    = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
+
+    // Itens: usa grid se preenchido, caso contrário usa o item rápido dos campos legados
+    let itensPayload = nfeItens.map(i => ({
+      descricao:      i.item,
+      ncm:            i.ncm,
+      cfop:           fVenda.cfop,
+      unidade:        i.unidade.toUpperCase(),
+      quantidade:     Number(i.quantidade),
+      valor_unitario: desmascarar(i.valor_unitario),
+    }));
+    if (itensPayload.length === 0) {
+      if (!fVenda.quantidade || !fVenda.valorUnitario) { alert("Adicione ao menos um item na grade de Itens."); return; }
+      const ncmDesc = NCM_OPTIONS.find(o => o.codigo === fVenda.ncm)?.descricao ?? "Produto Rural";
+      itensPayload = [{ descricao: ncmDesc, ncm: fVenda.ncm, cfop: fVenda.cfop, unidade: fVenda.unidade.toUpperCase(), quantidade: Number(fVenda.quantidade), valor_unitario: desmascarar(fVenda.valorUnitario) }];
+    }
+    const valorTotal = Math.round(itensPayload.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0) * 100) / 100;
+    const nat = [...NATUREZAS_VENDA, ...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop);
+
     setSalvando(true);
     try {
       const res = await fetch("/api/fiscal/emitir-nfe", {
@@ -654,19 +763,29 @@ function FiscalInner() {
         body: JSON.stringify({
           fazenda_id:   fazendaId,
           modulo_key:   moduloKeyAtivo,
-          destinatario: { nome: fVenda.destinatario, cpf_cnpj: fVenda.cnpj || undefined },
-          itens: [{
-            descricao:      ncmDesc,
-            ncm:            fVenda.ncm,
-            cfop:           fVenda.cfop,
-            unidade:        fVenda.unidade.toUpperCase(),
-            quantidade,
-            valor_unitario: valorUnit,
-          }],
-          natureza: nat?.descricao ?? fVenda.cfop,
+          destinatario: {
+            nome:        fVenda.destinatario,
+            cpf_cnpj:    fVenda.cnpj             || undefined,
+            ie:          fVenda.dest_ie          || undefined,
+            endereco:    fVenda.dest_endereco    || undefined,
+            numero:      fVenda.dest_numero      || undefined,
+            municipio:   fVenda.dest_cidade      || undefined,
+            uf:          fVenda.dest_uf          || undefined,
+            tipo_pessoa: fVenda.dest_tipo_pessoa,
+          },
+          itens:    itensPayload,
+          natureza: fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
           inf_cpl:  fVenda.observacao || undefined,
-          frete:    "9",
+          frete:    fVenda.frete_conta,
           tipo:     "1",
+          transporte: fVenda.transportadora ? {
+            nome:          fVenda.transportadora,
+            cpf_cnpj:      fVenda.transp_cpf_cnpj || undefined,
+            placa:         fVenda.placa           || undefined,
+            uf_veiculo:    fVenda.uf_placa         || undefined,
+            peso_bruto:    desmascarar(fVenda.peso_bruto),
+            peso_liquido:  desmascarar(fVenda.peso_liquido),
+          } : undefined,
         }),
       });
       const resultado = await res.json() as {
@@ -674,29 +793,32 @@ function FiscalInner() {
         dhRecbto?: string; xmlUrl?: string; cStat: string; xMotivo: string;
       };
 
-      // Persiste a nota no banco com o resultado real da SEFAZ
       await criarNotaFiscal({
         fazenda_id:        fazendaId!,
         numero:            resultado.numero ?? proximoNumero(),
-        serie:             "1",
+        serie:             fVenda.serie || "1",
         tipo:              "saida",
         cfop:              fVenda.cfop,
-        natureza:          nat?.descricao ?? fVenda.cfop,
+        natureza:          fVenda.natureza_texto || nat?.descricao || fVenda.cfop,
         destinatario:      fVenda.destinatario,
         cnpj_destinatario: fVenda.cnpj || undefined,
-        valor_total:       valor,
-        data_emissao:      TODAY,
+        valor_total:       valorTotal,
+        data_emissao:      fVenda.data_emissao || TODAY,
         status:            resultado.sucesso ? "autorizada" : "rejeitada",
-        chave_acesso:      resultado.chave  ?? undefined,
-        xml_url:           resultado.xmlUrl ?? undefined,
-        observacao:        fVenda.observacao || undefined,
+        chave_acesso:      resultado.chave    ?? undefined,
+        xml_url:           resultado.xmlUrl   ?? undefined,
+        observacao:        fVenda.observacao  || undefined,
         auto:              false,
       });
 
       await carregar();
 
       if (resultado.sucesso) {
-        setFVenda({ destinatario: "", cnpj: "", ncm: "1201.10.00", cfop: "6.101", quantidade: "", unidade: "sc", valorUnitario: "", observacao: NATUREZAS_VENDA[0].obs });
+        const hoje = new Date().toISOString().slice(0,10);
+        const agora = new Date().toTimeString().slice(0,8);
+        setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
+        setNfeItens([]);
+        setTabNFe("produtor");
         setModalVenda(false);
         alert(`✓ NF-e autorizada!\nNúmero: ${resultado.numero}\nProtocolo: ${resultado.protocolo ?? "—"}\nChave: ${resultado.chave ?? "—"}`);
       } else {
@@ -1253,65 +1375,441 @@ function FiscalInner() {
         </div>
       )}
 
-      {/* ── MODAL: Nova NF-e de Venda ── */}
-      {modalVenda && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalVenda(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 780, maxWidth: "97vw", maxHeight: "95vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Nova NF-e de Venda</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>Emissão avulsa. NF-e vinculadas a contratos são emitidas automaticamente.</div>
+      {/* ── MODAL: Nova NF-e de Venda — 8 abas ── */}
+      {modalVenda && (() => {
+        const inSt: React.CSSProperties = { ...inputSt, height: 28, padding: "3px 8px" };
+        const chk = (checked: boolean, onChange: () => void, label: string) => (
+          <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#333", cursor: "pointer", userSelect: "none" }}>
+            <input type="checkbox" checked={checked} onChange={onChange} style={{ cursor: "pointer" }} />
+            {label}
+          </label>
+        );
+        const field = (lbl: string, node: React.ReactNode, flex?: string) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 3, flex: flex ?? "1 1 0" }}>
+            <span style={{ fontSize: 10, color: "#666", whiteSpace: "nowrap" }}>{lbl}</span>
+            {node}
+          </div>
+        );
+        const row = (...children: React.ReactNode[]) => (
+          <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "flex-end" }}>{children}</div>
+        );
+        const tabCfg: {key: TabNFe; label: string}[] = [
+          {key:"produtor",     label:"Produtor"},
+          {key:"destinatario", label:"Destinatário"},
+          {key:"operacoes",    label:"Operações-CFOP"},
+          {key:"transportador",label:"Transportador"},
+          {key:"retirada",     label:"Retirada/Entrega"},
+          {key:"fiscal",       label:"Fiscal"},
+          {key:"obs",          label:"Obs./Dados Adic."},
+          {key:"pontualidade", label:"Pontualidade/Antec."},
+        ];
 
-            {emissores.length === 0 && (
-              <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#791F1F", marginBottom: 14 }}>
-                ⚠ Nenhum emitente configurado com CNPJ/CPF. Acesse <strong>Configurações → Parâmetros do Sistema → Fiscal</strong> para configurar.
+        // Produtor selecionado (para exibir dados auto-preenchidos)
+        const prodSel = produtores.find(p => p.id === fVenda.produtor_id);
+
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+            <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,0.28)" }}>
+
+              {/* Barra de título */}
+              <div style={{ background: "#1A4870", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>Notas Fiscais de Saída — Itens / Serviços</span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {emissores.length > 1 && (
+                    <select value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}
+                      style={{ padding: "3px 8px", borderRadius: 5, border: "none", fontSize: 11, background: "#0B2D50", color: "#fff" }}>
+                      {emissores.map(op => <option key={op.key} value={op.key}>{op.label}</option>)}
+                    </select>
+                  )}
+                  {emissores.length === 1 && <span style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
+                  {emissores.length === 0 && <span style={{ fontSize: 11, background: "#E24B4A50", padding: "3px 8px", borderRadius: 5 }}>⚠ Configure Parâmetros Fiscais</span>}
+                  <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setModalVenda(false); }}
+                    style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</button>
+                </div>
               </div>
-            )}
-            {emissores.length > 1 && (
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelSt}>Emitente *</label>
-                <select style={inputSt} value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}>
-                  {emissores.map(op => <option key={op.key} value={op.key}>{op.label}</option>)}
+
+              {/* Abas */}
+              <div style={{ background: "#e2e5ea", display: "flex", borderBottom: "1px solid #c8cdd8", flexShrink: 0, overflowX: "auto" }}>
+                {tabCfg.map(t => (
+                  <button key={t.key} onClick={() => setTabNFe(t.key)}
+                    style={{ padding: "7px 14px", border: "none", background: tabNFe === t.key ? "#fff" : "transparent", color: tabNFe === t.key ? "#1A4870" : "#444", fontWeight: tabNFe === t.key ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", borderTop: tabNFe === t.key ? "2px solid #1A4870" : "2px solid transparent", borderRight: "0.5px solid #c8cdd8" }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Conteúdo das abas */}
+              <div style={{ background: "#fff", padding: "12px 16px", flexShrink: 0, minHeight: 200, maxHeight: 280, overflowY: "auto", borderBottom: "1px solid #d0d5de" }}>
+
+                {/* ── ABA: PRODUTOR ── */}
+                {tabNFe === "produtor" && (
+                  <div>
+                    {row(
+                      field("Tipo de Nota",
+                        <div style={{ display: "flex", gap: 16 }}>
+                          {(["propria","terceiros"] as const).map(v => (
+                            <label key={v} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, cursor: "pointer" }}>
+                              <input type="radio" name="tipo_nota" checked={fVenda.tipo_nota === v} onChange={() => fv({tipo_nota:v})} /> {v === "propria" ? "Própria" : "Terceiros"}
+                            </label>
+                          ))}
+                        </div>, "0 0 160px"
+                      ),
+                      field("Produtor *",
+                        <select style={inSt} value={fVenda.produtor_id} onChange={e => onProdutorChange(e.target.value)}>
+                          <option value="">Selecione...</option>
+                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>, "1 1 0"
+                      ),
+                      field("Safra",
+                        <select style={inSt} value={fVenda.safra_id} onChange={e => fv({safra_id: e.target.value})}>
+                          <option value="">— sem vínculo —</option>
+                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                        </select>, "0 0 180px"
+                      ),
+                    )}
+                    {prodSel && (
+                      <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "8px 12px", background: "#F8FAFC" }}>
+                        <div style={{ fontSize: 10, color: "#666", marginBottom: 5, fontWeight: 600 }}>DADOS DO PRODUTOR</div>
+                        {row(
+                          field("Tipo Pessoa",
+                            <div style={{ display: "flex", gap: 12, paddingTop: 4 }}>
+                              {(["fisica","juridica"] as const).map(v => (
+                                <label key={v} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, cursor: "default" }}>
+                                  <input type="radio" readOnly checked={(prodSel.cpf_cnpj?.replace(/\D/g,"").length ?? 0) === (v==="fisica"?11:14)} /> {v==="fisica"?"Física":"Jurídica"}
+                                </label>
+                              ))}
+                            </div>, "0 0 140px"
+                          ),
+                          field("CPF/CNPJ", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.cpf_cnpj ?? ""} />, "0 0 160px"),
+                          field("Inscrição Estadual", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.inscricao_est ?? ""} />, "0 0 140px"),
+                          field("Endereço", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.logradouro ?? ""} />),
+                          field("Cidade", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.municipio ?? ""} />, "0 0 150px"),
+                          field("UF", <input style={{ ...inSt, background: "#f4f4f4", textAlign:"center" }} readOnly value={prodSel.estado ?? ""} />, "0 0 50px"),
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── ABA: DESTINATÁRIO ── */}
+                {tabNFe === "destinatario" && (
+                  <div>
+                    {row(
+                      field("Remetente / Destinatário *",
+                        <input style={inSt} placeholder="Bunge Alimentos S.A." value={fVenda.destinatario} onChange={e => fv({destinatario:e.target.value})} />),
+                      field("",
+                        <div style={{ paddingBottom: 2 }}>{chk(fVenda.dest_deposito, () => fv({dest_deposito:!fVenda.dest_deposito}), "Depósito Produtor")}</div>, "0 0 150px"),
+                    )}
+                    {row(
+                      field("Endereço", <input style={inSt} value={fVenda.dest_endereco} onChange={e => fv({dest_endereco:e.target.value})} />),
+                      field("Número", <input style={inSt} value={fVenda.dest_numero} onChange={e => fv({dest_numero:e.target.value})} />, "0 0 80px"),
+                      field("Cidade", <input style={inSt} value={fVenda.dest_cidade} onChange={e => fv({dest_cidade:e.target.value})} />),
+                      field("UF", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.dest_uf} onChange={e => fv({dest_uf:e.target.value.toUpperCase().slice(0,2)})} />, "0 0 50px"),
+                    )}
+                    {row(
+                      field("Tipo Pessoa",
+                        <div style={{ display: "flex", gap: 12, paddingTop: 4 }}>
+                          {(["fisica","juridica"] as const).map(v => (
+                            <label key={v} style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, cursor:"pointer" }}>
+                              <input type="radio" name="dest_tipo" checked={fVenda.dest_tipo_pessoa===v} onChange={() => fv({dest_tipo_pessoa:v})} /> {v==="fisica"?"Física":"Jurídica"}
+                            </label>
+                          ))}
+                        </div>, "0 0 160px"
+                      ),
+                      field("CPF/CNPJ *", <input style={inSt} placeholder="00.000.000/0001-00" value={fVenda.cnpj} onChange={e => fv({cnpj:e.target.value})} />, "0 0 180px"),
+                      field("Inscrição Estadual", <input style={inSt} value={fVenda.dest_ie} onChange={e => fv({dest_ie:e.target.value})} />, "0 0 160px"),
+                    )}
+                  </div>
+                )}
+
+                {/* ── ABA: OPERAÇÕES-CFOP ── */}
+                {tabNFe === "operacoes" && (
+                  <div>
+                    {row(
+                      field("CFOP *",
+                        <select style={inSt} value={fVenda.cfop} onChange={e => onCfopChange(e.target.value)}>
+                          <optgroup label="Venda">
+                            {NATUREZAS_VENDA.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
+                          </optgroup>
+                          <optgroup label="Devolução">
+                            {NATUREZAS_DEVOLUCAO.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
+                          </optgroup>
+                        </select>, "0 0 100px"),
+                      field("Natureza de Operação",
+                        <input style={inSt} value={fVenda.natureza_texto} onChange={e => fv({natureza_texto:e.target.value})} placeholder="Auto-preenchido pelo CFOP" />),
+                      field("", <div style={{paddingBottom:2}}>{chk(fVenda.uso_imediato, () => fv({uso_imediato:!fVenda.uso_imediato}), "Uso Imediato")}</div>, "0 0 110px"),
+                    )}
+                    {row(
+                      field("Modelo NF",
+                        <select style={inSt} value={fVenda.modelo_nf} onChange={e => fv({modelo_nf:e.target.value})}>
+                          <option value="55">55 — NF-e</option>
+                          <option value="57">57 — CT-e</option>
+                          <option value="65">65 — NFC-e</option>
+                        </select>, "0 0 140px"),
+                      field("Série", <input style={{ ...inSt, textAlign:"center" }} value={fVenda.serie} onChange={e => fv({serie:e.target.value})} />, "0 0 60px"),
+                      field("Data Emissão", <input style={inSt} type="date" value={fVenda.data_emissao} onChange={e => fv({data_emissao:e.target.value})} />, "0 0 140px"),
+                      field("Data Ent./Saída", <input style={inSt} type="date" value={fVenda.data_saida} onChange={e => fv({data_saida:e.target.value})} />, "0 0 140px"),
+                      field("Hora Ent./Saída", <input style={inSt} type="time" step="1" value={fVenda.hora_saida} onChange={e => fv({hora_saida:e.target.value})} />, "0 0 110px"),
+                    )}
+                    <div style={{ display: "flex", gap: 20, marginTop: 4 }}>
+                      {chk(fVenda.nota_livre,     () => fv({nota_livre:!fVenda.nota_livre}),         "Nota Livre")}
+                      {chk(fVenda.impressa,        () => fv({impressa:!fVenda.impressa}),             "Impressa")}
+                      {chk(fVenda.fiscal,          () => fv({fiscal:!fVenda.fiscal}),                 "Fiscal")}
+                      {chk(fVenda.enviar_dt_saida, () => fv({enviar_dt_saida:!fVenda.enviar_dt_saida}),"Enviar Dt. Saída NFe")}
+                    </div>
+                    {(() => { const nat = [...NATUREZAS_VENDA,...NATUREZAS_DEVOLUCAO].find(n => n.codigo === fVenda.cfop); if (!nat) return null; return <div style={{ marginTop: 8, background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 6, padding: "6px 10px", fontSize: 11, color: "#0B2D50" }}><strong>Obs. Legal:</strong> {nat.obs}</div>; })()}
+                  </div>
+                )}
+
+                {/* ── ABA: TRANSPORTADOR ── */}
+                {tabNFe === "transportador" && (
+                  <div>
+                    {row(
+                      field("",
+                        <div style={{paddingBottom:2}}>{chk(fVenda.transp_cadastrada, () => fv({transp_cadastrada:!fVenda.transp_cadastrada}), "Transportadora Cadastrada")}</div>, "0 0 200px"),
+                      field("Transportadora", <input style={inSt} placeholder="Razão Social" value={fVenda.transportadora} onChange={e => fv({transportadora:e.target.value})} />),
+                      field("Frete por conta",
+                        <select style={inSt} value={fVenda.frete_conta} onChange={e => fv({frete_conta:e.target.value})}>
+                          {FRETES.map(f => <option key={f.v} value={f.v}>{f.l}</option>)}
+                        </select>, "0 0 250px"),
+                    )}
+                    {row(
+                      field("Endereço", <input style={inSt} value={fVenda.transp_endereco} onChange={e => fv({transp_endereco:e.target.value})} />),
+                      field("Número",   <input style={inSt} value={fVenda.transp_numero}   onChange={e => fv({transp_numero:e.target.value})}   />, "0 0 80px"),
+                      field("Cidade",   <input style={inSt} value={fVenda.transp_cidade}   onChange={e => fv({transp_cidade:e.target.value})}   />),
+                    )}
+                    {row(
+                      field("Tipo Pessoa",
+                        <div style={{display:"flex",gap:12,paddingTop:4}}>
+                          {(["fisica","juridica"] as const).map(v => (
+                            <label key={v} style={{display:"flex",alignItems:"center",gap:4,fontSize:12,cursor:"pointer"}}>
+                              <input type="radio" name="transp_tipo" checked={fVenda.transp_tipo_pessoa===v} onChange={() => fv({transp_tipo_pessoa:v})} /> {v==="fisica"?"Física":"Jurídica"}
+                            </label>
+                          ))}
+                        </div>, "0 0 150px"),
+                      field("CPF/CNPJ",          <input style={inSt} value={fVenda.transp_cpf_cnpj} onChange={e => fv({transp_cpf_cnpj:e.target.value})} />, "0 0 160px"),
+                      field("Inscrição Estadual", <input style={inSt} value={fVenda.transp_ie}       onChange={e => fv({transp_ie:e.target.value})}       />, "0 0 140px"),
+                      field("Placa",    <input style={inSt} value={fVenda.placa}      onChange={e => fv({placa:e.target.value.toUpperCase()})} />, "0 0 90px"),
+                      field("UF Placa", <input style={{...inSt,textAlign:"center"}} value={fVenda.uf_placa} onChange={e => fv({uf_placa:e.target.value.toUpperCase().slice(0,2)})} />, "0 0 60px"),
+                      field("Peso Bruto (kg)", <input style={{...inSt,textAlign:"right"}} value={fVenda.peso_bruto}   onChange={e => fv({peso_bruto:aplicarMascara(e.target.value)})}   />, "0 0 110px"),
+                      field("Peso Líquido (kg)",<input style={{...inSt,textAlign:"right"}} value={fVenda.peso_liquido} onChange={e => fv({peso_liquido:aplicarMascara(e.target.value)})} />, "0 0 110px"),
+                    )}
+                    {row(
+                      field("Espécie",     <input style={inSt} value={fVenda.especie}     onChange={e => fv({especie:e.target.value})}     />, "0 0 120px"),
+                      field("Marca",       <input style={inSt} value={fVenda.marca}       onChange={e => fv({marca:e.target.value})}       />, "0 0 120px"),
+                      field("Nr. Volume",  <input style={inSt} value={fVenda.nr_volume}   onChange={e => fv({nr_volume:e.target.value})}   />, "0 0 100px"),
+                      field("Qt. Volumes", <input style={{...inSt,textAlign:"right"}} value={fVenda.qt_volumes} onChange={e => fv({qt_volumes:aplicarMascara(e.target.value)})} />, "0 0 100px"),
+                    )}
+                  </div>
+                )}
+
+                {/* ── ABA: RETIRADA/ENTREGA ── */}
+                {tabNFe === "retirada" && (
+                  <div>
+                    {row(field("Local de Retirada", <input style={inSt} value={fVenda.local_retirada} onChange={e => fv({local_retirada:e.target.value})} placeholder="Fazenda / Armazém de origem" />))}
+                    {row(field("Local de Entrega",  <input style={inSt} value={fVenda.local_entrega}  onChange={e => fv({local_entrega:e.target.value})}  placeholder="Armazém / Porto de destino" />))}
+                  </div>
+                )}
+
+                {/* ── ABA: FISCAL ── */}
+                {tabNFe === "fiscal" && (
+                  <div>
+                    {row(
+                      field("Nr. Guia ICMS",    <input style={inSt} value={fVenda.nr_guia_icms}    onChange={e => fv({nr_guia_icms:e.target.value})}    />, "0 0 120px"),
+                      field("Chave de Acesso NF-e (44 dígitos)", <input style={inSt} value={""} readOnly placeholder="Gerada pela SEFAZ após transmissão" />),
+                      field("Número NFP",  <input style={inSt} value={fVenda.num_nfp}  onChange={e => fv({num_nfp:e.target.value})}  />, "0 0 100px"),
+                      field("Série NFP",   <input style={inSt} value={fVenda.serie_nfp} onChange={e => fv({serie_nfp:e.target.value})} />, "0 0 80px"),
+                      field("Data NFP",    <input style={inSt} type="date" value={fVenda.data_nfp} onChange={e => fv({data_nfp:e.target.value})} />, "0 0 140px"),
+                    )}
+                    {row(
+                      field("Retorno SEFAZ", <textarea style={{ ...inSt, height: 56, resize: "none", fontFamily: "monospace", fontSize: 11 }} readOnly placeholder="Preenchido após transmissão" value={""} />, "1 1 0"),
+                      <div style={{display:"flex",flexDirection:"column",gap:8,flex:"0 0 200px",paddingLeft:8}} key="nfp">
+                        {field("Situação", <input style={inSt} value={fVenda.situacao} onChange={e => fv({situacao:e.target.value})} placeholder="Ex: 100 – Autorizado" />)}
+                      </div>,
+                    )}
+                    {row(
+                      field("Nota Substituída", <input style={inSt} value={fVenda.nota_substituida} onChange={e => fv({nota_substituida:e.target.value})} />, "0 0 160px"),
+                      field("Nota Substituta",  <input style={inSt} value={fVenda.nota_substituta}  onChange={e => fv({nota_substituta:e.target.value})}  />, "0 0 160px"),
+                    )}
+                  </div>
+                )}
+
+                {/* ── ABA: OBS./DADOS ADIC. ── */}
+                {tabNFe === "obs" && (
+                  <div>
+                    {row(
+                      field("Grupo Vendedor",         <input style={inSt} value={fVenda.grupo_vendedor} onChange={e => fv({grupo_vendedor:e.target.value})} />),
+                      field("Comprador",               <input style={inSt} value={fVenda.comprador}      onChange={e => fv({comprador:e.target.value})}      />),
+                      field("Data de Lançamento",      <input style={inSt} type="date" value={fVenda.data_lancamento} onChange={e => fv({data_lancamento:e.target.value})} />, "0 0 150px"),
+                    )}
+                    {row(
+                      field("Propriedade",             <input style={inSt} value={fVenda.propriedade}   onChange={e => fv({propriedade:e.target.value})}   />),
+                      field("Empreendimento Financeiro",<input style={inSt} value={fVenda.empreendimento} onChange={e => fv({empreendimento:e.target.value})} />),
+                    )}
+                    {row(
+                      field("Critério de Rateio",      <input style={inSt} value={fVenda.criterio_rateio} onChange={e => fv({criterio_rateio:e.target.value})} />),
+                      field("Observação Manual",        <input style={inSt} value={fVenda.obs_manual} onChange={e => fv({obs_manual:e.target.value})} />),
+                    )}
+                    {row(
+                      field("Obs. Legal",              <input style={inSt} value={fVenda.obs_legal} onChange={e => fv({obs_legal:e.target.value})} />),
+                      field("Observações",             <input style={inSt} value={fVenda.observacoes} onChange={e => fv({observacoes:e.target.value})} />),
+                    )}
+                    <div style={{ marginTop: 4 }}>
+                      {field("Informações Complementares — infCpl (consta no DANFE)",
+                        <textarea style={{ ...inputSt, height: 54, resize: "none", fontSize: 11 }}
+                          value={fVenda.observacao} onChange={e => fv({observacao:e.target.value})} />)}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── ABA: PONTUALIDADE/ANTEC. ── */}
+                {tabNFe === "pontualidade" && (
+                  <div style={{ padding: "20px 0", color: "#888", fontSize: 12 }}>
+                    Configurações de pontualidade e antecipação — disponíveis em versão futura.
+                  </div>
+                )}
+              </div>
+
+              {/* Grid de Itens */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                {/* Sub-abas itens */}
+                <div style={{ background: "#f0f2f5", display: "flex", borderBottom: "1px solid #c8cdd8", paddingLeft: 8, flexShrink: 0 }}>
+                  {(["itens","servicos","comissoes","impostos"] as const).map(t => (
+                    <button key={t} onClick={() => setSubTabItem(t)}
+                      style={{ padding: "5px 14px", border: "none", background: subTabItem===t?"#fff":"transparent", color: subTabItem===t?"#1A4870":"#555", fontWeight: subTabItem===t?600:400, fontSize: 12, cursor: "pointer", borderBottom: subTabItem===t?"1px solid #fff":"none" }}>
+                      {t.charAt(0).toUpperCase()+t.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+                  {/* Tabela de itens */}
+                  <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#F4F6FA", borderBottom: "1px solid #E0E4EE" }}>
+                          {["Tipo Item","Item","NCM","Quantidade","Un.","Valor Unitário","Valor Total","Valor Financeiro","cClassTrib"].map(h => (
+                            <th key={h} style={{ padding: "6px 10px", textAlign: h==="Quantidade"||h==="Valor Unitário"||h==="Valor Total"||h==="Valor Financeiro" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                          <th style={{ width: 40 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Linha de adição rápida */}
+                        <tr style={{ background: "#FFFBF0", borderBottom: "1px solid #E0E4EE" }}>
+                          <td style={{ padding: "4px 6px" }}>
+                            <select style={{ ...inSt, width: "100%" }} value={novoItem.tipo_item} onChange={e => setNovoItem(p => ({...p, tipo_item:e.target.value}))}>
+                              {["Produto","Serviço","Combustível"].map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <input style={{ ...inSt, width: "100%", minWidth: 140 }} placeholder="Descrição do item" value={novoItem.item} onChange={e => setNovoItem(p => ({...p, item:e.target.value}))} onKeyDown={e => { if (e.key === "Enter") addItem(); }} />
+                          </td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <select style={{ ...inSt, width: "100%" }} value={novoItem.ncm} onChange={e => setNovoItem(p => ({...p, ncm:e.target.value}))}>
+                              {NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <input style={{ ...inSt, textAlign:"right", width: 70 }} placeholder="0" value={novoItem.quantidade} onChange={e => setNovoItem(p => ({...p, quantidade:e.target.value.replace(/\D/g,"")}))} />
+                          </td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <select style={{ ...inSt, width: 55 }} value={novoItem.unidade} onChange={e => setNovoItem(p => ({...p, unidade:e.target.value}))}>
+                              {["sc","kg","ton","@","L","cx","un"].map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <input style={{ ...inSt, textAlign:"right", width: 90 }} placeholder="0,00" value={novoItem.valor_unitario} onChange={e => setNovoItem(p => ({...p, valor_unitario:aplicarMascara(e.target.value)}))} />
+                          </td>
+                          <td style={{ padding: "4px 6px", textAlign:"right", fontWeight:600, color: novoItem.quantidade&&novoItem.valor_unitario?"#1a1a1a":"#aaa" }}>
+                            {novoItem.quantidade && novoItem.valor_unitario ? fmtMoeda(Math.round(Number(novoItem.quantidade)*desmascarar(novoItem.valor_unitario)*100)/100) : "—"}
+                          </td>
+                          <td style={{ padding: "4px 6px", textAlign:"right", color:"#aaa" }}>—</td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <input style={{ ...inSt, width: 60 }} value={novoItem.cclass_trib} onChange={e => setNovoItem(p => ({...p, cclass_trib:e.target.value}))} />
+                          </td>
+                          <td style={{ padding: "4px 6px", textAlign:"center" }}>
+                            <button onClick={addItem} title="Adicionar item"
+                              style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 4, width: 24, height: 24, cursor: "pointer", fontWeight: 700, fontSize: 14, lineHeight: "1" }}>+</button>
+                          </td>
+                        </tr>
+                        {nfeItens.length === 0 && (
+                          <tr><td colSpan={10} style={{ textAlign:"center", padding: "24px 0", color: "#aaa", fontSize: 12 }}>{"<Nenhum dado encontrado>"}</td></tr>
+                        )}
+                        {nfeItens.map(it => (
+                          <tr key={it.id} style={{ borderBottom: "0.5px solid #E8ECF3" }}>
+                            <td style={{ padding: "5px 10px", color: "#555", fontSize: 11 }}>{it.tipo_item}</td>
+                            <td style={{ padding: "5px 10px", color: "#1a1a1a" }}>{it.item}</td>
+                            <td style={{ padding: "5px 10px", color: "#555", fontSize: 11 }}>{it.ncm}</td>
+                            <td style={{ padding: "5px 10px", textAlign:"right" }}>{it.quantidade}</td>
+                            <td style={{ padding: "5px 10px", color: "#555" }}>{it.unidade}</td>
+                            <td style={{ padding: "5px 10px", textAlign:"right" }}>{fmtMoeda(desmascarar(it.valor_unitario))}</td>
+                            <td style={{ padding: "5px 10px", textAlign:"right", fontWeight:600 }}>{fmtMoeda(it.valor_total)}</td>
+                            <td style={{ padding: "5px 10px", textAlign:"right" }}>{fmtMoeda(it.valor_financeiro)}</td>
+                            <td style={{ padding: "5px 10px", color: "#555", fontSize: 11 }}>{it.cclass_trib}</td>
+                            <td style={{ padding: "4px 6px", textAlign:"center" }}>
+                              <button onClick={() => setEditItemModal({...it})} title="Editar"
+                                style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 4, color: "#0B2D50", width: 22, height: 22, cursor: "pointer", fontSize: 11 }}>✏</button>
+                              <button onClick={() => removeItem(it.id)} title="Remover"
+                                style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 4, color: "#791F1F", width: 22, height: 22, cursor: "pointer", fontSize: 11, marginLeft: 3 }}>−</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Footer totais */}
+                <div style={{ background: "#F4F6FA", borderTop: "1px solid #D0D5DE", padding: "6px 16px", display: "flex", alignItems: "center", gap: 24, flexShrink: 0, fontSize: 12 }}>
+                  <span style={{ color: "#555" }}>Vl. Produtos: <strong style={{ color: "#1a1a1a" }}>{fmtMoeda(totalProdutos)}</strong></span>
+                  <span style={{ color: "#555" }}>Vr. Serviços: <strong style={{ color: "#1a1a1a" }}>{fmtMoeda(totalServicos)}</strong></span>
+                  <span style={{ color: "#555" }}>Vl. Financeiro: <strong style={{ color: "#1a1a1a" }}>{fmtMoeda(totalFinanceiro)}</strong></span>
+                  <span style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13 }}>Total Nota Fiscal: <span style={{ color: "#16A34A" }}>{fmtMoeda(totalNota)}</span></span>
+                </div>
+              </div>
+
+              {/* Barra de ações */}
+              <div style={{ background: "#E8EBF2", borderTop: "1px solid #C8CDD8", padding: "8px 16px", display: "flex", justifyContent: "flex-end", gap: 8, flexShrink: 0 }}>
+                <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setModalVenda(false); }}
+                  style={{ padding: "7px 18px", border: "0.5px solid #C8CDD8", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 13 }}>
+                  Cancelar
+                </button>
+                <button onClick={emitirVenda} disabled={!fVenda.destinatario || !moduloKeyAtivo || salvando}
+                  style={{ padding: "7px 20px", background: fVenda.destinatario && moduloKeyAtivo && !salvando ? "#1A4870" : "#aaa", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                  {salvando ? "⟳ Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── MODAL: Editar Item ── */}
+      {editItemModal && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:110 }}>
+          <div style={{ background:"#fff", borderRadius:10, padding:22, width:640, maxWidth:"96vw" }}>
+            <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Editar Item</div>
+            {[
+              { l:"Tipo Item",   node:<select style={inputSt} value={editItemModal.tipo_item} onChange={e => setEditItemModal(p=>p?({...p,tipo_item:e.target.value}):null)}>{["Produto","Serviço","Combustível"].map(v=><option key={v}>{v}</option>)}</select> },
+              { l:"Descrição *", node:<input style={inputSt} value={editItemModal.item} onChange={e => setEditItemModal(p=>p?({...p,item:e.target.value}):null)} /> },
+              { l:"NCM",         node:<select style={inputSt} value={editItemModal.ncm} onChange={e => setEditItemModal(p=>p?({...p,ncm:e.target.value}):null)}>{NCM_OPTIONS.map(o=><option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</select> },
+            ].map(r => <div key={r.l} style={{marginBottom:10}}><label style={labelSt}>{r.l}</label>{r.node}</div>)}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 80px 120px 120px", gap:10, marginBottom:10 }}>
+              <div><label style={labelSt}>Descrição</label><input style={inputSt} readOnly value={editItemModal.item} /></div>
+              <div><label style={labelSt}>Un.</label>
+                <select style={inputSt} value={editItemModal.unidade} onChange={e => setEditItemModal(p=>p?({...p,unidade:e.target.value}):null)}>
+                  {["sc","kg","ton","@","L","cx","un"].map(v=><option key={v}>{v}</option>)}
                 </select>
               </div>
-            )}
-            {emissores.length === 1 && (
-              <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#555", marginBottom: 14, display: "flex", gap: 6, alignItems: "center" }}>
-                <span style={{ color: "#888" }}>Emitente:</span>
-                <strong style={{ color: "#1a1a1a" }}>{emissores[0].label}</strong>
-              </div>
-            )}
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 14, marginBottom: 14 }}>
-              <div><label style={labelSt}>Destinatário *</label><input style={inputSt} placeholder="Bunge Alimentos S.A." value={fVenda.destinatario} onChange={e => setFVenda(p => ({ ...p, destinatario: e.target.value }))} /></div>
-              <div><label style={labelSt}>CNPJ / CPF</label><input style={inputSt} placeholder="00.000.000/0001-00" value={fVenda.cnpj} onChange={e => setFVenda(p => ({ ...p, cnpj: e.target.value }))} /></div>
+              <div><label style={labelSt}>Quantidade</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.quantidade} onChange={e => setEditItemModal(p=>p?({...p,quantidade:e.target.value.replace(/\D/g,"")}):null)} /></div>
+              <div><label style={labelSt}>Valor Unitário</label><input style={{...inputSt,textAlign:"right"}} value={editItemModal.valor_unitario} onChange={e => setEditItemModal(p=>p?({...p,valor_unitario:aplicarMascara(e.target.value)}):null)} /></div>
             </div>
-            <div style={{ marginBottom: 6 }}>
-              <label style={labelSt}>Natureza da Operação / CFOP *</label>
-              <select style={inputSt} value={fVenda.cfop} onChange={e => { const nat = NATUREZAS_VENDA.find(n => n.codigo === e.target.value); setFVenda(p => ({ ...p, cfop: e.target.value, observacao: nat?.obs ?? p.observacao })); }}>
-                {NATUREZAS_VENDA.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}
-              </select>
-            </div>
-            {(() => { const nat = NATUREZAS_VENDA.find(n => n.codigo === fVenda.cfop); if (!nat) return null; return <div style={{ background: "#EBF4FB", border: "0.5px solid #93C5E8", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 11, color: "#0B2D50" }}><strong>Obrigações:</strong> {nat.obs}</div>; })()}
-
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 100px 100px 160px", gap: 14, marginBottom: 14 }}>
-              <div><label style={labelSt}>NCM *</label><select style={inputSt} value={fVenda.ncm} onChange={e => setFVenda(p => ({ ...p, ncm: e.target.value }))}>{NCM_OPTIONS.map(o => <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.descricao}</option>)}</select></div>
-              <div><label style={labelSt}>Quantidade *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0" value={fVenda.quantidade} onChange={e => setFVenda(p => ({ ...p, quantidade: e.target.value.replace(/\D/g, "") }))} /></div>
-              <div><label style={labelSt}>Unidade</label><select style={inputSt} value={fVenda.unidade} onChange={e => setFVenda(p => ({ ...p, unidade: e.target.value }))}><option value="sc">sc</option><option value="kg">kg</option><option value="ton">ton</option><option value="@">@</option></select></div>
-              <div><label style={labelSt}>Valor unit. (R$) *</label><input style={{ ...inputSt, textAlign: "right" }} type="text" inputMode="numeric" placeholder="0,00" value={fVenda.valorUnitario} onChange={e => setFVenda(p => ({ ...p, valorUnitario: aplicarMascara(e.target.value) }))} /></div>
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ ...labelSt, display: "flex", alignItems: "center", gap: 8 }}>
-                Informações Complementares (infCpl)
-                <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "1px 7px", borderRadius: 6, fontWeight: 600 }}>Obrigatório · consta no DANFE</span>
-              </label>
-              <textarea style={{ ...inputSt, height: 70, resize: "vertical", fontSize: 12 }} value={fVenda.observacao} onChange={e => setFVenda(p => ({ ...p, observacao: e.target.value }))} />
-            </div>
-            {(() => { const v = fVenda.quantidade && fVenda.valorUnitario ? Math.round(Number(fVenda.quantidade) * desmascarar(fVenda.valorUnitario) * 100) / 100 : 0; if (!v) return null; return <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50", marginBottom: 12 }}>Valor total: <strong style={{ fontSize: 15 }}>{fmtMoeda(v)}</strong></div>; })()}
-            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50", marginBottom: 16 }}>⟳ Após salvar, a NF-e será assinada e transmitida à SEFAZ automaticamente.</div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalVenda(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={emitirVenda} disabled={!fVenda.destinatario || !fVenda.quantidade || !fVenda.valorUnitario || !moduloKeyAtivo || salvando} style={{ padding: "8px 18px", background: fVenda.destinatario && fVenda.quantidade && fVenda.valorUnitario && moduloKeyAtivo && !salvando ? "#1A4870" : "#666", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Transmitindo para SEFAZ…" : "⟳ Emitir NF-e"}
+            <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+              <button onClick={() => setEditItemModal(null)} style={{ padding:"7px 16px", border:"0.5px solid #D4DCE8", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:13 }}>Cancelar</button>
+              <button onClick={() => { if (editItemModal) saveEditItem(editItemModal); }}
+                style={{ padding:"7px 16px", background:"#1A4870", color:"#fff", border:"none", borderRadius:6, fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                Salvar
               </button>
             </div>
           </div>
