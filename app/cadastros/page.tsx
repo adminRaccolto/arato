@@ -330,7 +330,7 @@ function CadastrosInner() {
     subgrupo: "", unidade: "L" as Insumo["unidade"],
     fabricante: "", estoque: "0", estoque_minimo: "0",
     valor_unitario: "0", lote: "", validade: "",
-    deposito_id: "", bomba_id: "",
+    deposito_id: "", bomba_id: "", principio_ativo_id: "",
   });
 
   // ── Tabelas Auxiliares ──
@@ -498,6 +498,7 @@ function CadastrosInner() {
       listarSubgruposInsumo(fazendaId).then(setSubgruposInsumo).catch(() => {});
       listarDepositos(fazendaId).then(setDepositos).catch(() => {});
       listarBombas(fazendaId).then(setBombas).catch(() => {});
+      listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
     }
     if (aba === "depositos")       listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
@@ -2585,7 +2586,8 @@ function CadastrosInner() {
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "",
-              } : { nome: "", categoria: "defensivo", subgrupo: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "" });
+                principio_ativo_id: ins.principio_ativo_id ?? "",
+              } : { nome: "", categoria: "defensivo", subgrupo: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
               setModalIns(true);
             };
 
@@ -2594,20 +2596,21 @@ function CadastrosInner() {
               try {
                 const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
-                  fazenda_id:     fazendaId!,
-                  nome:           fIns.nome.trim(),
-                  categoria:      fIns.categoria,
-                  subgrupo:       fIns.subgrupo || undefined,
-                  unidade:        isComb ? "L" : fIns.unidade,
-                  fabricante:     isComb ? undefined : (fIns.fabricante || undefined),
-                  estoque:        parseFloat(fIns.estoque) || 0,
-                  estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
-                  valor_unitario: parseFloat(fIns.valor_unitario) || 0,
-                  lote:           isComb ? undefined : (fIns.lote || undefined),
-                  validade:       isComb ? undefined : (fIns.validade || undefined),
-                  deposito_id:    isComb ? undefined : (fIns.deposito_id || undefined),
-                  bomba_id:       isComb ? (fIns.bomba_id || undefined) : undefined,
-                  tipo:           (["peca","material","uso_consumo","escritorio"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
+                  fazenda_id:          fazendaId!,
+                  nome:                fIns.nome.trim(),
+                  categoria:           fIns.categoria,
+                  subgrupo:            fIns.subgrupo || undefined,
+                  unidade:             isComb ? "L" : fIns.unidade,
+                  fabricante:          isComb ? undefined : (fIns.fabricante || undefined),
+                  estoque:             parseFloat(fIns.estoque) || 0,
+                  estoque_minimo:      parseFloat(fIns.estoque_minimo) || 0,
+                  valor_unitario:      parseFloat(fIns.valor_unitario) || 0,
+                  lote:                isComb ? undefined : (fIns.lote || undefined),
+                  validade:            isComb ? undefined : (fIns.validade || undefined),
+                  deposito_id:         isComb ? undefined : (fIns.deposito_id || undefined),
+                  bomba_id:            isComb ? (fIns.bomba_id || undefined) : undefined,
+                  principio_ativo_id:  (!isComb && fIns.principio_ativo_id) ? fIns.principio_ativo_id : undefined,
+                  tipo:                (["peca","material","uso_consumo","escritorio"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
                 };
                 if (editIns) {
                   await atualizarInsumo(editIns.id, payload);
@@ -2782,6 +2785,33 @@ function CadastrosInner() {
                         <div>
                           <label style={lbl}>Fabricante / Marca</label>
                           <input style={inp} placeholder="Ex: Bayer, Syngenta" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                        </div>
+                      )}
+                      {/* Princípio Ativo — apenas para defensivos, fertilizantes e inoculantes */}
+                      {!isComb && ["defensivo","fertilizante","inoculante"].includes(fIns.categoria) && (
+                        <div style={{ gridColumn: "1/-1" }}>
+                          <label style={lbl}>
+                            Princípio Ativo
+                            <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>— vincula ao estoque canônico (usado pelo BOT)</span>
+                          </label>
+                          <select style={inp} value={fIns.principio_ativo_id} onChange={e => setFIns(p => ({ ...p, principio_ativo_id: e.target.value }))}>
+                            <option value="">— Sem vínculo (identificado só pelo nome) —</option>
+                            {principios
+                              .filter(pa => {
+                                if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria);
+                                if (fIns.categoria === "fertilizante") return pa.categoria === "fertilizante";
+                                if (fIns.categoria === "inoculante") return pa.categoria === "inoculante";
+                                return true;
+                              })
+                              .map(pa => (
+                                <option key={pa.id} value={pa.id}>{pa.nome}</option>
+                              ))}
+                          </select>
+                          {principios.length === 0 && (
+                            <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>
+                              Nenhum princípio ativo cadastrado. Acesse a aba "Princípios Ativos (BOT)" para criar.
+                            </div>
+                          )}
                         </div>
                       )}
                       {/* Unidade */}
@@ -3433,7 +3463,7 @@ function CadastrosInner() {
             const ncsPorPA = (paId: string) => nomesComerciais.filter(n => n.principio_ativo_id === paId);
 
             const preCarregarPA = async () => {
-              if (!confirm("Isso irá adicionar os princípios ativos mais usados no MT + principais nomes comerciais. Continuar?")) return;
+              if (!confirm("Isso irá adicionar os princípios ativos registrados no MAPA + principais nomes comerciais usados no Brasil. Continuar?")) return;
               setSalvandoPA(true);
               try {
                 const precarga: Array<{ nome: string; categoria: PrincipioAtivo["categoria"]; unidade: PrincipioAtivo["unidade"]; nomes: string[] }> = [
@@ -3518,7 +3548,7 @@ function CadastrosInner() {
                   <div style={{ display: "flex", gap: 8 }}>
                     <button style={{ ...btnV, background: "#F4F6FA", color: "#555", border: "0.5px solid #D4DCE8" }}
                       onClick={preCarregarPA} disabled={salvandobotPA}>
-                      {salvandobotPA ? "Carregando..." : "Pré-carregar (MT)"}
+                      {salvandobotPA ? "Carregando..." : "Pré-carregar (MAPA)"}
                     </button>
                     <button style={btnV} onClick={() => { setEditPA(null); setFPA({ nome: "", categoria: "herbicida", unidade: "L", observacao: "" }); setModalPA(true); }}>
                       + Novo Princípio Ativo
@@ -3543,7 +3573,7 @@ function CadastrosInner() {
                 {paFiltrados.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "56px 0", color: "#888", fontSize: 13 }}>
                     {principios.length === 0
-                      ? <span>Nenhum princípio ativo cadastrado. Clique em <strong>Pré-carregar (MT)</strong> para adicionar os defensivos mais usados.</span>
+                      ? <span>Nenhum princípio ativo cadastrado. Clique em <strong>Pré-carregar (MAPA)</strong> para adicionar os defensivos registrados no Brasil.</span>
                       : "Nenhum resultado para os filtros selecionados"}
                   </div>
                 ) : (
