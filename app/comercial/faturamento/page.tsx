@@ -240,6 +240,9 @@ export default function Faturamento() {
     });
 
     // Item único em kg — peso classificado após descontos
+    // precoKg pode ter 3-4 casas decimais (ex: R$0,013/kg para milho R$0,78/sc÷60kg)
+    // não usar aplicarMascara (trunca para 2 casas) — formatar diretamente com 4 casas
+    const precoKgFmt = precoKg.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 6 });
     setNfeItens([{
       id: crypto.randomUUID(),
       tipo_item: "Produto",
@@ -247,7 +250,7 @@ export default function Faturamento() {
       ncm:       NCM_PRODUTO[contrato.produto] ?? "1201.10.00",
       quantidade: String(pesoKg),
       unidade:   "kg",
-      valor_unitario: aplicarMascara(String(Math.round(precoKg * 100))),
+      valor_unitario: precoKgFmt,
       valor_total: valorTotal,
       valor_financeiro: valorTotal,
       cclass_trib: "",
