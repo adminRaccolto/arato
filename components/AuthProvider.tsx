@@ -18,6 +18,7 @@ type AuthCtx = {
   emailUsuario:           string | null;
   userRole:               string | null;   // 'client' | 'raccotlo' | null
   nomeFazendaSelecionada: string | null;
+  nomeProdutor:           string | null;   // nome do produtor/agricultor (exibido no topo)
   logoCliente:            string | null;   // logo da conta (por cliente SaaS)
   onboardingAtivo:        boolean;
   stepsCompletos:         number;
@@ -27,7 +28,7 @@ type AuthCtx = {
   podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
   podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
   refetchOnboarding:      () => void;
-  selectFazenda:          (id: string, nome: string) => void;
+  selectFazenda:          (id: string, fazendaNome: string, produtorNome?: string | null) => void;
   setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
   setLogoCliente:         (url: string | null) => void;
   clearFazenda:           () => void;
@@ -41,6 +42,7 @@ const Ctx = createContext<AuthCtx>({
   emailUsuario:           null,
   userRole:               null,
   nomeFazendaSelecionada: null,
+  nomeProdutor:           null,
   logoCliente:            null,
   onboardingAtivo:        false,
   stepsCompletos:         0,
@@ -64,6 +66,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [emailUsuario,           setEmailUsuario]           = useState<string | null>(null);
   const [userRole,               setUserRole]               = useState<string | null>(null);
   const [nomeFazendaSelecionada, setNomeFazendaSelecionada] = useState<string | null>(null);
+  const [nomeProdutor,           setNomeProdutor]           = useState<string | null>(null);
   const [onboardingAtivo,        setOnboardingAtivo]        = useState<boolean>(false);
   const [stepsCompletos,         setStepsCompletos]         = useState<number>(0);
   const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
@@ -71,19 +74,24 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const selectFazenda = useCallback((id: string, nome: string) => {
-    localStorage.setItem("raccotlo_fazenda_id",   id);
-    localStorage.setItem("raccotlo_fazenda_nome", nome);
+  const selectFazenda = useCallback((id: string, fazendaNome: string, produtorNome?: string | null) => {
+    localStorage.setItem("raccotlo_fazenda_id",       id);
+    localStorage.setItem("raccotlo_fazenda_nome",     fazendaNome);
+    if (produtorNome) localStorage.setItem("raccotlo_produtor_nome", produtorNome);
+    else              localStorage.removeItem("raccotlo_produtor_nome");
     setFazendaId(id);
-    setNomeFazendaSelecionada(nome);
+    setNomeFazendaSelecionada(fazendaNome);
+    setNomeProdutor(produtorNome ?? null);
     router.push("/");
   }, [router]);
 
   const clearFazenda = useCallback(() => {
     localStorage.removeItem("raccotlo_fazenda_id");
     localStorage.removeItem("raccotlo_fazenda_nome");
+    localStorage.removeItem("raccotlo_produtor_nome");
     setFazendaId(null);
     setNomeFazendaSelecionada(null);
+    setNomeProdutor(null);
     router.push("/seletor-cliente");
   }, [router]);
 
@@ -138,11 +146,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
       if (role === "raccotlo") {
         // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
-        const savedId   = localStorage.getItem("raccotlo_fazenda_id");
-        const savedNome = localStorage.getItem("raccotlo_fazenda_nome");
+        const savedId          = localStorage.getItem("raccotlo_fazenda_id");
+        const savedNome        = localStorage.getItem("raccotlo_fazenda_nome");
+        const savedProdutorNome = localStorage.getItem("raccotlo_produtor_nome");
         if (savedId) {
           setFazendaId(savedId);
           setNomeFazendaSelecionada(savedNome);
+          setNomeProdutor(savedProdutorNome);
         } else if (typeof window !== "undefined" && window.location.pathname !== "/seletor-cliente") {
           router.push("/seletor-cliente");
         }
@@ -289,13 +299,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LAST_ACTIVE_KEY);
     localStorage.removeItem("raccotlo_fazenda_id");
     localStorage.removeItem("raccotlo_fazenda_nome");
+    localStorage.removeItem("raccotlo_produtor_nome");
     await supabase.auth.signOut();
   }
 
   return (
     <Ctx.Provider value={{
       fazendaId, contaId, nomeUsuario, emailUsuario, userRole,
-      nomeFazendaSelecionada, logoCliente, setLogoCliente,
+      nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       permissoes, podeAcessar, podeEscrever,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,

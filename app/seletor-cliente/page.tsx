@@ -10,6 +10,7 @@ interface FazendaItem {
   municipio?: string;
   estado?: string;
   area_total_ha?: number;
+  produtor_nome?: string | null;
 }
 
 const inp: React.CSSProperties = {
@@ -89,7 +90,8 @@ export default function SeletorCliente() {
 
   const lista = fazendas.filter(f =>
     f.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    (f.municipio ?? "").toLowerCase().includes(busca.toLowerCase())
+    (f.municipio ?? "").toLowerCase().includes(busca.toLowerCase()) ||
+    (f.produtor_nome ?? "").toLowerCase().includes(busca.toLowerCase())
   );
 
   const podeSubmeter = !criando && fCliente.nome.trim() && fCliente.fazenda_nome.trim() && fCliente.user_email.trim() && fCliente.user_senha.trim();
@@ -156,20 +158,30 @@ export default function SeletorCliente() {
             {lista.map(f => (
               <button
                 key={f.id}
-                onClick={() => selectFazenda(f.id, f.nome)}
+                onClick={() => selectFazenda(f.id, f.nome, f.produtor_nome)}
                 style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "20px 22px", cursor: "pointer", textAlign: "left", transition: "box-shadow 0.15s, border-color 0.15s", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(26,92,56,0.12)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#1A5C38"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
               >
+                {/* Avatar — iniciais do produtor ou da fazenda */}
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: "#D5E8F5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, fontSize: 16, fontWeight: 700, color: "#1A4870" }}>
-                  {f.nome.substring(0, 2).toUpperCase()}
+                  {(f.produtor_nome ?? f.nome).substring(0, 2).toUpperCase()}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>{f.nome}</div>
+                {/* Nome principal = Produtor */}
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>
+                  {f.produtor_nome ?? f.nome}
+                </div>
+                {/* Fazenda como referência secundária */}
+                {f.produtor_nome && (
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+                    {f.nome}
+                  </div>
+                )}
                 {(f.municipio || f.estado) && (
-                  <div style={{ fontSize: 12, color: "#666" }}>{[f.municipio, f.estado].filter(Boolean).join(" — ")}</div>
+                  <div style={{ fontSize: 12, color: "#666" }}>{[f.municipio, f.estado].filter(Boolean).join(" · ")}</div>
                 )}
                 {f.area_total_ha ? (
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>{f.area_total_ha.toLocaleString("pt-BR")} ha</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>{f.area_total_ha.toLocaleString("pt-BR")} ha</div>
                 ) : null}
                 <div style={{ marginTop: 14, fontSize: 11, fontWeight: 600, color: "#1A5C38", display: "flex", alignItems: "center", gap: 4 }}>
                   Acessar →

@@ -245,6 +245,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [openSub,          setOpenSub]          = useState<string | null>(null);
   const [panelGroup,       setPanelGroup]        = useState<string>("Imóvel Rural");
   const [fazenda,          setFazenda]          = useState<Fazenda | null>(null);
+  const [produtorNome,     setProdutorNome]     = useState<string | null>(null);
   const [logoArato,        setLogoArato]        = useState<string | null>(null);
   const [nomeArato,        setNomeArato]        = useState("Arato");
   const [fazendas,         setFazendas]         = useState<Fazenda[]>([]);
@@ -252,13 +253,24 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, logoCliente } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, nomeProdutor, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, logoCliente } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!fazendaId) return;
     supabase.from("fazendas").select("*").eq("id", fazendaId).single()
-      .then(({ data }) => { if (data) setFazenda(data); });
+      .then(({ data }) => {
+        if (data) {
+          setFazenda(data);
+          // Busca nome do produtor principal para exibir no topo
+          if (data.produtor_id) {
+            supabase.from("produtores").select("nome").eq("id", data.produtor_id).single()
+              .then(({ data: p }) => { if (p) setProdutorNome(p.nome); });
+          } else {
+            setProdutorNome(null);
+          }
+        }
+      });
   }, [fazendaId]);
 
   useEffect(() => {
@@ -327,8 +339,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   // Verifica se algum link dentro de um subgroup está ativo
   const subgroupAtivo = (sg: NavSubgroup) => sg.children.some(c => isAtivo(c.path));
 
-  const iniciaisFazenda = fazenda
-    ? fazenda.nome.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
+  const nomeIdentidade = produtorNome ?? fazenda?.nome ?? null;
+  const iniciaisFazenda = nomeIdentidade
+    ? nomeIdentidade.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
     : "—";
 
   // ── Renderiza item do dropdown (link, divider ou subgroup) ──
@@ -475,8 +488,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                   </div>
                 )}
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.25 }}>{fazenda.nome}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.25 }}>
+                    {produtorNome ?? fazenda.nome}
+                  </div>
                   <div style={{ fontSize: 11, color: "#666" }}>
+                    {produtorNome ? `${fazenda.nome} · ` : ""}
                     {fazenda.municipio} · {fazenda.estado}
                     {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
                   </div>
@@ -523,7 +539,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 display: "flex", alignItems: "center", gap: 6,
               }}>
                 <span style={{ opacity: 0.7 }}>Acessando:</span>
-                <span>{nomeFazendaSelecionada}</span>
+                <span>{nomeProdutor ?? nomeFazendaSelecionada}</span>
+                {nomeProdutor && (
+                  <span style={{ opacity: 0.55, fontWeight: 400 }}>· {nomeFazendaSelecionada}</span>
+                )}
               </div>
               <button
                 onClick={clearFazenda}

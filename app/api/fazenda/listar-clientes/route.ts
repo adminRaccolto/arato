@@ -22,12 +22,30 @@ export async function GET(req: Request) {
     if (perfil?.role !== "raccotlo") return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
 
-  const { data, error } = await sb
+  const { data: faz, error } = await sb
     .from("fazendas")
-    .select("id, nome, municipio, estado, area_total_ha")
+    .select("id, nome, municipio, estado, area_total_ha, produtor_id")
     .eq("raccolto_acesso", true)
     .order("nome");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ fazendas: data ?? [] });
+
+  // Enriquece com nome do produtor principal de cada fazenda
+  const produtorIds = [...new Set((faz ?? []).filter(f => f.produtor_id).map(f => f.produtor_id as string))];
+  let produtorMap: Record<string, string> = {};
+  if (produtorIds.length > 0) {
+    const { data: prods } = await sb.from("produtores").select("id, nome").in("id", produtorIds);
+    produtorMap = Object.fromEntries((prods ?? []).map(p => [p.id, p.nome]));
+  }
+
+  const fazendas = (faz ?? []).map(f => ({
+    id:            f.id,
+    nome:          f.nome,
+    municipio:     f.municipio,
+    estado:        f.estado,
+    area_total_ha: f.area_total_ha,
+    produtor_nome: f.produtor_id ? (produtorMap[f.produtor_id] ?? null) : null,
+  }));
+
+  return NextResponse.json({ fazendas });
 }
