@@ -2592,7 +2592,15 @@ function CadastrosInner() {
             };
 
             const salvarIns = async () => {
+              const isPA = ["defensivo","fertilizante","inoculante"].includes(fIns.categoria);
+              if (isPA && !fIns.principio_ativo_id) {
+                setErro("Selecione o princípio ativo antes de salvar."); return;
+              }
+              if (!isPA && !fIns.nome.trim()) {
+                setErro("Informe o nome do insumo."); return;
+              }
               setSalvando(true);
+              setErro("");
               try {
                 const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
@@ -2744,17 +2752,12 @@ function CadastrosInner() {
                   return (
                   <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Insumo"} onClose={() => setModalIns(false)} width={720}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                      {/* Nome */}
-                      <div style={{ gridColumn: "1/-1" }}>
-                        <label style={lbl}>Nome *</label>
-                        <input style={inp} placeholder={isComb ? "Ex: Diesel S10, Gasolina" : "Ex: Roundup Original"} value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
-                      </div>
-                      {/* Categoria */}
+                      {/* Categoria sempre primeiro */}
                       <div>
                         <label style={lbl}>Categoria *</label>
                         <select style={inp} value={fIns.categoria} onChange={e => {
                           const cat = e.target.value as Insumo["categoria"];
-                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "combustivel" ? "L" : p.unidade }));
+                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "combustivel" ? "L" : p.unidade, principio_ativo_id: "", nome: "" }));
                         }}>
                           <option value="semente">Semente</option>
                           <option value="fertilizante">Fertilizante</option>
@@ -2780,39 +2783,69 @@ function CadastrosInner() {
                           <input style={inp} placeholder={isComb ? "Ex: Diesel, Gasolina" : "Ex: Herbicida"} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
                         )}
                       </div>
-                      {/* Fabricante/Marca — apenas para não-combustível */}
-                      {!isComb && (
-                        <div>
-                          <label style={lbl}>Fabricante / Marca</label>
-                          <input style={inp} placeholder="Ex: Bayer, Syngenta" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
-                        </div>
-                      )}
-                      {/* Princípio Ativo — apenas para defensivos, fertilizantes e inoculantes */}
-                      {!isComb && ["defensivo","fertilizante","inoculante"].includes(fIns.categoria) && (
-                        <div style={{ gridColumn: "1/-1" }}>
-                          <label style={lbl}>
-                            Princípio Ativo
-                            <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>— vincula ao estoque canônico (usado pelo BOT)</span>
-                          </label>
-                          <select style={inp} value={fIns.principio_ativo_id} onChange={e => setFIns(p => ({ ...p, principio_ativo_id: e.target.value }))}>
-                            <option value="">— Sem vínculo (identificado só pelo nome) —</option>
-                            {principios
-                              .filter(pa => {
-                                if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria);
-                                if (fIns.categoria === "fertilizante") return pa.categoria === "fertilizante";
-                                if (fIns.categoria === "inoculante") return pa.categoria === "inoculante";
-                                return true;
-                              })
-                              .map(pa => (
-                                <option key={pa.id} value={pa.id}>{pa.nome}</option>
-                              ))}
-                          </select>
-                          {principios.length === 0 && (
-                            <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>
-                              Nenhum princípio ativo cadastrado. Acesse a aba "Princípios Ativos (BOT)" para criar.
+
+                      {/* ── Defensivos / Fertilizantes / Inoculantes: PA é o nome canônico ── */}
+                      {!isComb && ["defensivo","fertilizante","inoculante"].includes(fIns.categoria) ? (
+                        <>
+                          {/* Seletor de PA — o nome do insumo deriva daqui */}
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>
+                              Princípio Ativo *
+                              <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>
+                                — o estoque é registrado pelo ingrediente ativo, não pela marca
+                              </span>
+                            </label>
+                            {principios.length === 0 ? (
+                              <div style={{ padding: "10px 12px", background: "#FBF3E0", borderRadius: 8, fontSize: 12, color: "#7A5A12", border: "0.5px solid #F0D9A0" }}>
+                                Nenhum princípio ativo cadastrado. Acesse <strong>Cadastros → Princípios Ativos (BOT)</strong> para criar antes de cadastrar este insumo.
+                              </div>
+                            ) : (
+                              <select style={inp} value={fIns.principio_ativo_id} onChange={e => {
+                                const paId = e.target.value;
+                                const pa = principios.find(p => p.id === paId);
+                                setFIns(prev => ({ ...prev, principio_ativo_id: paId, nome: pa?.nome ?? "", unidade: pa?.unidade ?? prev.unidade }));
+                              }}>
+                                <option value="">— Selecione o princípio ativo —</option>
+                                {principios
+                                  .filter(pa => fIns.categoria === "defensivo"
+                                    ? ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria)
+                                    : pa.categoria === fIns.categoria)
+                                  .map(pa => <option key={pa.id} value={pa.id}>{pa.nome}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          {/* Nome: leitura — preenchido pelo PA */}
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Nome no estoque <span style={{ fontWeight: 400, color: "#888" }}>(preenchido automaticamente pelo PA)</span></label>
+                            <input
+                              style={{ ...inp, background: "#F4F6FA", color: fIns.nome ? "#1a1a1a" : "#aaa" }}
+                              value={fIns.nome || "Selecione o princípio ativo acima"}
+                              readOnly
+                            />
+                          </div>
+                          {/* Fabricante: opcional, só para referência */}
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Fabricante / Marca habitual <span style={{ fontWeight: 400, color: "#888" }}>(opcional — apenas para referência)</span></label>
+                            <input style={inp} placeholder="Ex: Bayer, Syngenta — não afeta o estoque" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                          </div>
+                        </>
+                      ) : (
+                        /* ── Semente / Combustível / Outros: nome livre ── */
+                        <>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Nome *</label>
+                            <input style={inp}
+                              placeholder={isComb ? "Ex: Diesel S10, Gasolina" : fIns.categoria === "semente" ? "Ex: Soja TMG 3770 IPRO" : "Ex: Calcário Dolomítico"}
+                              value={fIns.nome}
+                              onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                          </div>
+                          {!isComb && (
+                            <div>
+                              <label style={lbl}>Fabricante / Marca</label>
+                              <input style={inp} placeholder="Ex: Bayer, Syngenta" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
                             </div>
                           )}
-                        </div>
+                        </>
                       )}
                       {/* Unidade */}
                       <div>
@@ -2905,7 +2938,7 @@ function CadastrosInner() {
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
                       <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                      <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarIns}>
+                      <button style={{ ...btnV, opacity: salvando || (["defensivo","fertilizante","inoculante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (["defensivo","fertilizante","inoculante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
                         {salvando ? "Salvando…" : "Salvar"}
                       </button>
                     </div>

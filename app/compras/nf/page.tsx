@@ -18,6 +18,7 @@ import {
   excluirNfEntrada,
   listarMaquinas,
   resolverNomeComercial,
+  obterOuCriarInsumoDoPA,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -78,6 +79,7 @@ interface ItemRascunho {
   // Resolução via princípio ativo (BOT mapping)
   pa_nome?: string;              // nome do princípio ativo resolvido
   pa_auto?: boolean;             // true = resolvido automaticamente
+  pa_criado?: boolean;           // true = insumo canônico criado automaticamente nesta sessão
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
@@ -747,20 +749,24 @@ export default function NfCompraPage() {
   // Chamado com debounce quando o usuário termina de digitar a descrição do item
   const resolverItemPA = useCallback(async (key: string, descricao: string) => {
     if (!fazendaId || !descricao.trim() || tipo !== "insumos") return;
-    // Não sobrescreve se o usuário já selecionou um insumo manualmente
     const item = itens.find(it => it.key === key);
-    if (item?.insumo_id) return;
+    if (item?.insumo_id) return; // não sobrescreve escolha manual
 
     const res = await resolverNomeComercial(descricao, fazendaId);
     if (!res) return;
+
+    // Garante que o insumo canônico (pelo PA) existe na fazenda — cria se necessário
+    const { insumo, criado } = await obterOuCriarInsumoDoPA(fazendaId, res.principioAtivo);
+
     setItens(prev => prev.map(it => {
       if (it.key !== key) return it;
-      if (it.insumo_id) return it; // não sobrescreve escolha manual
+      if (it.insumo_id) return it;
       return {
         ...it,
-        insumo_id: res.insumo?.id ?? "",
+        insumo_id: insumo.id,
         pa_nome: res.principioAtivo.nome,
         pa_auto: true,
+        pa_criado: criado,
       };
     }));
   }, [fazendaId, tipo, itens]);
@@ -1300,10 +1306,11 @@ export default function NfCompraPage() {
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
                               />
                               {it.pa_auto && it.pa_nome && (
-                                <div style={{ fontSize: 10, color: "#1A6B3C", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                                  <span>✓ PA:</span>
+                                <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 4,
+                                  color: it.pa_criado ? "#C9921B" : "#1A6B3C" }}>
+                                  <span>{it.pa_criado ? "★" : "✓"} Estoque:</span>
                                   <strong>{it.pa_nome}</strong>
-                                  {!it.insumo_id && <span style={{ color: "#C9921B" }}> — insumo não vinculado</span>}
+                                  {it.pa_criado && <span> — cadastrado automaticamente</span>}
                                 </div>
                               )}
                             </div>

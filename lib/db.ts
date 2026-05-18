@@ -3282,6 +3282,46 @@ export async function resolverNomeComercial(
   return null;
 }
 
+/**
+ * Busca ou cria o insumo canônico do PA na fazenda.
+ * O nome do insumo É o nome do PA — nunca o nome comercial.
+ */
+export async function obterOuCriarInsumoDoPA(
+  fazendaId: string,
+  pa: PrincipioAtivo
+): Promise<{ insumo: Insumo; criado: boolean }> {
+  const PA_CAT_PARA_INSUMO: Record<string, Insumo["categoria"]> = {
+    herbicida: "defensivo", fungicida: "defensivo",
+    inseticida: "defensivo", acaricida: "defensivo",
+    fertilizante: "fertilizante", inoculante: "inoculante",
+    outro: "outros",
+  };
+
+  const { data: existente } = await supabase
+    .from("insumos").select("*")
+    .eq("fazenda_id", fazendaId)
+    .eq("principio_ativo_id", pa.id)
+    .limit(1).maybeSingle();
+  if (existente) return { insumo: existente as Insumo, criado: false };
+
+  const { data: novo, error } = await supabase
+    .from("insumos")
+    .insert({
+      fazenda_id: fazendaId,
+      nome: pa.nome,
+      categoria: PA_CAT_PARA_INSUMO[pa.categoria] ?? "defensivo",
+      unidade: pa.unidade,
+      principio_ativo_id: pa.id,
+      estoque: 0,
+      estoque_minimo: 0,
+      valor_unitario: 0,
+      tipo: "insumo",
+    })
+    .select().single();
+  if (error) throw error;
+  return { insumo: novo as Insumo, criado: true };
+}
+
 // ————————————————————————————————————————
 // UTILITÁRIOS
 // ————————————————————————————————————————
