@@ -137,6 +137,7 @@ export default function Faturamento() {
   const [nfeItens,    setNfeItens]    = useState<NFeItem[]>([]);
   const [emitindo,    setEmitindo]    = useState(false);
   const [erroForm,    setErroForm]    = useState<string|null>(null);
+  const [notaVer,     setNotaVer]     = useState<NotaFiscal | null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
 
   // totais em tempo real
@@ -200,8 +201,8 @@ export default function Faturamento() {
 
     // Peso classificado (após descontos) é o peso a faturar em kg
     const pesoKg     = romaneio.peso_classificado_kg ?? romaneio.peso_liquido_kg ?? 0;
-    // Converte R$/saca → R$/kg
-    const precoKg    = (contrato.preco ?? 0) / kgSaca(contrato.produto);
+    // Preço do contrato já está em R$/kg — usar diretamente
+    const precoKg    = contrato.preco ?? 0;
     const valorTotal = +(pesoKg * precoKg).toFixed(2);
 
     const hoje  = new Date().toISOString().slice(0, 10);
@@ -766,6 +767,11 @@ export default function Faturamento() {
                     </td>
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
+                        <button
+                          style={{ padding:"4px 10px", fontSize:11, background:"#F4F6FA", color:"#1A4870", border:"0.5px solid #D4DCE8", borderRadius:6, cursor:"pointer" }}
+                          onClick={() => setNotaVer(nota)}>
+                          Visualizar
+                        </button>
                         {nota.status === "em_digitacao" && (
                           <button
                             style={{ padding:"4px 10px", fontSize:11, background:"#1A5CB8", color:"#fff", border:"none", borderRadius:6, cursor:"pointer" }}
@@ -1144,6 +1150,135 @@ export default function Faturamento() {
           )}
         </div>
       )}
+
+      {/* ── Modal Visualizar NF ─────────────────────────────────────── */}
+      {notaVer && (() => {
+        const st = corStatus(notaVer.status);
+        const fmtVal = (v?: number) => v != null ? v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" }) : "—";
+        const campo = (label: string, valor: React.ReactNode) => (
+          <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+            <div style={{ fontSize:10, color:"#888", textTransform:"uppercase", letterSpacing:"0.04em" }}>{label}</div>
+            <div style={{ fontSize:13, color:"#1a1a1a", fontWeight:500, wordBreak:"break-all" }}>{valor || "—"}</div>
+          </div>
+        );
+        return (
+          <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
+               onClick={e => { if (e.target === e.currentTarget) setNotaVer(null); }}>
+            <div style={{ background:"#fff", borderRadius:12, width:"100%", maxWidth:640, maxHeight:"90vh", overflowY:"auto", boxShadow:"0 24px 64px rgba(0,0,0,0.25)" }}>
+
+              {/* Cabeçalho */}
+              <div style={{ padding:"18px 24px", borderBottom:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <div style={{ fontSize:16, fontWeight:700, color:"#1a1a1a" }}>
+                    NF-e Nº {notaVer.numero} — Série {notaVer.serie}
+                  </div>
+                  <div style={{ marginTop:4 }}>
+                    <span style={{ fontSize:11, background:st.bg, color:st.color, padding:"2px 10px", borderRadius:10, fontWeight:600 }}>
+                      {st.icone} {st.label}
+                    </span>
+                  </div>
+                </div>
+                <button onClick={() => setNotaVer(null)} style={{ background:"none", border:"none", fontSize:22, cursor:"pointer", color:"#555" }}>×</button>
+              </div>
+
+              {/* Corpo */}
+              <div style={{ padding:"20px 24px", display:"flex", flexDirection:"column", gap:20 }}>
+
+                {/* Bloco Identificação */}
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"0.5px solid #DDE2EE", paddingBottom:6, marginBottom:12 }}>
+                    Identificação
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14 }}>
+                    {campo("Data de Emissão", fmtData(notaVer.data_emissao))}
+                    {campo("CFOP", <span style={{ color:"#1A4870", fontWeight:700 }}>{notaVer.cfop}</span>)}
+                    {campo("Valor Total", <span style={{ color:"#1A4870", fontWeight:700, fontSize:15 }}>{fmtVal(notaVer.valor_total)}</span>)}
+                  </div>
+                </div>
+
+                {/* Bloco Natureza */}
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"0.5px solid #DDE2EE", paddingBottom:6, marginBottom:12 }}>
+                    Natureza da Operação
+                  </div>
+                  {campo("Descrição", notaVer.natureza)}
+                </div>
+
+                {/* Bloco Destinatário */}
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"0.5px solid #DDE2EE", paddingBottom:6, marginBottom:12 }}>
+                    Destinatário
+                  </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+                    {campo("Nome / Razão Social", notaVer.destinatario)}
+                    {campo("CPF / CNPJ", notaVer.cnpj_destinatario)}
+                  </div>
+                </div>
+
+                {/* Bloco Infos Complementares */}
+                {notaVer.observacao && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"0.5px solid #DDE2EE", paddingBottom:6, marginBottom:12 }}>
+                      Informações Complementares (infCpl)
+                    </div>
+                    <div style={{ fontSize:12, color:"#333", background:"#F8FAFD", borderRadius:8, padding:"10px 14px", whiteSpace:"pre-wrap", lineHeight:1.6 }}>
+                      {notaVer.observacao}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bloco Chave / XML */}
+                {(notaVer.chave_acesso || notaVer.xml_url) && (
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"0.5px solid #DDE2EE", paddingBottom:6, marginBottom:12 }}>
+                      Documentos Fiscais
+                    </div>
+                    {campo("Chave de Acesso", notaVer.chave_acesso && (
+                      <span style={{ fontFamily:"monospace", fontSize:11, letterSpacing:"0.05em" }}>{notaVer.chave_acesso}</span>
+                    ))}
+                    {notaVer.xml_url && (
+                      <div style={{ marginTop:8 }}>
+                        <a href={notaVer.xml_url} target="_blank" rel="noreferrer"
+                           style={{ fontSize:12, color:"#1A5CB8", textDecoration:"underline" }}>
+                          Baixar XML
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Rodapé */}
+              <div style={{ padding:"14px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                {notaVer.status === "em_digitacao" && (
+                  <button
+                    style={{ padding:"7px 16px", fontSize:12, background:"#1A5CB8", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:600 }}
+                    onClick={async () => {
+                      if (!window.confirm("Transmitir para a SEFAZ?")) return;
+                      await atualizarStatusNFe(notaVer.id, "em_digitacao");
+                      setNotas(p => p.map(n => n.id === notaVer.id ? { ...n, status: "em_digitacao" } : n));
+                      setNotaVer(null);
+                    }}>
+                    Transmitir para SEFAZ
+                  </button>
+                )}
+                {notaVer.status === "autorizada" && (
+                  <button
+                    style={{ padding:"7px 16px", fontSize:12, background:"#0B2D50", color:"#fff", border:"none", borderRadius:7, cursor:"pointer", fontWeight:600 }}
+                    onClick={() => window.open(`/fiscal/danfe/${notaVer.id}`, "_blank")}>
+                    Abrir DANFE
+                  </button>
+                )}
+                {!["em_digitacao","autorizada"].includes(notaVer.status) && <div />}
+                <button onClick={() => setNotaVer(null)} style={{ padding:"7px 16px", fontSize:12, border:"0.5px solid #D4DCE8", borderRadius:7, background:"transparent", cursor:"pointer" }}>
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
