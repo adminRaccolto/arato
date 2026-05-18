@@ -823,6 +823,8 @@ export type NfEntradaItem = {
   nf_entrada_id: string;
   fazenda_id: string;
   insumo_id?: string;
+  principio_ativo_id?: string;    // preenchido quando o item é defensivo/fertilizante/inoculante
+  nome_comercial_ref?: string;    // nome exato como veio na NF — auditoria
   deposito_id?: string;
   bomba_id?: string;
   maquina_id?: string;
@@ -840,6 +842,33 @@ export type NfEntradaItem = {
   centro_custo_id?: string;
   alerta_preco: boolean;
   created_at?: string;
+};
+
+export type PASaldo = {
+  id: string;
+  fazenda_id: string;
+  principio_ativo_id: string;
+  saldo_atual: number;
+  custo_medio: number;
+  updated_at?: string;
+  principio_ativo?: PrincipioAtivo;
+};
+
+export type MovimentacaoPA = {
+  id: string;
+  fazenda_id: string;
+  principio_ativo_id: string;
+  tipo: "entrada" | "saida";
+  quantidade: number;
+  custo_unitario?: number;
+  data: string;
+  nome_comercial_ref?: string;
+  nf_entrada_id?: string;
+  nf_entrada_item_id?: string;
+  origem_tipo?: "nf_entrada" | "bot" | "manual" | "pulverizacao" | "adubacao" | "correcao_solo";
+  obs?: string;
+  created_at?: string;
+  principio_ativo?: PrincipioAtivo;
 };
 
 export type NfServico = {

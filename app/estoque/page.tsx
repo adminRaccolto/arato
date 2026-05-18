@@ -13,12 +13,15 @@ import {
   listarEstoqueTerceiros,
   listarPessoas, criarPessoa,
   registrarLog,
+  listarPASaldos,
+  listarMovimentacoesPA,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type {
   Insumo, MovimentacaoEstoque,
   Deposito, BombaCombustivel, Maquina,
   NfEntrada, NfEntradaItem, EstoqueTerceiro, Pessoa,
+  PASaldo, MovimentacaoPA,
 } from "../../lib/supabase";
 
 // ── Hook mobile ──────────────────────────────────────────
@@ -196,6 +199,9 @@ export default function Estoque() {
   const [maquinas, setMaquinas]     = useState<Maquina[]>([]);
   const [nfEntradas, setNfEntradas] = useState<NfEntrada[]>([]);
   const [terceiros, setTerceiros]   = useState<EstoqueTerceiro[]>([]);
+  const [paSaldos, setPASaldos]     = useState<PASaldo[]>([]);
+  const [movsPA, setMovsPA]         = useState<MovimentacaoPA[]>([]);
+  const [buscaPA, setBuscaPA]       = useState("");
 
   // filtros posição
   const [filtroCat, setFiltroCat] = useState<"todos" | Insumo["categoria"] | "alertas" | "negativos" | "produtos">("todos");
@@ -256,11 +262,15 @@ export default function Estoque() {
     listarBombas(fazendaId).then(setBombas).catch(() => {});
     listarMaquinas(fazendaId).then(setMaquinas).catch(() => {});
     listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+    listarPASaldos(fazendaId).then(setPASaldos).catch(() => {});
   }, [fazendaId]);
 
   useEffect(() => {
     if (!fazendaId) return;
-    if (aba === "movimentacoes") listarMovimentacoes(fazendaId).then(setMovs).catch(e => setErro(e.message));
+    if (aba === "movimentacoes") {
+      listarMovimentacoes(fazendaId).then(setMovs).catch(e => setErro(e.message));
+      listarMovimentacoesPA(fazendaId).then(setMovsPA).catch(() => {});
+    }
     if (aba === "nf_entrada")    listarNfEntradas(fazendaId).then(setNfEntradas).catch(e => setErro(e.message));
     if (aba === "terceiros")     listarEstoqueTerceiros(fazendaId).then(setTerceiros).catch(e => setErro(e.message));
     if (aba === "relatorios" && relTipo === "historico" && relInsumoId) {
@@ -599,6 +609,72 @@ export default function Estoque() {
             </div>
           )}
 
+          {/* ══ PA SALDOS (abaixo dos insumos na aba Posição) ══ */}
+          {aba === "posicao" && paSaldos.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Defensivos / Fertilizantes / Inoculantes</span>
+                  <span style={{ fontSize: 12, color: "#666", marginLeft: 8 }}>— por Princípio Ativo</span>
+                </div>
+                <input style={{ ...inp, width: 200, fontSize: 12 }} placeholder="Buscar PA…" value={buscaPA} onChange={e => setBuscaPA(e.target.value)} />
+              </div>
+              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <TH cols={["Princípio Ativo", "Categoria", "Saldo atual", "Custo médio", "Valor em estoque", "Última movimentação"]} />
+                  <tbody>
+                    {paSaldos
+                      .filter(p => !buscaPA || (p.principio_ativo?.nome ?? "").toLowerCase().includes(buscaPA.toLowerCase()))
+                      .map((p, i, arr) => {
+                        const pa = p.principio_ativo;
+                        const CAT_PA: Record<string, { bg: string; cl: string; label: string }> = {
+                          herbicida:    { bg: "#FDF2E9", cl: "#784B12", label: "Herbicida" },
+                          fungicida:    { bg: "#EAF6EA", cl: "#1A6B3C", label: "Fungicida" },
+                          inseticida:   { bg: "#FEF9E7", cl: "#7A6000", label: "Inseticida" },
+                          acaricida:    { bg: "#F4ECF7", cl: "#6C3483", label: "Acaricida" },
+                          fertilizante: { bg: "#EAF2FB", cl: "#1A4870", label: "Fertilizante" },
+                          inoculante:   { bg: "#E8F8F5", cl: "#0E6655", label: "Inoculante" },
+                          outro:        { bg: "#F4F6F7", cl: "#555",    label: "Outro" },
+                        };
+                        const cat = CAT_PA[pa?.categoria ?? "outro"] ?? CAT_PA.outro;
+                        const valor = p.saldo_atual * p.custo_medio;
+                        return (
+                          <tr key={p.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                            <td style={{ padding: "10px 14px" }}>
+                              <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{pa?.nome ?? "—"}</div>
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                              <span style={{ background: cat.bg, color: cat.cl, padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{cat.label}</span>
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                              <span style={{ fontWeight: 600, color: p.saldo_atual <= 0 ? "#E24B4A" : "#1a1a1a" }}>{p.saldo_atual.toFixed(2)}</span>
+                              <span style={{ fontSize: 11, color: "#555", marginLeft: 4 }}>{pa?.unidade}</span>
+                              {p.saldo_atual <= 0 && <span style={{ fontSize: 10, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 5, fontWeight: 600, marginLeft: 4 }}>SEM SALDO</span>}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>
+                              R$ {p.custo_medio.toFixed(2)}/{pa?.unidade}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>
+                              R$ {valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "#666" }}>
+                              {p.updated_at ? new Date(p.updated_at).toLocaleDateString("pt-BR") : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    {paSaldos.filter(p => !buscaPA || (p.principio_ativo?.nome ?? "").toLowerCase().includes(buscaPA.toLowerCase())).length === 0 && (
+                      <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "#666", fontSize: 12 }}>Nenhum resultado</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: "#888", textAlign: "right" }}>
+                Total em estoque PA: R$ {paSaldos.reduce((s, p) => s + p.saldo_atual * p.custo_medio, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+            </div>
+          )}
+
           {/* ══ NF ENTRADA ══ */}
           {aba === "nf_entrada" && (
             <div>
@@ -756,6 +832,53 @@ export default function Estoque() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ══ MOVIMENTAÇÕES PA ══ */}
+          {aba === "movimentacoes" && movsPA.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 10 }}>
+                Movimentações — Defensivos / Fertilizantes / Inoculantes (PA)
+              </div>
+              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <TH cols={["Data", "Princípio Ativo", "Tipo", "Qtd.", "Custo unit.", "Produto na NF", "Origem", "NF"]} />
+                  <tbody>
+                    {movsPA.filter(m => filtroMov === "todos" || m.tipo === filtroMov).map((m, i, arr) => (
+                      <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        <td style={{ padding: "10px 14px", color: "#1a1a1a", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
+                        <td style={{ padding: "10px 14px" }}>
+                          <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{m.principio_ativo?.nome ?? "—"}</div>
+                          <div style={{ fontSize: 11, color: "#555" }}>{m.principio_ativo?.categoria}</div>
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          {m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>
+                          <span style={{ color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>
+                            {m.tipo === "entrada" ? "+" : "-"}{Number(m.quantidade).toFixed(2)} {m.principio_ativo?.unidade}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                          {m.custo_unitario != null ? `R$ ${Number(m.custo_unitario).toFixed(2)}` : "—"}
+                        </td>
+                        <td style={{ padding: "10px 14px", fontSize: 12, color: "#1a1a1a" }}>
+                          {m.nome_comercial_ref
+                            ? <span><span style={{ fontWeight: 600 }}>{m.nome_comercial_ref}</span></span>
+                            : <span style={{ color: "#aaa" }}>—</span>}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          {badge(m.origem_tipo === "nf_entrada" ? "NF" : m.origem_tipo === "bot" ? "BOT" : m.origem_tipo ?? "manual", "#F4F6FA", "#555")}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "#888" }}>
+                          {m.nf_entrada_id ? m.nf_entrada_id.slice(0, 8) + "…" : "—"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

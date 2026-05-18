@@ -81,12 +81,12 @@ export function converterUnidade(valor: number, unidadeOrigem: string, unidadeDe
 type Resultado = { ok: boolean; mensagem: string };
 
 // ── Busca de insumo com fallback por palavras individuais ──────────────────
-type InsumoRow = { id: string; nome: string; unidade: string; custo_medio: number; valor_unitario: number; estoque: number };
+type InsumoRow = { id: string; nome: string; unidade: string; custo_medio: number; valor_unitario: number; estoque: number; principio_ativo_id?: string };
 
 // Aceita nomes parciais e nomes comerciais: "Eficaz" → Glifosato; "3770", "tmg 3770" → semente TMG 3770
 async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<InsumoRow | null> {
   if (!nomeProduto) return null;
-  const cols = "id, nome, unidade, custo_medio, valor_unitario, estoque";
+  const cols = "id, nome, unidade, custo_medio, valor_unitario, estoque, principio_ativo_id";
 
   // 0. Tenta resolver via nomes_comerciais → principios_ativos → insumos (exceto sementes)
   const termos = [nomeProduto, ...nomeProduto.split(/\s+/).filter(w => w.length > 2)];
@@ -97,11 +97,22 @@ async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<Ins
       .ilike("nome_comercial", `%${termo}%`)
       .limit(1);
     if (nc?.[0]?.principio_ativo_id) {
-      const { data: ins } = await sb().from("insumos").select(cols)
-        .eq("fazenda_id", fazendaId)
-        .eq("principio_ativo_id", nc[0].principio_ativo_id)
-        .limit(1);
-      if (ins?.[0]) return ins[0] as InsumoRow;
+      // Retorna um objeto virtual representando o PA (sem insumo intermediário)
+      const paId = nc[0].principio_ativo_id as string;
+      const { data: pa } = await sb().from("principios_ativos").select("id, nome, unidade").eq("id", paId).single();
+      if (pa) {
+        const { data: saldo } = await sb().from("pa_saldos")
+          .select("saldo_atual, custo_medio").eq("fazenda_id", fazendaId).eq("principio_ativo_id", paId).maybeSingle();
+        return {
+          id: paId,   // usa pa_id como "id" — distinguido por principio_ativo_id preenchido
+          nome: (pa as { nome: string }).nome,
+          unidade: (pa as { unidade: string }).unidade,
+          custo_medio: Number((saldo as { custo_medio?: number } | null)?.custo_medio ?? 0),
+          valor_unitario: Number((saldo as { custo_medio?: number } | null)?.custo_medio ?? 0),
+          estoque: Number((saldo as { saldo_atual?: number } | null)?.saldo_atual ?? 0),
+          principio_ativo_id: paId,
+        };
+      }
     }
   }
 
@@ -124,6 +135,42 @@ async function buscarInsumo(fazendaId: string, nomeProduto: string): Promise<Ins
     if (r2?.[0]) return r2[0] as InsumoRow;
   }
   return null;
+}
+
+// ── Helper: deduzo estoque por PA ou por insumo clássico ─────────────────
+async function deduzirEstoqueInsumo(
+  fazendaId: string,
+  insumo: InsumoRow,
+  quantidade: number,
+  origemTipo: "pulverizacao" | "adubacao" | "correcao_solo" | "manual",
+  nomeComercialOriginal: string,
+  data: string,
+  obs: string,
+): Promise<void> {
+  if (insumo.principio_ativo_id) {
+    // Caminho PA — debita pa_saldos + registra movimentacoes_pa
+    const { data: saldoRow } = await sb().from("pa_saldos")
+      .select("saldo_atual").eq("fazenda_id", fazendaId).eq("principio_ativo_id", insumo.principio_ativo_id).maybeSingle();
+    const novoSaldo = Math.max(0, Number((saldoRow as { saldo_atual?: number } | null)?.saldo_atual ?? 0) - quantidade);
+    await sb().from("pa_saldos").upsert(
+      { fazenda_id: fazendaId, principio_ativo_id: insumo.principio_ativo_id, saldo_atual: novoSaldo, updated_at: new Date().toISOString() },
+      { onConflict: "fazenda_id,principio_ativo_id" }
+    );
+    await sb().from("movimentacoes_pa").insert({
+      fazenda_id: fazendaId, principio_ativo_id: insumo.principio_ativo_id,
+      tipo: "saida", quantidade,
+      custo_unitario: insumo.custo_medio ?? null,
+      data, nome_comercial_ref: nomeComercialOriginal, origem_tipo: origemTipo, obs,
+    });
+  } else {
+    // Caminho clássico — debita insumos + movimentacoes_estoque
+    const novoEstoque = Number(insumo.estoque ?? 0) - quantidade;
+    await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
+    await sb().from("movimentacoes_estoque").insert({
+      fazenda_id: fazendaId, insumo_id: insumo.id,
+      tipo: "saida", quantidade, data, observacao: obs, auto: true,
+    });
+  }
 }
 
 // ── Ciclo vigente na data (usado por todos os inserters) ────────────────────
@@ -600,14 +647,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         custo_total:     custoTotal,
       });
 
-      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
-      await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-      await sb().from("movimentacoes_estoque").insert({
-        fazenda_id: fazendaId, insumo_id: insumo.id,
-        tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
-        safra: ciclo?.id ?? null, operacao: tipoProduto,
-        observacao: `Pulverização ${tipoProduto} — ${insumo.nome} via WhatsApp`, auto: true,
-      });
+      await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "pulverizacao", String(dados.produto ?? ""), dataOp, `Pulverização ${tipoProduto} — ${insumo.nome} via WhatsApp`);
       await sb().from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
       if (custoTotal > 0) {
         await sb().from("lancamentos").insert({
@@ -677,14 +717,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         dose_kg_ha: doseNativa, quantidade_kg: totalKg,
         valor_unitario: custoMedio, custo_total: custoTotal,
       });
-      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
-      await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-      await sb().from("movimentacoes_estoque").insert({
-        fazenda_id: fazendaId, insumo_id: insumo.id,
-        tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
-        safra: ciclo?.id ?? null, operacao: "adubacao_base",
-        observacao: `Adubação de Base — ${insumo.nome} via WhatsApp`, auto: true,
-      });
+      await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "adubacao", String(dados.produto ?? ""), dataOp, `Adubação de Base — ${insumo.nome} via WhatsApp`);
       if (custoTotal > 0) {
         await sb().from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
@@ -750,14 +783,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     }
 
     if (insumo && totalNativo > 0) {
-      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
-      await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-      await sb().from("movimentacoes_estoque").insert({
-        fazenda_id: fazendaId, insumo_id: insumo.id,
-        tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
-        safra: ciclo?.id ?? null, operacao: "plantio",
-        observacao: `Plantio — ${insumo.nome} via WhatsApp`, auto: true,
-      });
+      await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "manual", String(dados.produto ?? ""), dataOp, `Plantio — ${insumo.nome} via WhatsApp`);
       if (custoSementes > 0) {
         const { data: lanc } = await sb().from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
@@ -835,17 +861,7 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
         custo_total:    custoTotal,
       });
 
-      // Baixa de estoque na unidade nativa
-      const novoEstoque = Number(insumo.estoque ?? 0) - totalNativo;
-      await sb().from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-
-      // Movimentação
-      await sb().from("movimentacoes_estoque").insert({
-        fazenda_id: fazendaId, insumo_id: insumo.id,
-        tipo: "saida", motivo: "baixa_uso", quantidade: totalNativo, data: dataOp,
-        safra: ciclo?.id ?? null, operacao: "correcao_solo",
-        observacao: `Correção de Solo — ${insumo.nome} via WhatsApp`, auto: true,
-      });
+      await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "correcao_solo", String(dados.produto ?? ""), dataOp, `Correção de Solo — ${insumo.nome} via WhatsApp`);
 
       // CP
       if (custoTotal > 0) {

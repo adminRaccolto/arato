@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -1120,8 +1120,23 @@ export async function processarNfEntrada(
   emitenteCnpj?: string,
 ): Promise<void> {
   for (const item of itens) {
-    // ── Compra normal → estoque ──────────────────────────────────
-    if (item.tipo_apropiacao === "estoque" && item.insumo_id) {
+    // ── Defensivo/Fertilizante/Inoculante → estoque por Princípio Ativo ─
+    if (item.tipo_apropiacao === "estoque" && item.principio_ativo_id) {
+      await registrarEntradaPA({
+        fazendaId:         fazenda_id,
+        principioAtivoId:  item.principio_ativo_id,
+        quantidade:        item.quantidade,
+        custoUnitario:     item.valor_unitario,
+        nomeComercialRef:  item.nome_comercial_ref ?? item.descricao_produto,
+        nfEntradaId:       nfId,
+        nfEntradaItemId:   item.id,
+        data:              dataEntrada,
+        obs:               `NF — ${item.descricao_produto}`,
+      });
+    }
+
+    // ── Compra normal (semente/outro) → estoque insumo ──────────
+    if (item.tipo_apropiacao === "estoque" && item.insumo_id && !item.principio_ativo_id) {
       // Insere movimento ANTES de atualizar custo_medio (inclui esta entrada no cálculo dos 6 meses)
       await supabase.from("movimentacoes_estoque").insert({
         insumo_id:          item.insumo_id,
@@ -1315,7 +1330,7 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
   const itemIds = (itens ?? []).map(i => i.id as string);
 
   if (itemIds.length > 0) {
-    // 2. Reverter movimentações de estoque — busca entradas vinculadas a esta NF
+    // 2a. Reverter movimentações de estoque insumo
     const { data: movs } = await supabase
       .from("movimentacoes_estoque").select("insumo_id, quantidade")
       .in("nf_entrada_item_id", itemIds).eq("tipo", "entrada");
@@ -1330,6 +1345,10 @@ export async function excluirNfEntrada(nfId: string, fazendaId: string): Promise
       }
     }
     await supabase.from("movimentacoes_estoque").delete().in("nf_entrada_item_id", itemIds);
+
+    // 2b. Reverter movimentações de estoque PA
+    await estornarMovimentacoesPA(nfId);
+
     await supabase.from("historico_manutencao").delete().in("nf_entrada_item_id", itemIds);
   }
 
@@ -3320,6 +3339,130 @@ export async function obterOuCriarInsumoDoPA(
     .select().single();
   if (error) throw error;
   return { insumo: novo as Insumo, criado: true };
+}
+
+// ————————————————————————————————————————
+// ESTOQUE POR PRINCÍPIO ATIVO (PA)
+// ————————————————————————————————————————
+
+/** Categorias de PA que gerenciam estoque diretamente (sem insumo intermediário) */
+const PA_CATS_ESTOQUE = new Set(["herbicida","fungicida","inseticida","acaricida","fertilizante","inoculante","outro"]);
+export function isCategoriaPA(categoria: PrincipioAtivo["categoria"]): boolean {
+  return PA_CATS_ESTOQUE.has(categoria);
+}
+
+export async function listarPASaldos(fazendaId: string): Promise<PASaldo[]> {
+  const { data, error } = await supabase
+    .from("pa_saldos")
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)")
+    .eq("fazenda_id", fazendaId)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PASaldo[];
+}
+
+export async function registrarEntradaPA(params: {
+  fazendaId: string;
+  principioAtivoId: string;
+  quantidade: number;
+  custoUnitario: number;
+  nomeComercialRef?: string;
+  nfEntradaId?: string;
+  nfEntradaItemId?: string;
+  data?: string;
+  obs?: string;
+}): Promise<void> {
+  const { fazendaId, principioAtivoId, quantidade, custoUnitario,
+          nomeComercialRef, nfEntradaId, nfEntradaItemId, data, obs } = params;
+
+  const { data: saldoRow } = await supabase
+    .from("pa_saldos").select("saldo_atual, custo_medio")
+    .eq("fazenda_id", fazendaId).eq("principio_ativo_id", principioAtivoId).maybeSingle();
+
+  const saldoAtual = Number(saldoRow?.saldo_atual ?? 0);
+  const custoAtual = Number(saldoRow?.custo_medio ?? 0);
+  const novoSaldo  = saldoAtual + quantidade;
+  const novoCusto  = novoSaldo > 0
+    ? (saldoAtual * custoAtual + quantidade * custoUnitario) / novoSaldo
+    : custoUnitario;
+
+  await supabase.from("pa_saldos").upsert({
+    fazenda_id: fazendaId, principio_ativo_id: principioAtivoId,
+    saldo_atual: novoSaldo,
+    custo_medio: Math.round(novoCusto * 10000) / 10000,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "fazenda_id,principio_ativo_id" });
+
+  await supabase.from("movimentacoes_pa").insert({
+    fazenda_id: fazendaId, principio_ativo_id: principioAtivoId,
+    tipo: "entrada", quantidade, custo_unitario: custoUnitario,
+    data: data ?? new Date().toISOString().split("T")[0],
+    nome_comercial_ref: nomeComercialRef ?? null,
+    nf_entrada_id: nfEntradaId ?? null,
+    nf_entrada_item_id: nfEntradaItemId ?? null,
+    origem_tipo: nfEntradaId ? "nf_entrada" : "manual",
+    obs: obs ?? null,
+  });
+}
+
+export async function registrarSaidaPA(params: {
+  fazendaId: string;
+  principioAtivoId: string;
+  quantidade: number;
+  origemTipo?: MovimentacaoPA["origem_tipo"];
+  nomeComercialRef?: string;
+  data?: string;
+  obs?: string;
+}): Promise<void> {
+  const { fazendaId, principioAtivoId, quantidade, origemTipo, nomeComercialRef, data, obs } = params;
+
+  const { data: saldoRow } = await supabase
+    .from("pa_saldos").select("saldo_atual, custo_medio")
+    .eq("fazenda_id", fazendaId).eq("principio_ativo_id", principioAtivoId).maybeSingle();
+
+  const novoSaldo = Math.max(0, Number(saldoRow?.saldo_atual ?? 0) - quantidade);
+  await supabase.from("pa_saldos").upsert({
+    fazenda_id: fazendaId, principio_ativo_id: principioAtivoId,
+    saldo_atual: novoSaldo, updated_at: new Date().toISOString(),
+  }, { onConflict: "fazenda_id,principio_ativo_id" });
+
+  await supabase.from("movimentacoes_pa").insert({
+    fazenda_id: fazendaId, principio_ativo_id: principioAtivoId,
+    tipo: "saida", quantidade,
+    custo_unitario: saldoRow?.custo_medio ?? null,
+    data: data ?? new Date().toISOString().split("T")[0],
+    nome_comercial_ref: nomeComercialRef ?? null,
+    origem_tipo: origemTipo ?? "manual",
+    obs: obs ?? null,
+  });
+}
+
+export async function listarMovimentacoesPA(fazendaId: string, principioAtivoId?: string): Promise<MovimentacaoPA[]> {
+  let q = supabase.from("movimentacoes_pa")
+    .select("*, principio_ativo:principios_ativos(id,nome,categoria,unidade)")
+    .eq("fazenda_id", fazendaId)
+    .order("data", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (principioAtivoId) q = q.eq("principio_ativo_id", principioAtivoId) as typeof q;
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as MovimentacaoPA[];
+}
+
+export async function estornarMovimentacoesPA(nfEntradaId: string): Promise<void> {
+  const { data: movs } = await supabase.from("movimentacoes_pa")
+    .select("*").eq("nf_entrada_id", nfEntradaId).eq("tipo", "entrada");
+  if (!movs?.length) return;
+  for (const m of movs) {
+    const { data: s } = await supabase.from("pa_saldos").select("saldo_atual")
+      .eq("fazenda_id", m.fazenda_id).eq("principio_ativo_id", m.principio_ativo_id).maybeSingle();
+    await supabase.from("pa_saldos").upsert({
+      fazenda_id: m.fazenda_id, principio_ativo_id: m.principio_ativo_id,
+      saldo_atual: Math.max(0, Number(s?.saldo_atual ?? 0) - Number(m.quantidade)),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "fazenda_id,principio_ativo_id" });
+  }
+  await supabase.from("movimentacoes_pa").delete().eq("nf_entrada_id", nfEntradaId);
 }
 
 // ————————————————————————————————————————

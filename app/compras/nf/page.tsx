@@ -18,7 +18,6 @@ import {
   excluirNfEntrada,
   listarMaquinas,
   resolverNomeComercial,
-  obterOuCriarInsumoDoPA,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
@@ -74,12 +73,13 @@ interface ItemRascunho {
   valor_unitario: number;
   valor_total: number;
   // Associação ao catálogo
-  insumo_id: string;             // UUID do insumo associado
+  insumo_id: string;             // UUID do insumo (sementes/outros)
+  principio_ativo_id: string;    // UUID do PA (defensivos/fertilizantes/inoculantes)
+  nome_comercial_ref: string;    // nome original na NF — para auditoria
   fator_conversao: number;       // quantidade_nf × fator = quantidade_catálogo
-  // Resolução via princípio ativo (BOT mapping)
-  pa_nome?: string;              // nome do princípio ativo resolvido
+  // Resolução via princípio ativo
+  pa_nome?: string;              // nome do PA resolvido (exibição)
   pa_auto?: boolean;             // true = resolvido automaticamente
-  pa_criado?: boolean;           // true = insumo canônico criado automaticamente nesta sessão
   // Apropriação
   tipo_apropiacao: NfEntradaItem["tipo_apropiacao"];
   deposito_id: string;
@@ -93,7 +93,7 @@ const ITEM_VAZIO = (): ItemRascunho => ({
   key: crypto.randomUUID(),
   descricao_nf: "", ncm: "", cfop: "", unidade_nf: "UN",
   quantidade: 0, valor_unitario: 0, valor_total: 0,
-  insumo_id: "", fator_conversao: 1,
+  insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", fator_conversao: 1,
   tipo_apropiacao: "estoque",
   deposito_id: "", maquina_id: "", centro_custo_id: "",
 });
@@ -332,12 +332,16 @@ export default function NfCompraPage() {
           quantidade: i.quantidade,
           valor_unitario: i.valor_unitario,
           valor_total: i.valor_total,
-          insumo_id: i.insumo_id ?? "",
+          insumo_id:          i.insumo_id           ?? "",
+          principio_ativo_id: i.principio_ativo_id  ?? "",
+          nome_comercial_ref: i.nome_comercial_ref  ?? "",
           fator_conversao: i.fator_conversao ?? 1,
           tipo_apropiacao: i.tipo_apropiacao,
           deposito_id: i.deposito_id ?? "",
           maquina_id: i.maquina_id ?? "",
           centro_custo_id: i.centro_custo_id ?? "",
+          pa_nome:  i.principio_ativo_id ? i.descricao_produto : undefined,
+          pa_auto:  !!i.principio_ativo_id,
         })));
       }
     } catch {}
@@ -404,7 +408,7 @@ export default function NfCompraPage() {
             quantidade: qCom,
             valor_unitario: vUnCom,
             valor_total: vProd,
-            insumo_id: "", fator_conversao: 1,
+            insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", fator_conversao: 1,
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
@@ -504,25 +508,28 @@ export default function NfCompraPage() {
           tipo === "custo_direto" ? "direto"  :
           it.tipo_apropiacao;
 
+        const isPAItem = !!it.principio_ativo_id;
         const itemPayload: Omit<NfEntradaItem, "id" | "created_at"> = {
-          nf_entrada_id:    nfEdit.id,
-          fazenda_id:       fazendaId,
-          insumo_id:        it.insumo_id    || undefined,
-          deposito_id:      it.deposito_id  || undefined,
-          maquina_id:       it.maquina_id   || undefined,
-          descricao_produto: it.insumo_id   ? nomeInsumo(it.insumo_id) : it.descricao_nf,
-          descricao_nf:     it.descricao_nf,
-          ncm:              it.ncm          || undefined,
-          cfop:             it.cfop         || undefined,
-          unidade:          it.insumo_id ? (insumos.find(i => i.id === it.insumo_id)?.unidade ?? it.unidade_nf) : it.unidade_nf,
-          unidade_nf:       it.unidade_nf,
-          fator_conversao:  it.fator_conversao ?? 1,
-          quantidade:       it.quantidade * (it.fator_conversao ?? 1),
-          valor_unitario:   it.valor_unitario,
-          valor_total:      it.valor_total,
-          tipo_apropiacao:  tipoAprp,
-          centro_custo_id:  it.centro_custo_id || undefined,
-          alerta_preco:     false,
+          nf_entrada_id:       nfEdit.id,
+          fazenda_id:          fazendaId,
+          insumo_id:           (!isPAItem && it.insumo_id) ? it.insumo_id : undefined,
+          principio_ativo_id:  it.principio_ativo_id  || undefined,
+          nome_comercial_ref:  it.nome_comercial_ref  || undefined,
+          deposito_id:         it.deposito_id         || undefined,
+          maquina_id:          it.maquina_id          || undefined,
+          descricao_produto:   isPAItem ? it.pa_nome! : (it.insumo_id ? nomeInsumo(it.insumo_id) : it.descricao_nf),
+          descricao_nf:        it.descricao_nf,
+          ncm:                 it.ncm   || undefined,
+          cfop:                it.cfop  || undefined,
+          unidade:             isPAItem ? it.unidade_nf : (it.insumo_id ? (insumos.find(i => i.id === it.insumo_id)?.unidade ?? it.unidade_nf) : it.unidade_nf),
+          unidade_nf:          it.unidade_nf,
+          fator_conversao:     it.fator_conversao ?? 1,
+          quantidade:          it.quantidade * (it.fator_conversao ?? 1),
+          valor_unitario:      it.valor_unitario,
+          valor_total:         it.valor_total,
+          tipo_apropiacao:     tipoAprp,
+          centro_custo_id:     it.centro_custo_id || undefined,
+          alerta_preco:        false,
         };
         await criarNfEntradaItem(itemPayload);
       }
@@ -750,23 +757,21 @@ export default function NfCompraPage() {
   const resolverItemPA = useCallback(async (key: string, descricao: string) => {
     if (!fazendaId || !descricao.trim() || tipo !== "insumos") return;
     const item = itens.find(it => it.key === key);
-    if (item?.insumo_id) return; // não sobrescreve escolha manual
+    if (item?.principio_ativo_id || item?.insumo_id) return; // não sobrescreve escolha manual
 
     const res = await resolverNomeComercial(descricao, fazendaId);
     if (!res) return;
 
-    // Garante que o insumo canônico (pelo PA) existe na fazenda — cria se necessário
-    const { insumo, criado } = await obterOuCriarInsumoDoPA(fazendaId, res.principioAtivo);
-
+    // Defensivos/fertilizantes/inoculantes → estoque por PA direto (sem criar insumo)
     setItens(prev => prev.map(it => {
       if (it.key !== key) return it;
-      if (it.insumo_id) return it;
+      if (it.principio_ativo_id || it.insumo_id) return it;
       return {
         ...it,
-        insumo_id: insumo.id,
-        pa_nome: res.principioAtivo.nome,
-        pa_auto: true,
-        pa_criado: criado,
+        principio_ativo_id: res.principioAtivo.id,
+        nome_comercial_ref: descricao.trim(),
+        pa_nome:  res.principioAtivo.nome,
+        pa_auto:  true,
       };
     }));
   }, [fazendaId, tipo, itens]);
@@ -1299,18 +1304,17 @@ export default function NfCompraPage() {
                               <input
                                 value={it.descricao_nf}
                                 onChange={e => {
-                                  setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false });
+                                  setItem(it.key, { descricao_nf: e.target.value, pa_nome: undefined, pa_auto: false, principio_ativo_id: "", nome_comercial_ref: "" });
                                 }}
                                 onBlur={e => resolverItemPA(it.key, e.target.value)}
                                 placeholder="Descrição na NF"
                                 style={{ ...inp, fontSize: 12, padding: "5px 8px" }}
                               />
                               {it.pa_auto && it.pa_nome && (
-                                <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 4,
-                                  color: it.pa_criado ? "#C9921B" : "#1A6B3C" }}>
-                                  <span>{it.pa_criado ? "★" : "✓"} Estoque:</span>
+                                <div style={{ fontSize: 10, marginTop: 2, display: "flex", alignItems: "center", gap: 4, color: "#1A4870" }}>
+                                  <span style={{ background: "#D5E8F5", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>PA</span>
                                   <strong>{it.pa_nome}</strong>
-                                  {it.pa_criado && <span> — cadastrado automaticamente</span>}
+                                  <span style={{ color: "#666" }}>← {it.nome_comercial_ref}</span>
                                 </div>
                               )}
                             </div>
@@ -1322,7 +1326,7 @@ export default function NfCompraPage() {
                                   style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#D4DCE8" : "#1A4870"}`, background: it.tipo_apropiacao === "direto" ? "#fff" : "#D5E8F5", color: it.tipo_apropiacao === "direto" ? "#888" : "#1A4870", cursor: "pointer", fontWeight: 600 }}
                                 >📦 Estoque</button>
                                 <button
-                                  onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "" })}
+                                  onClick={() => setItem(it.key, { tipo_apropiacao: "direto", insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "" })}
                                   style={{ fontSize: 9, padding: "1px 7px", borderRadius: 4, border: `0.5px solid ${it.tipo_apropiacao === "direto" ? "#1A6B3C" : "#D4DCE8"}`, background: it.tipo_apropiacao === "direto" ? "#E8F5E9" : "#fff", color: it.tipo_apropiacao === "direto" ? "#1A6B3C" : "#888", cursor: "pointer", fontWeight: 600 }}
                                 >💸 C. Custo</button>
                               </div>
@@ -1465,10 +1469,10 @@ export default function NfCompraPage() {
                     </div>
                   </div>
 
-                  {/* Aviso para insumo não associado (ignora itens marcados como custo direto) */}
-                  {tipo === "insumos" && itens.some(it => !it.insumo_id && it.tipo_apropiacao !== "direto" && it.descricao_nf.trim()) && (
+                  {/* Aviso para item sem associação */}
+                  {tipo === "insumos" && itens.some(it => !it.insumo_id && !it.principio_ativo_id && it.tipo_apropiacao !== "direto" && it.descricao_nf.trim()) && (
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 }}>
-                      ⚠️ Itens sem insumo associado não serão lançados no estoque. Associe, mude para "C. Custo" ou remova-os antes de processar.
+                      ⚠️ Itens sem insumo ou princípio ativo associado não serão lançados no estoque. Associe, mude para "C. Custo" ou remova-os.
                     </div>
                   )}
 
@@ -1493,9 +1497,10 @@ export default function NfCompraPage() {
                     {tipo === "insumos" && (
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8" }}>
                         <div style={{ fontSize: 11, color: "#555" }}>
-                          {itens.filter(i => i.insumo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque ·{" "}
+                            {itens.filter(i => i.principio_ativo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque PA ·{" "}
+                          {itens.filter(i => i.insumo_id && !i.principio_ativo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque insumo ·{" "}
                           {itens.filter(i => i.tipo_apropiacao === "direto" && i.descricao_nf.trim()).length} item(s) → custo direto ·{" "}
-                          {itens.filter(i => !i.insumo_id && i.tipo_apropiacao !== "direto" && i.descricao_nf.trim()).length} item(s) sem associação (ignorados)
+                          {itens.filter(i => !i.insumo_id && !i.principio_ativo_id && i.tipo_apropiacao !== "direto" && i.descricao_nf.trim()).length} item(s) sem associação (ignorados)
                           {depositos.length > 0 && " · Depósito padrão: " + (nomeDeposito(itens.find(i => i.deposito_id && i.tipo_apropiacao !== "direto")?.deposito_id ?? "") || "não definido")}
                         </div>
                       </div>

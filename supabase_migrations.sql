@@ -3990,3 +3990,66 @@ CREATE POLICY "escrita_autenticada_principios" ON principios_ativos FOR ALL    U
 CREATE POLICY "escrita_autenticada_nomes"      ON nomes_comerciais  FOR ALL    USING (auth.role() = 'authenticated');
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════
+-- Seção 99: Estoque por Princípio Ativo (pa_saldos + movimentacoes_pa)
+-- Execução: Supabase SQL Editor
+-- ══════════════════════════════════════════════════════════════
+
+-- Saldo por fazenda × princípio ativo
+CREATE TABLE IF NOT EXISTS pa_saldos (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  principio_ativo_id  UUID NOT NULL REFERENCES principios_ativos(id) ON DELETE CASCADE,
+  saldo_atual         NUMERIC(14,4) NOT NULL DEFAULT 0,
+  custo_medio         NUMERIC(14,4) NOT NULL DEFAULT 0,
+  updated_at          TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (fazenda_id, principio_ativo_id)
+);
+
+-- Histórico de movimentações por PA (entrada/saída com rastreio de nome comercial e NF)
+CREATE TABLE IF NOT EXISTS movimentacoes_pa (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  principio_ativo_id    UUID NOT NULL REFERENCES principios_ativos(id) ON DELETE CASCADE,
+  tipo                  TEXT NOT NULL CHECK (tipo IN ('entrada','saida')),
+  quantidade            NUMERIC(14,4) NOT NULL,
+  custo_unitario        NUMERIC(14,4),
+  data                  DATE NOT NULL DEFAULT CURRENT_DATE,
+  nome_comercial_ref    TEXT,
+  nf_entrada_id         UUID REFERENCES nf_entradas(id) ON DELETE SET NULL,
+  nf_entrada_item_id    UUID REFERENCES nf_entrada_itens(id) ON DELETE SET NULL,
+  origem_tipo           TEXT DEFAULT 'manual' CHECK (origem_tipo IN ('nf_entrada','bot','manual','pulverizacao','adubacao','correcao_solo')),
+  obs                   TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Adiciona principio_ativo_id e nome_comercial_ref em nf_entrada_itens para rastreio
+ALTER TABLE nf_entrada_itens ADD COLUMN IF NOT EXISTS principio_ativo_id UUID REFERENCES principios_ativos(id) ON DELETE SET NULL;
+ALTER TABLE nf_entrada_itens ADD COLUMN IF NOT EXISTS nome_comercial_ref TEXT;
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_pa_saldos_fazenda        ON pa_saldos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_movimentacoes_pa_fazenda ON movimentacoes_pa(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_movimentacoes_pa_pa      ON movimentacoes_pa(principio_ativo_id);
+CREATE INDEX IF NOT EXISTS idx_movimentacoes_pa_nf      ON movimentacoes_pa(nf_entrada_id);
+
+-- RLS
+ALTER TABLE pa_saldos         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movimentacoes_pa  ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "pa_saldos_select"        ON pa_saldos;
+DROP POLICY IF EXISTS "pa_saldos_all"           ON pa_saldos;
+DROP POLICY IF EXISTS "movimentacoes_pa_select" ON movimentacoes_pa;
+DROP POLICY IF EXISTS "movimentacoes_pa_all"    ON movimentacoes_pa;
+
+CREATE POLICY "pa_saldos_select" ON pa_saldos FOR SELECT
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+CREATE POLICY "pa_saldos_all" ON pa_saldos FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+CREATE POLICY "movimentacoes_pa_select" ON movimentacoes_pa FOR SELECT
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+CREATE POLICY "movimentacoes_pa_all" ON movimentacoes_pa FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+NOTIFY pgrst, 'reload schema';
