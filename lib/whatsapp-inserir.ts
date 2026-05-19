@@ -464,12 +464,42 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
     return { ok: false, mensagem: linhas };
   }
 
-  // ── Salvar ────────────────────────────────────────────────────────────────
+  // ── Buscar ou criar pessoa/comprador ─────────────────────────────────────
+  // Procura na tabela pessoas por nome parecido (case-insensitive) para vincular pessoa_id
+  let pessoaId: string | null = null;
+  if (comprador) {
+    const { data: pessoasRows } = await sb()
+      .from("pessoas")
+      .select("id, nome")
+      .eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${comprador.split(" ")[0]}%`)  // busca pelo primeiro token do nome
+      .limit(5);
+
+    if (pessoasRows && pessoasRows.length > 0) {
+      // Prefere match exato (case-insensitive), senão usa o primeiro resultado
+      const exato = pessoasRows.find(p => String(p.nome).toLowerCase() === comprador.toLowerCase());
+      pessoaId = (exato ?? pessoasRows[0]).id as string;
+    } else {
+      // Cria a pessoa automaticamente como cliente (tipo "juridica" se tiver CNPJ)
+      const tipoPessoa = dados.comprador_cnpj ? "juridica" : "fisica";
+      const { data: novaPessoa } = await sb().from("pessoas").insert({
+        fazenda_id: fazendaId,
+        nome:       comprador,
+        tipo:       tipoPessoa,
+        cpf_cnpj:   dados.comprador_cnpj ? String(dados.comprador_cnpj) : null,
+        papel:      "cliente",
+      }).select("id").maybeSingle();
+      pessoaId = novaPessoa?.id as string ?? null;
+    }
+  }
+
+  // ── Salvar cabeçalho do contrato ──────────────────────────────────────────
   const { error, data: salvo } = await sb().from("contratos").insert({
     fazenda_id:          fazendaId,
     numero:              numero || `BOT-${Date.now()}`,
     nr_contrato_cliente: numero || null,
     comprador,
+    pessoa_id:           pessoaId,
     produto,
     safra:               safraStr,
     ano_safra_id:        anoSafra?.id ?? null,
@@ -480,6 +510,8 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
     moeda,
     modalidade,
     tipo:                "venda",
+    autorizacao:         "autorizada",
+    confirmado:          false,
     status:              "aberto",
     data_contrato:       dataContrato,
     data_entrega:        dataEntrega || new Date().toISOString().split("T")[0],
@@ -490,7 +522,29 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
 
   if (error) return { ok: false, mensagem: `❌ Erro ao salvar contrato: ${error.message}` };
 
-  // Gera CR automaticamente se preço em BRL e tem data de pagamento
+  const contratoId = salvo?.id as string;
+
+  // ── Criar item do contrato (contrato_itens) ───────────────────────────────
+  // Sem isso, o modal de edição exibe os itens vazios
+  if (contratoId && quantidadeSc > 0) {
+    const valorTotal = moeda === "BRL"
+      ? Math.round(quantidadeSc * preco * 100) / 100
+      : cotacaoUsd ? Math.round(quantidadeSc * preco * cotacaoUsd * 100) / 100 : 0;
+    await sb().from("contrato_itens").insert({
+      contrato_id:    contratoId,
+      fazenda_id:     fazendaId,
+      tipo:           "Produto",
+      produto,
+      unidade:        "sc",
+      quantidade:     quantidadeSc,
+      valor_unitario: moeda === "BRL" ? preco : (cotacaoUsd ? Math.round(preco * cotacaoUsd * 100) / 100 : preco),
+      valor_total:    valorTotal,
+      moeda:          "BRL",
+    });
+  }
+
+  // ── Gera CR automaticamente ───────────────────────────────────────────────
+  // Gera CR para qualquer moeda (USD convertido pela cotação), se tiver valor e data de pagamento
   let crMsg = "";
   if (receitaBRL > 0 && dataPagamento) {
     const { error: crErr } = await sb().from("lancamentos").insert({
