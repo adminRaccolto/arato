@@ -13,7 +13,7 @@ import {
   listarPessoas, criarPessoa, atualizarPessoa, excluirPessoa,
   listarAnosSafra, criarAnoSafra, atualizarAnoSafra, excluirAnoSafra,
   listarCiclos, criarCiclo, atualizarCiclo, excluirCiclo,
-  listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina,
+  listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina, excluirMaquinas,
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
   listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario,
   listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao,
@@ -273,6 +273,7 @@ function CadastrosInner() {
 
   // ── Máquinas ──
   const [maquinas, setMaquinas]       = useState<Maquina[]>([]);
+  const [selMaquinas, setSelMaquinas] = useState<Set<string>>(new Set());
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
   const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
@@ -1796,21 +1797,60 @@ function CadastrosInner() {
           )}
 
           {/* ══ MÁQUINAS E VEÍCULOS ══ */}
-          {aba === "maquinas" && (
+          {aba === "maquinas" && (() => {
+            const todosMaqSel = maquinas.length > 0 && maquinas.every(m => selMaquinas.has(m.id));
+            const algumMaqSel = maquinas.some(m => selMaquinas.has(m.id));
+            const thS: React.CSSProperties = { padding: "8px 14px", textAlign: "center" as const, fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" as const };
+            return (
             <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Máquinas e Veículos <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({maquinas.length})</span></div>
-                <button style={btnV} onClick={() => abrirModalMaq()}>+ Nova Máquina / Veículo</button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {selMaquinas.size > 0 && (
+                    <button
+                      style={{ padding: "7px 14px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+                      onClick={async () => {
+                        const ids = Array.from(selMaquinas);
+                        if (!confirm(`Excluir ${ids.length} máquina${ids.length > 1 ? "s" : ""}? Esta ação não pode ser desfeita.`)) return;
+                        try {
+                          await excluirMaquinas(ids);
+                          setMaquinas(p => p.filter(m => !selMaquinas.has(m.id)));
+                          setSelMaquinas(new Set());
+                        } catch { alert("Erro ao excluir. Verifique se as máquinas possuem registros vinculados."); }
+                      }}
+                    >
+                      Excluir {selMaquinas.size} selecionada{selMaquinas.size > 1 ? "s" : ""}
+                    </button>
+                  )}
+                  <button style={btnV} onClick={() => abrirModalMaq()}>+ Nova Máquina / Veículo</button>
+                </div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome", "Tipo", "Marca / Modelo", "Chassi", "Ano", "Km / Horímetro", "Seguro", "Status", ""]} />
+                <thead>
+                  <tr style={{ background: "#F3F6F9" }}>
+                    <th style={{ ...thS, width: 40, padding: "8px 12px" }}>
+                      <input type="checkbox" checked={todosMaqSel} ref={el => { if (el) el.indeterminate = algumMaqSel && !todosMaqSel; }}
+                        onChange={e => setSelMaquinas(e.target.checked ? new Set(maquinas.map(m => m.id)) : new Set())}
+                        style={{ cursor: "pointer", width: 15, height: 15 }} />
+                    </th>
+                    {["Nome", "Tipo", "Marca / Modelo", "Chassi", "Ano", "Km / Horímetro", "Seguro", "Status", ""].map((c, i) => (
+                      <th key={i} style={{ ...thS, textAlign: i === 0 ? "left" : "center" }}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
-                  {maquinas.length === 0 && <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
+                  {maquinas.length === 0 && <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
                   {maquinas.map((m, i) => {
                     const vencSeguro = m.seguro_vencimento_apolice ? diasAteDate(m.seguro_vencimento_apolice) : null;
                     const corSeguro = vencSeguro === null ? "#888" : vencSeguro < 0 ? "#E24B4A" : vencSeguro <= 15 ? "#EF9F27" : "#16A34A";
+                    const sel = selMaquinas.has(m.id);
                     return (
-                      <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={m.id} style={{ borderBottom: i < maquinas.length - 1 ? "0.5px solid #DEE5EE" : "none", background: sel ? "#EBF5FF" : "transparent" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                          <input type="checkbox" checked={sel}
+                            onChange={e => setSelMaquinas(prev => { const s = new Set(prev); e.target.checked ? s.add(m.id) : s.delete(m.id); return s; })}
+                            style={{ cursor: "pointer", width: 15, height: 15 }} />
+                        </td>
                         <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{m.nome}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo === "carro" ? "Carro" : m.tipo, "#F1EFE8", "#555")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
@@ -1841,7 +1881,8 @@ function CadastrosInner() {
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
 
           {/* ══ COMBUSTÍVEIS ══ */}
           {aba === "combustivel" && (

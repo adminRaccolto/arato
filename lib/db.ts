@@ -212,6 +212,12 @@ export async function excluirInsumo(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function excluirInsumos(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await supabase.from("insumos").delete().in("id", ids);
+  if (error) throw error;
+}
+
 export async function listarMovimentacoes(fazenda_id: string, insumo_id?: string, dataInicio?: string, dataFim?: string): Promise<MovimentacaoEstoque[]> {
   let q = supabase.from("movimentacoes_estoque").select("*").eq("fazenda_id", fazenda_id).order("data", { ascending: false });
   if (insumo_id) q = q.eq("insumo_id", insumo_id);
@@ -705,6 +711,12 @@ export async function atualizarMaquina(id: string, m: Partial<Maquina>): Promise
 }
 export async function excluirMaquina(id: string): Promise<void> {
   const { error } = await supabase.from("maquinas").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirMaquinas(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const { error } = await supabase.from("maquinas").delete().in("id", ids);
   if (error) throw error;
 }
 
