@@ -1542,8 +1542,12 @@ function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
   const status = (row.status as string | undefined) ?? "ativo";
   const statusNorm: ContratoFinanceiro["status"] =
     status === "quitado" ? "quitado" : status === "cancelado" ? "cancelado" : "ativo";
+  // Deriva taxa a.a. da taxa a.m. se só a mensal estiver no banco (dados migrados)
+  const taxaAm  = (row.taxa_juros_am as number | undefined);
+  const taxaAa  = (row.taxa_juros_aa as number | undefined)
+    ?? (taxaAm ? (Math.pow(1 + taxaAm / 100, 12) - 1) * 100 : undefined);
   return {
-    ...(row as Omit<ContratoFinanceiro, "tipo"|"status"|"valor_financiado"|"valor_cotacao"|"valor_financiado_brl"|"tipo_calculo"|"numero_documento"|"carencia_meses"|"periodicidade_meses"|"carencia_tipo"|"rateio_por_vencimento"|"fiscal">),
+    ...(row as Omit<ContratoFinanceiro, "tipo"|"status"|"valor_financiado"|"valor_cotacao"|"valor_financiado_brl"|"tipo_calculo"|"numero_documento"|"carencia_meses"|"periodicidade_meses"|"carencia_tipo"|"rateio_por_vencimento"|"fiscal"|"taxa_juros_aa"|"taxa_juros_am">),
     tipo,
     status:                statusNorm,
     valor_financiado:      vf,
@@ -1551,6 +1555,8 @@ function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
     valor_financiado_brl:  vfbrl,
     tipo_calculo:          tipoCalculo,
     numero_documento:      (row.numero_documento ?? row.numero_contrato) as string | undefined,
+    taxa_juros_am:         taxaAm,
+    taxa_juros_aa:         taxaAa,
     carencia_meses:        (row.carencia_meses as number | undefined) ?? 0,
     periodicidade_meses:   (row.periodicidade_meses as number | undefined) ?? 1,
     carencia_tipo:         ((row.carencia_tipo as string | undefined) ?? "so_juros") as "so_juros" | "total",
