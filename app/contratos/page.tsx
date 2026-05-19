@@ -1425,7 +1425,7 @@ export default function Contratos() {
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
                         <tr style={{ background:"#F8FAFD" }}>
-                          {["Tipo","Item / Produto","Peso (kg)","Equiv. (sc)","Valor (R$/sc)","Valor Total",""].map((h,i) => (
+                          {["Tipo","Item / Produto","Peso (kg)","Equiv. (sc)", fC.moeda === "USD" ? "Valor (US$/sc)" : "Valor (R$/sc)","Valor Total",""].map((h,i) => (
                             <th key={i} style={{ padding:"6px 10px", textAlign: i>=2&&i<=5?"center":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
@@ -1464,7 +1464,8 @@ export default function Contratos() {
                               <input style={{ ...inp, textAlign:"right", fontSize:12 }} type="number" min="0" step="0.01" value={it.valor_unitario||""} onChange={e => atualizarItem(idx,"valor_unitario",e.target.value)} placeholder="0,00" />
                             </td>
                             <td style={{ padding:"6px 8px", width:130 }}>
-                              <input style={{ ...inp, background:"#F4F6FA", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }} value={(it.valor_total??0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} readOnly />
+                              <input style={{ ...inp, background:"#F4F6FA", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }}
+                                value={(it.valor_total??0).toLocaleString("pt-BR",{style:"currency",currency: fC.moeda === "USD" ? "USD" : "BRL"})} readOnly />
                             </td>
                             <td style={{ padding:"6px 8px", width:34 }}>
                               {itens.length > 1 && <button style={btnX} onClick={() => setItens(p => p.filter((_,i)=>i!==idx))}>✕</button>}
@@ -1474,11 +1475,16 @@ export default function Contratos() {
                       </tbody>
                     </table>
                     {/* Rodapé de totais */}
-                    <div style={{ padding:"8px 14px", background:"#F3F6F9", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:32 }}>
-                      <span style={{ fontSize:12, color:"#555" }}>Valor Financeiro: <strong style={{ color:"#1a1a1a" }}>{fmtR$(valorFinanceiro)}</strong></span>
-                      <span style={{ fontSize:12, color:"#555" }}>Frete: <strong style={{ color:"#1a1a1a" }}>{fmtR$(fC.valor_frete||0)}</strong></span>
-                      <span style={{ fontSize:13, fontWeight:600, color:"#1A4870" }}>Valor Total: {fmtR$(valorTotal)}</span>
-                    </div>
+                    {(() => {
+                      const fmtValor = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
+                      return (
+                        <div style={{ padding:"8px 14px", background:"#F3F6F9", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:32 }}>
+                          <span style={{ fontSize:12, color:"#555" }}>Valor Financeiro: <strong style={{ color:"#1a1a1a" }}>{fmtValor(valorFinanceiro)}</strong></span>
+                          <span style={{ fontSize:12, color:"#555" }}>Frete: <strong style={{ color:"#1a1a1a" }}>{fmtR$(fC.valor_frete||0)}</strong></span>
+                          <span style={{ fontSize:13, fontWeight:600, color:"#1A4870" }}>Valor Total: {fmtValor(valorTotal)}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </>
               )}
@@ -1639,8 +1645,10 @@ export default function Contratos() {
             {/* Rodapé do modal */}
             <div style={{ padding:"12px 20px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#F8FAFD" }}>
               <div style={{ fontSize:11, color:"#555" }}>
-                Valor Financeiro: <strong>{fmtR$(valorFinanceiro)}</strong>
-                <span style={{ marginLeft:20 }}>Valor Total: <strong style={{ color:"#1A4870" }}>{fmtR$(valorTotal)}</strong></span>
+                {(() => {
+                  const fv = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
+                  return <>Valor Financeiro: <strong>{fv(valorFinanceiro)}</strong><span style={{ marginLeft:20 }}>Valor Total: <strong style={{ color:"#1A4870" }}>{fv(valorTotal)}</strong></span></>;
+                })()}
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button style={btnR} onClick={() => setModalContrato(false)}>Cancelar</button>
