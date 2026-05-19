@@ -1022,9 +1022,12 @@ function FinanceiroRelatoriosInner() {
                   ];
 
                   // Aba Lançamentos
-                  const cabecalho = ["Tipo", "Vencimento", "Descrição", "Categoria", "Conta Bancária", "Status", "Moeda", "Valor Original", "Valor BRL"];
+                  // CR → positivo, CP → negativo (convenção de fluxo de caixa)
+                  const sinal = (l: Lancamento) => l.tipo === "pagar" ? -1 : 1;
+                  const cabecalho = ["Tipo", "Vencimento", "Descrição", "Categoria", "Operação", "Conta Bancária", "Status", "Moeda", "Valor Original", "Valor BRL"];
                   const linhas = lancsCPCR.map(l => {
                     const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
+                    const opNome    = operacoesGer.find(o => o.id === l.operacao_id)?.descricao ?? (l.origem_lancamento ?? "");
                     const brl = paraBRLRel(l, cotacaoUSD);
                     const venc = l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "";
                     return [
@@ -1032,11 +1035,12 @@ function FinanceiroRelatoriosInner() {
                       venc,
                       l.descricao ?? "",
                       l.categoria ?? "",
+                      opNome,
                       contaNome,
                       statusLabel[l.status] ?? l.status,
                       l.moeda?.toUpperCase() ?? "BRL",
-                      l.valor,
-                      brl,
+                      sinal(l) * l.valor,
+                      sinal(l) * brl,
                     ];
                   });
 
@@ -1046,7 +1050,7 @@ function FinanceiroRelatoriosInner() {
                   XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
 
                   const wsLanc = XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]);
-                  wsLanc["!cols"] = [6,16,44,20,20,12,8,16,16].map(w => ({ wch: w }));
+                  wsLanc["!cols"] = [6,16,44,20,28,20,12,8,16,16].map(w => ({ wch: w }));
                   XLSX.utils.book_append_sheet(wb, wsLanc, "Lançamentos");
 
                   const hoje = new Date().toISOString().slice(0, 10);
