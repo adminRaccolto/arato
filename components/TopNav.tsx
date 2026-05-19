@@ -118,7 +118,8 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-fin-relatorios", label: "Relatórios",
         children: [
-          { id: "fin-fluxo",   label: "Fluxo de Caixa",      path: "/financeiro/relatorios?aba=fluxo"   },
+          { id: "fin-fluxo-prev", label: "Fluxo de Caixa Previsto",  path: "/financeiro/relatorios?aba=fluxo&tipo=previsto"  },
+          { id: "fin-fluxo-real", label: "Fluxo de Caixa Realizado", path: "/financeiro/relatorios?aba=fluxo&tipo=realizado" },
           { id: "fin-cpcr",    label: "CP / CR — Contas",     path: "/financeiro/relatorios?aba=cpcr"    },
           { id: "fin-posicao", label: "Posição por Conta",    path: "/financeiro/relatorios?aba=posicao" },
         ],
@@ -389,13 +390,18 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
           {/* Flyout lateral */}
           {isOpen && (
+            <>
+            {/* Ponte invisível: cobre o gap de 4px entre o item e o flyout */}
             <div style={{
-              position: "absolute", top: -6, left: "100%",
+              position: "absolute", top: 0, left: "100%",
+              width: 8, height: "100%", background: "transparent",
+            }} />
+            <div style={{
+              position: "absolute", top: -6, left: "calc(100% + 4px)",
               background: "#fff", borderRadius: 10,
               border: "0.5px solid #D4DCE8",
               boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
               minWidth: 210, zIndex: 300, padding: "6px 0",
-              marginLeft: 4,
             }}>
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
@@ -422,6 +428,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 );
               })}
             </div>
+            </>
           )}
         </div>
       );

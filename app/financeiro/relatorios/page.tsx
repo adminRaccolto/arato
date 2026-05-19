@@ -86,16 +86,22 @@ function FinanceiroRelatoriosInner() {
   const [filtroAberto, setFiltroAberto] = useState(false);
 
   const anoAtual = new Date().getFullYear();
-  const [filtro, setFiltro] = useState<FiltroFluxo>({
-    empresasSel:   [],
-    contasSel:     [],
-    produtoresSel: [],
-    inicio:        `${anoAtual}-01-01`,
-    fim:           `${anoAtual}-12-31`,
-    moedaExib:     "BRL",
-    visao:         "ambos",
-    tipoVis:       "ambos",
-    moedasSel:     [],
+  const tipoParam = searchParams.get("tipo"); // "previsto" | "realizado" | null
+
+  const [filtro, setFiltro] = useState<FiltroFluxo>(() => {
+    const hoje = new Date();
+    const hojeFmt = hoje.toISOString().split("T")[0];
+    let inicio = `${anoAtual}-01-01`;
+    let fim    = `${anoAtual}-12-31`;
+    let tipoVis: FiltroFluxo["tipoVis"] = "ambos";
+    if (tipoParam === "previsto") {
+      const em6 = new Date(hoje); em6.setMonth(em6.getMonth() + 6);
+      inicio = hojeFmt; fim = em6.toISOString().split("T")[0]; tipoVis = "previsto";
+    } else if (tipoParam === "realizado") {
+      const ha6 = new Date(hoje); ha6.setMonth(ha6.getMonth() - 6);
+      inicio = ha6.toISOString().split("T")[0]; fim = hojeFmt; tipoVis = "realizado";
+    }
+    return { empresasSel: [], contasSel: [], produtoresSel: [], inicio, fim, moedaExib: "BRL", visao: "ambos", tipoVis, moedasSel: [] };
   });
   const [mesesExpandidos,   setMesesExpandidos]   = useState<Set<string>>(new Set());
   const [simEntries,        setSimEntries]        = useState<SimEntry[]>([]);

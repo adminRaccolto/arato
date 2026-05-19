@@ -334,11 +334,11 @@ export default function Dashboard() {
       }
       if (cp3.length > 0) {
         const total = cp3.reduce((s, r) => s + (r.valor ?? 0), 0);
-        novosAlertas.push({ id: "cp-3dias", tipo: "cp", desc: `${cp3.length} CP vencem em 2–3 dias · ${fmtMoeda(total)}`, valor: total, dias: 3, urgencia: "alto", link: "/financeiro/pagar", linkLabel: "Ver" });
+        novosAlertas.push({ id: "cp-3dias", tipo: "cp", desc: `${cp3.length} CP vencem em 2–3 dias · ${fmtMoeda(total)}`, valor: total, dias: 3, urgencia: "alto", link: "/financeiro/pagar", linkLabel: "Ver CP" });
       }
       if (cp7.length > 0) {
         const total = cp7.reduce((s, r) => s + (r.valor ?? 0), 0);
-        novosAlertas.push({ id: "cp-7dias", tipo: "cp", desc: `${cp7.length} CP vencem esta semana · ${fmtMoeda(total)}`, valor: total, dias: 7, urgencia: "medio", link: "/financeiro/pagar", linkLabel: "Ver" });
+        novosAlertas.push({ id: "cp-7dias", tipo: "cp", desc: `${cp7.length} CP vencem esta semana · ${fmtMoeda(total)}`, valor: total, dias: 7, urgencia: "medio", link: "/financeiro/pagar", linkLabel: "Ver CP" });
       }
 
       // ── CR vencidos e a vencer ──
@@ -362,7 +362,7 @@ export default function Dashboard() {
       if (crProx.length > 0) {
         const total = crProx.reduce((s, r) => s + (r.valor ?? 0), 0);
         const minD = Math.min(...crProx.map(r => diasAte(r.data_vencimento)));
-        novosAlertas.push({ id: "cr-prox", tipo: "cr", desc: `${crProx.length} CR a receber · ${fmtMoeda(total)} · ${labelDias(minD)}`, valor: total, dias: minD, urgencia: urgDias(minD), link: "/financeiro/receber", linkLabel: "Ver" });
+        novosAlertas.push({ id: "cr-prox", tipo: "cr", desc: `${crProx.length} CR a receber · ${fmtMoeda(total)} · ${labelDias(minD)}`, valor: total, dias: minD, urgencia: urgDias(minD), link: "/financeiro/receber", linkLabel: "Ver CR" });
       }
 
       // ── Arrendamentos ──
