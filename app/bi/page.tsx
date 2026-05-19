@@ -9,12 +9,12 @@ import type { PrecosData } from "../api/precos/route";
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }
 interface AnoSafra   { id: string; descricao: string; fazenda_id: string }
-interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string }
+interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null }
 interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha: number; produtividade_esperada: number }
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string }
-interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string }
+interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
 // ── Formatadores ──────────────────────────────────────────────
@@ -191,7 +191,7 @@ export default function BI() {
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
       supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id").eq("fazenda_id", fazendaId),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento").eq("fazenda_id", fazendaId),
+      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,ciclo_id,ano_safra_id,modalidade,tipo").eq("fazenda_id", fazendaId),
       supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").eq("fazenda_id", fazendaId),
       fetch("/api/precos").then(r => r.json()),
     ]);
@@ -891,31 +891,266 @@ export default function BI() {
         )}
 
         {/* ═══════════ COMERCIALIZAÇÃO ═══════════ */}
-        {!loading && aba === "comercializacao" && (
-          <div>
-            {/* Seletor commodity */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 18, alignItems: "center" }}>
-              {(["Soja", "Milho", "Algodão"] as const).map(c => (
-                <button key={c} onClick={() => setCommodity(c)} style={{
-                  padding: "8px 20px", borderRadius: 8, border: "0.5px solid #D4DCE8",
-                  cursor: "pointer", fontSize: 13, fontWeight: commodity === c ? 700 : 400,
-                  background: commodity === c ? "#1A4870" : "#fff",
-                  color: commodity === c ? "#fff" : "#1a1a1a",
-                }}>{c}</button>
-              ))}
-              {(() => {
-                const pRef = calcPosicao(commodity).precoBrl;
-                const unidade = commodity === "Algodão" ? "@" : "sc";
-                return pRef > 0 ? (
-                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>
-                    Preço ref.:&nbsp;
-                    <strong style={{ color: "#1A4870" }}>R$ {fmtN(pRef, 2)}/{unidade}</strong>
-                  </span>
-                ) : null;
-              })()}
+        {!loading && aba === "comercializacao" && (() => {
+          // ── Contratos visíveis no filtro ────────────────────────
+          const contratosVisiveis = contratos.filter(c => {
+            if (c.status === "cancelado" || c.is_arrendamento) return false;
+            if (!filtroAnoSafraId) return true;
+            return (c.ciclo_id && cicloIdsSet.has(c.ciclo_id)) ||
+                   (c.ano_safra_id && anoSafraIdsFiltSet.has(c.ano_safra_id));
+          });
+
+          // a) Barter
+          const barterContratos = contratosVisiveis.filter(c => c.modalidade === "barter" || c.tipo === "barter");
+          const barterSacas     = barterContratos.reduce((s, c) => s + (c.quantidade_sc || 0), 0);
+
+          // b) Contratos de Venda
+          const vendaContratos  = contratosVisiveis.filter(c => c.modalidade !== "barter" && c.tipo !== "barter");
+          const vendaUSD        = vendaContratos.filter(c => c.moeda === "USD");
+          const vendaBRL        = vendaContratos.filter(c => c.moeda !== "USD");
+          const vendaUSDSacas   = vendaUSD.reduce((s, c) => s + (c.quantidade_sc || 0), 0);
+          const vendaBRLSacas   = vendaBRL.reduce((s, c) => s + (c.quantidade_sc || 0), 0);
+          const vendaTotalSacas = vendaUSDSacas + vendaBRLSacas;
+
+          // c) Arrendamento
+          const arrSacasBi = arrPags
+            .filter(p => p.status !== "pago" && p.status !== "cancelado" &&
+              (!filtroAnoSafraId || anoSafraIdsFiltSet.has(p.ano_safra_id)))
+            .reduce((s, p) => s + (p.sacas_previstas || 0), 0);
+
+          const totalComprometido = barterSacas + vendaTotalSacas + arrSacasBi;
+          const producaoBi        = plantiosFiltrados.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
+          const livreSacas        = Math.max(0, producaoBi - totalComprometido);
+          const pctBar = (v: number) => producaoBi > 0 ? Math.min(100, (v / producaoBi) * 100) : 0;
+
+          // Preço objetivo (ciclo.preco_esperado_sc) — média ponderada pelos ciclos filtrados
+          const ciclosComPreco = ciclosFiltrados.filter(c => (c.preco_esperado_sc ?? 0) > 0);
+          const precoObj       = ciclosComPreco.length > 0
+            ? ciclosComPreco.reduce((s, c) => s + (c.preco_esperado_sc!), 0) / ciclosComPreco.length
+            : 0;
+
+          // Valor médio por moeda
+          const usdComPreco  = vendaUSD.filter(c => (c.preco ?? 0) > 0);
+          const brlComPreco  = vendaBRL.filter(c => (c.preco ?? 0) > 0);
+          const mediaUSD     = usdComPreco.length > 0 ? usdComPreco.reduce((s, c) => s + c.preco!, 0) / usdComPreco.length : 0;
+          const mediaBRL     = brlComPreco.length > 0 ? brlComPreco.reduce((s, c) => s + c.preco!, 0) / brlComPreco.length : 0;
+
+          // Receita total em contratos (pelo preço objetivo do ciclo)
+          const receitaVendaUSD = vendaUSD.reduce((s, c) => s + (c.quantidade_sc || 0) * (c.preco || precoObj), 0);
+          const receitaVendaBRL = vendaBRL.reduce((s, c) => s + (c.quantidade_sc || 0) * (c.preco || precoObj), 0);
+          const receitaBarter   = barterSacas * precoObj;
+          const receitaArr      = arrSacasBi * precoObj;
+
+          // Maior comprador (por sacas em contratos de venda)
+          const compMap: Record<string, { nome: string; sacas: number; totalVal: number; qtd: number }> = {};
+          for (const c of vendaContratos) {
+            const nome = (c.comprador || "Sem nome").trim();
+            if (!compMap[nome]) compMap[nome] = { nome, sacas: 0, totalVal: 0, qtd: 0 };
+            compMap[nome].sacas    += c.quantidade_sc || 0;
+            compMap[nome].totalVal += (c.quantidade_sc || 0) * (c.preco || precoObj);
+            compMap[nome].qtd      += 1;
+          }
+          const ranking       = Object.values(compMap).sort((a, b) => b.sacas - a.sacas);
+          const top            = ranking[0] ?? null;
+          const mediaTop       = top && top.qtd > 0 ? top.totalVal / top.qtd : 0;
+
+          const CORES = { arr: "#E24B4A", barter: "#EF9F27", brl: "#1A4870", usd: "#378ADD", livre: "#16A34A" };
+
+          return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+            {/* ── 1. VOLUME COMPROMETIDO ── */}
+            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Volume Total Comprometido</span>
+                {producaoBi > 0 && <span style={{ fontSize: 12, color: "#555" }}>Base: <strong>{fmtN(producaoBi, 0)} sc</strong> projetadas</span>}
+              </div>
+
+              {/* Barra empilhada */}
+              {producaoBi > 0 ? (
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ display: "flex", height: 20, borderRadius: 10, overflow: "hidden", background: "#EEF1F6" }}>
+                    {arrSacasBi    > 0 && <div style={{ width: `${pctBar(arrSacasBi)}%`,    background: CORES.arr,    transition: "width .4s" }} title={`Arrendamento: ${fmtN(arrSacasBi, 0)} sc`} />}
+                    {barterSacas   > 0 && <div style={{ width: `${pctBar(barterSacas)}%`,   background: CORES.barter, transition: "width .4s" }} title={`Barter: ${fmtN(barterSacas, 0)} sc`} />}
+                    {vendaBRLSacas > 0 && <div style={{ width: `${pctBar(vendaBRLSacas)}%`, background: CORES.brl,    transition: "width .4s" }} title={`Venda BRL: ${fmtN(vendaBRLSacas, 0)} sc`} />}
+                    {vendaUSDSacas > 0 && <div style={{ width: `${pctBar(vendaUSDSacas)}%`, background: CORES.usd,    transition: "width .4s" }} title={`Venda USD: ${fmtN(vendaUSDSacas, 0)} sc`} />}
+                    {livreSacas    > 0 && <div style={{ width: `${pctBar(livreSacas)}%`,    background: CORES.livre,  transition: "width .4s" }} title={`Livre: ${fmtN(livreSacas, 0)} sc`} />}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 8 }}>
+                    {[
+                      { label: "Arrendamento", v: arrSacasBi,    bg: CORES.arr    },
+                      { label: "Barter",        v: barterSacas,   bg: CORES.barter },
+                      { label: "Venda BRL",     v: vendaBRLSacas, bg: CORES.brl    },
+                      { label: "Venda USD",     v: vendaUSDSacas, bg: CORES.usd    },
+                      { label: "Livre",         v: livreSacas,    bg: CORES.livre  },
+                    ].filter(x => x.v > 0).map(x => (
+                      <span key={x.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+                        <span style={{ width: 9, height: 9, borderRadius: 2, background: x.bg, display: "inline-block" }} />
+                        {x.label}: <strong>{fmtN(x.v, 0)} sc</strong> ({fmtN(pctBar(x.v), 0)}%)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Sem plantios registrados para o filtro selecionado</div>
+              )}
+
+              {/* Cards breakdown */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+
+                {/* a) Barter */}
+                <div style={{ border: `1.5px solid ${CORES.barter}40`, borderRadius: 10, padding: "14px 18px", background: "#FFFBF3" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: CORES.barter, display: "inline-block" }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", textTransform: "uppercase", letterSpacing: ".04em" }}>a) Barter</span>
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#7A5200" }}>{fmtN(barterSacas, 0)} sc</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(barterSacas), 1)}% da produção · {barterContratos.length} contrato(s)</div>
+                  {precoObj > 0 && <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4, fontWeight: 600 }}>≈ {fmtR(receitaBarter)}</div>}
+                </div>
+
+                {/* b) Contratos de Venda */}
+                <div style={{ border: `1.5px solid ${CORES.brl}40`, borderRadius: 10, padding: "14px 18px", background: "#F0F5FF" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: CORES.brl, display: "inline-block" }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#0B2D50", textTransform: "uppercase", letterSpacing: ".04em" }}>b) Contratos de Venda</span>
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#1A4870" }}>{fmtN(vendaTotalSacas, 0)} sc</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(vendaTotalSacas), 1)}% da produção · {vendaContratos.length} contrato(s)</div>
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#378ADD", fontWeight: 600 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES.usd, display: "inline-block" }} />
+                        Em USD
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtN(vendaUSDSacas, 0)} sc ({vendaUSD.length} ctrs)</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES.brl, display: "inline-block" }} />
+                        Em BRL
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtN(vendaBRLSacas, 0)} sc ({vendaBRL.length} ctrs)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* c) Arrendamento */}
+                <div style={{ border: `1.5px solid ${CORES.arr}40`, borderRadius: 10, padding: "14px 18px", background: "#FFF5F5" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: CORES.arr, display: "inline-block" }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#791F1F", textTransform: "uppercase", letterSpacing: ".04em" }}>c) Arrendamento</span>
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{fmtN(arrSacasBi, 0)} sc</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(arrSacasBi), 1)}% da produção</div>
+                  {precoObj > 0 && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4, fontWeight: 600 }}>≈ {fmtR(receitaArr)}</div>}
+                </div>
+              </div>
             </div>
 
-            {(() => {
+            {/* ── 2. VALOR COMERCIALIZADO ── */}
+            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 16 }}>Valor Comercializado</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+
+                {/* Preço objetivo do ciclo */}
+                <div style={{ background: "#F4F6FA", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
+                  <div style={{ fontSize: 10, color: "#555", marginBottom: 4, fontWeight: 600 }}>Preço Objetivo (ciclo)</div>
+                  {precoObj > 0
+                    ? <div style={{ fontSize: 18, fontWeight: 800, color: "#1A4870" }}>R$ {fmtN(precoObj, 2)}/sc</div>
+                    : <div style={{ fontSize: 13, color: "#aaa" }}>Não definido</div>
+                  }
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Base: cadastro do ciclo</div>
+                </div>
+
+                {/* Média USD */}
+                <div style={{ background: "#EBF3FC", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #378ADD40" }}>
+                  <div style={{ fontSize: 10, color: "#0B2D50", marginBottom: 4, fontWeight: 600 }}>Média Contratos USD</div>
+                  {mediaUSD > 0
+                    ? <><div style={{ fontSize: 18, fontWeight: 800, color: "#0B5394" }}>US$ {fmtN(mediaUSD, 2)}/sc</div>
+                       <div style={{ fontSize: 11, color: "#378ADD", marginTop: 2 }}>{usdComPreco.length}/{vendaUSD.length} contratos com preço</div></>
+                    : <div style={{ fontSize: 13, color: "#aaa" }}>Sem contratos USD</div>
+                  }
+                </div>
+
+                {/* Média BRL */}
+                <div style={{ background: "#F0F5FF", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #1A487040" }}>
+                  <div style={{ fontSize: 10, color: "#0B2D50", marginBottom: 4, fontWeight: 600 }}>Média Contratos BRL</div>
+                  {mediaBRL > 0
+                    ? <><div style={{ fontSize: 18, fontWeight: 800, color: "#1A4870" }}>R$ {fmtN(mediaBRL, 2)}/sc</div>
+                       <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{brlComPreco.length}/{vendaBRL.length} contratos com preço</div></>
+                    : <div style={{ fontSize: 13, color: "#aaa" }}>Sem contratos BRL</div>
+                  }
+                </div>
+
+                {/* Receita contratos USD */}
+                <div style={{ background: "#F8FAFD", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
+                  <div style={{ fontSize: 10, color: "#555", marginBottom: 4, fontWeight: 600 }}>Receita Contratos USD</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#0B5394" }}>{receitaVendaUSD > 0 ? fmtR2(receitaVendaUSD) : "—"}</div>
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{fmtN(vendaUSDSacas, 0)} sc × preço médio</div>
+                </div>
+
+                {/* Receita contratos BRL */}
+                <div style={{ background: "#F8FAFD", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
+                  <div style={{ fontSize: 10, color: "#555", marginBottom: 4, fontWeight: 600 }}>Receita Contratos BRL</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#14532D" }}>{receitaVendaBRL > 0 ? fmtR2(receitaVendaBRL) : "—"}</div>
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{fmtN(vendaBRLSacas, 0)} sc × preço médio</div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 3. MAIOR COMPRADOR ── */}
+            {ranking.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 16 }}>Maior Comprador</div>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(ranking.length, 3)}, 1fr)`, gap: 12, marginBottom: ranking.length > 3 ? 16 : 0 }}>
+                  {ranking.slice(0, 3).map((r, idx) => (
+                    <div key={r.nome} style={{ borderRadius: 10, padding: "16px 20px", border: "0.5px solid #DDE2EE", background: idx === 0 ? "#EBF3FC" : "#F8FAFD" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span style={{ width: 26, height: 26, borderRadius: "50%", background: idx === 0 ? "#1A5CB8" : "#D4DCE8", color: idx === 0 ? "#fff" : "#555", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>#{idx + 1}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nome}</span>
+                      </div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: idx === 0 ? "#0C447C" : "#1a1a1a" }}>{fmtN(r.sacas, 0)} sc</div>
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{r.qtd} contrato(s)</div>
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "0.5px solid #E4E9F0" }}>
+                        <div style={{ fontSize: 10, color: "#888" }}>Média por contrato</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#16A34A" }}>{fmtR2(r.qtd > 0 ? r.totalVal / r.qtd : 0)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Tabela ranking completa */}
+                {ranking.length > 3 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#F3F6F9" }}>
+                        {["#", "Comprador", "Sacas", "% do total", "Contratos", "Média/contrato"].map((h, i) => (
+                          <th key={h} style={{ padding: "6px 12px", textAlign: i >= 2 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ranking.map((r, idx) => (
+                        <tr key={r.nome} style={{ borderBottom: "0.5px solid #EEF1F6", background: idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                          <td style={{ padding: "7px 12px", color: "#888" }}>{idx + 1}</td>
+                          <td style={{ padding: "7px 12px", fontWeight: 600 }}>{r.nome}</td>
+                          <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700 }}>{fmtN(r.sacas, 0)}</td>
+                          <td style={{ padding: "7px 12px", textAlign: "right" }}>{vendaTotalSacas > 0 ? fmtN((r.sacas / vendaTotalSacas) * 100, 1) : 0}%</td>
+                          <td style={{ padding: "7px 12px", textAlign: "right" }}>{r.qtd}</td>
+                          <td style={{ padding: "7px 12px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{fmtR2(r.qtd > 0 ? r.totalVal / r.qtd : 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+          </div>
+          );
+        })()}
+
+            {/* REMOVIDO — código legado comercialização */ false && (() => {
               const p = calcPosicao(commodity);
               const risco: "verde" | "amarelo" | "vermelho" = p.comprPctTotal > 90 ? "vermelho" : p.comprPct > 70 ? "amarelo" : "verde";
               const livre = Math.max(0, p.producao - p.arrSacas - p.barterSacas - p.fixadoSacas);
@@ -1081,8 +1316,6 @@ export default function BI() {
                 </div>
               );
             })()}
-          </div>
-        )}
 
         {/* ═══════════ FINANCEIRO ═══════════ */}
         {!loading && aba === "financeiro" && (
