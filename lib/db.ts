@@ -1520,20 +1520,76 @@ export async function atualizarEstoqueTerceiro(id: string, e: Partial<EstoqueTer
 // CONTRATOS FINANCEIROS (custeio, CPR, etc.)
 // ————————————————————————————————————————
 
+// Normaliza linha do banco: mapeia nomes antigos → nomes esperados pelo TypeScript
+// O banco pode ter valor_total/cotacao_usd/tipo_amortizacao de dados migrados
+function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
+  const vf = (row.valor_financiado ?? row.valor_total ?? 0) as number;
+  const vc = (row.valor_cotacao ?? row.cotacao_usd) as number | undefined;
+  const vfbrl = (row.valor_financiado_brl as number | undefined)
+    ?? (row.moeda === "USD" && vc ? vf * vc : vf);
+  const tc = ((row.tipo_calculo ?? (row.tipo_amortizacao ? (row.tipo_amortizacao as string).toLowerCase() : "sac")) as string);
+  const tipoCalculo: ContratoFinanceiro["tipo_calculo"] =
+    tc === "price" ? "price" : tc === "outros" ? "outros" : "sac";
+  return {
+    ...(row as Omit<ContratoFinanceiro, "valor_financiado"|"valor_cotacao"|"valor_financiado_brl"|"tipo_calculo"|"numero_documento"|"carencia_meses"|"periodicidade_meses"|"carencia_tipo"|"rateio_por_vencimento"|"fiscal">),
+    valor_financiado:      vf,
+    valor_cotacao:         vc,
+    valor_financiado_brl:  vfbrl,
+    tipo_calculo:          tipoCalculo,
+    numero_documento:      (row.numero_documento ?? row.numero_contrato) as string | undefined,
+    carencia_meses:        (row.carencia_meses as number | undefined) ?? 0,
+    periodicidade_meses:   (row.periodicidade_meses as number | undefined) ?? 1,
+    carencia_tipo:         ((row.carencia_tipo as string | undefined) ?? "so_juros") as "so_juros" | "total",
+    rateio_por_vencimento: (row.rateio_por_vencimento as boolean | undefined) ?? false,
+    fiscal:                (row.fiscal as boolean | undefined) ?? true,
+  } as ContratoFinanceiro;
+}
+
 export async function listarContratosFinanceiros(fazenda_id: string): Promise<ContratoFinanceiro[]> {
   const { data, error } = await supabase.from("contratos_financeiros").select("*").eq("fazenda_id", fazenda_id).order("data_contrato", { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map(normalizarContrato);
+}
+
+// Converte campos TypeScript → colunas reais do banco (compatível com schema antigo e novo)
+function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">): Record<string, unknown> {
+  return {
+    fazenda_id:          c.fazenda_id,
+    tipo:                c.tipo,
+    descricao:           c.descricao,
+    numero_contrato:     c.numero_documento,
+    pessoa_id:           c.pessoa_id,
+    credor:              c.credor,
+    linha_credito:       c.linha_credito,
+    valor_total:         c.valor_financiado,
+    moeda:               c.moeda,
+    cotacao_usd:         c.valor_cotacao,
+    data_contrato:       c.data_contrato,
+    taxa_juros_aa:       c.taxa_juros_aa,
+    taxa_juros_am:       c.taxa_juros_am,
+    iof_pct:             c.iof_pct,
+    tac_valor:           c.tac_valor,
+    outros_custos:       c.outros_custos,
+    conta_liberacao_id:  c.conta_liberacao_id,
+    conta_pagamento_id:  c.conta_pagamento_id,
+    tipo_amortizacao:    (c.tipo_calculo ?? "sac").toUpperCase(),
+    status:              c.status,
+    observacao:          c.observacao,
+    produtor_id:         c.produtor_id,
+  };
 }
 
 export async function criarContratoFinanceiro(c: Omit<ContratoFinanceiro, "id" | "created_at">): Promise<ContratoFinanceiro> {
-  const { data, error } = await supabase.from("contratos_financeiros").insert(c).select().single();
+  const { data, error } = await supabase.from("contratos_financeiros").insert(desnormalizarContrato(c)).select().single();
   if (error) throw error;
-  return data;
+  return normalizarContrato(data as Record<string, unknown>);
 }
 
 export async function atualizarContratoFinanceiro(id: string, c: Partial<ContratoFinanceiro>): Promise<void> {
-  const { error } = await supabase.from("contratos_financeiros").update(c).eq("id", id);
+  const row = desnormalizarContrato(c as Omit<ContratoFinanceiro, "id" | "created_at">);
+  // Remove campos undefined para não sobrescrever com null
+  const clean = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined));
+  const { error } = await supabase.from("contratos_financeiros").update(clean).eq("id", id);
   if (error) throw error;
 }
 
@@ -1692,13 +1748,26 @@ export async function baixarParcelaPagamento(
 export async function listarGarantias(contrato_id: string): Promise<GarantiaContrato[]> {
   const { data, error } = await supabase.from("garantias_contrato").select("*").eq("contrato_id", contrato_id);
   if (error) throw error;
-  return data ?? [];
+  // Mapeia campo antigo `valor` → `valor_avaliacao` se coluna nova não existir ainda
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    ...(r as GarantiaContrato),
+    valor_avaliacao: (r.valor_avaliacao ?? r.valor) as number | undefined,
+  }));
 }
 
 export async function criarGarantia(g: Omit<GarantiaContrato, "id" | "created_at">): Promise<GarantiaContrato> {
-  const { data, error } = await supabase.from("garantias_contrato").insert(g).select().single();
+  // Insere apenas colunas que existem no banco; ignora fazenda_id/matricula_id/valor_avaliacao se ausentes
+  const row: Record<string, unknown> = {
+    contrato_id: g.contrato_id,
+    descricao:   g.descricao,
+    valor:       g.valor_avaliacao,
+  };
+  if (g.fazenda_id) row.fazenda_id = g.fazenda_id;
+  if (g.matricula_id) row.matricula_id = g.matricula_id;
+  if (g.valor_avaliacao !== undefined) row.valor_avaliacao = g.valor_avaliacao;
+  const { data, error } = await supabase.from("garantias_contrato").insert(row).select().single();
   if (error) throw error;
-  return data;
+  return { ...(data as GarantiaContrato), valor_avaliacao: (data as Record<string, unknown>).valor_avaliacao as number | undefined ?? (data as Record<string, unknown>).valor as number | undefined };
 }
 
 export async function excluirGarantia(id: string): Promise<void> {
@@ -1716,7 +1785,14 @@ export async function listarCentrosCusto(contrato_id: string): Promise<CentroCus
 export async function salvarCentrosCusto(contrato_id: string, itens: Omit<CentroCustoContrato, "id" | "created_at">[]): Promise<void> {
   await supabase.from("centros_custo_contrato").delete().eq("contrato_id", contrato_id);
   if (itens.length > 0) {
-    const { error } = await supabase.from("centros_custo_contrato").insert(itens);
+    // Insere apenas colunas que o banco garante ter; `valor` é opcional
+    const rows = itens.map(i => ({
+      contrato_id:  i.contrato_id ?? contrato_id,
+      descricao:    i.descricao,
+      percentual:   i.percentual,
+      ...(i.valor !== undefined ? { valor: i.valor } : {}),
+    }));
+    const { error } = await supabase.from("centros_custo_contrato").insert(rows);
     if (error) throw error;
   }
 }
