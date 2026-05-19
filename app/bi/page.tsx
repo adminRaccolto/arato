@@ -447,8 +447,8 @@ export default function BI() {
   const alertasCount = lancamentos.filter(l => l.tipo === "pagar" && l.status !== "baixado" && l.data_vencimento < hj).length;
   const usdDescasados = (() => {
     // Datas com descasamento USD (mais CP do que CR em USD)
-    const cpUsd = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado");
-    const crUsd = lancamentos.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
+    const cpUsd = lancamentosFiltrados.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado");
+    const crUsd = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
     const datas = new Set([...cpUsd.map(l => l.data_vencimento), ...crUsd.map(l => l.data_vencimento)]);
     let cnt = 0;
     for (const dt of datas) {
@@ -1193,8 +1193,8 @@ export default function BI() {
         {/* ═══════════ CÂMBIO / USD ═══════════ */}
         {!loading && aba === "cambio" && (() => {
           // ── Fluxo USD por data ──────────────────────────────────
-          const cpUsdLan  = lancamentos.filter(l => l.tipo === "pagar"   && l.moeda === "USD" && l.status !== "baixado");
-          const crUsdLan  = lancamentos.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
+          const cpUsdLan  = lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.moeda === "USD" && l.status !== "baixado");
+          const crUsdLan  = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
           // CR de contratos em USD (usa data_pagamento como data de recebimento)
           const crUsdCon  = contratos.filter(c => c.moeda === "USD" && c.status !== "cancelado" && !c.is_arrendamento && c.data_pagamento && c.preco && c.quantidade_sc);
 
@@ -1289,7 +1289,11 @@ export default function BI() {
                         const descasado = e.cpUsd > e.crUsd;
                         const maxVal = Math.max(e.cpUsd, e.crUsd, 1);
                         return (
-                          <tr key={dt} style={{ borderBottom: i < datas.length - 1 ? "0.5px solid #EEF1F6" : "none", background: descasado ? "#FFF8F8" : "transparent" }}>
+                          <tr key={dt}
+                            onClick={() => router.push(`/financeiro/pagar?vencDe=${dt}&vencAte=${dt}&moeda=USD`)}
+                            style={{ borderBottom: i < datas.length - 1 ? "0.5px solid #EEF1F6" : "none", background: descasado ? "#FFF8F8" : "transparent", cursor: "pointer" }}
+                            title="Ver no Contas a Pagar"
+                          >
                             <td style={{ padding: "10px 16px" }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{fmtDt(dt)}</div>
                               {/* mini-barras */}
@@ -1368,12 +1372,17 @@ export default function BI() {
                           const e = porData.get(dt)!;
                           const expUsd = e.cpUsd - e.crUsd;
                           return (
-                            <div key={dt} style={{ background: "#fff", border: "0.5px solid #FECACA", borderRadius: 8, padding: "8px 12px" }}>
+                            <div key={dt}
+                              onClick={() => router.push(`/financeiro/pagar?vencDe=${dt}&vencAte=${dt}&moeda=USD`)}
+                              style={{ background: "#fff", border: "0.5px solid #FECACA", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}
+                              title="Ver no Contas a Pagar"
+                            >
                               <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{fmtDt(dt)}</div>
                               <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 2 }}>CP: USD {fmtN(e.cpUsd, 2)}</div>
                               <div style={{ fontSize: 11, color: "#16A34A" }}>CR: USD {fmtN(e.crUsd, 2)}</div>
                               <div style={{ fontSize: 11, fontWeight: 700, color: "#E24B4A", marginTop: 4 }}>Exposto: USD {fmtN(expUsd, 2)}</div>
                               <div style={{ fontSize: 10, color: "#888" }}>{fmtR(expUsd * cotacao)}</div>
+                              <div style={{ fontSize: 9, color: "#1A4870", marginTop: 4 }}>↗ Ver CP</div>
                             </div>
                           );
                         })}

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
@@ -125,6 +125,7 @@ const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4,
 export default function ContasPagar() {
   const { fazendaId, contaId } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
   const fid = formFazendaId ?? fazendaId;
 
@@ -252,9 +253,9 @@ export default function ContasPagar() {
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
   const [fSafra,      setFSafra]      = useState("");
-  const [fVencDe,     setFVencDe]     = useState("");
-  const [fVencAte,    setFVencAte]    = useState("");
-  const [fMoedaOrig,  setFMoedaOrig]  = useState("");
+  const [fVencDe,     setFVencDe]     = useState(() => searchParams.get("vencDe") ?? "");
+  const [fVencAte,    setFVencAte]    = useState(() => searchParams.get("vencAte") ?? "");
+  const [fMoedaOrig,  setFMoedaOrig]  = useState(() => searchParams.get("moeda") ?? "");
   const [fConta,      setFConta]      = useState("");
   const [fProdutor,   setFProdutor]   = useState("");
   const [fObs,        setFObs]        = useState("");
