@@ -469,12 +469,14 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
 }
 
 // ── Processador principal ───────────────────────────────────────────────────
+export type IAResult = { texto: string; pendingContrato?: Record<string, unknown> };
+
 export async function processarMensagemIA(
   texto: string,
   contexto: { fazendaId: string; fazendaNome: string; usuarioId: string; usuarioNome?: string; usuarioWhatsapp?: string },
   historico: Mensagem[],
   imagem?: { base64: string; mime: string },
-): Promise<string> {
+): Promise<IAResult> {
   const { fazendaId, fazendaNome, usuarioId, usuarioNome = "", usuarioWhatsapp = "" } = contexto;
   const hoje = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
@@ -602,6 +604,8 @@ COMPORTAMENTO GERAL:
   // Loop de tool use — Claude pode chamar múltiplas ferramentas
   let ultimosResultados: string[] = [];
   let iteracoes = 0;
+  let pendingContrato: Record<string, unknown> | undefined;
+
   while (response.stop_reason === "tool_use" && iteracoes < 6) {
     iteracoes++;
     const assistantContent = response.content;
@@ -610,10 +614,19 @@ COMPORTAMENTO GERAL:
 
     for (const block of assistantContent) {
       if (block.type === "tool_use") {
-        console.log(`[CLAUDE-TOOL] chamando ${block.name}:`, JSON.stringify(block.input).slice(0, 120));
+        const inp = block.input as Record<string, unknown>;
+        console.log(`[CLAUDE-TOOL] chamando ${block.name}:`, JSON.stringify(inp).slice(0, 120));
+
+        // Captura os dados do contrato antes de executar — serão salvos na sessão
+        // para que a confirmação "sim" do usuário possa reusar diretamente sem depender
+        // do Claude reconstituir os dados a partir do preview
+        if (block.name === "registrar_contrato_graos" && inp.confirmado === false) {
+          pendingContrato = inp;
+        }
+
         const resultado = await executarFerramenta(
           block.name,
-          block.input as Record<string, unknown>,
+          inp,
           fazendaId,
           usuarioId,
           usuarioNome,
@@ -647,8 +660,8 @@ COMPORTAMENTO GERAL:
   // Fallback: se Claude não gerou texto mas executou ferramentas, encaminha o resultado diretamente
   if (!texto_resposta) {
     console.error("[CLAUDE] resposta vazia. stop_reason:", response.stop_reason, "iteracoes:", iteracoes, "ultimo_resultado:", ultimosResultados[0]?.slice(0, 100));
-    if (ultimosResultados.length > 0) return ultimosResultados.join("\n\n");
+    if (ultimosResultados.length > 0) return { texto: ultimosResultados.join("\n\n"), pendingContrato };
   }
 
-  return texto_resposta || "Não consegui processar. Tente novamente.";
+  return { texto: texto_resposta || "Não consegui processar. Tente novamente.", pendingContrato };
 }

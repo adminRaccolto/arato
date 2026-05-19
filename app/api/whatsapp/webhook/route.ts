@@ -4,7 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { transcreverAudio, lerNotaFiscal } from "../../../../lib/whatsapp-ai";
 import { enviarTexto, baixarMidiaBase64 } from "../../../../lib/whatsapp-evolution";
 import { buscarSessao, salvarSessao, limparSessao } from "../../../../lib/whatsapp-flows";
-import { processarMensagemIA, type Mensagem } from "../../../../lib/whatsapp-claude";
+import { processarMensagemIA, type Mensagem, type IAResult } from "../../../../lib/whatsapp-claude";
+import { executarInsercao } from "../../../../lib/whatsapp-inserir";
 
 function sb() {
   return createClient(
@@ -300,11 +301,48 @@ export async function POST(req: NextRequest) {
     textoParaIA = `[SISTEMA: Fazenda ativa: *${fazendaNome}*${outrasNomes ? `. Outras fazendas: ${outrasNomes}. Para trocar, diga "trocar para [nome]".` : "."}]\n${textoParaIA}`;
   }
 
+  // ── Atalho: confirmação de contrato de grãos pendente ───────────────────────
+  // Quando Claude retorna preview de contrato (confirmado=false), os dados ficam
+  // salvos em sessao.dados.pending_contrato. Ao receber "sim", executamos a inserção
+  // diretamente sem chamar Claude novamente — evita que Claude perca os dados.
+  const pendingContrato = sessao?.dados?.pending_contrato as Record<string, unknown> | undefined;
+  const ehConfirmacaoSimples = /^(sim|confirmo|confirmar|pode|ok|isso|correto|certo|pode salvar|salva)[\s!.]*$/i.test(textoMensagem.trim());
+  if (pendingContrato && ehConfirmacaoSimples) {
+    console.log("[WH] confirmação de contrato pendente detectada — inserindo direto");
+    let respostaContrato: string;
+    try {
+      const res = await executarInsercao(
+        "contrato_graos",
+        { ...pendingContrato, confirmado: true },
+        fazendaId,
+        usuarioId,
+        usuarioNome,
+        usuarioWhatsapp,
+      );
+      respostaContrato = res.mensagem;
+    } catch (err) {
+      console.error("[WH] ERRO inserção contrato:", err);
+      respostaContrato = "❌ Erro ao salvar contrato. Tente novamente.";
+    }
+    const novoHist: Mensagem[] = [
+      ...historico,
+      { role: "user" as const, content: textoMensagem },
+      { role: "assistant" as const, content: respostaContrato },
+    ].slice(-20);
+    await salvarSessao(telefone, {
+      fazenda_id: fazendaId,
+      fazenda_nome: fazendaNome,
+      dados: { historico: novoHist, fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined, pending_contrato: null },
+    });
+    await enviarTexto(telefone, respostaContrato);
+    return NextResponse.json({ ok: true });
+  }
+
   // ── Claude processa com tool use ────────────────────────────────────────────
   console.log("[WH] processando com Claude:", textoParaIA.slice(0, 80), imagemBase64 ? "(+ imagem)" : "");
-  let resposta: string;
+  let iaResult: IAResult;
   try {
-    resposta = await processarMensagemIA(
+    iaResult = await processarMensagemIA(
       textoParaIA,
       { fazendaId, fazendaNome, usuarioId, usuarioNome, usuarioWhatsapp },
       historico,
@@ -312,8 +350,9 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error("[WH] ERRO Claude:", err);
-    resposta = "⚠️ Serviço temporariamente indisponível. Tente novamente em instantes.";
+    iaResult = { texto: "⚠️ Serviço temporariamente indisponível. Tente novamente em instantes." };
   }
+  const { texto: resposta, pendingContrato: novoPending } = iaResult;
 
   // Captura confirmação de fazenda e remove o token interno da resposta
   let fazendaConfirmadaId = sessao?.dados?.fazenda_confirmada_id as string | undefined;
@@ -339,7 +378,12 @@ export async function POST(req: NextRequest) {
   await salvarSessao(telefone, {
     fazenda_id: fazendaId,
     fazenda_nome: fazendaNome,
-    dados: { historico: novoHistorico, fazenda_confirmada_id: fazendaConfirmadaId },
+    dados: {
+      historico: novoHistorico,
+      fazenda_confirmada_id: fazendaConfirmadaId,
+      // Persiste dados de contrato pendente para o próximo turno de confirmação
+      ...(novoPending ? { pending_contrato: novoPending } : {}),
+    },
   });
   console.log("[WH] histórico salvo OK");
 
