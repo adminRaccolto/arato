@@ -475,12 +475,30 @@ export default function ComprasPage() {
     }
   };
 
+  // ── Filtros da lista ──────────────────────────────────────────
+  const [filtroSafra,  setFiltroSafra]  = useState("");
+  const [filtroBusca,  setFiltroBusca]  = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("");
+
+  const pedidosFiltrados = pedidos.filter(p => {
+    if (filtroSafra  && p.ano_safra_id !== filtroSafra) return false;
+    if (filtroStatus && p.status !== filtroStatus) return false;
+    if (filtroBusca) {
+      const q = filtroBusca.toLowerCase();
+      const forn = nomePessoa(p.fornecedor_id).toLowerCase();
+      const ciclo = nomeCiclo(p.ciclo_id).toLowerCase();
+      const nr = String(p.numero ?? "").toLowerCase();
+      if (!forn.includes(q) && !ciclo.includes(q) && !nr.includes(q)) return false;
+    }
+    return true;
+  });
+
   // ── Stats ─────────────────────────────────────────────────────
 
-  const totalPedidos   = pedidos.length;
-  const totalAberto    = pedidos.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").length;
-  const valorAberto    = pedidos.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").reduce((s, p) => s + (p.total_financeiro ?? 0), 0);
-  const totalEntregues = pedidos.filter(p => p.status === "entregue").length;
+  const totalPedidos   = pedidosFiltrados.length;
+  const totalAberto    = pedidosFiltrados.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").length;
+  const valorAberto    = pedidosFiltrados.filter(p => p.status === "aprovado" || p.status === "parcialmente_entregue").reduce((s, p) => s + (p.total_financeiro ?? 0), 0);
+  const totalEntregues = pedidosFiltrados.filter(p => p.status === "entregue").length;
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -539,12 +557,41 @@ export default function ComprasPage() {
             </div>
           )}
 
+          {/* Filtros */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+            <input
+              placeholder="Buscar fornecedor, nº pedido..."
+              value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)}
+              style={{ flex: 1, minWidth: 200, padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff" }}
+            />
+            <select value={filtroSafra} onChange={e => setFiltroSafra(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+              <option value="">Todas as safras</option>
+              {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+            </select>
+            <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 150 }}>
+              <option value="">Todos os status</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="aprovado">Aprovado</option>
+              <option value="parcialmente_entregue">Parc. entregue</option>
+              <option value="entregue">Entregue</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+            {(filtroSafra || filtroBusca || filtroStatus) && (
+              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); }}
+                style={{ padding: "7px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, background: "#fff", cursor: "pointer", color: "#555" }}>
+                Limpar filtros
+              </button>
+            )}
+          </div>
+
           {/* Tabela */}
           {loading ? (
             <div style={{ textAlign: "center", padding: 48, color: "#555" }}>Carregando...</div>
-          ) : pedidos.length === 0 ? (
+          ) : pedidosFiltrados.length === 0 ? (
             <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "#555" }}>
-              Nenhum pedido de compra cadastrado.
+              {pedidos.length === 0 ? "Nenhum pedido de compra cadastrado." : "Nenhum pedido encontrado para os filtros selecionados."}
             </div>
           ) : (
             <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
@@ -557,10 +604,10 @@ export default function ComprasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pedidos.map((ped, i) => {
+                  {pedidosFiltrados.map((ped, i) => {
                     const st = STATUS_MAP[ped.status];
                     return (
-                      <tr key={ped.id} style={{ borderBottom: i < pedidos.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
                         <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>#{ped.numero ?? "—"}</td>
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{nomePessoa(ped.fornecedor_id)}</div>
