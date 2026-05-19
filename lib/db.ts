@@ -1520,6 +1520,13 @@ export async function atualizarEstoqueTerceiro(id: string, e: Partial<EstoqueTer
 // CONTRATOS FINANCEIROS (custeio, CPR, etc.)
 // ————————————————————————————————————————
 
+// Mapeia tipos antigos/aliases → tipos válidos do TypeScript
+const TIPO_CF_MAP: Record<string, ContratoFinanceiro["tipo"]> = {
+  custeio: "custeio", financiamento: "investimento", investimento: "investimento",
+  emprestimo: "outros", empréstimo: "outros", securitizacao: "securitizacao",
+  securitização: "securitizacao", cpr: "cpr", egf: "egf", outros: "outros",
+};
+
 // Normaliza linha do banco: mapeia nomes antigos → nomes esperados pelo TypeScript
 // O banco pode ter valor_total/cotacao_usd/tipo_amortizacao de dados migrados
 function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
@@ -1530,8 +1537,15 @@ function normalizarContrato(row: Record<string, unknown>): ContratoFinanceiro {
   const tc = ((row.tipo_calculo ?? (row.tipo_amortizacao ? (row.tipo_amortizacao as string).toLowerCase() : "sac")) as string);
   const tipoCalculo: ContratoFinanceiro["tipo_calculo"] =
     tc === "price" ? "price" : tc === "outros" ? "outros" : "sac";
+  const tipoRaw = (row.tipo as string | undefined ?? "outros").toLowerCase();
+  const tipo: ContratoFinanceiro["tipo"] = TIPO_CF_MAP[tipoRaw] ?? "outros";
+  const status = (row.status as string | undefined) ?? "ativo";
+  const statusNorm: ContratoFinanceiro["status"] =
+    status === "quitado" ? "quitado" : status === "cancelado" ? "cancelado" : "ativo";
   return {
-    ...(row as Omit<ContratoFinanceiro, "valor_financiado"|"valor_cotacao"|"valor_financiado_brl"|"tipo_calculo"|"numero_documento"|"carencia_meses"|"periodicidade_meses"|"carencia_tipo"|"rateio_por_vencimento"|"fiscal">),
+    ...(row as Omit<ContratoFinanceiro, "tipo"|"status"|"valor_financiado"|"valor_cotacao"|"valor_financiado_brl"|"tipo_calculo"|"numero_documento"|"carencia_meses"|"periodicidade_meses"|"carencia_tipo"|"rateio_por_vencimento"|"fiscal">),
+    tipo,
+    status:                statusNorm,
     valor_financiado:      vf,
     valor_cotacao:         vc,
     valor_financiado_brl:  vfbrl,
