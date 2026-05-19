@@ -11,7 +11,7 @@ import {
   listarMatriculas, criarMatricula, atualizarMatricula, excluirMatricula,
   listarArrendamentos, salvarArrendamentos,
   listarPessoas, criarPessoa, atualizarPessoa, excluirPessoa,
-  listarAnosSafra, criarAnoSafra, atualizarAnoSafra, excluirAnoSafra,
+  listarAnosSafra, criarAnoSafra, atualizarAnoSafra, excluirAnoSafra, encerrarAnoSafra, reabrirAnoSafra,
   listarCiclos, criarCiclo, atualizarCiclo, excluirCiclo,
   listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina, excluirMaquinas,
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
@@ -1736,17 +1736,42 @@ function CadastrosInner() {
                   </div>
                 </div>
                 {anosSafra.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum ano safra cadastrado</div>}
-                {anosSafra.map(a => (
-                  <div key={a.id} onClick={() => selecionarAno(a.id)}
-                    style={{ padding: "11px 16px", borderBottom: "0.5px solid #DEE5EE", cursor: "pointer", background: anoSel === a.id ? "#D5E8F5" : "transparent", borderLeft: anoSel === a.id ? "3px solid #1A4870" : "3px solid transparent" }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: anoSel === a.id ? "#0B2D50" : "#1a1a1a" }}>{a.descricao}</div>
-                    <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{a.data_inicio} → {a.data_fim}</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                      <button style={btnE} onClick={e => { e.stopPropagation(); abrirModalAno(a); }}>Editar</button>
-                      <button style={btnX} onClick={e => { e.stopPropagation(); if (confirm("Excluir ano safra?")) excluirAnoSafra(a.id).then(() => { setAnosSafra(x => x.filter(r => r.id !== a.id)); if (anoSel === a.id) { setAnoSel(null); setCiclos([]); } }); }}>✕</button>
+                {anosSafra.map(a => {
+                  const encerrada = a.status === "encerrada";
+                  return (
+                    <div key={a.id} onClick={() => selecionarAno(a.id)}
+                      style={{ padding: "11px 16px", borderBottom: "0.5px solid #DEE5EE", cursor: "pointer", background: anoSel === a.id ? "#D5E8F5" : "transparent", borderLeft: anoSel === a.id ? "3px solid #1A4870" : encerrada ? "3px solid #ccc" : "3px solid transparent", opacity: encerrada ? 0.75 : 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: anoSel === a.id ? "#0B2D50" : "#1a1a1a" }}>{a.descricao}</span>
+                        {encerrada
+                          ? <span style={{ fontSize: 10, background: "#EEE", color: "#555", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>ENCERRADA</span>
+                          : <span style={{ fontSize: 10, background: "#D5F5E3", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>ATIVA</span>
+                        }
+                      </div>
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{a.data_inicio} → {a.data_fim}</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                        <button style={btnE} onClick={e => { e.stopPropagation(); abrirModalAno(a); }}>Editar</button>
+                        {encerrada ? (
+                          <button style={{ ...btnE, background: "#fff", color: "#1A4870", borderColor: "#1A4870" }} onClick={e => {
+                            e.stopPropagation();
+                            if (!confirm(`Reabrir a safra "${a.descricao}"?\n\nA safra voltará a aceitar novos lançamentos.`)) return;
+                            reabrirAnoSafra(a.id).then(() => setAnosSafra(p => p.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)));
+                          }}>↩ Reabrir</button>
+                        ) : (
+                          <button style={{ ...btnE, color: "#8B1A1A", borderColor: "#E24B4A60" }} onClick={e => {
+                            e.stopPropagation();
+                            if (!confirm(`Encerrar a safra "${a.descricao}"?\n\nA safra não aceitará mais novos contratos, romaneios ou operações de lavoura.\nOs contratos abertos serão mantidos (use Comercialização para encerrá-los em lote).`)) return;
+                            encerrarAnoSafra(a.id, fazendaId!).then(n => {
+                              setAnosSafra(p => p.map(x => x.id === a.id ? { ...x, status: "encerrada" as const } : x));
+                              if (n > 0) alert(`Safra encerrada. ${n} contrato(s) foram encerrados.`);
+                            });
+                          }}>⊘ Encerrar</button>
+                        )}
+                        <button style={btnX} onClick={e => { e.stopPropagation(); if (confirm("Excluir ano safra?")) excluirAnoSafra(a.id).then(() => { setAnosSafra(x => x.filter(r => r.id !== a.id)); if (anoSel === a.id) { setAnoSel(null); setCiclos([]); } }); }}>✕</button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Ciclos */}

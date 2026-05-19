@@ -4158,3 +4158,11 @@ CREATE POLICY "esoc_evt_all" ON esocial_eventos FOR ALL
 ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cotacao_usd numeric(10,4);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration: status em anos_safra ─────────────────────────────────────────
+-- Ciclo de vida da safra: ativa (padrão) → encerrada.
+-- Safras encerradas bloqueiam novos contratos, operações e lançamentos.
+ALTER TABLE anos_safra ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'ativa';
+-- Nenhuma safra existente deve ser impactada (todas ficam 'ativa')
+
+NOTIFY pgrst, 'reload schema';

@@ -7,6 +7,7 @@ import {
   listarItensContrato, salvarItensContrato,
   listarCessaoDebitos, salvarCessaoDebitos,
   listarPessoas, listarProdutores, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
+  encerrarAnoSafra, reabrirAnoSafra,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
@@ -218,6 +219,54 @@ export default function Contratos() {
       if (rate > 0) setPtaxAtual(rate);
     }).catch(() => {});
   }, []);
+
+  // ── modal encerramento em lote ───────────────────────────────
+  const [modalLote, setModalLote]         = useState(false);
+  const [loteOp, setLoteOp]               = useState<"contratos"|"safra">("contratos");
+  const [loteSafras, setLoteSafras]       = useState<Set<string>>(new Set());
+  const [loteSalvando, setLoteSalvando]   = useState(false);
+  const [loteResultado, setLoteResultado] = useState<string|null>(null);
+
+  const abrirModalLote = () => {
+    setLoteOp("contratos");
+    setLoteSafras(new Set());
+    setLoteResultado(null);
+    setModalLote(true);
+  };
+
+  const safraStats = (anoId: string) => {
+    const cs = contratos.filter(c => c.ano_safra_id === anoId || (!c.ano_safra_id && c.safra === (anosSafra.find(a => a.id === anoId)?.descricao ?? "")));
+    return {
+      total:    cs.length,
+      abertos:  cs.filter(c => c.status === "aberto" || c.status === "parcial").length,
+      encerrados: cs.filter(c => c.status === "encerrado").length,
+    };
+  };
+
+  const executarLote = async () => {
+    if (loteSafras.size === 0) return;
+    setLoteSalvando(true);
+    setLoteResultado(null);
+    try {
+      const ids = [...loteSafras];
+      if (loteOp === "safra") {
+        // Encerra a safra completa (status + contratos)
+        let totalContratos = 0;
+        for (const id of ids) {
+          const n = await encerrarAnoSafra(id, fazendaId!);
+          totalContratos += n;
+        }
+        setAnosSafra(prev => prev.map(a => ids.includes(a.id) ? { ...a, status: "encerrada" as const } : a));
+        setLoteResultado(`✓ ${ids.length} safra(s) encerrada(s) + ${totalContratos} contrato(s) fechados.`);
+      } else {
+        // Encerra apenas os contratos, mantém safra ativa
+        const n = await encerrarContratosPorSafras(fazendaId!, ids);
+        setLoteResultado(`✓ ${n} contrato(s) encerrado(s).`);
+      }
+      await carregarTudo();
+    } catch (e) { setLoteResultado("✕ Erro: " + sbErr(e)); }
+    finally { setLoteSalvando(false); }
+  };
 
   // ── modal contrato ───────────────────────────────────────────
   const [modalContrato, setModalContrato] = useState(false);
@@ -448,6 +497,11 @@ export default function Contratos() {
   const salvarContrato = async () => {
     if (!fC.data_entrega) return alert("Informe o prazo de entrega.");
     if (itens.every(i => !i.produto || i.quantidade <= 0)) return alert("Adicione pelo menos um item com quantidade.");
+    // Bloqueia criação de contrato em safra encerrada
+    if (!editContrato) {
+      const safraEnc = anosSafra.find(a => a.id === fC.ano_safra_id && a.status === "encerrada");
+      if (safraEnc) return alert(`A safra "${safraEnc.descricao}" está encerrada e não aceita novos contratos.\n\nPara permitir novos lançamentos, reabra a safra em Cadastros > Safras.`);
+    }
     setSalvando(true);
     try {
       // produto/quantidade principal = primeiro item
@@ -724,10 +778,10 @@ export default function Contratos() {
             <p style={{ margin:0, fontSize:11, color:"#444" }}>Contratos de venda, fixações, expedição e posição de estoque</p>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={encerrarSafrasAnteriores}
-              title="Encerra todos os contratos abertos da safra 2025/2026 e anteriores"
+            <button onClick={abrirModalLote}
+              title="Encerrar contratos ou safras em lote por ano safra"
               style={{ background:"#fff", color:"#555", border:"0.5px solid #CCC", borderRadius:8, padding:"8px 12px", fontSize:12, cursor:"pointer" }}>
-              ✕ Encerrar Safra 25/26 e ant.
+              ⊘ Encerramento em Lote
             </button>
             <button onClick={() => { setFRom(ROM_VAZIO()); setModalRomaneio(true); }}
               style={{ background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
@@ -1825,6 +1879,115 @@ export default function Contratos() {
               <button style={btnR} onClick={() => setModalCessao(false)}>Fechar</button>
               <button style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Encerramento em Lote ─────────────────────────────────────── */}
+      {modalLote && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ background:"#fff", borderRadius:14, width:680, maxWidth:"96vw", maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 8px 40px rgba(0,0,0,0.22)" }}>
+
+            {/* cabeçalho */}
+            <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div>
+                <div style={{ fontWeight:700, fontSize:16, color:"#1a1a1a" }}>⊘ Encerramento em Lote</div>
+                <div style={{ fontSize:12, color:"#555", marginTop:3 }}>Selecione as safras e a ação a realizar</div>
+              </div>
+              <button onClick={() => setModalLote(false)} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#888", lineHeight:1 }}>✕</button>
+            </div>
+
+            {/* tipo de ação */}
+            <div style={{ padding:"14px 24px 0" }}>
+              <div style={{ fontSize:12, fontWeight:600, color:"#555", marginBottom:8 }}>AÇÃO</div>
+              <div style={{ display:"flex", gap:10 }}>
+                {([
+                  { id:"contratos" as const, label:"Encerrar contratos", sub:"Marca os contratos abertos como Encerrado. A safra permanece ativa." },
+                  { id:"safra"     as const, label:"Encerrar safra completa", sub:"Encerra a safra e bloqueia novos lançamentos. Inclui todos os contratos abertos." },
+                ] as { id:"contratos"|"safra"; label:string; sub:string }[]).map(op => (
+                  <button key={op.id} onClick={() => setLoteOp(op.id)}
+                    style={{ flex:1, textAlign:"left", padding:"12px 14px", borderRadius:10, border: loteOp===op.id ? "2px solid #1A5CB8" : "1.5px solid #D4DCE8", background: loteOp===op.id ? "#D5E8F5" : "#fff", cursor:"pointer" }}>
+                    <div style={{ fontWeight:600, fontSize:13, color: loteOp===op.id ? "#0B2D50" : "#1a1a1a" }}>{op.label}</div>
+                    <div style={{ fontSize:11, color:"#555", marginTop:3 }}>{op.sub}</div>
+                    {op.id === "safra" && loteOp === "safra" && (
+                      <div style={{ marginTop:6, fontSize:11, background:"#FFF3CD", color:"#7A5A12", borderRadius:6, padding:"4px 8px", border:"0.5px solid #F0D080" }}>
+                        ⚠ Safras encerradas não aceitam novos contratos, romaneios ou operações de lavoura.
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* lista de safras */}
+            <div style={{ padding:"14px 24px", flex:1, overflowY:"auto" }}>
+              <div style={{ fontSize:12, fontWeight:600, color:"#555", marginBottom:8 }}>SAFRAS</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {anosSafra.length === 0 && <div style={{ fontSize:12, color:"#888", padding:10 }}>Nenhuma safra cadastrada.</div>}
+                {anosSafra.map(a => {
+                  const st = safraStats(a.id);
+                  const isEnc = a.status === "encerrada";
+                  const sel = loteSafras.has(a.id);
+                  return (
+                    <div key={a.id}
+                      onClick={() => {
+                        if (isEnc && loteOp === "safra") return; // já encerrada, skip
+                        setLoteSafras(prev => { const s = new Set(prev); sel ? s.delete(a.id) : s.add(a.id); return s; });
+                      }}
+                      style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", borderRadius:10, border: sel ? "1.5px solid #1A5CB8" : "0.5px solid #D4DCE8", background: sel ? "#EEF5FF" : isEnc ? "#F8F8F8" : "#fff", cursor: isEnc && loteOp==="safra" ? "default" : "pointer", opacity: isEnc && loteOp==="safra" ? 0.65 : 1 }}>
+                      <input type="checkbox" checked={sel} readOnly style={{ accentColor:"#1A5CB8", width:16, height:16, flexShrink:0 }} />
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <span style={{ fontWeight:600, fontSize:13, color:"#1a1a1a" }}>{a.descricao}</span>
+                          {isEnc
+                            ? <span style={{ fontSize:10, background:"#EEE", color:"#555", borderRadius:5, padding:"2px 7px", fontWeight:700 }}>ENCERRADA</span>
+                            : <span style={{ fontSize:10, background:"#D5F5E3", color:"#14532D", borderRadius:5, padding:"2px 7px", fontWeight:700 }}>ATIVA</span>
+                          }
+                        </div>
+                        <div style={{ fontSize:11, color:"#555", marginTop:2 }}>
+                          {a.data_inicio} → {a.data_fim} &nbsp;·&nbsp;
+                          <span style={{ color: st.abertos > 0 ? "#C9921B" : "#16A34A", fontWeight:600 }}>{st.abertos} aberto(s)</span>
+                          &nbsp;·&nbsp; {st.encerrados} encerrado(s) &nbsp;·&nbsp; {st.total} total
+                        </div>
+                      </div>
+                      {isEnc && loteOp === "contratos" && (
+                        <button onClick={async e => { e.stopPropagation(); if (!confirm(`Reabrir a safra "${a.descricao}"?`)) return; await reabrirAnoSafra(a.id); setAnosSafra(prev => prev.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)); }}
+                          style={{ fontSize:11, background:"#fff", color:"#1A4870", border:"0.5px solid #1A4870", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
+                          ↩ Reabrir
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* resultado */}
+            {loteResultado && (
+              <div style={{ margin:"0 24px 0", padding:"10px 14px", borderRadius:8, background: loteResultado.startsWith("✓") ? "#D5F5E3" : "#FDECEA", color: loteResultado.startsWith("✓") ? "#14532D" : "#8B1A1A", fontSize:13, fontWeight:600, border: `0.5px solid ${loteResultado.startsWith("✓") ? "#A7F0C2" : "#E24B4A60"}` }}>
+                {loteResultado}
+              </div>
+            )}
+
+            {/* footer */}
+            <div style={{ padding:"14px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+              <div style={{ fontSize:12, color:"#555" }}>
+                {loteSafras.size > 0
+                  ? `${loteSafras.size} safra(s) selecionada(s) · ${[...loteSafras].reduce((s,id) => s + safraStats(id).abertos, 0)} contratos abertos`
+                  : "Nenhuma safra selecionada"}
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => setModalLote(false)}
+                  style={{ background:"#fff", color:"#555", border:"0.5px solid #CCC", borderRadius:8, padding:"9px 16px", fontSize:13, cursor:"pointer" }}>
+                  Fechar
+                </button>
+                <button onClick={executarLote} disabled={loteSafras.size === 0 || loteSalvando}
+                  style={{ background: loteSalvando||loteSafras.size===0 ? "#ccc" : loteOp==="safra" ? "#E24B4A" : "#1A5CB8", color:"#fff", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:600, cursor: loteSafras.size===0||loteSalvando ? "default" : "pointer" }}>
+                  {loteSalvando ? "Processando…" : loteOp==="safra" ? "⊘ Encerrar Safras Selecionadas" : "⊘ Encerrar Contratos Selecionados"}
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

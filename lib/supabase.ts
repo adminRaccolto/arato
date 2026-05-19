@@ -544,6 +544,7 @@ export type AnoSafra = {
   descricao: string;
   data_inicio: string;
   data_fim: string;
+  status?: "ativa" | "encerrada";
   created_at?: string;
 };
 

@@ -691,6 +691,19 @@ export async function excluirAnoSafra(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function encerrarAnoSafra(id: string, fazendaId: string): Promise<number> {
+  // Fecha a safra
+  const { error: e1 } = await supabase.from("anos_safra").update({ status: "encerrada" }).eq("id", id);
+  if (e1) throw e1;
+  // Encerra todos os contratos abertos/parciais desta safra
+  return encerrarContratosPorSafras(fazendaId, [id]);
+}
+
+export async function reabrirAnoSafra(id: string): Promise<void> {
+  const { error } = await supabase.from("anos_safra").update({ status: "ativa" }).eq("id", id);
+  if (error) throw error;
+}
+
 // ————————————————————————————————————————
 // CICLOS
 // ————————————————————————————————————————
