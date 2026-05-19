@@ -866,7 +866,6 @@ export default function ImportacaoPage() {
         ano:             r.ano?.trim() ? parseInt(r.ano.trim()) : null,
         chassi:          r.chassi?.trim() || null,
         horimetro_atual: r.horimetro_atual?.trim() ? parseFloat(r.horimetro_atual.replace(",", ".")) : null,
-        unidade_medida:  isVeiculo ? "km" : "h",
         ativa:           true,
       });
       if (error) { r._status = "erro"; r._msg = error.message; erros++; }
