@@ -1,0 +1,147 @@
+[
+  {
+    "CD_UNIDADE": 1,
+    "DESCRICAO": "QUILOGRAMA",
+    "ABREVIATURA": "KG"
+  },
+  {
+    "CD_UNIDADE": 2,
+    "DESCRICAO": "LITRO",
+    "ABREVIATURA": "L"
+  },
+  {
+    "CD_UNIDADE": 3,
+    "DESCRICAO": "UNIDADE",
+    "ABREVIATURA": "UN"
+  },
+  {
+    "CD_UNIDADE": 4,
+    "DESCRICAO": "TONELADA",
+    "ABREVIATURA": "TON"
+  },
+  {
+    "CD_UNIDADE": 7,
+    "DESCRICAO": "SACOS 40KG",
+    "ABREVIATURA": "SC40"
+  },
+  {
+    "CD_UNIDADE": 8,
+    "DESCRICAO": "SACOS 50KG",
+    "ABREVIATURA": "SC50"
+  },
+  {
+    "CD_UNIDADE": 9,
+    "DESCRICAO": "SACOS 60KG",
+    "ABREVIATURA": "SC60"
+  },
+  {
+    "CD_UNIDADE": 11,
+    "DESCRICAO": "SACO SEMENTE MILHO",
+    "ABREVIATURA": "SCM"
+  },
+  {
+    "CD_UNIDADE": 12,
+    "DESCRICAO": "CABEÇA",
+    "ABREVIATURA": "CAB"
+  },
+  {
+    "CD_UNIDADE": 13,
+    "DESCRICAO": "MAO DE OBRA",
+    "ABREVIATURA": "MO"
+  },
+  {
+    "CD_UNIDADE": 14,
+    "DESCRICAO": "BALDE 10LT",
+    "ABREVIATURA": "BD10"
+  },
+  {
+    "CD_UNIDADE": 15,
+    "DESCRICAO": "BALDE 20LT",
+    "ABREVIATURA": "BD20"
+  },
+  {
+    "CD_UNIDADE": 16,
+    "DESCRICAO": "GRAMA",
+    "ABREVIATURA": "G"
+  },
+  {
+    "CD_UNIDADE": 17,
+    "DESCRICAO": "MILILITRO",
+    "ABREVIATURA": "ML"
+  },
+  {
+    "CD_UNIDADE": 18,
+    "DESCRICAO": "BAG",
+    "ABREVIATURA": "BAG"
+  },
+  {
+    "CD_UNIDADE": 19,
+    "DESCRICAO": "GL10",
+    "ABREVIATURA": "GL10"
+  },
+  {
+    "CD_UNIDADE": 20,
+    "DESCRICAO": "SACO 25",
+    "ABREVIATURA": "SC25"
+  },
+  {
+    "CD_UNIDADE": 21,
+    "DESCRICAO": "SACOS10KG",
+    "ABREVIATURA": "K10"
+  },
+  {
+    "CD_UNIDADE": 22,
+    "DESCRICAO": "BALDE 5LT",
+    "ABREVIATURA": "BD5"
+  },
+  {
+    "CD_UNIDADE": 23,
+    "DESCRICAO": "SACO 20KG",
+    "ABREVIATURA": "SC20"
+  },
+  {
+    "CD_UNIDADE": 24,
+    "DESCRICAO": "SACO 10KG",
+    "ABREVIATURA": "SC10"
+  },
+  {
+    "CD_UNIDADE": 25,
+    "DESCRICAO": "BOMBONA 20 LT",
+    "ABREVIATURA": "BB20"
+  },
+  {
+    "CD_UNIDADE": 26,
+    "DESCRICAO": "UN- KG",
+    "ABREVIATURA": "UND"
+  },
+  {
+    "CD_UNIDADE": 28,
+    "DESCRICAO": "UN - LITRO",
+    "ABREVIATURA": "UNID"
+  },
+  {
+    "CD_UNIDADE": 30,
+    "DESCRICAO": "MILHOES DE SEMENTES",
+    "ABREVIATURA": "M SEM"
+  },
+  {
+    "CD_UNIDADE": 32,
+    "DESCRICAO": "3 MILHOES DE SEMENTE",
+    "ABREVIATURA": "BG-3M"
+  },
+  {
+    "CD_UNIDADE": 33,
+    "DESCRICAO": "5 MILHOES SEMENTES",
+    "ABREVIATURA": "BAG-5M"
+  },
+  {
+    "CD_UNIDADE": 34,
+    "DESCRICAO": "CABECA",
+    "ABREVIATURA": "CB"
+  },
+  {
+    "CD_UNIDADE": 35,
+    "DESCRICAO": "PESO",
+    "ABREVIATURA": "PS"
+  }
+]

@@ -1,0 +1,1556 @@
+[
+  {
+    "ID_ITEM": 1,
+    "CD_DEPOSITO": 9,
+    "SALDO": 3253,
+    "ULTIMO_PRECO": 74.7456
+  },
+  {
+    "ID_ITEM": 1,
+    "CD_DEPOSITO": 10,
+    "SALDO": 2287986.9,
+    "ULTIMO_PRECO": 206300.01
+  },
+  {
+    "ID_ITEM": 1,
+    "CD_DEPOSITO": 50,
+    "SALDO": 48936,
+    "ULTIMO_PRECO": 1.6
+  },
+  {
+    "ID_ITEM": 1,
+    "CD_DEPOSITO": 52,
+    "SALDO": 1340664,
+    "ULTIMO_PRECO": 1.6
+  },
+  {
+    "ID_ITEM": 1,
+    "CD_DEPOSITO": 136,
+    "SALDO": 17352,
+    "ULTIMO_PRECO": 8.1
+  },
+  {
+    "ID_ITEM": 1,
+    "CD_DEPOSITO": 464,
+    "SALDO": 373581,
+    "ULTIMO_PRECO": 1.8
+  },
+  {
+    "ID_ITEM": 2,
+    "CD_DEPOSITO": 1,
+    "SALDO": 80525.6,
+    "ULTIMO_PRECO": 1.72
+  },
+  {
+    "ID_ITEM": 2,
+    "CD_DEPOSITO": 464,
+    "SALDO": 815115,
+    "ULTIMO_PRECO": 0.5
+  },
+  {
+    "ID_ITEM": 20,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1.01,
+    "ULTIMO_PRECO": 80120.48
+  },
+  {
+    "ID_ITEM": 34,
+    "CD_DEPOSITO": 10,
+    "SALDO": 67.1562,
+    "ULTIMO_PRECO": 1071
+  },
+  {
+    "ID_ITEM": 35,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 575
+  },
+  {
+    "ID_ITEM": 88,
+    "CD_DEPOSITO": 1,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 150000
+  },
+  {
+    "ID_ITEM": 91,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 730000
+  },
+  {
+    "ID_ITEM": 122,
+    "CD_DEPOSITO": 10,
+    "SALDO": 345.73,
+    "ULTIMO_PRECO": 116.6667
+  },
+  {
+    "ID_ITEM": 123,
+    "CD_DEPOSITO": 10,
+    "SALDO": 199.8,
+    "ULTIMO_PRECO": 10122.0167
+  },
+  {
+    "ID_ITEM": 124,
+    "CD_DEPOSITO": 594,
+    "SALDO": 40,
+    "ULTIMO_PRECO": 70
+  },
+  {
+    "ID_ITEM": 126,
+    "CD_DEPOSITO": 143,
+    "SALDO": 568,
+    "ULTIMO_PRECO": 5745.5862
+  },
+  {
+    "ID_ITEM": 129,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 95.6636
+  },
+  {
+    "ID_ITEM": 129,
+    "CD_DEPOSITO": 10,
+    "SALDO": 924.171,
+    "ULTIMO_PRECO": 463.97
+  },
+  {
+    "ID_ITEM": 130,
+    "CD_DEPOSITO": 10,
+    "SALDO": 114.74,
+    "ULTIMO_PRECO": 170
+  },
+  {
+    "ID_ITEM": 132,
+    "CD_DEPOSITO": 1,
+    "SALDO": 140,
+    "ULTIMO_PRECO": 27.7605
+  },
+  {
+    "ID_ITEM": 132,
+    "CD_DEPOSITO": 10,
+    "SALDO": 350,
+    "ULTIMO_PRECO": 27
+  },
+  {
+    "ID_ITEM": 135,
+    "CD_DEPOSITO": 1,
+    "SALDO": 50,
+    "ULTIMO_PRECO": 53
+  },
+  {
+    "ID_ITEM": 136,
+    "CD_DEPOSITO": 143,
+    "SALDO": 90,
+    "ULTIMO_PRECO": 3161.1998
+  },
+  {
+    "ID_ITEM": 137,
+    "CD_DEPOSITO": 1,
+    "SALDO": 9.517,
+    "ULTIMO_PRECO": 3563.5238
+  },
+  {
+    "ID_ITEM": 137,
+    "CD_DEPOSITO": 136,
+    "SALDO": 5.04,
+    "ULTIMO_PRECO": 1650
+  },
+  {
+    "ID_ITEM": 143,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 27.5
+  },
+  {
+    "ID_ITEM": 143,
+    "CD_DEPOSITO": 10,
+    "SALDO": 12,
+    "ULTIMO_PRECO": 140.3625
+  },
+  {
+    "ID_ITEM": 147,
+    "CD_DEPOSITO": 1,
+    "SALDO": 93.22,
+    "ULTIMO_PRECO": 200
+  },
+  {
+    "ID_ITEM": 147,
+    "CD_DEPOSITO": 10,
+    "SALDO": 27.18,
+    "ULTIMO_PRECO": 150
+  },
+  {
+    "ID_ITEM": 148,
+    "CD_DEPOSITO": 1,
+    "SALDO": 60,
+    "ULTIMO_PRECO": 23.0565
+  },
+  {
+    "ID_ITEM": 148,
+    "CD_DEPOSITO": 10,
+    "SALDO": 492.36,
+    "ULTIMO_PRECO": 135.99
+  },
+  {
+    "ID_ITEM": 148,
+    "CD_DEPOSITO": 143,
+    "SALDO": 2070,
+    "ULTIMO_PRECO": 19
+  },
+  {
+    "ID_ITEM": 149,
+    "CD_DEPOSITO": 143,
+    "SALDO": 160,
+    "ULTIMO_PRECO": 52.5
+  },
+  {
+    "ID_ITEM": 150,
+    "CD_DEPOSITO": 10,
+    "SALDO": 41.995,
+    "ULTIMO_PRECO": 240.6096
+  },
+  {
+    "ID_ITEM": 150,
+    "CD_DEPOSITO": 143,
+    "SALDO": 3340,
+    "ULTIMO_PRECO": 22.5
+  },
+  {
+    "ID_ITEM": 151,
+    "CD_DEPOSITO": 1,
+    "SALDO": 335.362,
+    "ULTIMO_PRECO": 209.5716
+  },
+  {
+    "ID_ITEM": 151,
+    "CD_DEPOSITO": 143,
+    "SALDO": 2320,
+    "ULTIMO_PRECO": 48.15
+  },
+  {
+    "ID_ITEM": 152,
+    "CD_DEPOSITO": 143,
+    "SALDO": 320,
+    "ULTIMO_PRECO": 49.22
+  },
+  {
+    "ID_ITEM": 155,
+    "CD_DEPOSITO": 143,
+    "SALDO": 80,
+    "ULTIMO_PRECO": 190
+  },
+  {
+    "ID_ITEM": 156,
+    "CD_DEPOSITO": 143,
+    "SALDO": 86,
+    "ULTIMO_PRECO": 274
+  },
+  {
+    "ID_ITEM": 160,
+    "CD_DEPOSITO": 1,
+    "SALDO": 200,
+    "ULTIMO_PRECO": 144.8142
+  },
+  {
+    "ID_ITEM": 161,
+    "CD_DEPOSITO": 10,
+    "SALDO": 8,
+    "ULTIMO_PRECO": 137.3867
+  },
+  {
+    "ID_ITEM": 161,
+    "CD_DEPOSITO": 143,
+    "SALDO": 1280,
+    "ULTIMO_PRECO": 41.86
+  },
+  {
+    "ID_ITEM": 163,
+    "CD_DEPOSITO": 143,
+    "SALDO": 120,
+    "ULTIMO_PRECO": 182.7319
+  },
+  {
+    "ID_ITEM": 169,
+    "CD_DEPOSITO": 10,
+    "SALDO": 33748,
+    "ULTIMO_PRECO": 3.39
+  },
+  {
+    "ID_ITEM": 171,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1.8855,
+    "ULTIMO_PRECO": 1577.2907
+  },
+  {
+    "ID_ITEM": 176,
+    "CD_DEPOSITO": 10,
+    "SALDO": 0.0026,
+    "ULTIMO_PRECO": 18.5185
+  },
+  {
+    "ID_ITEM": 179,
+    "CD_DEPOSITO": 10,
+    "SALDO": 6133.809,
+    "ULTIMO_PRECO": 13.2748
+  },
+  {
+    "ID_ITEM": 180,
+    "CD_DEPOSITO": 1,
+    "SALDO": 18.5828,
+    "ULTIMO_PRECO": 86
+  },
+  {
+    "ID_ITEM": 181,
+    "CD_DEPOSITO": 10,
+    "SALDO": 526.98,
+    "ULTIMO_PRECO": 130
+  },
+  {
+    "ID_ITEM": 185,
+    "CD_DEPOSITO": 1,
+    "SALDO": 225,
+    "ULTIMO_PRECO": 274.4498
+  },
+  {
+    "ID_ITEM": 258,
+    "CD_DEPOSITO": 136,
+    "SALDO": 3,
+    "ULTIMO_PRECO": 35
+  },
+  {
+    "ID_ITEM": 262,
+    "CD_DEPOSITO": 136,
+    "SALDO": 4,
+    "ULTIMO_PRECO": 65
+  },
+  {
+    "ID_ITEM": 353,
+    "CD_DEPOSITO": 1,
+    "SALDO": 125,
+    "ULTIMO_PRECO": 12.7
+  },
+  {
+    "ID_ITEM": 354,
+    "CD_DEPOSITO": 1,
+    "SALDO": 633.27,
+    "ULTIMO_PRECO": 9
+  },
+  {
+    "ID_ITEM": 355,
+    "CD_DEPOSITO": 1,
+    "SALDO": 120,
+    "ULTIMO_PRECO": 9
+  },
+  {
+    "ID_ITEM": 356,
+    "CD_DEPOSITO": 1,
+    "SALDO": 80,
+    "ULTIMO_PRECO": 13.9
+  },
+  {
+    "ID_ITEM": 377,
+    "CD_DEPOSITO": 10,
+    "SALDO": 11.2325,
+    "ULTIMO_PRECO": 91.759
+  },
+  {
+    "ID_ITEM": 378,
+    "CD_DEPOSITO": 10,
+    "SALDO": 495.29,
+    "ULTIMO_PRECO": 38.0569
+  },
+  {
+    "ID_ITEM": 380,
+    "CD_DEPOSITO": 1,
+    "SALDO": 37.5,
+    "ULTIMO_PRECO": 91.01
+  },
+  {
+    "ID_ITEM": 395,
+    "CD_DEPOSITO": 1,
+    "SALDO": 172.876,
+    "ULTIMO_PRECO": 140.2713
+  },
+  {
+    "ID_ITEM": 405,
+    "CD_DEPOSITO": 10,
+    "SALDO": 0.0375,
+    "ULTIMO_PRECO": 5448
+  },
+  {
+    "ID_ITEM": 406,
+    "CD_DEPOSITO": 1,
+    "SALDO": 10,
+    "ULTIMO_PRECO": 0
+  },
+  {
+    "ID_ITEM": 421,
+    "CD_DEPOSITO": 136,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 1079.61
+  },
+  {
+    "ID_ITEM": 436,
+    "CD_DEPOSITO": 136,
+    "SALDO": 7,
+    "ULTIMO_PRECO": 30
+  },
+  {
+    "ID_ITEM": 528,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 418
+  },
+  {
+    "ID_ITEM": 529,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 520
+  },
+  {
+    "ID_ITEM": 653,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 209.28
+  },
+  {
+    "ID_ITEM": 727,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 100.1026
+  },
+  {
+    "ID_ITEM": 728,
+    "CD_DEPOSITO": 1,
+    "SALDO": 84.4205,
+    "ULTIMO_PRECO": 61
+  },
+  {
+    "ID_ITEM": 728,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1518.0779,
+    "ULTIMO_PRECO": 109.7734
+  },
+  {
+    "ID_ITEM": 1238,
+    "CD_DEPOSITO": 1,
+    "SALDO": 140,
+    "ULTIMO_PRECO": 49.03
+  },
+  {
+    "ID_ITEM": 1240,
+    "CD_DEPOSITO": 136,
+    "SALDO": 4,
+    "ULTIMO_PRECO": 35
+  },
+  {
+    "ID_ITEM": 1271,
+    "CD_DEPOSITO": 10,
+    "SALDO": 2.5,
+    "ULTIMO_PRECO": 7.7128
+  },
+  {
+    "ID_ITEM": 1282,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 163.71
+  },
+  {
+    "ID_ITEM": 1283,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 159.99
+  },
+  {
+    "ID_ITEM": 1284,
+    "CD_DEPOSITO": 136,
+    "SALDO": 8,
+    "ULTIMO_PRECO": 4.39
+  },
+  {
+    "ID_ITEM": 1285,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 11.69
+  },
+  {
+    "ID_ITEM": 1286,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 17.99
+  },
+  {
+    "ID_ITEM": 1287,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 7.49
+  },
+  {
+    "ID_ITEM": 1289,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 926.74
+  },
+  {
+    "ID_ITEM": 1290,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 2805.26
+  },
+  {
+    "ID_ITEM": 1345,
+    "CD_DEPOSITO": 10,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 250
+  },
+  {
+    "ID_ITEM": 1350,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 889.157
+  },
+  {
+    "ID_ITEM": 1356,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1492.04,
+    "ULTIMO_PRECO": 86.89
+  },
+  {
+    "ID_ITEM": 1357,
+    "CD_DEPOSITO": 1,
+    "SALDO": 70000,
+    "ULTIMO_PRECO": 4
+  },
+  {
+    "ID_ITEM": 1357,
+    "CD_DEPOSITO": 10,
+    "SALDO": 125010,
+    "ULTIMO_PRECO": 3974.221
+  },
+  {
+    "ID_ITEM": 1363,
+    "CD_DEPOSITO": 1,
+    "SALDO": 10,
+    "ULTIMO_PRECO": 342.66
+  },
+  {
+    "ID_ITEM": 1366,
+    "CD_DEPOSITO": 1,
+    "SALDO": 127023,
+    "ULTIMO_PRECO": 2700
+  },
+  {
+    "ID_ITEM": 1366,
+    "CD_DEPOSITO": 10,
+    "SALDO": 293037,
+    "ULTIMO_PRECO": 2750
+  },
+  {
+    "ID_ITEM": 1376,
+    "CD_DEPOSITO": 10,
+    "SALDO": 352.49,
+    "ULTIMO_PRECO": 182
+  },
+  {
+    "ID_ITEM": 1380,
+    "CD_DEPOSITO": 1,
+    "SALDO": 9,
+    "ULTIMO_PRECO": 179.9219
+  },
+  {
+    "ID_ITEM": 1385,
+    "CD_DEPOSITO": 1,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 243.36
+  },
+  {
+    "ID_ITEM": 1431,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 21.25
+  },
+  {
+    "ID_ITEM": 1439,
+    "CD_DEPOSITO": 10,
+    "SALDO": 449.16,
+    "ULTIMO_PRECO": 39.69
+  },
+  {
+    "ID_ITEM": 1455,
+    "CD_DEPOSITO": 136,
+    "SALDO": 7,
+    "ULTIMO_PRECO": 985.11
+  },
+  {
+    "ID_ITEM": 1469,
+    "CD_DEPOSITO": 10,
+    "SALDO": 18,
+    "ULTIMO_PRECO": 58.0359
+  },
+  {
+    "ID_ITEM": 1475,
+    "CD_DEPOSITO": 1,
+    "SALDO": 63.475,
+    "ULTIMO_PRECO": 31
+  },
+  {
+    "ID_ITEM": 1475,
+    "CD_DEPOSITO": 10,
+    "SALDO": 217.1,
+    "ULTIMO_PRECO": 46.4764
+  },
+  {
+    "ID_ITEM": 1476,
+    "CD_DEPOSITO": 10,
+    "SALDO": 755.025,
+    "ULTIMO_PRECO": 30.95
+  },
+  {
+    "ID_ITEM": 1487,
+    "CD_DEPOSITO": 10,
+    "SALDO": 3.2505,
+    "ULTIMO_PRECO": 550.0015
+  },
+  {
+    "ID_ITEM": 1488,
+    "CD_DEPOSITO": 10,
+    "SALDO": 110.602,
+    "ULTIMO_PRECO": 321.6283
+  },
+  {
+    "ID_ITEM": 1508,
+    "CD_DEPOSITO": 1,
+    "SALDO": 2.85,
+    "ULTIMO_PRECO": 273.9834
+  },
+  {
+    "ID_ITEM": 1508,
+    "CD_DEPOSITO": 10,
+    "SALDO": 0.4847,
+    "ULTIMO_PRECO": 275
+  },
+  {
+    "ID_ITEM": 1532,
+    "CD_DEPOSITO": 1,
+    "SALDO": 160,
+    "ULTIMO_PRECO": 34.32
+  },
+  {
+    "ID_ITEM": 1549,
+    "CD_DEPOSITO": 10,
+    "SALDO": 3000,
+    "ULTIMO_PRECO": 7.27
+  },
+  {
+    "ID_ITEM": 1549,
+    "CD_DEPOSITO": 364,
+    "SALDO": 400,
+    "ULTIMO_PRECO": 15.5
+  },
+  {
+    "ID_ITEM": 1578,
+    "CD_DEPOSITO": 10,
+    "SALDO": 416.621,
+    "ULTIMO_PRECO": 33.98
+  },
+  {
+    "ID_ITEM": 1581,
+    "CD_DEPOSITO": 1,
+    "SALDO": 100,
+    "ULTIMO_PRECO": 1645.392
+  },
+  {
+    "ID_ITEM": 1581,
+    "CD_DEPOSITO": 10,
+    "SALDO": 12,
+    "ULTIMO_PRECO": 23.5056
+  },
+  {
+    "ID_ITEM": 1584,
+    "CD_DEPOSITO": 1,
+    "SALDO": 180.755,
+    "ULTIMO_PRECO": 6
+  },
+  {
+    "ID_ITEM": 1584,
+    "CD_DEPOSITO": 10,
+    "SALDO": 338.54,
+    "ULTIMO_PRECO": 6
+  },
+  {
+    "ID_ITEM": 1585,
+    "CD_DEPOSITO": 1,
+    "SALDO": 8.41,
+    "ULTIMO_PRECO": 12.6218
+  },
+  {
+    "ID_ITEM": 1757,
+    "CD_DEPOSITO": 10,
+    "SALDO": 15,
+    "ULTIMO_PRECO": 18.5
+  },
+  {
+    "ID_ITEM": 1758,
+    "CD_DEPOSITO": 10,
+    "SALDO": 40,
+    "ULTIMO_PRECO": 28.9
+  },
+  {
+    "ID_ITEM": 1759,
+    "CD_DEPOSITO": 1,
+    "SALDO": 25,
+    "ULTIMO_PRECO": 304.81
+  },
+  {
+    "ID_ITEM": 1760,
+    "CD_DEPOSITO": 1,
+    "SALDO": 40,
+    "ULTIMO_PRECO": 11.8
+  },
+  {
+    "ID_ITEM": 1761,
+    "CD_DEPOSITO": 1,
+    "SALDO": 15,
+    "ULTIMO_PRECO": 38.8
+  },
+  {
+    "ID_ITEM": 1761,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 38.8
+  },
+  {
+    "ID_ITEM": 1762,
+    "CD_DEPOSITO": 1,
+    "SALDO": 15,
+    "ULTIMO_PRECO": 569
+  },
+  {
+    "ID_ITEM": 1762,
+    "CD_DEPOSITO": 10,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 569
+  },
+  {
+    "ID_ITEM": 1763,
+    "CD_DEPOSITO": 1,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 275
+  },
+  {
+    "ID_ITEM": 1764,
+    "CD_DEPOSITO": 1,
+    "SALDO": 4,
+    "ULTIMO_PRECO": 640
+  },
+  {
+    "ID_ITEM": 1788,
+    "CD_DEPOSITO": 1,
+    "SALDO": 3,
+    "ULTIMO_PRECO": 382
+  },
+  {
+    "ID_ITEM": 1788,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1.5,
+    "ULTIMO_PRECO": 382
+  },
+  {
+    "ID_ITEM": 1808,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 175.5
+  },
+  {
+    "ID_ITEM": 1831,
+    "CD_DEPOSITO": 1,
+    "SALDO": 15,
+    "ULTIMO_PRECO": 198
+  },
+  {
+    "ID_ITEM": 1831,
+    "CD_DEPOSITO": 10,
+    "SALDO": 12,
+    "ULTIMO_PRECO": 198
+  },
+  {
+    "ID_ITEM": 1832,
+    "CD_DEPOSITO": 1,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 43
+  },
+  {
+    "ID_ITEM": 1834,
+    "CD_DEPOSITO": 1,
+    "SALDO": 15,
+    "ULTIMO_PRECO": 58.8
+  },
+  {
+    "ID_ITEM": 1834,
+    "CD_DEPOSITO": 10,
+    "SALDO": 85,
+    "ULTIMO_PRECO": 0
+  },
+  {
+    "ID_ITEM": 1835,
+    "CD_DEPOSITO": 1,
+    "SALDO": 25,
+    "ULTIMO_PRECO": 104
+  },
+  {
+    "ID_ITEM": 1842,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 231.25
+  },
+  {
+    "ID_ITEM": 1842,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 1208.0231
+  },
+  {
+    "ID_ITEM": 1843,
+    "CD_DEPOSITO": 10,
+    "SALDO": 62.5,
+    "ULTIMO_PRECO": 108
+  },
+  {
+    "ID_ITEM": 1846,
+    "CD_DEPOSITO": 136,
+    "SALDO": 3,
+    "ULTIMO_PRECO": 120
+  },
+  {
+    "ID_ITEM": 1847,
+    "CD_DEPOSITO": 10,
+    "SALDO": 9,
+    "ULTIMO_PRECO": 400
+  },
+  {
+    "ID_ITEM": 1853,
+    "CD_DEPOSITO": 10,
+    "SALDO": 22,
+    "ULTIMO_PRECO": 159
+  },
+  {
+    "ID_ITEM": 1854,
+    "CD_DEPOSITO": 10,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 52
+  },
+  {
+    "ID_ITEM": 1855,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1.3,
+    "ULTIMO_PRECO": 63
+  },
+  {
+    "ID_ITEM": 1856,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 260
+  },
+  {
+    "ID_ITEM": 1857,
+    "CD_DEPOSITO": 10,
+    "SALDO": 7,
+    "ULTIMO_PRECO": 0
+  },
+  {
+    "ID_ITEM": 1858,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 177.9
+  },
+  {
+    "ID_ITEM": 1859,
+    "CD_DEPOSITO": 10,
+    "SALDO": 3.5,
+    "ULTIMO_PRECO": 185.6
+  },
+  {
+    "ID_ITEM": 1881,
+    "CD_DEPOSITO": 1,
+    "SALDO": 54,
+    "ULTIMO_PRECO": 21.9
+  },
+  {
+    "ID_ITEM": 1881,
+    "CD_DEPOSITO": 10,
+    "SALDO": 206.17,
+    "ULTIMO_PRECO": 38.0835
+  },
+  {
+    "ID_ITEM": 1994,
+    "CD_DEPOSITO": 1,
+    "SALDO": 16.54,
+    "ULTIMO_PRECO": 13
+  },
+  {
+    "ID_ITEM": 1995,
+    "CD_DEPOSITO": 1,
+    "SALDO": 0.9135,
+    "ULTIMO_PRECO": 55
+  },
+  {
+    "ID_ITEM": 1996,
+    "CD_DEPOSITO": 10,
+    "SALDO": 713.745,
+    "ULTIMO_PRECO": 50.7385
+  },
+  {
+    "ID_ITEM": 2013,
+    "CD_DEPOSITO": 1,
+    "SALDO": 0.25,
+    "ULTIMO_PRECO": 172.5
+  },
+  {
+    "ID_ITEM": 2013,
+    "CD_DEPOSITO": 10,
+    "SALDO": 49.2327,
+    "ULTIMO_PRECO": 5651.25
+  },
+  {
+    "ID_ITEM": 2015,
+    "CD_DEPOSITO": 1,
+    "SALDO": 101,
+    "ULTIMO_PRECO": 56
+  },
+  {
+    "ID_ITEM": 2016,
+    "CD_DEPOSITO": 1,
+    "SALDO": 119.44,
+    "ULTIMO_PRECO": 38674.2857
+  },
+  {
+    "ID_ITEM": 2016,
+    "CD_DEPOSITO": 10,
+    "SALDO": 80,
+    "ULTIMO_PRECO": 935.7
+  },
+  {
+    "ID_ITEM": 2017,
+    "CD_DEPOSITO": 1,
+    "SALDO": 3.9675,
+    "ULTIMO_PRECO": 82.9812
+  },
+  {
+    "ID_ITEM": 2017,
+    "CD_DEPOSITO": 10,
+    "SALDO": 464.29,
+    "ULTIMO_PRECO": 83.8084
+  },
+  {
+    "ID_ITEM": 2022,
+    "CD_DEPOSITO": 136,
+    "SALDO": 11,
+    "ULTIMO_PRECO": 430
+  },
+  {
+    "ID_ITEM": 2066,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 325
+  },
+  {
+    "ID_ITEM": 2070,
+    "CD_DEPOSITO": 10,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 448
+  },
+  {
+    "ID_ITEM": 2071,
+    "CD_DEPOSITO": 10,
+    "SALDO": 933.96,
+    "ULTIMO_PRECO": 49.8
+  },
+  {
+    "ID_ITEM": 2076,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 95
+  },
+  {
+    "ID_ITEM": 2150,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 82
+  },
+  {
+    "ID_ITEM": 2153,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 840.48
+  },
+  {
+    "ID_ITEM": 2154,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 174.43
+  },
+  {
+    "ID_ITEM": 2232,
+    "CD_DEPOSITO": 1,
+    "SALDO": 56.5705,
+    "ULTIMO_PRECO": 90
+  },
+  {
+    "ID_ITEM": 2232,
+    "CD_DEPOSITO": 10,
+    "SALDO": 95.4875,
+    "ULTIMO_PRECO": 173.0769
+  },
+  {
+    "ID_ITEM": 2322,
+    "CD_DEPOSITO": 1,
+    "SALDO": 416.023,
+    "ULTIMO_PRECO": 129.7383
+  },
+  {
+    "ID_ITEM": 2323,
+    "CD_DEPOSITO": 1,
+    "SALDO": 221.0842,
+    "ULTIMO_PRECO": 473.0031
+  },
+  {
+    "ID_ITEM": 2331,
+    "CD_DEPOSITO": 1,
+    "SALDO": 84,
+    "ULTIMO_PRECO": 10.7999
+  },
+  {
+    "ID_ITEM": 2331,
+    "CD_DEPOSITO": 10,
+    "SALDO": 54.33,
+    "ULTIMO_PRECO": 353.8141
+  },
+  {
+    "ID_ITEM": 2331,
+    "CD_DEPOSITO": 594,
+    "SALDO": 640,
+    "ULTIMO_PRECO": 14.6
+  },
+  {
+    "ID_ITEM": 2391,
+    "CD_DEPOSITO": 1,
+    "SALDO": 15.312,
+    "ULTIMO_PRECO": 110.8597
+  },
+  {
+    "ID_ITEM": 2391,
+    "CD_DEPOSITO": 10,
+    "SALDO": 30.002,
+    "ULTIMO_PRECO": 110.8596
+  },
+  {
+    "ID_ITEM": 2446,
+    "CD_DEPOSITO": 1,
+    "SALDO": 30,
+    "ULTIMO_PRECO": 53.8888
+  },
+  {
+    "ID_ITEM": 2446,
+    "CD_DEPOSITO": 10,
+    "SALDO": 168.065,
+    "ULTIMO_PRECO": 25.6
+  },
+  {
+    "ID_ITEM": 2447,
+    "CD_DEPOSITO": 1,
+    "SALDO": 200,
+    "ULTIMO_PRECO": 50
+  },
+  {
+    "ID_ITEM": 2448,
+    "CD_DEPOSITO": 1,
+    "SALDO": 185.145,
+    "ULTIMO_PRECO": 17.0269
+  },
+  {
+    "ID_ITEM": 2448,
+    "CD_DEPOSITO": 10,
+    "SALDO": 25.165,
+    "ULTIMO_PRECO": 33.4333
+  },
+  {
+    "ID_ITEM": 2453,
+    "CD_DEPOSITO": 1,
+    "SALDO": 205.1,
+    "ULTIMO_PRECO": 27043.7143
+  },
+  {
+    "ID_ITEM": 2453,
+    "CD_DEPOSITO": 10,
+    "SALDO": 51.817,
+    "ULTIMO_PRECO": 405.47
+  },
+  {
+    "ID_ITEM": 2456,
+    "CD_DEPOSITO": 1,
+    "SALDO": 48.415,
+    "ULTIMO_PRECO": 20.0317
+  },
+  {
+    "ID_ITEM": 2456,
+    "CD_DEPOSITO": 10,
+    "SALDO": 483.99,
+    "ULTIMO_PRECO": 100
+  },
+  {
+    "ID_ITEM": 2457,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 615
+  },
+  {
+    "ID_ITEM": 2460,
+    "CD_DEPOSITO": 1,
+    "SALDO": 608.8295,
+    "ULTIMO_PRECO": 27.5013
+  },
+  {
+    "ID_ITEM": 2460,
+    "CD_DEPOSITO": 10,
+    "SALDO": 193.475,
+    "ULTIMO_PRECO": 900.9632
+  },
+  {
+    "ID_ITEM": 2558,
+    "CD_DEPOSITO": 136,
+    "SALDO": 3,
+    "ULTIMO_PRECO": 348
+  },
+  {
+    "ID_ITEM": 2559,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 660
+  },
+  {
+    "ID_ITEM": 2609,
+    "CD_DEPOSITO": 1,
+    "SALDO": 6.65,
+    "ULTIMO_PRECO": 45
+  },
+  {
+    "ID_ITEM": 2609,
+    "CD_DEPOSITO": 10,
+    "SALDO": 9.103,
+    "ULTIMO_PRECO": 45.0003
+  },
+  {
+    "ID_ITEM": 2781,
+    "CD_DEPOSITO": 1,
+    "SALDO": 8.4,
+    "ULTIMO_PRECO": 238
+  },
+  {
+    "ID_ITEM": 2781,
+    "CD_DEPOSITO": 10,
+    "SALDO": 3.5948,
+    "ULTIMO_PRECO": 238
+  },
+  {
+    "ID_ITEM": 2782,
+    "CD_DEPOSITO": 10,
+    "SALDO": 110.42,
+    "ULTIMO_PRECO": 379.6173
+  },
+  {
+    "ID_ITEM": 2789,
+    "CD_DEPOSITO": 1,
+    "SALDO": 141.0125,
+    "ULTIMO_PRECO": 35.19
+  },
+  {
+    "ID_ITEM": 2789,
+    "CD_DEPOSITO": 10,
+    "SALDO": 94.69,
+    "ULTIMO_PRECO": 55.7813
+  },
+  {
+    "ID_ITEM": 2789,
+    "CD_DEPOSITO": 594,
+    "SALDO": 600,
+    "ULTIMO_PRECO": 35.1641
+  },
+  {
+    "ID_ITEM": 2799,
+    "CD_DEPOSITO": 10,
+    "SALDO": 6.7815,
+    "ULTIMO_PRECO": 179.2
+  },
+  {
+    "ID_ITEM": 2897,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 657.11
+  },
+  {
+    "ID_ITEM": 2997,
+    "CD_DEPOSITO": 136,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 40
+  },
+  {
+    "ID_ITEM": 3018,
+    "CD_DEPOSITO": 10,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 289.28
+  },
+  {
+    "ID_ITEM": 3057,
+    "CD_DEPOSITO": 1,
+    "SALDO": 4.8,
+    "ULTIMO_PRECO": 182
+  },
+  {
+    "ID_ITEM": 3076,
+    "CD_DEPOSITO": 136,
+    "SALDO": 9,
+    "ULTIMO_PRECO": 35
+  },
+  {
+    "ID_ITEM": 3077,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 230
+  },
+  {
+    "ID_ITEM": 3087,
+    "CD_DEPOSITO": 10,
+    "SALDO": 4680,
+    "ULTIMO_PRECO": 1.0887
+  },
+  {
+    "ID_ITEM": 3097,
+    "CD_DEPOSITO": 136,
+    "SALDO": 500,
+    "ULTIMO_PRECO": 15.96
+  },
+  {
+    "ID_ITEM": 3097,
+    "CD_DEPOSITO": 143,
+    "SALDO": 500,
+    "ULTIMO_PRECO": 17
+  },
+  {
+    "ID_ITEM": 3098,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2000,
+    "ULTIMO_PRECO": 23
+  },
+  {
+    "ID_ITEM": 3113,
+    "CD_DEPOSITO": 10,
+    "SALDO": 5.0464,
+    "ULTIMO_PRECO": 2434.125
+  },
+  {
+    "ID_ITEM": 3177,
+    "CD_DEPOSITO": 10,
+    "SALDO": 0.0073,
+    "ULTIMO_PRECO": 61.74
+  },
+  {
+    "ID_ITEM": 3194,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 147
+  },
+  {
+    "ID_ITEM": 3195,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 140
+  },
+  {
+    "ID_ITEM": 3198,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 70000
+  },
+  {
+    "ID_ITEM": 3205,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 495
+  },
+  {
+    "ID_ITEM": 3210,
+    "CD_DEPOSITO": 136,
+    "SALDO": 19,
+    "ULTIMO_PRECO": 308.6
+  },
+  {
+    "ID_ITEM": 3268,
+    "CD_DEPOSITO": 1,
+    "SALDO": 16.992,
+    "ULTIMO_PRECO": 80
+  },
+  {
+    "ID_ITEM": 3387,
+    "CD_DEPOSITO": 1,
+    "SALDO": 28,
+    "ULTIMO_PRECO": 116
+  },
+  {
+    "ID_ITEM": 3388,
+    "CD_DEPOSITO": 1,
+    "SALDO": 30,
+    "ULTIMO_PRECO": 51
+  },
+  {
+    "ID_ITEM": 3389,
+    "CD_DEPOSITO": 1,
+    "SALDO": 520,
+    "ULTIMO_PRECO": 21.35
+  },
+  {
+    "ID_ITEM": 3390,
+    "CD_DEPOSITO": 1,
+    "SALDO": 67.19,
+    "ULTIMO_PRECO": 11.4
+  },
+  {
+    "ID_ITEM": 3391,
+    "CD_DEPOSITO": 1,
+    "SALDO": 80,
+    "ULTIMO_PRECO": 130
+  },
+  {
+    "ID_ITEM": 3392,
+    "CD_DEPOSITO": 1,
+    "SALDO": 183.595,
+    "ULTIMO_PRECO": 16.7
+  },
+  {
+    "ID_ITEM": 3400,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 115
+  },
+  {
+    "ID_ITEM": 3401,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 25
+  },
+  {
+    "ID_ITEM": 3402,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 220
+  },
+  {
+    "ID_ITEM": 3408,
+    "CD_DEPOSITO": 1,
+    "SALDO": 181.955,
+    "ULTIMO_PRECO": 26.9166
+  },
+  {
+    "ID_ITEM": 3409,
+    "CD_DEPOSITO": 1,
+    "SALDO": 147,
+    "ULTIMO_PRECO": 52.93
+  },
+  {
+    "ID_ITEM": 3436,
+    "CD_DEPOSITO": 1,
+    "SALDO": 9.752,
+    "ULTIMO_PRECO": 31
+  },
+  {
+    "ID_ITEM": 3436,
+    "CD_DEPOSITO": 10,
+    "SALDO": 26.04,
+    "ULTIMO_PRECO": 155
+  },
+  {
+    "ID_ITEM": 3437,
+    "CD_DEPOSITO": 1,
+    "SALDO": 96,
+    "ULTIMO_PRECO": 5000
+  },
+  {
+    "ID_ITEM": 3438,
+    "CD_DEPOSITO": 1,
+    "SALDO": 160,
+    "ULTIMO_PRECO": 180
+  },
+  {
+    "ID_ITEM": 3442,
+    "CD_DEPOSITO": 1,
+    "SALDO": 81.2975,
+    "ULTIMO_PRECO": 79.7821
+  },
+  {
+    "ID_ITEM": 3442,
+    "CD_DEPOSITO": 10,
+    "SALDO": 181.3385,
+    "ULTIMO_PRECO": 1646.832
+  },
+  {
+    "ID_ITEM": 3496,
+    "CD_DEPOSITO": 10,
+    "SALDO": 8.9275,
+    "ULTIMO_PRECO": 42.6697
+  },
+  {
+    "ID_ITEM": 3496,
+    "CD_DEPOSITO": 594,
+    "SALDO": 95,
+    "ULTIMO_PRECO": 45
+  },
+  {
+    "ID_ITEM": 3516,
+    "CD_DEPOSITO": 1,
+    "SALDO": 0.7,
+    "ULTIMO_PRECO": 377
+  },
+  {
+    "ID_ITEM": 3516,
+    "CD_DEPOSITO": 10,
+    "SALDO": 0.3,
+    "ULTIMO_PRECO": 377
+  },
+  {
+    "ID_ITEM": 3517,
+    "CD_DEPOSITO": 136,
+    "SALDO": 120,
+    "ULTIMO_PRECO": 4.3387
+  },
+  {
+    "ID_ITEM": 3526,
+    "CD_DEPOSITO": 136,
+    "SALDO": 3,
+    "ULTIMO_PRECO": 50
+  },
+  {
+    "ID_ITEM": 3532,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 500
+  },
+  {
+    "ID_ITEM": 3535,
+    "CD_DEPOSITO": 1,
+    "SALDO": 20,
+    "ULTIMO_PRECO": 311.83
+  },
+  {
+    "ID_ITEM": 3536,
+    "CD_DEPOSITO": 1,
+    "SALDO": 12,
+    "ULTIMO_PRECO": 311.83
+  },
+  {
+    "ID_ITEM": 3568,
+    "CD_DEPOSITO": 10,
+    "SALDO": 1080,
+    "ULTIMO_PRECO": 4.27
+  },
+  {
+    "ID_ITEM": 3569,
+    "CD_DEPOSITO": 10,
+    "SALDO": 100,
+    "ULTIMO_PRECO": 133.97
+  },
+  {
+    "ID_ITEM": 3577,
+    "CD_DEPOSITO": 10,
+    "SALDO": 420,
+    "ULTIMO_PRECO": 39.5
+  },
+  {
+    "ID_ITEM": 3583,
+    "CD_DEPOSITO": 594,
+    "SALDO": 260,
+    "ULTIMO_PRECO": 14.6
+  },
+  {
+    "ID_ITEM": 3612,
+    "CD_DEPOSITO": 10,
+    "SALDO": 200,
+    "ULTIMO_PRECO": 165
+  },
+  {
+    "ID_ITEM": 3665,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 525
+  },
+  {
+    "ID_ITEM": 3712,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 23
+  },
+  {
+    "ID_ITEM": 3719,
+    "CD_DEPOSITO": 10,
+    "SALDO": 740,
+    "ULTIMO_PRECO": 35.19
+  },
+  {
+    "ID_ITEM": 3748,
+    "CD_DEPOSITO": 10,
+    "SALDO": 380,
+    "ULTIMO_PRECO": 36.7
+  },
+  {
+    "ID_ITEM": 3749,
+    "CD_DEPOSITO": 10,
+    "SALDO": 60,
+    "ULTIMO_PRECO": 28.3
+  },
+  {
+    "ID_ITEM": 3750,
+    "CD_DEPOSITO": 10,
+    "SALDO": 120,
+    "ULTIMO_PRECO": 4.2647
+  },
+  {
+    "ID_ITEM": 3766,
+    "CD_DEPOSITO": 1,
+    "SALDO": 200,
+    "ULTIMO_PRECO": 26.712
+  },
+  {
+    "ID_ITEM": 3766,
+    "CD_DEPOSITO": 10,
+    "SALDO": 17.5,
+    "ULTIMO_PRECO": 334.2969
+  },
+  {
+    "ID_ITEM": 3799,
+    "CD_DEPOSITO": 10,
+    "SALDO": 300,
+    "ULTIMO_PRECO": 2
+  },
+  {
+    "ID_ITEM": 3801,
+    "CD_DEPOSITO": 594,
+    "SALDO": 5,
+    "ULTIMO_PRECO": 1600.5
+  },
+  {
+    "ID_ITEM": 3802,
+    "CD_DEPOSITO": 594,
+    "SALDO": 15,
+    "ULTIMO_PRECO": 114.5
+  },
+  {
+    "ID_ITEM": 3893,
+    "CD_DEPOSITO": 136,
+    "SALDO": 2,
+    "ULTIMO_PRECO": 28
+  },
+  {
+    "ID_ITEM": 3929,
+    "CD_DEPOSITO": 136,
+    "SALDO": 1,
+    "ULTIMO_PRECO": 854.96
+  }
+]

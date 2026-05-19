@@ -1,0 +1,209 @@
+[
+  {
+    "CD_GLEBA": 80,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 1 E TALHÃO 7",
+    "AREA_TOTAL": 320.66,
+    "AREA_PROPRIA": 320.66,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 82,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 10",
+    "AREA_TOTAL": 53.55,
+    "AREA_PROPRIA": 53.55,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 84,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 5",
+    "AREA_TOTAL": 38,
+    "AREA_PROPRIA": 38,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 85,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 6",
+    "AREA_TOTAL": 45.12,
+    "AREA_PROPRIA": 45.12,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 86,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 7 INATIVO",
+    "AREA_TOTAL": 1,
+    "AREA_PROPRIA": 1,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 87,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 8",
+    "AREA_TOTAL": 72.81,
+    "AREA_PROPRIA": 72.81,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 81,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO 9",
+    "AREA_TOTAL": 43.09,
+    "AREA_PROPRIA": 43.09,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 88,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO INDEPENDENTE",
+    "AREA_TOTAL": 931.08,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 931.08,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 83,
+    "CD_PROPRIEDADE": 1,
+    "DESCRICAO": "TALHÃO SÃO JOSÉ",
+    "AREA_TOTAL": 162.19,
+    "AREA_PROPRIA": 162.19,
+    "AREA_ARRENDADA": 0,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 62,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 1",
+    "AREA_TOTAL": 194,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 194,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 75,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 1 A",
+    "AREA_TOTAL": 50,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 50,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 71,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 10",
+    "AREA_TOTAL": 59,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 59,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 74,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 10 A",
+    "AREA_TOTAL": 81.02,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 81.02,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 72,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 11",
+    "AREA_TOTAL": 61.5,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 61.5,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 63,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 2",
+    "AREA_TOTAL": 117.45,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 117.45,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 64,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 3",
+    "AREA_TOTAL": 219.01,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 219.01,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 65,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 4 E 5",
+    "AREA_TOTAL": 374.28,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 374.28,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 66,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 5 INATIVO",
+    "AREA_TOTAL": 1,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 1,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 67,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 6",
+    "AREA_TOTAL": 150.7,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 150.7,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 68,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 7",
+    "AREA_TOTAL": 112.29,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 112.29,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 69,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 8",
+    "AREA_TOTAL": 89.01,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 89.01,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 70,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO 9",
+    "AREA_TOTAL": 98.63,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 98.63,
+    "ST_ATIVO": "S"
+  },
+  {
+    "CD_GLEBA": 73,
+    "CD_PROPRIEDADE": 2,
+    "DESCRICAO": "TALHÃO DRENO",
+    "AREA_TOTAL": 80.51,
+    "AREA_PROPRIA": 0,
+    "AREA_ARRENDADA": 80.51,
+    "ST_ATIVO": "S"
+  }
+]

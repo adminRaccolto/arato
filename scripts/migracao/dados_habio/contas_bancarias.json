@@ -1,0 +1,51 @@
+[
+  {
+    "CD_CONTA": 4,
+    "DESCRICAO": "BANCO DO BRASIL",
+    "NUM_CONTA": "12248-3",
+    "CD_AGENCIA": 2,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 3,
+    "DESCRICAO": "BANCO ITAÚ",
+    "NUM_CONTA": "62054-1",
+    "CD_AGENCIA": 1,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 6,
+    "DESCRICAO": "CAIXA ECONOMICA",
+    "NUM_CONTA": "000/000",
+    "CD_AGENCIA": 4,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 9,
+    "DESCRICAO": "PRIMACREDID",
+    "NUM_CONTA": "05354102",
+    "CD_AGENCIA": 7,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 7,
+    "DESCRICAO": "SANTANDER",
+    "NUM_CONTA": "10070959",
+    "CD_AGENCIA": 5,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 8,
+    "DESCRICAO": "SICOOB",
+    "NUM_CONTA": "13395-7",
+    "CD_AGENCIA": 6,
+    "TIPO_CONTA": "C"
+  },
+  {
+    "CD_CONTA": 5,
+    "DESCRICAO": "SICREDI",
+    "NUM_CONTA": "1770-1",
+    "CD_AGENCIA": 3,
+    "TIPO_CONTA": "C"
+  }
+]
