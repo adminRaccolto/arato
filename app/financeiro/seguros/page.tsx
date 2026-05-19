@@ -22,8 +22,8 @@ function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
 
 function diasAteVencer(dataVenc: string): number {
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  const venc = new Date(dataVenc + "T12:00:00");
-  return Math.ceil((venc.getTime() - hoje.getTime()) / 86_400_000);
+  const [y, m, d] = dataVenc.split("-").map(Number);
+  return Math.ceil((new Date(y, m - 1, d).getTime() - hoje.getTime()) / 86_400_000);
 }
 
 // ─────────────────────────────────────────────────────────────

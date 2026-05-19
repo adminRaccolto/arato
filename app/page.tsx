@@ -55,7 +55,9 @@ const DIR_ARROW = { up: " ▲", down: " ▼", same: "" };
 
 function diasAte(dataStr: string): number {
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  const alvo = new Date(dataStr + "T12:00:00");
+  // Constrói a data alvo como meia-noite local (não UTC) para evitar offset de fuso horário
+  const [y, m, d] = dataStr.split("-").map(Number);
+  const alvo = new Date(y, m - 1, d);
   return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
 }
 
@@ -318,9 +320,17 @@ export default function Dashboard() {
       const cp7 = cpProx.filter(r => diasAte(r.data_vencimento) > 3);
 
       if (cp1.length > 0) {
-        const total = cp1.reduce((s, r) => s + (r.valor ?? 0), 0);
-        const minD = Math.min(...cp1.map(r => diasAte(r.data_vencimento)));
-        novosAlertas.push({ id: "cp-urgente", tipo: "cp", desc: `${cp1.length} CP ${labelDias(minD)} · ${fmtMoeda(total)}`, valor: total, dias: minD, urgencia: "alto", link: "/financeiro/pagar", linkLabel: "Pagar" });
+        const cp1Hoje = cp1.filter(r => diasAte(r.data_vencimento) === 0);
+        const cp1Amanha = cp1.filter(r => diasAte(r.data_vencimento) === 1);
+        if (cp1Hoje.length > 0) {
+          const t = cp1Hoje.reduce((s, r) => s + (r.valor ?? 0), 0);
+          novosAlertas.push({ id: "cp-hoje", tipo: "cp", desc: `${cp1Hoje.length} CP ${labelDias(0)} · ${fmtMoeda(t)}`, valor: t, dias: 0, urgencia: "alto", link: `/financeiro/pagar?vencDe=${isoHoje}&vencAte=${isoHoje}`, linkLabel: "Pagar" });
+        }
+        if (cp1Amanha.length > 0) {
+          const isoAmanha = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
+          const t = cp1Amanha.reduce((s, r) => s + (r.valor ?? 0), 0);
+          novosAlertas.push({ id: "cp-amanha", tipo: "cp", desc: `${cp1Amanha.length} CP ${labelDias(1)} · ${fmtMoeda(t)}`, valor: t, dias: 1, urgencia: "alto", link: `/financeiro/pagar?vencDe=${isoAmanha}&vencAte=${isoAmanha}`, linkLabel: "Pagar" });
+        }
       }
       if (cp3.length > 0) {
         const total = cp3.reduce((s, r) => s + (r.valor ?? 0), 0);

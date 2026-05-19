@@ -51,7 +51,9 @@ const fmtN = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFraction
 const hoje = () => new Date().toISOString().slice(0, 10);
 const diasAte = (iso?: string | null) => {
   if (!iso) return null;
-  return Math.round((new Date(iso + "T12:00:00").getTime() - new Date().getTime()) / 86400000);
+  const [y, m, d] = iso.split("-").map(Number);
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  return Math.round((new Date(y, m - 1, d).getTime() - hoje.getTime()) / 86400000);
 };
 
 // ── estilos ───────────────────────────────────────────────
