@@ -212,6 +212,7 @@ export default function ComprasPage() {
   // ── Helpers de label ─────────────────────────────────────────
 
   const nomePessoa = (id?: string) => id ? (pessoas.find(p => p.id === id)?.nome ?? "—") : "—";
+  const nomeAnoSafra = (id?: string) => id ? (anosSafra.find(a => a.id === id)?.descricao ?? "—") : "—";
   const nomeCiclo = (id?: string) => {
     if (!id) return "";
     const c = ciclos.find(x => x.id === id);
@@ -479,10 +480,15 @@ export default function ComprasPage() {
   const [filtroSafra,  setFiltroSafra]  = useState("");
   const [filtroBusca,  setFiltroBusca]  = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroMoeda,  setFiltroMoeda]  = useState("");
 
   const pedidosFiltrados = pedidos.filter(p => {
     if (filtroSafra  && p.ano_safra_id !== filtroSafra) return false;
     if (filtroStatus && p.status !== filtroStatus) return false;
+    if (filtroMoeda) {
+      const moedaPed = p.meio_pagamento === "barter" ? "barter" : (p.cotacao_moeda ?? "R$");
+      if (moedaPed !== filtroMoeda) return false;
+    }
     if (filtroBusca) {
       const q = filtroBusca.toLowerCase();
       const forn = nomePessoa(p.fornecedor_id).toLowerCase();
@@ -578,8 +584,15 @@ export default function ComprasPage() {
               <option value="entregue">Entregue</option>
               <option value="cancelado">Cancelado</option>
             </select>
-            {(filtroSafra || filtroBusca || filtroStatus) && (
-              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); }}
+            <select value={filtroMoeda} onChange={e => setFiltroMoeda(e.target.value)}
+              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 120 }}>
+              <option value="">Todas as moedas</option>
+              <option value="R$">R$ (Real)</option>
+              <option value="USD">US$ (Dólar)</option>
+              <option value="barter">Barter</option>
+            </select>
+            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda) && (
+              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); }}
                 style={{ padding: "7px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, background: "#fff", cursor: "pointer", color: "#555" }}>
                 Limpar filtros
               </button>
@@ -598,8 +611,8 @@ export default function ComprasPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    {["Nº", "Fornecedor", "Safra", "Data", "Tipo", "Total", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "center" : i >= 5 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    {["Nº", "Fornecedor", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 || i === 5 || i === 6 || i === 7 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -613,10 +626,23 @@ export default function ComprasPage() {
                           <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{nomePessoa(ped.fornecedor_id)}</div>
                           {ped.nr_pedido && <div style={{ fontSize: 11, color: "#555" }}>Ped.: {ped.nr_pedido}</div>}
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#555" }}>{ped.safra_texto || nomeCiclo(ped.ciclo_id) || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#555" }}>{nomeAnoSafra(ped.ano_safra_id) || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "#555", maxWidth: 180 }}>
+                          <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nomeOp(ped.operacao) !== "—" ? nomeOp(ped.operacao) : <span style={{ color: "#bbb" }}>—</span>}</div>
+                        </td>
                         <td style={{ padding: "10px 14px", color: "#1a1a1a" }}>{fmtData(ped.data_registro)}</td>
-                        <td style={{ padding: "10px 14px", color: "#555" }}>{ped.tipo ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>{fmtBRL(ped.total_financeiro)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          {ped.meio_pagamento === "barter"
+                            ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5200", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Barter</span>
+                            : <span style={{ fontSize: 11, fontWeight: 600, color: ped.cotacao_moeda === "USD" ? "#0B5394" : "#1A4870" }}>{ped.cotacao_moeda ?? "R$"}</span>
+                          }
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>
+                          {(() => {
+                            const moeda = ped.meio_pagamento === "barter" ? "barter" : (ped.cotacao_moeda ?? "R$");
+                            return fmtMoeda(ped.total_financeiro, moeda);
+                          })()}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <span style={{ fontSize: 10, background: st.bg, color: st.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{st.label}</span>
                         </td>
