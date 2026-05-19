@@ -555,12 +555,7 @@ export default function ContasReceber() {
                             {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                           </select>
                         </td>
-                        <td style={{ padding: "3px 8px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            <input style={{ ...inpF }} type="date" title="De" value={fVencDe} onChange={e => setFVencDe(e.target.value)} />
-                            <input style={{ ...inpF }} type="date" title="Até" value={fVencAte} onChange={e => setFVencAte(e.target.value)} />
-                          </div>
-                        </td>
+                        <td></td>
                         <td></td>
                         <td></td>
                         <td></td>
@@ -713,9 +708,20 @@ export default function ContasReceber() {
                 )}
               </div>
 
-              <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#444" }}>
+              <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#444", background: "#F9FAFB" }}>
                 <span>CR automáticas (NF-e): <strong style={{ color: "#1A4870" }}>{lancamentos.filter(l => l.auto).length}</strong></span>
-                <span>Exibindo {filtrados.length} de {filtradosBase.length} registros</span>
+                <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                  <span>Exibindo {filtrados.length} de {filtradosBase.length} registros</span>
+                  {filtrados.length > 0 && (
+                    <>
+                      <span style={{ color: "#888" }}>|</span>
+                      <span>Total filtrado: <strong style={{ color: "#1A4870", fontSize: 13 }}>{fmtBRL(filtrados.filter(l => l.status !== "baixado").reduce((s, l) => s + paraBRL(l), 0))}</strong> em aberto</span>
+                      {filtrados.some(l => l.status === "baixado") && (
+                        <span>Recebido: <strong style={{ color: "#16A34A", fontSize: 13 }}>{fmtBRL(filtrados.filter(l => l.status === "baixado").reduce((s, l) => s + (l.valor_pago ?? paraBRL(l)), 0))}</strong></span>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
