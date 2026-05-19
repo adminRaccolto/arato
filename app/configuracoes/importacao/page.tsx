@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos";
+type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas";
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
@@ -29,6 +29,11 @@ type ProdutoRow = {
   nome: string; categoria: string; unidade: string; codigo_interno: string;
   ncm: string; estoque: string; estoque_minimo: string; valor_unitario: string;
   valor_venda: string; fabricante: string; marca: string; subgrupo: string;
+  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+};
+type MaquinaRow = {
+  nome: string; tipo: string; patrimonio: string; marca: string; modelo: string;
+  ano: string; chassi: string; horimetro_atual: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 
@@ -61,6 +66,41 @@ const TEMPLATE_PRODUTOS = [
   ["Papel A4 75g/m² (Resma)", "escritorio", "cx", "PAP-A4", "48025590", "20", "5", "22.00", "32.00", "Chamex", "Chamex", "Papelaria"],
   ["Óleo Hidráulico ISO 68", "uso_consumo", "L", "OLH-068", "27101980", "200", "50", "18.50", "0", "Ipiranga", "Lubrax", "Lubrificantes"],
   ["Correia Trapezoidal B-75", "peca", "un", "COR-B75", "40103900", "5", "2", "45.00", "68.00", "Gates", "Gates", "Transmissão"],
+];
+
+const TEMPLATE_MAQUINAS = [
+  ["nome*", "tipo*", "patrimonio*", "marca", "modelo", "ano", "chassi", "horimetro_atual"],
+  ["Trator John Deere 6110J", "trator", "Máquina 1", "John Deere", "6110J", "2022", "1RW6110JXNL123456", "4250"],
+  ["Colhedora S760", "colhedora", "Máquina 2", "John Deere", "S760", "2021", "1HO760JXPL654321", "2180"],
+  ["Plantadeira PD 1113", "plantadeira", "Máquina 3", "Plantio Direto", "PD 1113", "2020", "", "0"],
+  ["Pulverizador Menegatti", "pulverizador", "Máquina 4", "Menegatti", "2500", "2023", "", "1100"],
+  ["Caminhão Volvo FH 460", "caminhao", "Máquina 5", "Volvo", "FH 460", "2019", "9BW3HH4A8KB123456", "0"],
+  ["Toyota Hilux SW4", "carro", "Carro 30", "Toyota", "Hilux SW4", "2023", "9BFBR49H0PB123456", "45000"],
+];
+
+const INSTRUCOES_MAQUINAS = [
+  ["INSTRUÇÕES — CADASTRO DE MÁQUINAS E VEÍCULOS"],
+  [""],
+  ["• Campos com * são obrigatórios"],
+  ["• Não altere os nomes das colunas (linha 1)"],
+  ["• patrimonio: número ou código único de patrimônio da fazenda (ex: 'Máquina 1', 'Carro 30')"],
+  ["  → Usado pelo WhatsApp Bot para identificar a máquina ('abasteça a Maquina 1')"],
+  ["  → Os números NÃO se repetem entre máquinas e carros — são sequenciais"],
+  ["• tipo: trator, colhedora, plantadeira, pulverizador, caminhao, carreta, carro, implemento, outro"],
+  ["• ano: somente o número (ex: 2023)"],
+  ["• chassi: opcional — 17 caracteres alfanuméricos"],
+  ["• horimetro_atual: horas (tratores/colhedoras) ou km (carros/caminhões) — número sem unidade"],
+  [""],
+  ["Tipos disponíveis:"],
+  ["  trator        → tratores de todas as potências"],
+  ["  colhedora     → colhedoras de grãos"],
+  ["  plantadeira   → plantadeiras e semeadoras"],
+  ["  pulverizador  → pulverizadores autopropelidos e de barra"],
+  ["  caminhao      → caminhões (graneleiros, basculantes, etc.)"],
+  ["  carreta       → carretas e implementos de transporte"],
+  ["  carro         → veículos de passeio e utilitários"],
+  ["  implemento    → demais implementos (grades, subsoladores, etc.)"],
+  ["  outro         → equipamentos não classificados acima"],
 ];
 
 const INSTRUCOES_PRODUTOS = [
@@ -96,9 +136,10 @@ function downloadTemplate(aba: Aba) {
       cr:       TEMPLATE_CR,
       insumos:  TEMPLATE_INSUMOS,
       produtos: TEMPLATE_PRODUTOS,
+      maquinas: TEMPLATE_MAQUINAS,
     };
     const ws = utils.aoa_to_sheet(templates[aba]);
-    ws["!cols"] = templates[aba][0].map(() => ({ wch: 24 }));
+    ws["!cols"] = templates[aba][0].map(() => ({ wch: 26 }));
     utils.book_append_sheet(wb, ws, "Dados");
 
     const instrBase = [
@@ -116,7 +157,15 @@ function downloadTemplate(aba: Aba) {
       ["• categoria insumo: semente, fertilizante, defensivo, inoculante, combustivel, peca, material, uso_consumo, escritorio, outros"],
       ["• unidade: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, outros"],
     ];
-    const instrucoes = utils.aoa_to_sheet(aba === "produtos" ? INSTRUCOES_PRODUTOS : instrBase);
+    const instrMap: Record<Aba, (string | number)[][]> = {
+      pessoas:  instrBase,
+      cp:       instrBase,
+      cr:       instrBase,
+      insumos:  instrBase,
+      produtos: INSTRUCOES_PRODUTOS,
+      maquinas: INSTRUCOES_MAQUINAS,
+    };
+    const instrucoes = utils.aoa_to_sheet(instrMap[aba]);
     utils.book_append_sheet(wb, instrucoes, "Instruções");
 
     const nomes: Record<Aba, string> = {
@@ -125,6 +174,7 @@ function downloadTemplate(aba: Aba) {
       cr:       "template_contas_receber.xlsx",
       insumos:  "template_insumos.xlsx",
       produtos: "template_produtos.xlsx",
+      maquinas: "template_maquinas_veiculos.xlsx",
     };
     writeFile(wb, nomes[aba]);
   });
@@ -201,6 +251,19 @@ function validarProduto(r: Record<string, string>): ProdutoRow {
   if (row.ncm?.trim() && !/^\d{8}$/.test(row.ncm.trim()))
     return { ...row, _status: "erro", _msg: "NCM deve ter 8 dígitos numéricos (ex: 84212300)" };
   return { ...row, categoria: row.categoria.trim().toLowerCase(), unidade: row.unidade.trim(), _status: "ok", _msg: "" };
+}
+
+const TIPOS_MAQUINA = ["trator","colhedora","plantadeira","pulverizador","caminhao","carreta","carro","implemento","outro"];
+
+function validarMaquina(r: Record<string, string>): MaquinaRow {
+  const row = r as unknown as MaquinaRow;
+  if (!row.nome?.trim())       return { ...row, _status: "erro", _msg: "nome obrigatório" };
+  if (!row.tipo?.trim() || !TIPOS_MAQUINA.includes(row.tipo.trim().toLowerCase()))
+    return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_MAQUINA.join(", ")}` };
+  if (!row.patrimonio?.trim()) return { ...row, _status: "erro", _msg: "patrimônio obrigatório" };
+  if (row.ano?.trim() && !/^\d{4}$/.test(row.ano.trim()))
+    return { ...row, _status: "erro", _msg: "ano deve ter 4 dígitos (ex: 2023)" };
+  return { ...row, tipo: row.tipo.trim().toLowerCase(), _status: "ok", _msg: "" };
 }
 
 // ─── Componente UploadZone ────────────────────────────────────
@@ -348,18 +411,21 @@ export default function ImportacaoPage() {
   const [crRows,       setCrRows]       = useState<LancRow[]>([]);
   const [insumosRows,  setInsumosRows]  = useState<InsumoRow[]>([]);
   const [produtosRows, setProdutosRows] = useState<ProdutoRow[]>([]);
+  const [maquinasRows, setMaquinasRows] = useState<MaquinaRow[]>([]);
 
   const [loadingPessoas,  setLoadingPessoas]  = useState(false);
   const [loadingCp,       setLoadingCp]       = useState(false);
   const [loadingCr,       setLoadingCr]       = useState(false);
   const [loadingInsumos,  setLoadingInsumos]  = useState(false);
   const [loadingProdutos, setLoadingProdutos] = useState(false);
+  const [loadingMaquinas, setLoadingMaquinas] = useState(false);
 
   const [resultPessoas,  setResultPessoas]  = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultCp,       setResultCp]       = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultCr,       setResultCr]       = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultInsumos,  setResultInsumos]  = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultProdutos, setResultProdutos] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
+  const [resultMaquinas, setResultMaquinas] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
 
   // ─── Acesso restrito ──────────────────────────────────────
   if (userRole !== "raccotlo") {
@@ -590,6 +656,62 @@ export default function ImportacaoPage() {
     setLoadingProdutos(false);
   }
 
+  async function handleFileMaquinas(file: File) {
+    const raw = await parseXlsx(file);
+    const rows = raw.map(r => validarMaquina(r));
+    // Duplicados dentro do arquivo (por patrimônio)
+    const patrimonios = rows.map(r => r.patrimonio?.toLowerCase().trim()).filter(Boolean);
+    rows.forEach((r, i) => {
+      if (r._status === "ok" && r.patrimonio) {
+        const p = r.patrimonio.toLowerCase().trim();
+        if (p && patrimonios.indexOf(p) !== i) r._status = "duplicado";
+      }
+    });
+    // Duplicados já existentes no banco
+    if (fazendaId) {
+      const { data: existentes } = await supabase
+        .from("maquinas").select("patrimonio, nome").eq("fazenda_id", fazendaId);
+      const patrExistentes = new Set((existentes ?? []).map((m: { patrimonio: string | null }) => (m.patrimonio ?? "").toLowerCase().trim()).filter(Boolean));
+      const nomesExistentes = new Set((existentes ?? []).map((m: { nome: string }) => m.nome.toLowerCase().trim()));
+      rows.forEach(r => {
+        if (r._status === "ok") {
+          if (r.patrimonio && patrExistentes.has(r.patrimonio.toLowerCase().trim())) r._status = "duplicado";
+          else if (r.nome && nomesExistentes.has(r.nome.toLowerCase().trim())) r._status = "duplicado";
+        }
+      });
+    }
+    setMaquinasRows(rows); setResultMaquinas(null);
+  }
+
+  async function importarMaquinas() {
+    if (!fazendaId || !maquinasRows.length) return;
+    setLoadingMaquinas(true);
+    let ok = 0, erros = 0, duplicados = 0;
+    for (const r of maquinasRows) {
+      if (r._status === "duplicado") { duplicados++; continue; }
+      if (r._status === "erro")      { erros++;      continue; }
+      const isVeiculo = ["carro", "caminhao", "carreta"].includes(r.tipo);
+      const { error } = await supabase.from("maquinas").insert({
+        fazenda_id:      fazendaId,
+        nome:            r.nome.trim(),
+        tipo:            r.tipo,
+        patrimonio:      r.patrimonio?.trim() || null,
+        marca:           r.marca?.trim() || null,
+        modelo:          r.modelo?.trim() || null,
+        ano:             r.ano?.trim() ? parseInt(r.ano.trim()) : null,
+        chassi:          r.chassi?.trim() || null,
+        horimetro_atual: r.horimetro_atual?.trim() ? parseFloat(r.horimetro_atual.replace(",", ".")) : null,
+        unidade_medida:  isVeiculo ? "km" : "h",
+        ativa:           true,
+      });
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+      else ok++;
+    }
+    setMaquinasRows([...maquinasRows]);
+    setResultMaquinas({ ok, erros, duplicados });
+    setLoadingMaquinas(false);
+  }
+
   // ─── Config por aba ───────────────────────────────────────
   const ABA_CONFIG: Record<Aba, {
     label: string; icon: string; desc: string;
@@ -647,6 +769,16 @@ export default function ImportacaoPage() {
       onFile: handleFileProdutos,
       onImport: importarProdutos,
     },
+    maquinas: {
+      label: "Máquinas / Veículos", icon: "🚜",
+      desc: "Importe toda a frota: tratores, colhedoras, pulverizadores, caminhões, carros e implementos.",
+      cols: ["nome", "tipo", "patrimonio", "marca", "modelo", "ano", "horimetro_atual"],
+      rows: maquinasRows as Record<string, unknown>[],
+      loading: loadingMaquinas,
+      result: resultMaquinas,
+      onFile: handleFileMaquinas,
+      onImport: importarMaquinas,
+    },
   };
 
   const cfg      = ABA_CONFIG[aba];
@@ -660,6 +792,7 @@ export default function ImportacaoPage() {
     if (aba === "cr")        { setCrRows([]);       setResultCr(null); }
     if (aba === "insumos")  { setInsumosRows([]);  setResultInsumos(null); }
     if (aba === "produtos") { setProdutosRows([]); setResultProdutos(null); }
+    if (aba === "maquinas") { setMaquinasRows([]); setResultMaquinas(null); }
   }
 
   return (
@@ -682,7 +815,7 @@ export default function ImportacaoPage() {
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
           <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-            {(["pessoas", "cp", "cr", "insumos", "produtos"] as Aba[]).map(a => {
+            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
                 <button
