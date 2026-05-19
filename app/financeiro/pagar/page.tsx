@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -122,7 +122,7 @@ const inpF: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
 
 // ═══════════════════════════════════════════════════════════════
-export default function ContasPagar() {
+function ContasPagarInner() {
   const { fazendaId, contaId } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1644,4 +1644,12 @@ function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.
     borderBottom: "0.5px solid #D4DCE8",
     whiteSpace: "nowrap",
   };
+}
+
+export default function ContasPagar() {
+  return (
+    <Suspense>
+      <ContasPagarInner />
+    </Suspense>
+  );
 }
