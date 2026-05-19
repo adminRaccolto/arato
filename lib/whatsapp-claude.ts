@@ -237,6 +237,32 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["nome"],
     },
   },
+  {
+    name: "registrar_contrato_graos",
+    description: "Registra um contrato de comercialização de grãos (venda de soja, milho, algodão etc). SEMPRE chame com confirmado=false primeiro para mostrar o resumo. Só use confirmado=true após o usuário confirmar com 'sim'. Captura: número do contrato, comprador, CNPJ do comprador, safra, quantidade em sacas, preço (R$ ou US$), data de entrega, prazo de pagamento, dados bancários e local de entrega.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        numero:           { type: "string",  description: "Número do contrato (ex: 4600089605/2027)" },
+        comprador:        { type: "string",  description: "Nome da empresa compradora" },
+        comprador_cnpj:   { type: "string",  description: "CNPJ do comprador (opcional)" },
+        vendedor_cpf:     { type: "string",  description: "CPF ou nome do vendedor/produtor (opcional)" },
+        produto:          { type: "string",  description: "Commodity: Soja, Milho, Milho 2ª, Algodão, Sorgo, Trigo" },
+        safra:            { type: "string",  description: "Safra do contrato: ex '26/27', '2026/2027'" },
+        quantidade_sc:    { type: "number",  description: "Quantidade em sacas de 60kg" },
+        preco:            { type: "number",  description: "Preço por saca (número puro, sem símbolo)" },
+        moeda:            { type: "string",  enum: ["BRL", "USD"], description: "Moeda do preço: BRL (reais) ou USD (dólar)" },
+        modalidade:       { type: "string",  enum: ["fixo", "a_fixar", "barter"], description: "fixo = preço travado; a_fixar = preço a definir; barter = troca por insumos. Padrão: fixo se tiver preço." },
+        data_entrega:     { type: "string",  description: "Data de entrega: dd/mm/aaaa" },
+        data_pagamento:   { type: "string",  description: "Prazo de pagamento: dd/mm/aaaa" },
+        dados_bancarios:  { type: "string",  description: "Dados bancários para recebimento (banco, agência, conta)" },
+        local_entrega:    { type: "string",  description: "Local/destino de entrega da mercadoria" },
+        data_contrato:    { type: "string",  description: "Data de assinatura do contrato: dd/mm/aaaa" },
+        confirmado:       { type: "boolean", description: "false = mostra resumo para confirmar (padrão). true = salva no sistema após confirmação do usuário." },
+      },
+      required: ["comprador", "produto", "quantidade_sc"],
+    },
+  },
 ];
 
 // ── Executor das ferramentas ────────────────────────────────────────────────
@@ -371,6 +397,27 @@ async function executarFerramenta(
         }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
+      case "registrar_contrato_graos": {
+        const res = await executarInsercao("contrato_graos", {
+          numero:          input.numero ?? "",
+          comprador:       input.comprador,
+          comprador_cnpj:  input.comprador_cnpj ?? "",
+          vendedor_cpf:    input.vendedor_cpf ?? "",
+          produto:         input.produto,
+          safra:           input.safra ?? "",
+          quantidade_sc:   input.quantidade_sc,
+          preco:           input.preco ?? 0,
+          moeda:           input.moeda ?? "BRL",
+          modalidade:      input.modalidade ?? "",
+          data_entrega:    input.data_entrega ?? "",
+          data_pagamento:  input.data_pagamento ?? "",
+          dados_bancarios: input.dados_bancarios ?? "",
+          local_entrega:   input.local_entrega ?? "",
+          data_contrato:   input.data_contrato ?? "",
+          confirmado:      input.confirmado === true,
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+        return res.mensagem;
+      }
       default:
         return "Ferramenta não reconhecida.";
     }
@@ -402,6 +449,9 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
     "conta a pagar", "cp de", "cr de", "conta a receber",
     "comprei", "compra de", "paguei", "recebi", "gastei",
     "cadastrar", "cadastra ", "cadastre", "cadastrei",
+    "contrato de venda", "contrato de grão", "contrato de soja", "contrato de milho",
+    "contrato de algodão", "vender soja", "vender milho", "fechei contrato",
+    "fechamos contrato", "novo contrato", "registrar contrato",
   ];
   if (kw.some(k => t.includes(k))) return true;
 
@@ -475,6 +525,16 @@ REGRA #7 — CADASTRO SEM NF:
 - Se o usuário pedir para cadastrar um fornecedor sem foto/NF → use cadastrar_fornecedor.
 - Se o usuário pedir para cadastrar um produto/insumo no estoque sem foto/NF → use cadastrar_insumo.
 - NUNCA diga "não tenho essa função" para cadastros. Sempre use a ferramenta correta.
+
+REGRA #8 — CONTRATO DE COMERCIALIZAÇÃO DE GRÃOS:
+- Quando o usuário enviar foto/PDF de um contrato de venda de grãos (soja, milho, algodão), ou descrever os termos de um contrato verbalmente/em texto:
+  → LEIA o documento (se for imagem/PDF) e extraia: número do contrato, compradora, CNPJ da compradora, CPF/nome do vendedor, commodity, safra, quantidade de sacas, preço por saca, moeda (R$ ou US$), data de entrega, prazo de pagamento, dados bancários, local de entrega, data de assinatura.
+  → Chame registrar_contrato_graos com confirmado=false imediatamente.
+  → NÃO diga "não tenho campos para isso" — A FERRAMENTA TEM TODOS OS CAMPOS.
+  → Quando o usuário confirmar com "sim", chame novamente com confirmado=true e os MESMOS dados.
+- Campos de preço em dólar: preencha moeda="USD" e o número puro em preco (ex: 20.50, não "US$ 20,50").
+- "convertido pela PTAX" indica que moeda=USD — registre assim, o sistema gerencia a conversão.
+- Contrato de arrendamento ≠ contrato de venda de grãos — para arrendamento use registrar_conta_pagar com categoria="arrendamento".
 
 COMPORTAMENTO GERAL:
 - Seu nome é Arato. Responda em português, direto e prático.

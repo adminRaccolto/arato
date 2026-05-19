@@ -280,6 +280,187 @@ async function criarPendenciaInsumo(
   });
 }
 
+// ── Contrato de Grãos ────────────────────────────────────────────────────────
+
+function normalizarProduto(p: string): string {
+  const s = p.toLowerCase();
+  if (s.includes("soja")) return "Soja";
+  if (s.includes("milho") && (s.includes("2ª") || s.includes("safrinha") || s.includes("2a"))) return "Milho 2ª";
+  if (s.includes("milho")) return "Milho";
+  if (s.includes("algodão") || s.includes("algodao") || s.includes("cotton")) return "Algodão";
+  if (s.includes("sorgo")) return "Sorgo";
+  if (s.includes("trigo")) return "Trigo";
+  return p; // mantém como vieram
+}
+
+function fmtIso(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return d && m && y ? `${d}/${m}/${y}` : iso;
+}
+
+async function buscarAnoSafraContrato(fazendaId: string, safraStr: string): Promise<{ id: string; descricao: string } | null> {
+  if (!safraStr) return null;
+  // Extrai ano de início: "2026/2027" → 2026; "26/27" → 2026; "safra 26" → 2026
+  const match = safraStr.match(/(\d{2,4})/);
+  if (!match) return null;
+  let year = parseInt(match[1]);
+  if (year < 100) year += 2000;
+
+  const { data } = await sb().from("anos_safra")
+    .select("id, descricao, data_inicio")
+    .eq("fazenda_id", fazendaId)
+    .order("data_inicio", { ascending: false });
+
+  if (!data || data.length === 0) return null;
+
+  // Tenta match exato na descrição
+  for (const a of data) {
+    const desc = String(a.descricao ?? "");
+    if (desc.includes(String(year)) || desc.includes(String(year).slice(-2))) {
+      return { id: a.id, descricao: desc };
+    }
+  }
+  // Tenta por data_inicio
+  const porData = data.find(a => {
+    const inicio = String(a.data_inicio ?? "");
+    return inicio.startsWith(String(year));
+  });
+  if (porData) return { id: porData.id, descricao: String(porData.descricao ?? "") };
+
+  return null;
+}
+
+async function buscarCicloContrato(fazendaId: string, anoSafraId: string, produto: string): Promise<{ id: string; descricao: string } | null> {
+  const cultura = produto.toLowerCase().replace(" 2ª", "2").replace("ã", "a").replace("ç", "c");
+  const { data } = await sb().from("ciclos")
+    .select("id, descricao, cultura")
+    .eq("fazenda_id", fazendaId)
+    .eq("ano_safra_id", anoSafraId)
+    .order("created_at", { ascending: false });
+
+  if (!data || data.length === 0) return null;
+
+  // Prioriza match por cultura
+  const porCultura = data.find(c => {
+    const cult = String(c.cultura ?? "").toLowerCase();
+    return cult.includes(cultura) || cultura.includes(cult);
+  });
+  return porCultura
+    ? { id: porCultura.id, descricao: String(porCultura.descricao ?? produto) }
+    : { id: data[0].id, descricao: String(data[0].descricao ?? produto) };
+}
+
+async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const comprador    = String(dados.comprador ?? "").trim();
+  const produto      = normalizarProduto(String(dados.produto ?? "Soja"));
+  const safraStr     = String(dados.safra ?? "").trim();
+  const quantidadeSc = Number(dados.quantidade_sc ?? 0);
+  const preco        = Number(dados.preco ?? 0);
+  const moeda        = (String(dados.moeda ?? "BRL").toUpperCase() === "USD" ? "USD" : "BRL") as "BRL" | "USD";
+  const modalidade   = (["fixo", "a_fixar", "barter"].includes(String(dados.modalidade ?? ""))
+    ? dados.modalidade as "fixo" | "a_fixar" | "barter"
+    : preco > 0 ? "fixo" : "a_fixar");
+  const numero       = String(dados.numero ?? "").trim();
+  const confirmado   = dados.confirmado === true;
+
+  if (!comprador)       return { ok: false, mensagem: "❓ Qual o nome do comprador/compradora?" };
+  if (quantidadeSc <= 0) return { ok: false, mensagem: "❓ Qual a quantidade em sacas?" };
+  if (!safraStr)        return { ok: false, mensagem: "❓ Qual a safra do contrato? (ex: 26/27)" };
+
+  const dataEntrega   = dados.data_entrega   ? parseData(String(dados.data_entrega))   : "";
+  const dataPagamento = dados.data_pagamento ? parseData(String(dados.data_pagamento)) : "";
+  const dataContrato  = dados.data_contrato  ? parseData(String(dados.data_contrato))  : new Date().toISOString().split("T")[0];
+
+  const anoSafra = await buscarAnoSafraContrato(fazendaId, safraStr);
+  const ciclo    = anoSafra ? await buscarCicloContrato(fazendaId, anoSafra.id, produto) : null;
+
+  const obsPartes: string[] = [];
+  if (dados.local_entrega)  obsPartes.push(`Local: ${dados.local_entrega}`);
+  if (dados.dados_bancarios) obsPartes.push(`Banco: ${dados.dados_bancarios}`);
+  if (dados.comprador_cnpj)  obsPartes.push(`CNPJ comprador: ${dados.comprador_cnpj}`);
+  if (dados.vendedor_cpf)    obsPartes.push(`CPF vendedor: ${dados.vendedor_cpf}`);
+  const observacao = obsPartes.join(" | ") || undefined;
+
+  const receitaBRL = preco > 0 && moeda === "BRL" ? quantidadeSc * preco : 0;
+  const fmtMoeda = (v: number) => moeda === "USD"
+    ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    : `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+
+  if (!confirmado) {
+    const linhas = [
+      `📋 *Resumo do Contrato de Grãos:*`,
+      `• Nº: *${numero || "(sem número)"}*`,
+      `• Comprador: *${comprador}*${dados.comprador_cnpj ? ` — CNPJ ${dados.comprador_cnpj}` : ""}`,
+      `• Produto: *${produto}* · Safra *${safraStr}*`,
+      `• Quantidade: *${quantidadeSc.toLocaleString("pt-BR")} sc*`,
+      `• Preço: *${fmtMoeda(preco)}/sc*${moeda === "USD" ? " (PTAX)" : ""}`,
+      receitaBRL > 0 ? `• Receita total: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : `• Receita total: ~${fmtMoeda(quantidadeSc * preco)} (converter pela PTAX)`,
+      dataEntrega   ? `• Entrega: ${fmtIso(dataEntrega)}` : "",
+      dataPagamento ? `• Pagamento: ${fmtIso(dataPagamento)}` : "",
+      dados.local_entrega  ? `• Local: ${dados.local_entrega}` : "",
+      dados.dados_bancarios ? `• Banco: ${dados.dados_bancarios}` : "",
+      anoSafra ? `• ✅ Safra vinculada: ${anoSafra.descricao}` : `• ⚠️ Safra "${safraStr}" não encontrada — cadastre em Lavoura → Safras`,
+      ciclo    ? `• ✅ Ciclo: ${ciclo.descricao}` : "",
+      "",
+      "Confirme com *sim* para salvar no sistema.",
+    ].filter(Boolean).join("\n");
+    return { ok: false, mensagem: linhas };
+  }
+
+  // ── Salvar ────────────────────────────────────────────────────────────────
+  const { error, data: salvo } = await sb().from("contratos").insert({
+    fazenda_id:          fazendaId,
+    numero:              numero || `BOT-${Date.now()}`,
+    nr_contrato_cliente: numero || null,
+    comprador,
+    produto,
+    safra:               safraStr,
+    ano_safra_id:        anoSafra?.id ?? null,
+    ciclo_id:            ciclo?.id ?? null,
+    quantidade_sc:       quantidadeSc,
+    entregue_sc:         0,
+    preco,
+    moeda,
+    modalidade,
+    tipo:                "venda",
+    status:              "aberto",
+    data_contrato:       dataContrato,
+    data_entrega:        dataEntrega || new Date().toISOString().split("T")[0],
+    data_pagamento:      dataPagamento || null,
+    observacao:          observacao || null,
+  }).select("id").maybeSingle();
+
+  if (error) return { ok: false, mensagem: `❌ Erro ao salvar contrato: ${error.message}` };
+
+  // Gera CR automaticamente se preço em BRL e tem data de pagamento
+  let crMsg = "";
+  if (receitaBRL > 0 && dataPagamento) {
+    const { error: crErr } = await sb().from("lancamentos").insert({
+      fazenda_id:      fazendaId,
+      tipo:            "receber",
+      descricao:       `Venda ${produto} — ${comprador}${numero ? ` (${numero})` : ""}`,
+      valor:           receitaBRL,
+      data_vencimento: dataPagamento,
+      status:          "em_aberto",
+      observacao:      [numero ? `Contrato ${numero}` : "", observacao].filter(Boolean).join(" | ") || null,
+    });
+    crMsg = crErr ? "" : `\n✅ CR gerado: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para ${fmtIso(dataPagamento)}`;
+  }
+
+  return {
+    ok: true,
+    mensagem: [
+      `✅ Contrato registrado!`,
+      `• *${produto}* — ${quantidadeSc.toLocaleString("pt-BR")} sc @ ${fmtMoeda(preco)}/sc`,
+      `• Comprador: ${comprador}`,
+      `• Safra: ${safraStr}${anoSafra ? "" : " ⚠️ (não vinculada)"}`,
+      dataEntrega ? `• Entrega: ${fmtIso(dataEntrega)}` : "",
+      crMsg,
+      moeda === "USD" && !crMsg ? `• 💡 Para gerar o CR, informe a cotação PTAX e solicite no sistema` : "",
+    ].filter(Boolean).join("\n"),
+  };
+}
+
 // ── Roteador principal ──────────────────────────────────────────────────────
 export async function executarInsercao(
   fluxo: FluxoNome,
@@ -303,6 +484,7 @@ export async function executarInsercao(
     case "nf_compra_foto":     return inserirNfCompraFoto(dados, fazendaId);
     case "cadastrar_fornecedor": return inserirNovoFornecedor(dados, fazendaId);
     case "cadastrar_insumo":     return inserirNovoInsumo(dados, fazendaId);
+    case "contrato_graos":       return inserirContratoGraos(dados, fazendaId);
     default:                   return { ok: false, mensagem: "Fluxo desconhecido." };
   }
 }
