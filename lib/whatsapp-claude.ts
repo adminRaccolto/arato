@@ -101,7 +101,7 @@ const TOOLS: Anthropic.Tool[] = [
         produto: { type: "string", description: "diesel s10, gasolina, etanol, arla etc" },
         quantidade: { type: "number", description: "Litros abastecidos" },
         valor: { type: "number", description: "Valor total em R$. SÓ para posto externo. Para bomba interna da fazenda NÃO preencher — o sistema usa o custo do estoque." },
-        veiculo: { type: "string", description: "Número do patrimônio (ex: '1', '001'), nome, placa ou descrição do veículo/máquina. Patrimônio tem prioridade — use exatamente como o usuário informou (ex: 'Maquina 1' → veiculo='1')." },
+        veiculo: { type: "string", description: "Número do patrimônio ou identificador da máquina/carro. Os números são únicos em toda a frota (não se repetem entre tratores e carros). Exemplos: 'Maquina 1' → veiculo='1'; 'Carro 30' → veiculo='30'; 'trator 5' → veiculo='5'. Extraia APENAS o número quando o usuário usar 'Maquina N' ou 'Carro N'." },
         bomba_nome: { type: "string", description: "Nome da bomba ou posto usado. **OBRIGATÓRIO** — sempre informe (ex: 'Bomba Fazenda', 'Posto Shell'). Pergunta ao usuário antes de chamar se não foi mencionado." },
         tipo_destino: { type: "string", enum: ["estoque", "direto"], description: "'estoque': comprou para repor o tanque interno da fazenda (deduz estoque). 'direto': abasteceu em posto externo ou direto na máquina sem passar pelo estoque — não há dedução de estoque. Padrão: direto." },
         vencimento: { type: "string", description: "Data de vencimento: hoje, amanhã, dd/mm/aaaa ou 'à vista'" },
