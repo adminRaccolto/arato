@@ -210,6 +210,7 @@ export default function ContratosFinanceiros() {
   const [pessoas, setPessoas]       = useState<Pessoa[]>([]);
   const [salvando, setSalvando]     = useState(false);
   const [erro, setErro]             = useState<string | null>(null);
+  const [ptax, setPtax]             = useState<number | null>(null);
 
   // modal contrato (criar/editar)
   const [modalContrato, setModalContrato] = useState(false);
@@ -240,6 +241,14 @@ export default function ContratosFinanceiros() {
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
     supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome")
       .then(({ data }) => setPessoas(data ?? []));
+    // Busca PTAX do dia — atualiza a cada 5 minutos
+    const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => {
+      const taxa = d.usdPtax ?? d.usdBrl;
+      if (taxa && taxa > 1) setPtax(taxa);
+    }).catch(() => {});
+    buscarPtax();
+    const timer = setInterval(buscarPtax, 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, [fazendaId]);
 
   // ── Carregar dados do detalhe ao mudar aba ──
@@ -459,8 +468,11 @@ export default function ContratosFinanceiros() {
     setCentrosCusto(await listarCentrosCusto(detalhe.id));
   });
 
-  // ── Totais ──
-  const totalFinanciado = contratos.filter(c => c.status === "ativo").reduce((s, c) => s + (c.valor_financiado_brl ?? c.valor_financiado), 0);
+  // ── Totais — converte USD→BRL via PTAX dinâmico ──
+  const totalFinanciado = contratos.filter(c => c.status === "ativo").reduce((s, c) => {
+    const brl = c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado;
+    return s + brl;
+  }, 0);
   const totalAtivos = contratos.filter(c => c.status === "ativo").length;
 
   // helper nome conta
@@ -527,8 +539,11 @@ export default function ContratosFinanceiros() {
                           <div style={{ color: "#1a1a1a", fontWeight: 600 }}>
                             {c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}
                           </div>
-                          {c.moeda === "USD" && c.valor_financiado_brl && (
-                            <div style={{ fontSize: 10, color: "#444" }}>≈ {fmtBRL(c.valor_financiado_brl)}</div>
+                          {c.moeda === "USD" && ptax && (
+                            <div style={{ fontSize: 10, color: "#444" }}>
+                              ≈ {fmtBRL(c.valor_financiado * ptax)}
+                              <span style={{ color: "#888", marginLeft: 3 }}>PTAX {fmtNum(ptax, 4)}</span>
+                            </div>
                           )}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtData(c.data_contrato)}</td>
@@ -790,7 +805,7 @@ export default function ContratosFinanceiros() {
       {detalhe && (
         <Modal
           titulo={detalhe.descricao}
-          subtitulo={`${detalhe.credor} · ${TIPO_META[detalhe.tipo].label}${detalhe.linha_credito ? ` / ${detalhe.linha_credito}` : ""} · ${detalhe.moeda === "USD" ? `US$ ${fmtNum(detalhe.valor_financiado)} (≈ ${fmtBRL(detalhe.valor_financiado_brl ?? detalhe.valor_financiado)})` : fmtBRL(detalhe.valor_financiado)}`}
+          subtitulo={`${detalhe.credor} · ${TIPO_META[detalhe.tipo].label}${detalhe.linha_credito ? ` / ${detalhe.linha_credito}` : ""} · ${detalhe.moeda === "USD" ? `US$ ${fmtNum(detalhe.valor_financiado)}${ptax ? ` (≈ ${fmtBRL(detalhe.valor_financiado * ptax)} · PTAX ${fmtNum(ptax, 4)})` : ""}` : fmtBRL(detalhe.valor_financiado)}`}
           width={820}
           onClose={() => setDetalhe(null)}
         >
