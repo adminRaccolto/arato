@@ -163,13 +163,15 @@ export default function Dashboard() {
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const em7  = new Date(hoje); em7.setDate(hoje.getDate() + 7);
     const em15 = new Date(hoje); em15.setDate(hoje.getDate() + 15);
-    const isoHoje = hoje.toISOString().split("T")[0];
-    const isoEm7  = em7.toISOString().split("T")[0];
-    const isoEm15 = em15.toISOString().split("T")[0];
+    const floor180 = new Date(hoje); floor180.setDate(hoje.getDate() - 180);
+    const isoHoje  = hoje.toISOString().split("T")[0];
+    const isoEm7   = em7.toISOString().split("T")[0];
+    const isoEm15  = em15.toISOString().split("T")[0];
+    const isoFloor = floor180.toISOString().split("T")[0];
 
     const statusAberto = ["em_aberto", "vencido", "vencendo"];
     Promise.all([
-      // CP a vencer nos próximos 7 dias + vencidos
+      // CP a vencer nos próximos 7 dias + vencidos (piso 180 dias atrás)
       supabase.from("lancamentos")
         .select("id, descricao, valor, data_vencimento, status")
         .eq("fazenda_id", fazendaId)
@@ -177,10 +179,11 @@ export default function Dashboard() {
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
+        .gte("data_vencimento", isoFloor)
         .lte("data_vencimento", isoEm7)
         .order("data_vencimento"),
 
-      // CR a vencer nos próximos 7 dias + vencidos
+      // CR a vencer nos próximos 7 dias + vencidos (piso 180 dias atrás)
       supabase.from("lancamentos")
         .select("id, descricao, valor, data_vencimento, status")
         .eq("fazenda_id", fazendaId)
@@ -188,6 +191,7 @@ export default function Dashboard() {
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
+        .gte("data_vencimento", isoFloor)
         .lte("data_vencimento", isoEm7)
         .order("data_vencimento"),
 
@@ -258,7 +262,7 @@ export default function Dashboard() {
         .eq("confirmado", true)
         .neq("status", "encerrado"),
 
-      // CP vencidos (data < hoje)
+      // CP vencidos (piso 180 dias atrás — exclui artefatos da migração)
       supabase.from("lancamentos")
         .select("valor")
         .eq("fazenda_id", fazendaId)
@@ -266,6 +270,7 @@ export default function Dashboard() {
         .neq("moeda", "barter")
         .or("natureza.is.null,natureza.neq.previsao")
         .in("status", statusAberto)
+        .gte("data_vencimento", isoFloor)
         .lt("data_vencimento", isoHoje),
 
       // Seguros de máquinas vencendo em 30 dias
