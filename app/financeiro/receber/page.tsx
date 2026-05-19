@@ -242,7 +242,7 @@ export default function ContasReceber() {
   const filtradosBase = useMemo(() => {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
-      if (filtro === "aberto")   return isReal && l.status === "em_aberto" && l.moeda !== "barter";
+      if (filtro === "aberto")   return isReal && (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (l.status === "vencido" || l.status === "vencendo");
       if (filtro === "baixado")  return isReal && l.status === "baixado";
       if (filtro === "barter")   return isReal && l.moeda === "barter";

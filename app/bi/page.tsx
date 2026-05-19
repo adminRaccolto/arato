@@ -341,8 +341,8 @@ export default function BI() {
       ? ciclosComm.reduce((s: number, c: any) => s + (c.preco_esperado_sc as number), 0) / ciclosComm.length
       : 0;
     const precoBrl = precoCiclo > 0 ? precoCiclo
-                   : comm === "Soja"  ? (precos?.soja.brl ?? 0)
-                   : comm === "Milho" ? (precos?.milho.brl ?? 0)
+                   : comm === "Soja"  ? (precos?.soja?.brl ?? 0)
+                   : comm === "Milho" ? (precos?.milho?.brl ?? 0)
                    : (precos?.algodao?.brl ?? 0);
     const dividaBrl     = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "BRL" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
     const dividaUsdBrl  = lancamentos.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado").reduce((s, l) => s + l.valor * (l.cotacao_usd ?? 5.1), 0);
@@ -398,7 +398,7 @@ export default function BI() {
     diagnostico.push({ tipo: "ok", msg: "Todos os indicadores dentro dos parâmetros normais" });
 
   // ── Sensibilidade — derivados ─────────────────────────────────
-  const precoBrlSoja  = precos?.soja.brl ?? 128;
+  const precoBrlSoja  = precos?.soja?.brl ?? 128;
   const sojaPlantios  = plantios.filter(p => { const c = ciclos.find(x => x.id === p.ciclo_id); return c && c.cultura.toLowerCase().includes("soja"); });
   const areaSojaTotal = sojaPlantios.reduce((s, p) => s + (p.area_ha || 0), 0);
   const prodSojaTotal = sojaPlantios.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
@@ -498,9 +498,9 @@ export default function BI() {
             {precos && (
               <div style={{ display: "flex", gap: 5 }}>
                 {[
-                  { label: "Soja",  v: precos.soja.brl,  var: precos.soja.variacao  },
-                  { label: "Milho", v: precos.milho.brl, var: precos.milho.variacao },
-                  { label: "USD",   v: precos.usdBrl,    var: 0                     },
+                  { label: "Soja",  v: precos.soja?.brl  ?? 0, var: precos.soja?.variacao  ?? 0 },
+                  { label: "Milho", v: precos.milho?.brl ?? 0, var: precos.milho?.variacao ?? 0 },
+                  { label: "USD",   v: precos.usdBrl ?? 0,     var: 0                           },
                 ].map(p => (
                   <div key={p.label} style={{ background: "rgba(255,255,255,0.07)", borderRadius: 7, padding: "5px 9px", textAlign: "center", minWidth: 66 }}>
                     <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginBottom: 1 }}>{p.label}</div>

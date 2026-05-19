@@ -139,7 +139,11 @@ function ContasPagarInner() {
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
-  const [filtro,   setFiltro]   = useState<Filtro>("aberto");
+  const [filtro,   setFiltro]   = useState<Filtro>(() => {
+    const f = searchParams.get("filtro") as Filtro | null;
+    const valid: Filtro[] = ["aberto","vencido","vencendo","baixado","barter","previsao","todos"];
+    return f && valid.includes(f) ? f : "aberto";
+  });
 
   // ── Janela padrão: 1º do mês atual até 12 meses à frente ────
   const [periodoInicio, setPeriodoInicio] = useState(() => {
@@ -336,7 +340,7 @@ function ContasPagarInner() {
   const filtradosBase = useMemo(() => {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
-      if (filtro === "aberto")   return isReal && l.status === "em_aberto" && l.moeda !== "barter";
+      if (filtro === "aberto")   return isReal && (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (l.status === "vencido" || l.status === "vencendo");
       if (filtro === "vencendo") return isReal && l.status === "vencendo";
       if (filtro === "baixado")  return isReal && l.status === "baixado";
@@ -602,7 +606,7 @@ function ContasPagarInner() {
               {/* Filtros de status */}
               <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 {([
-                  { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => l.status !== "baixado").length,                           cor: "#E24B4A" },
+                  { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => l.status !== "baixado" && l.moeda !== "barter").length, cor: "#E24B4A" },
                   { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                           cor: "#E24B4A" },
                   { key: "baixado",  label: "Pagos",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#E24B4A" },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#E24B4A" },
