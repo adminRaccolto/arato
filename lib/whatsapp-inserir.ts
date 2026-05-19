@@ -448,7 +448,7 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
       `• Nº: *${numero || "(sem número)"}*`,
       `• Comprador: *${comprador}*${dados.comprador_cnpj ? ` — CNPJ ${dados.comprador_cnpj}` : ""}`,
       `• Produto: *${produto}* · Safra *${safraStr}*`,
-      `• Quantidade: *${quantidadeSc.toLocaleString("pt-BR")} sc*`,
+      `• Quantidade: *${quantidadeSc.toLocaleString("pt-BR")} sc* (${(quantidadeSc * 60).toLocaleString("pt-BR")} kg)`,
       `• Preço: *${fmtMoeda(preco)}/sc*`,
       ptaxLine,
       receitaBRL > 0 ? `• Receita total: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "",
@@ -524,9 +524,10 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
 
   const contratoId = salvo?.id as string;
 
-  // ── Criar item do contrato (contrato_itens) ───────────────────────────────
-  // Sem isso, o modal de edição exibe os itens vazios
+  // ── Criar item do contrato (contrato_itens) — armazena em kg ─────────────
   if (contratoId && quantidadeSc > 0) {
+    const kgSaca = produto.toLowerCase().startsWith("algodão") ? 15 : 60;
+    const quantidadeKg = quantidadeSc * kgSaca;
     const valorTotal = moeda === "BRL"
       ? Math.round(quantidadeSc * preco * 100) / 100
       : cotacaoUsd ? Math.round(quantidadeSc * preco * cotacaoUsd * 100) / 100 : 0;
@@ -535,8 +536,8 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
       fazenda_id:     fazendaId,
       tipo:           "Produto",
       produto,
-      unidade:        "sc",
-      quantidade:     quantidadeSc,
+      unidade:        "kg",
+      quantidade:     quantidadeKg,
       valor_unitario: moeda === "BRL" ? preco : (cotacaoUsd ? Math.round(preco * cotacaoUsd * 100) / 100 : preco),
       valor_total:    valorTotal,
       moeda:          "BRL",

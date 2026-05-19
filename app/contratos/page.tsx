@@ -179,8 +179,9 @@ const btnX: React.CSSProperties = { padding:"3px 8px", border:"0.5px solid #E24B
 const badge = (t: string, bg="#D5E8F5", c="#0B2D50") => <span style={{ fontSize:10, background:bg, color:c, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{t}</span>;
 
 // ── item vazio ───────────────────────────────────────────────────
+// unidade padrão = "kg" — storage sempre em kg; display em sc nos grids
 const itemVazio = (): Omit<ContratoItem,"id"|"created_at"|"contrato_id"|"fazenda_id"> => ({
-  tipo: "Produto", produto: "Soja", unidade: "sc", quantidade: 0, valor_unitario: 0, valor_total: 0, moeda: "BRL", classificacao: "",
+  tipo: "Produto", produto: "Soja", unidade: "kg", quantidade: 0, valor_unitario: 0, valor_total: 0, moeda: "BRL", classificacao: "",
 });
 
 type AbaForm = "principal" | "adicionais";
@@ -485,15 +486,34 @@ export default function Contratos() {
   };
 
   // ── calcular totais dos itens ─────────────────────────────────
-  const itensCalc = itens.map(i => ({ ...i, valor_total: (i.quantidade||0)*(i.valor_unitario||0) }));
+  // _qKg = kg, _qSc = sc — ambos derivados conforme unidade do item
+  type ItemCalc = typeof itens[0] & { _qKg: number; _qSc: number; valor_total: number };
+  const itensCalc: ItemCalc[] = itens.map(i => {
+    const kgSaca = classeCommodity(i.produto).kg_saca;
+    const _qKg = i.unidade === "kg" ? (i.quantidade||0) : (i.quantidade||0) * kgSaca;
+    const _qSc = i.unidade === "kg" ? (i.quantidade||0) / kgSaca : (i.quantidade||0);
+    return { ...i, _qKg, _qSc, valor_total: _qSc * (i.valor_unitario||0) };
+  });
   const valorFinanceiro = itensCalc.reduce((a,i) => a + (i.valor_total??0), 0);
   const valorTotal = valorFinanceiro + (fC.valor_frete||0);
 
   const atualizarItem = (idx: number, campo: string, valor: string|number) => {
     setItens(prev => prev.map((it,i) => {
       if (i !== idx) return it;
-      const upd = { ...it, [campo]: typeof valor === "string" && ["quantidade","valor_unitario"].includes(campo) ? parseFloat(valor)||0 : valor };
-      return { ...upd, valor_total: (upd.quantidade||0)*(upd.valor_unitario||0) };
+      const num = (v: string|number) => typeof v === "string" ? parseFloat(v)||0 : v;
+      if (campo === "quantidade_kg") {
+        // usuário digitou em kg — armazena kg, unidade = "kg"
+        return { ...it, quantidade: num(valor), unidade: "kg" as const };
+      }
+      if (campo === "quantidade_sc") {
+        // usuário digitou em sc → converte para kg antes de salvar
+        return { ...it, quantidade: num(valor) * classeCommodity(it.produto).kg_saca, unidade: "kg" as const };
+      }
+      if (campo === "produto") {
+        // ao trocar produto, mantém unidade atual (já é kg para novos itens)
+        return { ...it, produto: valor as string };
+      }
+      return { ...it, [campo]: ["quantidade","valor_unitario"].includes(campo) ? num(valor) : valor };
     }));
   };
 
@@ -533,7 +553,7 @@ export default function Contratos() {
         modalidade: fC.modalidade,
         moeda: fC.moeda,
         preco: primeiroItem?.valor_unitario ?? fC.preco,
-        quantidade_sc: primeiroItem?.quantidade ?? fC.quantidade_sc,
+        quantidade_sc: primeiroItem?._qSc ?? fC.quantidade_sc,
         saldo_tipo: fC.saldo_tipo,
         frete: fC.frete,
         valor_frete: fC.valor_frete || undefined,
@@ -568,10 +588,10 @@ export default function Contratos() {
       } else {
         salvo = await criarContrato({ ...payload, entregue_sc: 0 });
       }
-      await salvarItensContrato(salvo.id, fazendaId!, itensCalc.filter(i=>i.quantidade>0).map(i=>({
-        tipo: i.tipo, produto: i.produto, unidade: i.unidade,
-        quantidade: i.quantidade, valor_unitario: i.valor_unitario,
-        valor_total: i.valor_total, moeda: i.moeda, classificacao: i.classificacao,
+      await salvarItensContrato(salvo.id, fazendaId!, itensCalc.filter(i=>i._qKg>0).map(i=>({
+        tipo: i.tipo, produto: i.produto, unidade: "kg",
+        quantidade: i._qKg, valor_unitario: i.valor_unitario,
+        valor_total: i.valor_total, moeda: fC.moeda, classificacao: i.classificacao,
         contrato_id: salvo.id, fazenda_id: fazendaId!,
       })));
       // salva débitos de cessão se houver
@@ -602,7 +622,7 @@ export default function Contratos() {
         }
       }
       if (editContrato) {
-        setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i.quantidade>0) as ContratoItem[] } : c));
+        setContratos(prev => prev.map(c => c.id === salvo.id ? { ...c, ...salvo, itens: itensCalc.filter(i=>i._qKg>0) as unknown as ContratoItem[] } : c));
       } else {
         setContratos(prev => [...prev, { ...salvo, romaneios:[], itens:[] }]);
       }
@@ -1281,7 +1301,7 @@ export default function Contratos() {
                     </div>
                   </div>
 
-                  {/* Linha 3: Grupo Vendedor | Vendedor | Prazo Entrega */}
+                  {/* Linha 3: Grupo Vendedor | Vendedor | Prazo Entrega | Data Pagamento */}
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:12 }}>
                     <div>
                       <label style={lbl}>Grupo Vendedor</label>
@@ -1300,6 +1320,10 @@ export default function Contratos() {
                       <input style={inp} type="date" value={fC.data_pagamento ?? ""} onChange={e => setFC(p=>({...p,data_pagamento:e.target.value||undefined}))} />
                       <span style={{ fontSize:10, color:"#888", marginTop:2, display:"block" }}>Gera CR ao confirmar</span>
                     </div>
+                  </div>
+
+                  {/* Linha 3b: Modalidade + Moeda */}
+                  <div style={{ display:"grid", gridTemplateColumns:"160px 110px 1fr", gap:12, marginBottom:12, alignItems:"end" }}>
                     <div>
                       <label style={lbl}>Modalidade de Preço</label>
                       <select style={inp} value={fC.modalidade} onChange={e => setFC(p=>({...p,modalidade:e.target.value as Contrato["modalidade"]}))}>
@@ -1308,6 +1332,19 @@ export default function Contratos() {
                         <option value="barter">Barter</option>
                       </select>
                     </div>
+                    <div>
+                      <label style={lbl}>Moeda</label>
+                      <select style={inp} value={fC.moeda} onChange={e => setFC(p=>({...p,moeda:e.target.value as Contrato["moeda"]}))}>
+                        <option value="BRL">R$ — Real</option>
+                        <option value="USD">US$ — Dólar</option>
+                      </select>
+                    </div>
+                    {fC.moeda === "USD" && (
+                      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", background:"#FAEEDA", border:"0.5px solid #E8C97A", borderRadius:7, fontSize:12 }}>
+                        <span style={{ color:"#633806" }}>PTAX D-1: <strong>R$ {ptaxAtual.toFixed(4)}</strong></span>
+                        <span style={{ color:"#888", fontSize:10 }}>· atualizado automaticamente</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Linha 4: Natureza de Operação | CFOP | Saldo Contrato | Frete | Valor Frete */}
@@ -1388,7 +1425,7 @@ export default function Contratos() {
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
                         <tr style={{ background:"#F8FAFD" }}>
-                          {["Tipo","Item / Produto","Quantidade","Unidade","Valor Unitário","Valor Total",""].map((h,i) => (
+                          {["Tipo","Item / Produto","Peso (kg)","Equiv. (sc)","Valor (R$/sc)","Valor Total",""].map((h,i) => (
                             <th key={i} style={{ padding:"6px 10px", textAlign: i>=2&&i<=5?"center":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
@@ -1407,13 +1444,21 @@ export default function Contratos() {
                                 {PRODUTOS.map(pr => <option key={pr}>{pr}</option>)}
                               </select>
                             </td>
-                            <td style={{ padding:"6px 8px", width:110 }}>
-                              <input style={{ ...inp, textAlign:"right", fontSize:12 }} type="number" min="0" step="1" value={it.quantidade||""} onChange={e => atualizarItem(idx,"quantidade",e.target.value)} placeholder="0" />
+                            {/* Peso em kg — campo primário */}
+                            <td style={{ padding:"6px 8px", width:120 }}>
+                              <input style={{ ...inp, textAlign:"right", fontSize:12 }} type="number" min="0" step="100"
+                                value={it._qKg > 0 ? it._qKg : ""}
+                                onChange={e => atualizarItem(idx,"quantidade_kg",e.target.value)}
+                                placeholder="0 kg" />
+                              <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>kg</span>
                             </td>
-                            <td style={{ padding:"6px 8px", width:80 }}>
-                              <select style={{ ...inp, fontSize:11 }} value={it.unidade} onChange={e => atualizarItem(idx,"unidade",e.target.value)}>
-                                {UNIDADES.map(u => <option key={u}>{u}</option>)}
-                              </select>
+                            {/* Sacas equivalentes — campo secundário */}
+                            <td style={{ padding:"6px 8px", width:110 }}>
+                              <input style={{ ...inp, textAlign:"right", fontSize:12, background:"#F8FAFF", borderColor:"#C4D0E8" }} type="number" min="0" step="0.1"
+                                value={it._qSc > 0 ? +it._qSc.toFixed(3) : ""}
+                                onChange={e => atualizarItem(idx,"quantidade_sc",e.target.value)}
+                                placeholder="0 sc" />
+                              <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodity(it.produto).kg_saca} kg/sc)</span>
                             </td>
                             <td style={{ padding:"6px 8px", width:120 }}>
                               <input style={{ ...inp, textAlign:"right", fontSize:12 }} type="number" min="0" step="0.01" value={it.valor_unitario||""} onChange={e => atualizarItem(idx,"valor_unitario",e.target.value)} placeholder="0,00" />
