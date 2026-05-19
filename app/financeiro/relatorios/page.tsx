@@ -999,6 +999,60 @@ function FinanceiroRelatoriosInner() {
                   baixado:   { bg: "#DCF5E8", color: "#14532D", label: "Baixado" },
                 };
 
+                const exportarXLSX = async () => {
+                  const XLSX = await import("xlsx");
+                  const tipoLabel: Record<string, string> = { receber: "CR", pagar: "CP" };
+                  const statusLabel: Record<string, string> = { em_aberto: "Em Aberto", vencido: "Vencido", vencendo: "Vencendo", baixado: "Baixado" };
+
+                  // Aba Resumo
+                  const resumo = [
+                    ["Relatório CP / CR"],
+                    ["Período", `${inicioCPCR} a ${fimCPCR}`],
+                    ["Tipo", tipoCPCR === "todos" ? "Todos (CR + CP)" : tipoCPCR === "receber" ? "Contas a Receber" : "Contas a Pagar"],
+                    ["Status", statusCPCR === "todos" ? "Todos" : statusCPCR],
+                    ["Categoria", catCPCR || "Todas"],
+                    [],
+                    ["Total a Receber (CR)", totalCR],
+                    ["Total a Pagar (CP)", totalCP],
+                    ["Saldo (CR − CP)", totalCR - totalCP],
+                    ["Vencidos", totalVenc],
+                    ["Baixados / Pagos", totalBaixado],
+                    [],
+                    ["Total de lançamentos", lancsCPCR.length],
+                  ];
+
+                  // Aba Lançamentos
+                  const cabecalho = ["Tipo", "Vencimento", "Descrição", "Categoria", "Conta Bancária", "Status", "Moeda", "Valor Original", "Valor BRL"];
+                  const linhas = lancsCPCR.map(l => {
+                    const contaNome = contas.find(c => c.id === l.conta_bancaria)?.nome ?? "";
+                    const brl = paraBRLRel(l, cotacaoUSD);
+                    const venc = l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "";
+                    return [
+                      tipoLabel[l.tipo] ?? l.tipo,
+                      venc,
+                      l.descricao ?? "",
+                      l.categoria ?? "",
+                      contaNome,
+                      statusLabel[l.status] ?? l.status,
+                      l.moeda?.toUpperCase() ?? "BRL",
+                      l.valor,
+                      brl,
+                    ];
+                  });
+
+                  const wb = XLSX.utils.book_new();
+                  const wsResumo = XLSX.utils.aoa_to_sheet(resumo);
+                  wsResumo["!cols"] = [{ wch: 30 }, { wch: 18 }];
+                  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+
+                  const wsLanc = XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]);
+                  wsLanc["!cols"] = [6,16,44,20,20,12,8,16,16].map(w => ({ wch: w }));
+                  XLSX.utils.book_append_sheet(wb, wsLanc, "Lançamentos");
+
+                  const hoje = new Date().toISOString().slice(0, 10);
+                  XLSX.writeFile(wb, `CP-CR_${inicioCPCR}_${fimCPCR}_${hoje}.xlsx`);
+                };
+
                 return (
                   <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
                     {/* Filtros CP/CR */}
@@ -1034,6 +1088,12 @@ function FinanceiroRelatoriosInner() {
                           <option value="">Todas</option>
                           {categorias.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
+                      </div>
+                      <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-end" }}>
+                        <button onClick={exportarXLSX} disabled={lancsCPCR.length === 0}
+                          style={{ padding: "7px 14px", background: lancsCPCR.length === 0 ? "#ccc" : "#16763A", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: lancsCPCR.length === 0 ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                          ⬇ Exportar XLSX
+                        </button>
                       </div>
                     </div>
 
