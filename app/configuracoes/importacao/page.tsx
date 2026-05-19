@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas";
+type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin";
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
@@ -35,6 +35,13 @@ type MaquinaRow = {
   nome: string; tipo: string; patrimonio: string; marca: string; modelo: string;
   ano: string; chassi: string; horimetro_atual: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+};
+type ContratoFinRow = {
+  numero_contrato: string; descricao: string; credor: string; credor_cpf_cnpj: string;
+  tipo: string; moeda: string; valor_total: string; data_contrato: string;
+  taxa_juros_am: string; observacao: string;
+  // controle interno
+  _status?: "ok" | "erro" | "duplicado" | "aviso"; _msg?: string; _cp_encontrados?: number;
 };
 
 // ─── Templates ────────────────────────────────────────────────
@@ -76,6 +83,40 @@ const TEMPLATE_MAQUINAS = [
   ["Pulverizador Menegatti", "pulverizador", "Máquina 4", "Menegatti", "2500", "2023", "", "1100"],
   ["Caminhão Volvo FH 460", "caminhao", "Máquina 5", "Volvo", "FH 460", "2019", "9BW3HH4A8KB123456", "0"],
   ["Toyota Hilux SW4", "carro", "Carro 30", "Toyota", "Hilux SW4", "2023", "9BFBR49H0PB123456", "45000"],
+];
+
+const TEMPLATE_CONTRATOS_FIN = [
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "moeda", "valor_total*", "data_contrato*", "taxa_juros_am", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "BRL", "1656177.09", "2025-06-01", "0.89", ""],
+  ["131910484", "Investimento Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "4800000.00", "2024-03-15", "", "Financiamento maquinário"],
+  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "BRL", "1688649.36", "2025-01-10", "", ""],
+];
+
+const INSTRUCOES_CONTRATOS_FIN = [
+  ["INSTRUÇÕES — IMPORTAÇÃO DE CONTRATOS FINANCEIROS"],
+  [""],
+  ["• Campos com * são obrigatórios"],
+  ["• Não altere os nomes das colunas (linha 1)"],
+  ["• numero_contrato: número do contrato no banco/instituição (deve ser único)"],
+  ["• tipo: custeio, investimento, cpr, egf, securitizacao, outros"],
+  ["• moeda: BRL ou USD"],
+  ["• valor_total: valor total financiado (sem R$, ex: 1500000.00)"],
+  ["• data_contrato: no formato AAAA-MM-DD (ex: 2026-03-15)"],
+  ["• taxa_juros_am: taxa de juros mensal em % (ex: 0.89 para 0,89% a.m.)"],
+  ["• credor_cpf_cnpj: CNPJ/CPF do credor — usado para vincular ao cadastro de Pessoas"],
+  [""],
+  ["⚠️  AVISO IMPORTANTE — Evitar duplicação do financeiro:"],
+  ["  Se o número do contrato (numero_contrato) já existir em lançamentos CP,"],
+  ["  o sistema apenas CRIA o registro do contrato mas NÃO gera novo CP."],
+  ["  Os lançamentos já existentes são automaticamente vinculados como parcelas."],
+  [""],
+  ["Tipos disponíveis:"],
+  ["  custeio        → custeio agrícola (Pronaf, custeio BCB)"],
+  ["  investimento   → financiamento de máquinas e infraestrutura"],
+  ["  cpr            → Cédula de Produto Rural"],
+  ["  egf            → Empréstimo do Governo Federal"],
+  ["  securitizacao  → securitização de dívidas rurais"],
+  ["  outros         → mútuo, capital de giro e demais"],
 ];
 
 const INSTRUCOES_MAQUINAS = [
@@ -131,12 +172,13 @@ function downloadTemplate(aba: Aba) {
   import("xlsx").then(({ utils, writeFile }) => {
     const wb = utils.book_new();
     const templates: Record<Aba, (string | number)[][]> = {
-      pessoas:  TEMPLATE_PESSOAS,
-      cp:       TEMPLATE_CP,
-      cr:       TEMPLATE_CR,
-      insumos:  TEMPLATE_INSUMOS,
-      produtos: TEMPLATE_PRODUTOS,
-      maquinas: TEMPLATE_MAQUINAS,
+      pessoas:       TEMPLATE_PESSOAS,
+      cp:            TEMPLATE_CP,
+      cr:            TEMPLATE_CR,
+      insumos:       TEMPLATE_INSUMOS,
+      produtos:      TEMPLATE_PRODUTOS,
+      maquinas:      TEMPLATE_MAQUINAS,
+      contratos_fin: TEMPLATE_CONTRATOS_FIN,
     };
     const ws = utils.aoa_to_sheet(templates[aba]);
     ws["!cols"] = templates[aba][0].map(() => ({ wch: 26 }));
@@ -158,23 +200,25 @@ function downloadTemplate(aba: Aba) {
       ["• unidade: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, outros"],
     ];
     const instrMap: Record<Aba, (string | number)[][]> = {
-      pessoas:  instrBase,
-      cp:       instrBase,
-      cr:       instrBase,
-      insumos:  instrBase,
-      produtos: INSTRUCOES_PRODUTOS,
-      maquinas: INSTRUCOES_MAQUINAS,
+      pessoas:       instrBase,
+      cp:            instrBase,
+      cr:            instrBase,
+      insumos:       instrBase,
+      produtos:      INSTRUCOES_PRODUTOS,
+      maquinas:      INSTRUCOES_MAQUINAS,
+      contratos_fin: INSTRUCOES_CONTRATOS_FIN,
     };
     const instrucoes = utils.aoa_to_sheet(instrMap[aba]);
     utils.book_append_sheet(wb, instrucoes, "Instruções");
 
     const nomes: Record<Aba, string> = {
-      pessoas:  "template_pessoas.xlsx",
-      cp:       "template_contas_pagar.xlsx",
-      cr:       "template_contas_receber.xlsx",
-      insumos:  "template_insumos.xlsx",
-      produtos: "template_produtos.xlsx",
-      maquinas: "template_maquinas_veiculos.xlsx",
+      pessoas:       "template_pessoas.xlsx",
+      cp:            "template_contas_pagar.xlsx",
+      cr:            "template_contas_receber.xlsx",
+      insumos:       "template_insumos.xlsx",
+      produtos:      "template_produtos.xlsx",
+      maquinas:      "template_maquinas_veiculos.xlsx",
+      contratos_fin: "template_contratos_financeiros.xlsx",
     };
     writeFile(wb, nomes[aba]);
   });
@@ -253,6 +297,23 @@ function validarProduto(r: Record<string, string>): ProdutoRow {
   return { ...row, categoria: row.categoria.trim().toLowerCase(), unidade: row.unidade.trim(), _status: "ok", _msg: "" };
 }
 
+const TIPOS_CONTRATO_FIN = ["custeio","investimento","cpr","egf","securitizacao","outros"];
+
+function validarContratoFin(r: Record<string, string>): ContratoFinRow {
+  const row = r as unknown as ContratoFinRow;
+  if (!row.numero_contrato?.trim()) return { ...row, _status: "erro", _msg: "numero_contrato obrigatório" };
+  if (!row.descricao?.trim())       return { ...row, _status: "erro", _msg: "descricao obrigatória" };
+  if (!row.credor?.trim())          return { ...row, _status: "erro", _msg: "credor obrigatório" };
+  const tipo = (row.tipo || "").trim().toLowerCase();
+  if (!TIPOS_CONTRATO_FIN.includes(tipo))
+    return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_CONTRATO_FIN.join(", ")}` };
+  const valor = parseFloat(String(row.valor_total).replace(",", "."));
+  if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor_total inválido" };
+  if (!row.data_contrato?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_contrato.trim()))
+    return { ...row, _status: "erro", _msg: "data_contrato deve ser AAAA-MM-DD" };
+  return { ...row, tipo, _status: "ok", _msg: "" };
+}
+
 const TIPOS_MAQUINA = ["trator","colhedora","plantadeira","pulverizador","caminhao","carreta","carro","implemento","outro"];
 
 function validarMaquina(r: Record<string, string>): MaquinaRow {
@@ -329,7 +390,7 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
             const status = (row as Record<string, unknown>)._status as string;
             const msg    = (row as Record<string, unknown>)._msg as string;
             return (
-              <tr key={i} style={{ background: status === "erro" ? "#FFF0F0" : status === "duplicado" ? "#FFFBE0" : "white" }}>
+              <tr key={i} style={{ background: status === "erro" ? "#FFF0F0" : status === "duplicado" ? "#FFFBE0" : status === "aviso" ? "#FFF8EC" : "white" }}>
                 <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "#888" }}>{i + 1}</td>
                 {colunas.map(c => (
                   <td key={c} style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -338,7 +399,8 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
                 ))}
                 <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE" }}>
                   {status === "ok"        && <span style={{ color: "#16A34A", fontWeight: 600 }}>✓ ok</span>}
-                  {status === "duplicado" && <span style={{ color: "#C9921B", fontWeight: 600 }}>⚠ duplicado</span>}
+                  {status === "aviso"     && <span style={{ color: "#C9921B", fontWeight: 600 }}>⚡ {msg}</span>}
+                  {status === "duplicado" && <span style={{ color: "#888",    fontWeight: 600 }}>⏭ {msg || "duplicado"}</span>}
                   {status === "erro"      && <span style={{ color: "#E24B4A", fontWeight: 600 }}>✗ {msg}</span>}
                 </td>
               </tr>
@@ -411,21 +473,24 @@ export default function ImportacaoPage() {
   const [crRows,       setCrRows]       = useState<LancRow[]>([]);
   const [insumosRows,  setInsumosRows]  = useState<InsumoRow[]>([]);
   const [produtosRows, setProdutosRows] = useState<ProdutoRow[]>([]);
-  const [maquinasRows, setMaquinasRows] = useState<MaquinaRow[]>([]);
+  const [maquinasRows,     setMaquinasRows]     = useState<MaquinaRow[]>([]);
+  const [contratoFinRows,  setContratoFinRows]  = useState<ContratoFinRow[]>([]);
 
   const [loadingPessoas,  setLoadingPessoas]  = useState(false);
   const [loadingCp,       setLoadingCp]       = useState(false);
   const [loadingCr,       setLoadingCr]       = useState(false);
   const [loadingInsumos,  setLoadingInsumos]  = useState(false);
   const [loadingProdutos, setLoadingProdutos] = useState(false);
-  const [loadingMaquinas, setLoadingMaquinas] = useState(false);
+  const [loadingMaquinas,    setLoadingMaquinas]    = useState(false);
+  const [loadingContratoFin, setLoadingContratoFin] = useState(false);
 
   const [resultPessoas,  setResultPessoas]  = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultCp,       setResultCp]       = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultCr,       setResultCr]       = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultInsumos,  setResultInsumos]  = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
   const [resultProdutos, setResultProdutos] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultMaquinas, setResultMaquinas] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
+  const [resultMaquinas,    setResultMaquinas]    = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
+  const [resultContratoFin, setResultContratoFin] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
 
   // ─── Acesso restrito ──────────────────────────────────────
   if (userRole !== "raccotlo") {
@@ -656,6 +721,106 @@ export default function ImportacaoPage() {
     setLoadingProdutos(false);
   }
 
+  async function handleFileContratoFin(file: File) {
+    const raw = await parseXlsx(file);
+    const rows = raw.map(r => validarContratoFin(r));
+    // Duplicados dentro do arquivo
+    const nrs = rows.map(r => r.numero_contrato?.trim().toLowerCase()).filter(Boolean);
+    rows.forEach((r, i) => {
+      if (r._status === "ok" && r.numero_contrato) {
+        const n = r.numero_contrato.trim().toLowerCase();
+        if (n && nrs.indexOf(n) !== i) r._status = "duplicado";
+      }
+    });
+    if (fazendaId) {
+      // Verifica contratos já existentes no módulo
+      const { data: existentes } = await supabase
+        .from("contratos_financeiros").select("numero_contrato").eq("fazenda_id", fazendaId);
+      const nrsExistentes = new Set((existentes ?? []).map((c: { numero_contrato: string | null }) => (c.numero_contrato ?? "").trim().toLowerCase()).filter(Boolean));
+      // Verifica CP com esse numero_documento (para avisar, não bloquear)
+      for (const r of rows) {
+        if (r._status !== "ok") continue;
+        if (nrsExistentes.has(r.numero_contrato.trim().toLowerCase())) {
+          r._status = "duplicado"; r._msg = "contrato já existe no módulo";
+          continue;
+        }
+        const { count } = await supabase.from("lancamentos")
+          .select("id", { count: "exact", head: true })
+          .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+          .eq("numero_documento", r.numero_contrato.trim());
+        r._cp_encontrados = count ?? 0;
+        if ((count ?? 0) > 0) {
+          r._status = "aviso" as ContratoFinRow["_status"];
+          r._msg = `${count} CP já existem — parcelas serão linkadas, sem duplicação`;
+        }
+      }
+    }
+    setContratoFinRows(rows); setResultContratoFin(null);
+  }
+
+  async function importarContratosFin() {
+    if (!fazendaId || !contratoFinRows.length) return;
+    setLoadingContratoFin(true);
+    let ok = 0, erros = 0, duplicados = 0;
+    for (const r of contratoFinRows) {
+      if (r._status === "duplicado") { duplicados++; continue; }
+      if (r._status === "erro")      { erros++;      continue; }
+      // Resolve pessoa pelo CPF/CNPJ
+      let pessoaId: string | null = null;
+      if (r.credor_cpf_cnpj?.trim()) {
+        const docNum = r.credor_cpf_cnpj.replace(/\D/g, "");
+        const { data: p } = await supabase.from("pessoas").select("id")
+          .eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNum}%`).limit(1).maybeSingle();
+        pessoaId = p?.id ?? null;
+      }
+      const { data: contrato, error } = await supabase.from("contratos_financeiros").insert({
+        fazenda_id:      fazendaId,
+        numero_contrato: r.numero_contrato.trim(),
+        descricao:       r.descricao.trim(),
+        credor:          r.credor.trim(),
+        pessoa_id:       pessoaId,
+        tipo:            r.tipo,
+        moeda:           (r.moeda || "BRL").toUpperCase(),
+        valor_total:     parseFloat(String(r.valor_total).replace(",", ".")),
+        data_contrato:   r.data_contrato.trim(),
+        taxa_juros_am:   r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : null,
+        observacao:      r.observacao?.trim() || null,
+        status:          "ativo",
+      }).select("id").single();
+
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
+      ok++;
+
+      // Se há CP existentes com esse numero_documento, vincula como parcelas
+      if ((r._cp_encontrados ?? 0) > 0 && contrato) {
+        const { data: cpExist } = await supabase.from("lancamentos")
+          .select("id, valor, data_vencimento")
+          .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+          .eq("numero_documento", r.numero_contrato.trim())
+          .order("data_vencimento");
+        if (cpExist?.length) {
+          const parcRows = cpExist.map((l: { id: string; valor: number; data_vencimento: string }, idx: number) => ({
+            contrato_id:         contrato.id,
+            fazenda_id:          fazendaId,
+            num_parcela:         idx + 1,
+            data_vencimento:     l.data_vencimento,
+            amortizacao:         Number(l.valor || 0),
+            juros:               0,
+            despesas_acessorios: 0,
+            valor_parcela:       Number(l.valor || 0),
+            saldo_devedor:       0,
+            status:              "em_aberto",
+            lancamento_id:       l.id,
+          }));
+          await supabase.from("parcelas_pagamento").insert(parcRows);
+        }
+      }
+    }
+    setContratoFinRows([...contratoFinRows]);
+    setResultContratoFin({ ok, erros, duplicados });
+    setLoadingContratoFin(false);
+  }
+
   async function handleFileMaquinas(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarMaquina(r));
@@ -779,11 +944,21 @@ export default function ImportacaoPage() {
       onFile: handleFileMaquinas,
       onImport: importarMaquinas,
     },
+    contratos_fin: {
+      label: "Contratos Financeiros", icon: "🏦",
+      desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). CP já existentes são vinculados automaticamente — sem duplicação.",
+      cols: ["numero_contrato", "descricao", "credor", "tipo", "moeda", "valor_total", "data_contrato"],
+      rows: contratoFinRows as Record<string, unknown>[],
+      loading: loadingContratoFin,
+      result: resultContratoFin,
+      onFile: handleFileContratoFin,
+      onImport: importarContratosFin,
+    },
   };
 
   const cfg      = ABA_CONFIG[aba];
   const totalRows = cfg.rows.length;
-  const okRows    = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "ok").length;
+  const okRows    = cfg.rows.filter(r => ["ok","aviso"].includes((r as Record<string, unknown>)._status as string)).length;
   const erroRows  = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "erro").length;
 
   function limpar() {
@@ -792,7 +967,8 @@ export default function ImportacaoPage() {
     if (aba === "cr")        { setCrRows([]);       setResultCr(null); }
     if (aba === "insumos")  { setInsumosRows([]);  setResultInsumos(null); }
     if (aba === "produtos") { setProdutosRows([]); setResultProdutos(null); }
-    if (aba === "maquinas") { setMaquinasRows([]); setResultMaquinas(null); }
+    if (aba === "maquinas")      { setMaquinasRows([]);    setResultMaquinas(null); }
+    if (aba === "contratos_fin") { setContratoFinRows([]); setResultContratoFin(null); }
   }
 
   return (
@@ -815,7 +991,7 @@ export default function ImportacaoPage() {
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
           <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas"] as Aba[]).map(a => {
+            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
                 <button
