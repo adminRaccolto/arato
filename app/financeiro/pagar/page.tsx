@@ -424,7 +424,9 @@ function ContasPagarInner() {
       setModalLote(false);
       await carregar();
     } catch (e: unknown) {
-      setLoteErro(e instanceof Error ? e.message : "Erro ao processar lote");
+      const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? String(e);
+      setLoteErro(msg || "Erro ao processar lote");
+      console.error("pagarEmLote:", e);
     } finally {
       setLoteSalvando(false);
     }
