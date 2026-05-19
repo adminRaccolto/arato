@@ -745,11 +745,8 @@ export default function Contratos() {
   const hasAnyFilter = !!(filtroAno || filtroCiclo || filtroProduto || filtroStatus || filtroComprador || filtroBusca);
   const limparFiltros = () => { setFiltroAno(""); setFiltroCiclo(""); setFiltroProduto(""); setFiltroStatus(""); setFiltroComprador(""); setFiltroBusca(""); };
 
-  // ── métricas ──────────────────────────────────────────────────
-  const contratosAtivos = contratos.filter(c => c.status !== "encerrado" && c.status !== "cancelado").length;
-  const sojaContratos   = contratos.filter(c => c.produto === "Soja");
-  const totalContratado = sojaContratos.reduce((a,c) => a + (c.quantidade_sc??0), 0);
-  const totalEntregue   = sojaContratos.reduce((a,c) => a + (c.entregue_sc??0), 0);
+  // ── métricas (baseadas nos contratos filtrados) ───────────────
+  const contratosAtivos = contratosFiltrados.filter(c => c.status !== "encerrado" && c.status !== "cancelado").length;
   const todosRomaneios  = contratos.flatMap(c => c.romaneios.map(r => ({ ...r, contratoNumero: c.numero, comprador: c.comprador, produto: c.produto })));
 
   const posicao = PRODUTOS.slice(0,3).map(produto => {
@@ -820,20 +817,17 @@ export default function Contratos() {
 
           {!loading && !erro && (
             <>
-              {/* ── Stats ── */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:14 }}>
-                {[
-                  { label:"Contratos ativos",          valor: String(contratosAtivos),                         cor:"#C9921B", sub:`de ${contratos.length} contratos totais` },
-                  { label:"Soja contratada",            valor: totalContratado>0?`${(totalContratado/1000).toFixed(0)} mil sc`:"—", cor:"#1A4870", sub: totalContratado>0?fmtR$(totalContratado*128.40):"Sem contratos" },
-                  { label:"Soja entregue",              valor: totalEntregue>0?`${(totalEntregue/1000).toFixed(0)} mil sc`:"—",   cor:"#1A4870", sub: totalContratado>0?`${Math.round(totalEntregue/(totalContratado||1)*100)}% do contratado`:"" },
-                  { label:"Saldo a entregar",           valor: (totalContratado-totalEntregue)>0?`${((totalContratado-totalEntregue)/1000).toFixed(1)} mil sc`:"—", cor: (totalContratado-totalEntregue)>0?"#EF9F27":"#1A4870", sub:"Aguardando expedição" },
-                ].map((s,i) => (
-                  <div key={i} style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                    <div style={{ fontSize:11, color:"#555", marginBottom:6 }}>{s.label}</div>
-                    <div style={{ fontSize:19, fontWeight:600, color:s.cor, marginBottom:4 }}>{s.valor}</div>
-                    <div style={{ fontSize:10, color:"#444" }}>{s.sub}</div>
-                  </div>
-                ))}
+              {/* ── KPI único: contratos ativos filtrados ── */}
+              <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"12px 18px", marginBottom:14, display:"inline-flex", alignItems:"center", gap:14 }}>
+                <div>
+                  <div style={{ fontSize:11, color:"#555" }}>Contratos ativos{hasAnyFilter ? " (filtrado)" : ""}</div>
+                  <div style={{ fontSize:22, fontWeight:700, color:"#C9921B", lineHeight:1.2 }}>{contratosAtivos}</div>
+                </div>
+                <div style={{ width:"0.5px", height:36, background:"#D4DCE8" }} />
+                <div style={{ fontSize:12, color:"#888" }}>
+                  de <span style={{ color:"#1a1a1a", fontWeight:600 }}>{contratosFiltrados.length}</span> exibido{contratosFiltrados.length !== 1 ? "s" : ""}
+                  {hasAnyFilter && <span style={{ color:"#888" }}> · <span style={{ color:"#1a1a1a", fontWeight:600 }}>{contratos.length}</span> total</span>}
+                </div>
               </div>
 
               {/* ── Abas ── */}
