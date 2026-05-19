@@ -300,17 +300,17 @@ export default function BI() {
     custosPorGrupo[g] = (custosPorGrupo[g] ?? 0) + l.valor;
   }
 
-  // ── KPIs financeiros (todos os lançamentos) ──────────────────
+  // ── KPIs financeiros (lançamentos filtrados pelo ano safra selecionado) ─
   const hj  = hoje();
   const d30 = dias(30);
   const d60 = dias(60);
   const d90 = dias(90);
 
-  const cpVencidas  = lancamentos.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento < hj).reduce((s, l) => s + l.valor, 0);
-  const cpA30       = lancamentos.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento >= hj && l.data_vencimento <= d30).reduce((s, l) => s + l.valor, 0);
-  const crA30       = lancamentos.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento >= hj && l.data_vencimento <= d30).reduce((s, l) => s + l.valor, 0);
-  const totalCP     = lancamentos.filter(l => l.tipo === "pagar"   && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
-  const totalCR     = lancamentos.filter(l => l.tipo === "receber" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
+  const cpVencidas  = lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento < hj).reduce((s, l) => s + l.valor, 0);
+  const cpA30       = lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento >= hj && l.data_vencimento <= d30).reduce((s, l) => s + l.valor, 0);
+  const crA30       = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento >= hj && l.data_vencimento <= d30).reduce((s, l) => s + l.valor, 0);
+  const totalCP     = lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
+  const totalCR     = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.status !== "baixado").reduce((s, l) => s + l.valor, 0);
   const saldoLiq    = totalCR - totalCP;
 
   // Saúde geral
@@ -434,17 +434,17 @@ export default function BI() {
 
   // ── Liquidez 90 dias ──────────────────────────────────────────
   const liquidez90 = [
-    { label: "Vencidos",  cp: cpVencidas, cr: lancamentos.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento < hj).reduce((s, l) => s + l.valor, 0) },
+    { label: "Vencidos",  cp: cpVencidas, cr: lancamentosFiltrados.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento < hj).reduce((s, l) => s + l.valor, 0) },
     { label: "0–30 dias", cp: cpA30,      cr: crA30 },
-    { label: "31–60 dias",cp: lancamentos.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento > d30 && l.data_vencimento <= d60).reduce((s, l) => s + l.valor, 0),
-                          cr: lancamentos.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento > d30 && l.data_vencimento <= d60).reduce((s, l) => s + l.valor, 0) },
-    { label: "61–90 dias",cp: lancamentos.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento > d60 && l.data_vencimento <= d90).reduce((s, l) => s + l.valor, 0),
-                          cr: lancamentos.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento > d60 && l.data_vencimento <= d90).reduce((s, l) => s + l.valor, 0) },
+    { label: "31–60 dias",cp: lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento > d30 && l.data_vencimento <= d60).reduce((s, l) => s + l.valor, 0),
+                          cr: lancamentosFiltrados.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento > d30 && l.data_vencimento <= d60).reduce((s, l) => s + l.valor, 0) },
+    { label: "61–90 dias",cp: lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.status !== "baixado" && l.data_vencimento > d60 && l.data_vencimento <= d90).reduce((s, l) => s + l.valor, 0),
+                          cr: lancamentosFiltrados.filter(l => l.tipo === "receber" && l.status !== "baixado" && l.data_vencimento > d60 && l.data_vencimento <= d90).reduce((s, l) => s + l.valor, 0) },
   ];
   const maxLiq = Math.max(...liquidez90.map(l => Math.max(l.cp, l.cr)), 1);
 
   // ── Abas ──────────────────────────────────────────────────────
-  const alertasCount = lancamentos.filter(l => l.tipo === "pagar" && l.status !== "baixado" && l.data_vencimento < hj).length;
+  const alertasCount = lancamentosFiltrados.filter(l => l.tipo === "pagar" && l.status !== "baixado" && l.data_vencimento < hj).length;
   const usdDescasados = (() => {
     // Datas com descasamento USD (mais CP do que CR em USD)
     const cpUsd = lancamentosFiltrados.filter(l => l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado");
@@ -1166,7 +1166,7 @@ export default function BI() {
                   </tr>
                 </thead>
                 <tbody>
-                  {lancamentos.filter(l => l.status !== "baixado").sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento)).slice(0, 30).map((l, i, arr) => {
+                  {lancamentosFiltrados.filter(l => l.status !== "baixado").sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento)).slice(0, 30).map((l, i, arr) => {
                     const venc = l.data_vencimento < hj;
                     return (
                       <tr key={l.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #EEF1F6" : "none", background: venc && l.tipo === "pagar" ? "#FFF8F8" : "transparent" }}>
