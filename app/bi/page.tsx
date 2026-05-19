@@ -143,7 +143,7 @@ function BarraHorizontal({ value, max, color, label, sub }: { value: number; max
   );
 }
 
-type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio";
+type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros";
 
 // ── Componente principal ──────────────────────────────────────
 export default function BI() {
@@ -416,6 +416,86 @@ export default function BI() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
+  // ── Recursos de Terceiros ─────────────────────────────────────
+  const RT_TERMOS = ["cpr","empréstimo","emprestimo","custeio","egf","pronaf","financiamento","crédito rural","credito rural","custeio agricola","bco brasil","banco do brasil","sicoob","cresol","rabobank","financ"];
+  const JUROS_TERMOS = ["juro","encargo financ","iof","mora "];
+
+  const textoLanc = (l: Lancamento) => ((l.categoria ?? "") + " " + l.descricao).toLowerCase();
+  const isRT       = (l: Lancamento) => RT_TERMOS.some(k => textoLanc(l).includes(k));
+  const isJuros    = (l: Lancamento) => JUROS_TERMOS.some(k => textoLanc(l).includes(k));
+  // Captação = CR que menciona recurso de terceiro
+  const isCaptacao = (l: Lancamento) => l.tipo === "receber" && isRT(l);
+  // Pagamento de juros
+  const isJurosPgto = (l: Lancamento) => l.tipo === "pagar" && isJuros(l);
+  // Pagamento de principal = CP que menciona recurso, mas não é só juros
+  const isPrincipal = (l: Lancamento) => l.tipo === "pagar" && isRT(l) && !isJurosPgto(l);
+
+  const tipoRT = (l: Lancamento): string => {
+    const s = textoLanc(l);
+    if (s.includes("cpr"))                                             return "CPR";
+    if (s.includes("custeio"))                                         return "Custeio";
+    if (s.includes("egf"))                                             return "EGF";
+    if (s.includes("pronaf"))                                          return "PRONAF";
+    if (s.includes("emprestimo") || s.includes("empréstimo"))         return "Empréstimo";
+    if (s.includes("financiamento") || s.includes("financ"))          return "Financiamento";
+    return "Outros";
+  };
+
+  // Agrega por ano safra ou por ano calendário
+  type RTAnoBucket = { label: string; captado: number; pago: number; juros: number; jurosPend: number; saldo: number; area: number };
+
+  const rtPorAno = (() => {
+    // Mapa: label → bucket
+    const mapa = new Map<string, RTAnoBucket>();
+    const getBucket = (label: string, area = 0): RTAnoBucket => {
+      if (!mapa.has(label)) mapa.set(label, { label, captado: 0, pago: 0, juros: 0, jurosPend: 0, saldo: 0, area });
+      return mapa.get(label)!;
+    };
+    for (const l of lancamentos) {
+      let label: string;
+      if (l.ano_safra_id) {
+        const safra = anosSafra.find(a => a.id === l.ano_safra_id);
+        label = safra ? safra.descricao : l.data_vencimento.slice(0, 4);
+      } else {
+        label = l.data_vencimento.slice(0, 4);
+      }
+      // Área da safra para o bucket
+      const areaLabel = (() => {
+        if (l.ano_safra_id) {
+          const cids = ciclos.filter(c => c.ano_safra_id === l.ano_safra_id).map(c => c.id);
+          return plantios.filter(p => cids.includes(p.ciclo_id)).reduce((s, p) => s + (p.area_ha || 0), 0);
+        }
+        return fazenda?.area_total_ha ?? 0;
+      })();
+      const b = getBucket(label, areaLabel);
+      if (isCaptacao(l))          b.captado   += l.valor;
+      if (isPrincipal(l) && l.status === "baixado") b.pago  += l.valor;
+      if (isJurosPgto(l) && l.status === "baixado") b.juros += l.valor;
+      if (isJurosPgto(l) && l.status !== "baixado") b.jurosPend += l.valor;
+    }
+    // Recalcula saldo
+    for (const b of mapa.values()) b.saldo = b.captado - b.pago;
+    return Array.from(mapa.values()).sort((a, b) => b.label.localeCompare(a.label));
+  })();
+
+  // Totais globais de recursos de terceiros
+  const rtTotalCaptado  = rtPorAno.reduce((s, b) => s + b.captado, 0);
+  const rtTotalPago     = rtPorAno.reduce((s, b) => s + b.pago, 0);
+  const rtTotalJuros    = rtPorAno.reduce((s, b) => s + b.juros, 0);
+  const rtJurosPend     = rtPorAno.reduce((s, b) => s + b.jurosPend, 0);
+  const rtSaldoDevedor  = rtTotalCaptado - rtTotalPago;
+  const areaTotal       = fazenda?.area_total_ha ?? 0;
+  const rtJurosHa       = areaTotal > 0 ? (rtTotalJuros + rtJurosPend) / areaTotal : 0;
+
+  // Por tipo de operação
+  const TIPOS_RT = ["CPR", "Custeio", "EGF", "Empréstimo", "Financiamento", "PRONAF", "Outros"];
+  const rtPorTipo = TIPOS_RT.map(tipo => {
+    const captado = lancamentos.filter(l => isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
+    const pago    = lancamentos.filter(l => isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+    const juros   = lancamentos.filter(l => isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+    return { tipo, captado, pago, juros, saldo: captado - pago };
+  }).filter(t => t.captado > 0 || t.pago > 0 || t.juros > 0);
+
   const precoSc  = desmascarar(precoMask) || precoBrlSoja;
   const prodHa   = desmascarar(prodMask)  || prodBaseRef;
   const custoHa  = desmascarar(custoMask) || custoHaRef;
@@ -468,6 +548,7 @@ export default function BI() {
     { key: "comercializacao", label: "Comercialização" },
     { key: "financeiro",      label: "Financeiro", badge: alertasCount },
     { key: "cambio",          label: "Câmbio / USD", badge: usdDescasados > 0 ? usdDescasados : undefined },
+    { key: "terceiros",       label: "Recursos de Terceiros" },
     { key: "sensibilidade",   label: "Sensibilidade" },
   ];
 
@@ -1934,6 +2015,164 @@ export default function BI() {
             </div>
           </div>
         )}
+
+        {/* ═══════════ RECURSOS DE TERCEIROS ═══════════ */}
+        {!loading && aba === "terceiros" && (() => {
+          const maxCaptado = Math.max(...rtPorAno.map(b => b.captado), 1);
+          const corTipo: Record<string, string> = { CPR: "#1A4870", Custeio: "#16A34A", EGF: "#9B59B6", Empréstimo: "#E24B4A", Financiamento: "#378ADD", PRONAF: "#EF9F27", Outros: "#888" };
+          const temDados = rtTotalCaptado > 0 || rtTotalPago > 0 || rtTotalJuros > 0;
+
+          return (
+            <div>
+              {/* KPIs */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
+                {[
+                  { label: "Total Captado",    v: fmtR(rtTotalCaptado),  color: "#14532D", bg: "#ECFDF5",  hint: "Entradas de CPR, custeio, empréstimos, EGF" },
+                  { label: "Pago (Principal)", v: fmtR(rtTotalPago),     color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido (baixados)" },
+                  { label: "Saldo Devedor",    v: fmtR(rtSaldoDevedor),  color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", bg: rtSaldoDevedor > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Captado − principal pago" },
+                  { label: "Juros Pagos",      v: fmtR(rtTotalJuros),    color: "#633806", bg: "#FAEEDA",  hint: "Juros e encargos baixados" },
+                  { label: "Juros / ha",       v: areaTotal > 0 ? fmtR2(rtJurosHa) : "—", color: "#7C3AED", bg: "#F3E8FF", hint: `(juros pagos + pendentes) ÷ ${fmtN(areaTotal,0)} ha` },
+                ].map(k => (
+                  <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}
+                    title={k.hint}>
+                    <div style={{ fontSize: 10, color: "#666", marginBottom: 5 }}>{k.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
+                    {k.label === "Juros / ha" && rtJurosPend > 0 && (
+                      <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>+ {fmtR(rtJurosPend)} pendentes</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {!temDados && (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 14, color: "#888", marginBottom: 8 }}>Nenhum lançamento identificado como recurso de terceiros.</div>
+                  <div style={{ fontSize: 12, color: "#aaa" }}>
+                    O sistema identifica automaticamente lançamentos com palavras-chave nas categorias e descrições:<br />
+                    <strong style={{ color: "#555" }}>CPR · Custeio · EGF · Empréstimo · Financiamento · PRONAF · Juros</strong>
+                  </div>
+                </div>
+              )}
+
+              {temDados && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16, marginBottom: 16 }}>
+
+                  {/* Histórico por ano safra */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                    <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Histórico por Ano Fiscal</span>
+                      <span style={{ fontSize: 11, color: "#888", marginLeft: 8 }}>captação × amortização × juros</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          {["Ano / Safra", "Captado", "Pago (Principal)", "Juros Pagos", "Saldo Devedor", "Progresso"].map((h, i) => (
+                            <th key={i} style={{ padding: "8px 12px", fontSize: 10, fontWeight: 600, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rtPorAno.map((b, bi) => {
+                          const pct_pago = b.captado > 0 ? Math.min(100, (b.pago / b.captado) * 100) : 0;
+                          const pct_juros = b.captado > 0 ? Math.min(100, (b.juros / b.captado) * 100) : 0;
+                          return (
+                            <tr key={bi} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                              <td style={{ padding: "9px 12px", fontWeight: 600, fontSize: 13 }}>{b.label}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: "#16A34A", fontWeight: 600 }}>{fmtR(b.captado)}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12 }}>{b.pago > 0 ? fmtR(b.pago) : "—"}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: b.juros > 0 ? "#633806" : "#aaa" }}>
+                                {b.juros > 0 ? fmtR(b.juros) : "—"}
+                                {b.jurosPend > 0 && <div style={{ fontSize: 9, color: "#EF9F27" }}>+{fmtR(b.jurosPend)} pend.</div>}
+                              </td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: b.saldo > 0 ? "#791F1F" : "#14532D" }}>
+                                {b.saldo > 0 ? fmtR(b.saldo) : <span style={{ color: "#16A34A" }}>Quitado</span>}
+                              </td>
+                              <td style={{ padding: "9px 12px", minWidth: 100 }}>
+                                {b.captado > 0 && (
+                                  <div>
+                                    <div style={{ height: 6, borderRadius: 3, background: "#EEF1F6", overflow: "hidden", display: "flex" }}>
+                                      <div style={{ width: `${pct_pago}%`, background: "#1A4870", borderRadius: 3 }} title={`Principal: ${fmtN(pct_pago,0)}%`} />
+                                      <div style={{ width: `${pct_juros}%`, background: "#EF9F27" }} title={`Juros: ${fmtN(pct_juros,0)}%`} />
+                                    </div>
+                                    <div style={{ fontSize: 9, color: "#888", marginTop: 2, textAlign: "right" }}>{fmtN(pct_pago+pct_juros,0)}% devolvido</div>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {rtPorAno.length === 0 && (
+                          <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 12 }}>Sem histórico</td></tr>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "#F3F6F9", borderTop: "0.5px solid #D4DCE8" }}>
+                          <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 700 }}>Total</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#16A34A" }}>{fmtR(rtTotalCaptado)}</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700 }}>{fmtR(rtTotalPago)}</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#633806" }}>{fmtR(rtTotalJuros)}</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: rtSaldoDevedor > 0 ? "#791F1F" : "#16A34A" }}>{fmtR(rtSaldoDevedor)}</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Por tipo de operação */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                    <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Por Tipo de Operação</span>
+                    </div>
+                    <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
+                      {rtPorTipo.length === 0 && <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: 20 }}>Sem dados classificados</div>}
+                      {rtPorTipo.map(t => {
+                        const cor = corTipo[t.tipo] ?? "#888";
+                        const pct_pago  = t.captado > 0 ? Math.min(100, (t.pago  / t.captado) * 100) : 0;
+                        const pct_juros = t.captado > 0 ? Math.min(100, (t.juros / t.captado) * 100) : 0;
+                        return (
+                          <div key={t.tipo}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: cor }}>{t.tipo}</span>
+                              <span style={{ fontSize: 11, color: "#555" }}>captado <strong>{fmtR(t.captado)}</strong></span>
+                            </div>
+                            <div style={{ height: 8, borderRadius: 4, background: "#EEF1F6", overflow: "hidden", display: "flex", marginBottom: 4 }}>
+                              <div style={{ width: `${pct_pago}%`,  background: cor, opacity: 0.85, borderRadius: "4px 0 0 4px" }} />
+                              <div style={{ width: `${pct_juros}%`, background: "#EF9F27" }} />
+                            </div>
+                            <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#888" }}>
+                              <span><span style={{ width: 7, height: 7, borderRadius: 2, background: cor, display: "inline-block", marginRight: 3 }} />Principal: {fmtR(t.pago)}</span>
+                              <span><span style={{ width: 7, height: 7, borderRadius: 2, background: "#EF9F27", display: "inline-block", marginRight: 3 }} />Juros: {fmtR(t.juros)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* KPI juros/ha destaque */}
+                    {areaTotal > 0 && (
+                      <div style={{ margin: "0 18px 16px", padding: "12px 14px", background: "#F3E8FF", borderRadius: 10, border: "0.5px solid #C4B5FD" }}>
+                        <div style={{ fontSize: 10, color: "#5B21B6", marginBottom: 3, fontWeight: 600 }}>ENCARGO FINANCEIRO / ha</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#5B21B6" }}>{fmtR2(rtJurosHa)}</div>
+                        <div style={{ fontSize: 10, color: "#7C3AED", marginTop: 2 }}>
+                          {fmtR(rtTotalJuros + rtJurosPend)} ÷ {fmtN(areaTotal, 0)} ha
+                        </div>
+                        {rtJurosPend > 0 && (
+                          <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 2 }}>inclui {fmtR(rtJurosPend)} de juros ainda não pagos</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Nota metodológica */}
+              <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
+                Identificação automática por palavras-chave em categoria e descrição do lançamento: CPR · Custeio · EGF · Empréstimo · Financiamento · PRONAF · Juros · Encargo.
+                Para garantir classificação correta, use essas palavras-chave ao lançar CP/CR no módulo Financeiro.
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
     </div>
