@@ -314,17 +314,45 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   return { ...row, tipo, _status: "ok", _msg: "" };
 }
 
-const TIPOS_MAQUINA = ["trator","colhedora","plantadeira","pulverizador","caminhao","carreta","carro","implemento","outro"];
+// Tipos aceitos pelo banco — mapeamento de aliases comuns do Excel
+const TIPOS_MAQUINA_DB = ["trator","colheitadeira","pulverizador","plantadeira","caminhao","carro","implemento","outro"];
+const TIPOS_MAQUINA_ALIAS: Record<string, string> = {
+  colhedora:    "colheitadeira",
+  colheitadeira: "colheitadeira",
+  carreta:      "implemento",
+  carretinha:   "implemento",
+  moto:         "outro",
+  motocicleta:  "outro",
+};
+const TIPOS_MAQUINA = [...TIPOS_MAQUINA_DB, ...Object.keys(TIPOS_MAQUINA_ALIAS)];
+
+function normalizarTipoMaquina(t: string): string {
+  const lower = t.trim().toLowerCase();
+  return TIPOS_MAQUINA_ALIAS[lower] ?? lower;
+}
+
+// Remove número de patrimônio no início do nome: "01 TRATOR..." → "TRATOR..."
+// Padrões: "01 ", "(01) ", "(01)", "01." etc.
+function limparNomeMaquina(nome: string): string {
+  return nome.trim().replace(/^\(?0*\d+\)?\s*[.\-]?\s*/, "").trim();
+}
 
 function validarMaquina(r: Record<string, string>): MaquinaRow {
   const row = r as unknown as MaquinaRow;
   if (!row.nome?.trim())       return { ...row, _status: "erro", _msg: "nome obrigatório" };
-  if (!row.tipo?.trim() || !TIPOS_MAQUINA.includes(row.tipo.trim().toLowerCase()))
-    return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_MAQUINA.join(", ")}` };
+  const tipoNorm = normalizarTipoMaquina(row.tipo?.trim() || "");
+  if (!row.tipo?.trim() || !TIPOS_MAQUINA_DB.includes(tipoNorm))
+    return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_MAQUINA_DB.join(", ")}` };
   if (!row.patrimonio?.trim()) return { ...row, _status: "erro", _msg: "patrimônio obrigatório" };
   if (row.ano?.trim() && !/^\d{4}$/.test(row.ano.trim()))
     return { ...row, _status: "erro", _msg: "ano deve ter 4 dígitos (ex: 2023)" };
-  return { ...row, tipo: row.tipo.trim().toLowerCase(), _status: "ok", _msg: "" };
+  return {
+    ...row,
+    nome: limparNomeMaquina(row.nome),
+    tipo: tipoNorm,
+    _status: "ok",
+    _msg: "",
+  };
 }
 
 // ─── Componente UploadZone ────────────────────────────────────
@@ -855,11 +883,11 @@ export default function ImportacaoPage() {
     for (const r of maquinasRows) {
       if (r._status === "duplicado") { duplicados++; continue; }
       if (r._status === "erro")      { erros++;      continue; }
-      const isVeiculo = ["carro", "caminhao", "carreta"].includes(r.tipo);
+      const isVeiculo = ["carro", "caminhao"].includes(r.tipo);
       const { error } = await supabase.from("maquinas").insert({
         fazenda_id:      fazendaId,
         nome:            r.nome.trim(),
-        tipo:            r.tipo,
+        tipo:            normalizarTipoMaquina(r.tipo),
         patrimonio:      r.patrimonio?.trim() || null,
         marca:           r.marca?.trim() || null,
         modelo:          r.modelo?.trim() || null,
