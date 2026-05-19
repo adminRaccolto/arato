@@ -210,6 +210,15 @@ export default function Contratos() {
   const [filtroCiclo,  setFiltroCiclo]  = useState("");
   const [ciclosFiltro, setCiclosFiltro] = useState<Ciclo[]>([]);
 
+  // ── PTAX dinâmico para contratos em USD ─────────────────────
+  const [ptaxAtual, setPtaxAtual] = useState<number>(5.90);
+  useEffect(() => {
+    fetch("/api/precos").then(r => r.json()).then((d: { usdPtax?: number; usdBrl?: number }) => {
+      const rate = d.usdPtax ?? d.usdBrl ?? 5.90;
+      if (rate > 0) setPtaxAtual(rate);
+    }).catch(() => {});
+  }, []);
+
   // ── modal contrato ───────────────────────────────────────────
   const [modalContrato, setModalContrato] = useState(false);
   const [editContrato, setEditContrato]   = useState<ContratoVM|null>(null);
@@ -655,9 +664,15 @@ export default function Contratos() {
   };
 
   // ── filtro da lista ───────────────────────────────────────────
+  const safraDescFiltro = filtroAno ? (anosSafra.find(a => a.id === filtroAno)?.descricao ?? "") : "";
   const contratosFiltrados = contratos.filter(c => {
-    if (filtroAno    && c.ano_safra_id !== filtroAno)    return false;
-    if (filtroCiclo  && c.ciclo_id     !== filtroCiclo)  return false;
+    if (filtroAno) {
+      // Contratos vinculados pelo ID ou pelo texto da safra (fallback para contratos do BOT sem ano_safra_id)
+      const porId   = c.ano_safra_id === filtroAno;
+      const porText = !c.ano_safra_id && safraDescFiltro && c.safra === safraDescFiltro;
+      if (!porId && !porText) return false;
+    }
+    if (filtroCiclo && c.ciclo_id !== filtroCiclo) return false;
     return true;
   });
 
@@ -849,7 +864,13 @@ export default function Contratos() {
                                   {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"center", fontSize:12, whiteSpace:"nowrap", color:"#1a1a1a" }}>
-                                  {c.modalidade==="fixo"    && <span style={{ fontWeight:600 }}>{fmtR$(c.preco??0)}/sc</span>}
+                                  {c.modalidade==="fixo" && c.moeda==="USD" && (
+                                    <div>
+                                      <div style={{ fontWeight:600 }}>US$ {(c.preco??0).toLocaleString("pt-BR",{minimumFractionDigits:2})}/sc</div>
+                                      <div style={{ fontSize:10, color:"#378ADD", marginTop:1 }}>≈ {fmtR$(Math.round((c.preco??0)*ptaxAtual*100)/100)}/sc</div>
+                                    </div>
+                                  )}
+                                  {c.modalidade==="fixo" && c.moeda!=="USD" && <span style={{ fontWeight:600 }}>{fmtR$(c.preco??0)}/sc</span>}
                                   {c.modalidade==="a_fixar" && <span style={{ color:"#378ADD", fontWeight:600 }}>A fixar</span>}
                                   {c.modalidade==="barter"  && <span style={{ color:"#8B5E14", fontWeight:600 }}>Barter</span>}
                                 </td>

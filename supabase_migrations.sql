@@ -4152,4 +4152,9 @@ CREATE POLICY "esoc_evt_sel" ON esocial_eventos FOR SELECT
 CREATE POLICY "esoc_evt_all" ON esocial_eventos FOR ALL
   USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
 
+-- ── Migration: cotacao_usd em contratos ─────────────────────────────────────
+-- Armazena o PTAX D-1 no momento do registro do contrato USD.
+-- O equivalente BRL atual é calculado dinamicamente: preco * ptax_atual.
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cotacao_usd numeric(10,4);
+
 NOTIFY pgrst, 'reload schema';

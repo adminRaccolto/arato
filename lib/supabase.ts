@@ -313,6 +313,7 @@ export type Contrato = {
   data_entrega: string;
   data_pagamento?: string;      // prazo de pagamento → gera CR quando confirmado
   lancamento_cr_id?: string;    // FK lancamentos.id do CR gerado automaticamente
+  cotacao_usd?: number | null;  // PTAX D-1 no momento do registro (só contratos USD)
   status: "aberto" | "parcial" | "encerrado" | "cancelado";
   observacao?: string;
   // Comprometimento de arrendamento (não gera financeiro)

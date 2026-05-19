@@ -298,35 +298,82 @@ function fmtIso(iso: string): string {
   return d && m && y ? `${d}/${m}/${y}` : iso;
 }
 
+function _safraAnoPrincipal(safraStr: string): number {
+  // "2026/2027" → 2026; "26/27" → 2026; "safra 26" → 2026
+  const full = safraStr.match(/\b(20\d{2})\b/);
+  if (full) return parseInt(full[1]);
+  const short = safraStr.match(/\b(\d{2})\/(\d{2})\b/);
+  if (short) return 2000 + parseInt(short[1]);
+  const twoD = safraStr.match(/\b(\d{2})\b/);
+  if (twoD) return 2000 + parseInt(twoD[1]);
+  return 0;
+}
+
+function _matchSafra(descricao: string, dataInicio: string, yearStart: number, safraStr: string): boolean {
+  const desc = String(descricao ?? "");
+  const d = String(dataInicio ?? "");
+  const safraDigits = safraStr.replace(/\D/g, "");
+  const descDigits  = desc.replace(/\D/g, "");
+  if (yearStart > 0) {
+    if (desc.includes(String(yearStart)) || d.startsWith(String(yearStart))) return true;
+    if (desc.includes(String(yearStart).slice(-2)) && descDigits.length <= 4) return true;
+  }
+  if (safraDigits.length >= 4) {
+    if (descDigits === safraDigits || descDigits.startsWith(safraDigits.slice(0, 4)) || safraDigits.startsWith(descDigits.slice(0, 4))) return true;
+  }
+  return false;
+}
+
 async function buscarAnoSafraContrato(fazendaId: string, safraStr: string): Promise<{ id: string; descricao: string } | null> {
   if (!safraStr) return null;
-  // Extrai ano de início: "2026/2027" → 2026; "26/27" → 2026; "safra 26" → 2026
-  const match = safraStr.match(/(\d{2,4})/);
-  if (!match) return null;
-  let year = parseInt(match[1]);
-  if (year < 100) year += 2000;
+  const yearStart  = _safraAnoPrincipal(safraStr);
 
-  const { data } = await sb().from("anos_safra")
+  // Tentativa 1: pela fazenda ativa
+  const { data: d1 } = await sb().from("anos_safra")
     .select("id, descricao, data_inicio")
     .eq("fazenda_id", fazendaId)
     .order("data_inicio", { ascending: false });
 
-  if (!data || data.length === 0) return null;
-
-  // Tenta match exato na descrição
-  for (const a of data) {
-    const desc = String(a.descricao ?? "");
-    if (desc.includes(String(year)) || desc.includes(String(year).slice(-2))) {
-      return { id: a.id, descricao: desc };
-    }
+  if (d1 && d1.length > 0) {
+    const match = d1.find(a => _matchSafra(String(a.descricao ?? ""), String(a.data_inicio ?? ""), yearStart, safraStr));
+    if (match) return { id: match.id, descricao: String(match.descricao ?? "") };
   }
-  // Tenta por data_inicio
-  const porData = data.find(a => {
-    const inicio = String(a.data_inicio ?? "");
-    return inicio.startsWith(String(year));
-  });
-  if (porData) return { id: porData.id, descricao: String(porData.descricao ?? "") };
 
+  // Tentativa 2 (fallback): busca global — cobre caso de fazenda ativa diferente da que tem a safra
+  const { data: d2 } = await sb().from("anos_safra")
+    .select("id, descricao, data_inicio, fazenda_id")
+    .order("data_inicio", { ascending: false })
+    .limit(200);
+
+  if (d2 && d2.length > 0) {
+    const match = d2.find(a => _matchSafra(String(a.descricao ?? ""), String(a.data_inicio ?? ""), yearStart, safraStr));
+    if (match) return { id: match.id, descricao: String(match.descricao ?? "") };
+  }
+
+  return null;
+}
+
+// PTAX do Banco Central (D-1) — chamada direta BCB para uso server-side no BOT
+async function buscarPtaxBCB(): Promise<number | null> {
+  for (let delta = 1; delta <= 4; delta++) {
+    const d = new Date();
+    d.setDate(d.getDate() - delta);
+    // Finais de semana não têm PTAX — pula sábado/domingo
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    const mm   = String(d.getMonth() + 1).padStart(2, "0");
+    const dd   = String(d.getDate()).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    try {
+      const res = await fetch(
+        `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarDia(dataCotacao=@d)?@d='${mm}-${dd}-${yyyy}'&$top=1&$format=json&$select=cotacaoVenda`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (!res.ok) continue;
+      const json = await res.json() as { value?: { cotacaoVenda?: number }[] };
+      const val = json?.value?.[0]?.cotacaoVenda;
+      if (val && val > 0) return Math.round(val * 10000) / 10000;
+    } catch { /* tenta dia anterior */ }
+  }
   return null;
 }
 
@@ -371,8 +418,12 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
   const dataPagamento = dados.data_pagamento ? parseData(String(dados.data_pagamento)) : "";
   const dataContrato  = dados.data_contrato  ? parseData(String(dados.data_contrato))  : new Date().toISOString().split("T")[0];
 
-  const anoSafra = await buscarAnoSafraContrato(fazendaId, safraStr);
-  const ciclo    = anoSafra ? await buscarCicloContrato(fazendaId, anoSafra.id, produto) : null;
+  const [anoSafra, ptax] = await Promise.all([
+    buscarAnoSafraContrato(fazendaId, safraStr),
+    moeda === "USD" ? buscarPtaxBCB() : Promise.resolve(null),
+  ]);
+  const ciclo = anoSafra ? await buscarCicloContrato(fazendaId, anoSafra.id, produto) : null;
+  const cotacaoUsd = ptax ?? (moeda === "USD" ? 5.90 : null); // fallback se BCB offline
 
   const obsPartes: string[] = [];
   if (dados.local_entrega)  obsPartes.push(`Local: ${dados.local_entrega}`);
@@ -381,25 +432,31 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
   if (dados.vendedor_cpf)    obsPartes.push(`CPF vendedor: ${dados.vendedor_cpf}`);
   const observacao = obsPartes.join(" | ") || undefined;
 
-  const receitaBRL = preco > 0 && moeda === "BRL" ? quantidadeSc * preco : 0;
+  const receitaBRL = preco > 0 && moeda === "BRL" ? quantidadeSc * preco
+    : preco > 0 && moeda === "USD" && cotacaoUsd ? Math.round(quantidadeSc * preco * cotacaoUsd * 100) / 100
+    : 0;
   const fmtMoeda = (v: number) => moeda === "USD"
     ? `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
     : `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   if (!confirmado) {
+    const ptaxLine = cotacaoUsd
+      ? `• PTAX D-1: R$ ${cotacaoUsd.toLocaleString("pt-BR", { minimumFractionDigits: 4 })} · Equivalente: R$ ${(preco * cotacaoUsd).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/sc`
+      : "";
     const linhas = [
       `📋 *Resumo do Contrato de Grãos:*`,
       `• Nº: *${numero || "(sem número)"}*`,
       `• Comprador: *${comprador}*${dados.comprador_cnpj ? ` — CNPJ ${dados.comprador_cnpj}` : ""}`,
       `• Produto: *${produto}* · Safra *${safraStr}*`,
       `• Quantidade: *${quantidadeSc.toLocaleString("pt-BR")} sc*`,
-      `• Preço: *${fmtMoeda(preco)}/sc*${moeda === "USD" ? " (PTAX)" : ""}`,
-      receitaBRL > 0 ? `• Receita total: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : `• Receita total: ~${fmtMoeda(quantidadeSc * preco)} (converter pela PTAX)`,
+      `• Preço: *${fmtMoeda(preco)}/sc*`,
+      ptaxLine,
+      receitaBRL > 0 ? `• Receita total: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "",
       dataEntrega   ? `• Entrega: ${fmtIso(dataEntrega)}` : "",
       dataPagamento ? `• Pagamento: ${fmtIso(dataPagamento)}` : "",
       dados.local_entrega  ? `• Local: ${dados.local_entrega}` : "",
       dados.dados_bancarios ? `• Banco: ${dados.dados_bancarios}` : "",
-      anoSafra ? `• ✅ Safra vinculada: ${anoSafra.descricao}` : `• ⚠️ Safra "${safraStr}" não encontrada — cadastre em Lavoura → Safras`,
+      anoSafra ? `• ✅ Safra vinculada: ${anoSafra.descricao}` : `• ⚠️ Safra "${safraStr}" não encontrada — contrato será salvo sem vínculo de safra`,
       ciclo    ? `• ✅ Ciclo: ${ciclo.descricao}` : "",
       "",
       "Confirme com *sim* para salvar no sistema.",
@@ -427,6 +484,7 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
     data_contrato:       dataContrato,
     data_entrega:        dataEntrega || new Date().toISOString().split("T")[0],
     data_pagamento:      dataPagamento || null,
+    cotacao_usd:         cotacaoUsd ?? null,
     observacao:          observacao || null,
   }).select("id").maybeSingle();
 
@@ -447,16 +505,18 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
     crMsg = crErr ? "" : `\n✅ CR gerado: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para ${fmtIso(dataPagamento)}`;
   }
 
+  const brlEquiv = cotacaoUsd ? ` ≈ R$ ${(preco * cotacaoUsd).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/sc (PTAX ${cotacaoUsd.toLocaleString("pt-BR", { minimumFractionDigits: 4 })})` : "";
+
   return {
     ok: true,
     mensagem: [
       `✅ Contrato registrado!`,
-      `• *${produto}* — ${quantidadeSc.toLocaleString("pt-BR")} sc @ ${fmtMoeda(preco)}/sc`,
+      `• *${produto}* — ${quantidadeSc.toLocaleString("pt-BR")} sc @ ${fmtMoeda(preco)}/sc${brlEquiv}`,
       `• Comprador: ${comprador}`,
-      `• Safra: ${safraStr}${anoSafra ? "" : " ⚠️ (não vinculada)"}`,
+      `• Safra: ${safraStr}${anoSafra ? "" : " ⚠️ (não vinculada — cadastre a safra no sistema)"}`,
       dataEntrega ? `• Entrega: ${fmtIso(dataEntrega)}` : "",
       crMsg,
-      moeda === "USD" && !crMsg ? `• 💡 Para gerar o CR, informe a cotação PTAX e solicite no sistema` : "",
+      receitaBRL > 0 && !crMsg && dataPagamento ? `• Receita esperada: R$ ${receitaBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "",
     ].filter(Boolean).join("\n"),
   };
 }
