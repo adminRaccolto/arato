@@ -956,6 +956,28 @@ export default function BI() {
 
           const CORES = { arr: "#E24B4A", barter: "#EF9F27", brl: "#1A4870", usd: "#378ADD", livre: "#16A34A" };
 
+          // ── Estoque para venda por ciclo ──────────────────────────
+          const cicloEstoque = ciclosFiltrados.map(ciclo => {
+            const pls       = plantios.filter(p => p.ciclo_id === ciclo.id);
+            const area      = pls.reduce((s, p) => s + (p.area_ha || 0), 0);
+            const prodEsp   = pls.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
+            const comm      = culturaToCommodity(ciclo.cultura);
+            // Comprometido desta ciclo
+            const ctrsC     = contratos.filter(c => c.ciclo_id === ciclo.id && c.status !== "cancelado");
+            const barterScC = ctrsC.filter(c => c.modalidade === "barter" || c.tipo === "barter").reduce((s, c) => s + (c.quantidade_sc || 0), 0);
+            const vendaScC  = ctrsC.filter(c => c.modalidade !== "barter" && c.tipo !== "barter" && !c.is_arrendamento).reduce((s, c) => s + (c.quantidade_sc || 0), 0);
+            // Arrendamento vinculado ao ano safra + commodity
+            const arrScC    = arrPags.filter(p => p.ano_safra_id === ciclo.ano_safra_id && p.commodity === comm && p.status !== "pago" && p.status !== "cancelado").reduce((s, p) => s + (p.sacas_previstas || 0), 0);
+            const comprC    = barterScC + vendaScC + arrScC;
+            const livresC   = Math.max(0, prodEsp - comprC);
+            const precoC    = ciclo.preco_esperado_sc ?? 0;
+            const recRealC  = livresC * precoC;
+            const CULT: Record<string, string> = { soja: "Soja", milho1: "Milho 1ª", milho2: "Milho 2ª", algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo" };
+            const nomeCult  = CULT[ciclo.cultura] ?? ciclo.cultura;
+            const nomeSafra = anosSafra.find(a => a.id === ciclo.ano_safra_id)?.descricao ?? "";
+            return { ciclo, area, prodEsp, comprC, livresC, precoC, recRealC, barterScC, vendaScC, arrScC, nomeCult, nomeSafra };
+          }).filter(r => r.area > 0 || r.comprC > 0);
+
           return (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
@@ -1143,6 +1165,85 @@ export default function BI() {
                     </tbody>
                   </table>
                 )}
+              </div>
+            )}
+
+            {/* ── Estoque para Venda por Ciclo ─────────────────────── */}
+            {cicloEstoque.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Estoque para Venda por Ciclo</div>
+                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Produção esperada menos sacas já comprometidas (barter + contratos + arrendamento)</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#555", background: "#F0F7FF", border: "0.5px solid #C3DBF7", borderRadius: 6, padding: "4px 10px" }}>
+                    Receita a Realizar:{" "}
+                    <strong style={{ color: "#1A4870" }}>
+                      {fmtR(cicloEstoque.reduce((s, r) => s + r.recRealC, 0))}
+                    </strong>
+                  </div>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#F8FAFD" }}>
+                      {["Ciclo / Cultura", "Safra", "Área (ha)", "Prod. Esperada (sc)", "Comprometido (sc)", "Disponível para Venda", "Preço Obj. (R$/sc)", "Receita a Realizar"].map((h, i) => (
+                        <th key={h} style={{ padding: "7px 14px", textAlign: i >= 2 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cicloEstoque.map((r, i) => {
+                      const pctCompr = r.prodEsp > 0 ? (r.comprC / r.prodEsp) * 100 : 0;
+                      const dispColor = r.livresC > 0 ? "#14532D" : "#888";
+                      return (
+                        <tr key={r.ciclo.id} style={{ borderBottom: i < cicloEstoque.length - 1 ? "0.5px solid #EEF1F6" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                          <td style={{ padding: "9px 14px" }}>
+                            <div style={{ fontWeight: 600, fontSize: 12, color: "#1a1a1a" }}>{r.nomeCult}</div>
+                            <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>
+                              {r.barterScC > 0 && <span style={{ marginRight: 6 }}>barter: {fmtN(r.barterScC, 0)} sc</span>}
+                              {r.vendaScC > 0 && <span style={{ marginRight: 6 }}>contratos: {fmtN(r.vendaScC, 0)} sc</span>}
+                              {r.arrScC > 0 && <span>arrendamento: {fmtN(r.arrScC, 0)} sc</span>}
+                            </div>
+                          </td>
+                          <td style={{ padding: "9px 14px", fontSize: 11, color: "#555" }}>{r.nomeSafra}</td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12 }}>{fmtN(r.area, 1)}</td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12, fontWeight: 600 }}>{fmtN(r.prodEsp, 0)}</td>
+                          <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+                              <div style={{ width: 40, height: 4, borderRadius: 2, background: "#EEF1F6", overflow: "hidden" }}>
+                                <div style={{ width: `${Math.min(pctCompr, 100)}%`, height: "100%", background: pctCompr > 90 ? "#E24B4A" : pctCompr > 70 ? "#EF9F27" : "#378ADD" }} />
+                              </div>
+                              <span style={{ fontSize: 11 }}>{fmtN(r.comprC, 0)} sc</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: dispColor }}>{fmtN(r.livresC, 0)} sc</div>
+                            {r.prodEsp > 0 && <div style={{ fontSize: 9, color: "#888" }}>{fmtN(100 - pctCompr, 0)}% livre</div>}
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12 }}>
+                            {r.precoC > 0 ? <span style={{ color: "#1A4870", fontWeight: 600 }}>{fmtR2(r.precoC)}</span> : <span style={{ color: "#EF9F27" }}>Não definido</span>}
+                          </td>
+                          <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                            {r.recRealC > 0
+                              ? <span style={{ fontSize: 13, fontWeight: 700, color: "#14532D" }}>{fmtR(r.recRealC)}</span>
+                              : <span style={{ fontSize: 11, color: "#888" }}>—</span>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#F0F7FF", borderTop: "1.5px solid #C3DBF7" }}>
+                      <td colSpan={3} style={{ padding: "9px 14px", fontSize: 11, fontWeight: 700, color: "#1A4870" }}>Total</td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12, fontWeight: 700 }}>{fmtN(cicloEstoque.reduce((s, r) => s + r.prodEsp, 0), 0)} sc</td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 12, fontWeight: 700 }}>{fmtN(cicloEstoque.reduce((s, r) => s + r.comprC, 0), 0)} sc</td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, fontWeight: 700, color: "#14532D" }}>{fmtN(cicloEstoque.reduce((s, r) => s + r.livresC, 0), 0)} sc</td>
+                      <td style={{ padding: "9px 14px" }}></td>
+                      <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, fontWeight: 700, color: "#14532D" }}>{fmtR(cicloEstoque.reduce((s, r) => s + r.recRealC, 0))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             )}
 

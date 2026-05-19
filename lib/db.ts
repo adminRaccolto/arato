@@ -462,6 +462,34 @@ export async function atualizarContrato(id: string, c: Partial<Contrato>): Promi
   if (error) throw error;
 }
 
+export async function excluirContrato(id: string): Promise<void> {
+  await supabase.from("contrato_itens").delete().eq("contrato_id", id);
+  const { error } = await supabase.from("contratos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function encerrarContratosPorSafras(
+  fazendaId: string,
+  anosSafraIds: string[]
+): Promise<number> {
+  if (anosSafraIds.length === 0) return 0;
+  const { data: antes } = await supabase
+    .from("contratos")
+    .select("id")
+    .eq("fazenda_id", fazendaId)
+    .in("ano_safra_id", anosSafraIds)
+    .in("status", ["aberto", "parcial"]);
+  const count = antes?.length ?? 0;
+  if (count === 0) return 0;
+  const ids = antes!.map(r => r.id as string);
+  const { error } = await supabase
+    .from("contratos")
+    .update({ status: "encerrado" })
+    .in("id", ids);
+  if (error) throw error;
+  return count;
+}
+
 export async function listarItensContrato(contrato_id: string): Promise<ContratoItem[]> {
   const { data, error } = await supabase.from("contrato_itens").select("*").eq("contrato_id", contrato_id).order("created_at");
   if (error) throw error;

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import {
-  listarContratos, criarContrato, atualizarContrato,
+  listarContratos, criarContrato, atualizarContrato, excluirContrato, encerrarContratosPorSafras,
   listarRomaneios, criarRomaneio,
   listarItensContrato, salvarItensContrato,
   listarCessaoDebitos, salvarCessaoDebitos,
@@ -675,6 +675,28 @@ export default function Contratos() {
     return { produto, contratado, entregue, saldo: contratado-entregue, pct: contratado>0 ? Math.round(entregue/contratado*100) : 0 };
   }).filter(p => p.contratado > 0);
 
+  async function encerrarSafrasAnteriores() {
+    // Safras com data_inicio <= 2025-12-31 cobre até 2025/2026
+    const safrasAlvo = anosSafra.filter(a => a.data_inicio <= "2025-12-31");
+    if (safrasAlvo.length === 0) { alert("Nenhuma safra de 2025/2026 ou anterior encontrada."); return; }
+    const candidatos = contratos.filter(c =>
+      (c.status === "aberto" || c.status === "parcial") &&
+      safrasAlvo.some(a => a.id === c.ano_safra_id)
+    );
+    if (candidatos.length === 0) { alert("Nenhum contrato aberto encontrado nessas safras."); return; }
+    const confirmado = confirm(
+      `Encerrar ${candidatos.length} contrato(s) de venda abertos das safras:\n` +
+      safrasAlvo.map(a => `• ${a.descricao}`).join("\n") +
+      `\n\nEsta ação marcará todos como "Encerrado" e não pode ser desfeita. Confirmar?`
+    );
+    if (!confirmado) return;
+    try {
+      const n = await encerrarContratosPorSafras(fazendaId!, safrasAlvo.map(a => a.id));
+      alert(`${n} contrato(s) encerrado(s) com sucesso.`);
+      await carregarTudo();
+    } catch (e) { setErro(sbErr(e)); }
+  }
+
   // ── render ────────────────────────────────────────────────────
   return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#F3F6F9", fontFamily:"system-ui, sans-serif", fontSize:13 }}>
@@ -686,7 +708,12 @@ export default function Contratos() {
             <h1 style={{ margin:0, fontSize:17, fontWeight:600, color:"#1a1a1a" }}>Comercialização de Grãos</h1>
             <p style={{ margin:0, fontSize:11, color:"#444" }}>Contratos de venda, fixações, expedição e posição de estoque</p>
           </div>
-          <div style={{ display:"flex", gap:8 }}>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={encerrarSafrasAnteriores}
+              title="Encerra todos os contratos abertos da safra 2025/2026 e anteriores"
+              style={{ background:"#fff", color:"#555", border:"0.5px solid #CCC", borderRadius:8, padding:"8px 12px", fontSize:12, cursor:"pointer" }}>
+              ✕ Encerrar Safra 25/26 e ant.
+            </button>
             <button onClick={() => { setFRom(ROM_VAZIO()); setModalRomaneio(true); }}
               style={{ background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               + Romaneio
@@ -833,6 +860,16 @@ export default function Contratos() {
                                 <td style={{ padding:"10px 12px", textAlign:"right" }}>
                                   <div style={{ display:"flex", gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
                                     <button style={{ padding:"3px 9px", border:"0.5px solid #D4DCE8", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c)}>Editar</button>
+                                    {c.status !== "encerrado" && c.status !== "cancelado" && (
+                                      <button style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
+                                        onClick={async () => { if (confirm(`Encerrar contrato ${c.numero}?`)) { await atualizarContrato(c.id, { status: "encerrado" }); await atualizarContrato(c.id, { status: "encerrado" }); await carregarTudo(); } }}>
+                                        Encerrar
+                                      </button>
+                                    )}
+                                    <button style={{ padding:"3px 9px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
+                                      onClick={async () => { if (confirm(`Excluir contrato ${c.numero} permanentemente? Esta ação não pode ser desfeita.`)) { await excluirContrato(c.id); await carregarTudo(); } }}>
+                                      Excluir
+                                    </button>
                                     <span style={{ color:"#444", fontSize:10, display:"inline-block", transform: exp?"rotate(90deg)":"rotate(0deg)", transition:"transform 0.15s", cursor:"pointer", padding:"4px" }} onClick={() => toggleExpand(c.id)}>▶</span>
                                   </div>
                                 </td>
