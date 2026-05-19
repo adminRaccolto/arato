@@ -207,9 +207,13 @@ export default function Contratos() {
   const [salvando, setSalvando]       = useState(false);
 
   // ── filtros da lista de contratos ────────────────────────────
-  const [filtroAno,    setFiltroAno]    = useState("");
-  const [filtroCiclo,  setFiltroCiclo]  = useState("");
-  const [ciclosFiltro, setCiclosFiltro] = useState<Ciclo[]>([]);
+  const [filtroAno,     setFiltroAno]     = useState("");
+  const [filtroCiclo,   setFiltroCiclo]   = useState("");
+  const [ciclosFiltro,  setCiclosFiltro]  = useState<Ciclo[]>([]);
+  const [filtroProduto, setFiltroProduto] = useState("");
+  const [filtroStatus,  setFiltroStatus]  = useState("");
+  const [filtroComprador, setFiltroComprador] = useState("");
+  const [filtroBusca,   setFiltroBusca]   = useState("");
 
   // ── PTAX dinâmico para contratos em USD ─────────────────────
   const [ptaxAtual, setPtaxAtual] = useState<number>(5.90);
@@ -721,14 +725,25 @@ export default function Contratos() {
   const safraDescFiltro = filtroAno ? (anosSafra.find(a => a.id === filtroAno)?.descricao ?? "") : "";
   const contratosFiltrados = contratos.filter(c => {
     if (filtroAno) {
-      // Contratos vinculados pelo ID ou pelo texto da safra (fallback para contratos do BOT sem ano_safra_id)
       const porId   = c.ano_safra_id === filtroAno;
       const porText = !c.ano_safra_id && safraDescFiltro && c.safra === safraDescFiltro;
       if (!porId && !porText) return false;
     }
-    if (filtroCiclo && c.ciclo_id !== filtroCiclo) return false;
+    if (filtroCiclo    && c.ciclo_id !== filtroCiclo) return false;
+    if (filtroProduto  && c.produto  !== filtroProduto) return false;
+    if (filtroStatus   && c.status   !== filtroStatus)  return false;
+    if (filtroComprador && c.comprador !== filtroComprador) return false;
+    if (filtroBusca) {
+      const q = filtroBusca.toLowerCase();
+      const haystack = [c.numero, c.comprador, c.produto, c.safra].filter(Boolean).join(" ").toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
     return true;
   });
+
+  const compradores = [...new Set(contratos.map(c => c.comprador).filter(Boolean))].sort() as string[];
+  const hasAnyFilter = !!(filtroAno || filtroCiclo || filtroProduto || filtroStatus || filtroComprador || filtroBusca);
+  const limparFiltros = () => { setFiltroAno(""); setFiltroCiclo(""); setFiltroProduto(""); setFiltroStatus(""); setFiltroComprador(""); setFiltroBusca(""); };
 
   // ── métricas ──────────────────────────────────────────────────
   const contratosAtivos = contratos.filter(c => c.status !== "encerrado" && c.status !== "cancelado").length;
@@ -846,25 +861,51 @@ export default function Contratos() {
                 <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
                   {/* barra de filtros */}
                   <div style={{ padding:"10px 14px", borderBottom:"0.5px solid #EEF1F6", background:"#FAFBFD", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                    {/* busca livre */}
+                    <input value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} placeholder="🔍 Buscar contrato, comprador…"
+                      style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", minWidth:190 }} />
+                    {/* safra */}
                     <select value={filtroAno} onChange={e => { setFiltroAno(e.target.value); setFiltroCiclo(""); }}
                       style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
                       <option value="">Todos os anos safra</option>
                       {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                     </select>
+                    {/* ciclo */}
                     <select value={filtroCiclo} onChange={e => setFiltroCiclo(e.target.value)}
                       disabled={!filtroAno || ciclosFiltro.length === 0}
                       style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", opacity: !filtroAno ? 0.5 : 1 }}>
                       <option value="">Todos os ciclos</option>
                       {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.cultura}{c.descricao ? ` — ${c.descricao}` : ""}</option>)}
                     </select>
-                    {(filtroAno || filtroCiclo) && (
-                      <button onClick={() => { setFiltroAno(""); setFiltroCiclo(""); }}
+                    {/* produto */}
+                    <select value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)}
+                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                      <option value="">Todos os produtos</option>
+                      {PRODUTOS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    {/* comprador */}
+                    <select value={filtroComprador} onChange={e => setFiltroComprador(e.target.value)}
+                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", maxWidth:160 }}>
+                      <option value="">Todos os compradores</option>
+                      {compradores.map(cp => <option key={cp} value={cp}>{cp}</option>)}
+                    </select>
+                    {/* status */}
+                    <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
+                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                      <option value="">Todos os status</option>
+                      <option value="aberto">Aberto</option>
+                      <option value="parcial">Parcial</option>
+                      <option value="encerrado">Encerrado</option>
+                      <option value="cancelado">Cancelado</option>
+                    </select>
+                    {hasAnyFilter && (
+                      <button onClick={limparFiltros}
                         style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:11, color:"#555", background:"#fff", cursor:"pointer" }}>
-                        Limpar filtros
+                        ✕ Limpar
                       </button>
                     )}
                     <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>
-                      {contratosFiltrados.length}{filtroAno || filtroCiclo ? ` de ${contratos.length}` : ""} contrato{contratosFiltrados.length !== 1 ? "s" : ""}
+                      {contratosFiltrados.length}{hasAnyFilter ? ` de ${contratos.length}` : ""} contrato{contratosFiltrados.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                   {contratosFiltrados.length === 0 ? (

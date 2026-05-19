@@ -460,9 +460,10 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
   const ultimoTxt = typeof ultimoAss?.content === "string" ? ultimoAss.content : "";
   if (ultimoTxt.includes("❓")) return true;
 
-  // Usuário confirmando preview de NF ("sim", "confirmo", "pode registrar", "ok registra")
-  const confirma = /^(sim|confirmo|confirmar|pode|pode registrar|ok|registra|isso)[\s!.]*$/.test(t);
-  if (confirma && ultimoTxt.includes("Confirma?")) return true;
+  // Usuário confirmando preview de qualquer fluxo ("sim", "confirmo", "pode registrar", "ok registra")
+  const confirma = /^(sim|confirmo|confirmar|pode|pode registrar|ok|registra|isso|correto|certo|pode salvar|salva)[\s!.]*$/.test(t);
+  const temPreview = ultimoTxt.includes("Confirma?") || ultimoTxt.includes("para registrar") || ultimoTxt.includes("para salvar");
+  if (confirma && temPreview) return true;
 
   return false;
 }

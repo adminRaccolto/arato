@@ -459,7 +459,7 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
       anoSafra ? `• ✅ Safra vinculada: ${anoSafra.descricao}` : `• ⚠️ Safra "${safraStr}" não encontrada — contrato será salvo sem vínculo de safra`,
       ciclo    ? `• ✅ Ciclo: ${ciclo.descricao}` : "",
       "",
-      "Confirme com *sim* para salvar no sistema.",
+      "*Confirma? Responda _sim_ para registrar.*",
     ].filter(Boolean).join("\n");
     return { ok: false, mensagem: linhas };
   }
