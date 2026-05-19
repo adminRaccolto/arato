@@ -140,17 +140,20 @@ function FinanceiroRelatoriosInner() {
     }).catch(() => {});
   }, [fazendaId]);
 
-  // localStorage simulações
+  // localStorage simulações — escopad por fazenda para não vazar entre clientes
+  const simKey = fazendaId ? `ractech_sim_fluxo_${fazendaId}` : null;
   useEffect(() => {
+    if (!simKey) return;
     try {
-      const saved = localStorage.getItem("ractech_sim_fluxo_relatorios");
-      if (saved) setSimEntries(JSON.parse(saved));
-    } catch { /* ignore */ }
-  }, []);
+      const saved = localStorage.getItem(simKey);
+      setSimEntries(saved ? JSON.parse(saved) : []);
+    } catch { setSimEntries([]); }
+  }, [simKey]);
   useEffect(() => {
-    try { localStorage.setItem("ractech_sim_fluxo_relatorios", JSON.stringify(simEntries)); }
+    if (!simKey) return;
+    try { localStorage.setItem(simKey, JSON.stringify(simEntries)); }
     catch { /* ignore */ }
-  }, [simEntries]);
+  }, [simEntries, simKey]);
 
   // ─── DFC — derivados baseados nas Operações Gerenciais ────────────────────
   const MESES_DFC = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
