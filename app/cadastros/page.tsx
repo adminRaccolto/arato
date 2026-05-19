@@ -1833,13 +1833,13 @@ function CadastrosInner() {
                         onChange={e => setSelMaquinas(e.target.checked ? new Set(maquinas.map(m => m.id)) : new Set())}
                         style={{ cursor: "pointer", width: 15, height: 15 }} />
                     </th>
-                    {["Nome", "Tipo", "Marca / Modelo", "Chassi", "Ano", "Km / Horímetro", "Seguro", "Status", ""].map((c, i) => (
+                    {["Nome", "Patrimônio", "Tipo", "Marca / Modelo", "Chassi", "Ano", "Km / Horímetro", "Seguro", "Status", ""].map((c, i) => (
                       <th key={i} style={{ ...thS, textAlign: i === 0 ? "left" : "center" }}>{c}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {maquinas.length === 0 && <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
+                  {maquinas.length === 0 && <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
                   {maquinas.map((m, i) => {
                     const vencSeguro = m.seguro_vencimento_apolice ? diasAteDate(m.seguro_vencimento_apolice) : null;
                     const corSeguro = vencSeguro === null ? "#888" : vencSeguro < 0 ? "#E24B4A" : vencSeguro <= 15 ? "#EF9F27" : "#16A34A";
@@ -1852,6 +1852,7 @@ function CadastrosInner() {
                             style={{ cursor: "pointer", width: 15, height: 15 }} />
                         </td>
                         <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{m.nome}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontFamily: "monospace", fontSize: 12 }}>{m.patrimonio || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo === "carro" ? "Carro" : m.tipo, "#F1EFE8", "#555")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#666", fontSize: 12, fontFamily: "monospace" }}>{m.chassi || "—"}</td>

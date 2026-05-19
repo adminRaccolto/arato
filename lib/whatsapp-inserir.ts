@@ -9,6 +9,26 @@ function sb() {
   );
 }
 
+// Busca máquina por patrimônio (exato) ou nome (ilike), patrimônio tem prioridade
+async function resolverMaquina(fazendaId: string, veiculo: string): Promise<string | null> {
+  if (!veiculo) return null;
+  const v = veiculo.trim();
+  // 1. Tenta patrimônio exato (case-insensitive)
+  const { data: porPatr } = await sb().from("maquinas")
+    .select("id")
+    .eq("fazenda_id", fazendaId)
+    .ilike("patrimonio", v)
+    .limit(1).maybeSingle();
+  if (porPatr?.id) return porPatr.id;
+  // 2. Fallback: busca por nome
+  const { data: porNome } = await sb().from("maquinas")
+    .select("id")
+    .eq("fazenda_id", fazendaId)
+    .ilike("nome", `%${v}%`)
+    .limit(1).maybeSingle();
+  return porNome?.id ?? null;
+}
+
 function parseData(texto: string): string {
   const hoje = new Date();
   const t = texto.toLowerCase().trim();
@@ -349,12 +369,9 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
 
     const valorInterno = custoMedio * qtdUsuario;
 
-    // Lookup máquina
-    const { data: maqData } = await sb().from("maquinas")
-      .select("id")
-      .eq("fazenda_id", fazendaId)
-      .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
-      .limit(1).maybeSingle();
+    // Lookup máquina — por patrimônio ou nome
+    const maqId = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
+    const maqData = maqId ? { id: maqId } : null;
 
     // Inserir abastecimento sem CP
     const { data: abastRec, error: abastErr } = await sb().from("abastecimentos").insert({
@@ -451,12 +468,9 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
   }
 
-  // Histórico de abastecimentos
-  const { data: maqExtData } = await sb().from("maquinas")
-    .select("id")
-    .eq("fazenda_id", fazendaId)
-    .ilike("nome", `%${String(dados.veiculo ?? "")}%`)
-    .limit(1).maybeSingle();
+  // Histórico de abastecimentos — lookup por patrimônio ou nome
+  const maqExtId = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
+  const maqExtData = maqExtId ? { id: maqExtId } : null;
 
   const { data: absRow } = await sb().from("abastecimentos").insert({
     fazenda_id:     fazendaId,
