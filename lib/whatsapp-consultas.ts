@@ -69,13 +69,18 @@ export async function consultaProximoVencimentoMoeda(fazendaId: string, moeda: s
 
 export async function consultaContasReceberMes(fazendaId: string) {
   const { data } = await sb().from("lancamentos")
-    .select("descricao, valor, moeda, data_vencimento")
+    .select("descricao, valor, moeda, data_vencimento, fornecedor, categoria")
     .eq("fazenda_id", fazendaId).eq("tipo", "receber")
-    .in("status", ["em_aberto"]).lte("data_vencimento", fimMes())
+    .in("status", ["em_aberto", "vencido", "vencendo"]).lte("data_vencimento", fimMes())
     .gte("data_vencimento", hoje()).order("data_vencimento");
   if (!data?.length) return "📭 Nenhuma conta a receber este mês.";
   const total = data.reduce((s, r) => s + Number(r.valor), 0);
-  return `💰 *A receber este mês*: ${fmtBRL(total)}\n${data.length} lançamento${data.length !== 1 ? "s" : ""}`;
+  const linhas = data.map(r => {
+    const quem = r.fornecedor ? ` — ${r.fornecedor}` : "";
+    const cat  = r.categoria  ? ` (${r.categoria})`  : "";
+    return `• ${fmtData(r.data_vencimento)}${quem}: *${r.descricao}*${cat} — ${fmtBRL(Number(r.valor))}${r.moeda !== "BRL" ? ` (${r.moeda})` : ""}`;
+  }).join("\n");
+  return `💰 *A receber este mês* — ${data.length} lançamento${data.length !== 1 ? "s" : ""}\n\n${linhas}\n\n*Total: ${fmtBRL(total)}*`;
 }
 
 export async function consultaSaldoProjetado(fazendaId: string) {
