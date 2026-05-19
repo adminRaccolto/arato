@@ -9,17 +9,32 @@ function sb() {
   );
 }
 
-// Busca máquina por patrimônio (exato) ou nome (ilike), patrimônio tem prioridade
+// Busca máquina por patrimônio (parcial) ou nome (parcial), patrimônio tem prioridade
 async function resolverMaquina(fazendaId: string, veiculo: string): Promise<string | null> {
   if (!veiculo) return null;
   const v = veiculo.trim();
-  // 1. Tenta patrimônio exato (case-insensitive)
-  const { data: porPatr } = await sb().from("maquinas")
+  // Extrai só a parte numérica (ex: "Maquina 1" → "1", "001" → "001")
+  const soNumero = v.replace(/\D/g, "");
+  // 1a. Tenta patrimônio com busca parcial do texto completo
+  const { data: porPatrTexto } = await sb().from("maquinas")
     .select("id")
     .eq("fazenda_id", fazendaId)
-    .ilike("patrimonio", v)
+    .ilike("patrimonio", `%${v}%`)
     .limit(1).maybeSingle();
-  if (porPatr?.id) return porPatr.id;
+  if (porPatrTexto?.id) return porPatrTexto.id;
+  // 1b. Tenta patrimônio pela parte numérica (ex: "1" encontra "Máquina 1")
+  if (soNumero) {
+    const { data: porPatrNum } = await sb().from("maquinas")
+      .select("id, patrimonio")
+      .eq("fazenda_id", fazendaId)
+      .ilike("patrimonio", `%${soNumero}`)
+      .limit(5);
+    // Verifica se o número final bate exatamente (evita "1" casar "10","11"...)
+    const exato = (porPatrNum ?? []).find(m =>
+      (m.patrimonio ?? "").replace(/\D/g, "") === soNumero
+    );
+    if (exato?.id) return exato.id;
+  }
   // 2. Fallback: busca por nome
   const { data: porNome } = await sb().from("maquinas")
     .select("id")
