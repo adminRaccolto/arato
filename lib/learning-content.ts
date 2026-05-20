@@ -969,6 +969,202 @@ Vá em **Ajuda** → **Controller** para ver todos os alertas ativos.
       },
     ],
   },
+
+  // ── FASE 8 — Automação SIEG e Suporte IA ──────────────────
+  {
+    id: "fase-8",
+    numero: 8,
+    titulo: "Automação SIEG e Suporte IA",
+    subtitulo: "Importação automática de NFs e assistente inteligente",
+    modulos: [
+      {
+        id: "mod-8-1",
+        numero: 1,
+        titulo: "Automação SIEG",
+        descricao: "Importação automática de NF-e e NFS-e 2× por dia",
+        icone: "🤖",
+        cor: "#1A4870",
+        licoes: [
+          {
+            id: "lc-8-1-1",
+            titulo: "O que é a Automação SIEG",
+            duracao: "4 min",
+            tipo: "leitura",
+            conteudo: `
+## Automação SIEG — NFs importadas sem você precisar fazer nada
+
+A **Automação SIEG** conecta o Arato ao portal SIEG (sieg.com) para baixar automaticamente todas as NF-e e NFS-e emitidas para o CNPJ da sua fazenda.
+
+### Como funciona
+1. O sistema conecta na API SIEG **2× por dia** (8h e 17h BRT)
+2. Baixa todas as notas emitidas para o seu CNPJ que ainda não estão no sistema
+3. Tenta classificar cada nota automaticamente usando as **Regras de Classificação** cadastradas
+4. Notas classificadas entram direto como NF de entrada + Conta a Pagar
+5. Notas sem match vão para a fila de **Pendências de Classificação**
+
+### Por que isso importa
+Sem a automação, cada NF de insumo recebida precisaria ser lançada manualmente. Com a SIEG, o fluxo é:
+
+| Situação | Sem SIEG | Com SIEG |
+|---|---|---|
+| NF de herbicida chega | Lançar manualmente | Classificada e lançada em até 9h |
+| NF de frete | Classificar e criar CP | Vai para pendências (1 clique) |
+| Novo fornecedor | Cadastrar pessoa + NF | Pessoa criada automaticamente |
+
+### Ativar a automação
+Vá em **Configurações → Automações** → card **Automação SIEG** → clique em **Configurar**:
+1. Informe a **API Key** do SIEG (obtida em sieg.com → Integrações)
+2. Informe os **CNPJs** da fazenda (separados por vírgula se houver mais de um)
+3. Ative o toggle **Ligado**
+
+> **Dica:** Execute manualmente pelo botão "Executar agora" para testar antes de deixar automático.
+            `,
+            dica: "A API Key SIEG é gratuita para clientes do portal. Solicite em sieg.com/conta.",
+          },
+          {
+            id: "lc-8-1-2",
+            titulo: "Regras de Classificação",
+            duracao: "5 min",
+            tipo: "pratica",
+            conteudo: `
+## Regras de Classificação — ensine o sistema uma vez, ele faz para sempre
+
+As **Regras de Classificação** dizem ao sistema como tratar cada nota importada pelo SIEG.
+
+### Como funciona uma regra
+Cada regra tem **critérios** (condições AND) e **destino**:
+
+| Critério | Exemplo | Obrigatório? |
+|---|---|---|
+| CNPJ emitente | 08.821.250/0001-60 (Bunge) | Não |
+| NCM do item | 3808.92.40 (herbicidas) | Não |
+| Texto na descrição | "ROUNDUP" | Não |
+
+Se todos os critérios preenchidos forem atendidos → aplica o **destino**:
+- Categoria de lançamento (ex: Defensivos)
+- Insumo vinculado (do cadastro)
+- Centro de custo
+
+> **Ao menos um critério deve ser preenchido.** Quanto mais específica a regra, melhor.
+
+### Criando uma regra
+Vá em **Compras & Estoque → Regras de Classificação** → botão **+ Nova Regra**:
+1. Dê um nome descritivo (ex: "Herbicidas Bayer — CNPJ + NCM")
+2. Preencha os critérios que identificam a nota
+3. Escolha a categoria e o insumo de destino
+4. Salve — a regra entra em vigor na próxima sincronização SIEG
+
+### Criando regras pela classificação manual
+A forma mais rápida de criar regras é ao classificar uma pendência:
+1. Vá em **Pendências de Classificação**
+2. Classifique a nota manualmente
+3. O sistema pergunta: **"Criar regra automática para este fornecedor?"**
+4. Diga sim → a regra é criada com os critérios da nota atual
+
+Assim, com o tempo, cada fornecedor fica coberto e o sistema classifica tudo automaticamente.
+            `,
+            dica: "Priorize criar regras para seus 10 maiores fornecedores de insumos — eles representam ~80% do volume.",
+          },
+        ],
+      },
+      {
+        id: "mod-8-2",
+        numero: 2,
+        titulo: "Pendências de Classificação",
+        descricao: "Como tratar notas que o sistema não conseguiu classificar",
+        icone: "📋",
+        cor: "#C9921B",
+        licoes: [
+          {
+            id: "lc-8-2-1",
+            titulo: "Fila de Pendências",
+            duracao: "4 min",
+            tipo: "pratica",
+            conteudo: `
+## Pendências de Classificação — o que fazer com as NFs sem match
+
+Quando a Automação SIEG importa uma nota que não tem regra cadastrada, ela vai para a fila de **Pendências de Classificação**.
+
+### Acessar as pendências
+Vá em **Compras & Estoque → Pendências de Classificação**.
+
+Você verá:
+- **KPI cards**: total pendente (R$), classificadas, ignoradas
+- **Lista de NFs**: ordenadas por valor, com fornecedor e data
+- **Filtros**: pendentes / classificadas / ignoradas / todas
+
+### Classificando uma nota pendente
+1. Clique na nota para abrir o painel de classificação
+2. Selecione a categoria do lançamento
+3. Se for um insumo, vincule ao produto no cadastro
+4. Informe o centro de custo (opcional)
+5. Clique em **Classificar**
+6. O sistema pergunta: **"Criar regra automática para este fornecedor?"** → diga sim!
+
+### O que acontece ao classificar
+✅ A NF é marcada como "classificada"
+✅ O lançamento (CP) é criado no financeiro
+✅ O estoque é movimentado (se insumo)
+✅ A regra é salva para nunca mais precisar classificar esse fornecedor manualmente
+
+### Ignorando uma nota
+Use **Ignorar** para notas que não devem entrar no sistema:
+- NFs de fornecedores sem relação com a fazenda
+- Notas duplicadas ou canceladas
+- Lançamentos já existentes no sistema
+
+> **Meta:** após 2-3 meses de uso, a fila de pendências deve ser praticamente zero — tudo classificado automaticamente.
+            `,
+            dica: "Revise as pendências diariamente nos primeiros 30 dias. Depois, semanal é suficiente.",
+          },
+        ],
+      },
+      {
+        id: "mod-8-3",
+        numero: 3,
+        titulo: "Suporte IA",
+        descricao: "Como usar o assistente inteligente do Arato",
+        icone: "💬",
+        cor: "#16A34A",
+        licoes: [
+          {
+            id: "lc-8-3-1",
+            titulo: "Usando o Assistente do Arato",
+            duracao: "3 min",
+            tipo: "leitura",
+            conteudo: `
+## Suporte IA — seu consultor disponível 24h
+
+O **Assistente do Arato** é um sistema de IA especializado no agronegócio brasileiro e no sistema Arato.
+
+### O que ele sabe responder
+- **Como usar o sistema**: "Como lançar uma NF de entrada?"
+- **Regras fiscais do agronegócio**: "Qual o CFOP para venda de soja interestadual?"
+- **Conceitos agrícolas**: "O que é Funrural? Como é calculado?"
+- **Dúvidas sobre módulos**: "Como funciona a Automação SIEG?"
+- **Interpretação de relatórios**: "O que significa o Ponto de Equilíbrio no DRE?"
+
+### Como acessar
+Vá em **Ajuda → Suporte IA** — o chat fica disponível em qualquer tela.
+
+### Dicas de uso
+- **Seja específico**: "Como registro uma pulverização de fungicida no ciclo Soja 25/26?" recebe resposta melhor que "como uso a lavoura?"
+- **Contexto ajuda**: mencione o módulo que está usando
+- **Questões fiscais complexas**: o assistente orienta, mas sempre recomende confirmar com seu contador
+
+### O que ele NÃO faz
+- Não acessa seus dados reais (não vê suas NFs, contratos ou lançamentos)
+- Não toma ações no sistema (não cria nem edita registros)
+- Não substitui o contador para decisões tributárias complexas
+
+> O Assistente é especializado em Mato Grosso, Nova Mutum e no contexto do agronegócio do Centro-Oeste.
+            `,
+            dica: "O assistente é baseado no Claude (Anthropic) — um dos modelos de IA mais avançados do mundo.",
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 // ── Helpers ─────────────────────────────────────────────────

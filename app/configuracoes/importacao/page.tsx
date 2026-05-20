@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin";
+type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos";
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
@@ -39,9 +39,19 @@ type MaquinaRow = {
 type ContratoFinRow = {
   numero_contrato: string; descricao: string; credor: string; credor_cpf_cnpj: string;
   tipo: string; moeda: string; valor_total: string; data_contrato: string;
-  taxa_juros_am: string; observacao: string;
-  // controle interno
+  data_liberacao: string; prazo_meses: string;
+  taxa_juros_am: string; taxa_juros_aa: string;
+  iof_pct: string; tac_valor: string; linha_credito: string;
+  tipo_amortizacao: string; cotacao_usd: string; auto_parcelas: string;
+  observacao: string;
   _status?: "ok" | "erro" | "duplicado" | "aviso"; _msg?: string; _cp_encontrados?: number;
+};
+
+type ArrendamentoRow = {
+  proprietario_cpf_cnpj: string; proprietario_nome: string;
+  area_ha: string; forma_pagamento: string; valor: string;
+  data_inicio: string; data_fim: string; observacao: string;
+  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 
 // ─── Templates ────────────────────────────────────────────────
@@ -86,10 +96,17 @@ const TEMPLATE_MAQUINAS = [
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
-  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "moeda", "valor_total*", "data_contrato*", "taxa_juros_am", "observacao"],
-  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "BRL", "1656177.09", "2025-06-01", "0.89", ""],
-  ["131910484", "Investimento Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "4800000.00", "2024-03-15", "", "Financiamento maquinário"],
-  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "BRL", "1688649.36", "2025-01-10", "", ""],
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "moeda", "valor_total*", "data_contrato*", "data_liberacao", "prazo_meses", "taxa_juros_am", "taxa_juros_aa", "iof_pct", "tac_valor", "linha_credito", "tipo_amortizacao", "cotacao_usd", "auto_parcelas", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "BRL", "1656177.09", "2025-06-01", "2025-06-01", "12", "0.89", "", "", "", "PRONAMP", "sac", "", "sim", ""],
+  ["131910484", "Investimento Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "480000.00", "2024-03-15", "2024-03-15", "48", "0.75", "", "0.38", "1200.00", "Moderfrota", "price", "", "sim", "Trator John Deere"],
+  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "USD", "1688649.36", "2025-01-10", "2025-01-10", "1", "", "", "", "", "", "bullet", "5.85", "nao", ""],
+];
+
+const TEMPLATE_ARRENDAMENTOS = [
+  ["proprietario_cpf_cnpj*", "proprietario_nome", "area_ha*", "forma_pagamento*", "valor*", "data_inicio*", "data_fim*", "observacao"],
+  ["012.345.678-90", "João da Silva", "150.5", "sc_soja", "8.5", "2025-10-01", "2026-09-30", "Gleba Norte"],
+  ["987.654.321-00", "Maria Ferreira", "200.0", "brl", "350.00", "2025-10-01", "2026-09-30", "R$/ha — arrendamento dinheiro"],
+  ["07.945.853/0001-14", "Espólio Santos", "80.0", "sc_milho", "5.0", "2026-01-01", "2026-12-31", ""],
 ];
 
 const INSTRUCOES_CONTRATOS_FIN = [
@@ -101,22 +118,53 @@ const INSTRUCOES_CONTRATOS_FIN = [
   ["• tipo: custeio, investimento, cpr, egf, securitizacao, outros"],
   ["• moeda: BRL ou USD"],
   ["• valor_total: valor total financiado (sem R$, ex: 1500000.00)"],
-  ["• data_contrato: no formato AAAA-MM-DD (ex: 2026-03-15)"],
-  ["• taxa_juros_am: taxa de juros mensal em % (ex: 0.89 para 0,89% a.m.)"],
+  ["• data_contrato: data de assinatura no formato AAAA-MM-DD"],
+  ["• data_liberacao: data em que o recurso foi liberado (usada como início das parcelas)"],
+  ["• prazo_meses: número total de parcelas mensais (ex: 12, 24, 48)"],
+  ["• taxa_juros_am: taxa de juros mensal em % (ex: 0.89 para 0,89% a.m.) — AM ou AA, não os dois"],
+  ["• taxa_juros_aa: taxa de juros anual em % (ex: 11.16 para 11,16% a.a.) — convertida automaticamente para AM"],
+  ["• iof_pct: IOF em % sobre o valor total (ex: 0.38)"],
+  ["• tac_valor: Tarifa de Abertura de Crédito em R$ (ex: 1200.00)"],
+  ["• linha_credito: nome da linha de crédito (ex: PRONAMP, Moderfrota, FCO Rural)"],
+  ["• tipo_amortizacao: sac, price ou bullet (padrão: sac)"],
+  ["  sac   → amortização constante, parcelas decrescentes"],
+  ["  price → Tabela Price / Francesa, parcelas fixas"],
+  ["  bullet → paga só juros mensais, principal no final"],
+  ["• cotacao_usd: cotação do dólar na data do contrato (só para moeda=USD, ex: 5.85)"],
+  ["• auto_parcelas: sim ou nao — se sim e prazo_meses > 0, gera o cronograma completo de parcelas"],
   ["• credor_cpf_cnpj: CNPJ/CPF do credor — usado para vincular ao cadastro de Pessoas"],
   [""],
-  ["⚠️  AVISO IMPORTANTE — Evitar duplicação do financeiro:"],
-  ["  Se o número do contrato (numero_contrato) já existir em lançamentos CP,"],
-  ["  o sistema apenas CRIA o registro do contrato mas NÃO gera novo CP."],
-  ["  Os lançamentos já existentes são automaticamente vinculados como parcelas."],
+  ["⚠️  AVISO — Evitar duplicação do financeiro:"],
+  ["  Se o numero_contrato já existir em lançamentos CP, o sistema vincula os CP"],
+  ["  existentes como parcelas sem criar duplicatas (auto_parcelas é ignorado)."],
   [""],
   ["Tipos disponíveis:"],
-  ["  custeio        → custeio agrícola (Pronaf, custeio BCB)"],
-  ["  investimento   → financiamento de máquinas e infraestrutura"],
+  ["  custeio        → custeio agrícola (Pronaf, custeio BCB, PRONAMP)"],
+  ["  investimento   → financiamento de máquinas e infraestrutura (Moderfrota)"],
   ["  cpr            → Cédula de Produto Rural"],
   ["  egf            → Empréstimo do Governo Federal"],
   ["  securitizacao  → securitização de dívidas rurais"],
   ["  outros         → mútuo, capital de giro e demais"],
+];
+
+const INSTRUCOES_ARRENDAMENTOS = [
+  ["INSTRUÇÕES — IMPORTAÇÃO DE ARRENDAMENTOS"],
+  [""],
+  ["• Campos com * são obrigatórios"],
+  ["• Não altere os nomes das colunas (linha 1)"],
+  ["• proprietario_cpf_cnpj: CPF ou CNPJ do proprietário da terra — vincula ao cadastro de Pessoas"],
+  ["• proprietario_nome: apenas referência visual; não cria pessoa automaticamente"],
+  ["• area_ha: área arrendada em hectares (ex: 150.5)"],
+  ["• forma_pagamento: sc_soja, sc_milho, sc_soja_milho ou brl"],
+  ["  → sc_soja / sc_milho: valor é o número de sacas por hectare por safra"],
+  ["  → sc_soja_milho: paga proporcionalmente em soja e milho"],
+  ["  → brl: valor em R$ por hectare (gera conta a pagar no financeiro)"],
+  ["• valor: sacas/ha (para sc_*) ou R$/ha (para brl)"],
+  ["• data_inicio / data_fim: período do arrendamento no formato AAAA-MM-DD"],
+  [""],
+  ["Efeitos automáticos:"],
+  ["  sc_soja / sc_milho / sc_soja_milho: compromete volume no BI de Grãos"],
+  ["  brl: gera conta a pagar proporcional ao período informado"],
 ];
 
 const INSTRUCOES_MAQUINAS = [
@@ -168,17 +216,24 @@ const INSTRUCOES_PRODUTOS = [
   ["  outros      → demais itens que não se enquadram acima"],
 ];
 
+function addMonths(dateStr: string, months: number): string {
+  const d = new Date(dateStr + "T12:00:00");
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split("T")[0];
+}
+
 function downloadTemplate(aba: Aba) {
   import("xlsx").then(({ utils, writeFile }) => {
     const wb = utils.book_new();
     const templates: Record<Aba, (string | number)[][]> = {
-      pessoas:       TEMPLATE_PESSOAS,
-      cp:            TEMPLATE_CP,
-      cr:            TEMPLATE_CR,
-      insumos:       TEMPLATE_INSUMOS,
-      produtos:      TEMPLATE_PRODUTOS,
-      maquinas:      TEMPLATE_MAQUINAS,
-      contratos_fin: TEMPLATE_CONTRATOS_FIN,
+      pessoas:        TEMPLATE_PESSOAS,
+      cp:             TEMPLATE_CP,
+      cr:             TEMPLATE_CR,
+      insumos:        TEMPLATE_INSUMOS,
+      produtos:       TEMPLATE_PRODUTOS,
+      maquinas:       TEMPLATE_MAQUINAS,
+      contratos_fin:  TEMPLATE_CONTRATOS_FIN,
+      arrendamentos:  TEMPLATE_ARRENDAMENTOS,
     };
     const ws = utils.aoa_to_sheet(templates[aba]);
     ws["!cols"] = templates[aba][0].map(() => ({ wch: 26 }));
@@ -200,25 +255,27 @@ function downloadTemplate(aba: Aba) {
       ["• unidade: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, outros"],
     ];
     const instrMap: Record<Aba, (string | number)[][]> = {
-      pessoas:       instrBase,
-      cp:            instrBase,
-      cr:            instrBase,
-      insumos:       instrBase,
-      produtos:      INSTRUCOES_PRODUTOS,
-      maquinas:      INSTRUCOES_MAQUINAS,
-      contratos_fin: INSTRUCOES_CONTRATOS_FIN,
+      pessoas:        instrBase,
+      cp:             instrBase,
+      cr:             instrBase,
+      insumos:        instrBase,
+      produtos:       INSTRUCOES_PRODUTOS,
+      maquinas:       INSTRUCOES_MAQUINAS,
+      contratos_fin:  INSTRUCOES_CONTRATOS_FIN,
+      arrendamentos:  INSTRUCOES_ARRENDAMENTOS,
     };
     const instrucoes = utils.aoa_to_sheet(instrMap[aba]);
     utils.book_append_sheet(wb, instrucoes, "Instruções");
 
     const nomes: Record<Aba, string> = {
-      pessoas:       "template_pessoas.xlsx",
-      cp:            "template_contas_pagar.xlsx",
-      cr:            "template_contas_receber.xlsx",
-      insumos:       "template_insumos.xlsx",
-      produtos:      "template_produtos.xlsx",
-      maquinas:      "template_maquinas_veiculos.xlsx",
-      contratos_fin: "template_contratos_financeiros.xlsx",
+      pessoas:        "template_pessoas.xlsx",
+      cp:             "template_contas_pagar.xlsx",
+      cr:             "template_contas_receber.xlsx",
+      insumos:        "template_insumos.xlsx",
+      produtos:       "template_produtos.xlsx",
+      maquinas:       "template_maquinas_veiculos.xlsx",
+      contratos_fin:  "template_contratos_financeiros.xlsx",
+      arrendamentos:  "template_arrendamentos.xlsx",
     };
     writeFile(wb, nomes[aba]);
   });
@@ -298,6 +355,8 @@ function validarProduto(r: Record<string, string>): ProdutoRow {
 }
 
 const TIPOS_CONTRATO_FIN = ["custeio","investimento","cpr","egf","securitizacao","outros"];
+const TIPOS_AMORTIZACAO = ["sac","price","bullet"];
+const FORMAS_PAGAMENTO_ARR = ["sc_soja","sc_milho","sc_soja_milho","brl"];
 
 function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   const row = r as unknown as ContratoFinRow;
@@ -311,7 +370,31 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor_total inválido" };
   if (!row.data_contrato?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_contrato.trim()))
     return { ...row, _status: "erro", _msg: "data_contrato deve ser AAAA-MM-DD" };
-  return { ...row, tipo, _status: "ok", _msg: "" };
+  if (row.data_liberacao?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_liberacao.trim()))
+    return { ...row, _status: "erro", _msg: "data_liberacao deve ser AAAA-MM-DD" };
+  if (row.prazo_meses?.trim() && (isNaN(parseInt(row.prazo_meses)) || parseInt(row.prazo_meses) < 1))
+    return { ...row, _status: "erro", _msg: "prazo_meses deve ser número inteiro positivo" };
+  const tipoAmort = (row.tipo_amortizacao || "").trim().toLowerCase();
+  if (tipoAmort && !TIPOS_AMORTIZACAO.includes(tipoAmort))
+    return { ...row, _status: "erro", _msg: `tipo_amortizacao deve ser: ${TIPOS_AMORTIZACAO.join(", ")}` };
+  return { ...row, tipo, tipo_amortizacao: tipoAmort || "sac", _status: "ok", _msg: "" };
+}
+
+function validarArrendamento(r: Record<string, string>): ArrendamentoRow {
+  const row = r as unknown as ArrendamentoRow;
+  if (!row.proprietario_cpf_cnpj?.trim()) return { ...row, _status: "erro", _msg: "proprietario_cpf_cnpj obrigatório" };
+  const area = parseFloat(String(row.area_ha).replace(",", "."));
+  if (isNaN(area) || area <= 0) return { ...row, _status: "erro", _msg: "area_ha inválida" };
+  const forma = (row.forma_pagamento || "").trim().toLowerCase();
+  if (!FORMAS_PAGAMENTO_ARR.includes(forma))
+    return { ...row, _status: "erro", _msg: `forma_pagamento deve ser: ${FORMAS_PAGAMENTO_ARR.join(", ")}` };
+  const valor = parseFloat(String(row.valor).replace(",", "."));
+  if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor inválido" };
+  if (!row.data_inicio?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_inicio.trim()))
+    return { ...row, _status: "erro", _msg: "data_inicio deve ser AAAA-MM-DD" };
+  if (!row.data_fim?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_fim.trim()))
+    return { ...row, _status: "erro", _msg: "data_fim deve ser AAAA-MM-DD" };
+  return { ...row, forma_pagamento: forma, _status: "ok", _msg: "" };
 }
 
 // Tipos aceitos pelo banco — mapeamento de aliases comuns do Excel
@@ -501,24 +584,28 @@ export default function ImportacaoPage() {
   const [crRows,       setCrRows]       = useState<LancRow[]>([]);
   const [insumosRows,  setInsumosRows]  = useState<InsumoRow[]>([]);
   const [produtosRows, setProdutosRows] = useState<ProdutoRow[]>([]);
-  const [maquinasRows,     setMaquinasRows]     = useState<MaquinaRow[]>([]);
-  const [contratoFinRows,  setContratoFinRows]  = useState<ContratoFinRow[]>([]);
+  const [maquinasRows,       setMaquinasRows]       = useState<MaquinaRow[]>([]);
+  const [contratoFinRows,    setContratoFinRows]    = useState<ContratoFinRow[]>([]);
+  const [arrendamentosRows,  setArrendamentosRows]  = useState<ArrendamentoRow[]>([]);
 
-  const [loadingPessoas,  setLoadingPessoas]  = useState(false);
-  const [loadingCp,       setLoadingCp]       = useState(false);
-  const [loadingCr,       setLoadingCr]       = useState(false);
-  const [loadingInsumos,  setLoadingInsumos]  = useState(false);
-  const [loadingProdutos, setLoadingProdutos] = useState(false);
+  const [loadingPessoas,     setLoadingPessoas]     = useState(false);
+  const [loadingCp,          setLoadingCp]          = useState(false);
+  const [loadingCr,          setLoadingCr]          = useState(false);
+  const [loadingInsumos,     setLoadingInsumos]     = useState(false);
+  const [loadingProdutos,    setLoadingProdutos]    = useState(false);
   const [loadingMaquinas,    setLoadingMaquinas]    = useState(false);
   const [loadingContratoFin, setLoadingContratoFin] = useState(false);
+  const [loadingArrendamentos, setLoadingArrendamentos] = useState(false);
 
-  const [resultPessoas,  setResultPessoas]  = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultCp,       setResultCp]       = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultCr,       setResultCr]       = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultInsumos,  setResultInsumos]  = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultProdutos, setResultProdutos] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultMaquinas,    setResultMaquinas]    = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
-  const [resultContratoFin, setResultContratoFin] = useState<{ ok: number; erros: number; duplicados: number } | null>(null);
+  type Resultado = { ok: number; erros: number; duplicados: number };
+  const [resultPessoas,      setResultPessoas]      = useState<Resultado | null>(null);
+  const [resultCp,           setResultCp]           = useState<Resultado | null>(null);
+  const [resultCr,           setResultCr]           = useState<Resultado | null>(null);
+  const [resultInsumos,      setResultInsumos]      = useState<Resultado | null>(null);
+  const [resultProdutos,     setResultProdutos]     = useState<Resultado | null>(null);
+  const [resultMaquinas,     setResultMaquinas]     = useState<Resultado | null>(null);
+  const [resultContratoFin,  setResultContratoFin]  = useState<Resultado | null>(null);
+  const [resultArrendamentos, setResultArrendamentos] = useState<Resultado | null>(null);
 
   // ─── Acesso restrito ──────────────────────────────────────
   if (userRole !== "raccotlo") {
@@ -819,6 +906,58 @@ export default function ImportacaoPage() {
       if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
       ok++;
 
+      // Auto-geração de parcelas (SAC/PRICE/BULLET) se não há CP existentes
+      const prazo = parseInt(r.prazo_meses || "0");
+      const autoP = (r.auto_parcelas || "").toLowerCase() === "sim";
+      if (autoP && prazo > 0 && (r._cp_encontrados ?? 0) === 0 && contrato) {
+        const startDate = r.data_liberacao?.trim() || r.data_contrato.trim();
+        let taxaAm = r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : 0;
+        if (!taxaAm && r.taxa_juros_aa?.trim()) {
+          const aa = parseFloat(r.taxa_juros_aa.replace(",", "."));
+          taxaAm = (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100;
+        }
+        const i = taxaAm / 100;
+        const pv = parseFloat(String(r.valor_total).replace(",", "."));
+        const tipoAmort = (r.tipo_amortizacao || "sac").toLowerCase();
+        const parcRows: Record<string, unknown>[] = [];
+
+        if (tipoAmort === "price") {
+          const pf = i === 0 ? pv / prazo : pv * i / (1 - Math.pow(1 + i, -prazo));
+          let saldo = pv;
+          for (let m = 1; m <= prazo; m++) {
+            const juros = saldo * i; const amort = pf - juros; saldo -= amort;
+            parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: m,
+              data_vencimento: addMonths(startDate, m), amortizacao: Math.round(amort * 100) / 100,
+              juros: Math.round(juros * 100) / 100, despesas_acessorios: 0,
+              valor_parcela: Math.round(pf * 100) / 100,
+              saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100), status: "em_aberto" });
+          }
+        } else if (tipoAmort === "bullet") {
+          const jm = Math.round(pv * i * 100) / 100;
+          for (let m = 1; m < prazo; m++) {
+            parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: m,
+              data_vencimento: addMonths(startDate, m), amortizacao: 0,
+              juros: jm, despesas_acessorios: 0, valor_parcela: jm, saldo_devedor: pv, status: "em_aberto" });
+          }
+          parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: prazo,
+            data_vencimento: addMonths(startDate, prazo), amortizacao: pv,
+            juros: jm, despesas_acessorios: 0, valor_parcela: Math.round((pv + jm) * 100) / 100,
+            saldo_devedor: 0, status: "em_aberto" });
+        } else {
+          // SAC (padrão)
+          const amort = pv / prazo; let saldo = pv;
+          for (let m = 1; m <= prazo; m++) {
+            const juros = saldo * i; saldo -= amort;
+            parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: m,
+              data_vencimento: addMonths(startDate, m), amortizacao: Math.round(amort * 100) / 100,
+              juros: Math.round(juros * 100) / 100, despesas_acessorios: 0,
+              valor_parcela: Math.round((amort + juros) * 100) / 100,
+              saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100), status: "em_aberto" });
+          }
+        }
+        if (parcRows.length > 0) await supabase.from("parcelas_pagamento").insert(parcRows);
+      }
+
       // Se há CP existentes com esse numero_documento, vincula como parcelas
       if ((r._cp_encontrados ?? 0) > 0 && contrato) {
         const { data: cpExist } = await supabase.from("lancamentos")
@@ -904,6 +1043,45 @@ export default function ImportacaoPage() {
     setLoadingMaquinas(false);
   }
 
+  async function handleFileArrendamentos(file: File) {
+    const raw = await parseXlsx(file);
+    const rows = raw.map(r => validarArrendamento(r));
+    setArrendamentosRows(rows); setResultArrendamentos(null);
+  }
+
+  async function importarArrendamentos() {
+    if (!fazendaId || !arrendamentosRows.length) return;
+    setLoadingArrendamentos(true);
+    let ok = 0, erros = 0, duplicados = 0;
+    const { data: pessoas } = await supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+    const pessoaMap: Record<string, string> = {};
+    (pessoas ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
+      if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+    });
+    for (const r of arrendamentosRows) {
+      if (r._status === "duplicado") { duplicados++; continue; }
+      if (r._status === "erro")      { erros++;      continue; }
+      const docNum = r.proprietario_cpf_cnpj.replace(/\D/g, "");
+      const proprietarioId = pessoaMap[docNum] ?? null;
+      const { error } = await supabase.from("arrendamentos").insert({
+        fazenda_id:      fazendaId,
+        pessoa_id:       proprietarioId,
+        area_ha:         parseFloat(String(r.area_ha).replace(",", ".")),
+        forma_pagamento: r.forma_pagamento,
+        valor:           parseFloat(String(r.valor).replace(",", ".")),
+        data_inicio:     r.data_inicio.trim(),
+        data_fim:        r.data_fim.trim(),
+        obs:             r.observacao?.trim() || null,
+        status:          "ativo",
+      });
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+      else ok++;
+    }
+    setArrendamentosRows([...arrendamentosRows]);
+    setResultArrendamentos({ ok, erros, duplicados });
+    setLoadingArrendamentos(false);
+  }
+
   // ─── Config por aba ───────────────────────────────────────
   const ABA_CONFIG: Record<Aba, {
     label: string; icon: string; desc: string;
@@ -973,13 +1151,23 @@ export default function ImportacaoPage() {
     },
     contratos_fin: {
       label: "Contratos Financeiros", icon: "🏦",
-      desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). CP já existentes são vinculados automaticamente — sem duplicação.",
-      cols: ["numero_contrato", "descricao", "credor", "tipo", "moeda", "valor_total", "data_contrato"],
+      desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). Use auto_parcelas=sim para gerar o cronograma SAC/PRICE/BULLET automaticamente.",
+      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "prazo_meses", "tipo_amortizacao", "auto_parcelas"],
       rows: contratoFinRows as Record<string, unknown>[],
       loading: loadingContratoFin,
       result: resultContratoFin,
       onFile: handleFileContratoFin,
       onImport: importarContratosFin,
+    },
+    arrendamentos: {
+      label: "Arrendamentos", icon: "🌾",
+      desc: "Importe contratos de arrendamento de terras. Vincule ao proprietário pelo CPF/CNPJ cadastrado em Pessoas.",
+      cols: ["proprietario_cpf_cnpj", "proprietario_nome", "area_ha", "forma_pagamento", "valor", "data_inicio", "data_fim"],
+      rows: arrendamentosRows as Record<string, unknown>[],
+      loading: loadingArrendamentos,
+      result: resultArrendamentos,
+      onFile: handleFileArrendamentos,
+      onImport: importarArrendamentos,
     },
   };
 
@@ -989,13 +1177,14 @@ export default function ImportacaoPage() {
   const erroRows  = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "erro").length;
 
   function limpar() {
-    if (aba === "pessoas")  { setPessoasRows([]);  setResultPessoas(null); }
-    if (aba === "cp")        { setCpRows([]);       setResultCp(null); }
-    if (aba === "cr")        { setCrRows([]);       setResultCr(null); }
-    if (aba === "insumos")  { setInsumosRows([]);  setResultInsumos(null); }
-    if (aba === "produtos") { setProdutosRows([]); setResultProdutos(null); }
-    if (aba === "maquinas")      { setMaquinasRows([]);    setResultMaquinas(null); }
-    if (aba === "contratos_fin") { setContratoFinRows([]); setResultContratoFin(null); }
+    if (aba === "pessoas")       { setPessoasRows([]);        setResultPessoas(null); }
+    if (aba === "cp")            { setCpRows([]);              setResultCp(null); }
+    if (aba === "cr")            { setCrRows([]);              setResultCr(null); }
+    if (aba === "insumos")       { setInsumosRows([]);         setResultInsumos(null); }
+    if (aba === "produtos")      { setProdutosRows([]);        setResultProdutos(null); }
+    if (aba === "maquinas")      { setMaquinasRows([]);        setResultMaquinas(null); }
+    if (aba === "contratos_fin") { setContratoFinRows([]);     setResultContratoFin(null); }
+    if (aba === "arrendamentos") { setArrendamentosRows([]);   setResultArrendamentos(null); }
   }
 
   return (
@@ -1018,7 +1207,7 @@ export default function ImportacaoPage() {
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
           <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin"] as Aba[]).map(a => {
+            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
                 <button
