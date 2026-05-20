@@ -4208,3 +4208,103 @@ CREATE POLICY "aditivos_all" ON aditivos_contrato FOR ALL
   USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ══════════════════════════════════════════════════════════════
+-- Seção 101: SIEG — Integração fiscal automática
+-- Execução: Supabase SQL Editor
+-- ══════════════════════════════════════════════════════════════
+
+-- Configurações de automação por fazenda (toggle on/off + config)
+CREATE TABLE IF NOT EXISTS configuracoes_automacao (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id    UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  automacao_id  TEXT NOT NULL,
+  ativa         BOOLEAN NOT NULL DEFAULT false,
+  config        JSONB DEFAULT '{}',
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (fazenda_id, automacao_id)
+);
+ALTER TABLE configuracoes_automacao ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "cfg_automacao_all" ON configuracoes_automacao;
+CREATE POLICY "cfg_automacao_all" ON configuracoes_automacao FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+-- NFs importadas via SIEG
+CREATE TABLE IF NOT EXISTS nf_importadas_sieg (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  chave_acesso        TEXT NOT NULL,
+  numero              TEXT,
+  serie               TEXT,
+  data_emissao        DATE,
+  cnpj_emitente       TEXT NOT NULL DEFAULT '',
+  nome_emitente       TEXT,
+  valor_total         NUMERIC(15,2),
+  xml_storage_path    TEXT,
+  status              TEXT NOT NULL DEFAULT 'pendente',  -- pendente | classificada | ignorada | erro
+  pessoa_id           UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  cp_id               UUID,  -- FK lancamentos (CP criado)
+  classificada_em     TIMESTAMPTZ,
+  classificada_por    UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  obs                 TEXT,
+  erro_msg            TEXT,
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (fazenda_id, chave_acesso)
+);
+ALTER TABLE nf_importadas_sieg ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "nf_sieg_all" ON nf_importadas_sieg;
+CREATE POLICY "nf_sieg_all" ON nf_importadas_sieg FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+-- Itens de cada NF importada
+CREATE TABLE IF NOT EXISTS nf_importada_itens_sieg (
+  id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nf_id                       UUID NOT NULL REFERENCES nf_importadas_sieg(id) ON DELETE CASCADE,
+  numero_item                 INTEGER,
+  codigo_produto              TEXT,
+  descricao                   TEXT NOT NULL DEFAULT '',
+  ncm                         TEXT,
+  cfop                        TEXT,
+  quantidade                  NUMERIC(15,4),
+  unidade                     TEXT,
+  valor_unitario              NUMERIC(15,4),
+  valor_total                 NUMERIC(15,2),
+  insumo_id                   UUID REFERENCES insumos(id) ON DELETE SET NULL,
+  categoria                   TEXT,
+  centro_custo_id             UUID,
+  classificado_automaticamente BOOLEAN DEFAULT false,
+  regra_id                    UUID,
+  status_item                 TEXT NOT NULL DEFAULT 'pendente'  -- pendente | classificado | sem_match | ignorado
+);
+ALTER TABLE nf_importada_itens_sieg ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "nf_sieg_itens_all" ON nf_importada_itens_sieg;
+CREATE POLICY "nf_sieg_itens_all" ON nf_importada_itens_sieg FOR ALL
+  USING (nf_id IN (SELECT n.id FROM nf_importadas_sieg n JOIN fazendas f ON f.id = n.fazenda_id JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+-- Regras de classificação automática
+CREATE TABLE IF NOT EXISTS regras_classificacao_nf (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome_regra            TEXT,
+  cnpj_emitente         TEXT,         -- match por CNPJ do fornecedor (opcional)
+  ncm                   TEXT,         -- match por NCM (opcional)
+  descricao_contem      TEXT,         -- match por substring na descrição (opcional)
+  insumo_id             UUID REFERENCES insumos(id) ON DELETE SET NULL,
+  categoria             TEXT,
+  centro_custo_id       UUID,
+  operacao_gerencial_id UUID,
+  ativo                 BOOLEAN NOT NULL DEFAULT true,
+  criada_por            UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  ultima_aplicacao      TIMESTAMPTZ,
+  qtd_aplicacoes        INTEGER NOT NULL DEFAULT 0,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE regras_classificacao_nf ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "regras_class_all" ON regras_classificacao_nf;
+CREATE POLICY "regras_class_all" ON regras_classificacao_nf FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+-- Campo importado_sieg em pessoas (para marcar fornecedores criados automaticamente)
+ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS importado_sieg BOOLEAN DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

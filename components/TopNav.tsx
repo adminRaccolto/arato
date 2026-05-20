@@ -101,6 +101,13 @@ const NAV: NavItem[] = [
           { id: "comp-nf-servico", label: "NF de Serviços", path: "/compras/nf-servico" },
         ],
       },
+      {
+        type: "subgroup", id: "sg-sieg", label: "Automação SIEG",
+        children: [
+          { id: "sieg-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"       },
+          { id: "sieg-regras",     label: "Regras de Classificação",     path: "/configuracoes/classificacao"    },
+        ],
+      },
     ],
   },
 
@@ -340,7 +347,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "cadastros")       return pathname === "/cadastros";
     if (item.id === "comercial")       return pathname === "/contratos" || pathname.startsWith("/expedicao") || pathname.startsWith("/contratos") || pathname.startsWith("/comercial");
     if (item.id === "transporte")      return pathname.startsWith("/transporte");
-    if (item.id === "compras")  return pathname.startsWith("/compras") || pathname === "/fiscal/manifestacao";
+    if (item.id === "compras")  return pathname.startsWith("/compras") || pathname === "/fiscal/manifestacao" || pathname === "/financeiro/pendencias-nf";
     if (item.id === "estoque")  return pathname === "/estoque" || pathname.startsWith("/estoque");
     if (item.id === "financeiro")      return pathname.startsWith("/financeiro");
     if (item.id === "lavoura")         return pathname.startsWith("/lavoura");

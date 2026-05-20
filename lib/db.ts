@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -3640,6 +3640,100 @@ export async function estornarMovimentacoesPA(nfEntradaId: string): Promise<void
     }, { onConflict: "fazenda_id,principio_ativo_id" });
   }
   await supabase.from("movimentacoes_pa").delete().eq("nf_entrada_id", nfEntradaId);
+}
+
+// ————————————————————————————————————————
+// SIEG — INTEGRAÇÃO FISCAL AUTOMÁTICA
+// ————————————————————————————————————————
+
+export async function listarNfsImportadas(fazendaId: string, status?: string): Promise<NfImportadaSieg[]> {
+  let q = supabase.from("nf_importadas_sieg").select("*").eq("fazenda_id", fazendaId).order("data_emissao", { ascending: false });
+  if (status) q = q.eq("status", status);
+  const { data } = await q;
+  return (data ?? []) as NfImportadaSieg[];
+}
+
+export async function listarItensSieg(nfId: string): Promise<NfImportadaItemSieg[]> {
+  const { data } = await supabase.from("nf_importada_itens_sieg").select("*").eq("nf_id", nfId).order("numero_item");
+  return (data ?? []) as NfImportadaItemSieg[];
+}
+
+export async function classificarItemSieg(
+  itemId: string,
+  nfId: string,
+  dados: { insumo_id?: string | null; categoria?: string | null; centro_custo_id?: string | null; status_item: string }
+): Promise<void> {
+  await supabase.from("nf_importada_itens_sieg").update(dados).eq("id", itemId);
+  const { data: itens } = await supabase.from("nf_importada_itens_sieg").select("status_item").eq("nf_id", nfId);
+  const pendentes = (itens ?? []).filter(i => i.status_item === "pendente");
+  if (pendentes.length === 0) {
+    await supabase.from("nf_importadas_sieg").update({ status: "classificada", classificada_em: new Date().toISOString() }).eq("id", nfId);
+  }
+}
+
+export async function ignorarNfSieg(nfId: string): Promise<void> {
+  await supabase.from("nf_importadas_sieg").update({ status: "ignorada" }).eq("id", nfId);
+  await supabase.from("nf_importada_itens_sieg").update({ status_item: "ignorado" }).eq("nf_id", nfId);
+}
+
+export async function reabrirNfSieg(nfId: string): Promise<void> {
+  await supabase.from("nf_importadas_sieg").update({ status: "pendente", classificada_em: null }).eq("id", nfId);
+}
+
+export async function contarPendenciasSieg(fazendaId: string): Promise<number> {
+  const { count } = await supabase.from("nf_importadas_sieg").select("id", { count: "exact", head: true }).eq("fazenda_id", fazendaId).eq("status", "pendente");
+  return count ?? 0;
+}
+
+// ————————————————————————————————————————
+// REGRAS DE CLASSIFICAÇÃO NF
+// ————————————————————————————————————————
+
+export async function listarRegrasClassificacaoNf(fazendaId: string): Promise<RegraClassificacaoNf[]> {
+  const { data } = await supabase.from("regras_classificacao_nf").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false });
+  return (data ?? []) as RegraClassificacaoNf[];
+}
+
+export async function criarRegraClassificacaoNf(r: Omit<RegraClassificacaoNf, "id" | "created_at" | "qtd_aplicacoes" | "ultima_aplicacao">): Promise<RegraClassificacaoNf> {
+  const { data, error } = await supabase.from("regras_classificacao_nf").insert({ ...r, qtd_aplicacoes: 0 }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarRegraClassificacaoNf(id: string, r: Partial<RegraClassificacaoNf>): Promise<void> {
+  await supabase.from("regras_classificacao_nf").update(r).eq("id", id);
+}
+
+export async function excluirRegraClassificacaoNf(id: string): Promise<void> {
+  await supabase.from("regras_classificacao_nf").delete().eq("id", id);
+}
+
+// ————————————————————————————————————————
+// CONFIGURAÇÕES DE AUTOMAÇÃO
+// ————————————————————————————————————————
+
+export async function listarConfigAutomacoes(fazendaId: string): Promise<ConfiguracaoAutomacao[]> {
+  const { data } = await supabase.from("configuracoes_automacao").select("*").eq("fazenda_id", fazendaId);
+  return (data ?? []) as ConfiguracaoAutomacao[];
+}
+
+export async function salvarConfigAutomacao(
+  fazendaId: string,
+  automacaoId: string,
+  ativa: boolean,
+  config?: Record<string, unknown>
+): Promise<void> {
+  const { data: exists } = await supabase.from("configuracoes_automacao").select("id").eq("fazenda_id", fazendaId).eq("automacao_id", automacaoId).maybeSingle();
+  if (exists) {
+    await supabase.from("configuracoes_automacao").update({ ativa, ...(config !== undefined ? { config } : {}) }).eq("fazenda_id", fazendaId).eq("automacao_id", automacaoId);
+  } else {
+    await supabase.from("configuracoes_automacao").insert({ fazenda_id: fazendaId, automacao_id: automacaoId, ativa, config: config ?? {} });
+  }
+}
+
+export async function buscarConfigAutomacao(fazendaId: string, automacaoId: string): Promise<ConfiguracaoAutomacao | null> {
+  const { data } = await supabase.from("configuracoes_automacao").select("*").eq("fazenda_id", fazendaId).eq("automacao_id", automacaoId).maybeSingle();
+  return data as ConfiguracaoAutomacao | null;
 }
 
 // ————————————————————————————————————————

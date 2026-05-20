@@ -1631,6 +1631,75 @@ export type SuporteMensagem = {
   created_at?: string;
 };
 
+// ── SIEG — Integração Fiscal Automática ──────────────────────
+export type NfImportadaSieg = {
+  id: string;
+  fazenda_id: string;
+  chave_acesso: string;
+  numero?: string;
+  serie?: string;
+  data_emissao?: string;
+  cnpj_emitente: string;
+  nome_emitente?: string;
+  valor_total?: number;
+  xml_storage_path?: string;
+  status: "pendente" | "classificada" | "ignorada" | "erro";
+  pessoa_id?: string;
+  cp_id?: string;
+  classificada_em?: string;
+  classificada_por?: string;
+  obs?: string;
+  erro_msg?: string;
+  created_at?: string;
+};
+
+export type NfImportadaItemSieg = {
+  id: string;
+  nf_id: string;
+  numero_item?: number;
+  codigo_produto?: string;
+  descricao: string;
+  ncm?: string;
+  cfop?: string;
+  quantidade?: number;
+  unidade?: string;
+  valor_unitario?: number;
+  valor_total?: number;
+  insumo_id?: string;
+  categoria?: string;
+  centro_custo_id?: string;
+  classificado_automaticamente?: boolean;
+  regra_id?: string;
+  status_item: "pendente" | "classificado" | "sem_match" | "ignorado";
+};
+
+export type RegraClassificacaoNf = {
+  id: string;
+  fazenda_id: string;
+  nome_regra?: string;
+  cnpj_emitente?: string;
+  ncm?: string;
+  descricao_contem?: string;
+  insumo_id?: string;
+  categoria?: string;
+  centro_custo_id?: string;
+  operacao_gerencial_id?: string;
+  ativo: boolean;
+  criada_por?: string;
+  created_at?: string;
+  ultima_aplicacao?: string;
+  qtd_aplicacoes?: number;
+};
+
+export type ConfiguracaoAutomacao = {
+  id: string;
+  fazenda_id: string;
+  automacao_id: string;
+  ativa: boolean;
+  config?: Record<string, unknown>;
+  created_at?: string;
+};
+
 // ── Pendências Operacionais (bot) ─────────────────────────────
 export type PendenciaOperacional = {
   id: string;

@@ -2,411 +2,377 @@
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
-import {
-  listarRegrasClassificacao, criarRegraClassificacao,
-  atualizarRegraClassificacao, excluirRegraClassificacao,
-  listarCentrosCustoGeral, listarOperacoesGerenciaisAtivas,
-} from "../../../lib/db";
-import type { RegraClassificacao, CentroCusto, OperacaoGerencial } from "../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
+import type { RegraClassificacaoNf } from "../../../lib/supabase";
 
-const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 3, display: "block" };
-const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "7px 14px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 12, color: "#555" };
-const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
+type Insumo      = { id: string; nome: string; categoria?: string };
+type CentroCusto = { id: string; nome: string; codigo?: string };
 
-const FORM_VAZIO = {
-  nome: "",
-  fornecedor_cnpj: "",
-  fornecedor_nome_contem: "",
-  ncm: "",
-  cfop: "",
+const CATEGORIAS = [
+  "sementes", "fertilizantes", "defensivos", "correcao_solo",
+  "combustivel", "pecas_manutencao", "servicos", "outros",
+];
+const CAT_LABEL: Record<string, string> = {
+  sementes:         "Sementes",
+  fertilizantes:    "Fertilizantes",
+  defensivos:       "Defensivos",
+  correcao_solo:    "Correção de Solo",
+  combustivel:      "Combustível",
+  pecas_manutencao: "Peças / Manutenção",
+  servicos:         "Serviços",
+  outros:           "Outros",
+};
+
+const VAZIO: Omit<RegraClassificacaoNf, "id" | "created_at" | "qtd_aplicacoes" | "ultima_aplicacao"> = {
+  fazenda_id:       "",
+  nome_regra:       "",
+  cnpj_emitente:    "",
+  ncm:              "",
   descricao_contem: "",
-  operacao_gerencial_id: "",
-  centro_custo_id: "",
-  prioridade: "10",
-  ativo: true,
+  insumo_id:        "",
+  categoria:        "",
+  centro_custo_id:  "",
+  ativo:            true,
 };
 
 export default function ClassificacaoPage() {
   const { fazendaId } = useAuth();
-  const [regras,   setRegras]   = useState<RegraClassificacao[]>([]);
-  const [ccs,      setCcs]      = useState<CentroCusto[]>([]);
-  const [ops,      setOps]      = useState<OperacaoGerencial[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [salvando, setSalvando] = useState(false);
-  const [modal,    setModal]    = useState(false);
-  const [editId,   setEditId]   = useState<string | null>(null);
-  const [f,        setF]        = useState({ ...FORM_VAZIO });
-  const [erro,     setErro]     = useState<string | null>(null);
-  const [busca,    setBusca]    = useState("");
+  const [regras,  setRegras]  = useState<RegraClassificacaoNf[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal,   setModal]   = useState(false);
+  const [form,    setForm]    = useState({ ...VAZIO });
+  const [editId,  setEditId]  = useState<string | null>(null);
+  const [saving,  setSaving]  = useState(false);
+  const [busca,   setBusca]   = useState("");
+
+  const [insumos,      setInsumos]      = useState<Insumo[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
-    try {
-      const [r, cc, op] = await Promise.all([
-        listarRegrasClassificacao(fazendaId),
-        listarCentrosCustoGeral(fazendaId),
-        listarOperacoesGerenciaisAtivas(fazendaId),
-      ]);
-      setRegras(r);
-      setCcs(cc);
-      setOps(op);
-    } finally {
-      setLoading(false);
-    }
+    const { data } = await supabase
+      .from("regras_classificacao_nf")
+      .select("*")
+      .eq("fazenda_id", fazendaId)
+      .order("created_at", { ascending: false });
+    setRegras((data ?? []) as RegraClassificacaoNf[]);
+    setLoading(false);
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const nomeCC = (id?: string) => ccs.find(x => x.id === id)?.nome ?? "—";
-  const nomeOp = (id?: string) => ops.find(x => x.id === id)?.descricao ?? "—";
+  useEffect(() => {
+    if (!fazendaId) return;
+    supabase.from("insumos").select("id, nome, categoria").eq("fazenda_id", fazendaId).order("nome")
+      .then(({ data }) => setInsumos((data ?? []) as Insumo[]));
+    supabase.from("centros_custo").select("id, nome, codigo").eq("fazenda_id", fazendaId).order("nome")
+      .then(({ data }) => setCentrosCusto((data ?? []) as CentroCusto[]));
+  }, [fazendaId]);
 
-  const regrasFiltradas = busca
-    ? regras.filter(r =>
-        r.nome.toLowerCase().includes(busca.toLowerCase()) ||
-        (r.fornecedor_cnpj ?? "").includes(busca) ||
-        (r.fornecedor_nome_contem ?? "").toLowerCase().includes(busca.toLowerCase())
-      )
-    : regras;
-
-  const abrirNovo = () => {
-    setF({ ...FORM_VAZIO });
+  function abrirNova() {
+    setForm({ ...VAZIO, fazenda_id: fazendaId ?? "" });
     setEditId(null);
-    setErro(null);
     setModal(true);
-  };
+  }
 
-  const abrirEditar = (r: RegraClassificacao) => {
-    setF({
-      nome: r.nome,
-      fornecedor_cnpj: r.fornecedor_cnpj ?? "",
-      fornecedor_nome_contem: r.fornecedor_nome_contem ?? "",
-      ncm: r.ncm ?? "",
-      cfop: r.cfop ?? "",
+  function abrirEditar(r: RegraClassificacaoNf) {
+    setForm({
+      fazenda_id:       r.fazenda_id,
+      nome_regra:       r.nome_regra       ?? "",
+      cnpj_emitente:    r.cnpj_emitente    ?? "",
+      ncm:              r.ncm              ?? "",
       descricao_contem: r.descricao_contem ?? "",
-      operacao_gerencial_id: r.operacao_gerencial_id ?? "",
-      centro_custo_id: r.centro_custo_id ?? "",
-      prioridade: String(r.prioridade ?? 10),
-      ativo: r.ativo ?? true,
+      insumo_id:        r.insumo_id        ?? "",
+      categoria:        r.categoria        ?? "",
+      centro_custo_id:  r.centro_custo_id  ?? "",
+      ativo:            r.ativo,
     });
     setEditId(r.id);
-    setErro(null);
     setModal(true);
-  };
+  }
 
-  // Conta quantos critérios estão preenchidos
-  const criteriosPreenchidos = (r: RegraClassificacao) =>
-    [r.fornecedor_cnpj, r.fornecedor_nome_contem, r.ncm, r.cfop, r.descricao_contem]
-      .filter(Boolean).length;
-
-  const salvar = async () => {
+  async function salvar() {
     if (!fazendaId) return;
-    if (!f.nome.trim()) { setErro("Informe o nome da regra"); return; }
-    const temCriterio = f.fornecedor_cnpj || f.fornecedor_nome_contem || f.ncm || f.cfop || f.descricao_contem;
-    if (!temCriterio) { setErro("Preencha ao menos um critério de match"); return; }
-    const temSugestao = f.operacao_gerencial_id || f.centro_custo_id;
-    if (!temSugestao) { setErro("Defina ao menos uma sugestão (Operação ou Centro de Custo)"); return; }
-
-    setSalvando(true); setErro(null);
-    try {
-      const payload: Omit<RegraClassificacao, "id" | "created_at"> = {
-        fazenda_id: fazendaId,
-        nome: f.nome.trim(),
-        fornecedor_cnpj:        f.fornecedor_cnpj.replace(/\D/g, "") || undefined,
-        fornecedor_nome_contem: f.fornecedor_nome_contem || undefined,
-        ncm:                    f.ncm || undefined,
-        cfop:                   f.cfop || undefined,
-        descricao_contem:       f.descricao_contem || undefined,
-        operacao_gerencial_id:  f.operacao_gerencial_id || undefined,
-        centro_custo_id:        f.centro_custo_id || undefined,
-        prioridade:             parseInt(f.prioridade) || 10,
-        ativo:                  f.ativo,
-      };
-      if (editId) {
-        await atualizarRegraClassificacao(editId, payload);
-      } else {
-        await criarRegraClassificacao(payload);
-      }
-      setModal(false);
-      await carregar();
-    } catch (e: unknown) {
-      setErro(e instanceof Error ? e.message : "Erro ao salvar");
-    } finally {
-      setSalvando(false);
+    setSaving(true);
+    const payload = {
+      fazenda_id:       fazendaId,
+      nome_regra:       form.nome_regra       || null,
+      cnpj_emitente:    form.cnpj_emitente    || null,
+      ncm:              form.ncm              || null,
+      descricao_contem: form.descricao_contem || null,
+      insumo_id:        form.insumo_id        || null,
+      categoria:        form.categoria        || null,
+      centro_custo_id:  form.centro_custo_id  || null,
+      ativo:            form.ativo,
+    };
+    if (editId) {
+      await supabase.from("regras_classificacao_nf").update(payload).eq("id", editId);
+    } else {
+      await supabase.from("regras_classificacao_nf").insert({ ...payload, qtd_aplicacoes: 0 });
     }
-  };
+    setSaving(false);
+    setModal(false);
+    carregar();
+  }
+
+  async function toggleAtivo(r: RegraClassificacaoNf) {
+    await supabase.from("regras_classificacao_nf").update({ ativo: !r.ativo }).eq("id", r.id);
+    setRegras(prev => prev.map(x => x.id === r.id ? { ...x, ativo: !x.ativo } : x));
+  }
+
+  async function excluir(id: string) {
+    if (!confirm("Excluir esta regra?")) return;
+    await supabase.from("regras_classificacao_nf").delete().eq("id", id);
+    setRegras(prev => prev.filter(r => r.id !== id));
+  }
+
+  const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString("pt-BR") : "Nunca";
+  const fmtCnpj = (c?: string) => (c || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+
+  const regrasFiltradas = regras.filter(r =>
+    !busca || [r.nome_regra, r.cnpj_emitente, r.ncm, r.descricao_contem].join(" ").toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const ativas     = regras.filter(r => r.ativo).length;
+  const aplicacoes = regras.reduce((s, r) => s + (r.qtd_aplicacoes ?? 0), 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <>
       <TopNav />
-      <main style={{ flex: 1 }}>
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <main style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
+
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Regras de Classificação Automática</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#555" }}>
-              Quando uma NF é lançada (XML, manual ou Sieg), o sistema sugere automaticamente a operação e o centro de custo corretos
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Regras de Classificação Automática</h1>
+            <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
+              Critérios para o sistema classificar NFs da SIEG sem intervenção manual. Quanto mais regras, menos pendências.
             </p>
           </div>
-          <button style={btnV} onClick={abrirNovo}>+ Nova Regra</button>
-        </header>
+          <button
+            onClick={abrirNova}
+            style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >
+            + Nova Regra
+          </button>
+        </div>
 
-        <div style={{ padding: "18px 22px" }}>
-
-          {/* Info */}
-          <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#0B2D50" }}>
-            <strong>Como funciona:</strong> Cadastre uma regra por fornecedor (CNPJ ou nome), por NCM, por CFOP ou por descrição do item.
-            Todos os critérios preenchidos devem bater. A regra de maior <strong>prioridade</strong> vence em caso de conflito.
-            O usuário sempre pode revisar e confirmar a sugestão.
-          </div>
-
-          {/* Busca */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-            <input
-              style={{ ...inp, maxWidth: 320 }}
-              placeholder="Buscar por nome, CNPJ ou fornecedor…"
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-            />
-            <span style={{ marginLeft: "auto", fontSize: 11, color: "#888", alignSelf: "center" }}>
-              {regrasFiltradas.length} regra{regrasFiltradas.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          {/* Tabela */}
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 48, color: "#555" }}>Carregando...</div>
-          ) : regrasFiltradas.length === 0 ? (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "#555" }}>
-              {busca ? "Nenhuma regra encontrada." : "Nenhuma regra cadastrada. Clique em \"+ Nova Regra\" para começar."}
+        {/* KPIs */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+          {[
+            { label: "Regras Ativas",      valor: `${ativas} / ${regras.length}`,                    cor: "#16A34A" },
+            { label: "Total Aplicações",   valor: aplicacoes.toLocaleString("pt-BR"),                cor: "#1A4870" },
+            { label: "Eficácia",           valor: regras.length > 0 ? `${Math.round((ativas / regras.length) * 100)}%` : "—", cor: "#C9921B" },
+          ].map(k => (
+            <div key={k.label} style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px" }}>
+              <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: k.cor }}>{k.valor}</div>
             </div>
-          ) : (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
-                    {["Pri.", "Regra", "Critérios de Match", "Sugestão Aplicada", "Ativo", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {regrasFiltradas.map((r, i) => (
-                    <tr key={r.id} style={{ borderBottom: i < regrasFiltradas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                      {/* Prioridade */}
-                      <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", background: "#D5E8F5", padding: "2px 8px", borderRadius: 6 }}>
-                          {r.prioridade ?? 10}
-                        </span>
-                      </td>
+          ))}
+        </div>
 
-                      {/* Nome */}
+        {/* Banner */}
+        <div style={{ background: "#EBF5FF", border: "0.5px solid #93C5FD", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#1e40af", lineHeight: 1.6 }}>
+          <strong>Como funciona:</strong> cada regra define critérios de match (CNPJ do fornecedor, NCM, ou parte da descrição) e uma classificação destino.
+          Na importação SIEG o sistema testa cada item sequencialmente — o primeiro match classifica automaticamente.
+          Regras mais específicas devem vir antes das mais genéricas.
+        </div>
+
+        {/* Busca */}
+        <div style={{ marginBottom: 14 }}>
+          <input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar por nome, CNPJ, NCM ou descrição..."
+            style={{ padding: "8px 12px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, width: 320, background: "#fff" }}
+          />
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 48, color: "#888" }}>Carregando…</div>
+        ) : regrasFiltradas.length === 0 ? (
+          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 48, textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🤖</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              {regras.length === 0 ? "Nenhuma regra criada ainda" : "Nenhuma regra encontrada"}
+            </div>
+            <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>
+              Classifique uma NF manualmente — o sistema pergunta se quer criar uma regra automaticamente.
+            </div>
+            {regras.length === 0 && (
+              <button onClick={abrirNova} style={{ padding: "8px 18px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                + Criar primeira regra
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#F8FAFC", borderBottom: "0.5px solid #DDE2EE" }}>
+                  {["Regra", "Critérios de Match", "Classificação Destino", "Aplicações", "Última Aplicação", "Ativa", ""].map(h => (
+                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {regrasFiltradas.map((r, i) => {
+                  const insumo = insumos.find(ins => ins.id === r.insumo_id);
+                  const cc     = centrosCusto.find(c => c.id === r.centro_custo_id);
+                  return (
+                    <tr key={r.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 1 ? "#FAFBFD" : "#fff", opacity: r.ativo ? 1 : 0.5 }}>
                       <td style={{ padding: "10px 14px" }}>
-                        <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{r.nome}</div>
-                        <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
-                          {criteriosPreenchidos(r)} critério{criteriosPreenchidos(r) !== 1 ? "s" : ""}
+                        <div style={{ fontWeight: 600 }}>{r.nome_regra || `Regra #${i + 1}`}</div>
+                      </td>
+                      <td style={{ padding: "10px 14px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          {r.cnpj_emitente    && <span style={{ fontSize: 11, color: "#555" }}>CNPJ: {fmtCnpj(r.cnpj_emitente)}</span>}
+                          {r.ncm              && <span style={{ fontSize: 11, color: "#555" }}>NCM: {r.ncm}</span>}
+                          {r.descricao_contem && <span style={{ fontSize: 11, color: "#555" }}>Desc: "{r.descricao_contem}"</span>}
+                          {!r.cnpj_emitente && !r.ncm && !r.descricao_contem && <span style={{ fontSize: 11, color: "#aaa" }}>Match universal</span>}
                         </div>
                       </td>
-
-                      {/* Critérios */}
                       <td style={{ padding: "10px 14px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                          {r.fornecedor_cnpj && (
-                            <span style={{ fontSize: 11 }}>
-                              <span style={{ color: "#555", fontWeight: 600 }}>CNPJ:</span> {r.fornecedor_cnpj}
-                            </span>
-                          )}
-                          {r.fornecedor_nome_contem && (
-                            <span style={{ fontSize: 11 }}>
-                              <span style={{ color: "#555", fontWeight: 600 }}>Nome contém:</span> "{r.fornecedor_nome_contem}"
-                            </span>
-                          )}
-                          {r.ncm && (
-                            <span style={{ fontSize: 11 }}>
-                              <span style={{ color: "#555", fontWeight: 600 }}>NCM:</span> {r.ncm}
-                            </span>
-                          )}
-                          {r.cfop && (
-                            <span style={{ fontSize: 11 }}>
-                              <span style={{ color: "#555", fontWeight: 600 }}>CFOP:</span> {r.cfop}
-                            </span>
-                          )}
-                          {r.descricao_contem && (
-                            <span style={{ fontSize: 11 }}>
-                              <span style={{ color: "#555", fontWeight: 600 }}>Descrição contém:</span> "{r.descricao_contem}"
-                            </span>
-                          )}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          {r.categoria && <span style={{ fontSize: 11, background: "#EBF5FF", color: "#1A4870", padding: "1px 7px", borderRadius: 8, display: "inline-block" }}>{CAT_LABEL[r.categoria] || r.categoria}</span>}
+                          {insumo      && <span style={{ fontSize: 11, color: "#555" }}>↳ {insumo.nome}</span>}
+                          {cc          && <span style={{ fontSize: 11, color: "#888" }}>CC: {cc.nome}</span>}
                         </div>
                       </td>
-
-                      {/* Sugestão */}
+                      <td style={{ padding: "10px 14px", fontWeight: 700, color: "#1A4870" }}>{(r.qtd_aplicacoes ?? 0).toLocaleString("pt-BR")}</td>
+                      <td style={{ padding: "10px 14px", color: "#888", fontSize: 12 }}>{fmtDate(r.ultima_aplicacao)}</td>
                       <td style={{ padding: "10px 14px" }}>
-                        {r.operacao_gerencial_id && (
-                          <div style={{ fontSize: 11, marginBottom: 3 }}>
-                            <span style={{ color: "#555", fontWeight: 600 }}>Operação:</span> {nomeOp(r.operacao_gerencial_id)}
-                          </div>
-                        )}
-                        {r.centro_custo_id && (
-                          <div style={{ fontSize: 11 }}>
-                            <span style={{ color: "#555", fontWeight: 600 }}>CC:</span> {nomeCC(r.centro_custo_id)}
-                          </div>
-                        )}
-                        {!r.operacao_gerencial_id && !r.centro_custo_id && (
-                          <span style={{ fontSize: 11, color: "#888" }}>—</span>
-                        )}
+                        <button
+                          onClick={() => toggleAtivo(r)}
+                          style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: r.ativo ? "#16A34A" : "#DDE2EE", position: "relative", transition: "background 0.2s" }}
+                        >
+                          <span style={{ position: "absolute", top: 3, left: r.ativo ? 21 : 3, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", display: "block", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                        </button>
                       </td>
-
-                      {/* Ativo */}
                       <td style={{ padding: "10px 14px" }}>
-                        <span style={{ fontSize: 10, background: r.ativo ? "#DCFCE7" : "#F3F6F9", color: r.ativo ? "#166534" : "#888", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
-                          {r.ativo ? "Ativo" : "Inativo"}
-                        </span>
-                      </td>
-
-                      {/* Ações */}
-                      <td style={{ padding: "10px 14px" }}>
-                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
-                          <button style={btnR} onClick={() => abrirEditar(r)}>Editar</button>
-                          <button style={btnX} onClick={async () => {
-                            if (confirm(`Excluir regra "${r.nome}"?`)) {
-                              await excluirRegraClassificacao(r.id);
-                              await carregar();
-                            }
-                          }}>✕</button>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                          <button onClick={() => excluir(r.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #FECACA", background: "#fff", color: "#E24B4A", fontSize: 11, cursor: "pointer" }}>Excluir</button>
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
 
-      {/* ── Modal ── */}
+      {/* Modal */}
       {modal && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
-          onClick={e => { if (e.target === e.currentTarget) setModal(false); }}
-        >
-          <div style={{ background: "#fff", borderRadius: 14, width: 780, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>
-                {editId ? "Editar Regra de Classificação" : "Nova Regra de Classificação"}
-              </div>
-              <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "min(660px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
+            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE" }}>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{editId ? "Editar Regra" : "Nova Regra de Classificação"}</div>
+              <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Todos os critérios são opcionais — preencha apenas os que tornam a regra específica.</div>
             </div>
 
-            <div style={{ padding: 22 }}>
-
-              {/* Nome + Prioridade */}
-              <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: 12, marginBottom: 16 }}>
-                <div>
-                  <label style={lbl}>Nome da Regra *</label>
-                  <input style={inp} value={f.nome} onChange={e => setF(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Defensivos Bayer, Fertilizantes NCM 3102, Combustível" />
-                </div>
-                <div>
-                  <label style={lbl}>Prioridade</label>
-                  <input style={inp} type="number" min="1" max="999" value={f.prioridade} onChange={e => setF(p => ({ ...p, prioridade: e.target.value }))} />
-                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>Maior = mais prioritário</div>
-                </div>
+            <div style={{ padding: 24 }}>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4, fontWeight: 600, textTransform: "uppercase" }}>Nome da Regra</label>
+                <input
+                  value={form.nome_regra ?? ""}
+                  onChange={e => setForm(f => ({ ...f, nome_regra: e.target.value }))}
+                  placeholder="Ex: Agrícola Premium — Defensivos"
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                />
               </div>
 
-              {/* Critérios de match */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "14px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 12, textTransform: "uppercase" }}>
-                  Critérios de Match <span style={{ fontWeight: 400, color: "#888", textTransform: "none" }}>(todos os preenchidos devem bater — AND)</span>
-                </div>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Critérios de Match (AND)</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={lbl}>CNPJ do Fornecedor (exato)</label>
-                    <input style={inp} value={f.fornecedor_cnpj} onChange={e => setF(p => ({ ...p, fornecedor_cnpj: e.target.value }))} placeholder="00.000.000/0001-00" />
+                    <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>CNPJ do Fornecedor</label>
+                    <input
+                      value={form.cnpj_emitente ?? ""}
+                      onChange={e => setForm(f => ({ ...f, cnpj_emitente: e.target.value }))}
+                      placeholder="00.000.000/0000-00"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                    />
                   </div>
                   <div>
-                    <label style={lbl}>Nome do Fornecedor contém</label>
-                    <input style={inp} value={f.fornecedor_nome_contem} onChange={e => setF(p => ({ ...p, fornecedor_nome_contem: e.target.value }))} placeholder="Ex: BAYER, BASF, PETROBRAS" />
-                  </div>
-                  <div>
-                    <label style={lbl}>NCM começa com</label>
-                    <input style={inp} value={f.ncm} onChange={e => setF(p => ({ ...p, ncm: e.target.value }))} placeholder="Ex: 3808 (defensivos), 3102 (fertiliz.)" />
-                  </div>
-                  <div>
-                    <label style={lbl}>CFOP começa com</label>
-                    <input style={inp} value={f.cfop} onChange={e => setF(p => ({ ...p, cfop: e.target.value }))} placeholder="Ex: 1, 2, 1101" />
+                    <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>NCM</label>
+                    <input
+                      value={form.ncm ?? ""}
+                      onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))}
+                      placeholder="3808.93"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                    />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={lbl}>Descrição do item contém</label>
-                    <input style={inp} value={f.descricao_contem} onChange={e => setF(p => ({ ...p, descricao_contem: e.target.value }))} placeholder="Ex: ADUBO, SEMENTE, ÓLEO DIESEL" />
+                    <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Descrição contém</label>
+                    <input
+                      value={form.descricao_contem ?? ""}
+                      onChange={e => setForm(f => ({ ...f, descricao_contem: e.target.value }))}
+                      placeholder="Ex: GLIFOSATO, ADUBO NPK"
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                    />
                   </div>
-                </div>
-                <div style={{ marginTop: 10, fontSize: 11, color: "#C9921B" }}>
-                  ⚠ Preencha ao menos um critério. Critérios vazios são ignorados na comparação.
                 </div>
               </div>
 
-              {/* Sugestão */}
-              <div style={{ background: "#F0FDF4", border: "0.5px solid #16A34A40", borderRadius: 8, padding: "14px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#166534", marginBottom: 12, textTransform: "uppercase" }}>
-                  Sugestão a Aplicar <span style={{ fontWeight: 400, color: "#888", textTransform: "none" }}>(preencha ao menos um)</span>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 10, letterSpacing: "0.05em" }}>Classificação Destino</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
-                    <label style={lbl}>Operação Gerencial</label>
-                    <select style={inp} value={f.operacao_gerencial_id} onChange={e => setF(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
-                      <option value="">— Não sugerir —</option>
-                      {Object.entries(
-                        ops.reduce((acc, o) => {
-                          const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                          (acc[k] = acc[k] ?? []).push(o);
-                          return acc;
-                        }, {} as Record<string, typeof ops>)
-                      ).map(([k, items]) => (
-                        <optgroup key={k} label={k}>
-                          {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                        </optgroup>
-                      ))}
+                    <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Categoria</label>
+                    <select
+                      value={form.categoria ?? ""}
+                      onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
+                    >
+                      <option value="">— Nenhuma —</option>
+                      {CATEGORIAS.map(c => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={lbl}>Centro de Custo</label>
-                    <select style={inp} value={f.centro_custo_id} onChange={e => setF(p => ({ ...p, centro_custo_id: e.target.value }))}>
-                      <option value="">— Não sugerir —</option>
-                      {ccs.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
+                    <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Insumo</label>
+                    <select
+                      value={form.insumo_id ?? ""}
+                      onChange={e => setForm(f => ({ ...f, insumo_id: e.target.value }))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
+                    >
+                      <option value="">— Nenhum —</option>
+                      {insumos
+                        .filter(ins => !form.categoria || ins.categoria === form.categoria)
+                        .map(ins => <option key={ins.id} value={ins.id}>{ins.nome}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Centro de Custo</label>
+                    <select
+                      value={form.centro_custo_id ?? ""}
+                      onChange={e => setForm(f => ({ ...f, centro_custo_id: e.target.value }))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
+                    >
+                      <option value="">— Nenhum —</option>
+                      {centrosCusto.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* Ativo */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
-                  <input type="checkbox" checked={f.ativo} onChange={e => setF(p => ({ ...p, ativo: e.target.checked }))} />
-                  Regra ativa
-                </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
+                <input type="checkbox" id="ativo" checked={form.ativo} onChange={e => setForm(f => ({ ...f, ativo: e.target.checked }))} style={{ width: 16, height: 16 }} />
+                <label htmlFor="ativo" style={{ fontSize: 13, color: "#555", cursor: "pointer" }}>Regra ativa</label>
               </div>
 
-              {erro && (
-                <div style={{ background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "8px 12px", marginBottom: 12, fontSize: 12, color: "#791F1F" }}>
-                  {erro}
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button
-                  style={{ ...btnV, opacity: salvando || !f.nome.trim() ? 0.5 : 1 }}
-                  disabled={salvando || !f.nome.trim()}
-                  onClick={salvar}
-                >
-                  {salvando ? "Salvando…" : editId ? "Salvar Alterações" : "Criar Regra"}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+                <button onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  {saving ? "Salvando…" : editId ? "Salvar" : "Criar Regra"}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
