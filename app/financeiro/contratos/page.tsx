@@ -1367,25 +1367,8 @@ export default function ContratosFinanceiros() {
 
             movs.sort((a, b) => a.data.localeCompare(b.data));
 
-            const totalLiberado = libsOrd.reduce((s, l) => s + l.valor_liberado, 0);
-            const totalPago     = pagsOrd.filter(p => p.status === "pago").reduce((s, p) => s + p.valor_parcela, 0);
-            const totalJuros    = pagsOrd.reduce((s, p) => s + (p.juros ?? 0), 0);
-
             return (
               <div>
-                {/* KPIs */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
-                  {[
-                    { label: "Total Liberado", valor: totalLiberado,                          cor: "#1A4870" },
-                    { label: "Total Pago",     valor: totalPago,                              cor: "#1A5C38" },
-                    { label: "Total de Juros", valor: totalJuros,                             cor: "#C9921B" },
-                  ].map((k, i) => (
-                    <div key={i} style={{ background: "#F8F9FB", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 16px" }}>
-                      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{k.label}</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{fmtBRL(k.valor)}</div>
-                    </div>
-                  ))}
-                </div>
 
                 {movs.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "32px 0", color: "#888", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
