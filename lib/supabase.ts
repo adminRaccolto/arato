@@ -426,7 +426,10 @@ export type NotaFiscal = {
   cnpj_destinatario?: string;
   valor_total: number;
   data_emissao: string;
-  status: "autorizada" | "cancelada" | "rejeitada" | "denegada" | "em_digitacao";
+  status: "autorizada" | "cancelada" | "rejeitada" | "denegada" | "em_digitacao" | "contingencia";
+  tipo_emissao?: number;       // 1=Normal 5=SVC-AN 6=SVC-RS
+  contingencia_dh?: string;    // dhCont ISO
+  contingencia_motivo?: string; // xJust
   chave_acesso?: string;
   xml_url?: string;
   danfe_url?: string;

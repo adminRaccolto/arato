@@ -4308,3 +4308,21 @@ CREATE POLICY "regras_class_all" ON regras_classificacao_nf FOR ALL
 ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS importado_sieg BOOLEAN DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── SEÇÃO 70: Contingência NF-e ──────────────────────────────────────────────
+-- Adiciona campos de modo de emissão e contingência na tabela notas_fiscais
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS tipo_emissao    SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS contingencia_dh TEXT;
+ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS contingencia_motivo TEXT;
+
+-- Atualiza constraint de status para incluir 'contingencia'
+ALTER TABLE notas_fiscais DROP CONSTRAINT IF EXISTS notas_fiscais_status_check;
+ALTER TABLE notas_fiscais ADD CONSTRAINT notas_fiscais_status_check
+  CHECK (status IN ('autorizada','cancelada','rejeitada','denegada','em_digitacao','contingencia'));
+
+-- Index para busca rápida de NFs em contingência por fazenda
+CREATE INDEX IF NOT EXISTS idx_notas_fiscais_contingencia
+  ON notas_fiscais(fazenda_id, tipo_emissao)
+  WHERE tipo_emissao <> 1;
+
+NOTIFY pgrst, 'reload schema';

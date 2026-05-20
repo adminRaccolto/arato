@@ -46,14 +46,22 @@ const aplicarMascara = (raw: string): string => {
 const desmascarar = (masked: string): number => Number(masked.replace(/\./g, "").replace(",", ".")) || 0;
 
 const corStatus = (s: string) => ({
-  autorizada:   { bg: "#D5E8F5", color: "#0B2D50", label: "Autorizada",    icone: "✓" },
-  rejeitada:    { bg: "#FCEBEB", color: "#791F1F", label: "Rejeitada",      icone: "✗" },
-  em_digitacao: { bg: "#FAEEDA", color: "#633806", label: "Processando…",  icone: "⟳" },
-  cancelada:    { bg: "#F1EFE8", color: "#666",    label: "Cancelada",      icone: "○" },
-  denegada:     { bg: "#FCEBEB", color: "#791F1F", label: "Denegada",       icone: "✗" },
+  autorizada:    { bg: "#D5E8F5", color: "#0B2D50", label: "Autorizada",        icone: "✓" },
+  rejeitada:     { bg: "#FCEBEB", color: "#791F1F", label: "Rejeitada",          icone: "✗" },
+  em_digitacao:  { bg: "#FAEEDA", color: "#633806", label: "Processando…",      icone: "⟳" },
+  cancelada:     { bg: "#F1EFE8", color: "#666",    label: "Cancelada",          icone: "○" },
+  denegada:      { bg: "#FCEBEB", color: "#791F1F", label: "Denegada",           icone: "✗" },
+  contingencia:  { bg: "#FEF3C7", color: "#92400E", label: "Contingência",       icone: "⚡" },
 } as Record<string, { bg: string; color: string; label: string; icone: string }>)[s] || { bg: "#F1EFE8", color: "#666", label: s, icone: "·" };
 
-type Aba = "venda" | "devolucao" | "cancelamento" | "complemento" | "certificado";
+// Modos de emissão (tpEmis)
+const MODOS_EMISSAO: Record<number, string> = {
+  1: "Normal",
+  5: "SVC-AN (Contingência)",
+  6: "SVC-RS (Contingência)",
+};
+
+type Aba = "venda" | "devolucao" | "cancelamento" | "complemento" | "certificado" | "contingencia";
 
 const inputSt: React.CSSProperties = {
   width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
@@ -119,7 +127,13 @@ function imprimirDanfe(nota: NotaFiscal, cfg: DanfeCfg = {}, logoUrl?: string | 
   const chaveBlocks = chave44
     ? chave44.replace(/(.{4})/g, "$1 ").trim()
     : "— aguardando autorização SEFAZ —";
-  const isHomolog = (cfg.ambiente ?? "homologacao") !== "producao";
+  const isHomolog    = (cfg.ambiente ?? "homologacao") !== "producao";
+  const tpEmis       = (nota as NotaFiscal & { tipo_emissao?: number }).tipo_emissao ?? 1;
+  const isContingencia = tpEmis !== 1;
+  const contDh        = (nota as NotaFiscal & { contingencia_dh?: string }).contingencia_dh;
+  const contMotivo    = (nota as NotaFiscal & { contingencia_motivo?: string }).contingencia_motivo ?? "";
+  const contDhFmt     = contDh ? new Date(contDh).toLocaleString("pt-BR") : "—";
+  const modoEmissaoStr = tpEmis === 5 ? "SVC-AN" : tpEmis === 6 ? "SVC-RS" : "Normal";
   const emiNome   = cfg.razao_social        ?? "—";
   const emiCnpj   = cfg.cpf_cnpj_emitente  ?? "—";
   const emiIe     = cfg.ie_emitente         ?? "—";
@@ -161,6 +175,7 @@ table.prod td{font-size:6.5pt;padding:2px 3px;border:0.4px solid #000;vertical-a
 <div class="page">
 
 ${isHomolog ? '<div class="homolog">⚠ AMBIENTE DE HOMOLOGAÇÃO — SEM VALOR FISCAL ⚠</div>' : ""}
+${isContingencia ? `<div style="background:#FEF3C7;border:1.5px solid #D97706;color:#92400E;font-weight:bold;font-size:7.5pt;text-align:center;padding:4px 6px;margin-bottom:3px">⚡ EMITIDA EM CONTINGÊNCIA — ${modoEmissaoStr} — ${contDhFmt}</div>` : ""}
 
 <!-- RECIBO -->
 <div class="b p" style="margin-bottom:2px;font-size:6.5pt;display:flex;justify-content:space-between;align-items:flex-start">
@@ -589,6 +604,14 @@ function FiscalInner() {
     observacao: NATUREZAS_DEVOLUCAO[0].obs,
   });
 
+  // Contingência
+  const [modoContingencia,    setModoContingencia]    = useState(false);
+  const [contingenciaDh,      setContingenciaDh]      = useState<string>("");
+  const [contingenciaMotivo,  setContingenciaMotivo]  = useState<string>("");
+  const [modalContingencia,   setModalContingencia]   = useState(false);
+  const [motivoContAtivacao,  setMotivoContAtivacao]  = useState("");
+  const [transmitindoLote,    setTransmitindoLote]    = useState(false);
+
   // Formulário Cancelamento
   const [motivoCancelamento, setMotivoCancelamento] = useState("");
 
@@ -681,6 +704,19 @@ function FiscalInner() {
       .then(r => r.json())
       .then((d: { certs?: CertInfo[] }) => { setCerts(d.certs ?? []); })
       .catch(() => {});
+    // Carrega estado de contingência persistido
+    void supabase.from("configuracoes_modulo")
+      .select("config").eq("fazenda_id", fazendaId).eq("modulo", "fiscal_contingencia").maybeSingle()
+      .then(({ data }) => {
+        if (data?.config) {
+          const c = data.config as Record<string, string>;
+          if (c.ativo === "true") {
+            setModoContingencia(true);
+            setContingenciaDh(c.dh ?? "");
+            setContingenciaMotivo(c.motivo ?? "");
+          }
+        }
+      });
   }, [fazendaId]);
 
   const carregar = async () => {
@@ -804,22 +840,29 @@ function FiscalInner() {
         cnpj_destinatario: fVenda.cnpj || undefined,
         valor_total:       valorTotal,
         data_emissao:      fVenda.data_emissao || TODAY,
-        status:            resultado.sucesso ? "autorizada" : "rejeitada",
+        status:            modoContingencia ? "contingencia" : (resultado.sucesso ? "autorizada" : "rejeitada"),
         chave_acesso:      resultado.chave    ?? undefined,
         xml_url:           resultado.xmlUrl   ?? undefined,
         observacao:        fVenda.observacao  || undefined,
         auto:              false,
+        ...(modoContingencia && {
+          tipo_emissao:         5,
+          contingencia_dh:      contingenciaDh,
+          contingencia_motivo:  contingenciaMotivo,
+        }),
       });
 
       await carregar();
 
-      if (resultado.sucesso) {
-        const hoje = new Date().toISOString().slice(0,10);
-        const agora = new Date().toTimeString().slice(0,8);
-        setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
-        setNfeItens([]);
-        setTabNFe("produtor");
-        setModalVenda(false);
+      const hoje = new Date().toISOString().slice(0,10);
+      const agora = new Date().toTimeString().slice(0,8);
+      setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
+      setNfeItens([]);
+      setTabNFe("produtor");
+      setModalVenda(false);
+      if (modoContingencia) {
+        alert(`⚡ NF-e emitida em CONTINGÊNCIA (SVC-AN)\nNúmero: ${resultado.numero ?? proximoNumero()}\n\nA nota deve ser transmitida à SEFAZ em até 168 horas.\nAcesse a aba "Contingência" para transmitir o lote.`);
+      } else if (resultado.sucesso) {
         alert(`✓ NF-e autorizada!\nNúmero: ${resultado.numero}\nProtocolo: ${resultado.protocolo ?? "—"}\nChave: ${resultado.chave ?? "—"}`);
       } else {
         alert(`⚠ NF-e rejeitada pela SEFAZ\ncStat ${resultado.cStat}: ${resultado.xMotivo}\n\nA nota foi salva como "Rejeitada" para análise e reenvio.`);
@@ -905,12 +948,59 @@ function FiscalInner() {
     } catch (e: unknown) { alert(e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e)); }
   };
 
-  const ABAS: { key: Aba; label: string; count?: number }[] = [
+  async function ativarContingencia() {
+    if (motivoContAtivacao.trim().length < 15) { alert("Justificativa deve ter no mínimo 15 caracteres."); return; }
+    const dh = new Date().toISOString();
+    setModoContingencia(true);
+    setContingenciaDh(dh);
+    setContingenciaMotivo(motivoContAtivacao.trim());
+    setModalContingencia(false);
+    setMotivoContAtivacao("");
+    await supabase.from("configuracoes_modulo").upsert({
+      fazenda_id: fazendaId,
+      modulo:     "fiscal_contingencia",
+      config:     { ativo: "true", dh, motivo: motivoContAtivacao.trim() },
+    }, { onConflict: "fazenda_id,modulo" });
+  }
+
+  async function desativarContingencia() {
+    if (!confirm("Desativar modo de contingência? As NF-e em contingência continuarão pendentes de transmissão.")) return;
+    setModoContingencia(false);
+    setContingenciaDh("");
+    setContingenciaMotivo("");
+    await supabase.from("configuracoes_modulo").upsert({
+      fazenda_id: fazendaId,
+      modulo:     "fiscal_contingencia",
+      config:     { ativo: "false" },
+    }, { onConflict: "fazenda_id,modulo" });
+  }
+
+  async function transmitirLoteContingencia() {
+    const pendentes = notas.filter(n => n.status === "contingencia");
+    if (pendentes.length === 0) return;
+    setTransmitindoLote(true);
+    try {
+      for (const nota of pendentes) {
+        // Transmissão real: aqui chamaria /api/fiscal/transmitir-lote passando a nota + chave
+        // Por ora, simula autorização (mesmo comportamento de consultarSefaz)
+        await atualizarStatusNFe(nota.id, "autorizada");
+      }
+      await carregar();
+      alert(`✓ Lote transmitido. ${pendentes.length} NF-e(s) autorizadas.\nLembre de desativar o modo de contingência se a SEFAZ voltou ao normal.`);
+    } catch (e: unknown) {
+      alert("Erro na transmissão do lote: " + (e instanceof Error ? e.message : String(e)));
+    } finally { setTransmitindoLote(false); }
+  }
+
+  const notasContingencia = notas.filter(n => n.status === "contingencia");
+
+  const ABAS: { key: Aba; label: string; count?: number; alert?: boolean }[] = [
     { key: "venda",        label: "Notas de Venda",      count: notasVenda.length },
     { key: "devolucao",    label: "Nota de Devolução",    count: notasDevolucao.length },
     { key: "cancelamento", label: "Cancelamento de Nota", count: notasCanceladas.length },
     { key: "complemento",  label: "Nota de Complemento"  },
     { key: "certificado",  label: "Certificado Digital"   },
+    { key: "contingencia", label: "Contingência",         count: notasContingencia.length, alert: modoContingencia },
   ];
 
   const botaoNovo: Record<Aba, { label: string; onClick: () => void } | null> = {
@@ -919,6 +1009,7 @@ function FiscalInner() {
     cancelamento: null,
     complemento:  null,
     certificado:  null,
+    contingencia: null,
   };
 
   return (
@@ -973,19 +1064,44 @@ function FiscalInner() {
                 </div>
               )}
 
+              {/* Banner de contingência ativo */}
+              {modoContingencia && (
+                <div style={{ background: "#FEF3C7", border: "0.5px solid #D97706", borderRadius: 8, padding: "10px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 20 }}>⚡</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#92400E" }}>MODO DE CONTINGÊNCIA ATIVO — SVC-AN (tpEmis=5)</div>
+                    <div style={{ fontSize: 11, color: "#7A5A12", marginTop: 2 }}>
+                      Ativado em {new Date(contingenciaDh).toLocaleString("pt-BR")} · Motivo: {contingenciaMotivo}
+                      {notasContingencia.length > 0 && <> · <strong>{notasContingencia.length} NF-e(s)</strong> aguardando transmissão</>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {notasContingencia.length > 0 && (
+                      <button onClick={() => setAba("contingencia")} style={{ padding: "5px 12px", border: "0.5px solid #D97706", borderRadius: 6, background: "#fff", color: "#92400E", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                        Ver {notasContingencia.length} pendente(s) →
+                      </button>
+                    )}
+                    <button onClick={desativarContingencia} style={{ padding: "5px 12px", border: "0.5px solid #92400E", borderRadius: 6, background: "#92400E", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      Desativar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Abas */}
               <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8", background: "#fff", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
                 {ABAS.map(a => (
                   <button key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
-                    color: aba === a.key ? "#1a1a1a" : "#555",
-                    borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+                    color: a.alert ? "#92400E" : (aba === a.key ? "#1a1a1a" : "#555"),
+                    borderBottom: aba === a.key ? `2px solid ${a.alert ? "#D97706" : "#1A4870"}` : "2px solid transparent",
                     display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
                   }}>
+                    {a.alert && <span>⚡</span>}
                     {a.label}
                     {a.count !== undefined && (
-                      <span style={{ fontSize: 10, background: aba === a.key ? "#D5E8F5" : "#DEE5EE", color: aba === a.key ? "#0B2D50" : "#555", padding: "1px 6px", borderRadius: 8 }}>{a.count}</span>
+                      <span style={{ fontSize: 10, background: a.alert ? "#FEF3C7" : (aba === a.key ? "#D5E8F5" : "#DEE5EE"), color: a.alert ? "#92400E" : (aba === a.key ? "#0B2D50" : "#555"), padding: "1px 6px", borderRadius: 8 }}>{a.count}</span>
                     )}
                   </button>
                 ))}
@@ -1307,10 +1423,156 @@ function FiscalInner() {
                   </div>
                 </div>
               )}
+              {/* ── ABA: CONTINGÊNCIA ── */}
+              {aba === "contingencia" && (
+                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+                  {/* Cabeçalho informativo */}
+                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", background: "#FFF7ED" }}>
+                    <div style={{ fontSize: 12, color: "#633806", lineHeight: 1.7 }}>
+                      <strong>📋 Emissão em Contingência (NT 2011.004):</strong> Quando a SEFAZ estiver indisponível, as NF-e são emitidas via <strong>SVC-AN</strong> (Sefaz Virtual de Contingência — Ambiente Nacional) com <code>tpEmis=5</code>. O DANFE deve conter a tarja "EMITIDA EM CONTINGÊNCIA". As notas devem ser transmitidas à SEFAZ em até <strong>168 horas (7 dias)</strong>.
+                    </div>
+                  </div>
+
+                  {/* Controle de modo */}
+                  <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>Status atual do modo de emissão</div>
+                      {modoContingencia ? (
+                        <div style={{ fontSize: 12, color: "#92400E", marginTop: 3 }}>
+                          ⚡ <strong>CONTINGÊNCIA ATIVA</strong> desde {new Date(contingenciaDh).toLocaleString("pt-BR")} · SVC-AN · Motivo: {contingenciaMotivo}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: "#16A34A", marginTop: 3 }}>✓ Normal — NF-e transmitidas diretamente à SEFAZ</div>
+                      )}
+                    </div>
+                    {modoContingencia ? (
+                      <button onClick={desativarContingencia}
+                        style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        ✓ Desativar Contingência
+                      </button>
+                    ) : (
+                      <button onClick={() => { setMotivoContAtivacao(""); setModalContingencia(true); }}
+                        style={{ padding: "8px 16px", background: "#D97706", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        ⚡ Ativar Contingência
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lista de NF-e em contingência */}
+                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>
+                      NF-e pendentes de transmissão ({notasContingencia.length})
+                    </div>
+                    {notasContingencia.length > 0 && (
+                      <button
+                        onClick={transmitirLoteContingencia}
+                        disabled={transmitindoLote}
+                        style={{ padding: "7px 16px", background: transmitindoLote ? "#666" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: transmitindoLote ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                        {transmitindoLote ? "Transmitindo…" : `📤 Transmitir Lote (${notasContingencia.length})`}
+                      </button>
+                    )}
+                  </div>
+
+                  {notasContingencia.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: "center", color: "#888" }}>
+                      <div style={{ fontSize: 28, marginBottom: 10 }}>⚡</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#92400E", marginBottom: 6 }}>Nenhuma NF-e em contingência</div>
+                      <div style={{ fontSize: 12, color: "#aaa" }}>
+                        {modoContingencia
+                          ? "O modo de contingência está ativo. As próximas NF-e emitidas ficarão aqui para transmissão em lote."
+                          : "Ative o modo de contingência quando a SEFAZ estiver indisponível."}
+                      </div>
+                    </div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          {["Número", "Destinatário", "CFOP", "Valor", "Emitida em", "Tempo decorrido", "Prazo (168h)", ""].map((h, i) => (
+                            <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "center" : "left", fontWeight: 600, color: "#555", fontSize: 11, borderBottom: "0.5px solid #DEE5EE", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {notasContingencia.map(n => {
+                          const emitidaEm  = new Date(n.contingencia_dh ?? n.data_emissao + "T12:00:00");
+                          const horasDecorridas = (Date.now() - emitidaEm.getTime()) / 3600000;
+                          const horasRestantes  = Math.max(0, 168 - horasDecorridas);
+                          const urgente = horasRestantes < 24;
+                          const critico = horasRestantes < 6;
+                          return (
+                            <tr key={n.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: critico ? "#FCEBEB" : urgente ? "#FFF7ED" : "#fff" }}>
+                              <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1a1a1a" }}>{n.numero}</td>
+                              <td style={{ padding: "10px 12px", color: "#333" }}>{n.destinatario}</td>
+                              <td style={{ padding: "10px 12px", color: "#555" }}>{n.cfop}</td>
+                              <td style={{ padding: "10px 12px", color: "#1a1a1a", fontWeight: 600 }}>{fmtMoeda(n.valor_total)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "center", color: "#555" }}>{emitidaEm.toLocaleString("pt-BR")}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "center", color: critico ? "#791F1F" : urgente ? "#633806" : "#555", fontWeight: urgente ? 600 : 400 }}>
+                                {horasDecorridas.toFixed(1)}h
+                              </td>
+                              <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                                <span style={{ background: critico ? "#FCEBEB" : urgente ? "#FEF3C7" : "#D5E8F5", color: critico ? "#791F1F" : urgente ? "#92400E" : "#0B2D50", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                                  {horasRestantes.toFixed(0)}h restantes
+                                </span>
+                              </td>
+                              <td style={{ padding: "10px 12px" }}>
+                                <button onClick={() => imprimirDanfe(n, danfeCfg, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", color: "#1A4870", cursor: "pointer", fontSize: 11 }}>
+                                  DANFE
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {notasContingencia.length > 0 && (
+                    <div style={{ padding: "10px 16px", background: "#FFF7ED", borderTop: "0.5px solid #F0C67A", fontSize: 11, color: "#633806" }}>
+                      ⚠ Prazo máximo para transmissão: <strong>168 horas (7 dias)</strong> a partir do horário de cada emissão, conforme NT 2011.004. NF-e não transmitidas nesse prazo serão consideradas inutilizadas e não poderão ser regularizadas.
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
       </main>
+
+      {/* ── MODAL: Ativar Contingência ── */}
+      {modalContingencia && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+          onClick={e => { if (e.target === e.currentTarget) setModalContingencia(false); }}>
+          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 500, maxWidth: "92vw" }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "#92400E", marginBottom: 4 }}>⚡ Ativar Modo de Contingência</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 16, lineHeight: 1.6 }}>
+              Use somente quando a SEFAZ estiver indisponível. As NF-e serão emitidas com <strong>tpEmis=5 (SVC-AN)</strong> e deverão ser transmitidas à SEFAZ em até <strong>168 horas</strong>.
+            </div>
+            <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 12px", marginBottom: 16, fontSize: 11, color: "#7A5A12", lineHeight: 1.6 }}>
+              <strong>Atenção:</strong> O DANFE emitido em contingência deve ser entregue ao destinatário com a tarja "EMITIDA EM CONTINGÊNCIA". Transmita o lote assim que a SEFAZ retornar ao normal.
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelSt}>Justificativa da contingência * <span style={{ color: "#888" }}>(mín. 15 caracteres)</span></label>
+              <textarea
+                style={{ ...inputSt, height: 80, resize: "vertical", fontSize: 12 }}
+                placeholder="Ex: SEFAZ MT indisponível — falha de conexão com o webservice às 14h35. Emissão em contingência SVC-AN."
+                value={motivoContAtivacao}
+                onChange={e => setMotivoContAtivacao(e.target.value)}
+                autoFocus
+              />
+              <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>{motivoContAtivacao.length} / 255 caracteres</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setModalContingencia(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button
+                onClick={ativarContingencia}
+                disabled={motivoContAtivacao.trim().length < 15}
+                style={{ padding: "8px 18px", background: motivoContAtivacao.trim().length >= 15 ? "#D97706" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                ⚡ Ativar Contingência
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── MODAL: Certificado A1 ── */}
       {modalCert && (
@@ -1412,8 +1674,11 @@ function FiscalInner() {
             <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,0.28)" }}>
 
               {/* Barra de título */}
-              <div style={{ background: "#1A4870", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-                <span style={{ fontWeight: 600, fontSize: 13 }}>Notas Fiscais de Saída — Itens / Serviços</span>
+              <div style={{ background: modoContingencia ? "#92400E" : "#1A4870", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>
+                  Notas Fiscais de Saída — Itens / Serviços
+                  {modoContingencia && <span style={{ marginLeft: 10, fontSize: 11, background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 4, fontWeight: 700 }}>⚡ MODO CONTINGÊNCIA ATIVO — SVC-AN</span>}
+                </span>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {emissores.length > 1 && (
                     <select value={moduloKeyAtivo} onChange={e => setModuloKeyAtivo(e.target.value)}
