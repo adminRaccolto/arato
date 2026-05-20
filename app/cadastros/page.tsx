@@ -83,7 +83,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -98,6 +98,8 @@ const TAB_GROUPS: TabGroup[] = [
   { group: "Cadastros Técnicos", tabs: [
     { key: "safras",                  label: "Safras"                    },
     { key: "insumos",                 label: "Insumos"                   },
+    { key: "produtos",                label: "Produtos Agrícolas"        },
+    { key: "itens",                   label: "Itens Gerais"              },
     { key: "depositos",               label: "Depósitos & Armazéns"      },
     { key: "maquinas",                label: "Máquinas e Veículos"       },
     { key: "combustivel",             label: "Combustíveis & Bombas"     },
@@ -494,7 +496,7 @@ function CadastrosInner() {
     if (aba === "safras")      listarAnosSafra(fazendaId).then(setAnosSafra).catch(e => setErro(e.message));
     if (aba === "maquinas")    listarMaquinas(fazendaId).then(setMaquinas).catch(e => setErro(e.message));
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
-    if (aba === "insumos") {
+    if (aba === "insumos" || aba === "produtos" || aba === "itens") {
       listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
       listarGruposInsumo(fazendaId).then(setGruposInsumo).catch(() => {});
       listarSubgruposInsumo(fazendaId).then(setSubgruposInsumo).catch(() => {});
@@ -2658,24 +2660,26 @@ function CadastrosInner() {
           {/* ══ INSUMOS ══ */}
           {aba === "insumos" && (() => {
             const CATS: { key: Insumo["categoria"]; label: string; bg: string; cl: string }[] = [
-              { key: "semente",         label: "Semente",         bg: "#D5E8F5", cl: "#0B2D50" },
-              { key: "fertilizante",    label: "Fertilizante",    bg: "#E6F1FB", cl: "#0C447C" },
-              { key: "defensivo",       label: "Defensivo",       bg: "#FAEEDA", cl: "#633806" },
-              { key: "inoculante",      label: "Inoculante",      bg: "#FBF3E0", cl: "#8B5E14" },
-              { key: "produto_agricola",label: "Prod. Agrícola",  bg: "#FEF3E2", cl: "#7A4300" },
-              { key: "combustivel",     label: "Combustível",     bg: "#FCEBEB", cl: "#791F1F" },
-              { key: "outros",          label: "Outros",          bg: "#F1EFE8", cl: "#666"    },
+              { key: "semente",        label: "Semente",        bg: "#D5E8F5", cl: "#0B2D50" },
+              { key: "fertilizante",   label: "Fertilizante",   bg: "#E6F1FB", cl: "#0C447C" },
+              { key: "defensivo",      label: "Defensivo",      bg: "#FAEEDA", cl: "#633806" },
+              { key: "corretivo",      label: "Corretivo",      bg: "#E8F5EB", cl: "#1A5C35" },
+              { key: "micronutriente", label: "Micronutriente", bg: "#EDE9FB", cl: "#4B3B9B" },
+              { key: "biologico",      label: "Biológico",      bg: "#F0F9F2", cl: "#167A3C" },
+              { key: "inoculante",     label: "Inoculante",     bg: "#FBF3E0", cl: "#8B5E14" },
             ];
             const catMap = Object.fromEntries(CATS.map(c => [c.key, c]));
 
-            const insFiltr = insumos.filter(i => {
+            const CATS_INSUMO_KEYS = CATS.map(c => c.key);
+            const insBase = insumos.filter(i => CATS_INSUMO_KEYS.includes(i.categoria));
+            const insFiltr = insBase.filter(i => {
               const matchCat  = filtroIns === "todos" || i.categoria === filtroIns;
               const matchBusca = !buscaIns || i.nome.toLowerCase().includes(buscaIns.toLowerCase()) || (i.fabricante ?? "").toLowerCase().includes(buscaIns.toLowerCase());
               return matchCat && matchBusca;
             });
 
             const totalValor = insFiltr.reduce((s, i) => s + (i.estoque * i.valor_unitario), 0);
-            const abaixoMin  = insumos.filter(i => i.estoque < i.estoque_minimo).length;
+            const abaixoMin  = insBase.filter(i => i.estoque < i.estoque_minimo).length;
 
             const abrirModalIns = (ins?: Insumo) => {
               setEditIns(ins ?? null);
@@ -2691,7 +2695,7 @@ function CadastrosInner() {
             };
 
             const salvarIns = async () => {
-              const isPA = ["defensivo","fertilizante","inoculante"].includes(fIns.categoria);
+              const isPA = ["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria);
               if (isPA && !fIns.principio_ativo_id) {
                 setErro("Selecione o princípio ativo antes de salvar."); return;
               }
@@ -2717,7 +2721,7 @@ function CadastrosInner() {
                   deposito_id:         isComb ? undefined : (fIns.deposito_id || undefined),
                   bomba_id:            isComb ? (fIns.bomba_id || undefined) : undefined,
                   principio_ativo_id:  (!isComb && fIns.principio_ativo_id) ? fIns.principio_ativo_id : undefined,
-                  tipo:                (["peca","material","uso_consumo","escritorio"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
+                  tipo:                (["produto_agricola","peca","material","uso_consumo","escritorio","combustivel"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
                 };
                 if (editIns) {
                   await atualizarInsumo(editIns.id, payload);
@@ -2741,7 +2745,7 @@ function CadastrosInner() {
                 {/* Stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                   {[
-                    { label: "Total de itens",      valor: insumos.length.toString(),       cor: "#1a1a1a" },
+                    { label: "Total de insumos",    valor: insBase.length.toString(),        cor: "#1a1a1a" },
                     { label: "Abaixo do mínimo",    valor: abaixoMin.toString(),             cor: abaixoMin > 0 ? "#E24B4A" : "#444" },
                     { label: "Valor em estoque",    valor: totalValor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
                     { label: "Itens no filtro",     valor: insFiltr.length.toString(),       cor: "#378ADD" },
@@ -2763,10 +2767,10 @@ function CadastrosInner() {
                   />
                   <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
                     <button onClick={() => setFiltroIns("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIns === "todos" ? "#1A4870" : "#D4DCE8", background: filtroIns === "todos" ? "#D5E8F5" : "transparent", color: filtroIns === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIns === "todos" ? 600 : 400 }}>
-                      Todos ({insumos.length})
+                      Todos ({insBase.length})
                     </button>
                     {CATS.map(c => {
-                      const qtd = insumos.filter(i => i.categoria === c.key).length;
+                      const qtd = insBase.filter(i => i.categoria === c.key).length;
                       if (qtd === 0) return null;
                       return (
                         <button key={c.key} onClick={() => setFiltroIns(c.key)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIns === c.key ? c.cl : "#D4DCE8", background: filtroIns === c.key ? c.bg : "transparent", color: filtroIns === c.key ? c.cl : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIns === c.key ? 600 : 400 }}>
@@ -2775,14 +2779,14 @@ function CadastrosInner() {
                       );
                     })}
                   </div>
-                  <button style={btnV} onClick={() => abrirModalIns()}>+ Novo Insumo</button>
+                  <button style={btnV} onClick={() => { setFIns(p => ({ ...p, categoria: "defensivo" as Insumo["categoria"] })); abrirModalIns(); }}>+ Novo Insumo</button>
                 </div>
 
                 {/* Tabela */}
                 <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                   {insFiltr.length === 0 ? (
                     <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
-                      {buscaIns ? `Nenhum insumo encontrado para "${buscaIns}"` : "Nenhum insumo cadastrado nesta categoria."}
+                      {buscaIns ? `Nenhum insumo encontrado para "${buscaIns}"` : "Nenhum insumo cadastrado. Use '+ Novo Insumo' para cadastrar sementes, fertilizantes, defensivos, corretivos, micronutrientes ou biológicos."}
                     </div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -2856,15 +2860,15 @@ function CadastrosInner() {
                         <label style={lbl}>Categoria *</label>
                         <select style={inp} value={fIns.categoria} onChange={e => {
                           const cat = e.target.value as Insumo["categoria"];
-                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "combustivel" ? "L" : p.unidade, principio_ativo_id: "", nome: "" }));
+                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: p.unidade, principio_ativo_id: "", nome: "" }));
                         }}>
                           <option value="semente">Semente</option>
                           <option value="fertilizante">Fertilizante</option>
                           <option value="defensivo">Defensivo</option>
+                          <option value="corretivo">Corretivo de Solo</option>
+                          <option value="micronutriente">Micronutriente</option>
+                          <option value="biologico">Biológico</option>
                           <option value="inoculante">Inoculante</option>
-                          <option value="produto_agricola">Produto Agrícola</option>
-                          <option value="combustivel">Combustível</option>
-                          <option value="outros">Outros</option>
                         </select>
                       </div>
                       {/* Subgrupo */}
@@ -2883,8 +2887,8 @@ function CadastrosInner() {
                         )}
                       </div>
 
-                      {/* ── Defensivos / Fertilizantes / Inoculantes: PA é o nome canônico ── */}
-                      {!isComb && ["defensivo","fertilizante","inoculante"].includes(fIns.categoria) ? (
+                      {/* ── Defensivos / Fertilizantes / Inoculantes / Biológicos / Micronutrientes: PA é o nome canônico ── */}
+                      {["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria) ? (
                         <>
                           {/* Seletor de PA — o nome do insumo deriva daqui */}
                           <div style={{ gridColumn: "1/-1" }}>
@@ -2906,9 +2910,12 @@ function CadastrosInner() {
                               }}>
                                 <option value="">— Selecione o princípio ativo —</option>
                                 {principios
-                                  .filter(pa => fIns.categoria === "defensivo"
-                                    ? ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria)
-                                    : pa.categoria === fIns.categoria)
+                                  .filter(pa => {
+                                    if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria);
+                                    if (fIns.categoria === "biologico" || fIns.categoria === "inoculante") return pa.categoria === "inoculante" || pa.categoria === "outro";
+                                    if (fIns.categoria === "micronutriente") return pa.categoria === "fertilizante" || pa.categoria === "outro";
+                                    return pa.categoria === fIns.categoria;
+                                  })
                                   .map(pa => <option key={pa.id} value={pa.id}>{pa.nome}</option>)}
                               </select>
                             )}
@@ -3037,13 +3044,472 @@ function CadastrosInner() {
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
                       <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                      <button style={{ ...btnV, opacity: salvando || (["defensivo","fertilizante","inoculante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (["defensivo","fertilizante","inoculante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
+                      <button style={{ ...btnV, opacity: salvando || (["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
                         {salvando ? "Salvando…" : "Salvar"}
                       </button>
                     </div>
                   </Modal>
                   );
                 })()}
+              </div>
+            );
+          })()}
+
+          {/* ══ PRODUTOS AGRÍCOLAS ══ */}
+          {aba === "produtos" && (() => {
+            const CULTURAS = [
+              { key: "soja",          label: "Soja",          bg: "#D5E8F5", cl: "#0B2D50" },
+              { key: "milho",         label: "Milho",         bg: "#FEF3C7", cl: "#78350F" },
+              { key: "algodao",       label: "Algodão",       bg: "#F1F0FB", cl: "#4B3B9B" },
+              { key: "milho_pipoca",  label: "Milho Pipoca",  bg: "#FEF9C3", cl: "#713F12" },
+              { key: "milheto",       label: "Milheto",       bg: "#DCFCE7", cl: "#14532D" },
+              { key: "sorgo",         label: "Sorgo",         bg: "#FDE8D8", cl: "#7C3D12" },
+              { key: "trigo",         label: "Trigo",         bg: "#FEF3E2", cl: "#7A4300" },
+              { key: "eucalipto",     label: "Eucalipto",     bg: "#E8F5EB", cl: "#1A5C35" },
+              { key: "outros",        label: "Outros",        bg: "#F1EFE8", cl: "#555"    },
+            ];
+            const cultMap = Object.fromEntries(CULTURAS.map(c => [c.key, c]));
+
+            const prodBase = insumos.filter(i => i.categoria === "produto_agricola");
+            const [filtroCult, setFiltroCult] = useState("todos");
+            const [buscaProd, setBuscaProd]   = useState("");
+
+            const prodFiltr = prodBase.filter(i => {
+              const matchCult  = filtroCult === "todos" || i.subgrupo === filtroCult;
+              const matchBusca = !buscaProd || i.nome.toLowerCase().includes(buscaProd.toLowerCase());
+              return matchCult && matchBusca;
+            });
+
+            const totalValorProd = prodFiltr.reduce((s, i) => s + (i.estoque * i.valor_unitario), 0);
+
+            const abrirModalProd = (ins?: Insumo) => {
+              setEditIns(ins ?? null);
+              setFIns(ins ? {
+                nome: ins.nome, categoria: "produto_agricola",
+                subgrupo: ins.subgrupo ?? "", unidade: ins.unidade,
+                fabricante: ins.fabricante ?? "",
+                estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
+                valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
+                deposito_id: ins.deposito_id ?? "", bomba_id: "", principio_ativo_id: "",
+              } : { nome: "", categoria: "produto_agricola" as Insumo["categoria"], subgrupo: "soja", unidade: "sc", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              setModalIns(true);
+            };
+
+            const salvarProd = async () => {
+              if (!fIns.nome.trim()) { setErro("Informe o nome do produto."); return; }
+              setSalvando(true); setErro("");
+              try {
+                const payload: Omit<Insumo, "id" | "created_at"> = {
+                  fazenda_id: fazendaId!, nome: fIns.nome.trim(),
+                  categoria: "produto_agricola", subgrupo: fIns.subgrupo || undefined,
+                  unidade: fIns.unidade, fabricante: fIns.fabricante || undefined,
+                  estoque: parseFloat(fIns.estoque) || 0,
+                  estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
+                  valor_unitario: parseFloat(fIns.valor_unitario) || 0,
+                  lote: fIns.lote || undefined, validade: fIns.validade || undefined,
+                  deposito_id: fIns.deposito_id || undefined, tipo: "produto",
+                };
+                if (editIns) {
+                  await atualizarInsumo(editIns.id, payload);
+                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
+                } else {
+                  const n = await criarInsumo(payload);
+                  setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));
+                }
+                setModalIns(false);
+              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              finally { setSalvando(false); }
+            };
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                  {[
+                    { label: "Culturas cadastradas", valor: prodBase.length.toString(),       cor: "#1a1a1a" },
+                    { label: "Valor em estoque",     valor: totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
+                    { label: "Culturas distintas",   valor: [...new Set(prodBase.map(i => i.subgrupo ?? "outros"))].length.toString(), cor: "#16A34A" },
+                    { label: "No filtro",            valor: prodFiltr.length.toString(),       cor: "#378ADD" },
+                  ].map((s, i) => (
+                    <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 16px" }}>
+                      <div style={{ fontSize: 11, color: "#444", marginBottom: 4 }}>{s.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: s.cor }}>{s.valor}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <input style={{ ...inp, width: 220 }} placeholder="Buscar produto…" value={buscaProd} onChange={e => setBuscaProd(e.target.value)} />
+                  <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
+                    <button onClick={() => setFiltroCult("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroCult === "todos" ? "#1A4870" : "#D4DCE8", background: filtroCult === "todos" ? "#D5E8F5" : "transparent", color: filtroCult === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroCult === "todos" ? 600 : 400 }}>
+                      Todos ({prodBase.length})
+                    </button>
+                    {CULTURAS.map(c => {
+                      const qtd = prodBase.filter(i => (i.subgrupo ?? "outros") === c.key).length;
+                      if (qtd === 0) return null;
+                      return (
+                        <button key={c.key} onClick={() => setFiltroCult(c.key)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroCult === c.key ? c.cl : "#D4DCE8", background: filtroCult === c.key ? c.bg : "transparent", color: filtroCult === c.key ? c.cl : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroCult === c.key ? 600 : 400 }}>
+                          {c.label} ({qtd})
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button style={btnV} onClick={() => abrirModalProd()}>+ Novo Produto</button>
+                </div>
+
+                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  {prodFiltr.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
+                      {buscaProd ? `Nenhum produto encontrado para "${buscaProd}"` : "Nenhum produto agrícola cadastrado. Use '+ Novo Produto' para registrar soja, milho, algodão, etc."}
+                    </div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <TH cols={["Variedade / Nome", "Cultura", "Unid.", "Estoque", "Valor Unit.", "Total em Estoque", ""]} />
+                      <tbody>
+                        {prodFiltr.map((ins, i) => {
+                          const cult = cultMap[ins.subgrupo ?? "outros"] ?? cultMap["outros"];
+                          const total = ins.estoque * ins.valor_unitario;
+                          return (
+                            <tr key={ins.id} style={{ borderBottom: i < prodFiltr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                              <td style={{ padding: "10px 14px" }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{ins.nome}</div>
+                                {ins.fabricante && <div style={{ fontSize: 11, color: "#555" }}>{ins.fabricante}</div>}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                                {cult && <span style={{ fontSize: 10, background: cult.bg, color: cult.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{cult.label}</span>}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{ins.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                  <button style={btnE} onClick={() => abrirModalProd(ins)}>Editar</button>
+                                  <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          <td colSpan={5} style={{ padding: "8px 14px", fontSize: 11, color: "#555" }}>{prodFiltr.length} produtos</td>
+                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                            {totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+                </div>
+
+                {modalIns && editIns?.categoria === "produto_agricola" || (modalIns && fIns.categoria === "produto_agricola") ? (
+                  <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Produto Agrícola"} onClose={() => setModalIns(false)} width={680}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                      <div>
+                        <label style={lbl}>Cultura *</label>
+                        <select style={inp} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))}>
+                          {CULTURAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Unidade *</label>
+                        <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                          <option value="sc">sc (sacas 60kg)</option>
+                          <option value="@">@ (arrobas 15kg)</option>
+                          <option value="kg">kg</option>
+                          <option value="t">t (tonelada)</option>
+                          <option value="m3">m³</option>
+                        </select>
+                      </div>
+                      <div style={{ gridColumn: "1/-1" }}>
+                        <label style={lbl}>Nome / Variedade *</label>
+                        <input style={inp} placeholder="Ex: Soja TMG 7067 IPRO, Milho 30F90, Algodão FM 985 GLTP" value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Empresa / Sementes</label>
+                        <input style={inp} placeholder="Ex: TMG, Pioneer, Bayer" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Depósito / Armazém padrão</label>
+                        <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
+                          <option value="">— Selecione —</option>
+                          {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Estoque atual</label>
+                        <input style={inp} type="number" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Valor unitário (R$/{fIns.unidade})</label>
+                        <input style={inp} type="number" step="0.01" value={fIns.valor_unitario} onChange={e => setFIns(p => ({ ...p, valor_unitario: e.target.value }))} />
+                      </div>
+                      {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
+                        <div style={{ gridColumn: "1/-1", background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0B2D50" }}>
+                          Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                        </div>
+                      )}
+                      <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                        <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
+                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarProd}>
+                          {salvando ? "Salvando…" : "Salvar"}
+                        </button>
+                      </div>
+                    </div>
+                  </Modal>
+                ) : null}
+              </div>
+            );
+          })()}
+
+          {/* ══ ITENS GERAIS ══ */}
+          {aba === "itens" && (() => {
+            const CATS_IT: { key: Insumo["categoria"]; label: string; bg: string; cl: string }[] = [
+              { key: "peca",        label: "Peça",          bg: "#EDE9FB", cl: "#4B3B9B" },
+              { key: "material",    label: "Material",      bg: "#FEF3E2", cl: "#7A4300" },
+              { key: "uso_consumo", label: "Uso/Consumo",   bg: "#FBF3E0", cl: "#8B5E14" },
+              { key: "escritorio",  label: "Escritório",    bg: "#F0F9F2", cl: "#167A3C" },
+              { key: "combustivel", label: "Combustível",   bg: "#FCEBEB", cl: "#791F1F" },
+              { key: "outros",      label: "Outros",        bg: "#F1EFE8", cl: "#666"    },
+            ];
+            const catItMap = Object.fromEntries(CATS_IT.map(c => [c.key, c]));
+            const CATS_IT_KEYS = CATS_IT.map(c => c.key);
+
+            const itBase = insumos.filter(i => CATS_IT_KEYS.includes(i.categoria));
+            const [filtroIt, setFiltroIt] = useState("todos");
+            const [buscaIt, setBuscaIt]   = useState("");
+
+            const itFiltr = itBase.filter(i => {
+              const matchCat   = filtroIt === "todos" || i.categoria === filtroIt;
+              const matchBusca = !buscaIt || i.nome.toLowerCase().includes(buscaIt.toLowerCase()) || (i.fabricante ?? "").toLowerCase().includes(buscaIt.toLowerCase());
+              return matchCat && matchBusca;
+            });
+
+            const totalValorIt = itFiltr.reduce((s, i) => s + (i.estoque * i.valor_unitario), 0);
+            const abaixoMinIt  = itBase.filter(i => i.estoque < i.estoque_minimo).length;
+
+            const abrirModalIt = (ins?: Insumo) => {
+              setEditIns(ins ?? null);
+              setFIns(ins ? {
+                nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
+                unidade: ins.unidade, fabricante: ins.fabricante ?? "",
+                estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
+                valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
+                deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "", principio_ativo_id: "",
+              } : { nome: "", categoria: "material" as Insumo["categoria"], subgrupo: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              setModalIns(true);
+            };
+
+            const salvarIt = async () => {
+              if (!fIns.nome.trim()) { setErro("Informe o nome do item."); return; }
+              setSalvando(true); setErro("");
+              try {
+                const isComb = fIns.categoria === "combustivel";
+                const payload: Omit<Insumo, "id" | "created_at"> = {
+                  fazenda_id: fazendaId!, nome: fIns.nome.trim(), categoria: fIns.categoria,
+                  subgrupo: fIns.subgrupo || undefined,
+                  unidade: isComb ? "L" : fIns.unidade,
+                  fabricante: fIns.fabricante || undefined,
+                  estoque: parseFloat(fIns.estoque) || 0,
+                  estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
+                  valor_unitario: parseFloat(fIns.valor_unitario) || 0,
+                  lote: fIns.lote || undefined, validade: fIns.validade || undefined,
+                  deposito_id: fIns.deposito_id || undefined,
+                  bomba_id: isComb ? (fIns.bomba_id || undefined) : undefined,
+                  tipo: "produto",
+                };
+                if (editIns) {
+                  await atualizarInsumo(editIns.id, payload);
+                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
+                } else {
+                  const n = await criarInsumo(payload);
+                  setInsumos(x => [...x, n].sort((a, b) => a.nome.localeCompare(b.nome)));
+                }
+                setModalIns(false);
+              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              finally { setSalvando(false); }
+            };
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                  {[
+                    { label: "Total de itens",   valor: itBase.length.toString(),       cor: "#1a1a1a" },
+                    { label: "Abaixo do mínimo", valor: abaixoMinIt.toString(),          cor: abaixoMinIt > 0 ? "#E24B4A" : "#444" },
+                    { label: "Valor em estoque", valor: totalValorIt.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
+                    { label: "No filtro",        valor: itFiltr.length.toString(),       cor: "#378ADD" },
+                  ].map((s, i) => (
+                    <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 16px" }}>
+                      <div style={{ fontSize: 11, color: "#444", marginBottom: 4 }}>{s.label}</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: s.cor }}>{s.valor}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <input style={{ ...inp, width: 220 }} placeholder="Buscar item…" value={buscaIt} onChange={e => setBuscaIt(e.target.value)} />
+                  <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
+                    <button onClick={() => setFiltroIt("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIt === "todos" ? "#1A4870" : "#D4DCE8", background: filtroIt === "todos" ? "#D5E8F5" : "transparent", color: filtroIt === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIt === "todos" ? 600 : 400 }}>
+                      Todos ({itBase.length})
+                    </button>
+                    {CATS_IT.map(c => {
+                      const qtd = itBase.filter(i => i.categoria === c.key).length;
+                      if (qtd === 0) return null;
+                      return (
+                        <button key={c.key} onClick={() => setFiltroIt(c.key)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIt === c.key ? c.cl : "#D4DCE8", background: filtroIt === c.key ? c.bg : "transparent", color: filtroIt === c.key ? c.cl : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIt === c.key ? 600 : 400 }}>
+                          {c.label} ({qtd})
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button style={btnV} onClick={() => abrirModalIt()}>+ Novo Item</button>
+                </div>
+
+                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  {itFiltr.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
+                      {buscaIt ? `Nenhum item encontrado para "${buscaIt}"` : "Nenhum item geral cadastrado. Use '+ Novo Item' para peças, materiais, combustíveis, escritório, etc."}
+                    </div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <TH cols={["Nome / Fabricante", "Categoria", "Subgrupo", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", ""]} />
+                      <tbody>
+                        {itFiltr.map((ins, i) => {
+                          const cat = catItMap[ins.categoria];
+                          const abaixo = ins.estoque < ins.estoque_minimo;
+                          const total  = ins.estoque * ins.valor_unitario;
+                          return (
+                            <tr key={ins.id} style={{ borderBottom: i < itFiltr.length - 1 ? "0.5px solid #DEE5EE" : "none", background: abaixo ? "#FFFAF5" : "transparent" }}>
+                              <td style={{ padding: "10px 14px" }}>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{ins.nome}</div>
+                                {ins.fabricante && <div style={{ fontSize: 11, color: "#555" }}>{ins.fabricante}</div>}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                                {cat && <span style={{ fontSize: 10, background: cat.bg, color: cat.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{cat.label}</span>}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.subgrupo || "—"}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600, color: abaixo ? "#E24B4A" : "#1a1a1a" }}>
+                                {ins.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                                {abaixo && <span style={{ marginLeft: 5, fontSize: 9, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 6 }}>⚠ baixo</span>}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.estoque_minimo.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#1a1a1a", fontSize: 12 }}>{total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                  <button style={btnE} onClick={() => abrirModalIt(ins)}>Editar</button>
+                                  <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          <td colSpan={7} style={{ padding: "8px 14px", fontSize: 11, color: "#555" }}>{itFiltr.length} itens</td>
+                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                            {totalValorIt.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+                </div>
+
+                {modalIns && !["produto_agricola","semente","fertilizante","defensivo","corretivo","micronutriente","biologico","inoculante"].includes(fIns.categoria) && (
+                  <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Item Geral"} onClose={() => setModalIns(false)} width={680}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                      <div>
+                        <label style={lbl}>Categoria *</label>
+                        <select style={inp} value={fIns.categoria} onChange={e => {
+                          const cat = e.target.value as Insumo["categoria"];
+                          setFIns(p => ({ ...p, categoria: cat, unidade: cat === "combustivel" ? "L" : p.unidade }));
+                        }}>
+                          <option value="peca">Peça</option>
+                          <option value="material">Material</option>
+                          <option value="uso_consumo">Uso e Consumo</option>
+                          <option value="escritorio">Escritório</option>
+                          <option value="combustivel">Combustível</option>
+                          <option value="outros">Outros</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Unidade *</label>
+                        {fIns.categoria === "combustivel" ? (
+                          <input style={{ ...inp, background: "#F4F6FA", color: "#555" }} value="L (litros)" readOnly />
+                        ) : (
+                          <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                            <option value="un">un (unidade)</option>
+                            <option value="kg">kg</option>
+                            <option value="L">L (litros)</option>
+                            <option value="m">m (metro)</option>
+                            <option value="m2">m² (metro quadrado)</option>
+                            <option value="cx">cx (caixa)</option>
+                            <option value="pc">pc (peça)</option>
+                            <option value="par">par</option>
+                            <option value="outros">outros</option>
+                          </select>
+                        )}
+                      </div>
+                      <div style={{ gridColumn: "1/-1" }}>
+                        <label style={lbl}>Nome *</label>
+                        <input style={inp} placeholder={fIns.categoria === "combustivel" ? "Ex: Diesel S10, Gasolina" : "Ex: Filtro de óleo, Graxeira"} value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Subgrupo</label>
+                        <input style={inp} placeholder="Ex: Manutenção, Lubrificantes" value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Fabricante / Marca</label>
+                        <input style={inp} placeholder="Ex: Bosch, 3M" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Estoque atual</label>
+                        <input style={inp} type="number" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Estoque mínimo</label>
+                        <input style={inp} type="number" value={fIns.estoque_minimo} onChange={e => setFIns(p => ({ ...p, estoque_minimo: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Valor unitário (R$)</label>
+                        <input style={inp} type="number" step="0.01" value={fIns.valor_unitario} onChange={e => setFIns(p => ({ ...p, valor_unitario: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Depósito padrão</label>
+                        <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
+                          <option value="">— Selecione —</option>
+                          {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                        </select>
+                      </div>
+                      {fIns.categoria === "combustivel" && (
+                        <div>
+                          <label style={lbl}>Bomba associada</label>
+                          <select style={inp} value={fIns.bomba_id} onChange={e => setFIns(p => ({ ...p, bomba_id: e.target.value }))}>
+                            <option value="">— Selecione —</option>
+                            {bombas.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
+                        <div style={{ gridColumn: "1/-1", background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0B2D50" }}>
+                          Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
+                        </div>
+                      )}
+                      <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                        <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
+                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarIt}>
+                          {salvando ? "Salvando…" : "Salvar"}
+                        </button>
+                      </div>
+                    </div>
+                  </Modal>
+                )}
               </div>
             );
           })()}

@@ -49,6 +49,8 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Técnicos" },
       { id: "cad-safras",       label: "Safras",                path: "/cadastros?tab=safras"       },
       { id: "cad-insumos",      label: "Insumos",               path: "/cadastros?tab=insumos"      },
+      { id: "cad-produtos",     label: "Produtos Agrícolas",    path: "/cadastros?tab=produtos"     },
+      { id: "cad-itens",        label: "Itens Gerais",          path: "/cadastros?tab=itens"        },
       { id: "cad-depositos",    label: "Depósitos & Armazéns",  path: "/cadastros?tab=depositos"    },
       { id: "cad-maquinas",     label: "Máquinas",              path: "/cadastros?tab=maquinas"     },
       { id: "cad-combustivel",  label: "Combustíveis & Bombas", path: "/cadastros?tab=combustivel"  },
@@ -63,10 +65,20 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "comercial", label: "Comercial", minStep: 4,
     children: [
-      { id: "com-faturamento",   label: "Faturamento — NF-e de Saída", path: "/comercial/faturamento" },
-      { id: "com-contratos",     label: "Contratos de Grãos",           path: "/contratos"              },
-      { id: "com-arrendamentos", label: "Contratos de Arrendamento",     path: "/contratos/arrendamento" },
-      { id: "com-expedicao",     label: "Expedição de Grãos",            path: "/expedicao"              },
+      {
+        type: "subgroup", id: "sg-faturamento", label: "Faturamento",
+        children: [
+          { id: "com-faturamento", label: "NF-e de Saída",   path: "/comercial/faturamento" },
+          { id: "com-expedicao",   label: "Expedição de Grãos", path: "/expedicao"          },
+        ],
+      },
+      {
+        type: "subgroup", id: "sg-contratos-com", label: "Contratos",
+        children: [
+          { id: "com-contratos",     label: "Contratos de Grãos",       path: "/contratos"              },
+          { id: "com-arrendamentos", label: "Contratos de Arrendamento", path: "/contratos/arrendamento" },
+        ],
+      },
     ],
   },
 

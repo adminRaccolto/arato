@@ -122,9 +122,11 @@ export type Insumo = {
   nome: string;
   categoria:
     // insumos agrícolas
-    | "semente" | "fertilizante" | "defensivo" | "inoculante" | "produto_agricola" | "combustivel"
-    // produtos gerais
-    | "peca" | "material" | "uso_consumo" | "escritorio"
+    | "semente" | "fertilizante" | "defensivo" | "corretivo" | "micronutriente" | "biologico" | "inoculante"
+    // produtos que a fazenda produz
+    | "produto_agricola"
+    // itens gerais (peças, materiais, consumo)
+    | "combustivel" | "peca" | "material" | "uso_consumo" | "escritorio"
     // shared
     | "outros";
   subgrupo?: string;
