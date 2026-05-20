@@ -138,9 +138,9 @@ export default function Expedicao() {
   // ── Carregar referências ──────────────────────────────────────────────────
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("anos_safra").select("id,descricao").order("descricao", { ascending: false })
+    supabase.from("anos_safra").select("id,descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
       .then(({ data }) => data && setAnosS(data));
-    supabase.from("ciclos").select("id,cultura,ano_safra_id").order("cultura")
+    supabase.from("ciclos").select("id,cultura,ano_safra_id").eq("fazenda_id", fazendaId).order("cultura")
       .then(({ data }) => data && setCiclos(data));
     supabase.from("transportadoras").select("id,razao_social").eq("fazenda_id", fazendaId).eq("ativa", true)
       .then(({ data }) => data && setTransp(data));
