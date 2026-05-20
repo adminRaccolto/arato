@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     // ── 4. Enviar e-mail de boas-vindas (opcional) ──
     let emailEnviado = false;
     if (enviar_email) {
-      const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "https://web.agr.com.br";
+      const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "https://web.arato.agr.br";
       const resendKey = process.env.RESEND_API_KEY;
       const fromAddr  = process.env.RESEND_FROM ?? "noreply@agr.com.br";
       const nomeFaz   = fazenda_nome ?? "sua fazenda";

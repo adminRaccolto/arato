@@ -717,7 +717,7 @@ DELETE FROM fazendas             WHERE id          = 'UUID';
               ["SUPABASE_SERVICE_ROLE_KEY",       "Sim", "Service Role Key — usada pelos crons para ignorar RLS"],
               ["RESEND_API_KEY",                  "Sim", "Chave da API Resend (começa com re_)"],
               ["RESEND_FROM",                     "Sim", "E-mail remetente verificado (ex: alertas@raccolto.com.br)"],
-              ["NEXT_PUBLIC_APP_URL",             "Sim", "URL pública do app (ex: https://web.agr.com.br)"],
+              ["NEXT_PUBLIC_APP_URL",             "Sim", "URL pública do app (ex: https://web.arato.agr.br)"],
               ["CRON_SECRET",                     "Recomendado", "Segredo para proteger endpoints /api/cron/* de chamadas externas"],
             ]}
           />

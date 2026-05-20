@@ -406,7 +406,7 @@ export default function AutomacoesPage() {
               { key: "SUPABASE_SERVICE_ROLE_KEY",   desc: "Service Role Key do Supabase — acesso irrestrito",        obrig: true  },
               { key: "SIEG_API_KEY",                desc: "API Key global da SIEG (alternativa à configuração por fazenda)", obrig: false },
               { key: "CRON_SECRET",                 desc: "Segredo para proteger os endpoints cron de chamadas externas", obrig: false },
-              { key: "NEXT_PUBLIC_APP_URL",          desc: "URL pública do app (ex: https://web.agr.com.br)",        obrig: false },
+              { key: "NEXT_PUBLIC_APP_URL",          desc: "URL pública do app (ex: https://web.arato.agr.br)",        obrig: false },
             ].map(v => (
               <div key={v.key} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: "0.5px solid #F0F2F8" }}>
                 <code style={{ fontSize: 12, background: "#F0F2F8", padding: "2px 8px", borderRadius: 5, color: "#1A4870", minWidth: 240, flexShrink: 0 }}>{v.key}</code>
