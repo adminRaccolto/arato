@@ -4169,16 +4169,14 @@ NOTIFY pgrst, 'reload schema';
 
 -- ── Migration: garantias_contrato — novos campos ────────────────────────────
 -- Tipo jurídico, grau, bem vinculado e percentual para rastreabilidade fiscal.
-ALTER TABLE garantias_contrato
-  ADD COLUMN IF NOT EXISTS tipo_garantia   text,
-  ADD COLUMN IF NOT EXISTS grau            text,
-  ADD COLUMN IF NOT EXISTS tipo_bem        text,
-  ADD COLUMN IF NOT EXISTS maquina_id      uuid REFERENCES maquinas(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS percentual_bem  numeric(5,2);
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS tipo_garantia  text;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS grau           text;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS tipo_bem       text;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS maquina_id     uuid REFERENCES maquinas(id) ON DELETE SET NULL;
+ALTER TABLE garantias_contrato ADD COLUMN IF NOT EXISTS percentual_bem numeric(5,2);
 
 -- matriculas_imoveis: municipio e uf para exibição nas garantias
-ALTER TABLE matriculas_imoveis
-  ADD COLUMN IF NOT EXISTS municipio text,
-  ADD COLUMN IF NOT EXISTS uf        text;
+ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS municipio text;
+ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS uf        text;
 
 NOTIFY pgrst, 'reload schema';
