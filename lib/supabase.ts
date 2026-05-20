@@ -1027,6 +1027,22 @@ export type CentroCustoContrato = {
   created_at?: string;
 };
 
+export type AditivoContrato = {
+  id: string;
+  contrato_id: string;
+  fazenda_id: string;
+  data_aditivo: string;
+  tipo: "prorrogacao" | "renegociacao" | "capitalizacao" | "reducao_taxa" | "ampliacao_valor" | "outros";
+  descricao: string;
+  nova_data_vencimento?: string;
+  nova_taxa_aa?: number;
+  nova_taxa_am?: number;
+  novo_valor_financiado?: number;
+  novo_num_parcelas?: number;
+  obs?: string;
+  created_at?: string;
+};
+
 // ─────────────────────────────────────────────────────────────
 // MÓDULO LAVOURA — Plantio, Pulverização, Colheita
 // ─────────────────────────────────────────────────────────────

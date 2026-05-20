@@ -7,6 +7,7 @@ import {
   listarParcelasPagamento, salvarParcelasPagamento, baixarParcelaPagamento,
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
+  listarAditivos, criarAditivo, excluirAditivo,
   listarMatriculas,
   listarMaquinas,
   listarContas,
@@ -16,7 +17,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import type {
   ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento,
   GarantiaContrato, CentroCustoContrato, MatriculaImovel,
-  ContaBancaria, Pessoa, Maquina,
+  ContaBancaria, Pessoa, Maquina, AditivoContrato,
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
@@ -245,13 +246,14 @@ export default function ContratosFinanceiros() {
 
   // modal detalhe (abas internas)
   const [detalhe, setDetalhe] = useState<ContratoFinanceiro | null>(null);
-  const [abaDetalhe, setAbaDetalhe] = useState<"liberacao" | "pagamento" | "garantias" | "centrocusto">("liberacao");
+  const [abaDetalhe, setAbaDetalhe] = useState<"liberacao" | "pagamento" | "garantias" | "centrocusto" | "aditivos" | "movimentacoes">("liberacao");
 
   // dados das abas do detalhe
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
   const [garantias, setGarantias]                 = useState<GarantiaContrato[]>([]);
   const [centrosCusto, setCentrosCusto]           = useState<CentroCustoContrato[]>([]);
+  const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
   const [maquinas,   setMaquinas]                 = useState<Maquina[]>([]);
 
@@ -269,6 +271,8 @@ export default function ContratosFinanceiros() {
   });
   const [centrosForm, setCentrosForm] = useState<{ descricao: string; percentual: string; valor: string }[]>([{ descricao: "", percentual: "100", valor: "" }]);
   const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0" });
+  const FA_VAZIO = { data_aditivo: "", tipo: "prorrogacao" as AditivoContrato["tipo"], descricao: "", nova_data_vencimento: "", nova_taxa_aa: "", nova_taxa_am: "", novo_valor_financiado: "", novo_num_parcelas: "", obs: "" };
+  const [fAdit, setFAdit] = useState({ ...FA_VAZIO });
 
   // ── Carregar dados base ──
   useEffect(() => {
@@ -301,6 +305,11 @@ export default function ContratosFinanceiros() {
       setCentrosCusto(cc);
       setCentrosForm(cc.length > 0 ? cc.map(c => ({ descricao: c.descricao, percentual: String(c.percentual), valor: String(c.valor) })) : [{ descricao: "", percentual: "100", valor: "" }]);
     }).catch(() => {});
+    if (abaDetalhe === "aditivos") listarAditivos(detalhe.id).then(setAditivos).catch(() => {});
+    if (abaDetalhe === "movimentacoes") {
+      listarParcelasLiberacao(detalhe.id).then(setParcelasLiberacao).catch(() => {});
+      listarParcelasPagamento(detalhe.id).then(setParcelasPagamento).catch(() => {});
+    }
   }, [detalhe, abaDetalhe, fazendaId]);
 
   async function salvar(fn: () => Promise<void>) {
@@ -523,6 +532,26 @@ export default function ContratosFinanceiros() {
       }));
     await salvarCentrosCusto(detalhe.id, itens);
     setCentrosCusto(await listarCentrosCusto(detalhe.id));
+  });
+
+  // ── Aditivos ──
+  const salvarAditivo = () => salvar(async () => {
+    if (!detalhe || !fAdit.data_aditivo || !fAdit.descricao.trim()) return;
+    const nova = await criarAditivo({
+      contrato_id: detalhe.id,
+      fazenda_id: fazendaId!,
+      data_aditivo: fAdit.data_aditivo,
+      tipo: fAdit.tipo,
+      descricao: fAdit.descricao.trim(),
+      ...(fAdit.nova_data_vencimento ? { nova_data_vencimento: fAdit.nova_data_vencimento } : {}),
+      ...(fAdit.nova_taxa_aa ? { nova_taxa_aa: parseFloat(fAdit.nova_taxa_aa.replace(",", ".")) } : {}),
+      ...(fAdit.nova_taxa_am ? { nova_taxa_am: parseFloat(fAdit.nova_taxa_am.replace(",", ".")) } : {}),
+      ...(fAdit.novo_valor_financiado ? { novo_valor_financiado: parseFloat(fAdit.novo_valor_financiado.replace(",", ".")) } : {}),
+      ...(fAdit.novo_num_parcelas ? { novo_num_parcelas: parseInt(fAdit.novo_num_parcelas) } : {}),
+      ...(fAdit.obs ? { obs: fAdit.obs.trim() } : {}),
+    });
+    setAditivos(p => [...p, nova]);
+    setFAdit({ ...FA_VAZIO });
   });
 
   // ── Totais — converte USD→BRL via PTAX dinâmico ──
@@ -869,10 +898,12 @@ export default function ContratosFinanceiros() {
           {/* Abas */}
           <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8", marginBottom: 20 }}>
             {([
-              ["liberacao",   "Parcelas Liberação"],
-              ["pagamento",   "Parcelas Pagamento"],
-              ["garantias",   "Garantias"],
-              ["centrocusto", "Centro de Custo"],
+              ["liberacao",     "Parcelas Liberação"],
+              ["pagamento",     "Parcelas Pagamento"],
+              ["garantias",     "Garantias"],
+              ["centrocusto",   "Centro de Custo"],
+              ["aditivos",      "Aditivos"],
+              ["movimentacoes", "Movimentações"],
             ] as const).map(([k, l]) => (
               <button key={k} onClick={() => setAbaDetalhe(k)} style={{ padding: "9px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: abaDetalhe === k ? 600 : 400, color: abaDetalhe === k ? "#1a1a1a" : "#555", borderBottom: abaDetalhe === k ? "2px solid #1A4870" : "2px solid transparent" }}>{l}</button>
             ))}
@@ -1233,6 +1264,174 @@ export default function ContratosFinanceiros() {
               )}
             </div>
           )}
+
+          {/* ── Aditivos ── */}
+          {abaDetalhe === "aditivos" && (() => {
+            const TIPO_ADIT: Record<AditivoContrato["tipo"], { label: string; bg: string; cl: string }> = {
+              prorrogacao:      { label: "Prorrogação",        bg: "#D5E8F5", cl: "#0B2D50" },
+              renegociacao:     { label: "Renegociação",       bg: "#FBF3E0", cl: "#7A5400" },
+              capitalizacao:    { label: "Capitalização",      bg: "#FCF0F0", cl: "#7A1A1A" },
+              reducao_taxa:     { label: "Redução de Taxa",    bg: "#E8F5EB", cl: "#1A5C35" },
+              ampliacao_valor:  { label: "Ampliação de Valor", bg: "#EDE9FB", cl: "#4B3B9B" },
+              outros:           { label: "Outros",             bg: "#F3F4F6", cl: "#555"    },
+            };
+            return (
+              <div>
+                <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
+                  Registre alterações formais ao contrato: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
+                </div>
+
+                {/* Formulário de novo aditivo */}
+                <div style={{ background: "#F8F9FB", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 16, marginBottom: 18 }}>
+                  <SecTitle>Novo Aditivo</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
+                    <div><label style={lbl}>Data do Aditivo *</label><input style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
+                    <div><label style={lbl}>Tipo *</label>
+                      <select style={inp} value={fAdit.tipo} onChange={e => setFAdit(p => ({ ...p, tipo: e.target.value as AditivoContrato["tipo"] }))}>
+                        {Object.entries(TIPO_ADIT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                      </select>
+                    </div>
+                    <div><label style={lbl}>Descrição / Motivo *</label><input style={inp} placeholder="Descreva o motivo ou cláusula alterada" value={fAdit.descricao} onChange={e => setFAdit(p => ({ ...p, descricao: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div><label style={lbl}>Nova Data Vencimento</label><input style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
+                    <div><label style={lbl}>Nova Taxa a.a. (%)</label><input style={inp} type="number" step="0.01" placeholder="Ex: 8,5" value={fAdit.nova_taxa_aa} onChange={e => { const aa = parseFloat(e.target.value.replace(",",".")); setFAdit(p => ({ ...p, nova_taxa_aa: e.target.value, nova_taxa_am: isNaN(aa) ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
+                    <div><label style={lbl}>Nova Taxa a.m. (%)</label><input style={inp} type="number" step="0.0001" placeholder="Auto" value={fAdit.nova_taxa_am} onChange={e => setFAdit(p => ({ ...p, nova_taxa_am: e.target.value }))} /></div>
+                    <div><label style={lbl}>Novo Valor Financiado</label><input style={inp} type="number" step="0.01" placeholder="R$" value={fAdit.novo_valor_financiado} onChange={e => setFAdit(p => ({ ...p, novo_valor_financiado: e.target.value }))} /></div>
+                    <div><label style={lbl}>Novas Parcelas</label><input style={inp} type="number" step="1" placeholder="Nº" value={fAdit.novo_num_parcelas} onChange={e => setFAdit(p => ({ ...p, novo_num_parcelas: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ marginBottom: 12 }}><label style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 56, resize: "vertical" } as React.CSSProperties} placeholder="Cláusulas específicas, referência ao instrumento de aditamento, etc." value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</button>
+                    <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando || !fAdit.data_aditivo || !fAdit.descricao.trim()} onClick={salvarAditivo}>Registrar Aditivo</button>
+                  </div>
+                </div>
+
+                {/* Histórico de aditivos */}
+                {aditivos.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px 0", color: "#888", fontSize: 12 }}>Nenhum aditivo registrado para este contrato.</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead><tr style={{ background: "#F3F6F9" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {aditivos.map((a, i) => {
+                        const meta = TIPO_ADIT[a.tipo];
+                        const termos: string[] = [];
+                        if (a.nova_data_vencimento) termos.push(`Venc. → ${fmtData(a.nova_data_vencimento)}`);
+                        if (a.nova_taxa_aa)         termos.push(`Taxa → ${fmtNum(a.nova_taxa_aa, 4)}% a.a.`);
+                        if (a.novo_valor_financiado) termos.push(`Valor → ${fmtBRL(a.novo_valor_financiado)}`);
+                        if (a.novo_num_parcelas)    termos.push(`Parcelas → ${a.novo_num_parcelas}x`);
+                        return (
+                          <tr key={a.id} style={{ borderBottom: i < aditivos.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                            <td style={{ padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(a.data_aditivo)}</td>
+                            <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, background: meta.bg, color: meta.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{meta.label}</span></td>
+                            <td style={{ padding: "8px 10px", fontSize: 12 }}>
+                              <div>{a.descricao}</div>
+                              {a.obs && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{a.obs}</div>}
+                            </td>
+                            <td style={{ padding: "8px 10px", fontSize: 11, color: "#555" }}>
+                              {termos.length > 0 ? termos.map((t, ti) => <div key={ti}>{t}</div>) : <span style={{ color: "#bbb" }}>—</span>}
+                            </td>
+                            <td style={{ padding: "8px 10px" }}>
+                              <button style={btnX} onClick={() => { if (confirm("Excluir este aditivo?")) excluirAditivo(a.id).then(() => setAditivos(p => p.filter(x => x.id !== a.id))); }}>✕</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Movimentações ── */}
+          {abaDetalhe === "movimentacoes" && (() => {
+            type Mov = { data: string; tipo: "liberacao" | "pagamento"; label: string; amortizacao: number; juros: number; acessorios: number; valor: number; saldo: number; status?: string };
+            const movs: Mov[] = [];
+            let saldoAcum = detalhe.valor_financiado;
+
+            // Liberações aumentam o saldo devedor
+            const libsOrd = [...parcelasLiberacao].sort((a, b) => a.data_liberacao.localeCompare(b.data_liberacao));
+            libsOrd.forEach(l => {
+              saldoAcum += l.valor_liberado;
+              movs.push({ data: l.data_liberacao, tipo: "liberacao", label: `Liberação #${l.num_parcela}`, amortizacao: 0, juros: 0, acessorios: 0, valor: l.valor_liberado, saldo: saldoAcum });
+            });
+
+            // Pagamentos reduzem o saldo devedor
+            const pagsOrd = [...parcelasPagamento].sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+            pagsOrd.forEach(p => {
+              saldoAcum -= (p.amortizacao ?? 0);
+              movs.push({ data: p.data_vencimento, tipo: "pagamento", label: `Parcela #${p.num_parcela}`, amortizacao: p.amortizacao ?? 0, juros: p.juros ?? 0, acessorios: p.despesas_acessorios ?? 0, valor: p.valor_parcela, saldo: saldoAcum, status: p.status });
+            });
+
+            movs.sort((a, b) => a.data.localeCompare(b.data));
+
+            const totalLiberado = libsOrd.reduce((s, l) => s + l.valor_liberado, 0);
+            const totalPago     = pagsOrd.filter(p => p.status === "pago").reduce((s, p) => s + p.valor_parcela, 0);
+            const totalJuros    = pagsOrd.reduce((s, p) => s + (p.juros ?? 0), 0);
+
+            return (
+              <div>
+                {/* KPIs */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 18 }}>
+                  {[
+                    { label: "Total Liberado", valor: totalLiberado,                          cor: "#1A4870" },
+                    { label: "Total Pago",     valor: totalPago,                              cor: "#1A5C38" },
+                    { label: "Total de Juros", valor: totalJuros,                             cor: "#C9921B" },
+                  ].map((k, i) => (
+                    <div key={i} style={{ background: "#F8F9FB", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 16px" }}>
+                      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{k.label}</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{fmtBRL(k.valor)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {movs.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px 0", color: "#888", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#F3F6F9" }}>
+                        {["Data", "Evento", "Amortização", "Juros", "Acessórios", "Valor", "Saldo Devedor", "Status"].map((h, i) => (
+                          <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {movs.map((m, i) => {
+                        const isLib = m.tipo === "liberacao";
+                        const statusMeta: Record<string, { label: string; bg: string; cl: string }> = {
+                          pendente:  { label: "Pendente",  bg: "#FBF3E0", cl: "#7A5400" },
+                          pago:      { label: "Pago",      bg: "#E8F5EB", cl: "#1A5C35" },
+                          vencido:   { label: "Vencido",   bg: "#FCF0F0", cl: "#7A1A1A" },
+                          carencia:  { label: "Carência",  bg: "#D5E8F5", cl: "#0B2D50" },
+                        };
+                        const sm = m.status ? (statusMeta[m.status] ?? statusMeta.pendente) : null;
+                        return (
+                          <tr key={i} style={{ borderBottom: i < movs.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                            <td style={{ padding: "7px 8px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(m.data)}</td>
+                            <td style={{ padding: "7px 8px", fontSize: 12 }}>
+                              <span style={{ fontSize: 10, background: isLib ? "#D5E8F5" : "#F3F4F6", color: isLib ? "#0B2D50" : "#333", padding: "2px 7px", borderRadius: 8, fontWeight: 600, marginRight: 6 }}>{isLib ? "Lib" : "Pag"}</span>
+                              {m.label}
+                            </td>
+                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.amortizacao > 0 ? fmtBRL(m.amortizacao) : "—"}</td>
+                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: m.juros > 0 ? "#C9921B" : "#bbb" }}>{m.juros > 0 ? fmtBRL(m.juros) : "—"}</td>
+                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.acessorios > 0 ? fmtBRL(m.acessorios) : "—"}</td>
+                            <td style={{ padding: "7px 8px", fontSize: 13, textAlign: "right", fontWeight: 600, color: isLib ? "#1A4870" : "#1A1A1A" }}>{fmtBRL(m.valor)}</td>
+                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: "#555" }}>{fmtBRL(Math.max(0, m.saldo))}</td>
+                            <td style={{ padding: "7px 8px" }}>
+                              {sm ? <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            );
+          })()}
         </Modal>
       )}
     </div>

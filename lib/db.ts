@@ -1862,6 +1862,30 @@ export async function salvarCentrosCusto(contrato_id: string, itens: Omit<Centro
   }
 }
 
+// ── Aditivos ──────────────────────────────────────────────────
+import type { AditivoContrato } from "./supabase";
+
+export async function listarAditivos(contrato_id: string): Promise<AditivoContrato[]> {
+  const { data, error } = await supabase
+    .from("aditivos_contrato")
+    .select("*")
+    .eq("contrato_id", contrato_id)
+    .order("data_aditivo");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarAditivo(a: Omit<AditivoContrato, "id" | "created_at">): Promise<AditivoContrato> {
+  const { data, error } = await supabase.from("aditivos_contrato").insert(a).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function excluirAditivo(id: string): Promise<void> {
+  const { error } = await supabase.from("aditivos_contrato").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ————————————————————————————————————————
 // MÓDULO LAVOURA — Plantio
 // ————————————————————————————————————————

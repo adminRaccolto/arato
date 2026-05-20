@@ -4180,3 +4180,31 @@ ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS municipio text;
 ALTER TABLE matriculas_imoveis ADD COLUMN IF NOT EXISTS uf        text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration: aditivos_contrato ────────────────────────────────────────────
+-- Registra aditamentos formais: prorrogações, renegociações de taxa, etc.
+CREATE TABLE IF NOT EXISTS aditivos_contrato (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contrato_id           UUID NOT NULL REFERENCES contratos_financeiros(id) ON DELETE CASCADE,
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  data_aditivo          DATE NOT NULL,
+  tipo                  TEXT NOT NULL DEFAULT 'outros'
+                        CHECK (tipo IN ('prorrogacao','renegociacao','capitalizacao','reducao_taxa','ampliacao_valor','outros')),
+  descricao             TEXT NOT NULL,
+  nova_data_vencimento  DATE,
+  nova_taxa_aa          NUMERIC(10,4),
+  nova_taxa_am          NUMERIC(10,6),
+  novo_valor_financiado NUMERIC(14,2),
+  novo_num_parcelas     INTEGER,
+  obs                   TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_aditivos_contrato ON aditivos_contrato(contrato_id);
+
+ALTER TABLE aditivos_contrato ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "aditivos_all" ON aditivos_contrato;
+CREATE POLICY "aditivos_all" ON aditivos_contrato FOR ALL
+  USING (fazenda_id IN (SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()));
+
+NOTIFY pgrst, 'reload schema';
