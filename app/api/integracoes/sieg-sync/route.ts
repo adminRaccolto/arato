@@ -21,7 +21,7 @@ export async function GET() {
     status:  "ativo",
     metodo:  "POST",
     descricao: "Endpoint de importação de NF-e via Sieg DFe Monitor. Envie POST com { fazenda_id } para acionar a sincronização.",
-    documentacao: "https://arato.agr.br",
+    documentacao: "https://web.agr.com.br",
   });
 }
 
