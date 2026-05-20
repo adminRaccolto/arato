@@ -8,6 +8,7 @@ import {
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
   listarMatriculas,
+  listarMaquinas,
   listarContas,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
@@ -15,7 +16,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import type {
   ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento,
   GarantiaContrato, CentroCustoContrato, MatriculaImovel,
-  ContaBancaria, Pessoa,
+  ContaBancaria, Pessoa, Maquina,
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
@@ -174,6 +175,31 @@ const TIPO_META: Record<ContratoFinanceiro["tipo"], { label: string; bg: string;
   outros:        { label: "Outros",         bg: "#F1EFE8", cl: "#555"    },
 };
 
+const TIPO_GAR_META: Record<NonNullable<GarantiaContrato["tipo_garantia"]>, { label: string; bg: string; cl: string }> = {
+  alienacao_fiduciaria: { label: "Alienação Fiduciária", bg: "#D5E8F5", cl: "#0B2D50" },
+  hipoteca:             { label: "Hipoteca",              bg: "#FAEEDA", cl: "#633806" },
+  penhor_rural:         { label: "Penhor Rural",          bg: "#FBF3E0", cl: "#8B5E14" },
+  aval:                 { label: "Aval",                  bg: "#E8F5EB", cl: "#1A5C35" },
+  nota_promissoria:     { label: "Nota Promissória",      bg: "#EDE9FB", cl: "#4B3B9B" },
+  cpr_garantia:         { label: "CPR como Garantia",     bg: "#FEF3E2", cl: "#7A4300" },
+  cessao_recebiveis:    { label: "Cessão de Recebíveis",  bg: "#E6F1FB", cl: "#0C447C" },
+  outros:               { label: "Outros",                bg: "#F1EFE8", cl: "#555"    },
+};
+
+const GRAU_META: Record<"1_grau"|"2_grau"|"3_grau", string> = {
+  "1_grau": "1° Grau",
+  "2_grau": "2° Grau",
+  "3_grau": "3° Grau",
+};
+
+const TIPO_BEM_META: Record<NonNullable<GarantiaContrato["tipo_bem"]>, string> = {
+  imovel:          "Imóvel Rural",
+  maquina:         "Máquina / Veículo",
+  semovente:       "Semovente (Gado)",
+  produto_agricola:"Produto Agrícola",
+  outro:           "Outro",
+};
+
 const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: string; cl: string }> = {
   ativo:     { label: "Ativo",     bg: "#D5E8F5", cl: "#0B2D50" },
   quitado:   { label: "Quitado",   bg: "#F1EFE8", cl: "#555"    },
@@ -227,10 +253,20 @@ export default function ContratosFinanceiros() {
   const [garantias, setGarantias]                 = useState<GarantiaContrato[]>([]);
   const [centrosCusto, setCentrosCusto]           = useState<CentroCustoContrato[]>([]);
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
+  const [maquinas,   setMaquinas]                 = useState<Maquina[]>([]);
 
   // forms das abas
   const [fLib, setFLib] = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
-  const [fGar, setFGar] = useState({ descricao: "", matricula_id: "", valor_avaliacao: "" });
+  const [fGar, setFGar] = useState({
+    tipo_garantia: "alienacao_fiduciaria" as GarantiaContrato["tipo_garantia"],
+    grau: "" as "" | "1_grau" | "2_grau" | "3_grau",
+    tipo_bem: "imovel" as GarantiaContrato["tipo_bem"],
+    matricula_id: "",
+    maquina_id: "",
+    descricao: "",
+    valor_avaliacao: "",
+    percentual_bem: "100",
+  });
   const [centrosForm, setCentrosForm] = useState<{ descricao: string; percentual: string; valor: string }[]>([{ descricao: "", percentual: "100", valor: "" }]);
   const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0" });
 
@@ -259,6 +295,7 @@ export default function ContratosFinanceiros() {
     if (abaDetalhe === "garantias") {
       listarGarantias(detalhe.id).then(setGarantias).catch(() => {});
       listarMatriculas(fazendaId!).then(setMatriculas).catch(() => {});
+      listarMaquinas(fazendaId!).then(m => setMaquinas(m.filter(x => x.ativa))).catch(() => {});
     }
     if (abaDetalhe === "centrocusto") listarCentrosCusto(detalhe.id).then(cc => {
       setCentrosCusto(cc);
@@ -385,7 +422,7 @@ export default function ContratosFinanceiros() {
     setDetalhe(c);
     setAbaDetalhe("liberacao");
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
-    setFGar({ descricao: "", matricula_id: "", valor_avaliacao: "" });
+    setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     // pre-fill taxa e periodicidade do contrato na calculadora
     setFCalc({ nParcelas: "12", taxaMensal: c.taxa_juros_am ? fmtNum(c.taxa_juros_am, 4) : "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
   };
@@ -442,15 +479,35 @@ export default function ContratosFinanceiros() {
 
   // ── Garantia ──
   const salvarGarantia = () => salvar(async () => {
-    if (!detalhe || !fGar.descricao.trim()) return;
+    if (!detalhe) return;
+    // Auto-preenche descrição se vazia
+    let desc = fGar.descricao.trim();
+    if (!desc) {
+      if (fGar.tipo_bem === "imovel" && fGar.matricula_id) {
+        const m = matriculas.find(x => x.id === fGar.matricula_id);
+        desc = m ? `Matr. ${m.numero}${m.area_ha ? ` — ${m.area_ha} ha` : ""}` : "Imóvel";
+      } else if (fGar.tipo_bem === "maquina" && fGar.maquina_id) {
+        const m = maquinas.find(x => x.id === fGar.maquina_id);
+        desc = m ? `${m.nome}${m.marca ? ` — ${m.marca}` : ""}` : "Máquina";
+      } else {
+        desc = TIPO_GAR_META[fGar.tipo_garantia ?? "outros"]?.label ?? "Garantia";
+      }
+    }
+    if (!desc) { alert("Informe a descrição da garantia."); return; }
     const nova = await criarGarantia({
-      contrato_id: detalhe.id, fazenda_id: fazendaId!,
-      descricao: fGar.descricao.trim(),
-      matricula_id: fGar.matricula_id || undefined,
+      contrato_id:  detalhe.id,
+      fazenda_id:   fazendaId!,
+      tipo_garantia: fGar.tipo_garantia || undefined,
+      grau:          fGar.grau || undefined,
+      tipo_bem:      fGar.tipo_bem || undefined,
+      matricula_id:  fGar.tipo_bem === "imovel" ? (fGar.matricula_id || undefined) : undefined,
+      maquina_id:    fGar.tipo_bem === "maquina" ? (fGar.maquina_id || undefined) : undefined,
+      descricao:     desc,
       valor_avaliacao: fGar.valor_avaliacao ? Number(fGar.valor_avaliacao.replace(",", ".")) : undefined,
+      percentual_bem:  fGar.percentual_bem ? Number(fGar.percentual_bem) : undefined,
     });
     setGarantias(p => [...p, nova]);
-    setFGar({ descricao: "", matricula_id: "", valor_avaliacao: "" });
+    setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
   });
 
   // ── Centro de custo ──
@@ -970,51 +1027,168 @@ export default function ContratosFinanceiros() {
           {/* ── Garantias ── */}
           {abaDetalhe === "garantias" && (
             <div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
-                <div><label style={lbl}>Descrição da Garantia *</label><input style={inp} placeholder="Ex: Matrícula 1234 — Gleba São José" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>
-                <div>
-                  <label style={lbl}>Matrícula vinculada</label>
-                  <select style={inp} value={fGar.matricula_id} onChange={e => setFGar(p => ({ ...p, matricula_id: e.target.value }))}>
-                    <option value="">Nenhuma</option>
-                    {matriculas.map(m => <option key={m.id} value={m.id}>Matr. {m.numero}{m.area_ha ? ` — ${m.area_ha} ha` : ""}</option>)}
-                  </select>
+              {/* ─ Form nova garantia ─ */}
+              <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
+                {/* Linha 1: Tipo Garantia · Grau · Tipo Bem */}
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <label style={lbl}>Tipo de Garantia *</label>
+                    <select style={inp} value={fGar.tipo_garantia ?? ""} onChange={e => setFGar(p => ({ ...p, tipo_garantia: e.target.value as GarantiaContrato["tipo_garantia"] }))}>
+                      <option value="alienacao_fiduciaria">Alienação Fiduciária</option>
+                      <option value="hipoteca">Hipoteca</option>
+                      <option value="penhor_rural">Penhor Rural / Agrícola</option>
+                      <option value="aval">Aval</option>
+                      <option value="nota_promissoria">Nota Promissória</option>
+                      <option value="cpr_garantia">CPR como Garantia</option>
+                      <option value="cessao_recebiveis">Cessão de Recebíveis</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Grau</label>
+                    <select style={inp} value={fGar.grau} onChange={e => setFGar(p => ({ ...p, grau: e.target.value as "" | "1_grau" | "2_grau" | "3_grau" }))}>
+                      <option value="">—</option>
+                      <option value="1_grau">1° Grau</option>
+                      <option value="2_grau">2° Grau</option>
+                      <option value="3_grau">3° Grau</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Tipo de Bem</label>
+                    <select style={inp} value={fGar.tipo_bem ?? "imovel"} onChange={e => setFGar(p => ({ ...p, tipo_bem: e.target.value as GarantiaContrato["tipo_bem"], matricula_id: "", maquina_id: "" }))}>
+                      <option value="imovel">Imóvel Rural (Matrícula)</option>
+                      <option value="maquina">Máquina / Veículo</option>
+                      <option value="semovente">Semovente (Gado)</option>
+                      <option value="produto_agricola">Produto Agrícola (CPR)</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
                 </div>
-                <div><label style={lbl}>Valor de Avaliação (R$)</label><input style={inp} type="number" step="0.01" value={fGar.valor_avaliacao} onChange={e => setFGar(p => ({ ...p, valor_avaliacao: e.target.value }))} /></div>
-                <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarGarantia} disabled={salvando || !fGar.descricao.trim()}>+ Adicionar</button>
+                {/* Linha 2: Bem vinculado (condicional) + Valor + % */}
+                <div style={{ display: "grid", gridTemplateColumns: fGar.tipo_bem === "imovel" || fGar.tipo_bem === "maquina" ? "2fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+                  {fGar.tipo_bem === "imovel" && (
+                    <div>
+                      <label style={lbl}>Matrícula vinculada</label>
+                      <select style={inp} value={fGar.matricula_id} onChange={e => setFGar(p => ({ ...p, matricula_id: e.target.value }))}>
+                        <option value="">— Selecione —</option>
+                        {matriculas.map(m => <option key={m.id} value={m.id}>Matr. {m.numero}{m.area_ha ? ` — ${m.area_ha} ha` : ""}{m.municipio ? ` — ${m.municipio}` : ""}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {fGar.tipo_bem === "maquina" && (
+                    <div>
+                      <label style={lbl}>Máquina / Veículo</label>
+                      <select style={inp} value={fGar.maquina_id} onChange={e => setFGar(p => ({ ...p, maquina_id: e.target.value }))}>
+                        <option value="">— Selecione —</option>
+                        {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.ano ? ` (${m.ano})` : ""}{m.patrimonio ? ` · Patr. ${m.patrimonio}` : ""}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {fGar.tipo_bem !== "imovel" && fGar.tipo_bem !== "maquina" && (
+                    <div>
+                      <label style={lbl}>Descrição do Bem *</label>
+                      <input style={inp} placeholder="Ex: 300 cabeças Nelore, Sacas CPR…" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+                  )}
+                  <div>
+                    <label style={lbl}>% do Bem Oferecido</label>
+                    <input style={inp} type="number" min="1" max="100" value={fGar.percentual_bem} onChange={e => setFGar(p => ({ ...p, percentual_bem: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Valor Avaliação (R$)</label>
+                    <input style={inp} type="number" step="0.01" placeholder="0,00" value={fGar.valor_avaliacao} onChange={e => setFGar(p => ({ ...p, valor_avaliacao: e.target.value }))} />
+                  </div>
+                  {(fGar.tipo_bem === "imovel" || fGar.tipo_bem === "maquina") && (
+                    <div>
+                      <label style={lbl}>Obs. / Descrição adicional</label>
+                      <input style={inp} placeholder="Opcional" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+                  )}
+                  <button style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }} onClick={salvarGarantia} disabled={salvando}>+ Adicionar</button>
+                </div>
               </div>
+
+              {/* ─ Tabela de garantias ─ */}
               {garantias.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 0", color: "#444", fontSize: 12 }}>Nenhuma garantia cadastrada</div>
+                <div style={{ textAlign: "center", padding: "24px 0", color: "#444", fontSize: 12 }}>Nenhuma garantia cadastrada para este contrato.</div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "#F3F6F9" }}>{["Descrição", "Matrícula", "Valor Avaliação", "% Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i < 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                  <thead>
+                    <tr style={{ background: "#F3F6F9" }}>
+                      {["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => (
+                        <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
                   <tbody>
                     {garantias.map((g, i) => {
+                      const tipoMeta = g.tipo_garantia ? TIPO_GAR_META[g.tipo_garantia] : null;
                       const cobertura = g.valor_avaliacao
-                        ? (g.valor_avaliacao / (detalhe.valor_financiado_brl ?? detalhe.valor_financiado)) * 100
+                        ? (g.valor_avaliacao * ((g.percentual_bem ?? 100) / 100) / (detalhe.valor_financiado_brl ?? detalhe.valor_financiado)) * 100
                         : null;
+                      const bemDesc = g.tipo_bem === "imovel" && g.matricula_id
+                        ? (matriculas.find(m => m.id === g.matricula_id) ? `Matr. ${matriculas.find(m => m.id === g.matricula_id)!.numero}` : "Matrícula vinculada")
+                        : g.tipo_bem === "maquina" && g.maquina_id
+                        ? (maquinas.find(m => m.id === g.maquina_id)?.nome ?? "Máquina vinculada")
+                        : g.descricao;
                       return (
                         <tr key={g.id} style={{ borderBottom: i < garantias.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                          <td style={{ padding: "8px 12px" }}>{g.descricao}</td>
-                          <td style={{ padding: "8px 12px", color: "#1a1a1a", fontSize: 11 }}>{g.matricula_id ? (matriculas.find(m => m.id === g.matricula_id)?.numero ?? "—") : "—"}</td>
-                          <td style={{ padding: "8px 12px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{g.valor_avaliacao ? fmtBRL(g.valor_avaliacao) : "—"}</td>
-                          <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                          <td style={{ padding: "9px 12px" }}>
+                            {tipoMeta
+                              ? <span style={{ fontSize: 11, background: tipoMeta.bg, color: tipoMeta.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{tipoMeta.label}</span>
+                              : <span style={{ fontSize: 11, color: "#666" }}>—</span>}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#1A4870" }}>
+                            {g.grau ? GRAU_META[g.grau as keyof typeof GRAU_META] : "—"}
+                          </td>
+                          <td style={{ padding: "9px 12px" }}>
+                            <div style={{ fontWeight: 600, fontSize: 12, color: "#1a1a1a" }}>{bemDesc}</div>
+                            {g.descricao && g.tipo_bem !== "outro" && g.descricao !== bemDesc && (
+                              <div style={{ fontSize: 10, color: "#666", marginTop: 1 }}>{g.descricao}</div>
+                            )}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, color: "#555" }}>
+                            {g.tipo_bem ? TIPO_BEM_META[g.tipo_bem] : "—"}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>
+                            {g.percentual_bem ? `${g.percentual_bem}%` : "100%"}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>
+                            {g.valor_avaliacao ? fmtBRL(g.valor_avaliacao) : "—"}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "center" }}>
                             {cobertura !== null
-                              ? <span style={{ color: cobertura >= 130 ? "#1A4870" : cobertura >= 100 ? "#EF9F27" : "#E24B4A", fontWeight: 600 }}>{fmtNum(cobertura, 1)}%</span>
+                              ? <span style={{ fontWeight: 700, color: cobertura >= 130 ? "#16A34A" : cobertura >= 100 ? "#EF9F27" : "#E24B4A" }}>{fmtNum(cobertura, 1)}%</span>
                               : "—"}
                           </td>
-                          <td style={{ padding: "8px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirGarantia(g.id).then(() => setGarantias(x => x.filter(r => r.id !== g.id)))}>✕</button></td>
+                          <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                            <button style={btnX} onClick={() => excluirGarantia(g.id).then(() => setGarantias(x => x.filter(r => r.id !== g.id)))}>✕</button>
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               )}
-              {garantias.length > 0 && (
-                <div style={{ marginTop: 10, fontSize: 11, color: "#555", textAlign: "right" }}>
-                  Total garantias: <strong style={{ color: "#1a1a1a" }}>{fmtBRL(garantias.reduce((s, g) => s + (g.valor_avaliacao ?? 0), 0))}</strong>
-                  {" · "}Cobertura: <strong>{fmtNum((garantias.reduce((s, g) => s + (g.valor_avaliacao ?? 0), 0) / (detalhe.valor_financiado_brl ?? detalhe.valor_financiado)) * 100, 1)}%</strong>
-                </div>
-              )}
+
+              {garantias.length > 0 && (() => {
+                const totalVal = garantias.reduce((s, g) => s + (g.valor_avaliacao ?? 0) * ((g.percentual_bem ?? 100) / 100), 0);
+                const cobTotal = (totalVal / (detalhe.valor_financiado_brl ?? detalhe.valor_financiado)) * 100;
+                return (
+                  <div style={{ marginTop: 12, background: cobTotal >= 100 ? "#DCFCE7" : "#FEF3C7", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#444" }}>
+                      {garantias.length} garantia{garantias.length > 1 ? "s" : ""} registrada{garantias.length > 1 ? "s" : ""}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: cobTotal >= 130 ? "#16A34A" : cobTotal >= 100 ? "#92400E" : "#B91C1C" }}>
+                      Valor total garantido: {fmtBRL(totalVal)} · Cobertura: {fmtNum(cobTotal, 1)}%
+                      {cobTotal < 100 && " ⚠ Insuficiente"}
+                      {cobTotal >= 100 && cobTotal < 130 && " ✓ Adequada"}
+                      {cobTotal >= 130 && " ✓ Excedente"}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

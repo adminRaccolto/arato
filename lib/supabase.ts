@@ -495,6 +495,8 @@ export type MatriculaImovel = {
   cartorio?: string;
   area_ha?: number;
   descricao?: string;
+  municipio?: string;
+  uf?: string;
   em_garantia: boolean;
   garantia_banco?: string;
   garantia_valor?: number;
@@ -1000,9 +1002,19 @@ export type GarantiaContrato = {
   id: string;
   contrato_id: string;
   fazenda_id: string;
+  // Tipo jurídico da garantia
+  tipo_garantia?: "alienacao_fiduciaria" | "hipoteca" | "penhor_rural" | "aval" | "nota_promissoria" | "cpr_garantia" | "cessao_recebiveis" | "outros";
+  // Grau (relevante para hipoteca e alienação)
+  grau?: "1_grau" | "2_grau" | "3_grau";
+  // Tipo de bem oferecido como garantia
+  tipo_bem?: "imovel" | "maquina" | "semovente" | "produto_agricola" | "outro";
+  // Bem vinculado (imóvel ou máquina — mutuamente exclusivos)
   matricula_id?: string;
+  maquina_id?: string;
   descricao: string;
   valor_avaliacao?: number;
+  // Percentual do bem oferecido como garantia (ex: 50% de uma matrícula)
+  percentual_bem?: number;
   created_at?: string;
 };
 

@@ -1817,15 +1817,19 @@ export async function listarGarantias(contrato_id: string): Promise<GarantiaCont
 }
 
 export async function criarGarantia(g: Omit<GarantiaContrato, "id" | "created_at">): Promise<GarantiaContrato> {
-  // Insere apenas colunas que existem no banco; ignora fazenda_id/matricula_id/valor_avaliacao se ausentes
   const row: Record<string, unknown> = {
     contrato_id: g.contrato_id,
     descricao:   g.descricao,
     valor:       g.valor_avaliacao,
   };
-  if (g.fazenda_id) row.fazenda_id = g.fazenda_id;
-  if (g.matricula_id) row.matricula_id = g.matricula_id;
+  if (g.fazenda_id)       row.fazenda_id       = g.fazenda_id;
+  if (g.matricula_id)     row.matricula_id     = g.matricula_id;
+  if (g.maquina_id)       row.maquina_id       = g.maquina_id;
+  if (g.tipo_garantia)    row.tipo_garantia    = g.tipo_garantia;
+  if (g.grau)             row.grau             = g.grau;
+  if (g.tipo_bem)         row.tipo_bem         = g.tipo_bem;
   if (g.valor_avaliacao !== undefined) row.valor_avaliacao = g.valor_avaliacao;
+  if (g.percentual_bem !== undefined)  row.percentual_bem  = g.percentual_bem;
   const { data, error } = await supabase.from("garantias_contrato").insert(row).select().single();
   if (error) throw error;
   return { ...(data as GarantiaContrato), valor_avaliacao: (data as Record<string, unknown>).valor_avaliacao as number | undefined ?? (data as Record<string, unknown>).valor as number | undefined };
