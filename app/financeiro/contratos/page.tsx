@@ -33,7 +33,6 @@ const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", cur
 const fmtNum = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 
-// Converte taxa a.a. em a.m.: (1 + aa/100)^(1/12) - 1
 function aaParaAm(aa: number) { return (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100; }
 function amParaAa(am: number) { return (Math.pow(1 + am / 100, 12) - 1) * 100; }
 
@@ -45,34 +44,19 @@ function SecTitle({ children }: { children: React.ReactNode }) {
   return <div style={secTit}>{children}</div>;
 }
 
-function Modal({ titulo, subtitulo, width, onClose, children }: { titulo: string; subtitulo?: string; width?: number; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: width ?? 660, maxWidth: "96vw", maxHeight: "94vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
-        {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
-        {children}
-      </div>
-    </div>
-  );
-}
-
 // ── Tipos auxiliares ──────────────────────────────────────
 type ParcelaBase = Omit<ParcelaPagamento, "id"|"created_at"|"contrato_id"|"fazenda_id"|"lancamento_id"|"status">;
 type CarenciaTipo = "so_juros" | "total";
+type AbaModal = "principal" | "liberacao" | "pagamento" | "garantias" | "centrocusto" | "aditivos" | "movimentacoes";
 
-// Aplica período de carência, retornando saldo final e parcelas de carência
 function aplicarCarencia(saldo: number, taxaMensal: number, carencia: number, carenciaTipo: CarenciaTipo): { saldoFinal: number; parcelas: ParcelaBase[] } {
   const parcelas: ParcelaBase[] = [];
   let s = saldo;
   for (let i = 1; i <= carencia; i++) {
     if (carenciaTipo === "total") {
-      // juros capitalizam — sem pagamento
       s = s * (1 + taxaMensal);
       parcelas.push({ num_parcela: i, data_vencimento: "", amortizacao: 0, juros: 0, despesas_acessorios: 0, valor_parcela: 0, saldo_devedor: s });
     } else {
-      // só juros — paga os juros, saldo não cai
       const juros = s * taxaMensal;
       parcelas.push({ num_parcela: i, data_vencimento: "", amortizacao: 0, juros, despesas_acessorios: 0, valor_parcela: juros, saldo_devedor: s });
     }
@@ -80,53 +64,24 @@ function aplicarCarencia(saldo: number, taxaMensal: number, carencia: number, ca
   return { saldoFinal: s, parcelas };
 }
 
-// ── Cálculo SAC ───────────────────────────────────────────
 function calcularSAC(principal: number, taxaMensal: number, nParcelas: number, carencia: number, carenciaTipo: CarenciaTipo = "so_juros"): ParcelaBase[] {
   const { saldoFinal, parcelas } = aplicarCarencia(principal, taxaMensal, carencia, carenciaTipo);
   let saldo = saldoFinal;
   const amort = saldo / nParcelas;
   for (let i = 1; i <= nParcelas; i++) {
     const juros = saldo * taxaMensal;
-    const vp = amort + juros;
     saldo -= amort;
-    parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: amort, juros, despesas_acessorios: 0, valor_parcela: vp, saldo_devedor: Math.max(0, saldo) });
+    parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: amort, juros, despesas_acessorios: 0, valor_parcela: amort + juros, saldo_devedor: Math.max(0, saldo) });
   }
   return parcelas;
 }
 
-// ── Cálculo PRICE ─────────────────────────────────────────
 function calcularPRICE(principal: number, taxaMensal: number, nParcelas: number, carencia: number, carenciaTipo: CarenciaTipo = "so_juros"): ParcelaBase[] {
   const { saldoFinal, parcelas } = aplicarCarencia(principal, taxaMensal, carencia, carenciaTipo);
   let saldo = saldoFinal;
-  const pmt = taxaMensal > 0
-    ? saldo * taxaMensal / (1 - Math.pow(1 + taxaMensal, -nParcelas))
-    : saldo / nParcelas;
+  const pmt = taxaMensal === 0 ? saldo / nParcelas : saldo * (taxaMensal * Math.pow(1 + taxaMensal, nParcelas)) / (Math.pow(1 + taxaMensal, nParcelas) - 1);
   for (let i = 1; i <= nParcelas; i++) {
     const juros = saldo * taxaMensal;
-    const amort = pmt - juros;
-    saldo -= amort;
-    parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: amort, juros, despesas_acessorios: 0, valor_parcela: pmt, saldo_devedor: Math.max(0, saldo) });
-  }
-  return parcelas;
-}
-
-// ── Cálculo Crescentes (parcelas crescem % por período) ───
-// PMT₀ = Principal × (r − g) / (1 − ((1+g)/(1+r))ⁿ)  [g ≠ r]
-// PMT₀ = Principal × (1+r) / n                         [g ≅ r]
-function calcularCrescentes(principal: number, taxaMensal: number, nParcelas: number, crescimentoPct: number, carencia: number, carenciaTipo: CarenciaTipo = "so_juros"): ParcelaBase[] {
-  const { saldoFinal, parcelas } = aplicarCarencia(principal, taxaMensal, carencia, carenciaTipo);
-  let saldo = saldoFinal;
-  const g = crescimentoPct / 100;
-  const r = taxaMensal;
-  let pmt0: number;
-  if (Math.abs(g - r) < 0.000001) {
-    pmt0 = saldo * (1 + r) / nParcelas;
-  } else {
-    pmt0 = saldo * (r - g) / (1 - Math.pow((1 + g) / (1 + r), nParcelas));
-  }
-  for (let i = 1; i <= nParcelas; i++) {
-    const pmt = pmt0 * Math.pow(1 + g, i - 1);
-    const juros = saldo * r;
     const amort = pmt - juros;
     saldo -= amort;
     parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: Math.max(0, amort), juros, despesas_acessorios: 0, valor_parcela: pmt, saldo_devedor: Math.max(0, saldo) });
@@ -134,11 +89,24 @@ function calcularCrescentes(principal: number, taxaMensal: number, nParcelas: nu
   return parcelas;
 }
 
-function aplicarDatas(
-  parcelas: Omit<ParcelaPagamento, "id"|"created_at"|"contrato_id"|"fazenda_id"|"lancamento_id"|"status">[],
-  dataPrimeiro: string,
-  periodicidadeMeses: number,
-): Omit<ParcelaPagamento, "id"|"created_at"|"contrato_id"|"fazenda_id"|"lancamento_id"|"status">[] {
+function calcularCrescentes(principal: number, taxaMensal: number, nParcelas: number, crescPct: number, carencia: number, carenciaTipo: CarenciaTipo): ParcelaBase[] {
+  const { saldoFinal, parcelas } = aplicarCarencia(principal, taxaMensal, carencia, carenciaTipo);
+  let saldo = saldoFinal;
+  const g = crescPct / 100;
+  const pmt1 = taxaMensal === g
+    ? saldo * taxaMensal / nParcelas
+    : saldo * (taxaMensal - g) / (1 - Math.pow((1 + g) / (1 + taxaMensal), nParcelas));
+  for (let i = 1; i <= nParcelas; i++) {
+    const juros = saldo * taxaMensal;
+    const pmt = pmt1 * Math.pow(1 + g, i - 1);
+    const amort = pmt - juros;
+    saldo -= amort;
+    parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: Math.max(0, amort), juros, despesas_acessorios: 0, valor_parcela: pmt, saldo_devedor: Math.max(0, saldo) });
+  }
+  return parcelas;
+}
+
+function aplicarDatas(parcelas: ParcelaBase[], dataPrimeiro: string, periodicidadeMeses: number): ParcelaBase[] {
   return parcelas.map((p, i) => {
     const d = new Date(dataPrimeiro + "T12:00:00");
     d.setMonth(d.getMonth() + i * periodicidadeMeses);
@@ -146,27 +114,8 @@ function aplicarDatas(
   });
 }
 
-// ── Linhas de crédito rurais ──────────────────────────────
-const LINHAS_CREDITO = [
-  "PRONAF",
-  "PRONAMP",
-  "FCO Rural",
-  "FNO Rural",
-  "FNE Rural",
-  "BNDES/ABC",
-  "BNDES Finame",
-  "PCA — Programa para Construção e Ampliação de Armazéns",
-  "Custeio Livre (Recursos Próprios)",
-  "Custeio SNCR",
-  "CPR Física",
-  "CPR Financeira",
-  "EGF — Empréstimo do Governo Federal",
-  "Crédito Rural Outros",
-  "Financiamento Livre",
-  "Outros",
-];
+const LINHAS_CREDITO = ["PRONAF","PRONAMP","FCO Rural","FNO Rural","FNE Rural","BNDES/ABC","BNDES Finame","PCA — Programa para Construção e Ampliação de Armazéns","Custeio Livre (Recursos Próprios)","Custeio SNCR","CPR Física","CPR Financeira","EGF — Empréstimo do Governo Federal","Crédito Rural Outros","Financiamento Livre","Outros"];
 
-// ── META de tipo / cor ────────────────────────────────────
 const TIPO_META: Record<ContratoFinanceiro["tipo"], { label: string; bg: string; cl: string }> = {
   custeio:       { label: "Custeio",        bg: "#D5E8F5", cl: "#0B2D50" },
   investimento:  { label: "Investimento",   bg: "#E6F1FB", cl: "#0C447C" },
@@ -187,18 +136,10 @@ const TIPO_GAR_META: Record<NonNullable<GarantiaContrato["tipo_garantia"]>, { la
   outros:               { label: "Outros",                bg: "#F1EFE8", cl: "#555"    },
 };
 
-const GRAU_META: Record<"1_grau"|"2_grau"|"3_grau", string> = {
-  "1_grau": "1° Grau",
-  "2_grau": "2° Grau",
-  "3_grau": "3° Grau",
-};
+const GRAU_META: Record<"1_grau"|"2_grau"|"3_grau", string> = { "1_grau": "1° Grau", "2_grau": "2° Grau", "3_grau": "3° Grau" };
 
 const TIPO_BEM_META: Record<NonNullable<GarantiaContrato["tipo_bem"]>, string> = {
-  imovel:          "Imóvel Rural",
-  maquina:         "Máquina / Veículo",
-  semovente:       "Semovente (Gado)",
-  produto_agricola:"Produto Agrícola",
-  outro:           "Outro",
+  imovel: "Imóvel Rural", maquina: "Máquina / Veículo", semovente: "Semovente (Gado)", produto_agricola: "Produto Agrícola", outro: "Outro",
 };
 
 const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: string; cl: string }> = {
@@ -207,24 +148,26 @@ const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: str
   cancelado: { label: "Cancelado", bg: "#FCEBEB", cl: "#791F1F" },
 };
 
-// ── Estado inicial do form contrato ──────────────────────
 const FC_VAZIO = {
   descricao: "", pessoa_id: "", credor: "",
   tipo: "custeio" as ContratoFinanceiro["tipo"],
   tipo_calculo: "sac" as ContratoFinanceiro["tipo_calculo"],
-  linha_credito: "",
-  moeda: "BRL" as "BRL" | "USD",
+  linha_credito: "", moeda: "BRL" as "BRL" | "USD",
   valor_financiado: "", valor_cotacao: "",
   data_contrato: "", numero_documento: "",
   taxa_juros_aa: "", taxa_juros_am: "",
   iof_pct: "", tac_valor: "", outros_custos: "",
   conta_liberacao_id: "", conta_pagamento_id: "",
   forma_pagamento: "", local_pagamento: "",
-  carencia_meses: "0",
-  periodicidade_meses: "1",
+  carencia_meses: "0", periodicidade_meses: "1",
   carencia_tipo: "so_juros" as "so_juros" | "total",
-  crescimento_pct: "",
-  rateio_por_vencimento: false, fiscal: true, observacao: "",
+  crescimento_pct: "", rateio_por_vencimento: false, fiscal: true, observacao: "",
+};
+
+const FA_VAZIO = {
+  data_aditivo: "", tipo: "prorrogacao" as AditivoContrato["tipo"],
+  descricao: "", nova_data_vencimento: "", nova_taxa_aa: "", nova_taxa_am: "",
+  novo_valor_financiado: "", novo_num_parcelas: "", obs: "",
 };
 
 // ────────────────────────────────────────────────────────
@@ -232,286 +175,204 @@ const FC_VAZIO = {
 // ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
   const { fazendaId } = useAuth();
-  const [contratos, setContratos]   = useState<ContratoFinanceiro[]>([]);
-  const [contas, setContas]         = useState<ContaBancaria[]>([]);
-  const [pessoas, setPessoas]       = useState<Pessoa[]>([]);
-  const [salvando, setSalvando]     = useState(false);
-  const [erro, setErro]             = useState<string | null>(null);
-  const [ptax, setPtax]             = useState<number | null>(null);
+  const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
+  const [contas, setContas]       = useState<ContaBancaria[]>([]);
+  const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
+  const [salvando, setSalvando]   = useState(false);
+  const [ptax, setPtax]           = useState<number | null>(null);
 
-  // modal contrato (criar/editar)
-  const [modalContrato, setModalContrato] = useState(false);
-  const [editContrato, setEditContrato]   = useState<ContratoFinanceiro | null>(null);
-  const [fC, setFC] = useState({ ...FC_VAZIO });
+  // modal unificado
+  const [modalAberto, setModalAberto]       = useState(false);
+  const [contratoModal, setContratoModal]   = useState<ContratoFinanceiro | null>(null);
+  const [abaModal, setAbaModal]             = useState<AbaModal>("principal");
+  const [fC, setFC]                         = useState({ ...FC_VAZIO });
 
-  // modal detalhe (abas internas)
-  const [detalhe, setDetalhe] = useState<ContratoFinanceiro | null>(null);
-  const [abaDetalhe, setAbaDetalhe] = useState<"liberacao" | "pagamento" | "garantias" | "centrocusto" | "aditivos" | "movimentacoes">("liberacao");
-
-  // dados das abas do detalhe
+  // dados das abas
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
   const [garantias, setGarantias]                 = useState<GarantiaContrato[]>([]);
   const [centrosCusto, setCentrosCusto]           = useState<CentroCustoContrato[]>([]);
   const [aditivos, setAditivos]                   = useState<AditivoContrato[]>([]);
   const [matriculas, setMatriculas]               = useState<MatriculaImovel[]>([]);
-  const [maquinas,   setMaquinas]                 = useState<Maquina[]>([]);
+  const [maquinas, setMaquinas]                   = useState<Maquina[]>([]);
 
   // forms das abas
-  const [fLib, setFLib] = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
-  const [fGar, setFGar] = useState({
-    tipo_garantia: "alienacao_fiduciaria" as GarantiaContrato["tipo_garantia"],
-    grau: "" as "" | "1_grau" | "2_grau" | "3_grau",
-    tipo_bem: "imovel" as GarantiaContrato["tipo_bem"],
-    matricula_id: "",
-    maquina_id: "",
-    descricao: "",
-    valor_avaliacao: "",
-    percentual_bem: "100",
-  });
+  const [fLib, setFLib]   = useState({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
+  const [fGar, setFGar]   = useState({ tipo_garantia: "alienacao_fiduciaria" as GarantiaContrato["tipo_garantia"], grau: "" as "" | "1_grau" | "2_grau" | "3_grau", tipo_bem: "imovel" as GarantiaContrato["tipo_bem"], matricula_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
   const [centrosForm, setCentrosForm] = useState<{ descricao: string; percentual: string; valor: string }[]>([{ descricao: "", percentual: "100", valor: "" }]);
   const [fCalc, setFCalc] = useState({ nParcelas: "12", taxaMensal: "1.5", dataPrimeiro: "", periodicidade: "1", acessorios: "0" });
-  const FA_VAZIO = { data_aditivo: "", tipo: "prorrogacao" as AditivoContrato["tipo"], descricao: "", nova_data_vencimento: "", nova_taxa_aa: "", nova_taxa_am: "", novo_valor_financiado: "", novo_num_parcelas: "", obs: "" };
   const [fAdit, setFAdit] = useState({ ...FA_VAZIO });
 
-  // ── Carregar dados base ──
+  // ── Carregar base ──
   useEffect(() => {
     if (!fazendaId) return;
-    listarContratosFinanceiros(fazendaId).then(setContratos).catch(e => setErro(e.message));
+    listarContratosFinanceiros(fazendaId).then(setContratos).catch(() => {});
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
-    supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome")
-      .then(({ data }) => setPessoas(data ?? []));
-    // Busca PTAX do dia — atualiza a cada 5 minutos
-    const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => {
-      const taxa = d.usdPtax ?? d.usdBrl;
-      if (taxa && taxa > 1) setPtax(taxa);
-    }).catch(() => {});
+    supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
+    const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
     buscarPtax();
     const timer = setInterval(buscarPtax, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [fazendaId]);
 
-  // ── Carregar dados do detalhe ao mudar aba ──
+  // ── Carregar dados ao mudar aba ──
   useEffect(() => {
-    if (!detalhe) return;
-    if (abaDetalhe === "liberacao")  listarParcelasLiberacao(detalhe.id).then(setParcelasLiberacao).catch(() => {});
-    if (abaDetalhe === "pagamento")  listarParcelasPagamento(detalhe.id).then(setParcelasPagamento).catch(() => {});
-    if (abaDetalhe === "garantias") {
-      listarGarantias(detalhe.id).then(setGarantias).catch(() => {});
+    if (!contratoModal?.id) return;
+    const id = contratoModal.id;
+    if (abaModal === "liberacao")  listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
+    if (abaModal === "pagamento")  listarParcelasPagamento(id).then(setParcelasPagamento).catch(() => {});
+    if (abaModal === "garantias") {
+      listarGarantias(id).then(setGarantias).catch(() => {});
       listarMatriculas(fazendaId!).then(setMatriculas).catch(() => {});
       listarMaquinas(fazendaId!).then(m => setMaquinas(m.filter(x => x.ativa))).catch(() => {});
     }
-    if (abaDetalhe === "centrocusto") listarCentrosCusto(detalhe.id).then(cc => {
+    if (abaModal === "centrocusto") listarCentrosCusto(id).then(cc => {
       setCentrosCusto(cc);
       setCentrosForm(cc.length > 0 ? cc.map(c => ({ descricao: c.descricao, percentual: String(c.percentual), valor: String(c.valor) })) : [{ descricao: "", percentual: "100", valor: "" }]);
     }).catch(() => {});
-    if (abaDetalhe === "aditivos") listarAditivos(detalhe.id).then(setAditivos).catch(() => {});
-    if (abaDetalhe === "movimentacoes") {
-      listarParcelasLiberacao(detalhe.id).then(setParcelasLiberacao).catch(() => {});
-      listarParcelasPagamento(detalhe.id).then(setParcelasPagamento).catch(() => {});
+    if (abaModal === "aditivos") listarAditivos(id).then(setAditivos).catch(() => {});
+    if (abaModal === "movimentacoes") {
+      listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
+      listarParcelasPagamento(id).then(setParcelasPagamento).catch(() => {});
     }
-  }, [detalhe, abaDetalhe, fazendaId]);
+  }, [contratoModal, abaModal, fazendaId]);
 
   async function salvar(fn: () => Promise<void>) {
-    try { setSalvando(true); await fn(); } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
+    try { setSalvando(true); await fn(); } catch (e) { alert((e as { message?: string })?.message || JSON.stringify(e)); } finally { setSalvando(false); }
   }
 
-  // ── Auto-preenchimento de taxa ──
-  const onChangeAa = (v: string) => {
-    const aa = parseFloat(v.replace(",", "."));
-    setFC(p => ({
-      ...p,
-      taxa_juros_aa: v,
-      taxa_juros_am: isNaN(aa) ? "" : fmtNum(aaParaAm(aa), 4),
-    }));
-  };
-  const onChangeAm = (v: string) => {
-    const am = parseFloat(v.replace(",", "."));
-    setFC(p => ({
-      ...p,
-      taxa_juros_am: v,
-      taxa_juros_aa: isNaN(am) ? "" : fmtNum(amParaAa(am), 4),
-    }));
-  };
+  const onChangeAa = (v: string) => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_aa: v, taxa_juros_am: isNaN(aa) ? "" : fmtNum(aaParaAm(aa), 4) })); };
+  const onChangeAm = (v: string) => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_am: v, taxa_juros_aa: isNaN(am) ? "" : fmtNum(amParaAa(am), 4) })); };
+  const onPessoaChange = (id: string) => { const p = pessoas.find(x => x.id === id); setFC(prev => ({ ...prev, pessoa_id: id, credor: p ? p.nome : prev.credor })); };
 
-  // ── Sync credor quando pessoa selecionada ──
-  const onPessoaChange = (id: string) => {
-    const p = pessoas.find(x => x.id === id);
-    setFC(prev => ({ ...prev, pessoa_id: id, credor: p ? p.nome : prev.credor }));
-  };
-
-  // ── Abrir modal contrato ──
-  const abrirModalContrato = (c?: ContratoFinanceiro) => {
-    setEditContrato(c ?? null);
+  // ── Abrir modal ──
+  const abrirModal = (c?: ContratoFinanceiro) => {
+    setContratoModal(c ?? null);
+    setAbaModal("principal");
     setFC(c ? {
-      descricao: c.descricao,
-      pessoa_id: c.pessoa_id ?? "",
-      credor: c.credor,
-      tipo: c.tipo,
-      tipo_calculo: c.tipo_calculo,
-      linha_credito: c.linha_credito ?? "",
-      moeda: c.moeda,
-      valor_financiado: String(c.valor_financiado),
-      valor_cotacao: String(c.valor_cotacao ?? ""),
-      data_contrato: c.data_contrato,
-      numero_documento: c.numero_documento ?? "",
+      descricao: c.descricao, pessoa_id: c.pessoa_id ?? "", credor: c.credor,
+      tipo: c.tipo, tipo_calculo: c.tipo_calculo, linha_credito: c.linha_credito ?? "",
+      moeda: c.moeda, valor_financiado: String(c.valor_financiado), valor_cotacao: String(c.valor_cotacao ?? ""),
+      data_contrato: c.data_contrato, numero_documento: c.numero_documento ?? "",
       taxa_juros_aa: c.taxa_juros_aa ? fmtNum(c.taxa_juros_aa, 4) : "",
       taxa_juros_am: c.taxa_juros_am ? fmtNum(c.taxa_juros_am, 4) : "",
-      iof_pct: c.iof_pct ? String(c.iof_pct) : "",
-      tac_valor: c.tac_valor ? String(c.tac_valor) : "",
+      iof_pct: c.iof_pct ? String(c.iof_pct) : "", tac_valor: c.tac_valor ? String(c.tac_valor) : "",
       outros_custos: c.outros_custos ? String(c.outros_custos) : "",
-      conta_liberacao_id: c.conta_liberacao_id ?? "",
-      conta_pagamento_id: c.conta_pagamento_id ?? "",
-      forma_pagamento: c.forma_pagamento ?? "",
-      local_pagamento: c.local_pagamento ?? "",
-      observacao: c.observacao ?? "",
-      carencia_meses: String(c.carencia_meses ?? 0),
+      conta_liberacao_id: c.conta_liberacao_id ?? "", conta_pagamento_id: c.conta_pagamento_id ?? "",
+      forma_pagamento: c.forma_pagamento ?? "", local_pagamento: c.local_pagamento ?? "",
+      observacao: c.observacao ?? "", carencia_meses: String(c.carencia_meses ?? 0),
       periodicidade_meses: String(c.periodicidade_meses ?? 1),
       carencia_tipo: (c.carencia_tipo ?? "so_juros") as "so_juros" | "total",
       crescimento_pct: c.crescimento_pct ? String(c.crescimento_pct) : "",
-      rateio_por_vencimento: c.rateio_por_vencimento,
-      fiscal: c.fiscal,
+      rateio_por_vencimento: c.rateio_por_vencimento, fiscal: c.fiscal,
     } : { ...FC_VAZIO });
-    setModalContrato(true);
+    if (c) setFCalc({ nParcelas: "12", taxaMensal: c.taxa_juros_am ? fmtNum(c.taxa_juros_am, 4) : "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
+    setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
+    setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
+    setFAdit({ ...FA_VAZIO });
+    setParcelasLiberacao([]); setParcelasPagamento([]); setGarantias([]); setCentrosCusto([]); setAditivos([]);
+    setModalAberto(true);
   };
 
+  const fecharModal = () => { setModalAberto(false); setContratoModal(null); };
+
+  // ── Salvar contrato (Principal) ──
   const salvarContrato = () => salvar(async () => {
     if (!fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado) return;
-    const credorNome = fC.pessoa_id
-      ? (pessoas.find(p => p.id === fC.pessoa_id)?.nome ?? fC.credor)
-      : fC.credor.trim();
+    const credorNome = fC.pessoa_id ? (pessoas.find(p => p.id === fC.pessoa_id)?.nome ?? fC.credor) : fC.credor.trim();
     if (!credorNome) { alert("Informe o credor."); return; }
-
     const vf = parseFloat(fC.valor_financiado.replace(",", ".")) || 0;
     const vc = fC.valor_cotacao ? parseFloat(fC.valor_cotacao.replace(",", ".")) : undefined;
     const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
-      fazenda_id: fazendaId!,
-      descricao: fC.descricao.trim(),
-      pessoa_id: fC.pessoa_id || undefined,
-      credor: credorNome,
-      tipo: fC.tipo,
-      tipo_calculo: fC.tipo_calculo,
-      linha_credito: fC.linha_credito || undefined,
-      moeda: fC.moeda,
-      valor_financiado: vf,
-      valor_cotacao: vc,
+      fazenda_id: fazendaId!, descricao: fC.descricao.trim(),
+      pessoa_id: fC.pessoa_id || undefined, credor: credorNome,
+      tipo: fC.tipo, tipo_calculo: fC.tipo_calculo, linha_credito: fC.linha_credito || undefined,
+      moeda: fC.moeda, valor_financiado: vf, valor_cotacao: vc,
       valor_financiado_brl: fC.moeda === "USD" && vc ? vf * vc : vf,
-      data_contrato: fC.data_contrato,
-      numero_documento: fC.numero_documento || undefined,
+      data_contrato: fC.data_contrato, numero_documento: fC.numero_documento || undefined,
       taxa_juros_aa: fC.taxa_juros_aa ? parseFloat(fC.taxa_juros_aa.replace(",", ".")) : undefined,
       taxa_juros_am: fC.taxa_juros_am ? parseFloat(fC.taxa_juros_am.replace(",", ".")) : undefined,
       iof_pct: fC.iof_pct ? parseFloat(fC.iof_pct.replace(",", ".")) : undefined,
       tac_valor: fC.tac_valor ? parseFloat(fC.tac_valor.replace(",", ".")) : undefined,
       outros_custos: fC.outros_custos ? parseFloat(fC.outros_custos.replace(",", ".")) : undefined,
-      conta_liberacao_id: fC.conta_liberacao_id || undefined,
-      conta_pagamento_id: fC.conta_pagamento_id || undefined,
-      forma_pagamento: fC.forma_pagamento || undefined,
-      local_pagamento: fC.local_pagamento || undefined,
-      observacao: fC.observacao || undefined,
-      carencia_meses: Number(fC.carencia_meses) || 0,
-      periodicidade_meses: Number(fC.periodicidade_meses) || 1,
-      carencia_tipo: fC.carencia_tipo,
+      conta_liberacao_id: fC.conta_liberacao_id || undefined, conta_pagamento_id: fC.conta_pagamento_id || undefined,
+      forma_pagamento: fC.forma_pagamento || undefined, local_pagamento: fC.local_pagamento || undefined,
+      observacao: fC.observacao || undefined, carencia_meses: Number(fC.carencia_meses) || 0,
+      periodicidade_meses: Number(fC.periodicidade_meses) || 1, carencia_tipo: fC.carencia_tipo,
       crescimento_pct: fC.crescimento_pct ? parseFloat(fC.crescimento_pct.replace(",", ".")) : undefined,
-      rateio_por_vencimento: fC.rateio_por_vencimento,
-      fiscal: fC.fiscal,
-      status: "ativo",
+      rateio_por_vencimento: fC.rateio_por_vencimento, fiscal: fC.fiscal, status: "ativo",
     };
-    if (editContrato) {
-      await atualizarContratoFinanceiro(editContrato.id, payload);
-      setContratos(p => p.map(x => x.id === editContrato.id ? { ...x, ...payload } : x));
+    if (contratoModal?.id) {
+      await atualizarContratoFinanceiro(contratoModal.id, payload);
+      const atualizado = { ...contratoModal, ...payload };
+      setContratos(p => p.map(x => x.id === contratoModal.id ? atualizado : x));
+      setContratoModal(atualizado);
+      setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am ? fmtNum(payload.taxa_juros_am, 4) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
     } else {
       const novo = await criarContratoFinanceiro(payload);
       setContratos(p => [novo, ...p]);
+      setContratoModal(novo);
+      setFCalc({ nParcelas: "12", taxaMensal: novo.taxa_juros_am ? fmtNum(novo.taxa_juros_am, 4) : "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
+      setAbaModal("liberacao");
     }
-    setModalContrato(false);
   });
-
-  // ── Abrir detalhe ──
-  const abrirDetalhe = (c: ContratoFinanceiro) => {
-    setDetalhe(c);
-    setAbaDetalhe("liberacao");
-    setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
-    setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
-    // pre-fill taxa e periodicidade do contrato na calculadora
-    setFCalc({ nParcelas: "12", taxaMensal: c.taxa_juros_am ? fmtNum(c.taxa_juros_am, 4) : "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
-  };
 
   // ── Liberação ──
   const salvarLiberacao = () => salvar(async () => {
-    if (!detalhe || !fLib.data_liberacao || !fLib.valor_liberado) return;
+    if (!contratoModal || !fLib.data_liberacao || !fLib.valor_liberado) return;
     const vl = parseFloat(fLib.valor_liberado.replace(",", ".")) || 0;
     const nParcelas = Math.max(1, Number(fLib.parcelas_liberacao) || 1);
     for (let i = 1; i <= nParcelas; i++) {
       const d = new Date(fLib.data_liberacao + "T12:00:00");
       d.setMonth(d.getMonth() + (i - 1));
       const nova = await criarParcelaLiberacao({
-        contrato_id: detalhe.id, fazenda_id: fazendaId!,
+        contrato_id: contratoModal.id, fazenda_id: fazendaId!,
         num_parcela: (parcelasLiberacao.length + i),
         data_liberacao: d.toISOString().slice(0, 10),
         valor_liberado: vl,
-        valor_liberado_brl: detalhe.moeda === "USD" && detalhe.valor_cotacao ? vl * detalhe.valor_cotacao : vl,
-      }, detalhe);
+        valor_liberado_brl: contratoModal.moeda === "USD" && contratoModal.valor_cotacao ? vl * contratoModal.valor_cotacao : vl,
+      }, contratoModal);
       setParcelasLiberacao(p => [...p, nova]);
     }
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
   });
 
-  // ── Calcular parcelas de pagamento ──
+  // ── Calcular parcelas ──
   const calcularParcelas = () => salvar(async () => {
-    if (!detalhe || !fCalc.dataPrimeiro) return;
-    const n          = Math.max(1, Number(fCalc.nParcelas) || 12);
-    const i          = (Number(fCalc.taxaMensal) || 0) / 100;
-    const car        = Number(detalhe.carencia_meses ?? 0);
-    const carTipo    = (detalhe.carencia_tipo ?? "so_juros") as CarenciaTipo;
-    const crescPct   = detalhe.crescimento_pct ?? 0;
-    const period     = Number(fCalc.periodicidade) || (detalhe.periodicidade_meses ?? 1);
+    if (!contratoModal || !fCalc.dataPrimeiro) return;
+    const n = Math.max(1, Number(fCalc.nParcelas) || 12);
+    const i = (Number(fCalc.taxaMensal) || 0) / 100;
+    const car = Number(contratoModal.carencia_meses ?? 0);
+    const carTipo = (contratoModal.carencia_tipo ?? "so_juros") as CarenciaTipo;
+    const crescPct = contratoModal.crescimento_pct ?? 0;
+    const period = Number(fCalc.periodicidade) || (contratoModal.periodicidade_meses ?? 1);
     const acessMensal = parseFloat(fCalc.acessorios.replace(",", ".")) || 0;
-
     let base: ParcelaBase[];
-    if (crescPct > 0) {
-      base = calcularCrescentes(detalhe.valor_financiado, i, n, crescPct, car, carTipo);
-    } else if (detalhe.tipo_calculo === "sac") {
-      base = calcularSAC(detalhe.valor_financiado, i, n, car, carTipo);
-    } else {
-      base = calcularPRICE(detalhe.valor_financiado, i, n, car, carTipo);
-    }
-
+    if (crescPct > 0) base = calcularCrescentes(contratoModal.valor_financiado, i, n, crescPct, car, carTipo);
+    else if (contratoModal.tipo_calculo === "sac") base = calcularSAC(contratoModal.valor_financiado, i, n, car, carTipo);
+    else base = calcularPRICE(contratoModal.valor_financiado, i, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
-
-    const salvas = await salvarParcelasPagamento(
-      detalhe.id, fazendaId!,
-      comDatas.map(p => ({ ...p, status: "em_aberto" as const }))
-    );
+    const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
     setParcelasPagamento(salvas);
   });
 
   // ── Garantia ──
   const salvarGarantia = () => salvar(async () => {
-    if (!detalhe) return;
-    // Auto-preenche descrição se vazia
+    if (!contratoModal) return;
     let desc = fGar.descricao.trim();
     if (!desc) {
-      if (fGar.tipo_bem === "imovel" && fGar.matricula_id) {
-        const m = matriculas.find(x => x.id === fGar.matricula_id);
-        desc = m ? `Matr. ${m.numero}${m.area_ha ? ` — ${m.area_ha} ha` : ""}` : "Imóvel";
-      } else if (fGar.tipo_bem === "maquina" && fGar.maquina_id) {
-        const m = maquinas.find(x => x.id === fGar.maquina_id);
-        desc = m ? `${m.nome}${m.marca ? ` — ${m.marca}` : ""}` : "Máquina";
-      } else {
-        desc = TIPO_GAR_META[fGar.tipo_garantia ?? "outros"]?.label ?? "Garantia";
-      }
+      if (fGar.tipo_bem === "imovel" && fGar.matricula_id) { const m = matriculas.find(x => x.id === fGar.matricula_id); desc = m ? `Matr. ${m.numero}${m.area_ha ? ` — ${m.area_ha} ha` : ""}` : "Imóvel"; }
+      else if (fGar.tipo_bem === "maquina" && fGar.maquina_id) { const m = maquinas.find(x => x.id === fGar.maquina_id); desc = m ? `${m.nome}${m.marca ? ` — ${m.marca}` : ""}` : "Máquina"; }
+      else desc = TIPO_GAR_META[fGar.tipo_garantia ?? "outros"]?.label ?? "Garantia";
     }
     if (!desc) { alert("Informe a descrição da garantia."); return; }
     const nova = await criarGarantia({
-      contrato_id:  detalhe.id,
-      fazenda_id:   fazendaId!,
-      tipo_garantia: fGar.tipo_garantia || undefined,
-      grau:          fGar.grau || undefined,
-      tipo_bem:      fGar.tipo_bem || undefined,
-      matricula_id:  fGar.tipo_bem === "imovel" ? (fGar.matricula_id || undefined) : undefined,
-      maquina_id:    fGar.tipo_bem === "maquina" ? (fGar.maquina_id || undefined) : undefined,
-      descricao:     desc,
+      contrato_id: contratoModal.id, fazenda_id: fazendaId!,
+      tipo_garantia: fGar.tipo_garantia || undefined, grau: fGar.grau || undefined, tipo_bem: fGar.tipo_bem || undefined,
+      matricula_id: fGar.tipo_bem === "imovel" ? (fGar.matricula_id || undefined) : undefined,
+      maquina_id:   fGar.tipo_bem === "maquina" ? (fGar.maquina_id || undefined) : undefined,
+      descricao: desc,
       valor_avaliacao: fGar.valor_avaliacao ? Number(fGar.valor_avaliacao.replace(",", ".")) : undefined,
       percentual_bem:  fGar.percentual_bem ? Number(fGar.percentual_bem) : undefined,
     });
@@ -521,28 +382,22 @@ export default function ContratosFinanceiros() {
 
   // ── Centro de custo ──
   const salvarCentroCusto = () => salvar(async () => {
-    if (!detalhe) return;
-    const itens: Omit<CentroCustoContrato, "id" | "created_at">[] = centrosForm
-      .filter(c => c.descricao.trim())
-      .map(c => ({
-        contrato_id: detalhe.id,
-        descricao: c.descricao.trim(),
-        percentual: parseFloat(c.percentual.replace(",", ".")) || 0,
-        valor: parseFloat(c.valor.replace(",", ".")) || 0,
-      }));
-    await salvarCentrosCusto(detalhe.id, itens);
-    setCentrosCusto(await listarCentrosCusto(detalhe.id));
+    if (!contratoModal) return;
+    const itens: Omit<CentroCustoContrato, "id" | "created_at">[] = centrosForm.filter(c => c.descricao.trim()).map(c => ({
+      contrato_id: contratoModal.id, descricao: c.descricao.trim(),
+      percentual: parseFloat(c.percentual.replace(",", ".")) || 0,
+      valor: parseFloat(c.valor.replace(",", ".")) || 0,
+    }));
+    await salvarCentrosCusto(contratoModal.id, itens);
+    setCentrosCusto(await listarCentrosCusto(contratoModal.id));
   });
 
-  // ── Aditivos ──
+  // ── Aditivo ──
   const salvarAditivo = () => salvar(async () => {
-    if (!detalhe || !fAdit.data_aditivo || !fAdit.descricao.trim()) return;
+    if (!contratoModal || !fAdit.data_aditivo || !fAdit.descricao.trim()) return;
     const nova = await criarAditivo({
-      contrato_id: detalhe.id,
-      fazenda_id: fazendaId!,
-      data_aditivo: fAdit.data_aditivo,
-      tipo: fAdit.tipo,
-      descricao: fAdit.descricao.trim(),
+      contrato_id: contratoModal.id, fazenda_id: fazendaId!,
+      data_aditivo: fAdit.data_aditivo, tipo: fAdit.tipo, descricao: fAdit.descricao.trim(),
       ...(fAdit.nova_data_vencimento ? { nova_data_vencimento: fAdit.nova_data_vencimento } : {}),
       ...(fAdit.nova_taxa_aa ? { nova_taxa_aa: parseFloat(fAdit.nova_taxa_aa.replace(",", ".")) } : {}),
       ...(fAdit.nova_taxa_am ? { nova_taxa_am: parseFloat(fAdit.nova_taxa_am.replace(",", ".")) } : {}),
@@ -554,90 +409,97 @@ export default function ContratosFinanceiros() {
     setFAdit({ ...FA_VAZIO });
   });
 
-  // ── Totais — converte USD→BRL via PTAX dinâmico ──
-  const totalFinanciado = contratos.filter(c => c.status === "ativo").reduce((s, c) => {
-    const brl = c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado;
-    return s + brl;
-  }, 0);
-  const totalAtivos = contratos.filter(c => c.status === "ativo").length;
-
-  // helper nome conta
+  // ── Totais ──
+  const totalFinanciado = contratos.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
+
+  // ── Aba desabilitada quando contrato ainda não salvo ──
+  function AbaDisabled({ nome }: { nome: string }) {
+    return (
+      <div style={{ textAlign: "center", padding: "48px 0", color: "#999" }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "#555" }}>Salve o contrato primeiro</div>
+        <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Preencha a aba <strong>Principal</strong> e clique em <strong>Salvar</strong> para liberar a aba <strong>{nome}</strong>.</div>
+      </div>
+    );
+  }
 
   // ────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
 
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Contratos Financeiros</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Custeio, CPR, investimento, securitização, EGF</p>
+          {/* Cabeçalho */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
+            <div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Contratos Financeiros</h1>
+              <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>Custeio, CPR, investimento, securitização, EGF</div>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              {ptax && <span style={{ fontSize: 11, color: "#555", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
+              <button style={{ ...btnV, background: "#1A4870", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {totalAtivos > 0 && (
-              <span style={{ fontSize: 12, color: "#555" }}>
-                {totalAtivos} {totalAtivos === 1 ? "contrato ativo" : "contratos ativos"} ·{" "}
-                <strong style={{ color: "#E24B4A" }}>{fmtBRL(totalFinanciado)}</strong>
-              </span>
-            )}
-            <button style={btnV} onClick={() => abrirModalContrato()}>+ Novo Contrato</button>
-          </div>
-        </header>
 
-        <div style={{ padding: "20px 22px", flex: 1, overflowY: "auto" }}>
-          {erro && <div style={{ background: "#FCEBEB", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#791F1F" }}>⚠ {erro}</div>}
+          {/* KPI */}
+          {contratos.length > 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
+              {[
+                { label: "Contratos Ativos",  valor: contratos.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#1A4870", suf: "" },
+                { label: "Total Captado",     valor: totalFinanciado,                                      fmt: fmtBRL,                           cor: "#1A5C38", suf: ptax ? " (conv. PTAX)" : "" },
+                { label: "Quitados/Cancelados", valor: contratos.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "#555",    suf: "" },
+              ].map((k, i) => (
+                <div key={i} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{k.label}{k.suf}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.fmt(k.valor)}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
+          {/* Tabela */}
           {contratos.length === 0 ? (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "#444" }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>🏦</div>
-              <div style={{ color: "#1a1a1a", fontWeight: 600, marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
-              <div style={{ fontSize: 12 }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
+            <div style={{ background: "#fff", borderRadius: 14, border: "0.5px solid #DDE2EE", padding: "56px 0", textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🏦</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
+              <div style={{ fontSize: 12, color: "#888" }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
             </div>
           ) : (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "#fff", borderRadius: 14, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    {["Contrato / Credor", "Tipo", "Linha de Crédito", "Cálculo", "Taxa a.a.", "Valor Financiado", "Data", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    {["Descrição / Credor", "Tipo", "Cálculo", "Taxa a.a.", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 3 && i <= 5 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {contratos.map((c, i) => {
+                  {contratos.map((c, idx) => {
                     const tm = TIPO_META[c.tipo];
                     const sm = STATUS_META[c.status];
                     return (
-                      <tr key={c.id} style={{ borderBottom: i < contratos.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={c.id} style={{ borderBottom: idx < contratos.length - 1 ? "0.5px solid #EEF1F6" : "none", cursor: "pointer" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "#FAFBFD")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                         <td style={{ padding: "10px 14px" }}>
-                          <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{c.descricao}</div>
-                          <div style={{ fontSize: 11, color: "#555" }}>{c.credor}{c.numero_documento ? ` · Nº ${c.numero_documento}` : ""}</div>
+                          <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.descricao}</div>
+                          <div style={{ fontSize: 11, color: "#888" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "#1a1a1a" }}>{c.linha_credito ?? "—"}</td>
+                        <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo_calculo.toUpperCase(), "#F1EFE8", "#555")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>
-                          {c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}
-                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          <div style={{ color: "#1a1a1a", fontWeight: 600 }}>
-                            {c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}
-                          </div>
-                          {c.moeda === "USD" && ptax && (
-                            <div style={{ fontSize: 10, color: "#444" }}>
-                              ≈ {fmtBRL(c.valor_financiado * ptax)}
-                              <span style={{ color: "#888", marginLeft: 3 }}>PTAX {fmtNum(ptax, 4)}</span>
-                            </div>
-                          )}
+                          <div style={{ fontWeight: 600 }}>{c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}</div>
+                          {c.moeda === "USD" && ptax && <div style={{ fontSize: 10, color: "#888" }}>≈ {fmtBRL(c.valor_financiado * ptax)}</div>}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtData(c.data_contrato)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => abrirDetalhe(c)}>Ver parcelas</button>
-                            <button style={btnE} onClick={() => abrirModalContrato(c)}>Editar</button>
+                            <button style={{ ...btnE, background: "#EBF2FA", color: "#1A4870", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir contrato e todas as parcelas?")) excluirContratoFinanceiro(c.id).then(() => setContratos(p => p.filter(x => x.id !== c.id))); }}>✕</button>
                           </div>
                         </td>
@@ -651,771 +513,597 @@ export default function ContratosFinanceiros() {
         </div>
       </main>
 
-      {/* ══ Modal Contrato ══ */}
-      {modalContrato && (
-        <Modal titulo={editContrato ? "Editar Contrato" : "Novo Contrato Financeiro"} width={720} onClose={() => setModalContrato(false)}>
+      {/* ══ Modal Unificado ══ */}
+      {modalAberto && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}
+          onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
+          <div style={{ background: "#fff", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-          {/* ── Seção: Identificação ── */}
-          <SecTitle>Identificação</SecTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Descrição *</label>
-              <input style={inp} placeholder="Ex: Custeio Soja 2026/2027 — Banco do Brasil" value={fC.descricao} onChange={e => setFC(p => ({ ...p, descricao: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Tipo de Contrato *</label>
-              <select style={inp} value={fC.tipo} onChange={e => setFC(p => ({ ...p, tipo: e.target.value as ContratoFinanceiro["tipo"] }))}>
-                <option value="custeio">Custeio</option>
-                <option value="investimento">Investimento / Financiamento</option>
-                <option value="securitizacao">Securitização</option>
-                <option value="cpr">CPR</option>
-                <option value="egf">EGF</option>
-                <option value="outros">Outros</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Linha de Crédito</label>
-              <select style={inp} value={fC.linha_credito} onChange={e => setFC(p => ({ ...p, linha_credito: e.target.value }))}>
-                <option value="">Selecione…</option>
-                {LINHAS_CREDITO.map(l => <option key={l} value={l}>{l}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Nº Documento / Contrato</label>
-              <input style={inp} placeholder="Ex: 12345/2026" value={fC.numero_documento} onChange={e => setFC(p => ({ ...p, numero_documento: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Tipo de Cálculo *</label>
-              <select style={inp} value={fC.tipo_calculo} onChange={e => setFC(p => ({ ...p, tipo_calculo: e.target.value as ContratoFinanceiro["tipo_calculo"] }))}>
-                <option value="sac">SAC — Amortização Constante (prestação decresce)</option>
-                <option value="price">PRICE — Parcela Constante (PMT)</option>
-                <option value="outros">Outros / Manual</option>
-              </select>
-            </div>
-          </div>
-
-          {/* ── Seção: Credor ── */}
-          <SecTitle>Credor / Instituição Financeira</SecTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div>
-              <label style={lbl}>Credor (fornecedor cadastrado)</label>
-              <select style={inp} value={fC.pessoa_id} onChange={e => onPessoaChange(e.target.value)}>
-                <option value="">— Buscar em pessoas cadastradas —</option>
-                {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Nome do Credor *{fC.pessoa_id ? " (preenchido pelo cadastro)" : ""}</label>
-              <input style={inp} placeholder="Ex: Banco do Brasil, Bradesco, Cooperativa…" value={fC.credor} onChange={e => setFC(p => ({ ...p, credor: e.target.value }))} />
-            </div>
-          </div>
-
-          {/* ── Seção: Valores e Moeda ── */}
-          <SecTitle>Captação — Valor e Moeda</SecTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14 }}>
-            <div>
-              <label style={lbl}>Moeda</label>
-              <select style={inp} value={fC.moeda} onChange={e => setFC(p => ({ ...p, moeda: e.target.value as "BRL" | "USD", valor_cotacao: "" }))}>
-                <option value="BRL">Real (R$)</option>
-                <option value="USD">Dólar (US$)</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Valor Financiado * ({fC.moeda === "USD" ? "US$" : "R$"})</label>
-              <input style={inp} type="number" step="0.01" placeholder="0,00" value={fC.valor_financiado} onChange={e => setFC(p => ({ ...p, valor_financiado: e.target.value }))} />
-            </div>
-            {fC.moeda === "USD" && (
-              <div>
-                <label style={lbl}>Cotação R$/US$</label>
-                <input style={inp} type="number" step="0.01" placeholder="5,85" value={fC.valor_cotacao} onChange={e => setFC(p => ({ ...p, valor_cotacao: e.target.value }))} />
-              </div>
-            )}
-            {fC.moeda === "USD" && fC.valor_financiado && fC.valor_cotacao && (
-              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
-                  <div style={{ color: "#555", fontSize: 10, marginBottom: 2 }}>Equivalente em R$</div>
-                  <strong style={{ color: "#1A4870" }}>
-                    {fmtBRL((parseFloat(fC.valor_financiado) || 0) * (parseFloat(fC.valor_cotacao) || 0))}
-                  </strong>
-                </div>
-              </div>
-            )}
-            <div>
-              <label style={lbl}>Data do Contrato *</label>
-              <input style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p => ({ ...p, data_contrato: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Periodicidade dos Vencimentos</label>
-              <select style={inp} value={fC.periodicidade_meses} onChange={e => setFC(p => ({ ...p, periodicidade_meses: e.target.value }))}>
-                <option value="1">Mensal</option>
-                <option value="6">Semestral</option>
-                <option value="12">Anual</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Carência (meses)</label>
-              <input style={inp} type="number" min="0" value={fC.carencia_meses} onChange={e => setFC(p => ({ ...p, carencia_meses: e.target.value }))} />
-            </div>
-            {Number(fC.carencia_meses) > 0 && (
-              <div>
-                <label style={lbl}>Tipo de Carência</label>
-                <select style={inp} value={fC.carencia_tipo} onChange={e => setFC(p => ({ ...p, carencia_tipo: e.target.value as "so_juros" | "total" }))}>
-                  <option value="so_juros">Só juros — paga juros durante a carência</option>
-                  <option value="total">Carência total — juros capitalizam (sem pagamento)</option>
-                </select>
-              </div>
-            )}
-            <div>
-              <label style={lbl}>Crescimento por Período (%)</label>
-              <input style={inp} type="number" step="0.01" min="0" placeholder="0 = parcelas fixas (SAC/PRICE)" value={fC.crescimento_pct} onChange={e => setFC(p => ({ ...p, crescimento_pct: e.target.value }))} />
-              {Number(fC.crescimento_pct) > 0 && (
-                <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>
-                  ⚡ Parcelas crescentes — cada vencimento aumenta {fC.crescimento_pct}% em relação ao anterior
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Seção: Taxas e Custos ── */}
-          <SecTitle>Taxas e Custos da Operação</SecTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div>
-              <label style={lbl}>Taxa de Juros a.a. (%)</label>
-              <input style={inp} type="number" step="0.001" placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={e => onChangeAa(e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Taxa de Juros a.m. (%)</label>
-              <input style={inp} type="number" step="0.0001" placeholder="Calculado automaticamente" value={fC.taxa_juros_am} onChange={e => onChangeAm(e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>IOF (%)</label>
-              <input style={inp} type="number" step="0.001" placeholder="Ex: 0,38" value={fC.iof_pct} onChange={e => setFC(p => ({ ...p, iof_pct: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
-              <input style={inp} type="number" step="0.01" placeholder="Ex: 500,00" value={fC.tac_valor} onChange={e => setFC(p => ({ ...p, tac_valor: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Outros Custos Fixos (R$)</label>
-              <input style={inp} type="number" step="0.01" placeholder="Registro, cartório…" value={fC.outros_custos} onChange={e => setFC(p => ({ ...p, outros_custos: e.target.value }))} />
-            </div>
-            {/* Custo total da operação */}
-            {(fC.iof_pct || fC.tac_valor || fC.outros_custos) && fC.valor_financiado && (
-              <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                <div style={{ background: "#FFF8EC", border: "0.5px solid #EF9F2750", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
-                  <div style={{ color: "#555", fontSize: 10, marginBottom: 2 }}>Custos fixos totais</div>
-                  <strong style={{ color: "#EF9F27" }}>
-                    {fmtBRL(
-                      ((parseFloat(fC.iof_pct) || 0) / 100) * (parseFloat(fC.valor_financiado) || 0) +
-                      (parseFloat(fC.tac_valor) || 0) +
-                      (parseFloat(fC.outros_custos) || 0)
-                    )}
-                  </strong>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Seção: Contas ── */}
-          <SecTitle>Contas Bancárias</SecTitle>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div>
-              <label style={lbl}>Conta de Liberação</label>
-              <select style={inp} value={fC.conta_liberacao_id} onChange={e => {
-                const id = e.target.value;
-                const conta = contas.find(c => c.id === id);
-                setFC(p => ({
-                  ...p,
-                  conta_liberacao_id: id,
-                  // preenche credor automaticamente a partir do banco da conta, a menos que já esteja preenchido manualmente
-                  credor: conta?.banco ? conta.banco : p.credor,
-                }));
-              }}>
-                <option value="">— Onde o banco deposita o crédito —</option>
-                {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.moeda === "USD" ? " (US$)" : ""}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Conta de Pagamento</label>
-              <select style={inp} value={fC.conta_pagamento_id} onChange={e => setFC(p => ({ ...p, conta_pagamento_id: e.target.value }))}>
-                <option value="">— Onde debitam as parcelas —</option>
-                {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.moeda === "USD" ? " (US$)" : ""}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Forma de Pagamento</label>
-              <select style={inp} value={fC.forma_pagamento} onChange={e => setFC(p => ({ ...p, forma_pagamento: e.target.value }))}>
-                <option value="">Selecione…</option>
-                <option value="Débito em conta">Débito em conta</option>
-                <option value="Boleto">Boleto</option>
-                <option value="PIX">PIX</option>
-                <option value="TED/DOC">TED/DOC</option>
-                <option value="Cheque">Cheque</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Local de Pagamento</label>
-              <input style={inp} placeholder="Ex: Agência 0001 — Nova Mutum" value={fC.local_pagamento} onChange={e => setFC(p => ({ ...p, local_pagamento: e.target.value }))} />
-            </div>
-          </div>
-
-          {/* ── Seção: Opções ── */}
-          <SecTitle>Opções</SecTitle>
-          <div style={{ display: "flex", gap: 24, marginBottom: 6, flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-              <input type="checkbox" checked={fC.rateio_por_vencimento} onChange={e => setFC(p => ({ ...p, rateio_por_vencimento: e.target.checked }))} />
-              Rateio por vencimento
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-              <input type="checkbox" checked={fC.fiscal} onChange={e => setFC(p => ({ ...p, fiscal: e.target.checked }))} />
-              Integrar ao Fiscal (LCDPR)
-            </label>
-          </div>
-          <div>
-            <label style={lbl}>Observação</label>
-            <input style={inp} value={fC.observacao} onChange={e => setFC(p => ({ ...p, observacao: e.target.value }))} />
-          </div>
-
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
-            <button style={btnR} onClick={() => setModalContrato(false)}>Cancelar</button>
-            <button
-              style={{ ...btnV, opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado ? 0.5 : 1 }}
-              disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado}
-              onClick={salvarContrato}
-            >{salvando ? "Salvando…" : "Salvar"}</button>
-          </div>
-        </Modal>
-      )}
-
-      {/* ══ Modal Detalhe — Abas ══ */}
-      {detalhe && (
-        <Modal
-          titulo={detalhe.descricao}
-          subtitulo={`${detalhe.credor} · ${TIPO_META[detalhe.tipo].label}${detalhe.linha_credito ? ` / ${detalhe.linha_credito}` : ""} · ${detalhe.moeda === "USD" ? `US$ ${fmtNum(detalhe.valor_financiado)}${ptax ? ` (≈ ${fmtBRL(detalhe.valor_financiado * ptax)} · PTAX ${fmtNum(ptax, 4)})` : ""}` : fmtBRL(detalhe.valor_financiado)}`}
-          width={820}
-          onClose={() => setDetalhe(null)}
-        >
-          {/* Abas */}
-          <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8", marginBottom: 20 }}>
-            {([
-              ["liberacao",     "Parcelas Liberação"],
-              ["pagamento",     "Parcelas Pagamento"],
-              ["garantias",     "Garantias"],
-              ["centrocusto",   "Centro de Custo"],
-              ["aditivos",      "Aditivos"],
-              ["movimentacoes", "Movimentações"],
-            ] as const).map(([k, l]) => (
-              <button key={k} onClick={() => setAbaDetalhe(k)} style={{ padding: "9px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: abaDetalhe === k ? 600 : 400, color: abaDetalhe === k ? "#1a1a1a" : "#555", borderBottom: abaDetalhe === k ? "2px solid #1A4870" : "2px solid transparent" }}>{l}</button>
-            ))}
-          </div>
-
-          {/* ── Parcelas Liberação ── */}
-          {abaDetalhe === "liberacao" && (
-            <div>
-              <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
-                ✦ Ao registrar uma liberação, um lançamento CR ({TIPO_META[detalhe.tipo].label === "CPR" ? "Captação de CPR" : `Captação de ${TIPO_META[detalhe.tipo].label}`}) é criado automaticamente no financeiro
-                {detalhe.conta_liberacao_id ? ` · Conta: ${nomeConta(detalhe.conta_liberacao_id)}` : ""}.
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
-                <div><label style={lbl}>Data Liberação</label><input style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
+            {/* Cabeçalho do modal */}
+            <div style={{ padding: "18px 26px 0", borderBottom: "0.5px solid #D4DCE8", flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div>
-                  <label style={lbl}>Valor Liberado ({detalhe.moeda === "USD" ? "US$" : "R$"})</label>
-                  <input style={inp} type="number" step="0.01" value={fLib.valor_liberado} onChange={e => setFLib(p => ({ ...p, valor_liberado: e.target.value }))} />
-                </div>
-                <div><label style={lbl}>Nº Parcelas</label><input style={inp} type="number" min="1" value={fLib.parcelas_liberacao} onChange={e => setFLib(p => ({ ...p, parcelas_liberacao: e.target.value }))} /></div>
-                <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando || !fLib.data_liberacao || !fLib.valor_liberado}>+ Adicionar</button>
-              </div>
-              {parcelasLiberacao.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 0", color: "#444", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Data Liberação", detalhe.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", detalhe.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th> : null)}</tr></thead>
-                  <tbody>
-                    {parcelasLiberacao.map((p, i) => (
-                      <tr key={p.id} style={{ borderBottom: i < parcelasLiberacao.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <td style={{ padding: "8px 12px", textAlign: "center", color: "#1a1a1a" }}>{p.num_parcela}</td>
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
-                        <td style={{ padding: "8px 12px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{detalhe.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
-                        {detalhe.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center", color: "#1a1a1a" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
-                        <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#D5E8F5", "#0B2D50") : badge("—", "#F1EFE8", "#555")}</td>
-                        <td style={{ padding: "8px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-              <div style={{ marginTop: 10, fontSize: 11, color: "#555", textAlign: "right" }}>
-                Total liberado: <strong style={{ color: "#1a1a1a" }}>{fmtBRL(parcelasLiberacao.reduce((s, p) => s + (p.valor_liberado_brl ?? p.valor_liberado), 0))}</strong>
-                {" · "}Saldo a liberar: <strong style={{ color: "#EF9F27" }}>{fmtBRL(Math.max(0, (detalhe.valor_financiado_brl ?? detalhe.valor_financiado) - parcelasLiberacao.reduce((s, p) => s + (p.valor_liberado_brl ?? p.valor_liberado), 0)))}</strong>
-              </div>
-            </div>
-          )}
-
-          {/* ── Parcelas Pagamento ── */}
-          {abaDetalhe === "pagamento" && (
-            <div>
-              <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
-                ✦ Ao baixar cada parcela, lançamentos CP separados são criados automaticamente: <strong>Amortização → {TIPO_META[detalhe.tipo].label === "Custeio" ? "Pagamento de Custeio" : `Pagamento de ${TIPO_META[detalhe.tipo].label}`}</strong> e <strong>Juros → {detalhe.tipo === "custeio" ? "Juros de Custeio" : `Juros de ${TIPO_META[detalhe.tipo].label}`}</strong>
-                {detalhe.conta_pagamento_id ? ` · Conta: ${nomeConta(detalhe.conta_pagamento_id)}` : ""}.
-              </div>
-
-              {/* Calculadora */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: "#1a1a1a", fontWeight: 600, marginBottom: 10 }}>
-                  Calcular tabela — {detalhe.crescimento_pct && detalhe.crescimento_pct > 0
-                    ? `Parcelas Crescentes (${fmtNum(detalhe.crescimento_pct, 2)}% por período)`
-                    : detalhe.tipo_calculo.toUpperCase()}
-                  {detalhe.carencia_meses && detalhe.carencia_meses > 0 && (
-                    <span style={{ marginLeft: 8, fontWeight: 400, color: "#888", fontSize: 11 }}>
-                      · Carência: {detalhe.carencia_meses} mês(es) — {detalhe.carencia_tipo === "total" ? "juros capitalizam" : "só juros"}
-                    </span>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>
+                    {contratoModal ? contratoModal.descricao : "Novo Contrato Financeiro"}
+                  </div>
+                  {contratoModal && (
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
+                      {contratoModal.credor} · {TIPO_META[contratoModal.tipo].label}
+                      {contratoModal.linha_credito ? ` / ${contratoModal.linha_credito}` : ""}
+                      {" · "}
+                      {contratoModal.moeda === "USD"
+                        ? `US$ ${fmtNum(contratoModal.valor_financiado)}${ptax ? ` ≈ ${fmtBRL(contratoModal.valor_financiado * ptax)}` : ""}`
+                        : fmtBRL(contratoModal.valor_financiado)}
+                    </div>
                   )}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
-                  <div><label style={lbl}>Nº Parcelas</label><input style={inp} type="number" min="1" value={fCalc.nParcelas} onChange={e => setFCalc(p => ({ ...p, nParcelas: e.target.value }))} /></div>
-                  <div>
-                    <label style={lbl}>Taxa a.m. (%)
-                      {detalhe.taxa_juros_am && <span style={{ color: "#1A4870", marginLeft: 4 }}>contrato: {fmtNum(detalhe.taxa_juros_am, 4)}%</span>}
+                <button onClick={fecharModal} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+              </div>
+
+              {/* Abas */}
+              <div style={{ display: "flex", gap: 0, overflowX: "auto" }}>
+                {([
+                  ["principal",     "Principal"],
+                  ["liberacao",     "Liberação"],
+                  ["pagamento",     "Pagamento"],
+                  ["garantias",     "Garantias"],
+                  ["centrocusto",   "Centro de Custo"],
+                  ["aditivos",      "Aditivos"],
+                  ["movimentacoes", "Movimentações"],
+                ] as const).map(([k, l]) => {
+                  const bloqueada = k !== "principal" && !contratoModal;
+                  return (
+                    <button key={k} onClick={() => !bloqueada && setAbaModal(k)}
+                      style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#1A4870" : "#555", borderBottom: abaModal === k ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
+                    >{l}{bloqueada ? " 🔒" : ""}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Conteúdo */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
+
+              {/* ── Principal ── */}
+              {abaModal === "principal" && (
+                <div>
+                  <SecTitle>Identificação</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Descrição *</label>
+                      <input style={inp} placeholder="Ex: Custeio Soja 2026/2027 — Banco do Brasil" value={fC.descricao} onChange={e => setFC(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Tipo de Contrato *</label>
+                      <select style={inp} value={fC.tipo} onChange={e => setFC(p => ({ ...p, tipo: e.target.value as ContratoFinanceiro["tipo"] }))}>
+                        <option value="custeio">Custeio</option>
+                        <option value="investimento">Investimento / Financiamento</option>
+                        <option value="securitizacao">Securitização</option>
+                        <option value="cpr">CPR</option>
+                        <option value="egf">EGF</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Linha de Crédito</label>
+                      <select style={inp} value={fC.linha_credito} onChange={e => setFC(p => ({ ...p, linha_credito: e.target.value }))}>
+                        <option value="">Selecione…</option>
+                        {LINHAS_CREDITO.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Nº Documento / Contrato</label>
+                      <input style={inp} placeholder="Ex: 12345/2026" value={fC.numero_documento} onChange={e => setFC(p => ({ ...p, numero_documento: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Tipo de Cálculo *</label>
+                      <select style={inp} value={fC.tipo_calculo} onChange={e => setFC(p => ({ ...p, tipo_calculo: e.target.value as ContratoFinanceiro["tipo_calculo"] }))}>
+                        <option value="sac">SAC — Amortização Constante</option>
+                        <option value="price">PRICE — Parcela Constante</option>
+                        <option value="outros">Outros / Manual</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <SecTitle>Credor / Instituição Financeira</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div>
+                      <label style={lbl}>Credor (fornecedor cadastrado)</label>
+                      <select style={inp} value={fC.pessoa_id} onChange={e => onPessoaChange(e.target.value)}>
+                        <option value="">— Buscar em pessoas cadastradas —</option>
+                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Nome do Credor *{fC.pessoa_id ? " (do cadastro)" : ""}</label>
+                      <input style={inp} placeholder="Ex: Banco do Brasil, Bradesco, Cooperativa…" value={fC.credor} onChange={e => setFC(p => ({ ...p, credor: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <SecTitle>Captação — Valor e Moeda</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div>
+                      <label style={lbl}>Moeda</label>
+                      <select style={inp} value={fC.moeda} onChange={e => setFC(p => ({ ...p, moeda: e.target.value as "BRL" | "USD", valor_cotacao: "" }))}>
+                        <option value="BRL">Real (R$)</option>
+                        <option value="USD">Dólar (US$)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Valor Financiado * ({fC.moeda === "USD" ? "US$" : "R$"})</label>
+                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={fC.valor_financiado} onChange={e => setFC(p => ({ ...p, valor_financiado: e.target.value }))} />
+                    </div>
+                    {fC.moeda === "USD" ? (
+                      <div>
+                        <label style={lbl}>Cotação R$/US$</label>
+                        <input style={inp} type="number" step="0.01" placeholder="5,85" value={fC.valor_cotacao} onChange={e => setFC(p => ({ ...p, valor_cotacao: e.target.value }))} />
+                      </div>
+                    ) : <div />}
+                    <div>
+                      <label style={lbl}>Data do Contrato *</label>
+                      <input style={inp} type="date" value={fC.data_contrato} onChange={e => setFC(p => ({ ...p, data_contrato: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Periodicidade</label>
+                      <select style={inp} value={fC.periodicidade_meses} onChange={e => setFC(p => ({ ...p, periodicidade_meses: e.target.value }))}>
+                        <option value="1">Mensal</option>
+                        <option value="6">Semestral</option>
+                        <option value="12">Anual</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Carência (meses)</label>
+                      <input style={inp} type="number" min="0" value={fC.carencia_meses} onChange={e => setFC(p => ({ ...p, carencia_meses: e.target.value }))} />
+                    </div>
+                    {Number(fC.carencia_meses) > 0 && (
+                      <div>
+                        <label style={lbl}>Tipo de Carência</label>
+                        <select style={inp} value={fC.carencia_tipo} onChange={e => setFC(p => ({ ...p, carencia_tipo: e.target.value as "so_juros" | "total" }))}>
+                          <option value="so_juros">Só juros</option>
+                          <option value="total">Carência total (capitaliza)</option>
+                        </select>
+                      </div>
+                    )}
+                    <div>
+                      <label style={lbl}>Crescimento por Período (%)</label>
+                      <input style={inp} type="number" step="0.01" min="0" placeholder="0 = fixo" value={fC.crescimento_pct} onChange={e => setFC(p => ({ ...p, crescimento_pct: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <SecTitle>Taxas e Custos da Operação</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div>
+                      <label style={lbl}>Taxa de Juros a.a. (%)</label>
+                      <input style={inp} type="number" step="0.001" placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={e => onChangeAa(e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Taxa de Juros a.m. (%)</label>
+                      <input style={inp} type="number" step="0.0001" placeholder="Auto" value={fC.taxa_juros_am} onChange={e => onChangeAm(e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={lbl}>IOF (%)</label>
+                      <input style={inp} type="number" step="0.001" placeholder="Ex: 0,38" value={fC.iof_pct} onChange={e => setFC(p => ({ ...p, iof_pct: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
+                      <input style={inp} type="number" step="0.01" placeholder="Ex: 500,00" value={fC.tac_valor} onChange={e => setFC(p => ({ ...p, tac_valor: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Outros Custos Fixos (R$)</label>
+                      <input style={inp} type="number" step="0.01" placeholder="Registro, cartório…" value={fC.outros_custos} onChange={e => setFC(p => ({ ...p, outros_custos: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <SecTitle>Contas Bancárias</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div>
+                      <label style={lbl}>Conta de Liberação</label>
+                      <select style={inp} value={fC.conta_liberacao_id} onChange={e => { const id = e.target.value; const conta = contas.find(c => c.id === id); setFC(p => ({ ...p, conta_liberacao_id: id, credor: conta?.banco ? conta.banco : p.credor })); }}>
+                        <option value="">— Onde o banco deposita —</option>
+                        {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.moeda === "USD" ? " (US$)" : ""}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Conta de Pagamento</label>
+                      <select style={inp} value={fC.conta_pagamento_id} onChange={e => setFC(p => ({ ...p, conta_pagamento_id: e.target.value }))}>
+                        <option value="">— Onde debitam as parcelas —</option>
+                        {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ""}{c.moeda === "USD" ? " (US$)" : ""}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Forma de Pagamento</label>
+                      <select style={inp} value={fC.forma_pagamento} onChange={e => setFC(p => ({ ...p, forma_pagamento: e.target.value }))}>
+                        <option value="">Selecione…</option>
+                        <option value="Débito em conta">Débito em conta</option>
+                        <option value="Boleto">Boleto</option>
+                        <option value="PIX">PIX</option>
+                        <option value="TED/DOC">TED/DOC</option>
+                        <option value="Cheque">Cheque</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Local de Pagamento</label>
+                      <input style={inp} placeholder="Ex: Agência 0001 — Nova Mutum" value={fC.local_pagamento} onChange={e => setFC(p => ({ ...p, local_pagamento: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <SecTitle>Opções</SecTitle>
+                  <div style={{ display: "flex", gap: 24, marginBottom: 10, flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                      <input type="checkbox" checked={fC.rateio_por_vencimento} onChange={e => setFC(p => ({ ...p, rateio_por_vencimento: e.target.checked }))} />
+                      Rateio por vencimento
                     </label>
-                    <input style={inp} type="number" step="0.0001" value={fCalc.taxaMensal} onChange={e => setFCalc(p => ({ ...p, taxaMensal: e.target.value }))} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                      <input type="checkbox" checked={fC.fiscal} onChange={e => setFC(p => ({ ...p, fiscal: e.target.checked }))} />
+                      Integrar ao Fiscal (LCDPR)
+                    </label>
                   </div>
-                  <div><label style={lbl}>Data 1º Pagto.</label><input style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
                   <div>
-                    <label style={lbl}>Periodicidade {detalhe.periodicidade_meses && detalhe.periodicidade_meses > 1 && <span style={{ color: "#C9921B" }}>(contrato: {detalhe.periodicidade_meses === 6 ? "semestral" : "anual"})</span>}</label>
-                    <select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}>
-                      <option value="1">Mensal</option>
-                      <option value="3">Trimestral</option>
-                      <option value="6">Semestral</option>
-                      <option value="12">Anual</option>
-                    </select>
+                    <label style={lbl}>Observação</label>
+                    <input style={inp} value={fC.observacao} onChange={e => setFC(p => ({ ...p, observacao: e.target.value }))} />
                   </div>
-                  <div><label style={lbl}>Acessórios/parc. (R$)</label><input style={inp} type="number" step="0.01" value={fCalc.acessorios} onChange={e => setFCalc(p => ({ ...p, acessorios: e.target.value }))} /></div>
-                </div>
-                <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                  <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando || !fCalc.dataPrimeiro}>
-                    {salvando ? "Calculando…" : "⟳ Calcular e Salvar Parcelas"}
-                  </button>
-                </div>
-              </div>
 
-              {parcelasPagamento.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 0", color: "#444", fontSize: 12 }}>Preencha a calculadora acima para gerar a tabela de parcelas</div>
-              ) : (
-                <>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead><tr style={{ background: "#F3F6F9" }}>
-                      {["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => (
-                        <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
-                      ))}
-                    </tr></thead>
-                    <tbody>
-                      {parcelasPagamento.map((p, i) => {
-                        const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "#555";
-                        return (
-                          <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid #DEE5EE" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
-                            <td style={{ padding: "7px 10px", textAlign: "center", color: "#1a1a1a" }}>{p.num_parcela}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtData(p.data_vencimento)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#1a1a1a" }}>{fmtBRL(p.amortizacao)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(p.juros)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#1a1a1a" }}>{fmtBRL(p.despesas_acessorios)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#1a1a1a", fontWeight: 600 }}>{fmtBRL(p.valor_parcela)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#1a1a1a" }}>{fmtBRL(p.saldo_devedor)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                              <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
-                              {p.status !== "pago" && (
-                                <button style={{ ...btnE, marginLeft: 6, fontSize: 10 }}
-                                  onClick={() => baixarParcelaPagamento(p.id, fazendaId!, p, detalhe)
-                                    .then(() => setParcelasPagamento(x => x.map(r => r.id === p.id ? { ...r, status: "pago" as const } : r)))}>
-                                  Baixar
-                                </button>
-                              )}
-                            </td>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
+                    <button style={btnR} onClick={fecharModal}>Fechar</button>
+                    <button
+                      style={{ ...btnV, background: "#1A4870", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado ? 0.5 : 1 }}
+                      disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado}
+                      onClick={salvarContrato}
+                    >{salvando ? "Salvando…" : contratoModal ? "Salvar alterações" : "Salvar e continuar"}</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Liberação ── */}
+              {abaModal === "liberacao" && (!contratoModal ? <AbaDisabled nome="Liberação" /> : (
+                <div>
+                  <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+                    ✦ Ao registrar uma liberação, um lançamento CR é criado automaticamente no financeiro{contratoModal.conta_liberacao_id ? ` · Conta: ${nomeConta(contratoModal.conta_liberacao_id)}` : ""}.
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
+                    <div><label style={lbl}>Data Liberação</label><input style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
+                    <div><label style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><input style={inp} type="number" step="0.01" value={fLib.valor_liberado} onChange={e => setFLib(p => ({ ...p, valor_liberado: e.target.value }))} /></div>
+                    <div><label style={lbl}>Nº Parcelas</label><input style={inp} type="number" min="1" value={fLib.parcelas_liberacao} onChange={e => setFLib(p => ({ ...p, parcelas_liberacao: e.target.value }))} /></div>
+                    <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando || !fLib.data_liberacao || !fLib.valor_liberado}>+ Adicionar</button>
+                  </div>
+                  {parcelasLiberacao.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Data", contratoModal.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", contratoModal.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th> : null)}</tr></thead>
+                      <tbody>
+                        {parcelasLiberacao.map((p, i) => (
+                          <tr key={p.id} style={{ borderBottom: i < parcelasLiberacao.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.num_parcela}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
+                            {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#D5E8F5", "#0B2D50") : badge("—", "#F1EFE8", "#555")}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</button></td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr style={{ background: "#F3F6F9", color: "#1a1a1a", fontWeight: 600 }}>
-                        <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAIS</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.valor_parcela, 0))}</td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  </table>
-                  <div style={{ marginTop: 8, fontSize: 11, color: "#555", display: "flex", gap: 16 }}>
-                    <span>Custo total dos juros: <strong style={{ color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0))}</strong></span>
-                    <span>CET estimado: <strong>{fmtNum((parcelasPagamento.reduce((s, p) => s + p.juros, 0) / detalhe.valor_financiado) * 100, 2)}% a.p.</strong></span>
-                    <span>Pagas: <strong style={{ color: "#1A4870" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ── Garantias ── */}
-          {abaDetalhe === "garantias" && (
-            <div>
-              {/* ─ Form nova garantia ─ */}
-              <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
-                {/* Linha 1: Tipo Garantia · Grau · Tipo Bem */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
-                  <div>
-                    <label style={lbl}>Tipo de Garantia *</label>
-                    <select style={inp} value={fGar.tipo_garantia ?? ""} onChange={e => setFGar(p => ({ ...p, tipo_garantia: e.target.value as GarantiaContrato["tipo_garantia"] }))}>
-                      <option value="alienacao_fiduciaria">Alienação Fiduciária</option>
-                      <option value="hipoteca">Hipoteca</option>
-                      <option value="penhor_rural">Penhor Rural / Agrícola</option>
-                      <option value="aval">Aval</option>
-                      <option value="nota_promissoria">Nota Promissória</option>
-                      <option value="cpr_garantia">CPR como Garantia</option>
-                      <option value="cessao_recebiveis">Cessão de Recebíveis</option>
-                      <option value="outros">Outros</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={lbl}>Grau</label>
-                    <select style={inp} value={fGar.grau} onChange={e => setFGar(p => ({ ...p, grau: e.target.value as "" | "1_grau" | "2_grau" | "3_grau" }))}>
-                      <option value="">—</option>
-                      <option value="1_grau">1° Grau</option>
-                      <option value="2_grau">2° Grau</option>
-                      <option value="3_grau">3° Grau</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={lbl}>Tipo de Bem</label>
-                    <select style={inp} value={fGar.tipo_bem ?? "imovel"} onChange={e => setFGar(p => ({ ...p, tipo_bem: e.target.value as GarantiaContrato["tipo_bem"], matricula_id: "", maquina_id: "" }))}>
-                      <option value="imovel">Imóvel Rural (Matrícula)</option>
-                      <option value="maquina">Máquina / Veículo</option>
-                      <option value="semovente">Semovente (Gado)</option>
-                      <option value="produto_agricola">Produto Agrícola (CPR)</option>
-                      <option value="outro">Outro</option>
-                    </select>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  <div style={{ marginTop: 10, fontSize: 11, color: "#555", textAlign: "right" }}>
+                    Total liberado: <strong>{fmtBRL(parcelasLiberacao.reduce((s, p) => s + (p.valor_liberado_brl ?? p.valor_liberado), 0))}</strong>
+                    {" · "}Saldo a liberar: <strong style={{ color: "#EF9F27" }}>{fmtBRL(Math.max(0, (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado) - parcelasLiberacao.reduce((s, p) => s + (p.valor_liberado_brl ?? p.valor_liberado), 0)))}</strong>
                   </div>
                 </div>
-                {/* Linha 2: Bem vinculado (condicional) + Valor + % */}
-                <div style={{ display: "grid", gridTemplateColumns: fGar.tipo_bem === "imovel" || fGar.tipo_bem === "maquina" ? "2fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
-                  {fGar.tipo_bem === "imovel" && (
-                    <div>
-                      <label style={lbl}>Matrícula vinculada</label>
-                      <select style={inp} value={fGar.matricula_id} onChange={e => setFGar(p => ({ ...p, matricula_id: e.target.value }))}>
-                        <option value="">— Selecione —</option>
-                        {matriculas.map(m => <option key={m.id} value={m.id}>Matr. {m.numero}{m.area_ha ? ` — ${m.area_ha} ha` : ""}{m.municipio ? ` — ${m.municipio}` : ""}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  {fGar.tipo_bem === "maquina" && (
-                    <div>
-                      <label style={lbl}>Máquina / Veículo</label>
-                      <select style={inp} value={fGar.maquina_id} onChange={e => setFGar(p => ({ ...p, maquina_id: e.target.value }))}>
-                        <option value="">— Selecione —</option>
-                        {maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.ano ? ` (${m.ano})` : ""}{m.patrimonio ? ` · Patr. ${m.patrimonio}` : ""}</option>)}
-                      </select>
-                    </div>
-                  )}
-                  {fGar.tipo_bem !== "imovel" && fGar.tipo_bem !== "maquina" && (
-                    <div>
-                      <label style={lbl}>Descrição do Bem *</label>
-                      <input style={inp} placeholder="Ex: 300 cabeças Nelore, Sacas CPR…" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} />
-                    </div>
-                  )}
-                  <div>
-                    <label style={lbl}>% do Bem Oferecido</label>
-                    <input style={inp} type="number" min="1" max="100" value={fGar.percentual_bem} onChange={e => setFGar(p => ({ ...p, percentual_bem: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label style={lbl}>Valor Avaliação (R$)</label>
-                    <input style={inp} type="number" step="0.01" placeholder="0,00" value={fGar.valor_avaliacao} onChange={e => setFGar(p => ({ ...p, valor_avaliacao: e.target.value }))} />
-                  </div>
-                  {(fGar.tipo_bem === "imovel" || fGar.tipo_bem === "maquina") && (
-                    <div>
-                      <label style={lbl}>Obs. / Descrição adicional</label>
-                      <input style={inp} placeholder="Opcional" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} />
-                    </div>
-                  )}
-                  <button style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }} onClick={salvarGarantia} disabled={salvando}>+ Adicionar</button>
-                </div>
-              </div>
+              ))}
 
-              {/* ─ Tabela de garantias ─ */}
-              {garantias.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "24px 0", color: "#444", fontSize: 12 }}>Nenhuma garantia cadastrada para este contrato.</div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#F3F6F9" }}>
-                      {["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => (
-                        <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {garantias.map((g, i) => {
-                      const tipoMeta = g.tipo_garantia ? TIPO_GAR_META[g.tipo_garantia] : null;
-                      const cobertura = g.valor_avaliacao
-                        ? (g.valor_avaliacao * ((g.percentual_bem ?? 100) / 100) / (detalhe.valor_financiado_brl ?? detalhe.valor_financiado)) * 100
-                        : null;
-                      const bemDesc = g.tipo_bem === "imovel" && g.matricula_id
-                        ? (matriculas.find(m => m.id === g.matricula_id) ? `Matr. ${matriculas.find(m => m.id === g.matricula_id)!.numero}` : "Matrícula vinculada")
-                        : g.tipo_bem === "maquina" && g.maquina_id
-                        ? (maquinas.find(m => m.id === g.maquina_id)?.nome ?? "Máquina vinculada")
-                        : g.descricao;
-                      return (
-                        <tr key={g.id} style={{ borderBottom: i < garantias.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                          <td style={{ padding: "9px 12px" }}>
-                            {tipoMeta
-                              ? <span style={{ fontSize: 11, background: tipoMeta.bg, color: tipoMeta.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{tipoMeta.label}</span>
-                              : <span style={{ fontSize: 11, color: "#666" }}>—</span>}
-                          </td>
-                          <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#1A4870" }}>
-                            {g.grau ? GRAU_META[g.grau as keyof typeof GRAU_META] : "—"}
-                          </td>
-                          <td style={{ padding: "9px 12px" }}>
-                            <div style={{ fontWeight: 600, fontSize: 12, color: "#1a1a1a" }}>{bemDesc}</div>
-                            {g.descricao && g.tipo_bem !== "outro" && g.descricao !== bemDesc && (
-                              <div style={{ fontSize: 10, color: "#666", marginTop: 1 }}>{g.descricao}</div>
-                            )}
-                          </td>
-                          <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, color: "#555" }}>
-                            {g.tipo_bem ? TIPO_BEM_META[g.tipo_bem] : "—"}
-                          </td>
-                          <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>
-                            {g.percentual_bem ? `${g.percentual_bem}%` : "100%"}
-                          </td>
-                          <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>
-                            {g.valor_avaliacao ? fmtBRL(g.valor_avaliacao) : "—"}
-                          </td>
-                          <td style={{ padding: "9px 12px", textAlign: "center" }}>
-                            {cobertura !== null
-                              ? <span style={{ fontWeight: 700, color: cobertura >= 130 ? "#16A34A" : cobertura >= 100 ? "#EF9F27" : "#E24B4A" }}>{fmtNum(cobertura, 1)}%</span>
-                              : "—"}
-                          </td>
-                          <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                            <button style={btnX} onClick={() => excluirGarantia(g.id).then(() => setGarantias(x => x.filter(r => r.id !== g.id)))}>✕</button>
-                          </td>
+              {/* ── Pagamento ── */}
+              {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
+                <div>
+                  <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+                    ✦ Ao baixar cada parcela, lançamentos CP são criados automaticamente{contratoModal.conta_pagamento_id ? ` · Conta: ${nomeConta(contratoModal.conta_pagamento_id)}` : ""}.
+                  </div>
+                  <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
+                      <div><label style={lbl}>Nº Parcelas</label><input style={inp} type="number" min="1" value={fCalc.nParcelas} onChange={e => setFCalc(p => ({ ...p, nParcelas: e.target.value }))} /></div>
+                      <div><label style={lbl}>Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}</label><input style={inp} type="number" step="0.0001" value={fCalc.taxaMensal} onChange={e => setFCalc(p => ({ ...p, taxaMensal: e.target.value }))} /></div>
+                      <div><label style={lbl}>Data 1º Pagto.</label><input style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
+                      <div><label style={lbl}>Periodicidade</label><select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
+                      <div><label style={lbl}>Acessórios/parc. (R$)</label><input style={inp} type="number" step="0.01" value={fCalc.acessorios} onChange={e => setFCalc(p => ({ ...p, acessorios: e.target.value }))} /></div>
+                    </div>
+                    <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                      <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando || !fCalc.dataPrimeiro}>{salvando ? "Calculando…" : "⟳ Calcular e Salvar Parcelas"}</button>
+                    </div>
+                  </div>
+                  {parcelasPagamento.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 12 }}>Preencha a calculadora acima para gerar a tabela de parcelas</div>
+                  ) : (
+                    <>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {parcelasPagamento.map((p, i) => {
+                            const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "#555";
+                            return (
+                              <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid #DEE5EE" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
+                                <td style={{ padding: "7px 10px", textAlign: "center" }}>{p.num_parcela}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtData(p.data_vencimento)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.amortizacao)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(p.juros)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.despesas_acessorios)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor_parcela)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.saldo_devedor)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
+                                  {p.status !== "pago" && <button style={{ ...btnE, marginLeft: 6, fontSize: 10 }} onClick={() => baixarParcelaPagamento(p.id, fazendaId!, p, contratoModal!).then(() => setParcelasPagamento(x => x.map(r => r.id === p.id ? { ...r, status: "pago" as const } : r)))}>Baixar</button>}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: "#F3F6F9", fontWeight: 600 }}>
+                            <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAIS</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.valor_parcela, 0))}</td>
+                            <td colSpan={2} />
+                          </tr>
+                        </tfoot>
+                      </table>
+                      <div style={{ marginTop: 8, fontSize: 11, color: "#555", display: "flex", gap: 16 }}>
+                        <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0))}</strong></span>
+                        <span>CET estimado: <strong>{fmtNum((parcelasPagamento.reduce((s, p) => s + p.juros, 0) / contratoModal.valor_financiado) * 100, 2)}% a.p.</strong></span>
+                        <span>Pagas: <strong style={{ color: "#1A4870" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {/* ── Garantias ── */}
+              {abaModal === "garantias" && (!contratoModal ? <AbaDisabled nome="Garantias" /> : (
+                <div>
+                  <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
+                      <div>
+                        <label style={lbl}>Tipo de Garantia *</label>
+                        <select style={inp} value={fGar.tipo_garantia ?? ""} onChange={e => setFGar(p => ({ ...p, tipo_garantia: e.target.value as GarantiaContrato["tipo_garantia"] }))}>
+                          <option value="alienacao_fiduciaria">Alienação Fiduciária</option>
+                          <option value="hipoteca">Hipoteca</option>
+                          <option value="penhor_rural">Penhor Rural / Agrícola</option>
+                          <option value="aval">Aval</option>
+                          <option value="nota_promissoria">Nota Promissória</option>
+                          <option value="cpr_garantia">CPR como Garantia</option>
+                          <option value="cessao_recebiveis">Cessão de Recebíveis</option>
+                          <option value="outros">Outros</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Grau</label>
+                        <select style={inp} value={fGar.grau} onChange={e => setFGar(p => ({ ...p, grau: e.target.value as "" | "1_grau" | "2_grau" | "3_grau" }))}>
+                          <option value="">—</option><option value="1_grau">1° Grau</option><option value="2_grau">2° Grau</option><option value="3_grau">3° Grau</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Tipo de Bem</label>
+                        <select style={inp} value={fGar.tipo_bem ?? "imovel"} onChange={e => setFGar(p => ({ ...p, tipo_bem: e.target.value as GarantiaContrato["tipo_bem"], matricula_id: "", maquina_id: "" }))}>
+                          <option value="imovel">Imóvel Rural (Matrícula)</option>
+                          <option value="maquina">Máquina / Veículo</option>
+                          <option value="semovente">Semovente (Gado)</option>
+                          <option value="produto_agricola">Produto Agrícola (CPR)</option>
+                          <option value="outro">Outro</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: fGar.tipo_bem === "imovel" || fGar.tipo_bem === "maquina" ? "2fr 1fr 1fr 1fr auto" : "2fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
+                      {fGar.tipo_bem === "imovel" && <div><label style={lbl}>Matrícula vinculada</label><select style={inp} value={fGar.matricula_id} onChange={e => setFGar(p => ({ ...p, matricula_id: e.target.value }))}><option value="">— Selecione —</option>{matriculas.map(m => <option key={m.id} value={m.id}>Matr. {m.numero}{m.area_ha ? ` — ${m.area_ha} ha` : ""}{m.municipio ? ` — ${m.municipio}` : ""}</option>)}</select></div>}
+                      {fGar.tipo_bem === "maquina" && <div><label style={lbl}>Máquina / Veículo</label><select style={inp} value={fGar.maquina_id} onChange={e => setFGar(p => ({ ...p, maquina_id: e.target.value }))}><option value="">— Selecione —</option>{maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.ano ? ` (${m.ano})` : ""}</option>)}</select></div>}
+                      {fGar.tipo_bem !== "imovel" && fGar.tipo_bem !== "maquina" && <div><label style={lbl}>Descrição do Bem *</label><input style={inp} placeholder="Ex: 300 cabeças Nelore…" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
+                      <div><label style={lbl}>% do Bem</label><input style={inp} type="number" min="1" max="100" value={fGar.percentual_bem} onChange={e => setFGar(p => ({ ...p, percentual_bem: e.target.value }))} /></div>
+                      <div><label style={lbl}>Valor Avaliação (R$)</label><input style={inp} type="number" step="0.01" value={fGar.valor_avaliacao} onChange={e => setFGar(p => ({ ...p, valor_avaliacao: e.target.value }))} /></div>
+                      {(fGar.tipo_bem === "imovel" || fGar.tipo_bem === "maquina") && <div><label style={lbl}>Obs.</label><input style={inp} placeholder="Opcional" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
+                      <button style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }} onClick={salvarGarantia} disabled={salvando}>+ Adicionar</button>
+                    </div>
+                  </div>
+                  {garantias.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 12 }}>Nenhuma garantia cadastrada para este contrato.</div>
+                  ) : (
+                    <>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr style={{ background: "#F3F6F9" }}>{["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {garantias.map((g, i) => {
+                            const tipoMeta = g.tipo_garantia ? TIPO_GAR_META[g.tipo_garantia] : null;
+                            const cobertura = g.valor_avaliacao ? (g.valor_avaliacao * ((g.percentual_bem ?? 100) / 100) / (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado)) * 100 : null;
+                            const bemDesc = g.tipo_bem === "imovel" && g.matricula_id ? `Matr. ${matriculas.find(m => m.id === g.matricula_id)?.numero ?? "?"}` : g.tipo_bem === "maquina" && g.maquina_id ? (maquinas.find(m => m.id === g.maquina_id)?.nome ?? "Máquina") : g.descricao;
+                            return (
+                              <tr key={g.id} style={{ borderBottom: i < garantias.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                <td style={{ padding: "9px 12px" }}>{tipoMeta ? <span style={{ fontSize: 11, background: tipoMeta.bg, color: tipoMeta.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{tipoMeta.label}</span> : "—"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, fontWeight: 600 }}>{g.grau ? GRAU_META[g.grau as keyof typeof GRAU_META] : "—"}</td>
+                                <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 600 }}>{bemDesc}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, color: "#555" }}>{g.tipo_bem ? TIPO_BEM_META[g.tipo_bem] : "—"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "center" }}>{g.percentual_bem ? `${g.percentual_bem}%` : "100%"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600 }}>{g.valor_avaliacao ? fmtBRL(g.valor_avaliacao) : "—"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "center" }}>{cobertura !== null ? <span style={{ fontWeight: 700, color: cobertura >= 130 ? "#16A34A" : cobertura >= 100 ? "#EF9F27" : "#E24B4A" }}>{fmtNum(cobertura, 1)}%</span> : "—"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirGarantia(g.id).then(() => setGarantias(x => x.filter(r => r.id !== g.id)))}>✕</button></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      {(() => {
+                        const totalVal = garantias.reduce((s, g) => s + (g.valor_avaliacao ?? 0) * ((g.percentual_bem ?? 100) / 100), 0);
+                        const cobTotal = (totalVal / (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado)) * 100;
+                        return <div style={{ marginTop: 12, background: cobTotal >= 100 ? "#DCFCE7" : "#FEF3C7", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 11, color: "#444" }}>{garantias.length} garantia{garantias.length > 1 ? "s" : ""}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: cobTotal >= 130 ? "#16A34A" : cobTotal >= 100 ? "#92400E" : "#B91C1C" }}>
+                            Valor total: {fmtBRL(totalVal)} · Cobertura: {fmtNum(cobTotal, 1)}%{cobTotal < 100 ? " ⚠ Insuficiente" : cobTotal >= 130 ? " ✓ Excedente" : " ✓ Adequada"}
+                          </span>
+                        </div>;
+                      })()}
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {/* ── Centro de Custo ── */}
+              {abaModal === "centrocusto" && (!contratoModal ? <AbaDisabled nome="Centro de Custo" /> : (
+                <div>
+                  <div style={{ marginBottom: 10, fontSize: 12, color: "#555" }}>Defina como o valor captado é rateado entre centros de custo / safras (deve totalizar 100%).</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
+                    <thead><tr style={{ background: "#F3F6F9" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {centrosForm.map((c, i) => (
+                        <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                          <td style={{ padding: "6px 8px" }}><input style={inp} placeholder="Ex: Soja 2026/27 — Talhão A" value={c.descricao} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, descricao: e.target.value } : x))} /></td>
+                          <td style={{ padding: "6px 8px", width: 80 }}><input style={{ ...inp, textAlign: "center" }} type="number" step="0.01" value={c.percentual} onChange={e => { const pct = parseFloat(e.target.value) || 0; setCentrosForm(p => p.map((x, j) => j === i ? { ...x, percentual: e.target.value, valor: fmtNum((pct / 100) * (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado), 2) } : x)); }} /></td>
+                          <td style={{ padding: "6px 8px", width: 140 }}><input style={inp} type="number" step="0.01" value={c.valor} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, valor: e.target.value } : x))} /></td>
+                          <td style={{ padding: "6px 8px", width: 40 }}>{centrosForm.length > 1 && <button style={btnX} onClick={() => setCentrosForm(p => p.filter((_, j) => j !== i))}>✕</button>}</td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <button style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { descricao: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
+                    <div style={{ fontSize: 12 }}>
+                      Total: <strong style={{ color: Math.abs(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0) - 100) < 0.01 ? "#1A4870" : "#E24B4A" }}>{fmtNum(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0), 2)}%</strong>
+                      {Math.abs(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0) - 100) >= 0.01 && <span style={{ color: "#E24B4A", marginLeft: 4 }}>⚠ deve ser 100%</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+                    <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
+                  </div>
+                  {centrosCusto.length > 0 && <div style={{ marginTop: 14, fontSize: 11, color: "#555" }}>Último rateio salvo: {centrosCusto.map(c => `${c.descricao} (${fmtNum(c.percentual, 1)}%)`).join(" · ")}</div>}
+                </div>
+              ))}
 
-              {garantias.length > 0 && (() => {
-                const totalVal = garantias.reduce((s, g) => s + (g.valor_avaliacao ?? 0) * ((g.percentual_bem ?? 100) / 100), 0);
-                const cobTotal = (totalVal / (detalhe.valor_financiado_brl ?? detalhe.valor_financiado)) * 100;
+              {/* ── Aditivos ── */}
+              {abaModal === "aditivos" && (!contratoModal ? <AbaDisabled nome="Aditivos" /> : (() => {
+                const TIPO_ADIT: Record<AditivoContrato["tipo"], { label: string; bg: string; cl: string }> = {
+                  prorrogacao:     { label: "Prorrogação",        bg: "#D5E8F5", cl: "#0B2D50" },
+                  renegociacao:    { label: "Renegociação",       bg: "#FBF3E0", cl: "#7A5400" },
+                  capitalizacao:   { label: "Capitalização",      bg: "#FCF0F0", cl: "#7A1A1A" },
+                  reducao_taxa:    { label: "Redução de Taxa",    bg: "#E8F5EB", cl: "#1A5C35" },
+                  ampliacao_valor: { label: "Ampliação de Valor", bg: "#EDE9FB", cl: "#4B3B9B" },
+                  outros:          { label: "Outros",             bg: "#F3F4F6", cl: "#555"    },
+                };
                 return (
-                  <div style={{ marginTop: 12, background: cobTotal >= 100 ? "#DCFCE7" : "#FEF3C7", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: "#444" }}>
-                      {garantias.length} garantia{garantias.length > 1 ? "s" : ""} registrada{garantias.length > 1 ? "s" : ""}
-                    </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: cobTotal >= 130 ? "#16A34A" : cobTotal >= 100 ? "#92400E" : "#B91C1C" }}>
-                      Valor total garantido: {fmtBRL(totalVal)} · Cobertura: {fmtNum(cobTotal, 1)}%
-                      {cobTotal < 100 && " ⚠ Insuficiente"}
-                      {cobTotal >= 100 && cobTotal < 130 && " ✓ Adequada"}
-                      {cobTotal >= 130 && " ✓ Excedente"}
-                    </span>
+                  <div>
+                    <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
+                      Registre alterações formais: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
+                    </div>
+                    <div style={{ background: "#F8F9FB", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 16, marginBottom: 18 }}>
+                      <SecTitle>Novo Aditivo</SecTitle>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
+                        <div><label style={lbl}>Data do Aditivo *</label><input style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
+                        <div><label style={lbl}>Tipo *</label><select style={inp} value={fAdit.tipo} onChange={e => setFAdit(p => ({ ...p, tipo: e.target.value as AditivoContrato["tipo"] }))}>{Object.entries(TIPO_ADIT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
+                        <div><label style={lbl}>Descrição / Motivo *</label><input style={inp} placeholder="Motivo ou cláusula alterada" value={fAdit.descricao} onChange={e => setFAdit(p => ({ ...p, descricao: e.target.value }))} /></div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+                        <div><label style={lbl}>Nova Data Vencimento</label><input style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
+                        <div><label style={lbl}>Nova Taxa a.a. (%)</label><input style={inp} type="number" step="0.01" value={fAdit.nova_taxa_aa} onChange={e => { const aa = parseFloat(e.target.value.replace(",", ".")); setFAdit(p => ({ ...p, nova_taxa_aa: e.target.value, nova_taxa_am: isNaN(aa) ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
+                        <div><label style={lbl}>Nova Taxa a.m. (%)</label><input style={inp} type="number" step="0.0001" value={fAdit.nova_taxa_am} onChange={e => setFAdit(p => ({ ...p, nova_taxa_am: e.target.value }))} /></div>
+                        <div><label style={lbl}>Novo Valor Financiado</label><input style={inp} type="number" step="0.01" value={fAdit.novo_valor_financiado} onChange={e => setFAdit(p => ({ ...p, novo_valor_financiado: e.target.value }))} /></div>
+                        <div><label style={lbl}>Novas Parcelas</label><input style={inp} type="number" step="1" value={fAdit.novo_num_parcelas} onChange={e => setFAdit(p => ({ ...p, novo_num_parcelas: e.target.value }))} /></div>
+                      </div>
+                      <div style={{ marginBottom: 12 }}><label style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 52, resize: "vertical" } as React.CSSProperties} value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
+                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <button style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</button>
+                        <button style={{ ...btnV, opacity: salvando || !fAdit.data_aditivo || !fAdit.descricao.trim() ? 0.5 : 1 }} disabled={salvando || !fAdit.data_aditivo || !fAdit.descricao.trim()} onClick={salvarAditivo}>Registrar Aditivo</button>
+                      </div>
+                    </div>
+                    {aditivos.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "28px 0", color: "#888", fontSize: 12 }}>Nenhum aditivo registrado.</div>
+                    ) : (
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr style={{ background: "#F3F6F9" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {aditivos.map((a, i) => {
+                            const meta = TIPO_ADIT[a.tipo];
+                            const termos: string[] = [];
+                            if (a.nova_data_vencimento) termos.push(`Venc. → ${fmtData(a.nova_data_vencimento)}`);
+                            if (a.nova_taxa_aa) termos.push(`Taxa → ${fmtNum(a.nova_taxa_aa, 4)}% a.a.`);
+                            if (a.novo_valor_financiado) termos.push(`Valor → ${fmtBRL(a.novo_valor_financiado)}`);
+                            if (a.novo_num_parcelas) termos.push(`Parcelas → ${a.novo_num_parcelas}x`);
+                            return (
+                              <tr key={a.id} style={{ borderBottom: i < aditivos.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                <td style={{ padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(a.data_aditivo)}</td>
+                                <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, background: meta.bg, color: meta.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{meta.label}</span></td>
+                                <td style={{ padding: "8px 10px", fontSize: 12 }}><div>{a.descricao}</div>{a.obs && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{a.obs}</div>}</td>
+                                <td style={{ padding: "8px 10px", fontSize: 11, color: "#555" }}>{termos.length > 0 ? termos.map((t, ti) => <div key={ti}>{t}</div>) : <span style={{ color: "#bbb" }}>—</span>}</td>
+                                <td style={{ padding: "8px 10px" }}><button style={btnX} onClick={() => { if (confirm("Excluir este aditivo?")) excluirAditivo(a.id).then(() => setAditivos(p => p.filter(x => x.id !== a.id))); }}>✕</button></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 );
-              })()}
-            </div>
-          )}
+              })())}
 
-          {/* ── Centro de Custo ── */}
-          {abaDetalhe === "centrocusto" && (
-            <div>
-              <div style={{ marginBottom: 10, fontSize: 12, color: "#555" }}>Defina como o valor captado é rateado entre centros de custo / safras (deve totalizar 100%).</div>
-              <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
-                <thead><tr style={{ background: "#F3F6F9" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {centrosForm.map((c, i) => (
-                    <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                      <td style={{ padding: "6px 8px" }}><input style={inp} placeholder="Ex: Soja 2026/27 — Talhão A" value={c.descricao} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, descricao: e.target.value } : x))} /></td>
-                      <td style={{ padding: "6px 8px", width: 80 }}><input style={{ ...inp, textAlign: "center" }} type="number" step="0.01" value={c.percentual} onChange={e => {
-                        const pct = parseFloat(e.target.value) || 0;
-                        setCentrosForm(p => p.map((x, j) => j === i ? { ...x, percentual: e.target.value, valor: fmtNum((pct / 100) * (detalhe.valor_financiado_brl ?? detalhe.valor_financiado), 2) } : x));
-                      }} /></td>
-                      <td style={{ padding: "6px 8px", width: 140 }}><input style={inp} type="number" step="0.01" value={c.valor} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, valor: e.target.value } : x))} /></td>
-                      <td style={{ padding: "6px 8px", width: 40 }}>
-                        {centrosForm.length > 1 && <button style={btnX} onClick={() => setCentrosForm(p => p.filter((_, j) => j !== i))}>✕</button>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                <button style={{ ...btnR, fontSize: 12 }} onClick={() => setCentrosForm(p => [...p, { descricao: "", percentual: "", valor: "" }])}>+ Adicionar linha</button>
-                <div style={{ fontSize: 12 }}>
-                  Total: <strong style={{ color: Math.abs(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0) - 100) < 0.01 ? "#1A4870" : "#E24B4A" }}>
-                    {fmtNum(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0), 2)}%
-                  </strong>
-                  {Math.abs(centrosForm.reduce((s, c) => s + (parseFloat(c.percentual) || 0), 0) - 100) >= 0.01 && <span style={{ color: "#E24B4A", marginLeft: 4 }}>⚠ deve ser 100%</span>}
-                </div>
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-                <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
-              </div>
-              {centrosCusto.length > 0 && (
-                <div style={{ marginTop: 14, fontSize: 11, color: "#555" }}>
-                  Último rateio salvo: {centrosCusto.map(c => `${c.descricao} (${fmtNum(c.percentual, 1)}%)`).join(" · ")}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Aditivos ── */}
-          {abaDetalhe === "aditivos" && (() => {
-            const TIPO_ADIT: Record<AditivoContrato["tipo"], { label: string; bg: string; cl: string }> = {
-              prorrogacao:      { label: "Prorrogação",        bg: "#D5E8F5", cl: "#0B2D50" },
-              renegociacao:     { label: "Renegociação",       bg: "#FBF3E0", cl: "#7A5400" },
-              capitalizacao:    { label: "Capitalização",      bg: "#FCF0F0", cl: "#7A1A1A" },
-              reducao_taxa:     { label: "Redução de Taxa",    bg: "#E8F5EB", cl: "#1A5C35" },
-              ampliacao_valor:  { label: "Ampliação de Valor", bg: "#EDE9FB", cl: "#4B3B9B" },
-              outros:           { label: "Outros",             bg: "#F3F4F6", cl: "#555"    },
-            };
-            return (
-              <div>
-                <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
-                  Registre alterações formais ao contrato: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
-                </div>
-
-                {/* Formulário de novo aditivo */}
-                <div style={{ background: "#F8F9FB", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 16, marginBottom: 18 }}>
-                  <SecTitle>Novo Aditivo</SecTitle>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
-                    <div><label style={lbl}>Data do Aditivo *</label><input style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
-                    <div><label style={lbl}>Tipo *</label>
-                      <select style={inp} value={fAdit.tipo} onChange={e => setFAdit(p => ({ ...p, tipo: e.target.value as AditivoContrato["tipo"] }))}>
-                        {Object.entries(TIPO_ADIT).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                      </select>
-                    </div>
-                    <div><label style={lbl}>Descrição / Motivo *</label><input style={inp} placeholder="Descreva o motivo ou cláusula alterada" value={fAdit.descricao} onChange={e => setFAdit(p => ({ ...p, descricao: e.target.value }))} /></div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-                    <div><label style={lbl}>Nova Data Vencimento</label><input style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
-                    <div><label style={lbl}>Nova Taxa a.a. (%)</label><input style={inp} type="number" step="0.01" placeholder="Ex: 8,5" value={fAdit.nova_taxa_aa} onChange={e => { const aa = parseFloat(e.target.value.replace(",",".")); setFAdit(p => ({ ...p, nova_taxa_aa: e.target.value, nova_taxa_am: isNaN(aa) ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
-                    <div><label style={lbl}>Nova Taxa a.m. (%)</label><input style={inp} type="number" step="0.0001" placeholder="Auto" value={fAdit.nova_taxa_am} onChange={e => setFAdit(p => ({ ...p, nova_taxa_am: e.target.value }))} /></div>
-                    <div><label style={lbl}>Novo Valor Financiado</label><input style={inp} type="number" step="0.01" placeholder="R$" value={fAdit.novo_valor_financiado} onChange={e => setFAdit(p => ({ ...p, novo_valor_financiado: e.target.value }))} /></div>
-                    <div><label style={lbl}>Novas Parcelas</label><input style={inp} type="number" step="1" placeholder="Nº" value={fAdit.novo_num_parcelas} onChange={e => setFAdit(p => ({ ...p, novo_num_parcelas: e.target.value }))} /></div>
-                  </div>
-                  <div style={{ marginBottom: 12 }}><label style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 56, resize: "vertical" } as React.CSSProperties} placeholder="Cláusulas específicas, referência ao instrumento de aditamento, etc." value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button style={{ ...btnR, marginRight: 8 }} onClick={() => setFAdit({ ...FA_VAZIO })}>Limpar</button>
-                    <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando || !fAdit.data_aditivo || !fAdit.descricao.trim()} onClick={salvarAditivo}>Registrar Aditivo</button>
-                  </div>
-                </div>
-
-                {/* Histórico de aditivos */}
-                {aditivos.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "#888", fontSize: 12 }}>Nenhum aditivo registrado para este contrato.</div>
-                ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead><tr style={{ background: "#F3F6F9" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {aditivos.map((a, i) => {
-                        const meta = TIPO_ADIT[a.tipo];
-                        const termos: string[] = [];
-                        if (a.nova_data_vencimento) termos.push(`Venc. → ${fmtData(a.nova_data_vencimento)}`);
-                        if (a.nova_taxa_aa)         termos.push(`Taxa → ${fmtNum(a.nova_taxa_aa, 4)}% a.a.`);
-                        if (a.novo_valor_financiado) termos.push(`Valor → ${fmtBRL(a.novo_valor_financiado)}`);
-                        if (a.novo_num_parcelas)    termos.push(`Parcelas → ${a.novo_num_parcelas}x`);
-                        return (
-                          <tr key={a.id} style={{ borderBottom: i < aditivos.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                            <td style={{ padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(a.data_aditivo)}</td>
-                            <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, background: meta.bg, color: meta.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{meta.label}</span></td>
-                            <td style={{ padding: "8px 10px", fontSize: 12 }}>
-                              <div>{a.descricao}</div>
-                              {a.obs && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{a.obs}</div>}
-                            </td>
-                            <td style={{ padding: "8px 10px", fontSize: 11, color: "#555" }}>
-                              {termos.length > 0 ? termos.map((t, ti) => <div key={ti}>{t}</div>) : <span style={{ color: "#bbb" }}>—</span>}
-                            </td>
-                            <td style={{ padding: "8px 10px" }}>
-                              <button style={btnX} onClick={() => { if (confirm("Excluir este aditivo?")) excluirAditivo(a.id).then(() => setAditivos(p => p.filter(x => x.id !== a.id))); }}>✕</button>
-                            </td>
+              {/* ── Movimentações ── */}
+              {abaModal === "movimentacoes" && (!contratoModal ? <AbaDisabled nome="Movimentações" /> : (() => {
+                type Mov = { data: string; tipo: "liberacao" | "pagamento"; label: string; amortizacao: number; juros: number; acessorios: number; valor: number; saldo: number; status?: string };
+                const movs: Mov[] = [];
+                let saldoAcum = contratoModal.valor_financiado;
+                [...parcelasLiberacao].sort((a, b) => a.data_liberacao.localeCompare(b.data_liberacao)).forEach(l => {
+                  saldoAcum += l.valor_liberado;
+                  movs.push({ data: l.data_liberacao, tipo: "liberacao", label: `Liberação #${l.num_parcela}`, amortizacao: 0, juros: 0, acessorios: 0, valor: l.valor_liberado, saldo: saldoAcum });
+                });
+                [...parcelasPagamento].sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento)).forEach(p => {
+                  saldoAcum -= (p.amortizacao ?? 0);
+                  movs.push({ data: p.data_vencimento, tipo: "pagamento", label: `Parcela #${p.num_parcela}`, amortizacao: p.amortizacao ?? 0, juros: p.juros ?? 0, acessorios: p.despesas_acessorios ?? 0, valor: p.valor_parcela, saldo: saldoAcum, status: p.status });
+                });
+                movs.sort((a, b) => a.data.localeCompare(b.data));
+                return (
+                  <div>
+                    {movs.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "#888", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
+                    ) : (
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ background: "#F3F6F9" }}>
+                            {["Data", "Evento", "Amortização", "Juros", "Acessórios", "Valor", "Saldo Devedor", "Status"].map((h, i) => (
+                              <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                            ))}
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            );
-          })()}
+                        </thead>
+                        <tbody>
+                          {movs.map((m, i) => {
+                            const isLib = m.tipo === "liberacao";
+                            const statusMeta: Record<string, { label: string; bg: string; cl: string }> = {
+                              pendente: { label: "Pendente", bg: "#FBF3E0", cl: "#7A5400" },
+                              pago:     { label: "Pago",     bg: "#E8F5EB", cl: "#1A5C35" },
+                              vencido:  { label: "Vencido",  bg: "#FCF0F0", cl: "#7A1A1A" },
+                              carencia: { label: "Carência", bg: "#D5E8F5", cl: "#0B2D50" },
+                            };
+                            const sm = m.status ? (statusMeta[m.status] ?? statusMeta.pendente) : null;
+                            return (
+                              <tr key={i} style={{ borderBottom: i < movs.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                <td style={{ padding: "7px 8px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(m.data)}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 12 }}>
+                                  <span style={{ fontSize: 10, background: isLib ? "#D5E8F5" : "#F3F4F6", color: isLib ? "#0B2D50" : "#333", padding: "2px 7px", borderRadius: 8, fontWeight: 600, marginRight: 6 }}>{isLib ? "Lib" : "Pag"}</span>
+                                  {m.label}
+                                </td>
+                                <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.amortizacao > 0 ? fmtBRL(m.amortizacao) : "—"}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: m.juros > 0 ? "#C9921B" : "#bbb" }}>{m.juros > 0 ? fmtBRL(m.juros) : "—"}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.acessorios > 0 ? fmtBRL(m.acessorios) : "—"}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 13, textAlign: "right", fontWeight: 600, color: isLib ? "#1A4870" : "#1A1A1A" }}>{fmtBRL(m.valor)}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: "#555" }}>{fmtBRL(Math.max(0, m.saldo))}</td>
+                                <td style={{ padding: "7px 8px" }}>{sm ? <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                );
+              })())}
 
-          {/* ── Movimentações ── */}
-          {abaDetalhe === "movimentacoes" && (() => {
-            type Mov = { data: string; tipo: "liberacao" | "pagamento"; label: string; amortizacao: number; juros: number; acessorios: number; valor: number; saldo: number; status?: string };
-            const movs: Mov[] = [];
-            let saldoAcum = detalhe.valor_financiado;
-
-            // Liberações aumentam o saldo devedor
-            const libsOrd = [...parcelasLiberacao].sort((a, b) => a.data_liberacao.localeCompare(b.data_liberacao));
-            libsOrd.forEach(l => {
-              saldoAcum += l.valor_liberado;
-              movs.push({ data: l.data_liberacao, tipo: "liberacao", label: `Liberação #${l.num_parcela}`, amortizacao: 0, juros: 0, acessorios: 0, valor: l.valor_liberado, saldo: saldoAcum });
-            });
-
-            // Pagamentos reduzem o saldo devedor
-            const pagsOrd = [...parcelasPagamento].sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
-            pagsOrd.forEach(p => {
-              saldoAcum -= (p.amortizacao ?? 0);
-              movs.push({ data: p.data_vencimento, tipo: "pagamento", label: `Parcela #${p.num_parcela}`, amortizacao: p.amortizacao ?? 0, juros: p.juros ?? 0, acessorios: p.despesas_acessorios ?? 0, valor: p.valor_parcela, saldo: saldoAcum, status: p.status });
-            });
-
-            movs.sort((a, b) => a.data.localeCompare(b.data));
-
-            return (
-              <div>
-
-                {movs.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "#888", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
-                ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
-                        {["Data", "Evento", "Amortização", "Juros", "Acessórios", "Valor", "Saldo Devedor", "Status"].map((h, i) => (
-                          <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {movs.map((m, i) => {
-                        const isLib = m.tipo === "liberacao";
-                        const statusMeta: Record<string, { label: string; bg: string; cl: string }> = {
-                          pendente:  { label: "Pendente",  bg: "#FBF3E0", cl: "#7A5400" },
-                          pago:      { label: "Pago",      bg: "#E8F5EB", cl: "#1A5C35" },
-                          vencido:   { label: "Vencido",   bg: "#FCF0F0", cl: "#7A1A1A" },
-                          carencia:  { label: "Carência",  bg: "#D5E8F5", cl: "#0B2D50" },
-                        };
-                        const sm = m.status ? (statusMeta[m.status] ?? statusMeta.pendente) : null;
-                        return (
-                          <tr key={i} style={{ borderBottom: i < movs.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                            <td style={{ padding: "7px 8px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(m.data)}</td>
-                            <td style={{ padding: "7px 8px", fontSize: 12 }}>
-                              <span style={{ fontSize: 10, background: isLib ? "#D5E8F5" : "#F3F4F6", color: isLib ? "#0B2D50" : "#333", padding: "2px 7px", borderRadius: 8, fontWeight: 600, marginRight: 6 }}>{isLib ? "Lib" : "Pag"}</span>
-                              {m.label}
-                            </td>
-                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.amortizacao > 0 ? fmtBRL(m.amortizacao) : "—"}</td>
-                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: m.juros > 0 ? "#C9921B" : "#bbb" }}>{m.juros > 0 ? fmtBRL(m.juros) : "—"}</td>
-                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.acessorios > 0 ? fmtBRL(m.acessorios) : "—"}</td>
-                            <td style={{ padding: "7px 8px", fontSize: 13, textAlign: "right", fontWeight: 600, color: isLib ? "#1A4870" : "#1A1A1A" }}>{fmtBRL(m.valor)}</td>
-                            <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: "#555" }}>{fmtBRL(Math.max(0, m.saldo))}</td>
-                            <td style={{ padding: "7px 8px" }}>
-                              {sm ? <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            );
-          })()}
-        </Modal>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
