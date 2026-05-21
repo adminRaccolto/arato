@@ -47,18 +47,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ erro: "Nenhuma API Key configurada", keyDiag });
   }
 
-  // Testa Certificado/Registrar com CNPJ fictício para ver se a auth funciona
-  const testCnpj = "00000000000191"; // Banco do Brasil — nunca tem NF mas serve para testar auth
-
+  // Testa autenticação via /BaixarXmls (Take=1) — mesmo endpoint do cron.
+  // Resposta 200 com array ou objeto {Status/Mensagens} = chave válida.
+  // Resposta 401/403 = chave inválida ou conta bloqueada.
   console.log(`[sieg-test] fazenda=${fazendaId} key=${keyDiag.fonte} len=${keyDiag.comprimento} inicio=${keyDiag.inicio} fim=${keyDiag.fim}`);
 
   try {
     const res = await fetch(
-      `https://api.sieg.com/api/Certificado/Registrar?api_key=${encodeURIComponent(apiKey)}`,
+      `https://api.sieg.com/BaixarXmls?api_key=${encodeURIComponent(apiKey)}`,
       {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ Cnpj: testCnpj, ConsultaNfe: true, ConsultaCte: false }),
+        body:    JSON.stringify({ XmlType: 1, Take: 1, Skip: 0, Downloadevent: false }),
       }
     );
 
@@ -68,12 +68,16 @@ export async function GET(req: NextRequest) {
 
     console.log(`[sieg-test] HTTP ${res.status} — resposta: ${body.slice(0, 200)}`);
 
+    // 200 = autenticou (pode ter docs ou não)
+    // 401/403 = chave inválida
+    const ok = res.status === 200;
+
     return NextResponse.json({
       keyDiag,
       sieg_status:   res.status,
-      sieg_ok:       res.ok,
+      sieg_ok:       ok,
       sieg_resposta: parsed,
-      url_enviada:   `https://api.sieg.com/api/Certificado/Registrar?api_key=${apiKey.slice(0, 6)}...${apiKey.slice(-6)}`,
+      url_enviada:   `https://api.sieg.com/BaixarXmls?api_key=${apiKey.slice(0, 6)}...${apiKey.slice(-6)}`,
     });
 
   } catch (err) {
