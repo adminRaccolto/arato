@@ -104,8 +104,9 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-sieg", label: "Automação SIEG",
         children: [
-          { id: "sieg-pendencias", label: "Pendências de Classificação", path: "/financeiro/pendencias-nf"       },
-          { id: "sieg-regras",     label: "Regras de Classificação",     path: "/configuracoes/classificacao"    },
+          { id: "sieg-ligar",      label: "⚡ Ligar / Desligar SIEG",      path: "/configuracoes/automacoes"       },
+          { id: "sieg-pendencias", label: "Pendências de Classificação",    path: "/financeiro/pendencias-nf"       },
+          { id: "sieg-regras",     label: "Regras de Classificação",        path: "/configuracoes/classificacao"    },
         ],
       },
     ],
