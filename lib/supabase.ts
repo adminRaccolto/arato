@@ -95,6 +95,7 @@ export type Talhao = {
   tipo_solo?: string;
   lat?: number;
   lng?: number;
+  kml_url?: string;
   created_at?: string;
 };
 

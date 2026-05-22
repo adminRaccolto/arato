@@ -36,6 +36,7 @@ function extrairGrupos(children: NavChild[]): { label: string; items: NavLink[] 
 const NAV: NavItem[] = [
 
   { id: "dashboard", label: "Dashboard", path: "/", minStep: 0 },
+  { id: "mapa",      label: "Mapa",      path: "/mapa",  minStep: 0 },
 
   {
     type: "group", id: "cadastros", label: "Cadastros", panel: true, minStep: 0,

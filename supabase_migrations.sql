@@ -4326,3 +4326,8 @@ CREATE INDEX IF NOT EXISTS idx_notas_fiscais_contingencia
   WHERE tipo_emissao <> 1;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── SEÇÃO 71: KML dos Talhões ─────────────────────────────────────────────────
+ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS kml_url TEXT;
+
+NOTIFY pgrst, 'reload schema';
