@@ -64,16 +64,16 @@ export default function RateioPage() {
 
   // ── Carregar dados comuns ──
   const carregar = useCallback(async () => {
-    if (!fazendaId || !contaId) return;
+    if (!fazendaId) return;
     setLoading(true);
     try {
-      const [faz, r, rg, a, cc] = await Promise.all([
+      const [faz, r, a, cc] = await Promise.all([
         listarFazendas(),
         listarRegrasRateio(fazendaId),
-        listarRegrasRateioGlobal(contaId),
         listarAnosSafra(fazendaId),
         listarCentrosCustoGeral(fazendaId),
       ]);
+      const rg = contaId ? await listarRegrasRateioGlobal(contaId) : [];
       setTodasFazendas(faz);
       setRegras(r);
       setRegrasGlobal(rg);
