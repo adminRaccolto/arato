@@ -4440,7 +4440,6 @@ ON CONFLICT (id) DO UPDATE SET
   preco_mensal = EXCLUDED.preco_mensal,
   preco_anual  = EXCLUDED.preco_anual,
   modulos      = EXCLUDED.modulos,
-  features_marketing = EXCLUDED.features_marketing,
-  updated_at   = now();
+  features_marketing = EXCLUDED.features_marketing;
 
 NOTIFY pgrst, 'reload schema';
