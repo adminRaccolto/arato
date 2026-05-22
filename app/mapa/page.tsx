@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../components/AuthProvider";
 import { createBrowserClient } from "@supabase/ssr";
+import TopNav from "../../components/TopNav";
 import dynamic from "next/dynamic";
 
 // Leaflet só roda no browser — import dinâmico
@@ -136,7 +137,9 @@ export default function MapaPage() {
   const comPlantio = talhoes.filter(t => !!t.plantio);
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 92px)", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
+      <TopNav />
+    <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
       {/* ── PAINEL LATERAL ── */}
       <div style={{
@@ -322,6 +325,7 @@ export default function MapaPage() {
           corCultura={corCultura}
         />
       </div>
+    </div>
     </div>
   );
 }
