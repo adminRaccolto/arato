@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import { processarFolhaMensal } from "../../../lib/db";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type VinculoTrabalhador = "clt" | "avulso_rural" | "tsve" | "meeiro" | "parceiro" | "estagiario";
@@ -14,7 +15,6 @@ interface Trabalhador {
   fazenda_id: string;
   nome: string;
   cpf?: string;
-  data_nascimento?: string;
   pis?: string;
   tipo_vinculo: VinculoTrabalhador;
   funcao?: string;
@@ -37,7 +37,6 @@ interface EsocialEvento {
   recibo?: string;
   erro_descricao?: string;
   created_at?: string;
-  trabalhador?: Trabalhador;
 }
 
 // ─── Constantes ───────────────────────────────────────────────
@@ -79,8 +78,44 @@ const EVENTOS_CATALOGO = [
   { codigo: "S-3000", descricao: "Exclusão de Eventos"                     },
 ];
 
+// Mapeamento tipo_vinculo eSocial ↔ tipo funcionarios
+const VINCULO_TO_TIPO: Record<VinculoTrabalhador, string> = {
+  clt:          "clt",
+  avulso_rural: "diarista",
+  tsve:         "empreiteiro",
+  meeiro:       "outro",
+  parceiro:     "outro",
+  estagiario:   "outro",
+};
+const TIPO_TO_VINCULO: Record<string, VinculoTrabalhador> = {
+  clt:         "clt",
+  diarista:    "avulso_rural",
+  empreiteiro: "tsve",
+  outro:       "avulso_rural",
+};
+
+// Converte row de funcionarios para o modelo Trabalhador do eSocial
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function funcToTrab(f: any): Trabalhador {
+  const vinculo = (f.tipo_vinculo_esocial as VinculoTrabalhador) ?? TIPO_TO_VINCULO[f.tipo as string] ?? "avulso_rural";
+  return {
+    id:            f.id,
+    fazenda_id:    f.fazenda_id,
+    nome:          f.nome,
+    cpf:           f.cpf ?? undefined,
+    pis:           f.pis_nis ?? undefined,
+    tipo_vinculo:  vinculo,
+    funcao:        f.funcao ?? undefined,
+    data_admissao: f.data_admissao ?? undefined,
+    data_demissao: f.data_demissao ?? undefined,
+    salario_base:  f.salario_base ?? undefined,
+    status:        f.data_demissao ? "inativo" : (f.ativo ? "ativo" : "inativo"),
+    created_at:    f.created_at,
+  };
+}
+
 const VAZIO_TRAB: Omit<Trabalhador, "id" | "fazenda_id" | "created_at"> = {
-  nome: "", cpf: "", pis: "", tipo_vinculo: "avulso_rural",
+  nome: "", cpf: "", pis: "", tipo_vinculo: "clt",
   funcao: "", data_admissao: "", salario_base: 0, status: "ativo",
 };
 
@@ -90,10 +125,10 @@ const VAZIO_EVT: Omit<EsocialEvento, "id" | "fazenda_id" | "created_at"> = {
 };
 
 // ─── Utilitários ──────────────────────────────────────────────
-const fmt = (v?: number) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt  = (v?: number) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDt = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600 };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties  = { fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600 };
 const card: React.CSSProperties = { background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 22px" };
 
 // ─── Componente ───────────────────────────────────────────────
@@ -118,39 +153,58 @@ export default function EsocialPage() {
   const [filtroVinc, setFiltroVinc] = useState<string>("todos");
   const [competApuracao, setCompetApuracao] = useState(new Date().toISOString().substring(0, 7));
 
+  const [gerandoFolha, setGerandoFolha] = useState(false);
+  const [folhaMsg,     setFolhaMsg]     = useState<string | null>(null);
+
   // ── Carregar ──────────────────────────────────────────────
   async function carregar() {
     if (!fazendaId) return;
-    const [{ data: trabs }, { data: evts }] = await Promise.all([
-      supabase.from("esocial_trabalhadores").select("*").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("esocial_eventos").select("*, trabalhador:trabalhador_id(nome, tipo_vinculo)").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
+    // Trabalhadores: lê de funcionarios (fonte única de verdade)
+    const [{ data: funcs }, { data: evts }] = await Promise.all([
+      supabase.from("funcionarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("esocial_eventos").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
     ]);
-    setTrabalhadores(trabs ?? []);
+    setTrabalhadores((funcs ?? []).map(funcToTrab));
     setEventos((evts ?? []) as EsocialEvento[]);
     setLoading(false);
   }
   useEffect(() => { carregar(); }, [fazendaId]);
 
-  // ── Trabalhadores CRUD ────────────────────────────────────
+  // Mapa id → trabalhador para lookup em eventos
+  const trabMap = Object.fromEntries(trabalhadores.map(t => [t.id, t]));
+
+  // ── Trabalhadores CRUD — salva em funcionarios ────────────
   async function salvarTrab() {
     if (!fazendaId || !formTrab.nome) return;
     setSalvandoT(true);
-    const payload = { ...formTrab, fazenda_id: fazendaId };
+    const payload = {
+      fazenda_id:          fazendaId,
+      nome:                formTrab.nome,
+      cpf:                 formTrab.cpf  || null,
+      pis_nis:             formTrab.pis  || null,
+      tipo:                VINCULO_TO_TIPO[formTrab.tipo_vinculo],
+      tipo_vinculo_esocial: formTrab.tipo_vinculo,
+      funcao:              formTrab.funcao || null,
+      data_admissao:       formTrab.data_admissao || null,
+      salario_base:        formTrab.salario_base || null,
+      ativo:               true,
+    };
+
     if (editTrab) {
-      await supabase.from("esocial_trabalhadores").update(payload).eq("id", editTrab.id);
+      await supabase.from("funcionarios").update(payload).eq("id", editTrab.id);
     } else {
-      const { data: novo } = await supabase.from("esocial_trabalhadores").insert(payload).select().single();
-      // Gera evento automático de admissão/TSVE
+      const { data: novo } = await supabase.from("funcionarios").insert(payload).select().single();
+      // Gera evento automático de admissão
       if (novo) {
-        const cod = formTrab.tipo_vinculo === "clt" ? "S-2200" : "S-2300";
+        const cod  = formTrab.tipo_vinculo === "clt" ? "S-2200" : "S-2300";
         const desc = EVENTOS_CATALOGO.find(e => e.codigo === cod)?.descricao ?? cod;
         await supabase.from("esocial_eventos").insert({
-          fazenda_id: fazendaId,
-          trabalhador_id: novo.id,
-          codigo_evento: cod,
+          fazenda_id:      fazendaId,
+          trabalhador_id:  novo.id,
+          codigo_evento:   cod,
           descricao_evento: desc,
-          competencia: formTrab.data_admissao?.substring(0, 7) ?? competApuracao,
-          status: "pendente",
+          competencia:     formTrab.data_admissao?.substring(0, 7) ?? competApuracao,
+          status:          "pendente",
         });
       }
     }
@@ -162,14 +216,14 @@ export default function EsocialPage() {
   async function desligarTrabalhador(t: Trabalhador) {
     const data = prompt("Data de desligamento (AAAA-MM-DD):", new Date().toISOString().split("T")[0]);
     if (!data) return;
-    await supabase.from("esocial_trabalhadores").update({ status: "inativo", data_demissao: data }).eq("id", t.id);
+    await supabase.from("funcionarios").update({ ativo: false, data_demissao: data }).eq("id", t.id);
     await supabase.from("esocial_eventos").insert({
-      fazenda_id: fazendaId,
-      trabalhador_id: t.id,
-      codigo_evento: t.tipo_vinculo === "clt" ? "S-2299" : "S-2399",
+      fazenda_id:      fazendaId,
+      trabalhador_id:  t.id,
+      codigo_evento:   t.tipo_vinculo === "clt" ? "S-2299" : "S-2399",
       descricao_evento: t.tipo_vinculo === "clt" ? "Desligamento" : "Término de TSVE",
-      competencia: data.substring(0, 7),
-      status: "pendente",
+      competencia:     data.substring(0, 7),
+      status:          "pendente",
     });
     carregar();
   }
@@ -192,7 +246,7 @@ export default function EsocialPage() {
     const cat = EVENTOS_CATALOGO.find(e => e.codigo === formEvt.codigo_evento);
     await supabase.from("esocial_eventos").insert({
       ...formEvt,
-      fazenda_id: fazendaId,
+      fazenda_id:      fazendaId,
       descricao_evento: cat?.descricao ?? formEvt.codigo_evento,
     });
     setSalvandoE(false);
@@ -205,6 +259,23 @@ export default function EsocialPage() {
     const proto = `ES${Date.now().toString().slice(-8)}`;
     await supabase.from("esocial_eventos").update({ status: "transmitido", protocolo: proto }).eq("id", e.id);
     carregar();
+  }
+
+  // ── Gerar Folha → Contas a Pagar ──────────────────────────
+  async function gerarFolha() {
+    if (!fazendaId) return;
+    setGerandoFolha(true);
+    setFolhaMsg(null);
+    try {
+      const { gerados } = await processarFolhaMensal(fazendaId, competApuracao);
+      setFolhaMsg(gerados > 0
+        ? `${gerados} lançamento(s) gerado(s) em Contas a Pagar para ${competApuracao}.`
+        : `Nenhum lançamento novo gerado — já existiam ou nenhum funcionário com salário cadastrado.`
+      );
+    } catch (e) {
+      setFolhaMsg("Erro ao gerar folha: " + (e instanceof Error ? e.message : String(e)));
+    }
+    setGerandoFolha(false);
   }
 
   // ── Filtros ───────────────────────────────────────────────
@@ -221,11 +292,11 @@ export default function EsocialPage() {
 
   // ── Apuração mensal ───────────────────────────────────────
   const trabsAtivosApuracao = ativos.filter(t => t.salario_base && t.salario_base > 0);
-  const totalRemuneracao = trabsAtivosApuracao.reduce((s, t) => s + (t.salario_base ?? 0), 0);
-  const inssEmpregado    = trabsAtivosApuracao.reduce((s, t) => s + (t.salario_base ?? 0) * 0.08, 0);
-  const funruralEmpregador = totalRemuneracao * 0.015;
-  const senarEmpregador    = totalRemuneracao * 0.002;
-  const fgts               = clt.reduce((s, t) => s + (t.salario_base ?? 0) * 0.08, 0);
+  const totalRemuneracao    = trabsAtivosApuracao.reduce((s, t) => s + (t.salario_base ?? 0), 0);
+  const inssEmpregado       = trabsAtivosApuracao.reduce((s, t) => s + (t.salario_base ?? 0) * 0.08, 0);
+  const funruralEmpregador  = totalRemuneracao * 0.015;
+  const senarEmpregador     = totalRemuneracao * 0.002;
+  const fgts                = clt.reduce((s, t) => s + (t.salario_base ?? 0) * 0.08, 0);
 
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif" }}>
@@ -272,6 +343,12 @@ export default function EsocialPage() {
           ))}
         </div>
 
+        {/* Aviso integração */}
+        <div style={{ background: "#EAF3FB", border: "0.5px solid #B3D0E8", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "#1A4870", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 700 }}>ℹ</span>
+          <span>Os trabalhadores listados aqui são os mesmos cadastrados em <strong>Cadastros → Funcionários</strong>. Qualquer alteração feita aqui ou lá é sincronizada automaticamente.</span>
+        </div>
+
         {/* Abas */}
         <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: 4, width: "fit-content" }}>
           {[
@@ -303,7 +380,7 @@ export default function EsocialPage() {
                 <div style={{ textAlign: "center", padding: 60, color: "#888" }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>👷</div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhum trabalhador cadastrado</div>
-                  <div style={{ fontSize: 12 }}>Clique em "+ Trabalhador" para adicionar o primeiro.</div>
+                  <div style={{ fontSize: 12 }}>Clique em "+ Trabalhador" ou acesse <strong>Cadastros → Funcionários</strong> para adicionar.</div>
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -375,8 +452,8 @@ export default function EsocialPage() {
                 </thead>
                 <tbody>
                   {eventos.map((e, i) => {
-                    const sc = STATUS_EVT[e.status];
-                    const trab = e.trabalhador as Trabalhador | null;
+                    const sc   = STATUS_EVT[e.status];
+                    const trab = e.trabalhador_id ? trabMap[e.trabalhador_id] : null;
                     return (
                       <tr key={e.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #F0F2F7" }}>
                         <td style={{ padding: "9px 10px" }}>
@@ -417,7 +494,7 @@ export default function EsocialPage() {
           <>
             <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center" }}>
               <label style={{ fontSize: 13, color: "#555", fontWeight: 600 }}>Competência:</label>
-              <input type="month" value={competApuracao} onChange={e => setCompetApuracao(e.target.value)} style={{ ...inp, width: 160 }} />
+              <input type="month" value={competApuracao} onChange={e => { setCompetApuracao(e.target.value); setFolhaMsg(null); }} style={{ ...inp, width: 160 }} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
@@ -439,10 +516,10 @@ export default function EsocialPage() {
                     </thead>
                     <tbody>
                       {trabsAtivosApuracao.map((t, i) => {
-                        const bruto   = t.salario_base ?? 0;
+                        const bruto    = t.salario_base ?? 0;
                         const descINSS = bruto * 0.08;
                         const liquido  = bruto - descINSS;
-                        const vc = VINCULOS[t.tipo_vinculo];
+                        const vc       = VINCULOS[t.tipo_vinculo];
                         return (
                           <tr key={t.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #F0F2F7" }}>
                             <td style={{ padding: "8px 10px", fontWeight: 600 }}>{t.nome}</td>
@@ -468,14 +545,14 @@ export default function EsocialPage() {
                 )}
               </div>
 
-              {/* Encargos */}
+              {/* Encargos + Ações */}
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={card}>
                   <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14, color: "#1a1a1a" }}>Encargos do Empregador</div>
                   {[
-                    { label: "FUNRURAL",       sub: "1,5% s/ folha",  value: funruralEmpregador, cor: "#92400E" },
-                    { label: "SENAR",           sub: "0,2% s/ folha",  value: senarEmpregador,    cor: "#555"    },
-                    { label: "FGTS (CLT)",      sub: "8% s/ salários CLT", value: fgts,           cor: "#1A4870" },
+                    { label: "FUNRURAL",  sub: "1,5% s/ folha",      value: funruralEmpregador, cor: "#92400E" },
+                    { label: "SENAR",     sub: "0,2% s/ folha",      value: senarEmpregador,    cor: "#555"    },
+                    { label: "FGTS CLT", sub: "8% s/ salários CLT", value: fgts,                cor: "#1A4870" },
                   ].map((e, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 2 ? "0.5px solid #F0F2F7" : "none" }}>
                       <div>
@@ -499,6 +576,24 @@ export default function EsocialPage() {
                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Folha + todos os encargos</div>
                 </div>
 
+                {/* Gerar Folha → CP */}
+                <div style={{ ...card, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6 }}>Lançar Folha em Contas a Pagar</div>
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 12, lineHeight: 1.5 }}>
+                    Gera os lançamentos de Salário, FGTS, INSS/Funrural, SAT, Sistema S e provisões para todos os funcionários ativos desta competência.
+                  </div>
+                  {folhaMsg && (
+                    <div style={{ fontSize: 11, padding: "8px 10px", borderRadius: 6, marginBottom: 10, background: folhaMsg.startsWith("Erro") ? "#FEE2E2" : "#DCFCE7", color: folhaMsg.startsWith("Erro") ? "#991B1B" : "#166534" }}>
+                      {folhaMsg}
+                    </div>
+                  )}
+                  <button onClick={gerarFolha} disabled={gerandoFolha || trabsAtivosApuracao.length === 0}
+                    style={{ width: "100%", padding: "8px 0", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gerandoFolha || trabsAtivosApuracao.length === 0 ? "not-allowed" : "pointer", opacity: gerandoFolha || trabsAtivosApuracao.length === 0 ? 0.6 : 1 }}>
+                    {gerandoFolha ? "Gerando…" : "Gerar Folha → CP"}
+                  </button>
+                </div>
+
+                {/* Gerar S-1200/S-1210 */}
                 <div style={{ ...card, padding: "14px 16px" }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 8 }}>Gerar Eventos S-1200</div>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 12, lineHeight: 1.5 }}>
@@ -516,8 +611,8 @@ export default function EsocialPage() {
                       setAba("eventos");
                       carregar();
                     }}
-                    style={{ width: "100%", padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                  >
+                    disabled={trabsAtivosApuracao.length === 0}
+                    style={{ width: "100%", padding: "8px 0", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: trabsAtivosApuracao.length === 0 ? "not-allowed" : "pointer", opacity: trabsAtivosApuracao.length === 0 ? 0.6 : 1 }}>
                     Gerar S-1200 / S-1210
                   </button>
                 </div>
@@ -561,7 +656,7 @@ export default function EsocialPage() {
                   <input value={formTrab.pis} onChange={e => setFormTrab(f => ({ ...f, pis: e.target.value }))} style={inp} placeholder="000.00000.00-0" />
                 </div>
               </div>
-              {/* Função + Admissão */}
+              {/* Função + Admissão + Salário */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
                   <label style={lbl}>Função/Cargo</label>
@@ -578,13 +673,18 @@ export default function EsocialPage() {
                 </div>
               </div>
               {formTrab.tipo_vinculo === "clt" && (
-                <div style={{ background: "#EAF3FB", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1A4870" }}>
-                  <strong>CLT:</strong> Gera automaticamente o evento S-2200 (Admissão) ao salvar.
+                <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#166534" }}>
+                  <strong>CLT:</strong> Gera automaticamente o evento S-2200 (Admissão) ao salvar. Os encargos (FGTS, INSS, provisões) são calculados pelo salário base e podem ser ajustados em <strong>Cadastros → Funcionários</strong>.
                 </div>
               )}
               {(formTrab.tipo_vinculo === "avulso_rural" || formTrab.tipo_vinculo === "tsve") && (
                 <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E" }}>
                   <strong>Avulso / TSVE:</strong> Gera automaticamente o evento S-2300 ao salvar.
+                </div>
+              )}
+              {(formTrab.tipo_vinculo === "meeiro" || formTrab.tipo_vinculo === "parceiro") && (
+                <div style={{ background: "#EDE9FE", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#5B21B6" }}>
+                  <strong>Meeiro / Parceiro:</strong> Parceria agrícola. Não gera FGTS nem INSS empregador direto. Gera evento S-2300.
                 </div>
               )}
             </div>

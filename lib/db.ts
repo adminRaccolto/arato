@@ -921,20 +921,23 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
 
     for (const l of lancamentos) {
       if (l.valor <= 0) continue;
-      const { data: existing } = await supabase.from("contas_pagar").select("id").eq("fazenda_id", fazenda_id).eq("descricao", l.descricao).eq("data_competencia", dataComp).maybeSingle();
+      const { data: existing } = await supabase.from("lancamentos").select("id")
+        .eq("fazenda_id", fazenda_id).eq("descricao", l.descricao)
+        .eq("data_lancamento", dataComp).eq("tipo", "pagar").maybeSingle();
       if (existing) continue;
-      await supabase.from("contas_pagar").insert({
+      await supabase.from("lancamentos").insert({
         fazenda_id,
-        descricao:  l.descricao,
-        valor:      l.valor,
+        tipo: "pagar",
+        moeda: "BRL",
+        descricao: l.descricao,
+        valor: l.valor,
+        data_lancamento: dataComp,
         data_vencimento: `${anoMes}-05`,
-        data_competencia: dataComp,
-        status: "pendente",
+        status: "em_aberto",
+        auto: true,
         operacao_gerencial_id: opsByClass[l.class] ?? null,
-        operacao_gerencial: l.label,
-        credor: f.nome,
-        tipo: "folha",
-        categoria: "mao_obra",
+        categoria: l.label,
+        origem_lancamento: "manual",
       });
       gerados++;
     }

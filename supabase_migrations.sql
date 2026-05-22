@@ -4455,3 +4455,46 @@ comment on column contratos_financeiros.periodicidade_pagamento is 'Periodicidad
 comment on column contratos_financeiros.estrutura_pagamento is 'simples = SAC/Price padrão; juros_semestral_capital_anual = FCO/BNDES com juros semestrais e amortização anual';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: eSocial integrado com funcionarios ────────────────────────────
+-- 1) Adiciona tipo_vinculo_esocial em funcionarios para armazenar o tipo exato eSocial
+alter table funcionarios
+  add column if not exists tipo_vinculo_esocial text
+    check (tipo_vinculo_esocial in ('clt','avulso_rural','tsve','meeiro','parceiro','estagiario'));
+
+-- 2) Cria esocial_eventos caso não exista (trabalhador_id sem FK para flexibilidade)
+create table if not exists esocial_eventos (
+  id                uuid primary key default gen_random_uuid(),
+  fazenda_id        uuid not null references fazendas(id) on delete cascade,
+  trabalhador_id    uuid,                      -- referencia funcionarios.id (sem FK hard)
+  codigo_evento     text not null,
+  descricao_evento  text not null,
+  competencia       text,
+  status            text not null default 'pendente'
+                      check (status in ('pendente','transmitido','erro','excluido')),
+  protocolo         text,
+  recibo            text,
+  erro_descricao    text,
+  created_at        timestamptz default now()
+);
+
+-- Remove FK para esocial_trabalhadores se existir (migração da arquitetura antiga)
+alter table esocial_eventos drop constraint if exists esocial_eventos_trabalhador_id_fkey;
+
+-- RLS
+alter table esocial_eventos enable row level security;
+
+drop policy if exists "rls_esocial_eventos" on esocial_eventos;
+create policy "rls_esocial_eventos" on esocial_eventos
+  using (fazenda_id in (
+    select f.id from fazendas f
+    join perfis p on p.conta_id = f.conta_id
+    where p.user_id = auth.uid()
+  ))
+  with check (fazenda_id in (
+    select f.id from fazendas f
+    join perfis p on p.conta_id = f.conta_id
+    where p.user_id = auth.uid()
+  ));
+
+NOTIFY pgrst, 'reload schema';
