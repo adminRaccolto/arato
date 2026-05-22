@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
-const FOTO_FALLBACK = "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=1920&q=80";
+const FOTO_FALLBACK = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80";
 
 type Modo = "login" | "recuperar";
 
@@ -14,21 +14,16 @@ export default function Login() {
   const [erro,       setErro]       = useState<string | null>(null);
   const [sucesso,    setSucesso]    = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
-  const [logoUrl,      setLogoUrl]      = useState("/Logo_Arato.png");
-  const [fotoUrl,      setFotoUrl]      = useState(FOTO_FALLBACK);
-  const [logoRodape,   setLogoRodape]   = useState<string | null>(null);
+  const [logoUrl,    setLogoUrl]    = useState("/Logo_Arato.png");
+  const [fotoUrl,    setFotoUrl]    = useState(FOTO_FALLBACK);
+  const [senhaVis,   setSenhaVis]   = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const { data: dataLogo } = supabase.storage.from("logos").getPublicUrl("arato.png");
     if (dataLogo?.publicUrl) setLogoUrl(dataLogo.publicUrl);
-
     const { data: dataFoto } = supabase.storage.from("logos").getPublicUrl("login-bg.jpg");
     if (dataFoto?.publicUrl) setFotoUrl(dataFoto.publicUrl);
-
-    // Imagem pequena no rodapé (ex: logo Raccolto) — arquivo "rodape.png" no bucket logos
-    const { data: dataRodape } = supabase.storage.from("logos").getPublicUrl("rodape.png");
-    if (dataRodape?.publicUrl) setLogoRodape(dataRodape.publicUrl);
   }, []);
 
   async function entrar(e: React.FormEvent) {
@@ -53,158 +48,243 @@ export default function Login() {
     setSucesso("Link enviado! Verifique sua caixa de entrada.");
   }
 
-  function voltarLogin() {
-    setModo("login");
-    setErro(null);
-    setSucesso(null);
-  }
+  const inp: React.CSSProperties = {
+    width: "100%", padding: "13px 16px",
+    border: "1.5px solid #E4EAF2", borderRadius: 12,
+    fontSize: 14, outline: "none", boxSizing: "border-box",
+    color: "#1a1a1a", background: "#FAFBFD",
+    fontFamily: "system-ui, sans-serif",
+    transition: "border-color 0.15s, box-shadow 0.15s",
+  };
 
   return (
     <div style={{
       minHeight: "100vh",
       display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "system-ui, sans-serif",
-      position: "relative",
-      overflow: "hidden",
+      fontFamily: "system-ui, -apple-system, sans-serif",
+      background: "#fff",
     }}>
 
-      {/* ── Foto de fundo ── */}
+      {/* ── PAINEL ESQUERDO — imagem + marca ── */}
       <div style={{
-        position: "absolute", inset: 0,
-        backgroundImage: `url('${fotoUrl}')`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        filter: "brightness(0.55)",
-        zIndex: 0,
-      }} />
-
-      {/* ── Overlay gradiente sutil ── */}
-      <div style={{
-        position: "absolute", inset: 0,
-        background: "linear-gradient(160deg, rgba(10,30,50,0.55) 0%, rgba(26,72,112,0.35) 100%)",
-        zIndex: 1,
-      }} />
-
-      {/* ── Card de login ── */}
-      <div style={{
-        position: "relative", zIndex: 2,
-        width: "100%", maxWidth: 400,
-        margin: "24px",
-        background: "rgba(255,255,255,0.94)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderRadius: 20,
-        boxShadow: "0 24px 64px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(255,255,255,0.3)",
+        flex: "0 0 55%",
+        position: "relative",
         overflow: "hidden",
-      }}>
-
-        {/* ── Topo branco com logo ── */}
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+      }}
+        className="login-left-panel"
+      >
+        {/* Foto de fundo */}
         <div style={{
-          background: "#fff",
-          padding: "32px 40px 24px",
-          textAlign: "center",
-          borderBottom: "0.5px solid #EEF1F6",
-        }}>
+          position: "absolute", inset: 0,
+          backgroundImage: `url('${fotoUrl}')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center 30%",
+          zIndex: 0,
+        }} />
+
+        {/* Gradiente escurecedor — mais forte embaixo para o texto */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(160deg, rgba(7,22,40,0.78) 0%, rgba(11,40,72,0.60) 45%, rgba(6,18,32,0.82) 100%)",
+          zIndex: 1,
+        }} />
+
+        {/* Conteúdo sobre a imagem */}
+        <div style={{ position: "relative", zIndex: 2, padding: "40px 48px" }}>
+          {/* Logo branca */}
           <img
             src={logoUrl}
             alt="Arato"
-            style={{ height: 48, width: "auto", objectFit: "contain", marginBottom: 12 }}
+            style={{ height: 42, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }}
+            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
-          <div style={{ color: "#aaa", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-            Menos clique, mais gestão
-          </div>
         </div>
 
-        {/* ── Formulário ── */}
-        <div style={{ padding: "32px 40px 36px" }}>
-
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>
-            {modo === "login" ? "Bem-vindo" : "Recuperar senha"}
-          </h2>
-          <p style={{ margin: "0 0 28px", fontSize: 13, color: "#888" }}>
-            {modo === "login"
-              ? "Entre com sua conta para acessar o sistema"
-              : "Informe seu e-mail para receber o link de redefinição"}
+        {/* Texto hero na base */}
+        <div style={{ position: "relative", zIndex: 2, padding: "0 48px 52px" }}>
+          <div style={{
+            display: "inline-block",
+            background: "rgba(201,146,27,0.22)",
+            border: "1px solid rgba(201,146,27,0.5)",
+            borderRadius: 20,
+            padding: "4px 14px",
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#FDE9BB",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 18,
+          }}>
+            Gestão Agrícola Inteligente
+          </div>
+          <h1 style={{
+            margin: "0 0 16px",
+            fontSize: 36,
+            fontWeight: 800,
+            color: "#fff",
+            lineHeight: 1.2,
+            letterSpacing: "-0.5px",
+          }}>
+            Menos cliques,<br />mais campo.
+          </h1>
+          <p style={{
+            margin: 0,
+            fontSize: 15,
+            color: "rgba(255,255,255,0.65)",
+            lineHeight: 1.6,
+            maxWidth: 380,
+          }}>
+            Gerencie safras, contratos, financeiro e emissão de NF-e em um único lugar — de qualquer lugar.
           </p>
 
+          {/* Métricas rápidas */}
+          <div style={{
+            display: "flex", gap: 28, marginTop: 36,
+            borderTop: "0.5px solid rgba(255,255,255,0.12)",
+            paddingTop: 28,
+          }}>
+            {[
+              { v: "100%", l: "Web e mobile" },
+              { v: "< 1s",  l: "Tempo de resposta" },
+              { v: "NF-e",  l: "Emissão integrada" },
+            ].map(m => (
+              <div key={m.l}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff" }}>{m.v}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{m.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── PAINEL DIREITO — formulário ── */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "48px 40px",
+        background: "#fff",
+        minHeight: "100vh",
+      }}>
+
+        {/* Bloco central do formulário — largura máxima */}
+        <div style={{ width: "100%", maxWidth: 400 }}>
+
+          {/* Logo (mobile / redundância) */}
+          <div style={{ marginBottom: 40 }}>
+            <img
+              src={logoUrl}
+              alt="Arato"
+              style={{ height: 38, width: "auto", objectFit: "contain" }}
+              onError={e => {
+                const el = e.target as HTMLImageElement;
+                el.style.display = "none";
+                const next = el.nextSibling as HTMLElement;
+                if (next) next.style.display = "block";
+              }}
+            />
+            {/* Fallback texto caso logo não carregue */}
+            <div style={{ display: "none", fontSize: 24, fontWeight: 800, color: "#1A4870" }}>Arato</div>
+          </div>
+
+          {/* Título */}
+          <h2 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+            {modo === "login" ? "Bem-vindo de volta" : "Recuperar senha"}
+          </h2>
+          <p style={{ margin: "0 0 36px", fontSize: 14, color: "#7A8A9A", lineHeight: 1.5 }}>
+            {modo === "login"
+              ? "Entre com suas credenciais para acessar o painel."
+              : "Informe seu e-mail e enviaremos um link de redefinição."}
+          </p>
+
+          {/* Alertas */}
           {erro && (
             <div style={{
-              background: "#FDECEA", border: "0.5px solid rgba(226,75,74,0.4)",
-              borderRadius: 8, padding: "9px 12px", marginBottom: 20,
-              fontSize: 12, color: "#8B1A1A",
+              background: "#FEF2F2", border: "1px solid #FECACA",
+              borderRadius: 10, padding: "11px 14px", marginBottom: 24,
+              fontSize: 13, color: "#B91C1C", display: "flex", gap: 8, alignItems: "flex-start",
             }}>
+              <span style={{ fontSize: 15, marginTop: 1 }}>⚠</span>
               {erro}
             </div>
           )}
-
           {sucesso && (
             <div style={{
-              background: "#EDFAF3", border: "0.5px solid rgba(22,163,74,0.4)",
-              borderRadius: 8, padding: "9px 12px", marginBottom: 20,
-              fontSize: 12, color: "#145C33",
+              background: "#F0FDF4", border: "1px solid #BBF7D0",
+              borderRadius: 10, padding: "11px 14px", marginBottom: 24,
+              fontSize: 13, color: "#15803D", display: "flex", gap: 8, alignItems: "flex-start",
             }}>
+              <span style={{ fontSize: 15, marginTop: 1 }}>✓</span>
               {sucesso}
             </div>
           )}
 
           <form onSubmit={modo === "login" ? entrar : recuperarSenha}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
-                E-MAIL
+
+            {/* E-mail */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4A5568", marginBottom: 7, letterSpacing: "0.02em" }}>
+                E-mail
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                placeholder="seu@email.com"
-                style={{
-                  width: "100%", padding: "11px 14px",
-                  border: "1px solid #E0E6EE", borderRadius: 10,
-                  fontSize: 13, outline: "none", boxSizing: "border-box",
-                  color: "#1a1a1a", background: "#F7F9FB",
-                  transition: "border-color 0.15s",
-                }}
-                onFocus={e => e.target.style.borderColor = "#1A4870"}
-                onBlur={e => e.target.style.borderColor = "#E0E6EE"}
+                placeholder="seu@email.com.br"
+                style={inp}
+                onFocus={e => { e.target.style.borderColor = "#1A4870"; e.target.style.boxShadow = "0 0 0 3px rgba(26,72,112,0.08)"; }}
+                onBlur={e => { e.target.style.borderColor = "#E4EAF2"; e.target.style.boxShadow = "none"; }}
               />
             </div>
 
+            {/* Senha */}
             {modo === "login" && (
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
-                  SENHA
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#4A5568", marginBottom: 7 }}>
+                  Senha
                 </label>
-                <input
-                  type="password"
-                  value={senha}
-                  onChange={e => setSenha(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  style={{
-                    width: "100%", padding: "11px 14px",
-                    border: "1px solid #E0E6EE", borderRadius: 10,
-                    fontSize: 13, outline: "none", boxSizing: "border-box",
-                    color: "#1a1a1a", background: "#F7F9FB",
-                  }}
-                  onFocus={e => e.target.style.borderColor = "#1A4870"}
-                  onBlur={e => e.target.style.borderColor = "#E0E6EE"}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={senhaVis ? "text" : "password"}
+                    value={senha}
+                    onChange={e => setSenha(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    style={{ ...inp, paddingRight: 48 }}
+                    onFocus={e => { e.target.style.borderColor = "#1A4870"; e.target.style.boxShadow = "0 0 0 3px rgba(26,72,112,0.08)"; }}
+                    onBlur={e => { e.target.style.borderColor = "#E4EAF2"; e.target.style.boxShadow = "none"; }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSenhaVis(v => !v)}
+                    style={{
+                      position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "#9AA5B4", fontSize: 16, padding: 2,
+                    }}
+                    title={senhaVis ? "Ocultar senha" : "Mostrar senha"}
+                  >
+                    {senhaVis ? "🙈" : "👁"}
+                  </button>
+                </div>
               </div>
             )}
 
+            {/* Esqueceu senha */}
             {modo === "login" && (
-              <div style={{ textAlign: "right", marginBottom: 20 }}>
+              <div style={{ textAlign: "right", marginBottom: 28 }}>
                 <button
                   type="button"
                   onClick={() => { setModo("recuperar"); setErro(null); setSucesso(null); }}
                   style={{
                     background: "none", border: "none", padding: 0,
-                    fontSize: 12, color: "#1A4870", cursor: "pointer",
-                    textDecoration: "underline",
+                    fontSize: 13, color: "#1A4870", cursor: "pointer", fontWeight: 500,
                   }}
                 >
                   Esqueceu sua senha?
@@ -212,19 +292,22 @@ export default function Login() {
               </div>
             )}
 
+            {/* Botão principal */}
             <button
               type="submit"
               disabled={carregando || (modo === "recuperar" && !!sucesso)}
               style={{
                 width: "100%",
-                background: carregando || (modo === "recuperar" && !!sucesso) ? "#aaa" : "#1A5C38",
-                color: "#fff", border: "none", borderRadius: 10,
-                padding: "13px", fontSize: 14, fontWeight: 700,
-                cursor: carregando || (modo === "recuperar" && !!sucesso) ? "not-allowed" : "pointer",
-                letterSpacing: "0.02em",
-                transition: "background 0.15s",
-                boxShadow: carregando ? "none" : "0 4px 14px rgba(26,92,56,0.4)",
+                background: carregando ? "#8BA8C4" : "#1A4870",
+                color: "#fff", border: "none", borderRadius: 12,
+                padding: "15px", fontSize: 15, fontWeight: 700,
+                cursor: carregando ? "not-allowed" : "pointer",
+                letterSpacing: "0.01em",
+                transition: "background 0.15s, transform 0.1s",
+                boxShadow: carregando ? "none" : "0 4px 16px rgba(26,72,112,0.30)",
               }}
+              onMouseEnter={e => { if (!carregando) (e.target as HTMLButtonElement).style.background = "#0B2D50"; }}
+              onMouseLeave={e => { if (!carregando) (e.target as HTMLButtonElement).style.background = "#1A4870"; }}
             >
               {modo === "login"
                 ? (carregando ? "Entrando…" : "Entrar")
@@ -234,34 +317,42 @@ export default function Login() {
             {modo === "recuperar" && (
               <button
                 type="button"
-                onClick={voltarLogin}
+                onClick={() => { setModo("login"); setErro(null); setSucesso(null); }}
                 style={{
-                  width: "100%", background: "none", border: "0.5px solid #DDE2EE",
-                  borderRadius: 10, padding: "11px", marginTop: 10,
-                  fontSize: 13, color: "#555", cursor: "pointer",
+                  width: "100%", background: "none", border: "1.5px solid #E4EAF2",
+                  borderRadius: 12, padding: "13px", marginTop: 12,
+                  fontSize: 14, color: "#4A5568", cursor: "pointer", fontWeight: 500,
+                  transition: "border-color 0.15s",
                 }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "#E4EAF2")}
               >
-                Voltar ao login
+                ← Voltar ao login
               </button>
             )}
           </form>
-        </div>
 
-        {/* ── Rodapé do card ── */}
-        <div style={{
-          padding: "12px 40px 16px",
-          borderTop: "0.5px solid #EEF1F6",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}>
-          {logoRodape
-            ? <img src={logoRodape} alt="Logo" style={{ height: 28, width: "auto", objectFit: "contain", opacity: 0.7 }} />
-            : <span style={{ fontSize: 11, color: "#bbb" }}>Raccolto Consultoria</span>
-          }
-          <span style={{ fontSize: 11, color: "#bbb" }}>© 2026</span>
+          {/* Rodapé */}
+          <div style={{
+            marginTop: 48,
+            paddingTop: 24,
+            borderTop: "0.5px solid #EEF1F6",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
+            <span style={{ fontSize: 12, color: "#C0CAD6" }}>Raccolto Consultoria · © 2026</span>
+            <span style={{ fontSize: 12, color: "#C0CAD6" }}>v1.0</span>
+          </div>
         </div>
       </div>
+
+      {/* Responsivo: esconde painel esquerdo em telas pequenas */}
+      <style>{`
+        @media (max-width: 768px) {
+          .login-left-panel { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
