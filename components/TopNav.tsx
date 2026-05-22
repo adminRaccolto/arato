@@ -798,20 +798,34 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         )}
 
         {userRole === "raccotlo" && (
-          <Link
-            href="/bi"
-            style={{
-              display: "flex", alignItems: "center", gap: 5,
-              padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-              background: pathname === "/bi" ? "rgba(255,255,255,0.20)" : "rgba(201,146,27,0.25)",
-              color: "#FDE9BB", fontWeight: pathname === "/bi" ? 700 : 600,
-              fontSize: 13, whiteSpace: "nowrap",
-              border: "0.5px solid rgba(201,146,27,0.5)",
-              marginLeft: "auto",
-            }}
-          >
-            BI Raccotlo
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+            <Link
+              href="/admin"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "5px 14px", borderRadius: 6, textDecoration: "none",
+                background: pathname.startsWith("/admin") ? "rgba(255,255,255,0.22)" : "rgba(201,146,27,0.30)",
+                color: "#FDE9BB", fontWeight: pathname.startsWith("/admin") ? 700 : 600,
+                fontSize: 13, whiteSpace: "nowrap",
+                border: "0.5px solid rgba(201,146,27,0.6)",
+              }}
+            >
+              ⚙ Gestão Arato
+            </Link>
+            <Link
+              href="/bi"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "5px 12px", borderRadius: 6, textDecoration: "none",
+                background: pathname === "/bi" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.08)",
+                color: "#FDE9BB", fontWeight: pathname === "/bi" ? 700 : 400,
+                fontSize: 13, whiteSpace: "nowrap",
+                border: "0.5px solid rgba(255,255,255,0.2)",
+              }}
+            >
+              BI Raccotlo
+            </Link>
+          </div>
         )}
       </nav>
     </header>

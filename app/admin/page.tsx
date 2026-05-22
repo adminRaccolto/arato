@@ -264,9 +264,15 @@ function AbaPlanos() {
 
   return (
     <div>
-      <div style={{ background: "#FFF9F0", border: "0.5px solid #C9921B50", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#7A5A12" }}>
-        <strong>Atenção:</strong> Alterações aqui afetam apenas o código local (<code>lib/planos.ts</code>).
-        Para alterar preços em produção, atualize diretamente a tabela <code>planos</code> no Supabase SQL Editor.
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ background: "#FFF9F0", border: "0.5px solid #C9921B50", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#7A5A12", flex: 1, marginRight: 12 }}>
+          <strong>Atenção:</strong> Alterações aqui afetam apenas o código local (<code>lib/planos.ts</code>).
+          Para alterar preços em produção, atualize diretamente a tabela <code>planos</code> no Supabase SQL Editor.
+        </div>
+        <a href="/planos" target="_blank" rel="noopener noreferrer"
+          style={{ padding: "10px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+          Ver página pública →
+        </a>
       </div>
 
       {/* Visão geral dos planos */}

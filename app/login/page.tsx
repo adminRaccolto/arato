@@ -332,9 +332,19 @@ export default function Login() {
             )}
           </form>
 
+          {/* Não tem conta? */}
+          {modo === "login" && (
+            <div style={{ marginTop: 28, textAlign: "center" }}>
+              <span style={{ fontSize: 13, color: "#9AA5B4" }}>Ainda não tem conta? </span>
+              <a href="/planos" style={{ fontSize: 13, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>
+                Conheça os planos →
+              </a>
+            </div>
+          )}
+
           {/* Rodapé */}
           <div style={{
-            marginTop: 48,
+            marginTop: 32,
             paddingTop: 24,
             borderTop: "0.5px solid #EEF1F6",
             display: "flex",
