@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PLANOS_DEFAULT, fmtPreco, descontoAnual } from "../../lib/planos";
@@ -27,7 +27,7 @@ function mascaraTelefone(v: string) {
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
 
-export default function CadastroPage() {
+function CadastroInner() {
   const params = useSearchParams();
   const router = useRouter();
 
@@ -405,6 +405,10 @@ export default function CadastroPage() {
       </footer>
     </div>
   );
+}
+
+export default function CadastroPage() {
+  return <Suspense><CadastroInner /></Suspense>;
 }
 
 function Campo({ label, erro, children }: { label: string; erro?: string; children: React.ReactNode }) {

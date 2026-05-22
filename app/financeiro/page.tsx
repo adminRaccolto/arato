@@ -243,7 +243,7 @@ export default function Financeiro() {
     // LCDPR
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
     // Encargos
-    juros_pct: "", multa_pct: "", desconto_pct: "",
+    juros_pct: 0, multa_pct: 0, desconto_pct: 0,
     // Vínculos
     chave_xml: "", talhao: "", centro_custo: "",
   });
@@ -350,7 +350,7 @@ export default function Financeiro() {
         criados = [unico];
       }
       setLancamentos(prev => [...criados, ...prev]);
-      setNovoLanc({ tipo: "pagar", moeda: "BRL", descricao: "", categoria: "Insumos", vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: "", multa_pct: "", desconto_pct: "", chave_xml: "", talhao: "", centro_custo: "" });
+      setNovoLanc({ tipo: "pagar", moeda: "BRL", descricao: "", categoria: "Insumos", vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", parcelar: false, totalParcelas: "1", intervaloMeses: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, chave_xml: "", talhao: "", centro_custo: "" });
       setModalNovo(false);
     } catch (e: unknown) {
       alert("Erro ao salvar: " + (e instanceof Error ? e.message : e));

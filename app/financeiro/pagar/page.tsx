@@ -242,7 +242,7 @@ function ContasPagarInner() {
     condicao: "avista" as "avista" | "prazo",
     qtdParcelas: "2", frequencia: "1",
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
-    juros_pct: "", multa_pct: "", desconto_pct: "", meses_diferido: "0",
+    juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0",
     chave_xml: "", centro_custo: "",
     ano_safra_id: "", produtor_id: "", ciclo_id: "",
     operacao_gerencial_id: "",
@@ -586,7 +586,7 @@ function ContasPagarInner() {
               onClick={() => {
               setFormFazendaId(fazendaId);
               setModalTab("principal");
-              setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: "", multa_pct: "", desconto_pct: "", meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "" });
+              setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "" });
               setParcelas([]);
               setOpGerBusca("");
               setArquivoNF(null);

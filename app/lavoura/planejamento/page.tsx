@@ -213,14 +213,14 @@ export default function Planejamento() {
 
   // modal orçamento - header
   const [modalOrcHeader, setModalOrcHeader] = useState(false);
-  const initOH = () => ({ nome: "Orçamento Safra", area_ha: "", produtividade_esperada: "", preco_esperado_sc: "" });
+  const initOH = () => ({ nome: "Orçamento Safra", area_ha: 0, produtividade_esperada: "", preco_esperado_sc: 0 });
   const [fOH, setFOH] = useState(initOH());
 
   // modal item orçamento
   const [modalOrcItem, setModalOrcItem] = useState(false);
   const [editOrcItem,  setEditOrcItem]  = useState<OrcamentoItem | null>(null);
-  const initOI = (): { categoria: CatOrc; subcategoria: string; descricao: string; quantidade: string; unidade: string; valor_unitario: string } => ({
-    categoria: "sementes", subcategoria: "", descricao: "", quantidade: "", unidade: "kg", valor_unitario: "",
+  const initOI = (): { categoria: CatOrc; subcategoria: string; descricao: string; quantidade: string; unidade: string; valor_unitario: number } => ({
+    categoria: "sementes", subcategoria: "", descricao: "", quantidade: "", unidade: "kg", valor_unitario: 0,
   });
   const [fOI, setFOI] = useState(initOI());
 
@@ -334,9 +334,9 @@ export default function Planejamento() {
         fazenda_id: fazendaId, ciclo_id: cicloSelOrc,
         nome: fOH.nome || `Orçamento ${ciclo?.descricao ?? ""}`,
         status: "rascunho" as const,
-        area_ha: fOH.area_ha ? parseFloat(fOH.area_ha) : null,
+        area_ha: fOH.area_ha || null,
         produtividade_esperada: fOH.produtividade_esperada ? parseFloat(fOH.produtividade_esperada) : null,
-        preco_esperado_sc: fOH.preco_esperado_sc ? parseFloat(fOH.preco_esperado_sc) : null,
+        preco_esperado_sc: fOH.preco_esperado_sc || null,
       };
       if (orcamento) {
         await supabase.from("orcamentos").update(payload).eq("id", orcamento.id);
@@ -356,7 +356,7 @@ export default function Planejamento() {
     setSalvando(true);
     try {
       const qtd = parseFloat(fOI.quantidade) || null;
-      const vUnit = parseFloat(fOI.valor_unitario) || null;
+      const vUnit = fOI.valor_unitario || null;
       const total = qtd && vUnit ? parseFloat((qtd * vUnit).toFixed(2)) : null;
       const payload = {
         orcamento_id: orcamento.id, fazenda_id: fazendaId,
@@ -645,7 +645,7 @@ export default function Planejamento() {
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button style={btnE} onClick={() => {
-                        setFOH({ nome: orcamento.nome, area_ha: String(orcamento.area_ha ?? ""), produtividade_esperada: String(orcamento.produtividade_esperada ?? ""), preco_esperado_sc: String(orcamento.preco_esperado_sc ?? "") });
+                        setFOH({ nome: orcamento.nome, area_ha: orcamento.area_ha ?? 0, produtividade_esperada: String(orcamento.produtividade_esperada ?? ""), preco_esperado_sc: orcamento.preco_esperado_sc ?? 0 });
                         setModalOrcHeader(true);
                       }}>Editar cabeçalho</button>
                       <button style={btnV} onClick={() => { setFOI(initOI()); setEditOrcItem(null); setModalOrcItem(true); }}>+ Item</button>
@@ -691,7 +691,7 @@ export default function Planejamento() {
                                     <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                                       <button style={btnE} onClick={() => {
                                         setEditOrcItem(it);
-                                        setFOI({ categoria: it.categoria, subcategoria: it.subcategoria ?? "", descricao: it.descricao, quantidade: it.quantidade != null ? String(it.quantidade) : "", unidade: it.unidade ?? "kg", valor_unitario: it.valor_unitario != null ? String(it.valor_unitario) : "" });
+                                        setFOI({ categoria: it.categoria, subcategoria: it.subcategoria ?? "", descricao: it.descricao, quantidade: it.quantidade != null ? String(it.quantidade) : "", unidade: it.unidade ?? "kg", valor_unitario: it.valor_unitario ?? 0 });
                                         setModalOrcItem(true);
                                       }}>Ed</button>
                                       <button style={btnX} onClick={() => excluirOrcItem(it.id)}>✕</button>
@@ -992,9 +992,9 @@ export default function Planejamento() {
               <div style={{ gridColumn: "1/-1", background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                 <span style={{ color: "#555" }}>Receita esperada: </span>
                 <span style={{ fontWeight: 700, color: "#14532D" }}>
-                  {fmtR(parseFloat(fOH.area_ha) * parseFloat(fOH.produtividade_esperada) * parseFloat(fOH.preco_esperado_sc))}
+                  {fmtR(fOH.area_ha * parseFloat(fOH.produtividade_esperada) * fOH.preco_esperado_sc)}
                 </span>
-                <span style={{ color: "#555", marginLeft: 16 }}>({fmtN(parseFloat(fOH.area_ha) * parseFloat(fOH.produtividade_esperada))} sc totais)</span>
+                <span style={{ color: "#555", marginLeft: 16 }}>({fmtN(fOH.area_ha * parseFloat(fOH.produtividade_esperada))} sc totais)</span>
               </div>
             )}
           </div>
@@ -1043,7 +1043,7 @@ export default function Planejamento() {
               <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                 <span style={{ color: "#555" }}>Total calculado: </span>
                 <span style={{ fontWeight: 700, color: "#0C447C" }}>
-                  {fmtR(parseFloat(fOI.quantidade) * parseFloat(fOI.valor_unitario))}
+                  {fmtR(parseFloat(fOI.quantidade) * fOI.valor_unitario)}
                 </span>
               </div>
             )}

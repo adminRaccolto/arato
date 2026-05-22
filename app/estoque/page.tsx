@@ -217,7 +217,7 @@ export default function Estoque() {
 
   // modal novo insumo/produto
   const [modalInsumo, setModalInsumo] = useState(false);
-  const [fIns, setFIns] = useState({ nome: "", categoria: "defensivo" as Insumo["categoria"], unidade: "L" as string, fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", deposito_id: "", lote: "", validade: "" });
+  const [fIns, setFIns] = useState({ nome: "", categoria: "defensivo" as Insumo["categoria"], unidade: "L" as string, fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" });
 
   // modal movimentação manual
   const [modalMov, setModalMov]   = useState(false);
@@ -239,7 +239,7 @@ export default function Estoque() {
   // modal NF Entrada — passo 1: dados da NF / passo 2: itens
   const [modalNf, setModalNf] = useState<"off" | "passo1" | "passo2">("off");
   const [nfMode, setNfMode]   = useState<"xml" | "manual">("manual");
-  const [fNf, setFNf] = useState({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: "0", natureza: "", observacao: "" });
+  const [fNf, setFNf] = useState({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "" });
   const [itensNf, setItensNf] = useState<ItemRascunho[]>([]);
   const [nfCriada, setNfCriada] = useState<NfEntrada | null>(null);
 
@@ -341,7 +341,7 @@ export default function Estoque() {
     const payload: Omit<Insumo, "id"|"created_at"> = {
       fazenda_id: fazendaId!, tipo: tipoItem, nome: fIns.nome.trim(), categoria: cat, unidade: fIns.unidade as Insumo["unidade"],
       fabricante: fIns.fabricante || undefined, estoque: Number(fIns.estoque) || 0,
-      estoque_minimo: Number(fIns.estoque_minimo) || 0, valor_unitario: Number(fIns.valor_unitario.replace(",",".")) || 0,
+      estoque_minimo: Number(fIns.estoque_minimo) || 0, valor_unitario: fIns.valor_unitario || 0,
       deposito_id: fIns.deposito_id || undefined,
       lote: fIns.lote || undefined, validade: fIns.validade || undefined,
     };
@@ -352,7 +352,7 @@ export default function Estoque() {
 
   // ── NF Passo 1: criar NF ──
   const abrirNovaFf = () => {
-    setFNf({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: "0", natureza: "", observacao: "" });
+    setFNf({ numero: "", serie: "1", chave_acesso: "", emitente_nome: "", emitente_cnpj: "", data_emissao: "", valor_total: 0, natureza: "", observacao: "" });
     setItensNf([]);
     setNfCriada(null);
     setNfMode("manual");
@@ -391,7 +391,7 @@ export default function Estoque() {
       setFNf({
         numero: parsed.numero, serie: parsed.serie, chave_acesso: parsed.chave,
         emitente_nome: parsed.emitente, emitente_cnpj: parsed.cnpj,
-        data_emissao: parsed.data, valor_total: String(parsed.valor),
+        data_emissao: parsed.data, valor_total: Number(parsed.valor) || 0,
         natureza: "", observacao: "",
       });
       setItensNf(itensComMatch);
@@ -430,7 +430,7 @@ export default function Estoque() {
       chave_acesso: fNf.chave_acesso || undefined, emitente_nome: fNf.emitente_nome.trim(),
       emitente_cnpj: fNf.emitente_cnpj || undefined, data_emissao: fNf.data_emissao,
       data_entrada: new Date().toISOString().slice(0,10),
-      valor_total: parseFloat(fNf.valor_total.replace(",",".")) || 0,
+      valor_total: fNf.valor_total || 0,
       natureza: fNf.natureza || undefined, observacao: fNf.observacao || undefined,
       status: "pendente",
     });
@@ -482,7 +482,7 @@ export default function Estoque() {
     await processarNfEntrada(
       nfCriada.id, fazendaId!,
       itensSalvos,
-      parseFloat(fNf.valor_total.replace(",",".")) || 0,
+      fNf.valor_total || 0,
       fNf.emitente_nome, fNf.data_emissao,
       fNf.emitente_cnpj || undefined,
     );
@@ -580,7 +580,7 @@ export default function Estoque() {
                     </button>
                   )}
                   <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => { setModalMov(true); }}>± Movimentar</button>
-                  <button style={{ ...btnV }} onClick={() => { setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
+                  <button style={{ ...btnV }} onClick={() => { setFIns({ nome: "", categoria: "defensivo", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: 0, deposito_id: "", lote: "", validade: "" }); setModalInsumo(true); }}>+ Novo Item</button>
                 </div>
               </div>
 
@@ -1592,7 +1592,7 @@ export default function Estoque() {
 
       {/* Modal NF Entrada — Passo 2 */}
       {modalNf === "passo2" && (
-        <Modal titulo={`NF ${fNf.numero} — Distribuição de Itens`} subtitulo={`Passo 2 de 2 — ${fNf.emitente_nome} · ${fmtBRL(parseFloat(fNf.valor_total) || 0)}`} width={780} onClose={() => setModalNf("off")}>
+        <Modal titulo={`NF ${fNf.numero} — Distribuição de Itens`} subtitulo={`Passo 2 de 2 — ${fNf.emitente_nome} · ${fmtBRL(fNf.valor_total || 0)}`} width={780} onClose={() => setModalNf("off")}>
           <div style={{ marginBottom: 12, display: "flex", justifyContent: "flex-end" }}>
             <button style={{ ...btnE, borderColor: "#1A487040", color: "#0B2D50", background: "#D5E8F5" }} onClick={adicionarItemNf}>+ Adicionar item</button>
           </div>

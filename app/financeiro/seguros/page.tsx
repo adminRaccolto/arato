@@ -120,7 +120,7 @@ export default function SegurosPage() {
   const [apoliceEdit,   setApoliceEdit]   = useState<Apolice | null>(null);
   const APOLICE_VAZIO = () => ({
     numero_apolice: "", seguradora: "", ramo: "rural" as RamoSeguro,
-    objeto_segurado: "", importancia_segurada: "", premio_anual: "",
+    objeto_segurado: "", importancia_segurada: 0, premio_anual: 0,
     forma_pagamento_premio: "À vista", data_inicio_vigencia: hoje(),
     data_fim_vigencia: "", status: "vigente" as StatusApolice,
     corretora: "", corretor_contato: "", observacao: "",
@@ -134,7 +134,7 @@ export default function SegurosPage() {
   const [sinistroEdit,   setSinistroEdit]   = useState<Sinistro | null>(null);
   const SINISTRO_VAZIO = () => ({
     data_ocorrencia: hoje(), data_comunicacao: "",
-    descricao: "", valor_reclamado: "", valor_indenizado: "0",
+    descricao: "", valor_reclamado: 0, valor_indenizado: 0,
     status: "aberto" as StatusSinistro, numero_protocolo: "", observacao: "",
   });
   const [sForm,   setSForm]   = useState(SINISTRO_VAZIO());
@@ -179,8 +179,8 @@ export default function SegurosPage() {
       setAForm({
         numero_apolice: a.numero_apolice, seguradora: a.seguradora,
         ramo: a.ramo, objeto_segurado: a.objeto_segurado,
-        importancia_segurada: String(a.importancia_segurada),
-        premio_anual: String(a.premio_anual),
+        importancia_segurada: a.importancia_segurada ?? 0,
+        premio_anual: a.premio_anual ?? 0,
         forma_pagamento_premio: a.forma_pagamento_premio,
         data_inicio_vigencia: a.data_inicio_vigencia,
         data_fim_vigencia: a.data_fim_vigencia,
@@ -208,8 +208,8 @@ export default function SegurosPage() {
         seguradora: aForm.seguradora.trim(),
         ramo: aForm.ramo,
         objeto_segurado: aForm.objeto_segurado,
-        importancia_segurada: parseFloat(aForm.importancia_segurada) || 0,
-        premio_anual: parseFloat(aForm.premio_anual) || 0,
+        importancia_segurada: aForm.importancia_segurada || 0,
+        premio_anual: aForm.premio_anual || 0,
         forma_pagamento_premio: aForm.forma_pagamento_premio,
         data_inicio_vigencia: aForm.data_inicio_vigencia,
         data_fim_vigencia: aForm.data_fim_vigencia,
@@ -241,8 +241,8 @@ export default function SegurosPage() {
         data_ocorrencia: s.data_ocorrencia,
         data_comunicacao: s.data_comunicacao ?? "",
         descricao: s.descricao,
-        valor_reclamado: String(s.valor_reclamado),
-        valor_indenizado: String(s.valor_indenizado),
+        valor_reclamado: s.valor_reclamado ?? 0,
+        valor_indenizado: s.valor_indenizado ?? 0,
         status: s.status,
         numero_protocolo: s.numero_protocolo ?? "",
         observacao: s.observacao ?? "",
@@ -264,8 +264,8 @@ export default function SegurosPage() {
         data_ocorrencia: sForm.data_ocorrencia,
         data_comunicacao: sForm.data_comunicacao || null,
         descricao: sForm.descricao.trim(),
-        valor_reclamado: parseFloat(sForm.valor_reclamado) || 0,
-        valor_indenizado: parseFloat(sForm.valor_indenizado) || 0,
+        valor_reclamado: sForm.valor_reclamado || 0,
+        valor_indenizado: sForm.valor_indenizado || 0,
         status: sForm.status,
         numero_protocolo: sForm.numero_protocolo || null,
         observacao: sForm.observacao || null,

@@ -60,12 +60,12 @@ export default function TesourariaPage() {
   const [modalLanc, setModalLanc] = useState(false);
   const [lForm, setLForm] = useState({
     tipo_op: "__outros__",
-    conta_origem: "", conta_destino: "", valor: "", valor_destino: "",
+    conta_origem: "", conta_destino: "", valor: 0, valor_destino: 0,
     tipo: "pagar" as "pagar" | "receber",
     descricao: "", categoria: "Tesouraria",
     data: hoje(), data_vencimento: "",
     observacao: "",
-    conta_ajuste: "", saldo_atual: "", saldo_correto: "",
+    conta_ajuste: "", saldo_atual: 0, saldo_correto: 0,
   });
   const [lSaving, setLSaving] = useState(false);
   const [lErr, setLErr]       = useState("");
@@ -102,8 +102,8 @@ export default function TesourariaPage() {
       const isTransf  = op === "__transferencia__";
 
       if (isAjuste) {
-        const atual = parseFloat(lForm.saldo_atual) || 0;
-        const correto = parseFloat(lForm.saldo_correto) || 0;
+        const atual = lForm.saldo_atual || 0;
+        const correto = lForm.saldo_correto || 0;
         const dif = correto - atual;
         if (!lForm.conta_ajuste) throw new Error("Selecione a conta.");
         await supabase.from("lancamentos").insert({
@@ -118,7 +118,7 @@ export default function TesourariaPage() {
         });
       } else if (isTransf) {
         if (!lForm.conta_origem || !lForm.conta_destino || !lForm.valor) throw new Error("Preencha todos os campos.");
-        const v = parseFloat(lForm.valor);
+        const v = lForm.valor;
         const base = { fazenda_id: fazendaId, moeda: "BRL", categoria: "Transferência entre Contas", valor: v, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado", auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
         await supabase.from("lancamentos").insert([
           { ...base, tipo: "pagar"   as const, descricao: `Transferência → ${lForm.conta_destino}`, conta_bancaria: lForm.conta_origem },
@@ -131,7 +131,7 @@ export default function TesourariaPage() {
         await supabase.from("lancamentos").insert({
           fazenda_id: fazendaId, tipo: tipoLanc, moeda: "BRL",
           descricao: lForm.descricao.trim(), categoria: nomeOp?.nome ?? "Tesouraria",
-          valor: parseFloat(lForm.valor),
+          valor: lForm.valor,
           data_lancamento: lForm.data, data_vencimento: lForm.data_vencimento || lForm.data,
           status: "em_aberto" as const, auto: false,
           conta_bancaria: lForm.conta_origem || null,
@@ -141,7 +141,7 @@ export default function TesourariaPage() {
       }
       await carregar();
       setModalLanc(false);
-      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", valor: "", valor_destino: "", tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: "", saldo_correto: "" });
+      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", valor: 0, valor_destino: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0 });
     } catch (e: unknown) {
       setLErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -286,9 +286,9 @@ export default function TesourariaPage() {
                     {lForm.saldo_atual && lForm.saldo_correto && (
                       <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                         Diferença:{" "}
-                        <strong style={{ color: parseFloat(lForm.saldo_correto) - parseFloat(lForm.saldo_atual) >= 0 ? "#16A34A" : "#E24B4A" }}>
-                          {fmtBRL(Math.abs(parseFloat(lForm.saldo_correto) - parseFloat(lForm.saldo_atual)))}
-                          {parseFloat(lForm.saldo_correto) - parseFloat(lForm.saldo_atual) >= 0 ? " (crédito)" : " (débito)"}
+                        <strong style={{ color: lForm.saldo_correto - lForm.saldo_atual >= 0 ? "#16A34A" : "#E24B4A" }}>
+                          {fmtBRL(Math.abs(lForm.saldo_correto - lForm.saldo_atual))}
+                          {lForm.saldo_correto - lForm.saldo_atual >= 0 ? " (crédito)" : " (débito)"}
                         </strong>
                       </div>
                     )}

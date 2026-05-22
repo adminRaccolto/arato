@@ -87,7 +87,7 @@ export default function LCDPR() {
   const [entradas, setEntradas] = useState<EntradaLCDPR[]>([]);
   const [saldoInicial, setSaldoInicial] = useState(0);
   const [modalManual, setModalManual] = useState(false);
-  const [fManual, setFManual] = useState({ data: hoje(), historico: "", doc: "", cpf_cnpj: "", codigo: "101", valor: "", tipo: "receita" as "receita" | "despesa" });
+  const [fManual, setFManual] = useState({ data: hoje(), historico: "", doc: "", cpf_cnpj: "", codigo: "101", valor: 0, tipo: "receita" as "receita" | "despesa" });
 
   useEffect(() => {
     if (!fazendaId) return;
@@ -115,7 +115,7 @@ export default function LCDPR() {
   }, [fazendaId, anoSel]);
 
   const adicionarManual = () => {
-    const v = parseFloat(fManual.valor.replace(",", "."));
+    const v = fManual.valor;
     if (!v || !fManual.historico) return;
     const nova: EntradaLCDPR = {
       id: `manual-${Date.now()}`,
@@ -130,7 +130,7 @@ export default function LCDPR() {
     };
     setEntradas(prev => [...prev, nova].sort((a, b) => a.data.localeCompare(b.data)));
     setModalManual(false);
-    setFManual({ data: hoje(), historico: "", doc: "", cpf_cnpj: "", codigo: "101", valor: "", tipo: "receita" });
+    setFManual({ data: hoje(), historico: "", doc: "", cpf_cnpj: "", codigo: "101", valor: 0, tipo: "receita" });
   };
 
   const removerManual = (id: string) => setEntradas(prev => prev.filter(e => e.id !== id));

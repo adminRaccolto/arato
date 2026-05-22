@@ -37,8 +37,8 @@ export default function PlantioPage() {
 
   const [f, setF] = useState({
     ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "",
-    area_ha: "", dose_kg_ha: "", data_plantio: "", data_colheita_prevista: "",
-    produtividade_esperada_sc_ha: "", preco_esperado_sc: "", moeda: "BRL" as "BRL" | "USD",
+    area_ha: "", dose_kg_ha: 0, data_plantio: "", data_colheita_prevista: "",
+    produtividade_esperada_sc_ha: "", preco_esperado_sc: 0, moeda: "BRL" as "BRL" | "USD",
     observacao: "",
   });
 
@@ -71,11 +71,11 @@ export default function PlantioPage() {
     : todosCiclos;
 
   // calcula quantidade_kg automaticamente
-  const qtdKg = f.dose_kg_ha && f.area_ha ? parseFloat(f.dose_kg_ha) * parseFloat(f.area_ha) : null;
+  const qtdKg = f.dose_kg_ha && f.area_ha ? f.dose_kg_ha * parseFloat(f.area_ha) : null;
   const sementeItem = sementes.find(s => s.id === f.insumo_id);
   const custoSementes = qtdKg && sementeItem ? qtdKg * (sementeItem.custo_medio ?? sementeItem.valor_unitario) : null;
   const receitaEsperada = f.produtividade_esperada_sc_ha && f.area_ha && f.preco_esperado_sc
-    ? parseFloat(f.produtividade_esperada_sc_ha) * parseFloat(f.area_ha) * parseFloat(f.preco_esperado_sc) : null;
+    ? parseFloat(f.produtividade_esperada_sc_ha) * parseFloat(f.area_ha) * f.preco_esperado_sc : null;
 
   const talhoesFiltrados = talhoes;
 
@@ -90,12 +90,12 @@ export default function PlantioPage() {
         insumo_id: f.insumo_id || undefined,
         variedade: f.variedade || undefined,
         area_ha: parseFloat(f.area_ha),
-        dose_kg_ha: f.dose_kg_ha ? parseFloat(f.dose_kg_ha) : undefined,
+        dose_kg_ha: f.dose_kg_ha || undefined,
         quantidade_kg: qtdKg ?? undefined,
         data_plantio: f.data_plantio,
         data_colheita_prevista: f.data_colheita_prevista || undefined,
         produtividade_esperada_sc_ha: f.produtividade_esperada_sc_ha ? parseFloat(f.produtividade_esperada_sc_ha) : undefined,
-        preco_esperado_sc: f.preco_esperado_sc ? parseFloat(f.preco_esperado_sc) : undefined,
+        preco_esperado_sc: f.preco_esperado_sc ? f.preco_esperado_sc : undefined,
         moeda: f.moeda,
         custo_sementes: custoSementes ?? undefined,
         observacao: f.observacao || undefined,
@@ -106,7 +106,7 @@ export default function PlantioPage() {
       }
       setPlantios(p => [novo, ...p]);
       setModal(false);
-      setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "", area_ha: "", dose_kg_ha: "", data_plantio: "", data_colheita_prevista: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", moeda: "BRL", observacao: "" });
+      setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "", area_ha: "", dose_kg_ha: 0, data_plantio: "", data_colheita_prevista: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: 0, moeda: "BRL", observacao: "" });
     } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
   }
 

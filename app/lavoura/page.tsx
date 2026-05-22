@@ -107,7 +107,7 @@ export default function PlanoAgricola() {
 
   // ── modal Concluir Operação ──
   const [modalConcluir, setModalConcluir] = useState<{ cicloId: string; op: Operacao } | null>(null);
-  const [fConc, setFConc] = useState({ data_real: hoje(), custo_ha: "" });
+  const [fConc, setFConc] = useState({ data_real: hoje(), custo_ha: 0 });
 
   // ── modal Registrar Colheita ──
   const [modalColheita, setModalColheita] = useState<CicloVM | null>(null);
@@ -115,7 +115,7 @@ export default function PlanoAgricola() {
 
   // ── modal Lançar Operação ──
   const [modalAddOp, setModalAddOp] = useState<string | null>(null);
-  const [fOp, setFOp] = useState({ nome: "", tipo: "operacao", data_prev: "", custo_ha: "" });
+  const [fOp, setFOp] = useState({ nome: "", tipo: "operacao", data_prev: "", custo_ha: 0 });
 
   // ── modal Novo Planejamento (vincular ciclo do Cadastros) ──
   const [modalNovo, setModalNovo]     = useState(false);
@@ -163,7 +163,7 @@ export default function PlanoAgricola() {
     const upd: Partial<Operacao> = {
       status: "concluida",
       data_real: fConc.data_real || hoje(),
-      custo_ha: fConc.custo_ha ? Number(fConc.custo_ha.replace(",", ".")) : op.custo_ha,
+      custo_ha: fConc.custo_ha ? fConc.custo_ha : op.custo_ha,
     };
     await atualizarOperacao(op.id, upd);
     setCiclos(prev => prev.map(s => s.id !== cicloId ? s : {
@@ -201,11 +201,11 @@ export default function PlanoAgricola() {
       tipo: fOp.tipo,
       data_prev: fOp.data_prev,
       status: "pendente",
-      custo_ha: fOp.custo_ha ? Number(fOp.custo_ha.replace(",", ".")) : undefined,
+      custo_ha: fOp.custo_ha ? fOp.custo_ha : undefined,
       auto: false,
     });
     setCiclos(prev => prev.map(s => s.id !== modalAddOp ? s : { ...s, operacoes: [...s.operacoes, nova] }));
-    setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: "" });
+    setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: 0 });
     setModalAddOp(null);
   });
 
@@ -443,7 +443,7 @@ export default function PlanoAgricola() {
                                   <div style={{ borderTop: "0.5px solid #DEE5EE" }}>
                                     {/* Barra de ações */}
                                     <div style={{ padding: "8px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                                      <button style={{ ...btnE, fontSize: 12 }} onClick={() => { setModalAddOp(ciclo.id); setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: "" }); }}>
+                                      <button style={{ ...btnE, fontSize: 12 }} onClick={() => { setModalAddOp(ciclo.id); setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: 0 }); }}>
                                         + Lançar Operação
                                       </button>
                                       {(ciclo.status === "em_andamento" || ciclo.status === "planejada") && (
@@ -493,7 +493,7 @@ export default function PlanoAgricola() {
                                                 </td>
                                                 <td style={{ padding: "8px 14px", textAlign: "center" }}>
                                                   {op.status === "pendente" && (
-                                                    <button onClick={() => { setModalConcluir({ cicloId: ciclo.id, op }); setFConc({ data_real: hoje(), custo_ha: op.custo_ha ? String(op.custo_ha) : "" }); }}
+                                                    <button onClick={() => { setModalConcluir({ cicloId: ciclo.id, op }); setFConc({ data_real: hoje(), custo_ha: op.custo_ha ?? 0 }); }}
                                                       style={{ ...btnE, background: "#D5E8F5", borderColor: "#1A487060", color: "#0B2D50", fontSize: 11 }}>Concluir</button>
                                                   )}
                                                 </td>

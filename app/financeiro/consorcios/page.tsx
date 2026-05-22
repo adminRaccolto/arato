@@ -96,7 +96,7 @@ export default function ConsorciosPage() {
   const CONSOR_VAZIO = () => ({
     administradora: "", numero_cota: "", grupo: "",
     tipo_bem: "maquina" as TipoBem, descricao_bem: "",
-    valor_credito: "", valor_parcela_mensal: "",
+    valor_credito: 0, valor_parcela_mensal: 0,
     total_parcelas: "60", parcelas_pagas: "0",
     data_inicio: hoje(), status: "a_contemplar" as StatusConsorcio,
     observacao: "",
@@ -109,7 +109,7 @@ export default function ConsorciosPage() {
   const [modalContempl, setModalContempl] = useState<Consorcio | null>(null);
   const [contemplForm, setContemplForm] = useState({
     data_contemplacao: hoje(),
-    valor_lance: "",
+    valor_lance: 0,
     bem_adquirido: "",
     migrar_financiamento: false,
   });
@@ -162,8 +162,8 @@ export default function ConsorciosPage() {
       setCForm({
         administradora: c.administradora, numero_cota: c.numero_cota,
         grupo: c.grupo, tipo_bem: c.tipo_bem, descricao_bem: c.descricao_bem,
-        valor_credito: String(c.valor_credito),
-        valor_parcela_mensal: String(c.valor_parcela_mensal),
+        valor_credito: c.valor_credito ?? 0,
+        valor_parcela_mensal: c.valor_parcela_mensal ?? 0,
         total_parcelas: String(c.total_parcelas),
         parcelas_pagas: String(c.parcelas_pagas),
         data_inicio: c.data_inicio, status: c.status,
@@ -190,8 +190,8 @@ export default function ConsorciosPage() {
         grupo: cForm.grupo,
         tipo_bem: cForm.tipo_bem,
         descricao_bem: cForm.descricao_bem,
-        valor_credito: parseFloat(cForm.valor_credito) || 0,
-        valor_parcela_mensal: parseFloat(cForm.valor_parcela_mensal) || 0,
+        valor_credito: cForm.valor_credito || 0,
+        valor_parcela_mensal: cForm.valor_parcela_mensal || 0,
         total_parcelas: parseInt(cForm.total_parcelas) || 0,
         parcelas_pagas: parseInt(cForm.parcelas_pagas) || 0,
         data_inicio: cForm.data_inicio,
@@ -216,7 +216,7 @@ export default function ConsorciosPage() {
   function abrirContemplacao(c: Consorcio) {
     setModalContempl(c);
     setContemplForm({
-      data_contemplacao: hoje(), valor_lance: "", bem_adquirido: "",
+      data_contemplacao: hoje(), valor_lance: 0, bem_adquirido: "",
       migrar_financiamento: false,
     });
     setContemplErr("");
@@ -230,7 +230,7 @@ export default function ConsorciosPage() {
       const updates: Partial<Consorcio> = {
         status: "contemplado",
         data_contemplacao: contemplForm.data_contemplacao,
-        valor_lance: parseFloat(contemplForm.valor_lance) || null,
+        valor_lance: contemplForm.valor_lance || null,
         bem_adquirido: contemplForm.bem_adquirido || null,
       };
       await supabase.from("consorcios").update(updates).eq("id", modalContempl.id);
@@ -241,7 +241,7 @@ export default function ConsorciosPage() {
           fazenda_id: modalContempl.fazenda_id,
           descricao: `Consórcio contemplado — ${modalContempl.descricao_bem || modalContempl.numero_cota}`,
           valor_financiado: modalContempl.valor_credito,
-          saldo_devedor: modalContempl.valor_credito - (parseFloat(contemplForm.valor_lance) || 0),
+          saldo_devedor: modalContempl.valor_credito - (contemplForm.valor_lance || 0),
           data_contratacao: contemplForm.data_contemplacao,
           status: "ativo",
           origem: "consorcio",
@@ -679,7 +679,7 @@ export default function ConsorciosPage() {
               </label>
               {contemplForm.migrar_financiamento && (
                 <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
-                  Será criado um financiamento com saldo de {fmtBRL(modalContempl.valor_credito - (parseFloat(contemplForm.valor_lance) || 0))}. As parcelas remanescentes continuarão sendo controladas aqui.
+                  Será criado um financiamento com saldo de {fmtBRL(modalContempl.valor_credito - (contemplForm.valor_lance || 0))}. As parcelas remanescentes continuarão sendo controladas aqui.
                 </div>
               )}
             </div>

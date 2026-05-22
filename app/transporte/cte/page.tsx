@@ -270,9 +270,9 @@ export default function CtePage() {
     municipio_origem: "", uf_origem: "MT",
     municipio_destino: "", uf_destino: "MT",
     produto_descricao: "Soja em Grão", ncm: "12010090",
-    quantidade: "", unidade: "TON",
-    peso_bruto_kg: "", peso_liquido_kg: "",
-    valor_mercadoria: "", valor_frete: "",
+    quantidade: 0, unidade: "TON",
+    peso_bruto_kg: 0, peso_liquido_kg: 0,
+    valor_mercadoria: 0, valor_frete: 0,
     aliquota_icms: "12",
     veiculo_id: "", motorista_id: "",
     nfe_chave: "", observacao: "",
@@ -280,7 +280,7 @@ export default function CtePage() {
   const [form, setForm] = useState(FORM_VAZIO());
 
   // Calculados
-  const baseCalcIcms   = parseFloat(form.valor_frete) || 0;
+  const baseCalcIcms   = form.valor_frete || 0;
   const valorIcms      = +(baseCalcIcms * (parseFloat(form.aliquota_icms) / 100)).toFixed(2);
 
   // ── Carregar ─────────────────────────────────────────────
@@ -324,9 +324,9 @@ export default function CtePage() {
       municipio_origem: c.municipio_origem, uf_origem: c.uf_origem,
       municipio_destino: c.municipio_destino, uf_destino: c.uf_destino,
       produto_descricao: c.produto_descricao, ncm: c.ncm ?? "",
-      quantidade: String(c.quantidade), unidade: c.unidade,
-      peso_bruto_kg: String(c.peso_bruto_kg), peso_liquido_kg: String(c.peso_liquido_kg),
-      valor_mercadoria: String(c.valor_mercadoria), valor_frete: String(c.valor_frete),
+      quantidade: c.quantidade ?? 0, unidade: c.unidade,
+      peso_bruto_kg: c.peso_bruto_kg ?? 0, peso_liquido_kg: c.peso_liquido_kg ?? 0,
+      valor_mercadoria: c.valor_mercadoria ?? 0, valor_frete: c.valor_frete ?? 0,
       aliquota_icms: String(c.aliquota_icms),
       veiculo_id: c.veiculo_id ?? "", motorista_id: c.motorista_id ?? "",
       nfe_chave: c.nfe_chave ?? "", observacao: c.observacao ?? "",
@@ -396,12 +396,12 @@ export default function CtePage() {
         uf_destino: form.uf_destino,
         produto_descricao: form.produto_descricao,
         ncm: form.ncm || null,
-        quantidade: parseFloat(form.quantidade) || 0,
+        quantidade: form.quantidade || 0,
         unidade: form.unidade,
-        peso_bruto_kg: parseFloat(form.peso_bruto_kg as string) || 0,
-        peso_liquido_kg: parseFloat(form.peso_liquido_kg as string) || 0,
-        valor_mercadoria: parseFloat(form.valor_mercadoria as string) || 0,
-        valor_frete: parseFloat(form.valor_frete as string) || 0,
+        peso_bruto_kg: form.peso_bruto_kg || 0,
+        peso_liquido_kg: form.peso_liquido_kg || 0,
+        valor_mercadoria: form.valor_mercadoria || 0,
+        valor_frete: form.valor_frete || 0,
         base_calc_icms: baseCalcIcms,
         aliquota_icms: parseFloat(form.aliquota_icms) || 0,
         valor_icms: valorIcms,
