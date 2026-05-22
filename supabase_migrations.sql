@@ -4443,3 +4443,15 @@ ON CONFLICT (id) DO UPDATE SET
   features_marketing = EXCLUDED.features_marketing;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: periodicidade e estrutura em contratos_financeiros ─────────────
+alter table contratos_financeiros
+  add column if not exists periodicidade_pagamento text default 'mensal'
+    check (periodicidade_pagamento in ('mensal','bimestral','trimestral','semestral','anual','bullet')),
+  add column if not exists estrutura_pagamento text default 'simples'
+    check (estrutura_pagamento in ('simples','juros_semestral_capital_anual'));
+
+comment on column contratos_financeiros.periodicidade_pagamento is 'Periodicidade das parcelas: mensal, bimestral, trimestral, semestral, anual ou bullet';
+comment on column contratos_financeiros.estrutura_pagamento is 'simples = SAC/Price padrão; juros_semestral_capital_anual = FCO/BNDES com juros semestrais e amortização anual';
+
+NOTIFY pgrst, 'reload schema';

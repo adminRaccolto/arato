@@ -17,7 +17,8 @@ type LancRow = {
   descricao: string; categoria: string; data_lancamento: string;
   data_vencimento: string; valor: string; pessoa_cpf_cnpj: string;
   moeda: string; num_parcela: string; total_parcelas: string;
-  tipo_documento_lcdpr: string;
+  tipo_documento_lcdpr: string; numero_documento: string;
+  operacao_gerencial: string; produtor_cpf_cnpj: string;
   _status?: "ok" | "erro"; _msg?: string;
 };
 type InsumoRow = {
@@ -40,16 +41,18 @@ type ContratoFinRow = {
   numero_contrato: string; descricao: string; credor: string; credor_cpf_cnpj: string;
   tipo: string; moeda: string; valor_total: string; data_contrato: string;
   data_liberacao: string; prazo_meses: string;
+  periodicidade_pagamento: string; estrutura_pagamento: string;
   taxa_juros_am: string; taxa_juros_aa: string;
   iof_pct: string; tac_valor: string; linha_credito: string;
   tipo_amortizacao: string; cotacao_usd: string; auto_parcelas: string;
-  observacao: string;
+  produtor_cpf_cnpj: string; observacao: string;
   _status?: "ok" | "erro" | "duplicado" | "aviso"; _msg?: string; _cp_encontrados?: number;
 };
 
 type ArrendamentoRow = {
   proprietario_cpf_cnpj: string; proprietario_nome: string;
-  area_ha: string; forma_pagamento: string; valor: string;
+  descricao: string; area_ha: string; forma_pagamento: string;
+  valor: string; sc_milho_ha: string;
   data_inicio: string; data_fim: string; observacao: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
@@ -61,14 +64,15 @@ const TEMPLATE_PESSOAS = [
   ["João da Silva", "pf", "012.345.678-90", "nao", "sim", "joao@email.com", "(65)99999-0001", "Nova Mutum", "MT", "78450-000", "", "", ""],
 ];
 const TEMPLATE_CP = [
-  ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr"],
-  ["Compra de Soja (Bunge)", "Comercialização", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "BRL", "1", "1", "NF"],
-  ["Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "BRL", "1", "3", "RECIBO"],
+  ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
+  ["Compra de Soja (Bunge)", "Comercialização", "2026-01-10", "2026-02-10", "150000.00", "08.821.250/0001-60", "BRL", "1", "1", "NF", "NF 001234", "Custeio Soja", "012.345.678-90"],
+  ["Arrendamento Fazenda Sul", "Arrendamento", "2026-03-01", "2026-03-31", "45000.00", "012.345.678-90", "BRL", "1", "3", "RECIBO", "", "Arrendamento Terras", ""],
+  ["Frete colheita safra 25/26", "Transporte", "2026-01-20", "2026-02-20", "28500.00", "", "BRL", "1", "1", "NF", "NF 005678", "Fretes e Carretos", ""],
 ];
 const TEMPLATE_CR = [
-  ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr"],
-  ["Venda Soja Safra 25/26", "Comercialização", "2026-01-15", "2026-02-15", "280000.00", "08.821.250/0001-60", "BRL", "1", "2", "NF"],
-  ["Prestação de Serviço", "Outros", "2026-02-01", "2026-03-01", "8500.00", "", "BRL", "1", "1", "RECIBO"],
+  ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
+  ["Venda Soja Safra 25/26", "Comercialização", "2026-01-15", "2026-02-15", "280000.00", "08.821.250/0001-60", "BRL", "1", "2", "NF", "NF 008800", "Receita Soja", "012.345.678-90"],
+  ["Prestação de Serviço", "Outros", "2026-02-01", "2026-03-01", "8500.00", "", "BRL", "1", "1", "RECIBO", "", "Receita Serviços", ""],
 ];
 const TEMPLATE_INSUMOS = [
   ["nome*", "categoria*", "unidade*", "estoque", "estoque_minimo", "valor_unitario", "fabricante", "subgrupo"],
@@ -96,17 +100,19 @@ const TEMPLATE_MAQUINAS = [
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
-  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "moeda", "valor_total*", "data_contrato*", "data_liberacao", "prazo_meses", "taxa_juros_am", "taxa_juros_aa", "iof_pct", "tac_valor", "linha_credito", "tipo_amortizacao", "cotacao_usd", "auto_parcelas", "observacao"],
-  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "BRL", "1656177.09", "2025-06-01", "2025-06-01", "12", "0.89", "", "", "", "PRONAMP", "sac", "", "sim", ""],
-  ["131910484", "Investimento Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "480000.00", "2024-03-15", "2024-03-15", "48", "0.75", "", "0.38", "1200.00", "Moderfrota", "price", "", "sim", "Trator John Deere"],
-  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "USD", "1688649.36", "2025-01-10", "2025-01-10", "1", "", "", "", "", "", "bullet", "5.85", "nao", ""],
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "moeda", "valor_total*", "data_contrato*", "data_liberacao", "prazo_meses", "periodicidade_pagamento", "estrutura_pagamento", "taxa_juros_am", "taxa_juros_aa", "iof_pct", "tac_valor", "linha_credito", "tipo_amortizacao", "cotacao_usd", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "BRL", "1656177.09", "2025-06-01", "2025-06-01", "12", "mensal", "simples", "0.89", "", "", "", "PRONAMP", "sac", "", "sim", "012.345.678-90", ""],
+  ["131910484", "Investimento Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "480000.00", "2024-03-15", "2024-03-15", "48", "mensal", "simples", "0.75", "", "0.38", "1200.00", "Moderfrota", "price", "", "sim", "012.345.678-90", "Trator John Deere"],
+  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "USD", "1688649.36", "2025-01-10", "2025-01-10", "12", "bullet", "simples", "", "", "", "", "", "bullet", "5.85", "nao", "", ""],
+  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "2000000.00", "2024-05-01", "2024-05-01", "60", "semestral", "juros_semestral_capital_anual", "0.72", "", "0.38", "", "FCO Rural", "sac", "", "sim", "012.345.678-90", "Juros semestrais + amortização anual"],
 ];
 
 const TEMPLATE_ARRENDAMENTOS = [
-  ["proprietario_cpf_cnpj*", "proprietario_nome", "area_ha*", "forma_pagamento*", "valor*", "data_inicio*", "data_fim*", "observacao"],
-  ["012.345.678-90", "João da Silva", "150.5", "sc_soja", "8.5", "2025-10-01", "2026-09-30", "Gleba Norte"],
-  ["987.654.321-00", "Maria Ferreira", "200.0", "brl", "350.00", "2025-10-01", "2026-09-30", "R$/ha — arrendamento dinheiro"],
-  ["07.945.853/0001-14", "Espólio Santos", "80.0", "sc_milho", "5.0", "2026-01-01", "2026-12-31", ""],
+  ["proprietario_cpf_cnpj*", "proprietario_nome", "descricao", "area_ha*", "forma_pagamento*", "valor*", "sc_milho_ha", "data_inicio*", "data_fim*", "observacao"],
+  ["012.345.678-90", "João da Silva", "Gleba Norte", "150.5", "sc_soja", "8.5", "", "2025-10-01", "2026-09-30", ""],
+  ["987.654.321-00", "Maria Ferreira", "Gleba Sul", "200.0", "brl", "350.00", "", "2025-10-01", "2026-09-30", "R$/ha"],
+  ["07.945.853/0001-14", "Espólio Santos", "Área Central", "80.0", "sc_milho", "5.0", "", "2026-01-01", "2026-12-31", ""],
+  ["012.345.678-90", "João da Silva", "Fundo do Morro", "120.0", "sc_soja_milho", "5.0", "3.0", "2025-10-01", "2026-09-30", "5 sc soja + 3 sc milho por ha"],
 ];
 
 const INSTRUCOES_CONTRATOS_FIN = [
@@ -119,32 +125,62 @@ const INSTRUCOES_CONTRATOS_FIN = [
   ["• moeda: BRL ou USD"],
   ["• valor_total: valor total financiado (sem R$, ex: 1500000.00)"],
   ["• data_contrato: data de assinatura no formato AAAA-MM-DD"],
-  ["• data_liberacao: data em que o recurso foi liberado (usada como início das parcelas)"],
-  ["• prazo_meses: número total de parcelas mensais (ex: 12, 24, 48)"],
-  ["• taxa_juros_am: taxa de juros mensal em % (ex: 0.89 para 0,89% a.m.) — AM ou AA, não os dois"],
-  ["• taxa_juros_aa: taxa de juros anual em % (ex: 11.16 para 11,16% a.a.) — convertida automaticamente para AM"],
-  ["• iof_pct: IOF em % sobre o valor total (ex: 0.38)"],
+  ["• data_liberacao: data em que o recurso foi liberado (início do cronograma)"],
+  ["• prazo_meses: duração total do contrato em meses (ex: 12, 60)"],
+  ["  O número de parcelas geradas depende da periodicidade_pagamento"],
+  ["• periodicidade_pagamento: mensal, bimestral, trimestral, semestral, anual ou bullet"],
+  ["  mensal    → 1 parcela por mês (padrão)"],
+  ["  bimestral → 1 parcela a cada 2 meses"],
+  ["  trimestral→ 1 parcela a cada 3 meses"],
+  ["  semestral → 1 parcela a cada 6 meses"],
+  ["  anual     → 1 parcela por ano"],
+  ["  bullet    → somente uma parcela no final (não usa estrutura_pagamento)"],
+  ["• estrutura_pagamento: define o que cada parcela contém"],
+  ["  simples                    → cada parcela inclui amortização + juros do período (padrão)"],
+  ["  juros_semestral_capital_anual → juros semestrais + amortização anual (SAC)"],
+  ["    Gera 2 tipos de lançamento: juros a cada 6 meses, capital+juros a cada 12 meses"],
+  ["    Comum em FCO Rural, BNDES e contratos com carência parcial"],
+  ["• taxa_juros_am: taxa mensal em % (ex: 0.89). Informe AM OU AA, não os dois"],
+  ["• taxa_juros_aa: taxa anual em % (ex: 11.16) — convertida automaticamente para AM"],
+  ["• iof_pct: IOF em % (ex: 0.38)"],
   ["• tac_valor: Tarifa de Abertura de Crédito em R$ (ex: 1200.00)"],
-  ["• linha_credito: nome da linha de crédito (ex: PRONAMP, Moderfrota, FCO Rural)"],
-  ["• tipo_amortizacao: sac, price ou bullet (padrão: sac)"],
+  ["• linha_credito: linha de crédito (ex: PRONAMP, Moderfrota, FCO Rural)"],
+  ["• tipo_amortizacao: sac, price ou bullet"],
   ["  sac   → amortização constante, parcelas decrescentes"],
-  ["  price → Tabela Price / Francesa, parcelas fixas"],
-  ["  bullet → paga só juros mensais, principal no final"],
-  ["• cotacao_usd: cotação do dólar na data do contrato (só para moeda=USD, ex: 5.85)"],
-  ["• auto_parcelas: sim ou nao — se sim e prazo_meses > 0, gera o cronograma completo de parcelas"],
-  ["• credor_cpf_cnpj: CNPJ/CPF do credor — usado para vincular ao cadastro de Pessoas"],
+  ["  price → Tabela Price (parcelas fixas)"],
+  ["  bullet → paga só juros em cada período, principal no vencimento"],
+  ["• cotacao_usd: só para moeda=USD (ex: 5.85)"],
+  ["• auto_parcelas: sim ou nao — gera o cronograma automaticamente"],
+  ["• credor_cpf_cnpj: CNPJ/CPF do credor para vincular ao cadastro de Pessoas"],
+  ["• produtor_cpf_cnpj: CPF/CNPJ do produtor responsável (obrigatório para LCDPR)"],
+  ["  Em fazendas com mais de um produtor, identifica quem assinou o contrato"],
   [""],
   ["⚠️  AVISO — Evitar duplicação do financeiro:"],
   ["  Se o numero_contrato já existir em lançamentos CP, o sistema vincula os CP"],
-  ["  existentes como parcelas sem criar duplicatas (auto_parcelas é ignorado)."],
+  ["  existentes sem criar duplicatas (auto_parcelas é ignorado nesse caso)."],
   [""],
-  ["Tipos disponíveis:"],
-  ["  custeio        → custeio agrícola (Pronaf, custeio BCB, PRONAMP)"],
-  ["  investimento   → financiamento de máquinas e infraestrutura (Moderfrota)"],
-  ["  cpr            → Cédula de Produto Rural"],
-  ["  egf            → Empréstimo do Governo Federal"],
-  ["  securitizacao  → securitização de dívidas rurais"],
-  ["  outros         → mútuo, capital de giro e demais"],
+  ["Exemplos de periodicidade + estrutura:"],
+  ["  Custeio mensal SAC        → periodicidade=mensal,    estrutura=simples,                    tipo_amortizacao=sac"],
+  ["  Custeio bullet            → periodicidade=bullet,    estrutura=simples,                    tipo_amortizacao=bullet"],
+  ["  FCO Rural juros semestrais→ periodicidade=semestral, estrutura=juros_semestral_capital_anual, tipo_amortizacao=sac"],
+  ["  Investimento Price mensal → periodicidade=mensal,    estrutura=simples,                    tipo_amortizacao=price"],
+];
+
+const INSTRUCOES_CP_CR = [
+  ["INSTRUÇÕES — IMPORTAÇÃO DE CONTAS A PAGAR / RECEBER"],
+  [""],
+  ["• Campos com * são obrigatórios"],
+  ["• Não altere os nomes das colunas (linha 1)"],
+  ["• pessoa_cpf_cnpj: CPF/CNPJ do fornecedor/cliente — vincula ao cadastro de Pessoas"],
+  ["• moeda: BRL, USD ou barter"],
+  ["• tipo_documento_lcdpr: RECIBO, NF, DUPLICATA, CHEQUE, PIX, TED ou OUTROS"],
+  ["• num_parcela / total_parcelas: ex: 1 e 3 = primeira de 3 parcelas"],
+  ["• numero_documento: número da NF ou documento (ex: NF 001234, RECIBO 005)"],
+  ["• operacao_gerencial: nome exato da operação gerencial cadastrada no sistema"],
+  ["  Usado para classificação no DRE. Deixe em branco se não souber."],
+  ["  Exemplos: 'Custeio Soja', 'Arrendamento Terras', 'Fretes e Carretos'"],
+  ["• produtor_cpf_cnpj: CPF do produtor responsável pelo lançamento (LCDPR)"],
+  ["  Em fazendas com mais de um produtor — identifica de quem é a obrigação"],
 ];
 
 const INSTRUCOES_ARRENDAMENTOS = [
@@ -154,16 +190,20 @@ const INSTRUCOES_ARRENDAMENTOS = [
   ["• Não altere os nomes das colunas (linha 1)"],
   ["• proprietario_cpf_cnpj: CPF ou CNPJ do proprietário da terra — vincula ao cadastro de Pessoas"],
   ["• proprietario_nome: apenas referência visual; não cria pessoa automaticamente"],
+  ["• descricao: nome ou identificação do arrendamento (ex: 'Gleba Norte', 'Fazenda Rio Verde')"],
   ["• area_ha: área arrendada em hectares (ex: 150.5)"],
   ["• forma_pagamento: sc_soja, sc_milho, sc_soja_milho ou brl"],
-  ["  → sc_soja / sc_milho: valor é o número de sacas por hectare por safra"],
-  ["  → sc_soja_milho: paga proporcionalmente em soja e milho"],
-  ["  → brl: valor em R$ por hectare (gera conta a pagar no financeiro)"],
-  ["• valor: sacas/ha (para sc_*) ou R$/ha (para brl)"],
-  ["• data_inicio / data_fim: período do arrendamento no formato AAAA-MM-DD"],
+  ["  → sc_soja: valor = sacas de soja por hectare por safra"],
+  ["  → sc_milho: valor = sacas de milho por hectare por safra"],
+  ["  → sc_soja_milho: pagamento misto — informe sc_soja em 'valor' e sc_milho em 'sc_milho_ha'"],
+  ["  → brl: valor = R$ por hectare (gera conta a pagar no financeiro)"],
+  ["• valor: para sc_soja/sc_milho = sacas/ha. Para brl = R$/ha. Para sc_soja_milho = sacas de soja/ha"],
+  ["• sc_milho_ha: somente para forma_pagamento=sc_soja_milho — sacas de milho por hectare"],
+  ["  Exemplo: 5 sc soja/ha + 3 sc milho/ha → valor=5.0, sc_milho_ha=3.0"],
+  ["• data_inicio / data_fim: AAAA-MM-DD"],
   [""],
   ["Efeitos automáticos:"],
-  ["  sc_soja / sc_milho / sc_soja_milho: compromete volume no BI de Grãos"],
+  ["  sc_soja / sc_milho / sc_soja_milho: compromete volume no BI de Grãos Comprometidos"],
   ["  brl: gera conta a pagar proporcional ao período informado"],
 ];
 
@@ -256,8 +296,8 @@ function downloadTemplate(aba: Aba) {
     ];
     const instrMap: Record<Aba, (string | number)[][]> = {
       pessoas:        instrBase,
-      cp:             instrBase,
-      cr:             instrBase,
+      cp:             INSTRUCOES_CP_CR,
+      cr:             INSTRUCOES_CP_CR,
       insumos:        instrBase,
       produtos:       INSTRUCOES_PRODUTOS,
       maquinas:       INSTRUCOES_MAQUINAS,
@@ -356,6 +396,9 @@ function validarProduto(r: Record<string, string>): ProdutoRow {
 
 const TIPOS_CONTRATO_FIN = ["custeio","investimento","cpr","egf","securitizacao","outros"];
 const TIPOS_AMORTIZACAO = ["sac","price","bullet"];
+const PERIODICIDADES = ["mensal","bimestral","trimestral","semestral","anual","bullet"];
+const ESTRUTURAS_PAGAMENTO = ["simples","juros_semestral_capital_anual"];
+const MESES_POR_PERIODO: Record<string, number> = { mensal:1, bimestral:2, trimestral:3, semestral:6, anual:12 };
 const FORMAS_PAGAMENTO_ARR = ["sc_soja","sc_milho","sc_soja_milho","brl"];
 
 function validarContratoFin(r: Record<string, string>): ContratoFinRow {
@@ -377,7 +420,13 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   const tipoAmort = (row.tipo_amortizacao || "").trim().toLowerCase();
   if (tipoAmort && !TIPOS_AMORTIZACAO.includes(tipoAmort))
     return { ...row, _status: "erro", _msg: `tipo_amortizacao deve ser: ${TIPOS_AMORTIZACAO.join(", ")}` };
-  return { ...row, tipo, tipo_amortizacao: tipoAmort || "sac", _status: "ok", _msg: "" };
+  const periodicidade = (row.periodicidade_pagamento || "mensal").trim().toLowerCase();
+  if (row.periodicidade_pagamento?.trim() && !PERIODICIDADES.includes(periodicidade))
+    return { ...row, _status: "erro", _msg: `periodicidade_pagamento deve ser: ${PERIODICIDADES.join(", ")}` };
+  const estrutura = (row.estrutura_pagamento || "simples").trim().toLowerCase();
+  if (row.estrutura_pagamento?.trim() && !ESTRUTURAS_PAGAMENTO.includes(estrutura))
+    return { ...row, _status: "erro", _msg: `estrutura_pagamento deve ser: ${ESTRUTURAS_PAGAMENTO.join(", ")}` };
+  return { ...row, tipo, tipo_amortizacao: tipoAmort || "sac", periodicidade_pagamento: periodicidade, estrutura_pagamento: estrutura, _status: "ok", _msg: "" };
 }
 
 function validarArrendamento(r: Record<string, string>): ArrendamentoRow {
@@ -390,6 +439,10 @@ function validarArrendamento(r: Record<string, string>): ArrendamentoRow {
     return { ...row, _status: "erro", _msg: `forma_pagamento deve ser: ${FORMAS_PAGAMENTO_ARR.join(", ")}` };
   const valor = parseFloat(String(row.valor).replace(",", "."));
   if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor inválido" };
+  if (forma === "sc_soja_milho" && row.sc_milho_ha?.trim()) {
+    const scM = parseFloat(String(row.sc_milho_ha).replace(",", "."));
+    if (isNaN(scM) || scM < 0) return { ...row, _status: "erro", _msg: "sc_milho_ha inválido" };
+  }
   if (!row.data_inicio?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_inicio.trim()))
     return { ...row, _status: "erro", _msg: "data_inicio deve ser AAAA-MM-DD" };
   if (!row.data_fim?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_fim.trim()))
@@ -744,28 +797,45 @@ export default function ImportacaoPage() {
     if (!fazendaId || !rows.length) return;
     setLoading(true);
     let ok = 0, erros = 0, duplicados = 0;
-    const { data: pessoas } = await supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+
+    const [pessoasRes, opGerRes, produtoresRes] = await Promise.all([
+      supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
+      supabase.from("operacoes_gerenciais").select("id, descricao, classificacao").eq("fazenda_id", fazendaId),
+      supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
+    ]);
     const pessoaMap: Record<string, string> = {};
-    (pessoas ?? []).forEach(p => { if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
+    (pessoasRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => { if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
+    const opGerMap: Record<string, string> = {};
+    (opGerRes.data ?? []).forEach((o: { id: string; descricao: string; classificacao?: string }) => {
+      opGerMap[o.descricao.toLowerCase().trim()] = o.id;
+    });
+    const produtorMap: Record<string, string> = {};
+    (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => { if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
+
     for (const r of rows) {
       if (r._status === "erro") { erros++; continue; }
       const pessoaId = r.pessoa_cpf_cnpj ? pessoaMap[r.pessoa_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
+      const produtorId = r.produtor_cpf_cnpj?.trim() ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
+      const opGerId = r.operacao_gerencial?.trim() ? opGerMap[r.operacao_gerencial.toLowerCase().trim()] ?? null : null;
       const valor = parseFloat(String(r.valor).replace(",", "."));
       const { error } = await supabase.from("lancamentos").insert({
-        fazenda_id:           fazendaId,
+        fazenda_id:              fazendaId,
         tipo,
-        descricao:            r.descricao.trim(),
-        categoria:            r.categoria.trim(),
-        data_lancamento:      r.data_lancamento.trim(),
-        data_vencimento:      r.data_vencimento.trim(),
+        descricao:               r.descricao.trim(),
+        categoria:               r.categoria.trim(),
+        data_lancamento:         r.data_lancamento.trim(),
+        data_vencimento:         r.data_vencimento.trim(),
         valor,
-        moeda:                (r.moeda?.toUpperCase() as "BRL"|"USD"|"barter") || "BRL",
-        status:               "em_aberto",
-        auto:                 false,
-        num_parcela:          r.num_parcela   ? parseInt(r.num_parcela)   : null,
-        total_parcelas:       r.total_parcelas ? parseInt(r.total_parcelas) : null,
-        tipo_documento_lcdpr: r.tipo_documento_lcdpr?.trim() || null,
-        pessoa_id:            pessoaId,
+        moeda:                   (r.moeda?.toUpperCase() as "BRL"|"USD"|"barter") || "BRL",
+        status:                  "em_aberto",
+        auto:                    false,
+        num_parcela:             r.num_parcela    ? parseInt(r.num_parcela)    : null,
+        total_parcelas:          r.total_parcelas  ? parseInt(r.total_parcelas) : null,
+        tipo_documento_lcdpr:    r.tipo_documento_lcdpr?.trim() || null,
+        numero_documento:        r.numero_documento?.trim() || null,
+        pessoa_id:               pessoaId,
+        operacao_gerencial_id:   opGerId,
+        produtor_id:             produtorId,
       });
       if (error) { r._status = "erro"; r._msg = error.message; erros++; }
       else ok++;
@@ -888,25 +958,35 @@ export default function ImportacaoPage() {
           .eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNum}%`).limit(1).maybeSingle();
         pessoaId = p?.id ?? null;
       }
+      // Resolve produtor_id para o contrato financeiro
+      let produtorIdFin: string | null = null;
+      if (r.produtor_cpf_cnpj?.trim()) {
+        const docNumP = r.produtor_cpf_cnpj.replace(/\D/g, "");
+        const { data: prd } = await supabase.from("produtores").select("id").eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNumP}%`).limit(1).maybeSingle();
+        produtorIdFin = prd?.id ?? null;
+      }
       const { data: contrato, error } = await supabase.from("contratos_financeiros").insert({
-        fazenda_id:      fazendaId,
-        numero_contrato: r.numero_contrato.trim(),
-        descricao:       r.descricao.trim(),
-        credor:          r.credor.trim(),
-        pessoa_id:       pessoaId,
-        tipo:            r.tipo,
-        moeda:           (r.moeda || "BRL").toUpperCase(),
-        valor_total:     parseFloat(String(r.valor_total).replace(",", ".")),
-        data_contrato:   r.data_contrato.trim(),
-        taxa_juros_am:   r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : null,
-        observacao:      r.observacao?.trim() || null,
-        status:          "ativo",
+        fazenda_id:              fazendaId,
+        numero_contrato:         r.numero_contrato.trim(),
+        descricao:               r.descricao.trim(),
+        credor:                  r.credor.trim(),
+        pessoa_id:               pessoaId,
+        produtor_id:             produtorIdFin,
+        tipo:                    r.tipo,
+        moeda:                   (r.moeda || "BRL").toUpperCase(),
+        valor_total:             parseFloat(String(r.valor_total).replace(",", ".")),
+        data_contrato:           r.data_contrato.trim(),
+        taxa_juros_am:           r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : null,
+        periodicidade_pagamento: r.periodicidade_pagamento || "mensal",
+        estrutura_pagamento:     r.estrutura_pagamento || "simples",
+        observacao:              r.observacao?.trim() || null,
+        status:                  "ativo",
       }).select("id").single();
 
       if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
       ok++;
 
-      // Auto-geração de parcelas (SAC/PRICE/BULLET) se não há CP existentes
+      // Auto-geração de parcelas com suporte a periodicidade
       const prazo = parseInt(r.prazo_meses || "0");
       const autoP = (r.auto_parcelas || "").toLowerCase() === "sim";
       if (autoP && prazo > 0 && (r._cp_encontrados ?? 0) === 0 && contrato) {
@@ -919,40 +999,62 @@ export default function ImportacaoPage() {
         const i = taxaAm / 100;
         const pv = parseFloat(String(r.valor_total).replace(",", "."));
         const tipoAmort = (r.tipo_amortizacao || "sac").toLowerCase();
+        const periodicidade = (r.periodicidade_pagamento || "mensal").toLowerCase();
+        const estrutura = (r.estrutura_pagamento || "simples").toLowerCase();
         const parcRows: Record<string, unknown>[] = [];
 
-        if (tipoAmort === "price") {
-          const pf = i === 0 ? pv / prazo : pv * i / (1 - Math.pow(1 + i, -prazo));
+        const base = { contrato_id: contrato.id, fazenda_id: fazendaId, despesas_acessorios: 0, status: "em_aberto" };
+
+        if (estrutura === "juros_semestral_capital_anual" && tipoAmort !== "bullet") {
+          // Estrutura FCO/BNDES: juros semestrais + amortização anual SAC
+          const numAnos = Math.ceil(prazo / 12);
+          const amortAnual = pv / numAnos;
           let saldo = pv;
-          for (let m = 1; m <= prazo; m++) {
-            const juros = saldo * i; const amort = pf - juros; saldo -= amort;
-            parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: m,
-              data_vencimento: addMonths(startDate, m), amortizacao: Math.round(amort * 100) / 100,
-              juros: Math.round(juros * 100) / 100, despesas_acessorios: 0,
-              valor_parcela: Math.round(pf * 100) / 100,
-              saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100), status: "em_aberto" });
+          let numParc = 0;
+          for (let ano = 1; ano <= numAnos; ano++) {
+            // Parcela semestral — apenas juros (6 meses)
+            numParc++;
+            const jSem = Math.round(saldo * i * 6 * 100) / 100;
+            parcRows.push({ ...base, num_parcela: numParc, data_vencimento: addMonths(startDate, (ano - 1) * 12 + 6), amortizacao: 0, juros: jSem, valor_parcela: jSem, saldo_devedor: saldo });
+            // Parcela anual — amortização + juros do segundo semestre
+            numParc++;
+            const jAnu = Math.round(saldo * i * 6 * 100) / 100;
+            saldo -= amortAnual;
+            parcRows.push({ ...base, num_parcela: numParc, data_vencimento: addMonths(startDate, ano * 12), amortizacao: Math.round(amortAnual * 100) / 100, juros: jAnu, valor_parcela: Math.round((amortAnual + jAnu) * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
           }
-        } else if (tipoAmort === "bullet") {
-          const jm = Math.round(pv * i * 100) / 100;
-          for (let m = 1; m < prazo; m++) {
-            parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: m,
-              data_vencimento: addMonths(startDate, m), amortizacao: 0,
-              juros: jm, despesas_acessorios: 0, valor_parcela: jm, saldo_devedor: pv, status: "em_aberto" });
+        } else if (periodicidade === "bullet" || tipoAmort === "bullet") {
+          // Bullet: juros periódicos + principal no final
+          const mesesPorParcela = MESES_POR_PERIODO[periodicidade] ?? prazo;
+          const numParcelas = periodicidade === "bullet" ? 1 : Math.ceil(prazo / mesesPorParcela);
+          const iPeriod = i === 0 ? 0 : Math.pow(1 + i, mesesPorParcela) - 1;
+          const jPeriod = Math.round(pv * iPeriod * 100) / 100;
+          if (numParcelas === 1) {
+            parcRows.push({ ...base, num_parcela: 1, data_vencimento: addMonths(startDate, prazo), amortizacao: pv, juros: Math.round(pv * i * prazo * 100) / 100, valor_parcela: Math.round(pv * (1 + i * prazo) * 100) / 100, saldo_devedor: 0 });
+          } else {
+            for (let m = 1; m < numParcelas; m++) {
+              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, m * mesesPorParcela), amortizacao: 0, juros: jPeriod, valor_parcela: jPeriod, saldo_devedor: pv });
+            }
+            parcRows.push({ ...base, num_parcela: numParcelas, data_vencimento: addMonths(startDate, numParcelas * mesesPorParcela), amortizacao: pv, juros: jPeriod, valor_parcela: Math.round((pv + jPeriod) * 100) / 100, saldo_devedor: 0 });
           }
-          parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: prazo,
-            data_vencimento: addMonths(startDate, prazo), amortizacao: pv,
-            juros: jm, despesas_acessorios: 0, valor_parcela: Math.round((pv + jm) * 100) / 100,
-            saldo_devedor: 0, status: "em_aberto" });
         } else {
-          // SAC (padrão)
-          const amort = pv / prazo; let saldo = pv;
-          for (let m = 1; m <= prazo; m++) {
-            const juros = saldo * i; saldo -= amort;
-            parcRows.push({ contrato_id: contrato.id, fazenda_id: fazendaId, num_parcela: m,
-              data_vencimento: addMonths(startDate, m), amortizacao: Math.round(amort * 100) / 100,
-              juros: Math.round(juros * 100) / 100, despesas_acessorios: 0,
-              valor_parcela: Math.round((amort + juros) * 100) / 100,
-              saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100), status: "em_aberto" });
+          // SAC ou PRICE com periodicidade configurada
+          const mesesPorParcela = MESES_POR_PERIODO[periodicidade] ?? 1;
+          const numParcelas = Math.ceil(prazo / mesesPorParcela);
+          const iPeriod = i === 0 ? 0 : Math.pow(1 + i, mesesPorParcela) - 1;
+          if (tipoAmort === "price") {
+            const pf = iPeriod === 0 ? pv / numParcelas : pv * iPeriod / (1 - Math.pow(1 + iPeriod, -numParcelas));
+            let saldo = pv;
+            for (let m = 1; m <= numParcelas; m++) {
+              const juros = saldo * iPeriod; const amort = pf - juros; saldo -= amort;
+              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, m * mesesPorParcela), amortizacao: Math.round(amort * 100) / 100, juros: Math.round(juros * 100) / 100, valor_parcela: Math.round(pf * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
+            }
+          } else {
+            // SAC
+            const amort = pv / numParcelas; let saldo = pv;
+            for (let m = 1; m <= numParcelas; m++) {
+              const juros = saldo * iPeriod; saldo -= amort;
+              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, m * mesesPorParcela), amortizacao: Math.round(amort * 100) / 100, juros: Math.round(juros * 100) / 100, valor_parcela: Math.round((amort + juros) * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
+            }
           }
         }
         if (parcRows.length > 0) await supabase.from("parcelas_pagamento").insert(parcRows);
@@ -1063,12 +1165,15 @@ export default function ImportacaoPage() {
       if (r._status === "erro")      { erros++;      continue; }
       const docNum = r.proprietario_cpf_cnpj.replace(/\D/g, "");
       const proprietarioId = pessoaMap[docNum] ?? null;
+      const scMilhoHa = r.sc_milho_ha?.trim() ? parseFloat(String(r.sc_milho_ha).replace(",", ".")) : null;
       const { error } = await supabase.from("arrendamentos").insert({
         fazenda_id:      fazendaId,
         pessoa_id:       proprietarioId,
+        descricao:       r.descricao?.trim() || null,
         area_ha:         parseFloat(String(r.area_ha).replace(",", ".")),
         forma_pagamento: r.forma_pagamento,
         valor:           parseFloat(String(r.valor).replace(",", ".")),
+        sc_milho_ha:     scMilhoHa,
         data_inicio:     r.data_inicio.trim(),
         data_fim:        r.data_fim.trim(),
         obs:             r.observacao?.trim() || null,
@@ -1101,8 +1206,8 @@ export default function ImportacaoPage() {
     },
     cp: {
       label: "Contas a Pagar", icon: "💸",
-      desc: "Importe contas a pagar. A coluna pessoa_cpf_cnpj vincula automaticamente ao cadastro de Pessoas.",
-      cols: ["descricao", "categoria", "data_lancamento", "data_vencimento", "valor", "pessoa_cpf_cnpj", "moeda"],
+      desc: "Importe contas a pagar. Use numero_documento, operacao_gerencial e produtor_cpf_cnpj para classificação completa.",
+      cols: ["descricao", "categoria", "data_lancamento", "data_vencimento", "valor", "pessoa_cpf_cnpj", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
       rows: cpRows as Record<string, unknown>[],
       loading: loadingCp,
       result: resultCp,
@@ -1111,8 +1216,8 @@ export default function ImportacaoPage() {
     },
     cr: {
       label: "Contas a Receber", icon: "💰",
-      desc: "Importe contas a receber. A coluna pessoa_cpf_cnpj vincula automaticamente ao cadastro de Pessoas.",
-      cols: ["descricao", "categoria", "data_lancamento", "data_vencimento", "valor", "pessoa_cpf_cnpj", "moeda"],
+      desc: "Importe contas a receber. Use numero_documento, operacao_gerencial e produtor_cpf_cnpj para classificação completa.",
+      cols: ["descricao", "categoria", "data_lancamento", "data_vencimento", "valor", "pessoa_cpf_cnpj", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
       rows: crRows as Record<string, unknown>[],
       loading: loadingCr,
       result: resultCr,
@@ -1151,8 +1256,8 @@ export default function ImportacaoPage() {
     },
     contratos_fin: {
       label: "Contratos Financeiros", icon: "🏦",
-      desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). Use auto_parcelas=sim para gerar o cronograma SAC/PRICE/BULLET automaticamente.",
-      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "prazo_meses", "tipo_amortizacao", "auto_parcelas"],
+      desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). Suporta periodicidade mensal, semestral, anual e estrutura de juros semestrais + amortização anual.",
+      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "prazo_meses", "periodicidade_pagamento", "estrutura_pagamento", "tipo_amortizacao", "produtor_cpf_cnpj"],
       rows: contratoFinRows as Record<string, unknown>[],
       loading: loadingContratoFin,
       result: resultContratoFin,
@@ -1161,8 +1266,8 @@ export default function ImportacaoPage() {
     },
     arrendamentos: {
       label: "Arrendamentos", icon: "🌾",
-      desc: "Importe contratos de arrendamento de terras. Vincule ao proprietário pelo CPF/CNPJ cadastrado em Pessoas.",
-      cols: ["proprietario_cpf_cnpj", "proprietario_nome", "area_ha", "forma_pagamento", "valor", "data_inicio", "data_fim"],
+      desc: "Importe contratos de arrendamento. Para sc_soja_milho informe o componente soja em 'valor' e milho em 'sc_milho_ha'.",
+      cols: ["proprietario_cpf_cnpj", "descricao", "area_ha", "forma_pagamento", "valor", "sc_milho_ha", "data_inicio", "data_fim"],
       rows: arrendamentosRows as Record<string, unknown>[],
       loading: loadingArrendamentos,
       result: resultArrendamentos,
