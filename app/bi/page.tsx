@@ -26,6 +26,31 @@ const dias  = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n);
 const fmtDt = (s?: string | null) => s ? s.split("-").reverse().join("/") : "—";
 const pct   = (v: number, total: number) => total > 0 ? Math.min(100, Math.max(0, (v / total) * 100)) : 0;
 
+// ── Helpers de unidade de volume (contratos armazenam em kg) ─────────────
+// quantidade_sc em contratos = kg; arrendamento_pagamentos.sacas_previstas = sc
+function unidProd(produto: string): { div: number; label: string } {
+  const p = produto.toLowerCase();
+  if (p.includes("algodão") || p.includes("algodao")) return { div: 15, label: "@" };
+  return { div: 60, label: "sc" };
+}
+// Converte kg → sc ou @ conforme produto; retorna { valor, label, kg }
+function kgParaVol(kg: number, produto: string): { valor: number; label: string; kg: number } {
+  const { div, label } = unidProd(produto);
+  return { valor: kg / div, label, kg };
+}
+// Soma contratos em unidades convertidas
+function somarContratos(lista: { quantidade_sc?: number | null; produto: string }[]): { valor: number; kg: number; label: string } {
+  let totalKg = 0, totalConv = 0;
+  for (const c of lista) {
+    const kg = c.quantidade_sc || 0;
+    totalKg += kg;
+    totalConv += kg / unidProd(c.produto).div;
+  }
+  // label predominante = do primeiro item (ou "sc" se vazio)
+  const label = lista.length > 0 ? unidProd(lista[0].produto).label : "sc";
+  return { valor: totalConv, kg: totalKg, label };
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 const aplicarMascara = (raw: string): string => {
   const nums = raw.replace(/\D/g, "");
@@ -981,28 +1006,33 @@ export default function BI() {
                    (c.ano_safra_id && anoSafraIdsFiltSet.has(c.ano_safra_id));
           });
 
-          // a) Barter
+          // a) Barter — quantidade_sc armazena kg; convertemos para sc ou @
           const barterContratos = contratosVisiveis.filter(c => c.modalidade === "barter" || c.tipo === "barter");
-          const barterSacas     = barterContratos.reduce((s, c) => s + (c.quantidade_sc || 0), 0);
+          const barterVol       = somarContratos(barterContratos);      // { valor sc/@, kg, label }
+          const barterSacas     = barterVol.kg;                         // kg bruto (para barra proporcional)
 
           // b) Contratos de Venda
           const vendaContratos  = contratosVisiveis.filter(c => c.modalidade !== "barter" && c.tipo !== "barter");
           const vendaUSD        = vendaContratos.filter(c => c.moeda === "USD");
           const vendaBRL        = vendaContratos.filter(c => c.moeda !== "USD");
-          const vendaUSDSacas   = vendaUSD.reduce((s, c) => s + (c.quantidade_sc || 0), 0);
-          const vendaBRLSacas   = vendaBRL.reduce((s, c) => s + (c.quantidade_sc || 0), 0);
-          const vendaTotalSacas = vendaUSDSacas + vendaBRLSacas;
+          const vendaUSDVol     = somarContratos(vendaUSD);
+          const vendaBRLVol     = somarContratos(vendaBRL);
+          const vendaUSDSacas   = vendaUSDVol.kg;                       // kg bruto
+          const vendaBRLSacas   = vendaBRLVol.kg;
+          const vendaTotalSacas = vendaUSDSacas + vendaBRLSacas;        // kg bruto
+          const vendaTotalVol   = somarContratos(vendaContratos);
 
-          // c) Arrendamento
-          const arrSacasBi = arrPags
+          // c) Arrendamento — sacas_previstas já em sacas (não precisa converter)
+          const arrPagsFilt = arrPags
             .filter(p => p.status !== "pago" && p.status !== "cancelado" &&
-              (!filtroAnoSafraId || anoSafraIdsFiltSet.has(p.ano_safra_id)))
-            .reduce((s, p) => s + (p.sacas_previstas || 0), 0);
+              (!filtroAnoSafraId || anoSafraIdsFiltSet.has(p.ano_safra_id)));
+          const arrSacasBi = arrPagsFilt.reduce((s, p) => s + (p.sacas_previstas || 0), 0); // sc
 
-          const totalComprometido = barterSacas + vendaTotalSacas + arrSacasBi;
+          const totalComprometido = barterSacas + vendaTotalSacas + arrSacasBi * 60; // normaliza arr para kg
           const producaoBi        = plantiosFiltrados.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
-          const livreSacas        = Math.max(0, producaoBi - totalComprometido);
-          const pctBar = (v: number) => producaoBi > 0 ? Math.min(100, (v / producaoBi) * 100) : 0;
+          const producaoBiKg      = producaoBi * 60;
+          const livreSacas        = Math.max(0, producaoBi - arrSacasBi - barterVol.valor - vendaTotalVol.valor);
+          const pctBar = (kgV: number) => producaoBiKg > 0 ? Math.min(100, (kgV / producaoBiKg) * 100) : 0;
 
           // Preço objetivo (ciclo.preco_esperado_sc) — média ponderada pelos ciclos filtrados
           const ciclosComPreco = ciclosFiltrados.filter(c => (c.preco_esperado_sc ?? 0) > 0);
@@ -1022,18 +1052,21 @@ export default function BI() {
           const receitaBarter   = barterSacas * precoObj;
           const receitaArr      = arrSacasBi * precoObj;
 
-          // Maior comprador (por sacas em contratos de venda)
-          const compMap: Record<string, { nome: string; sacas: number; totalVal: number; qtd: number }> = {};
+          // Maior comprador (por volume convertido em contratos de venda)
+          const compMap: Record<string, { nome: string; sacas: number; sacasConv: number; label: string; totalVal: number; qtd: number }> = {};
           for (const c of vendaContratos) {
             const nome = (c.comprador || "Sem nome").trim();
-            if (!compMap[nome]) compMap[nome] = { nome, sacas: 0, totalVal: 0, qtd: 0 };
-            compMap[nome].sacas    += c.quantidade_sc || 0;
-            compMap[nome].totalVal += (c.quantidade_sc || 0) * (c.preco || precoObj);
-            compMap[nome].qtd      += 1;
+            const { div, label } = unidProd(c.produto);
+            const kg = c.quantidade_sc || 0;
+            if (!compMap[nome]) compMap[nome] = { nome, sacas: 0, sacasConv: 0, label, totalVal: 0, qtd: 0 };
+            compMap[nome].sacas     += kg;
+            compMap[nome].sacasConv += kg / div;
+            compMap[nome].totalVal  += kg * (c.preco || precoObj);
+            compMap[nome].qtd       += 1;
           }
-          const ranking       = Object.values(compMap).sort((a, b) => b.sacas - a.sacas);
-          const top            = ranking[0] ?? null;
-          const mediaTop       = top && top.qtd > 0 ? top.totalVal / top.qtd : 0;
+          const ranking  = Object.values(compMap).sort((a, b) => b.sacas - a.sacas);
+          const top      = ranking[0] ?? null;
+          const mediaTop = top && top.qtd > 0 ? top.totalVal / top.qtd : 0;
 
           const CORES = { arr: "#E24B4A", barter: "#EF9F27", brl: "#1A4870", usd: "#378ADD", livre: "#16A34A" };
 
@@ -1066,30 +1099,30 @@ export default function BI() {
             <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Volume Total Comprometido</span>
-                {producaoBi > 0 && <span style={{ fontSize: 12, color: "#555" }}>Base: <strong>{fmtN(producaoBi, 0)} sc</strong> projetadas</span>}
+                {producaoBi > 0 && <span style={{ fontSize: 12, color: "#555" }}>Base: <strong>{fmtN(producaoBi, 0)} sc</strong> projetadas · <span style={{ color: "#888" }}>{fmtN(producaoBiKg, 0)} kg</span></span>}
               </div>
 
               {/* Barra empilhada */}
               {producaoBi > 0 ? (
                 <div style={{ marginBottom: 18 }}>
                   <div style={{ display: "flex", height: 20, borderRadius: 10, overflow: "hidden", background: "#EEF1F6" }}>
-                    {arrSacasBi    > 0 && <div style={{ width: `${pctBar(arrSacasBi)}%`,    background: CORES.arr,    transition: "width .4s" }} title={`Arrendamento: ${fmtN(arrSacasBi, 0)} sc`} />}
-                    {barterSacas   > 0 && <div style={{ width: `${pctBar(barterSacas)}%`,   background: CORES.barter, transition: "width .4s" }} title={`Barter: ${fmtN(barterSacas, 0)} sc`} />}
-                    {vendaBRLSacas > 0 && <div style={{ width: `${pctBar(vendaBRLSacas)}%`, background: CORES.brl,    transition: "width .4s" }} title={`Venda BRL: ${fmtN(vendaBRLSacas, 0)} sc`} />}
-                    {vendaUSDSacas > 0 && <div style={{ width: `${pctBar(vendaUSDSacas)}%`, background: CORES.usd,    transition: "width .4s" }} title={`Venda USD: ${fmtN(vendaUSDSacas, 0)} sc`} />}
-                    {livreSacas    > 0 && <div style={{ width: `${pctBar(livreSacas)}%`,    background: CORES.livre,  transition: "width .4s" }} title={`Livre: ${fmtN(livreSacas, 0)} sc`} />}
+                    {arrSacasBi    > 0 && <div style={{ width: `${pctBar(arrSacasBi * 60)}%`,    background: CORES.arr,    transition: "width .4s" }} title={`Arrendamento: ${fmtN(arrSacasBi, 0)} sc`} />}
+                    {barterSacas   > 0 && <div style={{ width: `${pctBar(barterSacas)}%`,         background: CORES.barter, transition: "width .4s" }} title={`Barter: ${fmtN(barterVol.valor, 0)} ${barterVol.label}`} />}
+                    {vendaBRLSacas > 0 && <div style={{ width: `${pctBar(vendaBRLSacas)}%`,       background: CORES.brl,    transition: "width .4s" }} title={`Venda BRL: ${fmtN(vendaBRLVol.valor, 0)} ${vendaBRLVol.label}`} />}
+                    {vendaUSDSacas > 0 && <div style={{ width: `${pctBar(vendaUSDSacas)}%`,       background: CORES.usd,    transition: "width .4s" }} title={`Venda USD: ${fmtN(vendaUSDVol.valor, 0)} ${vendaUSDVol.label}`} />}
+                    {livreSacas    > 0 && <div style={{ width: `${pctBar(livreSacas * 60)}%`,     background: CORES.livre,  transition: "width .4s" }} title={`Livre: ${fmtN(livreSacas, 0)} sc`} />}
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 8 }}>
                     {[
-                      { label: "Arrendamento", v: arrSacasBi,    bg: CORES.arr    },
-                      { label: "Barter",        v: barterSacas,   bg: CORES.barter },
-                      { label: "Venda BRL",     v: vendaBRLSacas, bg: CORES.brl    },
-                      { label: "Venda USD",     v: vendaUSDSacas, bg: CORES.usd    },
-                      { label: "Livre",         v: livreSacas,    bg: CORES.livre  },
-                    ].filter(x => x.v > 0).map(x => (
+                      { label: "Arrendamento", conv: arrSacasBi,       un: "sc",               kg: arrSacasBi * 60,  bg: CORES.arr    },
+                      { label: "Barter",        conv: barterVol.valor,  un: barterVol.label,    kg: barterVol.kg,    bg: CORES.barter },
+                      { label: "Venda BRL",     conv: vendaBRLVol.valor, un: vendaBRLVol.label, kg: vendaBRLVol.kg,  bg: CORES.brl    },
+                      { label: "Venda USD",     conv: vendaUSDVol.valor, un: vendaUSDVol.label, kg: vendaUSDVol.kg,  bg: CORES.usd    },
+                      { label: "Livre",         conv: livreSacas,       un: "sc",               kg: livreSacas * 60, bg: CORES.livre  },
+                    ].filter(x => x.kg > 0).map(x => (
                       <span key={x.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
                         <span style={{ width: 9, height: 9, borderRadius: 2, background: x.bg, display: "inline-block" }} />
-                        {x.label}: <strong>{fmtN(x.v, 0)} sc</strong> ({fmtN(pctBar(x.v), 0)}%)
+                        {x.label}: <strong>{fmtN(x.conv, 0)} {x.un}</strong> <span style={{ color: "#aaa", fontSize: 10 }}>({fmtN(x.kg, 0)} kg)</span>
                       </span>
                     ))}
                   </div>
@@ -1107,7 +1140,8 @@ export default function BI() {
                     <span style={{ width: 10, height: 10, borderRadius: 3, background: CORES.barter, display: "inline-block" }} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#7A5200", textTransform: "uppercase", letterSpacing: ".04em" }}>a) Barter</span>
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#7A5200" }}>{fmtN(barterSacas, 0)} sc</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#7A5200" }}>{fmtN(barterVol.valor, 0)} {barterVol.label}</div>
+                  <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{fmtN(barterVol.kg, 0)} kg</div>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(barterSacas), 1)}% da produção · {barterContratos.length} contrato(s)</div>
                   {precoObj > 0 && <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4, fontWeight: 600 }}>≈ {fmtR(receitaBarter)}</div>}
                 </div>
@@ -1118,7 +1152,8 @@ export default function BI() {
                     <span style={{ width: 10, height: 10, borderRadius: 3, background: CORES.brl, display: "inline-block" }} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#0B2D50", textTransform: "uppercase", letterSpacing: ".04em" }}>b) Contratos de Venda</span>
                   </div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#1A4870" }}>{fmtN(vendaTotalSacas, 0)} sc</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#1A4870" }}>{fmtN(vendaTotalVol.valor, 0)} {vendaTotalVol.label}</div>
+                  <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{fmtN(vendaTotalSacas, 0)} kg</div>
                   <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(vendaTotalSacas), 1)}% da produção · {vendaContratos.length} contrato(s)</div>
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1126,26 +1161,27 @@ export default function BI() {
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES.usd, display: "inline-block" }} />
                         Em USD
                       </span>
-                      <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtN(vendaUSDSacas, 0)} sc ({vendaUSD.length} ctrs)</span>
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtN(vendaUSDVol.valor, 0)} {vendaUSDVol.label} ({vendaUSD.length} ctrs)</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES.brl, display: "inline-block" }} />
                         Em BRL
                       </span>
-                      <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtN(vendaBRLSacas, 0)} sc ({vendaBRL.length} ctrs)</span>
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{fmtN(vendaBRLVol.valor, 0)} {vendaBRLVol.label} ({vendaBRL.length} ctrs)</span>
                     </div>
                   </div>
                 </div>
 
-                {/* c) Arrendamento */}
+                {/* c) Arrendamento — sacas_previstas já em sc */}
                 <div style={{ border: `1.5px solid ${CORES.arr}40`, borderRadius: 10, padding: "14px 18px", background: "#FFF5F5" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <span style={{ width: 10, height: 10, borderRadius: 3, background: CORES.arr, display: "inline-block" }} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#791F1F", textTransform: "uppercase", letterSpacing: ".04em" }}>c) Arrendamento</span>
                   </div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{fmtN(arrSacasBi, 0)} sc</div>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(arrSacasBi), 1)}% da produção</div>
+                  <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{fmtN(arrSacasBi * 60, 0)} kg</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fmtN(pctBar(arrSacasBi * 60), 1)}% da produção</div>
                   {precoObj > 0 && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4, fontWeight: 600 }}>≈ {fmtR(receitaArr)}</div>}
                 </div>
               </div>
@@ -1190,14 +1226,14 @@ export default function BI() {
                 <div style={{ background: "#F8FAFD", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
                   <div style={{ fontSize: 10, color: "#555", marginBottom: 4, fontWeight: 600 }}>Receita Contratos USD</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#0B5394" }}>{receitaVendaUSD > 0 ? fmtR2(receitaVendaUSD) : "—"}</div>
-                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{fmtN(vendaUSDSacas, 0)} sc × preço médio</div>
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{fmtN(vendaUSDVol.valor, 0)} {vendaUSDVol.label} ({fmtN(vendaUSDSacas, 0)} kg) × preço médio</div>
                 </div>
 
                 {/* Receita contratos BRL */}
                 <div style={{ background: "#F8FAFD", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
                   <div style={{ fontSize: 10, color: "#555", marginBottom: 4, fontWeight: 600 }}>Receita Contratos BRL</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#14532D" }}>{receitaVendaBRL > 0 ? fmtR2(receitaVendaBRL) : "—"}</div>
-                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{fmtN(vendaBRLSacas, 0)} sc × preço médio</div>
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{fmtN(vendaBRLVol.valor, 0)} {vendaBRLVol.label} ({fmtN(vendaBRLSacas, 0)} kg) × preço médio</div>
                 </div>
               </div>
             </div>
@@ -1213,7 +1249,8 @@ export default function BI() {
                         <span style={{ width: 26, height: 26, borderRadius: "50%", background: idx === 0 ? "#1A5CB8" : "#D4DCE8", color: idx === 0 ? "#fff" : "#555", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>#{idx + 1}</span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nome}</span>
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: idx === 0 ? "#0C447C" : "#1a1a1a" }}>{fmtN(r.sacas, 0)} sc</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: idx === 0 ? "#0C447C" : "#1a1a1a" }}>{fmtN(r.sacasConv, 0)} {r.label}</div>
+                      <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{fmtN(r.sacas, 0)} kg</div>
                       <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>{r.qtd} contrato(s)</div>
                       <div style={{ marginTop: 8, paddingTop: 8, borderTop: "0.5px solid #E4E9F0" }}>
                         <div style={{ fontSize: 10, color: "#888" }}>Média por contrato</div>
@@ -1227,7 +1264,7 @@ export default function BI() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "#F3F6F9" }}>
-                        {["#", "Comprador", "Sacas", "% do total", "Contratos", "Média/contrato"].map((h, i) => (
+                        {["#", "Comprador", "Volume (sc/@)", "% do total", "Contratos", "Média/contrato"].map((h, i) => (
                           <th key={h} style={{ padding: "6px 12px", textAlign: i >= 2 ? "right" : "left", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                         ))}
                       </tr>
@@ -1237,7 +1274,10 @@ export default function BI() {
                         <tr key={r.nome} style={{ borderBottom: "0.5px solid #EEF1F6", background: idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                           <td style={{ padding: "7px 12px", color: "#888" }}>{idx + 1}</td>
                           <td style={{ padding: "7px 12px", fontWeight: 600 }}>{r.nome}</td>
-                          <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700 }}>{fmtN(r.sacas, 0)}</td>
+                          <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700 }}>
+                            {fmtN(r.sacasConv, 0)} {r.label}
+                            <div style={{ fontSize: 9, color: "#aaa", fontWeight: 400 }}>{fmtN(r.sacas, 0)} kg</div>
+                          </td>
                           <td style={{ padding: "7px 12px", textAlign: "right" }}>{vendaTotalSacas > 0 ? fmtN((r.sacas / vendaTotalSacas) * 100, 1) : 0}%</td>
                           <td style={{ padding: "7px 12px", textAlign: "right" }}>{r.qtd}</td>
                           <td style={{ padding: "7px 12px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{fmtR2(r.qtd > 0 ? r.totalVal / r.qtd : 0)}</td>
