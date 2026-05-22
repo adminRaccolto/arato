@@ -238,9 +238,8 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "ajuda", label: "Ajuda", minStep: 0,
     children: [
-      { id: "ajuda-learning",   label: "Aprendizado",  path: "/learning"   },
-      { id: "ajuda-controller", label: "Controller",   path: "/controller" },
-      { id: "ajuda-suporte",    label: "Suporte IA",   path: "/suporte"    },
+      { id: "ajuda-learning", label: "Aprendizado", path: "/learning" },
+      { id: "ajuda-suporte",  label: "Suporte IA",  path: "/suporte"  },
     ],
   },
 ];
@@ -356,7 +355,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname.startsWith("/fiscal");
     if (item.id === "custos")          return pathname.startsWith("/custos") || pathname.startsWith("/relatorios/dre");
     if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
-    if (item.id === "ajuda")           return pathname === "/learning" || pathname === "/controller" || pathname === "/suporte";
+    if (item.id === "ajuda")           return pathname === "/learning" || pathname === "/suporte";
     return false;
   };
 
