@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
 import {
@@ -714,7 +715,7 @@ export default function ColheitaPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <label>
                   <div style={lbStyle}>Área colhida (ha)</div>
-                  <input type="number" value={formColheita.area_ha ?? ""} onChange={e => setFormColheita(f => ({ ...f, area_ha: parseFloat(e.target.value) || 0 }))} style={inpStyle} min={0} step={0.01} />
+                  <InputMonetario value={formColheita.area_ha ?? ""} onChange={v => setFormColheita(f => ({ ...f, area_ha: v }))} style={inpStyle} min={0} />
                 </label>
                 <label>
                   <div style={lbStyle}>Data de colheita</div>

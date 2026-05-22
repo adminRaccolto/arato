@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
+import InputMonetario from "../../components/InputMonetario";
 import {
   listarSafras, criarSafra, atualizarSafra,
   listarOperacoes, criarOperacao, atualizarOperacao,
@@ -681,7 +682,7 @@ export default function PlanoAgricola() {
             </div>
             <div>
               <label style={lbl}>Custo estimado (R$/ha)</label>
-              <input style={inp} type="number" step="0.01" placeholder="Ex: 85,00" value={fOp.custo_ha} onChange={e => setFOp(p => ({ ...p, custo_ha: e.target.value }))} />
+              <InputMonetario style={inp} placeholder="Ex: 85,00" value={fOp.custo_ha} onChange={v => setFOp(p => ({ ...p, custo_ha: v }))} />
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
@@ -703,7 +704,7 @@ export default function PlanoAgricola() {
             </div>
             <div>
               <label style={lbl}>Custo real (R$/ha)</label>
-              <input style={inp} type="number" step="0.01" placeholder={modalConcluir.op.custo_ha ? String(modalConcluir.op.custo_ha) : "Ex: 95,00"} value={fConc.custo_ha} onChange={e => setFConc(p => ({ ...p, custo_ha: e.target.value }))} />
+              <InputMonetario style={inp} placeholder={modalConcluir.op.custo_ha ? String(modalConcluir.op.custo_ha) : "Ex: 95,00"} value={fConc.custo_ha} onChange={v => setFConc(p => ({ ...p, custo_ha: v }))} />
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>

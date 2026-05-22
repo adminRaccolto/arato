@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
 import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento } from "../../../lib/db";
@@ -1601,15 +1602,15 @@ function ContasPagarInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                     <div>
                       <label style={lbl}>% Juros a.m.</label>
-                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.juros_pct} onChange={e => setForm(p => ({ ...p, juros_pct: e.target.value }))} />
+                      <InputMonetario style={inp} placeholder="0,00" value={form.juros_pct} onChange={v => setForm(p => ({ ...p, juros_pct: v }))} />
                     </div>
                     <div>
                       <label style={lbl}>% Multa por atraso</label>
-                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.multa_pct} onChange={e => setForm(p => ({ ...p, multa_pct: e.target.value }))} />
+                      <InputMonetario style={inp} placeholder="0,00" value={form.multa_pct} onChange={v => setForm(p => ({ ...p, multa_pct: v }))} />
                     </div>
                     <div>
                       <label style={lbl}>% Desc. Pontualidade</label>
-                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={form.desconto_pct} onChange={e => setForm(p => ({ ...p, desconto_pct: e.target.value }))} />
+                      <InputMonetario style={inp} placeholder="0,00" value={form.desconto_pct} onChange={v => setForm(p => ({ ...p, desconto_pct: v }))} />
                     </div>
                     <div>
                       <label style={lbl}>Meses Diferido</label>

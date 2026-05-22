@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputMonetario from "../../../components/InputMonetario";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -597,11 +598,11 @@ export default function ConsorciosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Valor do Crédito (R$)</label>
-                  <input type="number" step="0.01" min="0" value={cForm.valor_credito} onChange={e => setCForm(f => ({ ...f, valor_credito: e.target.value }))} style={inp} />
+                  <InputMonetario style={inp} value={cForm.valor_credito} onChange={v => setCForm(f => ({ ...f, valor_credito: v }))} />
                 </div>
                 <div>
                   <label style={lbl}>Parcela Mensal (R$)</label>
-                  <input type="number" step="0.01" min="0" value={cForm.valor_parcela_mensal} onChange={e => setCForm(f => ({ ...f, valor_parcela_mensal: e.target.value }))} style={inp} />
+                  <InputMonetario style={inp} value={cForm.valor_parcela_mensal} onChange={v => setCForm(f => ({ ...f, valor_parcela_mensal: v }))} />
                 </div>
                 <div>
                   <label style={lbl}>Total de Parcelas</label>
@@ -661,7 +662,7 @@ export default function ConsorciosPage() {
               </div>
               <div>
                 <label style={lbl}>Valor do Lance (R$) — se contemplado por lance</label>
-                <input type="number" step="0.01" min="0" value={contemplForm.valor_lance} onChange={e => setContemplForm(f => ({ ...f, valor_lance: e.target.value }))} style={inp} placeholder="0,00 se contemplado por sorteio" />
+                <InputMonetario style={inp} value={contemplForm.valor_lance} onChange={v => setContemplForm(f => ({ ...f, valor_lance: v }))} placeholder="0,00 se contemplado por sorteio" />
               </div>
               <div>
                 <label style={lbl}>Bem Adquirido</label>

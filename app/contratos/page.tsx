@@ -12,6 +12,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
 import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda } from "../../lib/supabase";
+import InputMonetario from "../../components/InputMonetario";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -1394,7 +1395,7 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={lbl}>Valor Frete (R$)</label>
-                      <input style={inp} type="number" step="0.01" value={fC.valor_frete||""} onChange={e => setFC(p=>({...p,valor_frete:parseFloat(e.target.value)||0}))} placeholder="0,00" />
+                      <InputMonetario style={inp} value={fC.valor_frete||""} onChange={v => setFC(p=>({...p,valor_frete:v}))} placeholder="0,00" />
                     </div>
                   </div>
 
@@ -1461,7 +1462,7 @@ export default function Contratos() {
                               <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodity(it.produto).kg_saca} kg/sc)</span>
                             </td>
                             <td style={{ padding:"6px 8px", width:120 }}>
-                              <input style={{ ...inp, textAlign:"right", fontSize:12 }} type="number" min="0" step="0.01" value={it.valor_unitario||""} onChange={e => atualizarItem(idx,"valor_unitario",e.target.value)} placeholder="0,00" />
+                              <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,00" />
                             </td>
                             <td style={{ padding:"6px 8px", width:130 }}>
                               <input style={{ ...inp, background:"#F4F6FA", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }}
@@ -1945,10 +1946,9 @@ export default function Contratos() {
                           </td>
                           <td style={{ padding:"8px" }}>
                             {sel ? (
-                              <input
-                                type="number" step="0.01" min="0" max={l.valor}
+                              <InputMonetario min="0" max={l.valor}
                                 value={valCessao}
-                                onChange={e => setCessaoSelecionados(p => ({ ...p, [l.id]: parseFloat(e.target.value)||0 }))}
+                                onChange={v => setCessaoSelecionados(p => ({ ...p, [l.id]: v }))}
                                 style={{ ...inp, textAlign:"right", width:110, padding:"4px 6px" }}
                               />
                             ) : (

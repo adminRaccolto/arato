@@ -277,7 +277,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, nomeProdutor, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, logoCliente } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, nomeProdutor, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -370,10 +370,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   // ── Renderiza item do dropdown (link, divider ou subgroup) ──
   function renderChild(child: NavChild, idx: number) {
-    // Filtra links/subgroups com módulo sem acesso
+    // Filtra links/subgroups com módulo sem acesso (por permissão de usuário OU por plano)
     if (child.type !== "divider") {
       const mid = (child as NavLink | NavSubgroup).moduleId;
       if (mid && !podeAcessar(mid)) return null;
+      if (mid && !podeAcessarPlano(mid)) return null;
     }
 
     // Divider
@@ -433,7 +434,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
               </div>
-              {sg.children.filter(gc => !gc.moduleId || podeAcessar(gc.moduleId)).map(gc => {
+              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || podeAcessarPlano(gc.moduleId))).map(gc => {
                 const ativoGc = isAtivo(gc.path);
                 return (
                   <Link
@@ -613,10 +614,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       {/* ── Faixa 2: navegação ── */}
       <nav style={{ display: "flex", alignItems: "center", padding: "0 16px", height: 40, gap: 2, background: "#1A5C38", overflow: "visible" }}>
         {NAV.map(item => {
-          // Filtra por permissão: grupo visível se ≥1 módulo mapeado for acessível
+          // Filtra por permissão de usuário E por plano: grupo visível se ≥1 módulo mapeado for acessível em ambos
           const navId  = item.type === "group" ? item.id : (item as NavLink).id;
           const modulos = NAV_MODULE_MAP[navId];
           if (modulos && !modulos.some(m => podeAcessar(m))) return null;
+          if (modulos && !modulos.some(m => podeAcessarPlano(m))) return null;
 
           // During onboarding, items with minStep > stepsCompletos are locked
           const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarAnosSafra } from "../../../lib/db";
@@ -977,7 +978,7 @@ export default function Planejamento() {
             </div>
             <div>
               <label style={lbl}>Área Total (ha)</label>
-              <input style={inp} type="number" step="0.01" placeholder="0,00" value={fOH.area_ha} onChange={e => setFOH(p => ({ ...p, area_ha: e.target.value }))} />
+              <InputMonetario style={inp} placeholder="0,00" value={fOH.area_ha} onChange={v => setFOH(p => ({ ...p, area_ha: v }))} />
             </div>
             <div>
               <label style={lbl}>Produtividade Esperada (sc/ha)</label>
@@ -985,7 +986,7 @@ export default function Planejamento() {
             </div>
             <div>
               <label style={lbl}>Preço de Referência (R$/sc)</label>
-              <input style={inp} type="number" step="0.01" placeholder="Ex: 130,00" value={fOH.preco_esperado_sc} onChange={e => setFOH(p => ({ ...p, preco_esperado_sc: e.target.value }))} />
+              <InputMonetario style={inp} placeholder="Ex: 130,00" value={fOH.preco_esperado_sc} onChange={v => setFOH(p => ({ ...p, preco_esperado_sc: v }))} />
             </div>
             {fOH.area_ha && fOH.produtividade_esperada && fOH.preco_esperado_sc && (
               <div style={{ gridColumn: "1/-1", background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
@@ -1036,7 +1037,7 @@ export default function Planejamento() {
             </div>
             <div>
               <label style={lbl}>Valor Unitário (R$)</label>
-              <input style={inp} type="number" step="0.01" placeholder="0,00" value={fOI.valor_unitario} onChange={e => setFOI(p => ({ ...p, valor_unitario: e.target.value }))} />
+              <InputMonetario style={inp} placeholder="0,00" value={fOI.valor_unitario} onChange={v => setFOI(p => ({ ...p, valor_unitario: v }))} />
             </div>
             {fOI.quantidade && fOI.valor_unitario && (
               <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>

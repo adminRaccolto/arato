@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
@@ -751,7 +752,7 @@ export default function CtePage() {
               </div>
               <div>
                 <label style={lbl}>Quantidade</label>
-                <input type="number" step="0.01" value={form.quantidade} onChange={e => setForm(f => ({ ...f, quantidade: e.target.value }))} style={inp} />
+                <InputMonetario value={form.quantidade} onChange={v => setForm(f => ({ ...f, quantidade: v }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Unidade</label>
@@ -761,15 +762,15 @@ export default function CtePage() {
               </div>
               <div>
                 <label style={lbl}>Valor da Mercadoria (R$)</label>
-                <input type="number" step="0.01" value={form.valor_mercadoria} onChange={e => setForm(f => ({ ...f, valor_mercadoria: e.target.value }))} style={inp} />
+                <InputMonetario value={form.valor_mercadoria} onChange={v => setForm(f => ({ ...f, valor_mercadoria: v }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Peso Bruto (kg)</label>
-                <input type="number" step="0.01" value={form.peso_bruto_kg} onChange={e => setForm(f => ({ ...f, peso_bruto_kg: e.target.value }))} style={inp} />
+                <InputMonetario value={form.peso_bruto_kg} onChange={v => setForm(f => ({ ...f, peso_bruto_kg: v }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Peso Líquido (kg)</label>
-                <input type="number" step="0.01" value={form.peso_liquido_kg} onChange={e => setForm(f => ({ ...f, peso_liquido_kg: e.target.value }))} style={inp} />
+                <InputMonetario value={form.peso_liquido_kg} onChange={v => setForm(f => ({ ...f, peso_liquido_kg: v }))} style={inp} />
               </div>
 
               {/* ── Veículo & Motorista ── */}
@@ -794,7 +795,7 @@ export default function CtePage() {
               <div style={divider}>Valores & ICMS</div>
               <div>
                 <label style={lbl}>Valor do Frete (prestação) (R$)</label>
-                <input type="number" step="0.01" value={form.valor_frete} onChange={e => setForm(f => ({ ...f, valor_frete: e.target.value }))} style={inp} />
+                <InputMonetario value={form.valor_frete} onChange={v => setForm(f => ({ ...f, valor_frete: v }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Alíquota ICMS (%)</label>

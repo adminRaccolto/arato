@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
 import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantios, excluirPlantio, atualizarPlantio } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
@@ -312,7 +313,7 @@ export default function PlantioPage() {
               </div>
               <div>
                 <label style={lbl}>Dose (kg/ha)</label>
-                <input style={inp} type="number" step="0.01" placeholder="Ex: 55" value={f.dose_kg_ha} onChange={e => setF(p => ({ ...p, dose_kg_ha: e.target.value }))} />
+                <InputMonetario style={inp} placeholder="Ex: 55" value={f.dose_kg_ha} onChange={v => setF(p => ({ ...p, dose_kg_ha: v }))} />
               </div>
             </div>
 
@@ -350,7 +351,7 @@ export default function PlantioPage() {
               </div>
               <div>
                 <label style={lbl}>Preço Esperado ({f.moeda === "USD" ? "US$/sc" : "R$/sc"})</label>
-                <input style={inp} type="number" step="0.01" placeholder={f.moeda === "USD" ? "Ex: 10,50" : "Ex: 130,00"} value={f.preco_esperado_sc} onChange={e => setF(p => ({ ...p, preco_esperado_sc: e.target.value }))} />
+                <InputMonetario style={inp} placeholder={f.moeda === "USD" ? "Ex: 10,50" : "Ex: 130,00"} value={f.preco_esperado_sc} onChange={v => setF(p => ({ ...p, preco_esperado_sc: v }))} />
               </div>
               {/* Preview */}
               {(qtdKg || custoSementes || receitaEsperada) && (

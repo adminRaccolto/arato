@@ -2,6 +2,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { calcularStepsCompletos } from "../lib/onboarding";
+import { planoInclui } from "../lib/planos";
+import type { PlanoId } from "../lib/planos";
 import { useRouter } from "next/navigation";
 
 const INACTIVITY_MS  = 30 * 60 * 1000; // 30 minutos
@@ -22,11 +24,16 @@ type AuthCtx = {
   logoCliente:            string | null;   // logo da conta (por cliente SaaS)
   onboardingAtivo:        boolean;
   stepsCompletos:         number;
+  // Plano SaaS
+  planoAtual:             PlanoId | null;
+  contaStatus:            string | null;   // 'trial' | 'ativo' | 'inadimplente' | 'inativo' | 'cancelado'
+  inadimplente:           boolean;
   // Permissões por módulo do grupo do usuário
   permissoes:             Record<string, ModuloPermissao>;
   // Helpers
   podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
   podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
+  podeAcessarPlano:       (modulo: string) => boolean;  // false se módulo não está no plano
   refetchOnboarding:      () => void;
   selectFazenda:          (id: string, fazendaNome: string, produtorNome?: string | null) => void;
   setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
@@ -46,9 +53,13 @@ const Ctx = createContext<AuthCtx>({
   logoCliente:            null,
   onboardingAtivo:        false,
   stepsCompletos:         0,
+  planoAtual:             null,
+  contaStatus:            null,
+  inadimplente:           false,
   permissoes:             {},
   podeAcessar:            () => true,
   podeEscrever:           () => true,
+  podeAcessarPlano:       () => true,
   refetchOnboarding:      () => {},
   selectFazenda:          () => {},
   setFazendaAtiva:        async () => {},
@@ -71,6 +82,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [stepsCompletos,         setStepsCompletos]         = useState<number>(0);
   const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
   const [logoCliente,            setLogoCliente]            = useState<string | null>(null);
+  const [planoAtual,             setPlanoAtual]             = useState<PlanoId | null>(null);
+  const [contaStatus,            setContaStatus]            = useState<string | null>(null);
   const router = useRouter();
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -166,6 +179,21 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const cid: string | null = (perfil as { conta_id?: string } | null)?.conta_id ?? null;
       setFazendaId(fid);
       setContaId(cid);
+
+      // Carrega plano e status da conta
+      if (cid) {
+        try {
+          const { data: conta } = await supabase
+            .from("contas")
+            .select("pacote, status")
+            .eq("id", cid)
+            .maybeSingle();
+          if (conta) {
+            setPlanoAtual((conta.pacote as PlanoId) ?? null);
+            setContaStatus(conta.status ?? null);
+          }
+        } catch { /* ignora — conta pode não ter campo ainda */ }
+      }
 
       // Carrega permissões do grupo do usuário
       try {
@@ -286,6 +314,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return (p as string) === "escrita";
   }, [permissoes]);
 
+  // raccotlo tem acesso irrestrito a tudo; clientes verificam o plano
+  const podeAcessarPlano = useCallback((modulo: string) => {
+    if (userRole === "raccotlo") return true;
+    if (!planoAtual) return true; // sem plano carregado ainda → não bloqueia
+    return planoInclui(planoAtual, modulo);
+  }, [planoAtual, userRole]);
+
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)
   const setFazendaAtiva = useCallback(async (id: string, nome: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -307,12 +342,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  const inadimplente = contaStatus === "inadimplente";
+
   return (
     <Ctx.Provider value={{
       fazendaId, contaId, nomeUsuario, emailUsuario, userRole,
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
-      permissoes, podeAcessar, podeEscrever,
+      planoAtual, contaStatus, inadimplente,
+      permissoes, podeAcessar, podeEscrever, podeAcessarPlano,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>
       {children}

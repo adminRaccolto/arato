@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import TopNav from "../../components/TopNav";
+import InputMonetario from "../../components/InputMonetario";
 import {
   listarInsumos, criarInsumo, excluirInsumos,
   listarMovimentacoes, criarMovimentacaoManual,
@@ -1497,7 +1498,7 @@ export default function Estoque() {
                 </select>
               </div>
               <div style={{ gridColumn: "1/3" }}><label style={lbl}>Fabricante / Marca</label><input style={inp} value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} /></div>
-              <div><label style={lbl}>Custo médio (R$/unid)</label><input style={inp} type="number" step="0.01" value={fIns.valor_unitario} onChange={e => setFIns(p => ({ ...p, valor_unitario: e.target.value }))} /></div>
+              <div><label style={lbl}>Custo médio (R$/unid)</label><InputMonetario style={inp} value={fIns.valor_unitario} onChange={v => setFIns(p => ({ ...p, valor_unitario: v }))} /></div>
               <div><label style={lbl}>Estoque inicial</label><input style={inp} type="number" step="0.001" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} /></div>
               <div><label style={lbl}>Estoque mínimo</label><input style={inp} type="number" step="0.001" value={fIns.estoque_minimo} onChange={e => setFIns(p => ({ ...p, estoque_minimo: e.target.value }))} /></div>
               <div />
@@ -1577,7 +1578,7 @@ export default function Estoque() {
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Emitente (Fornecedor) *</label><input style={inp} value={fNf.emitente_nome} onChange={e => setFNf(p => ({ ...p, emitente_nome: e.target.value }))} /></div>
             <div><label style={lbl}>CNPJ do Emitente</label><input style={inp} value={fNf.emitente_cnpj} onChange={e => setFNf(p => ({ ...p, emitente_cnpj: e.target.value }))} /></div>
             <div><label style={lbl}>Data de Emissão *</label><input style={inp} type="date" value={fNf.data_emissao} onChange={e => setFNf(p => ({ ...p, data_emissao: e.target.value }))} /></div>
-            <div><label style={lbl}>Valor Total (R$)</label><input style={inp} type="number" step="0.01" value={fNf.valor_total} onChange={e => setFNf(p => ({ ...p, valor_total: e.target.value }))} /></div>
+            <div><label style={lbl}>Valor Total (R$)</label><InputMonetario style={inp} value={fNf.valor_total} onChange={v => setFNf(p => ({ ...p, valor_total: v }))} /></div>
             <div><label style={lbl}>Chave de Acesso</label><input style={inp} value={fNf.chave_acesso} onChange={e => setFNf(p => ({ ...p, chave_acesso: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Natureza da Operação</label><input style={inp} placeholder="Ex: Compra de defensivos" value={fNf.natureza} onChange={e => setFNf(p => ({ ...p, natureza: e.target.value }))} /></div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Observação</label><input style={inp} value={fNf.observacao} onChange={e => setFNf(p => ({ ...p, observacao: e.target.value }))} /></div>
@@ -1619,7 +1620,7 @@ export default function Estoque() {
                   <div><label style={lbl}>CFOP</label><input style={{ ...inp, textAlign: "center" }} placeholder="1102" value={item.cfop} onChange={e => atualizarItem(item.key, { cfop: e.target.value })} /></div>
                   <div><label style={lbl}>Unidade</label><input style={{ ...inp, textAlign: "center" }} value={item.unidade} onChange={e => atualizarItem(item.key, { unidade: e.target.value })} /></div>
                   <div><label style={lbl}>Quantidade</label><input style={{ ...inp, textAlign: "right" }} type="number" step="0.001" value={item.quantidade} onChange={e => atualizarItem(item.key, { quantidade: parseFloat(e.target.value) || 0 })} /></div>
-                  <div><label style={lbl}>Vl. Unitário (R$)</label><input style={{ ...inp, textAlign: "right" }} type="number" step="0.01" value={item.valor_unitario} onChange={e => atualizarItem(item.key, { valor_unitario: parseFloat(e.target.value) || 0 })} /></div>
+                  <div><label style={lbl}>Vl. Unitário (R$)</label><InputMonetario style={{ ...inp, textAlign: "right" }} value={item.valor_unitario} onChange={v => atualizarItem(item.key, { valor_unitario: v })} /></div>
                 </div>
 
                 {/* linha 2: apropriação */}

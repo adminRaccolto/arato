@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputMonetario from "../../../components/InputMonetario";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -601,11 +602,11 @@ export default function SegurosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Importância Segurada (R$)</label>
-                  <input type="number" step="0.01" min="0" value={aForm.importancia_segurada} onChange={e => setAForm(f => ({ ...f, importancia_segurada: e.target.value }))} style={inp} />
+                  <InputMonetario style={inp} value={aForm.importancia_segurada} onChange={v => setAForm(f => ({ ...f, importancia_segurada: v }))} />
                 </div>
                 <div>
                   <label style={lbl}>Prêmio Anual (R$)</label>
-                  <input type="number" step="0.01" min="0" value={aForm.premio_anual} onChange={e => setAForm(f => ({ ...f, premio_anual: e.target.value }))} style={inp} />
+                  <InputMonetario style={inp} value={aForm.premio_anual} onChange={v => setAForm(f => ({ ...f, premio_anual: v }))} />
                 </div>
                 <div>
                   <label style={lbl}>Forma de Pagamento</label>
@@ -681,11 +682,11 @@ export default function SegurosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Valor Reclamado (R$)</label>
-                  <input type="number" step="0.01" min="0" value={sForm.valor_reclamado} onChange={e => setSForm(f => ({ ...f, valor_reclamado: e.target.value }))} style={inp} />
+                  <InputMonetario style={inp} value={sForm.valor_reclamado} onChange={v => setSForm(f => ({ ...f, valor_reclamado: v }))} />
                 </div>
                 <div>
                   <label style={lbl}>Valor Indenizado (R$)</label>
-                  <input type="number" step="0.01" min="0" value={sForm.valor_indenizado} onChange={e => setSForm(f => ({ ...f, valor_indenizado: e.target.value }))} style={inp} />
+                  <InputMonetario style={inp} value={sForm.valor_indenizado} onChange={v => setSForm(f => ({ ...f, valor_indenizado: v }))} />
                 </div>
                 <div>
                   <label style={lbl}>Nº de Protocolo</label>

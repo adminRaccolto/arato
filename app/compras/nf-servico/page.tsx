@@ -5,6 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra } from "../../../lib/supabase";
 import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
+import InputMonetario from "../../../components/InputMonetario";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos
@@ -629,11 +630,11 @@ export default function NfServicoPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Valor do Serviço (R$) *</label>
-                      <input type="number" step="0.01" value={cab.valor_servico} onChange={e => setCab(p=>({...p,valor_servico:e.target.value}))} placeholder="0,00" style={inp} />
+                      <InputMonetario value={cab.valor_servico} onChange={v => setCab(p => ({ ...p, valor_servico: String(v) }))} placeholder="0,00" style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Deduções — materiais/subempreitadas (R$)</label>
-                      <input type="number" step="0.01" value={cab.valor_deducoes} onChange={e => setCab(p=>({...p,valor_deducoes:e.target.value}))} placeholder="0,00" style={inp} />
+                      <InputMonetario value={cab.valor_deducoes} onChange={v => setCab(p => ({ ...p, valor_deducoes: String(v) }))} placeholder="0,00" style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Base de Cálculo ISS (R$)</label>
@@ -643,7 +644,7 @@ export default function NfServicoPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Alíquota ISS (%)</label>
-                      <input type="number" step="0.01" min="0" max="5" value={cab.aliquota_iss} onChange={e => setCab(p=>({...p,aliquota_iss:e.target.value}))} style={inp} />
+                      <InputMonetario min="0" max="5" value={cab.aliquota_iss} onChange={v => setCab(p => ({ ...p, aliquota_iss: String(v) }))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Valor do ISS (R$)</label>
@@ -671,15 +672,15 @@ export default function NfServicoPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={lbl}>INSS Retido (R$)</label>
-                        <input type="number" step="0.01" value={cab.valor_inss} onChange={e => setCab(p=>({...p,valor_inss:e.target.value}))} placeholder="0,00" style={inp} />
+                        <InputMonetario value={cab.valor_inss} onChange={v => setCab(p => ({ ...p, valor_inss: String(v) }))} placeholder="0,00" style={inp} />
                       </div>
                       <div>
                         <label style={lbl}>IR Retido (R$)</label>
-                        <input type="number" step="0.01" value={cab.valor_ir} onChange={e => setCab(p=>({...p,valor_ir:e.target.value}))} placeholder="0,00" style={inp} />
+                        <InputMonetario value={cab.valor_ir} onChange={v => setCab(p => ({ ...p, valor_ir: String(v) }))} placeholder="0,00" style={inp} />
                       </div>
                       <div>
                         <label style={lbl}>Outras Retenções — CSLL/PIS/COFINS (R$)</label>
-                        <input type="number" step="0.01" value={cab.valor_outras_retencoes} onChange={e => setCab(p=>({...p,valor_outras_retencoes:e.target.value}))} placeholder="0,00" style={inp} />
+                        <InputMonetario value={cab.valor_outras_retencoes} onChange={v => setCab(p => ({ ...p, valor_outras_retencoes: String(v) }))} placeholder="0,00" style={inp} />
                       </div>
                     </div>
                   </div>

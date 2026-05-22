@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
+import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
@@ -537,11 +538,11 @@ export default function MdfePage() {
               <div style={divider}>Dados da Carga (opcional)</div>
               <div>
                 <label style={lbl}>Peso Total (kg)</label>
-                <input type="number" step="0.01" value={form.peso_total_kg} onChange={e => setForm(f => ({ ...f, peso_total_kg: e.target.value }))} style={inp} />
+                <InputMonetario value={form.peso_total_kg} onChange={v => setForm(f => ({ ...f, peso_total_kg: v }))} style={inp} />
               </div>
               <div>
                 <label style={lbl}>Valor Total da Carga (R$)</label>
-                <input type="number" step="0.01" value={form.valor_total_carga} onChange={e => setForm(f => ({ ...f, valor_total_carga: e.target.value }))} style={inp} />
+                <InputMonetario value={form.valor_total_carga} onChange={v => setForm(f => ({ ...f, valor_total_carga: v }))} style={inp} />
               </div>
               <div />
               <div style={{ gridColumn: "1 / -1" }}>

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
+import InputMonetario from "../../components/InputMonetario";
 import { useAuth } from "../../components/AuthProvider";
 import { listarLancamentos } from "../../lib/db";
 import type { Lancamento } from "../../lib/supabase";
@@ -466,7 +467,7 @@ export default function LCDPR() {
               </div>
               <div>
                 <label style={lblS}>Valor R$ *</label>
-                <input style={inpS} type="number" step="0.01" value={fManual.valor} onChange={e => setFManual(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" />
+                <InputMonetario style={inpS} value={fManual.valor} onChange={v => setFManual(p => ({ ...p, valor: v }))} placeholder="0,00" />
               </div>
               <div>
                 <label style={lblS}>Documento</label>

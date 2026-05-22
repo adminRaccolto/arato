@@ -10,6 +10,7 @@ import {
   listarOperacoesGerenciais, criarLancamento, excluirLancamento,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial } from "../../lib/supabase";
+import InputMonetario from "../../components/InputMonetario";
 
 // ── Estilos base ─────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -914,14 +915,14 @@ export default function ComprasPage() {
                           </div>
                           <div>
                             <label style={{ ...lbl, color: "#7A5200" }}>Preço negociado (R$/sc)</label>
-                            <input
-                              style={inp} type="number" min="0" step="0.01"
+                            <InputMonetario
+                              style={inp} min="0"
                               placeholder={(() => {
                                 const c = ciclos.find(x => x.id === f.barter_ciclo_id);
                                 return c?.preco_esperado_sc ? `Projeção: R$ ${c.preco_esperado_sc.toFixed(2)}` : "R$/sc";
                               })()}
                               value={f.barter_preco_saca}
-                              onChange={e => setF(p => ({ ...p, barter_preco_saca: e.target.value }))}
+                              onChange={v => setF(p => ({ ...p, barter_preco_saca: String(v) }))}
                             />
                           </div>
                         </div>
@@ -996,7 +997,7 @@ export default function ComprasPage() {
                                   <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" value={it.quantidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: e.target.value } : x))} placeholder="0" />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
-                                  <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.01" value={it.valor_unitario} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: e.target.value } : x))} placeholder="0,00" />
+                                  <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right" }} value={it.valor_unitario} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(v) } : x))} placeholder="0,00" />
                                 </td>
                                 <td style={{ padding: "5px 6px", textAlign: "right", width: 100, color: "#1A4870", fontWeight: 600 }}>
                                   {calcItem(it) > 0 ? fmtMoeda(calcItem(it), f.cotacao_moeda) : "—"}
@@ -1049,15 +1050,15 @@ export default function ComprasPage() {
               {abaModal === "desconto" && (<>
                 <div style={secTit}>Antecipação, Pontualidade e Juros</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-                  <div><label style={lbl}>Antec. e Juros (%)</label><input style={inp} type="number" step="0.01" value={f.antecipacao_juros_pct} onChange={e => setF(p => ({ ...p, antecipacao_juros_pct: e.target.value }))} /></div>
-                  <div><label style={lbl}>% Desc. Antecip.</label><input style={inp} type="number" step="0.01" value={f.desc_antecipacao_pct} onChange={e => setF(p => ({ ...p, desc_antecipacao_pct: e.target.value }))} /></div>
-                  <div><label style={lbl}>% Desc. Pontual.</label><input style={inp} type="number" step="0.01" value={f.desc_pontualidade_pct} onChange={e => setF(p => ({ ...p, desc_pontualidade_pct: e.target.value }))} /></div>
-                  <div><label style={lbl}>Acréscimos (R$)</label><input style={inp} type="number" step="0.01" value={f.acrescimos_valor} onChange={e => setF(p => ({ ...p, acrescimos_valor: e.target.value }))} /></div>
+                  <div><label style={lbl}>Antec. e Juros (%)</label><InputMonetario style={inp} value={f.antecipacao_juros_pct} onChange={v => setF(p => ({ ...p, antecipacao_juros_pct: String(v) }))} /></div>
+                  <div><label style={lbl}>% Desc. Antecip.</label><InputMonetario style={inp} value={f.desc_antecipacao_pct} onChange={v => setF(p => ({ ...p, desc_antecipacao_pct: String(v) }))} /></div>
+                  <div><label style={lbl}>% Desc. Pontual.</label><InputMonetario style={inp} value={f.desc_pontualidade_pct} onChange={v => setF(p => ({ ...p, desc_pontualidade_pct: String(v) }))} /></div>
+                  <div><label style={lbl}>Acréscimos (R$)</label><InputMonetario style={inp} value={f.acrescimos_valor} onChange={v => setF(p => ({ ...p, acrescimos_valor: String(v) }))} /></div>
                 </div>
                 <div style={secTit}>Descontos</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                  <div><label style={lbl}>% Desconto</label><input style={inp} type="number" step="0.01" value={f.desconto_pct} onChange={e => setF(p => ({ ...p, desconto_pct: e.target.value }))} /></div>
-                  <div><label style={lbl}>Valor Desconto (R$)</label><input style={inp} type="number" step="0.01" value={f.desconto_valor} onChange={e => setF(p => ({ ...p, desconto_valor: e.target.value }))} /></div>
+                  <div><label style={lbl}>% Desconto</label><InputMonetario style={inp} value={f.desconto_pct} onChange={v => setF(p => ({ ...p, desconto_pct: String(v) }))} /></div>
+                  <div><label style={lbl}>Valor Desconto (R$)</label><InputMonetario style={inp} value={f.desconto_valor} onChange={v => setF(p => ({ ...p, desconto_valor: String(v) }))} /></div>
                   <div><label style={lbl}>Comprador</label>
                     <select style={inp} value={f.comprador_id} onChange={e => setF(p => ({ ...p, comprador_id: e.target.value }))}>
                       <option value="">—</option>
@@ -1072,7 +1073,7 @@ export default function ComprasPage() {
                       <option>Pago</option><option>CIF</option><option>FOB</option><option>Isento</option>
                     </select>
                   </div>
-                  <div><label style={lbl}>Total Frete (R$)</label><input style={inp} type="number" step="0.01" value={f.frete_total} onChange={e => setF(p => ({ ...p, frete_total: e.target.value }))} /></div>
+                  <div><label style={lbl}>Total Frete (R$)</label><InputMonetario style={inp} value={f.frete_total} onChange={v => setF(p => ({ ...p, frete_total: String(v) }))} /></div>
                 </div>
               </>)}
 

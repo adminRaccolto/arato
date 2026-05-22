@@ -5,6 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarAnosSafra, criarLancamento, listarProdutores } from "../../../lib/db";
 import type { AnoSafra } from "../../../lib/supabase";
+import InputMonetario from "../../../components/InputMonetario";
 
 // ── tipos ─────────────────────────────────────────────────
 type FormaPage = "sc_soja" | "sc_milho" | "sc_soja_milho" | "brl";
@@ -1215,8 +1216,8 @@ export default function Arrendamentos() {
             {/* Área e forma */}
             <div>
               <label style={lbl}>Área Arrendada (ha) *</label>
-              <input style={inp} type="number" step="0.01" value={fC.area_ha}
-                onChange={e => setFC(f => ({ ...f, area_ha: e.target.value }))}
+              <InputMonetario style={inp} value={fC.area_ha}
+                onChange={v => setFC(f => ({ ...f, area_ha: String(v) }))}
                 placeholder="Ex: 250,00" />
             </div>
             <div>
@@ -1263,8 +1264,8 @@ export default function Arrendamentos() {
                 </div>
                 <div>
                   <label style={lbl}>Valor R$/ano base (opcional — calculado nas parcelas)</label>
-                  <input style={inp} type="number" step="0.01" value={fC.valor_brl}
-                    onChange={e => setFC(f => ({ ...f, valor_brl: e.target.value }))}
+                  <InputMonetario style={inp} value={fC.valor_brl}
+                    onChange={v => setFC(f => ({ ...f, valor_brl: String(v) }))}
                     placeholder="Calculado automaticamente via cotação nas parcelas" />
                 </div>
               </>
@@ -1414,7 +1415,7 @@ export default function Arrendamentos() {
                   </div>
                   <div>
                     <label style={lbl}>Preço R$/sc (referência)</label>
-                    <input style={inp} type="number" step="0.01" value={fP.preco_sc_referencia} onChange={e => setFP(p => ({ ...p, preco_sc_referencia: e.target.value }))} placeholder="Ex: 130,00" />
+                    <InputMonetario style={inp} value={fP.preco_sc_referencia} onChange={v => setFP(p => ({ ...p, preco_sc_referencia: String(v) }))} placeholder="Ex: 130,00" />
                   </div>
                   <div>
                     <label style={lbl}>Sacas Efetivamente Entregues</label>
@@ -1424,12 +1425,12 @@ export default function Arrendamentos() {
                 {!ehSc && <>
                   <div>
                     <label style={lbl}>Valor Previsto (R$)</label>
-                    <input style={inp} type="number" step="0.01" value={fP.valor_previsto} onChange={e => setFP(p => ({ ...p, valor_previsto: e.target.value }))}
+                    <InputMonetario style={inp} value={fP.valor_previsto} onChange={v => setFP(p => ({ ...p, valor_previsto: String(v) }))}
                       placeholder={selArr.valor_brl ? String(selArr.valor_brl) : "0,00"} />
                   </div>
                   <div>
                     <label style={lbl}>Valor Pago (R$)</label>
-                    <input style={inp} type="number" step="0.01" value={fP.valor_pago} onChange={e => setFP(p => ({ ...p, valor_pago: e.target.value }))} />
+                    <InputMonetario style={inp} value={fP.valor_pago} onChange={v => setFP(p => ({ ...p, valor_pago: String(v) }))} />
                   </div>
                 </>}
                 <div>
@@ -1543,8 +1544,8 @@ export default function Arrendamentos() {
                           {totalSoja > 0 ? `${fmtN(totalSoja, 1)} sc` : "—"}
                         </td>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <input style={inpSm} type="number" step="0.01" placeholder="R$/sc" value={cfg.preco_soja}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_soja: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_soja}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_soja: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
                           <input style={inpSm} type="date" value={cfg.dt_venc_soja}
@@ -1561,8 +1562,8 @@ export default function Arrendamentos() {
                           {totalMilho > 0 ? `${fmtN(totalMilho, 1)} sc` : "—"}
                         </td>
                         <td style={{ padding: "6px 8px", background: "#F0F6FE" }}>
-                          <input style={inpSm} type="number" step="0.01" placeholder="R$/sc" value={cfg.preco_milho}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_milho: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_milho}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_milho: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#F0F6FE" }}>
                           <input style={inpSm} type="date" value={cfg.dt_venc_milho}
@@ -1577,8 +1578,8 @@ export default function Arrendamentos() {
                             onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_soja_ha: e.target.value } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <input style={inpSm} type="number" step="0.01" placeholder="R$/sc" value={cfg.preco_soja}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_soja: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_soja}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_soja: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", textAlign: "right", background: "#FAFEF8" }}>
                           {totalSoja > 0 && precoSojaN > 0
@@ -1595,8 +1596,8 @@ export default function Arrendamentos() {
                             onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_milho_ha: e.target.value } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
-                          <input style={inpSm} type="number" step="0.01" placeholder="R$/sc" value={cfg.preco_milho}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_milho: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_milho}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, preco_milho: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", textAlign: "right", background: "#EBF3FC" }}>
                           {totalMilho > 0 && precoMilhoN > 0

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputMonetario from "../../../components/InputMonetario";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -275,11 +276,11 @@ export default function TesourariaPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={lbl}>Saldo Atual (R$)</label>
-                        <input type="number" step="0.01" value={lForm.saldo_atual} onChange={e => setLForm(f => ({ ...f, saldo_atual: e.target.value }))} style={inp} placeholder="0.00" />
+                        <InputMonetario style={inp} placeholder="0,00" value={lForm.saldo_atual} onChange={v => setLForm(f => ({ ...f, saldo_atual: v }))} />
                       </div>
                       <div>
                         <label style={lbl}>Saldo Correto (R$)</label>
-                        <input type="number" step="0.01" value={lForm.saldo_correto} onChange={e => setLForm(f => ({ ...f, saldo_correto: e.target.value }))} style={inp} placeholder="0.00" />
+                        <InputMonetario style={inp} placeholder="0,00" value={lForm.saldo_correto} onChange={v => setLForm(f => ({ ...f, saldo_correto: v }))} />
                       </div>
                     </div>
                     {lForm.saldo_atual && lForm.saldo_correto && (
@@ -318,7 +319,7 @@ export default function TesourariaPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={lbl}>Valor (R$)</label>
-                        <input type="number" step="0.01" min="0" value={lForm.valor} onChange={e => setLForm(f => ({ ...f, valor: e.target.value }))} style={inp} />
+                        <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
                       </div>
                       <div>
                         <label style={lbl}>Data</label>
@@ -354,7 +355,7 @@ export default function TesourariaPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={lbl}>Valor (R$)</label>
-                        <input type="number" step="0.01" min="0" value={lForm.valor} onChange={e => setLForm(f => ({ ...f, valor: e.target.value }))} style={inp} />
+                        <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
                       </div>
                       <div>
                         <label style={lbl}>Data</label>

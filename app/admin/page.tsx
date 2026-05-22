@@ -4,6 +4,8 @@ import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { listarContasAdmin, atualizarConta } from "../../lib/db";
 import type { Conta } from "../../lib/supabase";
+import { PLANOS_DEFAULT, fmtPreco, descontoAnual } from "../../lib/planos";
+import type { PlanoId } from "../../lib/planos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Painel Administrativo — Arato (sistema)
@@ -235,10 +237,138 @@ function ModalCliente({ conta, onClose, onSalvo }: ModalClienteProps) {
   );
 }
 
+// ── Aba Planos ────────────────────────────────────────────────────────────────
+const MODULOS_LABEL: Record<string, string> = {
+  cadastros: "Cadastros", propriedades: "Fazendas & Talhões",
+  lavoura_plantio: "Plantio", lavoura_pulv: "Pulverização", lavoura_colheita: "Colheita", lavoura_plan: "Planejamento",
+  estoque: "Estoque", fin_pagar: "Contas a Pagar", fin_receber: "Contas a Receber",
+  custos: "DRE Agrícola", fin_relatorios: "Rel. Financeiros", configuracoes: "Configurações",
+  contratos: "Contratos de Grãos", expedicao: "Expedição", arrendamento: "Arrendamentos",
+  compras: "Pedidos de Compra", nf_entrada: "NF de Entrada", nf_servico: "NF de Serviços",
+  fin_contratos: "Contratos Financeiros", fin_tesouraria: "Tesouraria", fin_seguros: "Seguros",
+  transporte: "CT-e / MDF-e", usuarios: "Gestão de Usuários",
+  fiscal_nfe: "Emissão NF-e (SEFAZ)", fiscal_sped: "SPED ECD / LCDPR",
+  bi: "BI — Raccotlo Intelligence",
+};
+
+const ORDEM_PLANOS: PlanoId[] = ["essencial", "gestao", "performance"];
+
+function AbaPlanos() {
+  const [editando, setEditando] = useState<PlanoId | null>(null);
+  const [form, setForm] = useState<typeof PLANOS_DEFAULT.essencial | null>(null);
+
+  function iniciarEdicao(pid: PlanoId) {
+    setEditando(pid);
+    setForm({ ...PLANOS_DEFAULT[pid] });
+  }
+
+  return (
+    <div>
+      <div style={{ background: "#FFF9F0", border: "0.5px solid #C9921B50", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 12, color: "#7A5A12" }}>
+        <strong>Atenção:</strong> Alterações aqui afetam apenas o código local (<code>lib/planos.ts</code>).
+        Para alterar preços em produção, atualize diretamente a tabela <code>planos</code> no Supabase SQL Editor.
+      </div>
+
+      {/* Visão geral dos planos */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+        {ORDEM_PLANOS.map(pid => {
+          const p = PLANOS_DEFAULT[pid];
+          const desconto = descontoAnual(p);
+          return (
+            <div key={pid} style={{ background: "#fff", borderRadius: 10, border: pid === "gestao" ? "2px solid #1A4870" : "0.5px solid #D4DCE8", padding: "18px 20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50" }}>{p.nome}</div>
+                  <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{p.descricao}</div>
+                </div>
+                {pid === "gestao" && <span style={{ fontSize: 10, background: "#1A4870", color: "#fff", borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>Popular</span>}
+              </div>
+
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, color: "#0B2D50" }}>{fmtPreco(p.preco_mensal)}</span>
+                  <span style={{ fontSize: 11, color: "#888" }}>/mês</span>
+                </div>
+                <div style={{ fontSize: 11, color: "#16A34A" }}>{fmtPreco(p.preco_anual)}/ano · economize {desconto}%</div>
+              </div>
+
+              <div style={{ fontSize: 11, color: "#555", marginBottom: 12 }}>
+                Trial: {p.trial_dias} dias · Usuários: {p.limite_usuarios ?? "∞"}
+              </div>
+
+              <div style={{ borderTop: "0.5px solid #EEF1F6", paddingTop: 10, marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Módulos ({p.modulos.length})</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {p.modulos.map(m => (
+                    <span key={m} style={{ fontSize: 10, background: "#F0F7FF", color: "#1A4870", borderRadius: 4, padding: "2px 6px", border: "0.5px solid #C5DFF5" }}>
+                      {MODULOS_LABEL[m] ?? m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={() => iniciarEdicao(pid)}
+                style={{ width: "100%", padding: "8px 0", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer", fontWeight: 600 }}
+              >
+                Visualizar detalhes
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Tabela comparativa de módulos */}
+      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden", marginBottom: 20 }}>
+        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>Módulos por plano</div>
+          <div style={{ fontSize: 11, color: "#888" }}>Altere a tabela <code>planos</code> no Supabase para ajustar em produção</div>
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#F3F6F9" }}>
+              <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", width: "40%" }}>Módulo</th>
+              {ORDEM_PLANOS.map(pid => (
+                <th key={pid} style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, fontWeight: 700, color: "#1A4870", width: "20%" }}>{PLANOS_DEFAULT[pid].nome}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Object.keys(MODULOS_LABEL).map((modulo, i) => (
+              <tr key={modulo} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                <td style={{ padding: "9px 16px", fontSize: 12, color: "#333" }}>{MODULOS_LABEL[modulo]}</td>
+                {ORDEM_PLANOS.map(pid => (
+                  <td key={pid} style={{ padding: "9px 14px", textAlign: "center" }}>
+                    {PLANOS_DEFAULT[pid].modulos.includes(modulo)
+                      ? <span style={{ color: "#16A34A", fontSize: 14 }}>✓</span>
+                      : <span style={{ color: "#D4DCE8", fontSize: 12 }}>—</span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* SQL para atualizar preços */}
+      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "16px 20px" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#0B2D50", marginBottom: 12 }}>SQL para atualizar preços no Supabase</div>
+        <pre style={{ fontSize: 11, background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", overflow: "auto", color: "#333", margin: 0, lineHeight: 1.6 }}>{`-- Execute no Supabase SQL Editor para atualizar os preços:
+UPDATE planos SET preco_mensal = 387,  preco_anual = 3480  WHERE id = 'essencial';
+UPDATE planos SET preco_mensal = 1197, preco_anual = 10770 WHERE id = 'gestao';
+UPDATE planos SET preco_mensal = 1787, preco_anual = 16080 WHERE id = 'performance';
+
+-- Para alterar módulos de um plano:
+UPDATE planos SET modulos = ARRAY['cadastros','propriedades','lavoura_plantio',...] WHERE id = 'essencial';`}</pre>
+      </div>
+    </div>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function Admin() {
   const { fazendaId } = useAuth();
-  type Aba = "clientes" | "identidade";
+  type Aba = "clientes" | "planos" | "identidade";
   const [aba, setAba] = useState<Aba>("clientes");
 
   // ── Estado — Clientes ──────────────────────────────────────────────────────
@@ -326,6 +456,7 @@ export default function Admin() {
 
   const ABAS: { key: Aba; label: string }[] = [
     { key: "clientes",   label: `Clientes (${clientes.length})` },
+    { key: "planos",     label: "Planos & Preços" },
     { key: "identidade", label: "Identidade Arato" },
   ];
 
@@ -533,6 +664,9 @@ export default function Admin() {
             </div>
           </div>
         )}
+
+        {/* ── ABA PLANOS ────────────────────────────────────────────────────── */}
+        {aba === "planos" && <AbaPlanos />}
 
         {/* ── ABA IDENTIDADE ────────────────────────────────────────────────── */}
         {aba === "identidade" && (

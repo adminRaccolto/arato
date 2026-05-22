@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
+import InputMonetario from "../../components/InputMonetario";
 import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao } from "../../lib/supabase";
@@ -1800,15 +1801,15 @@ export default function Financeiro() {
                   </div>
                   <div>
                     <label style={labelStyle}>% Juros a.m.</label>
-                    <input style={inputStyle} type="number" step="0.01" placeholder="0,00" value={novoLanc.juros_pct} onChange={e => setNovoLanc(p => ({ ...p, juros_pct: e.target.value }))} />
+                    <InputMonetario style={inputStyle} placeholder="0,00" value={novoLanc.juros_pct} onChange={v => setNovoLanc(p => ({ ...p, juros_pct: v }))} />
                   </div>
                   <div>
                     <label style={labelStyle}>% Multa por atraso</label>
-                    <input style={inputStyle} type="number" step="0.01" placeholder="0,00" value={novoLanc.multa_pct} onChange={e => setNovoLanc(p => ({ ...p, multa_pct: e.target.value }))} />
+                    <InputMonetario style={inputStyle} placeholder="0,00" value={novoLanc.multa_pct} onChange={v => setNovoLanc(p => ({ ...p, multa_pct: v }))} />
                   </div>
                   <div>
                     <label style={labelStyle}>% Desconto pontualidade</label>
-                    <input style={inputStyle} type="number" step="0.01" placeholder="0,00" value={novoLanc.desconto_pct} onChange={e => setNovoLanc(p => ({ ...p, desconto_pct: e.target.value }))} />
+                    <InputMonetario style={inputStyle} placeholder="0,00" value={novoLanc.desconto_pct} onChange={v => setNovoLanc(p => ({ ...p, desconto_pct: v }))} />
                   </div>
                   <div>
                     <label style={labelStyle}>Centro de Custo</label>

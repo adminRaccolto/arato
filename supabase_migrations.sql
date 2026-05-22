@@ -4331,3 +4331,116 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS kml_url TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── SEÇÃO 72: Planos SaaS, Assinaturas e Pagamentos ──────────────────────────
+
+-- Configuração dos planos (editável pelo admin Raccolto)
+CREATE TABLE IF NOT EXISTS planos (
+  id            text PRIMARY KEY,              -- 'essencial' | 'gestao' | 'performance'
+  nome          text NOT NULL,
+  descricao     text,
+  preco_mensal  numeric(10,2) NOT NULL DEFAULT 0,
+  preco_anual   numeric(10,2),                 -- preço anual com desconto
+  trial_dias    integer NOT NULL DEFAULT 14,
+  modulos       text[] NOT NULL DEFAULT '{}',  -- IDs dos módulos incluídos
+  limite_usuarios integer DEFAULT 2,           -- NULL = ilimitado
+  ativo         boolean NOT NULL DEFAULT true,
+  destaque      boolean NOT NULL DEFAULT false, -- badge "Mais popular"
+  ordem         integer NOT NULL DEFAULT 0,
+  features_marketing text[] DEFAULT '{}'       -- bullets da página pública
+);
+
+-- Assinaturas dos clientes
+CREATE TABLE IF NOT EXISTS assinaturas (
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id              uuid NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  plano_id              text NOT NULL REFERENCES planos(id),
+  status                text NOT NULL DEFAULT 'trial'
+                          CHECK (status IN ('trial','ativa','inadimplente','cancelada','suspensa')),
+  periodo               text NOT NULL DEFAULT 'mensal' CHECK (periodo IN ('mensal','anual')),
+  preco                 numeric(10,2) NOT NULL,
+  data_inicio           date NOT NULL DEFAULT CURRENT_DATE,
+  data_vencimento       date,
+  data_proximo_pagamento date,
+  trial_fim             date,
+  asaas_customer_id     text,
+  asaas_subscription_id text,
+  cancelamento_motivo   text,
+  obs                   text,
+  created_at            timestamptz DEFAULT now(),
+  updated_at            timestamptz DEFAULT now()
+);
+
+-- Pagamentos individuais
+CREATE TABLE IF NOT EXISTS pagamentos (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  assinatura_id     uuid REFERENCES assinaturas(id),
+  conta_id          uuid NOT NULL REFERENCES contas(id),
+  valor             numeric(10,2) NOT NULL,
+  status            text NOT NULL DEFAULT 'pendente'
+                      CHECK (status IN ('pendente','pago','vencido','cancelado','estornado')),
+  data_vencimento   date NOT NULL,
+  data_pagamento    date,
+  metodo_pagamento  text CHECK (metodo_pagamento IN ('pix','boleto','cartao','manual')),
+  asaas_payment_id  text,
+  asaas_invoice_url text,
+  asaas_bank_slip_url text,
+  asaas_pix_qrcode  text,
+  comprovante_url   text,
+  descricao         text,
+  created_at        timestamptz DEFAULT now()
+);
+
+-- CRM pipeline para novos leads/clientes
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS crm_stage text DEFAULT 'prospecto'
+  CHECK (crm_stage IN ('prospecto','demo','proposta','aguardando_pagamento','ativo','inativo','churned'));
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS crm_obs   text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS origem    text; -- 'site','indicacao','evento','outro'
+
+-- Campos adicionais na conta para controle SaaS
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS cpf_cnpj text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS cidade   text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS estado   text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS nome_fazenda text; -- nome da propriedade no cadastro
+
+-- RLS
+ALTER TABLE planos       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assinaturas  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pagamentos   ENABLE ROW LEVEL SECURITY;
+
+-- Planos: leitura pública (necessário para página /planos sem autenticação)
+CREATE POLICY "planos_public_read" ON planos FOR SELECT USING (ativo = true);
+CREATE POLICY "planos_raccotlo_all" ON planos FOR ALL
+  USING (EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+-- Assinaturas: raccotlo vê tudo; cliente vê a própria
+CREATE POLICY "assinaturas_raccotlo" ON assinaturas FOR ALL
+  USING (EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+CREATE POLICY "assinaturas_cliente" ON assinaturas FOR SELECT
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()));
+
+-- Pagamentos: raccotlo vê tudo; cliente vê os próprios
+CREATE POLICY "pagamentos_raccotlo" ON pagamentos FOR ALL
+  USING (EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+CREATE POLICY "pagamentos_cliente" ON pagamentos FOR SELECT
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()));
+
+-- Seed inicial dos planos
+INSERT INTO planos (id, nome, descricao, preco_mensal, preco_anual, trial_dias, limite_usuarios, destaque, ordem, modulos, features_marketing) VALUES
+('essencial', 'Essencial', 'Para quem está começando a digitalizar a fazenda', 387.00, 3480.00, 14, 2, false, 1,
+ ARRAY['cadastros','propriedades','lavoura_plantio','lavoura_pulv','lavoura_colheita','lavoura_plan','estoque','fin_pagar','fin_receber','custos','fin_relatorios','configuracoes'],
+ ARRAY['Cadastros completos (fazendas, talhões, insumos)','Lavoura completa (plantio, pulverização, colheita)','Estoque básico','Contas a Pagar e Receber','DRE Agrícola','Relatório de Aplicações','2 usuários','Suporte por e-mail']),
+('gestao', 'Gestão', 'Para quem vende grãos e controla o financeiro completo', 1197.00, 10770.00, 14, 5, true, 2,
+ ARRAY['cadastros','propriedades','lavoura_plantio','lavoura_pulv','lavoura_colheita','lavoura_plan','estoque','fin_pagar','fin_receber','custos','fin_relatorios','configuracoes','contratos','expedicao','arrendamento','compras','nf_entrada','nf_servico','fin_contratos','fin_tesouraria','fin_seguros','transporte','usuarios'],
+ ARRAY['Tudo do Essencial','Comercialização de Grãos (contratos + expedição)','Compras e Pedidos','NF de Entrada (Produtos e Serviços)','Financeiro completo (tesouraria, seguros)','Contratos de Arrendamento','CT-e e MDF-e','5 usuários','Suporte prioritário']),
+('performance', 'Performance', 'Para grandes operações com controle fiscal e BI avançado', 1787.00, 16080.00, 14, NULL, false, 3,
+ ARRAY['cadastros','propriedades','lavoura_plantio','lavoura_pulv','lavoura_colheita','lavoura_plan','estoque','fin_pagar','fin_receber','custos','fin_relatorios','configuracoes','contratos','expedicao','arrendamento','compras','nf_entrada','nf_servico','fin_contratos','fin_tesouraria','fin_seguros','transporte','usuarios','fiscal_nfe','fiscal_sped','bi'],
+ ARRAY['Tudo do Gestão','Emissão de NF-e (integração SEFAZ)','SPED ECD e LCDPR','eSocial Rural','BI — Raccotlo Intelligence','Usuários ilimitados','Suporte prioritário + WhatsApp'])
+ON CONFLICT (id) DO UPDATE SET
+  preco_mensal = EXCLUDED.preco_mensal,
+  preco_anual  = EXCLUDED.preco_anual,
+  modulos      = EXCLUDED.modulos,
+  features_marketing = EXCLUDED.features_marketing,
+  updated_at   = now();
+
+NOTIFY pgrst, 'reload schema';
