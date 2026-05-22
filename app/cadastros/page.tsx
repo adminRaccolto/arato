@@ -30,7 +30,7 @@ import {
   listarInsumos, criarInsumo, atualizarInsumo, excluirInsumo,
   listarFormasPagamento, criarFormaPagamento, atualizarFormaPagamento, excluirFormaPagamento,
   listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
-  listarContas, criarConta, atualizarConta, excluirConta,
+  listarContas, criarConta, atualizarContaBancaria, excluirConta,
   listarPlanoContas,
   listarPrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
@@ -4322,7 +4322,7 @@ function CadastrosInner() {
                   const saldoIni = fConta.saldo_inicial !== "" ? parseFloat(fConta.saldo_inicial) : 0;
                   const payload = { fazenda_id: fazendaId, empresa_id: fConta.empresa_id || empresas[0]?.id || null, nome: fConta.nome.trim(), banco: fConta.banco || undefined, agencia: fConta.agencia || undefined, conta: fConta.conta || undefined, moeda: fConta.moeda, ativa: fConta.ativa, tipo_conta: fConta.tipo_conta, saldo_inicial: isNaN(saldoIni) ? 0 : saldoIni };
                   if (editConta) {
-                    await atualizarConta(editConta.id, payload);
+                    await atualizarContaBancaria(editConta.id, payload);
                     setContas(x => x.map(r => r.id === editConta.id ? { ...r, ...payload } : r));
                   } else {
                     const nova = await criarConta(payload);

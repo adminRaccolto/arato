@@ -1036,7 +1036,7 @@ export async function criarConta(c: Omit<ContaBancaria, "id" | "created_at">): P
   return data;
 }
 
-export async function atualizarConta(id: string, c: Partial<ContaBancaria>): Promise<void> {
+export async function atualizarContaBancaria(id: string, c: Partial<ContaBancaria>): Promise<void> {
   const { error } = await supabase.from("contas_bancarias").update(c).eq("id", id);
   if (error) throw error;
 }
