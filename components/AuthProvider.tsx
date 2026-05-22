@@ -19,6 +19,7 @@ type AuthCtx = {
   nomeUsuario:            string | null;
   emailUsuario:           string | null;
   userRole:               string | null;   // 'client' | 'raccotlo' | null
+  raccotloGestor:         boolean;         // true = gestor (admin+clientes); false = operacional (só clientes)
   nomeFazendaSelecionada: string | null;
   nomeProdutor:           string | null;   // nome do produtor/agricultor (exibido no topo)
   logoCliente:            string | null;   // logo da conta (por cliente SaaS)
@@ -48,6 +49,7 @@ const Ctx = createContext<AuthCtx>({
   nomeUsuario:            null,
   emailUsuario:           null,
   userRole:               null,
+  raccotloGestor:         true,
   nomeFazendaSelecionada: null,
   nomeProdutor:           null,
   logoCliente:            null,
@@ -76,6 +78,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [nomeUsuario,            setNomeUsuario]            = useState<string | null>(null);
   const [emailUsuario,           setEmailUsuario]           = useState<string | null>(null);
   const [userRole,               setUserRole]               = useState<string | null>(null);
+  const [raccotloGestor,         setRaccotloGestor]         = useState<boolean>(true);
   const [nomeFazendaSelecionada, setNomeFazendaSelecionada] = useState<string | null>(null);
   const [nomeProdutor,           setNomeProdutor]           = useState<string | null>(null);
   const [onboardingAtivo,        setOnboardingAtivo]        = useState<boolean>(false);
@@ -105,7 +108,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setFazendaId(null);
     setNomeFazendaSelecionada(null);
     setNomeProdutor(null);
-    router.push("/seletor-cliente");
+    router.push("/raccotlo");
   }, [router]);
 
   useEffect(() => {
@@ -158,16 +161,24 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (role === "raccotlo") {
+        // Sub-perfil: operacional (só clientes) ou gestor (admin + clientes)
+        setRaccotloGestor(dbRole !== "raccotlo_operacional");
+
         // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
-        const savedId          = localStorage.getItem("raccotlo_fazenda_id");
-        const savedNome        = localStorage.getItem("raccotlo_fazenda_nome");
+        const savedId           = localStorage.getItem("raccotlo_fazenda_id");
+        const savedNome         = localStorage.getItem("raccotlo_fazenda_nome");
         const savedProdutorNome = localStorage.getItem("raccotlo_produtor_nome");
         if (savedId) {
           setFazendaId(savedId);
           setNomeFazendaSelecionada(savedNome);
           setNomeProdutor(savedProdutorNome);
-        } else if (typeof window !== "undefined" && window.location.pathname !== "/seletor-cliente") {
-          router.push("/seletor-cliente");
+        } else {
+          // Sem farm: hub (/raccotlo), seletor e admin são rotas livres
+          const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+          const rotasLivres = ["/raccotlo", "/seletor-cliente", "/admin"];
+          if (!rotasLivres.some(r => pathname.startsWith(r))) {
+            router.push("/raccotlo");
+          }
         }
         // raccotlo não tem restrições de módulo
         setPermissoes({});
@@ -346,7 +357,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      fazendaId, contaId, nomeUsuario, emailUsuario, userRole,
+      fazendaId, contaId, nomeUsuario, emailUsuario, userRole, raccotloGestor,
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,

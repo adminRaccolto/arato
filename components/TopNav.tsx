@@ -277,7 +277,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, nomeFazendaSelecionada, nomeProdutor, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -799,31 +799,48 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
         {userRole === "raccotlo" && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+            {raccotloGestor && (
+              <Link
+                href="/admin"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 14px", borderRadius: 6, textDecoration: "none",
+                  background: pathname.startsWith("/admin") ? "rgba(255,255,255,0.22)" : "rgba(201,146,27,0.30)",
+                  color: "#FDE9BB", fontWeight: pathname.startsWith("/admin") ? 700 : 600,
+                  fontSize: 13, whiteSpace: "nowrap",
+                  border: "0.5px solid rgba(201,146,27,0.6)",
+                }}
+              >
+                ⚙ Gestão Arato
+              </Link>
+            )}
+            {raccotloGestor && (
+              <Link
+                href="/bi"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 12px", borderRadius: 6, textDecoration: "none",
+                  background: pathname === "/bi" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.08)",
+                  color: "#FDE9BB", fontWeight: pathname === "/bi" ? 700 : 400,
+                  fontSize: 13, whiteSpace: "nowrap",
+                  border: "0.5px solid rgba(255,255,255,0.2)",
+                }}
+              >
+                BI Raccotlo
+              </Link>
+            )}
             <Link
-              href="/admin"
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "5px 14px", borderRadius: 6, textDecoration: "none",
-                background: pathname.startsWith("/admin") ? "rgba(255,255,255,0.22)" : "rgba(201,146,27,0.30)",
-                color: "#FDE9BB", fontWeight: pathname.startsWith("/admin") ? 700 : 600,
-                fontSize: 13, whiteSpace: "nowrap",
-                border: "0.5px solid rgba(201,146,27,0.6)",
-              }}
-            >
-              ⚙ Gestão Arato
-            </Link>
-            <Link
-              href="/bi"
+              href="/raccotlo"
               style={{
                 display: "flex", alignItems: "center", gap: 5,
                 padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-                background: pathname === "/bi" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.08)",
-                color: "#FDE9BB", fontWeight: pathname === "/bi" ? 700 : 400,
-                fontSize: 13, whiteSpace: "nowrap",
-                border: "0.5px solid rgba(255,255,255,0.2)",
+                background: pathname === "/raccotlo" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.55)", fontWeight: 400,
+                fontSize: 12, whiteSpace: "nowrap",
+                border: "0.5px solid rgba(255,255,255,0.12)",
               }}
             >
-              BI Raccotlo
+              Hub
             </Link>
           </div>
         )}

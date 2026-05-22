@@ -4498,3 +4498,16 @@ create policy "rls_esocial_eventos" on esocial_eventos
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: sub-perfis raccotlo (gestor / operacional) ────────────────────
+-- Adiciona raccotlo_gestor e raccotlo_operacional como valores válidos de role em perfis
+ALTER TABLE perfis DROP CONSTRAINT IF EXISTS perfis_role_check;
+ALTER TABLE perfis ADD CONSTRAINT perfis_role_check
+  CHECK (role IN ('client', 'raccotlo', 'raccotlo_gestor', 'raccotlo_operacional', 'admin'));
+
+-- Para tornar um raccotlo em operacional (somente clientes):
+-- UPDATE perfis SET role = 'raccotlo_operacional' WHERE user_id = '<uuid>';
+-- Para tornar raccotlo em gestor (padrão):
+-- UPDATE perfis SET role = 'raccotlo' WHERE user_id = '<uuid>';
+
+NOTIFY pgrst, 'reload schema';

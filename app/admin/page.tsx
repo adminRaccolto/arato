@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { listarContasAdmin, atualizarConta } from "../../lib/db";
@@ -373,9 +374,16 @@ UPDATE planos SET modulos = ARRAY['cadastros','propriedades','lavoura_plantio',.
 
 // ── Página principal ──────────────────────────────────────────────────────────
 export default function Admin() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, userRole, raccotloGestor } = useAuth();
+  const adminRouter = useRouter();
   type Aba = "clientes" | "planos" | "identidade";
   const [aba, setAba] = useState<Aba>("clientes");
+
+  // Guard: somente raccotlo gestor
+  useEffect(() => {
+    if (userRole === null) return; // ainda carregando
+    if (userRole !== "raccotlo" || !raccotloGestor) adminRouter.replace("/raccotlo");
+  }, [userRole, raccotloGestor, adminRouter]);
 
   // ── Estado — Clientes ──────────────────────────────────────────────────────
   const [clientes, setClientes] = useState<ContaAdmin[]>([]);
