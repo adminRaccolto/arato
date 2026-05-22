@@ -6,12 +6,15 @@ export async function POST() {
   const EVO_INSTANCE = process.env.EVOLUTION_INSTANCE ?? "";
 
   const novaUrl = "https://web.arato.agr.br/api/whatsapp/webhook";
+  // Evolution API v2 exige wrapper "webhook"
   const body = JSON.stringify({
-    url: novaUrl,
-    enabled: true,
-    events: ["MESSAGES_UPSERT"],
-    webhookByEvents: false,
-    webhookBase64: false,
+    webhook: {
+      url: novaUrl,
+      enabled: true,
+      events: ["MESSAGES_UPSERT"],
+      webhookByEvents: false,
+      webhookBase64: false,
+    },
   });
   const hdrs = { "Content-Type": "application/json", apikey: EVO_KEY };
 
