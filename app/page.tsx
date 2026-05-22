@@ -83,6 +83,15 @@ function urgDias(d: number): Urgencia {
 }
 
 // ─── Tipos ────────────────────────────────────────────────────
+type ResultadoBusca = {
+  id: string;
+  categoria: string;
+  titulo: string;
+  subtitulo?: string;
+  link: string;
+  cor: string;
+};
+
 type Alerta = {
   id: string;
   tipo: "cp" | "cr" | "arrendamento" | "cert_a1" | "contrato" | "estoque" | "seguro" | "fiscal";
@@ -116,6 +125,65 @@ export default function Dashboard() {
   const [ciclosAtivos,    setCiclosAtivos]    = useState(0);
   const [contratosAtivos, setContratosAtivos] = useState(0);
   const [vencidosCp,      setVencidosCp]      = useState(0);
+
+  // Busca global
+  const [buscaGlobal,      setBuscaGlobal]      = useState("");
+  const [resultadosBusca,  setResultadosBusca]  = useState<ResultadoBusca[]>([]);
+  const [buscandoGlobal,   setBuscandoGlobal]   = useState(false);
+  const [buscaAberta,      setBuscaAberta]      = useState(false);
+  const buscaRef = useRef<HTMLDivElement>(null);
+
+  // ── Busca global ──
+  useEffect(() => {
+    if (!fazendaId || buscaGlobal.trim().length < 2) {
+      setResultadosBusca([]);
+      setBuscandoGlobal(false);
+      return;
+    }
+    setBuscandoGlobal(true);
+    const timer = setTimeout(async () => {
+      const q = buscaGlobal.trim();
+      try {
+        const [cpRes, contratoRes, cicloRes, insumoRes, pessoaRes] = await Promise.all([
+          supabase.from("lancamentos").select("id, descricao, valor, tipo").eq("fazenda_id", fazendaId).ilike("descricao", `%${q}%`).in("status", ["em_aberto", "vencido", "vencendo"]).limit(3),
+          supabase.from("contratos").select("id, numero_contrato, cliente").eq("fazenda_id", fazendaId).or(`numero_contrato.ilike.%${q}%,cliente.ilike.%${q}%`).limit(3),
+          supabase.from("ciclos").select("id, nome, cultura").eq("fazenda_id", fazendaId).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("insumos").select("id, nome, categoria").eq("fazenda_id", fazendaId).ilike("nome", `%${q}%`).limit(3),
+          supabase.from("pessoas").select("id, nome, cpf_cnpj").eq("fazenda_id", fazendaId).ilike("nome", `%${q}%`).limit(3),
+        ]);
+        const res: ResultadoBusca[] = [];
+        for (const r of cpRes.data ?? []) {
+          res.push({ id: `lan-${r.id}`, categoria: r.tipo === "pagar" ? "A Pagar" : "A Receber", titulo: r.descricao, subtitulo: r.valor ? fmtMoeda(r.valor) : undefined, link: r.tipo === "pagar" ? "/financeiro/pagar" : "/financeiro/receber", cor: r.tipo === "pagar" ? "#E24B4A" : "#16A34A" });
+        }
+        for (const r of contratoRes.data ?? []) {
+          res.push({ id: `cnt-${r.id}`, categoria: "Contrato", titulo: r.numero_contrato || r.cliente || "Contrato", subtitulo: r.cliente, link: "/contratos", cor: "#C9921B" });
+        }
+        for (const r of cicloRes.data ?? []) {
+          res.push({ id: `cic-${r.id}`, categoria: "Ciclo", titulo: r.nome, subtitulo: r.cultura, link: "/lavoura", cor: "#16A34A" });
+        }
+        for (const r of insumoRes.data ?? []) {
+          res.push({ id: `ins-${r.id}`, categoria: "Insumo", titulo: r.nome, subtitulo: r.categoria, link: "/estoque", cor: "#1A4870" });
+        }
+        for (const r of pessoaRes.data ?? []) {
+          res.push({ id: `pes-${r.id}`, categoria: "Pessoa", titulo: r.nome, subtitulo: r.cpf_cnpj, link: "/cadastros?tab=pessoas", cor: "#555" });
+        }
+        setResultadosBusca(res.slice(0, 12));
+      } catch (_e) { /* ignore */ }
+      setBuscandoGlobal(false);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [buscaGlobal, fazendaId]);
+
+  // ── Fecha busca ao clicar fora ──
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (buscaRef.current && !buscaRef.current.contains(e.target as Node)) {
+        setBuscaAberta(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // ── Busca de preços (usada no polling) ──
   const buscarPrecos = useCallback(() => {
@@ -486,6 +554,17 @@ export default function Dashboard() {
     cert_a1: "Certificado", contrato: "Contrato", estoque: "Estoque", fiscal: "Fiscal",
   };
 
+  const ATALHOS = [
+    { label: "Contas a Pagar",   link: "/financeiro/pagar",    cor: "#E24B4A", sigla: "CP" },
+    { label: "Contas a Receber", link: "/financeiro/receber",  cor: "#16A34A", sigla: "CR" },
+    { label: "Pedido de Compra", link: "/compras",             cor: "#1A4870", sigla: "PC" },
+    { label: "NF Entrada",       link: "/compras/nf",          cor: "#1A4870", sigla: "NF" },
+    { label: "Contratos Grãos",  link: "/contratos",           cor: "#C9921B", sigla: "CG" },
+    { label: "Estoque",          link: "/estoque",             cor: "#555555", sigla: "ES" },
+    { label: "Lavoura",          link: "/lavoura",             cor: "#16A34A", sigla: "LV" },
+    { label: "Relatórios",       link: "/relatorios",          cor: "#378ADD", sigla: "RL" },
+  ];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
@@ -496,8 +575,8 @@ export default function Dashboard() {
         {onboardingAtivo && <OnboardingPanel />}
 
         {/* ── Cabeçalho ── */}
-        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 8 }}>
-          <div>
+        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: "0 0 auto" }}>
             <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>Dashboard</h1>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#666" }}>
               {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -505,8 +584,47 @@ export default function Dashboard() {
               {contratosAtivos > 0 && ` · ${contratosAtivos} contrato${contratosAtivos > 1 ? "s" : ""} em aberto`}
             </p>
           </div>
+
+          {/* Busca global */}
+          <div ref={buscaRef} style={{ flex: 1, minWidth: 220, maxWidth: 420, position: "relative" }}>
+            <div style={{ position: "relative" }}>
+              <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#aaa", pointerEvents: "none" }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Buscar lançamentos, contratos, insumos, pessoas…"
+                value={buscaGlobal}
+                onChange={e => { setBuscaGlobal(e.target.value); setBuscaAberta(true); }}
+                onFocus={() => setBuscaAberta(true)}
+                style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px 7px 32px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff", outline: "none", color: "#1a1a1a" }}
+              />
+              {buscandoGlobal && (
+                <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#aaa" }}>…</span>
+              )}
+              {buscaGlobal && !buscandoGlobal && (
+                <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#aaa", padding: "0 2px", lineHeight: 1 }}>×</button>
+              )}
+            </div>
+            {/* Dropdown de resultados */}
+            {buscaAberta && (buscaGlobal.trim().length >= 2) && (
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", maxHeight: 360, overflowY: "auto" }}>
+                {resultadosBusca.length === 0 && !buscandoGlobal && (
+                  <div style={{ padding: "12px 14px", fontSize: 12, color: "#888", textAlign: "center" }}>Nenhum resultado para "{buscaGlobal}"</div>
+                )}
+                {resultadosBusca.map(r => (
+                  <a key={r.id} href={r.link} onClick={() => setBuscaAberta(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: "0.5px solid #F3F5F9", textDecoration: "none", background: "#fff" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#F4F6FA")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: r.cor + "18", color: r.cor, flexShrink: 0 }}>{r.categoria}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: "#1a1a1a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.titulo}</span>
+                    {r.subtitulo && <span style={{ fontSize: 11, color: "#888", flexShrink: 0 }}>{r.subtitulo}</span>}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
           {alertas.some(a => a.urgencia === "critico") && (
-            <div style={{ background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#991B1B", alignSelf: "center" }}>
+            <div style={{ flex: "0 0 auto", background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#991B1B" }}>
               {alertas.filter(a => a.urgencia === "critico").length} alerta{alertas.filter(a => a.urgencia === "critico").length > 1 ? "s" : ""} crítico{alertas.filter(a => a.urgencia === "critico").length > 1 ? "s" : ""}
             </div>
           )}
@@ -619,6 +737,21 @@ export default function Dashboard() {
                     Vencidos: {fmtMoeda(vencidosCp)}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Atalhos */}
+            <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "12px 16px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>Atalhos</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                {ATALHOS.map(a => (
+                  <a key={a.link} href={a.link} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 6px", borderRadius: 8, border: "0.5px solid #EEF1F6", textDecoration: "none", background: "#FAFBFC", transition: "border-color 0.15s, background 0.15s" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = a.cor + "10"; (e.currentTarget as HTMLAnchorElement).style.borderColor = a.cor + "60"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#FAFBFC"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "#EEF1F6"; }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, background: a.cor + "18", color: a.cor, fontWeight: 800, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", letterSpacing: "0.03em" }}>{a.sigla}</span>
+                    <span style={{ fontSize: 11, color: "#444", fontWeight: 500, textAlign: "center", lineHeight: 1.2 }}>{a.label}</span>
+                  </a>
+                ))}
               </div>
             </div>
 

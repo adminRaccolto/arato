@@ -170,20 +170,34 @@ export default function AbastecimentoPage() {
     setErroModal("");
 
     const qtd  = parseFloat(fQuantidade);
-    const vUnit = parseFloat(fValUnit);
     if (!fBomba)        return setErroModal("Selecione a bomba.");
     if (isNaN(qtd) || qtd <= 0) return setErroModal("Informe a quantidade em litros.");
-    if (isNaN(vUnit) || vUnit <= 0) return setErroModal("Informe o valor por litro.");
     if (!fData)         return setErroModal("Informe a data.");
 
     const bomba = bombas.find(b => b.id === fBomba)!;
+
+    // Para bomba interna usa custo_medio como fallback se não informado
+    let vUnit = parseFloat(fValUnit);
+    if (bomba.consume_estoque && (isNaN(vUnit) || vUnit <= 0)) {
+      const insumo = insumos.find(i =>
+        i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
+        bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
+      );
+      if (insumo?.custo_medio) vUnit = insumo.custo_medio;
+    }
+    // Para POSTO (externo) valor/litro é obrigatório para gerar CP correto
+    if (!bomba.consume_estoque && (isNaN(vUnit) || vUnit <= 0)) {
+      return setErroModal("Informe o valor por litro para registrar a conta a pagar.");
+    }
+    if (isNaN(vUnit)) vUnit = 0;
 
     setSalvando(true);
     try {
       if (editando) {
         await salvarEdicao(editando, qtd, vUnit, bomba);
       } else {
-        if (qtd > bomba.estoque_atual_l) {
+        // Bomba interna: verifica estoque disponível; posto externo: sem controle de estoque
+        if (bomba.consume_estoque && qtd > bomba.estoque_atual_l) {
           setSalvando(false);
           return setErroModal(`Estoque insuficiente na bomba. Disponível: ${fmtNum(bomba.estoque_atual_l)} L`);
         }
@@ -257,30 +271,31 @@ export default function AbastecimentoPage() {
       .from("abastecimentos").insert(payload).select("id").single();
     if (errAbs) throw new Error(errAbs.message);
 
-    // Deduzir estoque da bomba
-    await supabase.from("bombas_combustivel")
-      .update({ estoque_atual_l: bomba.estoque_atual_l - qtd })
-      .eq("id", fBomba);
+    // Apenas bombas internas (fazenda) deduzem estoque; posto externo = sem controle de estoque
+    if (bomba.consume_estoque) {
+      await supabase.from("bombas_combustivel")
+        .update({ estoque_atual_l: bomba.estoque_atual_l - qtd })
+        .eq("id", fBomba);
 
-    // Deduzir estoque do insumo correspondente (se encontrar)
-    const insumo = insumos.find(i =>
-      i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
-      bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
-    );
-    if (insumo) {
-      const novoEstoque = Math.max(0, insumo.estoque - qtd);
-      await supabase.from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
-      await supabase.from("movimentacoes_estoque").insert({
-        fazenda_id:      fazendaId,
-        insumo_id:       insumo.id,
-        tipo:            "saida",
-        motivo:          "abastecimento",
-        quantidade:      qtd,
-        valor_unitario:  vUnit,
-        data:            fData,
-        auto:            false,
-        observacao:      `Abastecimento — ${nomeDestino()} ${fObs ? "· " + fObs : ""}`.trim(),
-      });
+      const insumo = insumos.find(i =>
+        i.nome.toLowerCase().includes(bomba.combustivel.replace("_", " ").toLowerCase()) ||
+        bomba.combustivel.includes(i.nome.toLowerCase().split(" ")[0])
+      );
+      if (insumo) {
+        const novoEstoque = Math.max(0, insumo.estoque - qtd);
+        await supabase.from("insumos").update({ estoque: novoEstoque }).eq("id", insumo.id);
+        await supabase.from("movimentacoes_estoque").insert({
+          fazenda_id:      fazendaId,
+          insumo_id:       insumo.id,
+          tipo:            "saida",
+          motivo:          "abastecimento",
+          quantidade:      qtd,
+          valor_unitario:  vUnit,
+          data:            fData,
+          auto:            false,
+          observacao:      `Abastecimento — ${nomeDestino()} ${fObs ? "· " + fObs : ""}`.trim(),
+        });
+      }
     }
 
     // Gerar CP (opcional)

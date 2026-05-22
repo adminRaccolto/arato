@@ -5,8 +5,8 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial } from "../../../lib/supabase";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -137,6 +137,10 @@ function ContasPagarInner() {
   const [ciclos,        setCiclos]        = useState<Ciclo[]>([]);
   const [contas,        setContas]        = useState<ContaBancariaMin[]>([]);
   const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
+  const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
+  const [opGerBusca,    setOpGerBusca]    = useState("");
+  const [arquivoNF,     setArquivoNF]     = useState<File | null>(null);
+  const [errosForm,     setErrosForm]     = useState<string[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro,     setErro]     = useState<string | null>(null);
@@ -302,6 +306,7 @@ function ContasPagarInner() {
       ).catch(() => {});
       supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
+      listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
     }
   }, [fazendaId]);
 
@@ -436,14 +441,34 @@ function ContasPagarInner() {
   // ── Novo lançamento ────────────────────────────────────────
 
   const adicionarLancamento = async () => {
-    if (!form.pessoa_id && !form.descricao.trim()) return;
-    if (!form.vencimento) return;
-    if (form.moeda !== "barter" && !form.valorMask) return;
-    if (form.moeda === "barter" && !form.sacasMask) return;
+    // Validação de campos obrigatórios
+    const erros: string[] = [];
+    if (!form.pessoa_id && !form.descricao.trim()) erros.push("Fornecedor ou Descrição é obrigatório (aba Principal).");
+    if (!form.vencimento) erros.push("1º Vencimento é obrigatório (aba Principal).");
+    if (form.moeda !== "barter" && !form.valorMask) erros.push("Valor é obrigatório (aba Principal).");
+    if (form.moeda === "barter" && !form.sacasMask) erros.push("Quantidade de sacas é obrigatória (aba Principal).");
+    if (!form.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória (aba Principal).");
+    if (form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar (aba Parcelas).");
+    if (erros.length > 0) { setErrosForm(erros); return; }
+    setErrosForm([]);
 
     const sacas      = Number(form.sacasMask);
     const precoSaca  = desmascarar(form.precoSacaMask);
     const valorFinal = form.moeda === "barter" ? sacas * precoSaca : desmascarar(form.valorMask);
+
+    // Upload arquivo NF se selecionado
+    let chaveXmlFinal = form.chave_xml || undefined;
+    if (arquivoNF) {
+      try {
+        const ext = arquivoNF.name.split(".").pop() ?? "pdf";
+        const path = `${fid}/nf-cp/${Date.now()}.${ext}`;
+        const { data: upData } = await supabase.storage.from("arquivos").upload(path, arquivoNF, { upsert: true });
+        if (upData) {
+          const { data: urlData } = supabase.storage.from("arquivos").getPublicUrl(upData.path);
+          chaveXmlFinal = urlData.publicUrl;
+        }
+      } catch (_e) { /* upload opcional — prossegue sem o arquivo */ }
+    }
 
     const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
       fazenda_id:    fid!,
@@ -466,7 +491,7 @@ function ContasPagarInner() {
       juros_pct:     form.juros_pct     ? Number(form.juros_pct)   : undefined,
       multa_pct:     form.multa_pct     ? Number(form.multa_pct)   : undefined,
       desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : undefined,
-      chave_xml:     form.chave_xml     || undefined,
+      chave_xml:     chaveXmlFinal,
       centro_custo:          form.centro_custo          || undefined,
       observacao:            form.obs                   || undefined,
       ano_safra_id:          form.ano_safra_id          || undefined,
@@ -523,7 +548,8 @@ function ContasPagarInner() {
 
   const disabled = salvando || (!form.pessoa_id && !form.descricao.trim()) || !form.vencimento
     || (form.moeda !== "barter" && !form.valorMask)
-    || (form.moeda === "barter" && !form.sacasMask);
+    || (form.moeda === "barter" && !form.sacasMask)
+    || !form.operacao_gerencial_id;
 
   // ── Render ─────────────────────────────────────────────────
 
@@ -557,7 +583,16 @@ function ContasPagarInner() {
               onChange={e => setPeriodoFim(e.target.value)}
               style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
             <button
-              onClick={() => { setFormFazendaId(fazendaId); setModalTab("principal"); setModalNovo(true); }}
+              onClick={() => {
+              setFormFazendaId(fazendaId);
+              setModalTab("principal");
+              setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: "", multa_pct: "", desconto_pct: "", meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "" });
+              setParcelas([]);
+              setOpGerBusca("");
+              setArquivoNF(null);
+              setErrosForm([]);
+              setModalNovo(true);
+            }}
               style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginLeft: 4 }}
             >
               ↑ Nova Conta a Pagar
@@ -1327,7 +1362,8 @@ function ContasPagarInner() {
                       </select>
                     </div>
                     <div style={{ gridColumn: "2 / 4" }}>
-                      <label style={lbl}>Operação Gerencial <span style={{ color: "#888", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
+                      <label style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span> <span style={{ color: "#888", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
+                      <input style={{ ...inp, marginBottom: 4 }} placeholder="Buscar operação…" value={opGerBusca} onChange={e => setOpGerBusca(e.target.value)} />
                       <select style={inp} value={form.operacao_gerencial_id}
                         onChange={e => {
                           const id = e.target.value;
@@ -1336,11 +1372,13 @@ function ContasPagarInner() {
                         }}>
                         <option value="">— Selecionar operação —</option>
                         {Object.entries(
-                          opGerenciais.reduce((acc, o) => {
-                            const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                            (acc[k] = acc[k] ?? []).push(o);
-                            return acc;
-                          }, {} as Record<string, typeof opGerenciais>)
+                          opGerenciais
+                            .filter(o => !opGerBusca || `${o.classificacao ?? ""} ${o.descricao}`.toLowerCase().includes(opGerBusca.toLowerCase()))
+                            .reduce((acc, o) => {
+                              const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                              (acc[k] = acc[k] ?? []).push(o);
+                              return acc;
+                            }, {} as Record<string, typeof opGerenciais>)
                         ).map(([k, items]) => (
                           <optgroup key={k} label={k}>
                             {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
@@ -1584,7 +1622,12 @@ function ContasPagarInner() {
                   </div>
                   <div>
                     <label style={lbl}>Centro de Custo</label>
-                    <input style={inp} placeholder="Ex: Talhão 3 / Maquinário" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
+                    <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
+                      <option value="">— Sem vínculo —</option>
+                      {centrosCusto.map(c => (
+                        <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label style={lbl}>Produtor</label>
@@ -1620,24 +1663,44 @@ function ContasPagarInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <label style={lbl}>Chave XML / NF-e</label>
-                      <input style={inp} placeholder="Opcional" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
+                      <input style={inp} placeholder="Opcional — 44 dígitos ou URL" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
                     </div>
                     <div>
                       <label style={lbl}>Observação</label>
                       <input style={inp} placeholder="Opcional" value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
                     </div>
                   </div>
+                  <div>
+                    <label style={lbl}>Anexar NF (PDF ou XML)</label>
+                    <input type="file" accept=".pdf,.xml,.png,.jpg"
+                      onChange={e => setArquivoNF(e.target.files?.[0] ?? null)}
+                      style={{ ...inp, padding: "5px 8px", cursor: "pointer" }} />
+                    {arquivoNF && (
+                      <div style={{ fontSize: 10, color: "#16A34A", marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>📎 {arquivoNF.name}</span>
+                        <button type="button" onClick={() => setArquivoNF(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 11, padding: 0 }}>×</button>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>Arquivo enviado ao Storage e URL salva na chave da NF</div>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* ── Rodapé ── */}
-            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DEE5EE", display: "flex", gap: 8, justifyContent: "flex-end", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
-              <button onClick={() => setModalNovo(false)} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={adicionarLancamento} disabled={disabled}
-                style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Salvando…" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : "◈ Salvar"}
-              </button>
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DEE5EE", display: "flex", gap: 8, alignItems: "center", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
+              {errosForm.length > 0 && (
+                <div style={{ flex: 1, background: "#FCEBEB", border: "0.5px solid #E24B4A60", borderRadius: 7, padding: "7px 12px", fontSize: 11, color: "#791F1F" }}>
+                  {errosForm.map((e, i) => <div key={i}>• {e}</div>)}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+                <button onClick={() => setModalNovo(false)} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={adicionarLancamento} disabled={disabled}
+                  style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", fontSize: 13 }}>
+                  {salvando ? "Salvando…" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : "◈ Salvar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

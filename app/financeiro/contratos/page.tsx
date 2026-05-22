@@ -593,7 +593,7 @@ export default function ContratosFinanceiros() {
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>Nº Documento / Contrato</label>
+                      <label style={lbl}>Nº Documento / Contrato <span style={{ color: "#E24B4A" }}>*</span></label>
                       <input style={inp} placeholder="Ex: 12345/2026" value={fC.numero_documento} onChange={e => setFC(p => ({ ...p, numero_documento: e.target.value }))} />
                     </div>
                     <div>
@@ -616,7 +616,7 @@ export default function ContratosFinanceiros() {
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>Nome do Credor *{fC.pessoa_id ? " (do cadastro)" : ""}</label>
+                      <label style={lbl}>Nome do Credor <span style={{ color: "#E24B4A" }}>*</span>{fC.pessoa_id ? " (do cadastro)" : ""}</label>
                       <input style={inp} placeholder="Ex: Banco do Brasil, Bradesco, Cooperativa…" value={fC.credor} onChange={e => setFC(p => ({ ...p, credor: e.target.value }))} />
                     </div>
                   </div>
@@ -674,7 +674,7 @@ export default function ContratosFinanceiros() {
                   <SecTitle>Taxas e Custos da Operação</SecTitle>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
-                      <label style={lbl}>Taxa de Juros a.a. (%)</label>
+                      <label style={lbl}>Taxa de Juros a.a. (%) <span style={{ color: "#E24B4A" }}>*</span></label>
                       <input style={inp} type="number" step="0.001" placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={e => onChangeAa(e.target.value)} />
                     </div>
                     <div>
@@ -747,8 +747,8 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
                     <button style={btnR} onClick={fecharModal}>Fechar</button>
                     <button
-                      style={{ ...btnV, background: "#1A4870", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado ? 0.5 : 1 }}
-                      disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado}
+                      style={{ ...btnV, background: "#1A4870", opacity: salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (!fC.taxa_juros_aa && !fC.taxa_juros_am) ? 0.5 : 1 }}
+                      disabled={salvando || !fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado || !fC.credor.trim() || !fC.numero_documento.trim() || (!fC.taxa_juros_aa && !fC.taxa_juros_am)}
                       onClick={salvarContrato}
                     >{salvando ? "Salvando…" : contratoModal ? "Salvar alterações" : "Salvar e continuar"}</button>
                   </div>

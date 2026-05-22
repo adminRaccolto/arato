@@ -1124,13 +1124,21 @@ export default function NfCompraPage() {
                         <label style={lbl}>Pedido de Compra vinculado</label>
                         <select value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
                           <option value="">Sem pedido vinculado</option>
-                          {pedidos.map(p => (
-                            <option key={p.id} value={p.id}>{(() => {
-                              const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
-                              const nr = p.nr_pedido ?? p.id.substring(0, 8);
-                              return `${forn} — PC ${nr}`;
-                            })()}</option>
-                          ))}
+                          {pedidos
+                            .filter(p => {
+                              if (!cab.emitente_cnpj) return true;
+                              const cnpjNF = cab.emitente_cnpj.replace(/\D/g, "");
+                              const forn = pessoas.find(x => x.id === p.fornecedor_id);
+                              const cnpjForn = (forn?.cpf_cnpj ?? "").replace(/\D/g, "");
+                              return !cnpjForn || cnpjForn === cnpjNF;
+                            })
+                            .map(p => (
+                              <option key={p.id} value={p.id}>{(() => {
+                                const forn = pessoas.find(x => x.id === p.fornecedor_id)?.nome ?? p.contato_fornecedor ?? "—";
+                                const nr = p.nr_pedido ?? p.id.substring(0, 8);
+                                return `${forn} — PC ${nr}`;
+                              })()}</option>
+                            ))}
                         </select>
                       </div>
                       <div>

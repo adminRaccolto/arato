@@ -1235,17 +1235,17 @@ export default function Arrendamentos() {
             {fC.forma_pagamento === "sc_soja" && (
               <div>
                 <label style={lbl}>sc/ha/ano (Soja)</label>
-                <input style={inp} type="number" step="0.0001" value={fC.sc_soja_ha}
-                  onChange={e => setFC(f => ({ ...f, sc_soja_ha: e.target.value }))}
-                  placeholder="Ex: 10,0000" />
+                <InputMonetario style={inp} value={fC.sc_soja_ha}
+                  onChange={v => setFC(f => ({ ...f, sc_soja_ha: String(v) }))}
+                  placeholder="Ex: 10,00" />
               </div>
             )}
             {fC.forma_pagamento === "sc_milho" && (
               <div>
                 <label style={lbl}>sc/ha/ano (Milho)</label>
-                <input style={inp} type="number" step="0.0001" value={fC.sc_soja_ha}
-                  onChange={e => setFC(f => ({ ...f, sc_soja_ha: e.target.value }))}
-                  placeholder="Ex: 10,0000" />
+                <InputMonetario style={inp} value={fC.sc_soja_ha}
+                  onChange={v => setFC(f => ({ ...f, sc_soja_ha: String(v) }))}
+                  placeholder="Ex: 10,00" />
               </div>
             )}
             {fC.forma_pagamento === "brl" && (
@@ -1258,9 +1258,9 @@ export default function Arrendamentos() {
                 </div>
                 <div>
                   <label style={lbl}>Milho — sc/ha/ano (referência de cálculo)</label>
-                  <input style={inp} type="number" step="0.0001" value={fC.sc_milho_ha}
-                    onChange={e => setFC(f => ({ ...f, sc_milho_ha: e.target.value }))}
-                    placeholder="Ex: 4,0000" />
+                  <InputMonetario style={inp} value={fC.sc_milho_ha}
+                    onChange={v => setFC(f => ({ ...f, sc_milho_ha: String(v) }))}
+                    placeholder="Ex: 4,00" />
                 </div>
                 <div>
                   <label style={lbl}>Valor R$/ano base (opcional — calculado nas parcelas)</label>
@@ -1276,15 +1276,15 @@ export default function Arrendamentos() {
               <>
                 <div>
                   <label style={lbl}>Soja — sc/ha/ano</label>
-                  <input style={inp} type="number" step="0.0001" value={fC.sc_soja_ha}
-                    onChange={e => setFC(f => ({ ...f, sc_soja_ha: e.target.value }))}
-                    placeholder="Ex: 11,0000" />
+                  <InputMonetario style={inp} value={fC.sc_soja_ha}
+                    onChange={v => setFC(f => ({ ...f, sc_soja_ha: String(v) }))}
+                    placeholder="Ex: 11,00" />
                 </div>
                 <div>
                   <label style={lbl}>Milho — sc/ha/ano</label>
-                  <input style={inp} type="number" step="0.0001" value={fC.sc_milho_ha}
-                    onChange={e => setFC(f => ({ ...f, sc_milho_ha: e.target.value }))}
-                    placeholder="Ex: 20,0000" />
+                  <InputMonetario style={inp} value={fC.sc_milho_ha}
+                    onChange={v => setFC(f => ({ ...f, sc_milho_ha: String(v) }))}
+                    placeholder="Ex: 20,00" />
                 </div>
               </>
             )}
@@ -1537,8 +1537,8 @@ export default function Arrendamentos() {
 
                       {(selArrGerador.forma_pagamento === "sc_soja" || selArrGerador.forma_pagamento === "sc_soja_milho") && <>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <input style={inpSm} type="number" step="0.0001" value={cfg.sc_soja_ha}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_soja_ha: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} value={cfg.sc_soja_ha}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_soja_ha: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 12, color: "#14532D", background: "#FAFEF8" }}>
                           {totalSoja > 0 ? `${fmtN(totalSoja, 1)} sc` : "—"}
@@ -1555,8 +1555,8 @@ export default function Arrendamentos() {
 
                       {(selArrGerador.forma_pagamento === "sc_milho" || selArrGerador.forma_pagamento === "sc_soja_milho") && <>
                         <td style={{ padding: "6px 8px", background: "#F0F6FE" }}>
-                          <input style={inpSm} type="number" step="0.0001" value={cfg.sc_milho_ha}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_milho_ha: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} value={cfg.sc_milho_ha}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_milho_ha: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", textAlign: "right", fontSize: 12, color: "#0C447C", background: "#F0F6FE" }}>
                           {totalMilho > 0 ? `${fmtN(totalMilho, 1)} sc` : "—"}
@@ -1574,8 +1574,8 @@ export default function Arrendamentos() {
                       {selArrGerador.forma_pagamento === "brl" && <>
                         {/* Bloco Soja */}
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
-                          <input style={inpSm} type="number" step="0.0001" placeholder="0" value={cfg.sc_soja_ha}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_soja_ha: e.target.value } : c))} />
+                          <InputMonetario style={inpSm} value={cfg.sc_soja_ha} placeholder="0,00"
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_soja_ha: String(v) } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
                           <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_soja}
