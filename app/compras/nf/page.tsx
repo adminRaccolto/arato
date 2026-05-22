@@ -23,6 +23,7 @@ import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
+import InputMonetario from "../../../components/InputMonetario";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -1368,7 +1369,7 @@ export default function NfCompraPage() {
                               <input type="number" value={it.quantidade || ""} onChange={e => setItem(it.key, { quantidade: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <input type="number" value={it.valor_unitario || ""} onChange={e => setItem(it.key, { valor_unitario: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputMonetario value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
                               {fmtBRL(it.valor_total)}
@@ -1397,7 +1398,7 @@ export default function NfCompraPage() {
                               <input type="number" value={it.quantidade || ""} onChange={e => setItem(it.key, { quantidade: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <input type="number" value={it.valor_unitario || ""} onChange={e => setItem(it.key, { valor_unitario: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputMonetario value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
                               {fmtBRL(it.valor_total)}
@@ -1431,7 +1432,7 @@ export default function NfCompraPage() {
                               <input type="number" value={it.quantidade || ""} onChange={e => setItem(it.key, { quantidade: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px" }}>
-                              <input type="number" value={it.valor_unitario || ""} onChange={e => setItem(it.key, { valor_unitario: parseFloat(e.target.value)||0 })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
+                              <InputMonetario value={it.valor_unitario || ""} onChange={v => setItem(it.key, { valor_unitario: v })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }} />
                             </div>
                             <div style={{ padding: "6px 8px", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
                               {fmtBRL(it.valor_total)}

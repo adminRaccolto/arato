@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
+import InputMonetario from "../../../../components/InputMonetario";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
@@ -248,11 +249,11 @@ export default function MutuoPage() {
                 </div>
                 <div>
                   <label style={lbl}>Valor Principal (R$)</label>
-                  <input type="number" step="0.01" min="0" value={mForm.valor_principal} onChange={e => setMForm(f => ({ ...f, valor_principal: e.target.value }))} style={inp} />
+                  <InputMonetario value={mForm.valor_principal} onChange={v => setMForm(f => ({ ...f, valor_principal: String(v) }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Taxa de Juros (% ao mês)</label>
-                  <input type="number" step="0.01" min="0" value={mForm.taxa_juros_mensal} onChange={e => setMForm(f => ({ ...f, taxa_juros_mensal: e.target.value }))} style={inp} placeholder="0.00" />
+                  <InputMonetario value={mForm.taxa_juros_mensal} onChange={v => setMForm(f => ({ ...f, taxa_juros_mensal: String(v) }))} style={inp} placeholder="0,00" />
                 </div>
                 <div>
                   <label style={lbl}>Data de Início</label>
@@ -296,11 +297,11 @@ export default function MutuoPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={lbl}>Valor Principal (R$)</label>
-                  <input type="number" step="0.01" min="0" value={pagForm.valor_principal} onChange={e => setPagForm(f => ({ ...f, valor_principal: e.target.value }))} style={inp} placeholder="0.00" />
+                  <InputMonetario value={pagForm.valor_principal} onChange={v => setPagForm(f => ({ ...f, valor_principal: String(v) }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Juros Pagos (R$)</label>
-                  <input type="number" step="0.01" min="0" value={pagForm.valor_juros} onChange={e => setPagForm(f => ({ ...f, valor_juros: e.target.value }))} style={inp} placeholder="0.00" />
+                  <InputMonetario value={pagForm.valor_juros} onChange={v => setPagForm(f => ({ ...f, valor_juros: String(v) }))} style={inp} />
                 </div>
               </div>
               {(parseFloat(pagForm.valor_principal) > 0 || parseFloat(pagForm.valor_juros) > 0) && (
