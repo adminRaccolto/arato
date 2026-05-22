@@ -69,6 +69,24 @@ export async function listarContasTenant(): Promise<Conta[]> {
   return data ?? [];
 }
 
+export async function listarContasAdmin(): Promise<(Conta & { fazendas_count: number })[]> {
+  const { data, error } = await supabase
+    .from("contas")
+    .select("*, fazendas(id)")
+    .order("nome");
+  if (error) throw error;
+  return (data ?? []).map((c: Conta & { fazendas?: { id: string }[] }) => ({
+    ...c,
+    fazendas_count: Array.isArray(c.fazendas) ? c.fazendas.length : 0,
+    fazendas: undefined,
+  }));
+}
+
+export async function atualizarConta(id: string, campos: Partial<Omit<Conta, "id" | "created_at">>): Promise<void> {
+  const { error } = await supabase.from("contas").update(campos).eq("id", id);
+  if (error) throw error;
+}
+
 // ————————————————————————————————————————
 // FAZENDAS
 // ————————————————————————————————————————
