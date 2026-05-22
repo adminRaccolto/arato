@@ -273,13 +273,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [fazendaId, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const podeAcessar = useCallback((modulo: string) => {
-    return permissoes[modulo] !== "nenhum";
+    const p = permissoes[modulo] as unknown;
+    if (p === undefined) return true;                            // sem restrição configurada
+    if (Array.isArray(p)) return (p as string[]).includes("visualizar"); // novo formato
+    return (p as string) !== "nenhum";                         // formato legado
   }, [permissoes]);
 
   const podeEscrever = useCallback((modulo: string) => {
-    const p = permissoes[modulo];
-    if (!p) return true;
-    return p === "escrita";
+    const p = permissoes[modulo] as unknown;
+    if (p === undefined) return true;
+    if (Array.isArray(p)) return (p as string[]).includes("criar") || (p as string[]).includes("editar");
+    return (p as string) === "escrita";
   }, [permissoes]);
 
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)

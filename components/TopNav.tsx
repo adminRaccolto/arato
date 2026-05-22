@@ -8,9 +8,9 @@ import type { Fazenda } from "../lib/supabase";
 
 
 // ─── Tipos ───────────────────────────────────────────────────
-type NavLink     = { type?: "link";     id: string; label: string; path: string };
+type NavLink     = { type?: "link";     id: string; label: string; path: string; moduleId?: string };
 type NavDivider  = { type: "divider";   label: string };
-type NavSubgroup = { type: "subgroup";  id: string; label: string; children: NavLink[] };
+type NavSubgroup = { type: "subgroup";  id: string; label: string; children: NavLink[]; moduleId?: string };
 type NavChild    = NavLink | NavDivider | NavSubgroup;
 
 type NavItem =
@@ -67,17 +67,17 @@ const NAV: NavItem[] = [
     type: "group", id: "comercial", label: "Comercial", minStep: 4,
     children: [
       {
-        type: "subgroup", id: "sg-faturamento", label: "Faturamento",
+        type: "subgroup", id: "sg-faturamento", label: "Faturamento", moduleId: "contratos",
         children: [
-          { id: "com-faturamento", label: "NF-e de Saída",   path: "/comercial/faturamento" },
-          { id: "com-expedicao",   label: "Expedição de Grãos", path: "/expedicao"          },
+          { id: "com-faturamento", label: "NF-e de Saída",      path: "/comercial/faturamento", moduleId: "contratos"  },
+          { id: "com-expedicao",   label: "Expedição de Grãos", path: "/expedicao",             moduleId: "expedicao"  },
         ],
       },
       {
-        type: "subgroup", id: "sg-contratos-com", label: "Contratos",
+        type: "subgroup", id: "sg-contratos-com", label: "Contratos", moduleId: "contratos",
         children: [
-          { id: "com-contratos",     label: "Contratos de Grãos",       path: "/contratos"              },
-          { id: "com-arrendamentos", label: "Contratos de Arrendamento", path: "/contratos/arrendamento" },
+          { id: "com-contratos",     label: "Contratos de Grãos",       path: "/contratos",              moduleId: "contratos"   },
+          { id: "com-arrendamentos", label: "Contratos de Arrendamento", path: "/contratos/arrendamento", moduleId: "arrendamento" },
         ],
       },
     ],
@@ -86,20 +86,20 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "transporte", label: "Transporte", minStep: 7,
     children: [
-      { id: "transp-cte",  label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte"  },
-      { id: "transp-mdfe", label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe" },
+      { id: "transp-cte",  label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",  moduleId: "transporte" },
+      { id: "transp-mdfe", label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe", moduleId: "transporte" },
     ],
   },
 
   {
     type: "group", id: "compras", label: "Compras", minStep: 5,
     children: [
-      { id: "comp-pedidos", label: "Pedidos de Compra", path: "/compras" },
+      { id: "comp-pedidos", label: "Pedidos de Compra", path: "/compras", moduleId: "compras" },
       {
         type: "subgroup", id: "sg-entrada-nf", label: "Entrada Manual de NF",
         children: [
-          { id: "comp-nf",         label: "NF de Produtos", path: "/compras/nf"         },
-          { id: "comp-nf-servico", label: "NF de Serviços", path: "/compras/nf-servico" },
+          { id: "comp-nf",         label: "NF de Produtos", path: "/compras/nf",         moduleId: "nf_entrada"  },
+          { id: "comp-nf-servico", label: "NF de Serviços", path: "/compras/nf-servico", moduleId: "nf_servico"  },
         ],
       },
       {
@@ -124,25 +124,25 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "financeiro", label: "Financeiro", minStep: 6,
     children: [
-      { id: "fin-pagar",    label: "Contas a Pagar",      path: "/financeiro/pagar"    },
-      { id: "fin-receber",  label: "Contas a Receber",    path: "/financeiro/receber"  },
-      { id: "fin-contratos", label: "Contratos Financeiros", path: "/financeiro/contratos" },
+      { id: "fin-pagar",     label: "Contas a Pagar",         path: "/financeiro/pagar",     moduleId: "fin_pagar"     },
+      { id: "fin-receber",   label: "Contas a Receber",       path: "/financeiro/receber",   moduleId: "fin_receber"   },
+      { id: "fin-contratos", label: "Contratos Financeiros",  path: "/financeiro/contratos", moduleId: "fin_contratos" },
       {
-        type: "subgroup", id: "sg-tesouraria", label: "Tesouraria",
+        type: "subgroup", id: "sg-tesouraria", label: "Tesouraria", moduleId: "fin_tesouraria",
         children: [
-          { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria", path: "/financeiro/tesouraria"           },
-          { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",  path: "/financeiro/tesouraria/operacoes" },
-          { id: "fin-mutuo",           label: "Mútuos entre Empresas",    path: "/financeiro/tesouraria/mutuo"     },
-          { id: "fin-conciliacao",     label: "Conciliação Bancária",     path: "/financeiro/conciliacao"          },
+          { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria", path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },
+          { id: "fin-op-tesouraria",   label: "Operações de Tesouraria",  path: "/financeiro/tesouraria/operacoes", moduleId: "fin_tesouraria" },
+          { id: "fin-mutuo",           label: "Mútuos entre Empresas",    path: "/financeiro/tesouraria/mutuo",     moduleId: "fin_tesouraria" },
+          { id: "fin-conciliacao",     label: "Conciliação Bancária",     path: "/financeiro/conciliacao",          moduleId: "fin_tesouraria" },
         ],
       },
       {
-        type: "subgroup", id: "sg-fin-relatorios", label: "Relatórios",
+        type: "subgroup", id: "sg-fin-relatorios", label: "Relatórios", moduleId: "fin_relatorios",
         children: [
-          { id: "fin-fluxo-prev", label: "Fluxo de Caixa Previsto",  path: "/financeiro/relatorios?aba=fluxo&tipo=previsto"  },
-          { id: "fin-fluxo-real", label: "Fluxo de Caixa Realizado", path: "/financeiro/relatorios?aba=fluxo&tipo=realizado" },
-          { id: "fin-cpcr",    label: "CP / CR — Contas",     path: "/financeiro/relatorios?aba=cpcr"    },
-          { id: "fin-posicao", label: "Posição por Conta",    path: "/financeiro/relatorios?aba=posicao" },
+          { id: "fin-fluxo-prev", label: "Fluxo de Caixa Previsto",  path: "/financeiro/relatorios?aba=fluxo&tipo=previsto",  moduleId: "fin_relatorios" },
+          { id: "fin-fluxo-real", label: "Fluxo de Caixa Realizado", path: "/financeiro/relatorios?aba=fluxo&tipo=realizado", moduleId: "fin_relatorios" },
+          { id: "fin-cpcr",       label: "CP / CR — Contas",         path: "/financeiro/relatorios?aba=cpcr",                moduleId: "fin_relatorios" },
+          { id: "fin-posicao",    label: "Posição por Conta",        path: "/financeiro/relatorios?aba=posicao",             moduleId: "fin_relatorios" },
         ],
       },
     ],
@@ -171,20 +171,20 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "fiscal", label: "Fiscal", minStep: 7,
     children: [
-      { id: "fiscal-monitor",    label: "Monitor NF-e Emitidas",   path: "/fiscal"                  },
-      { id: "fiscal-pendencias", label: "Pendências Fiscais",       path: "/fiscal/pendencias"       },
-      { id: "fiscal-gnre",       label: "GNRE",                     path: "/fiscal/gnre"          },
-      { id: "fiscal-esocial",    label: "eSocial Rural",            path: "/fiscal/esocial"       },
+      { id: "fiscal-monitor",    label: "Monitor NF-e Emitidas", path: "/fiscal",            moduleId: "fiscal_nfe"  },
+      { id: "fiscal-pendencias", label: "Pendências Fiscais",    path: "/fiscal/pendencias", moduleId: "fiscal_nfe"  },
+      { id: "fiscal-gnre",       label: "GNRE",                  path: "/fiscal/gnre",       moduleId: "fiscal_nfe"  },
+      { id: "fiscal-esocial",    label: "eSocial Rural",         path: "/fiscal/esocial",    moduleId: "fiscal_sped" },
       {
-        type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais",
+        type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais", moduleId: "fiscal_sped",
         children: [
-          { id: "fiscal-manifestacao", label: "Manifestação do Destinatário", path: "/fiscal/manifestacao" },
-          { id: "fiscal-lcdpr",        label: "LCDPR",                        path: "/lcdpr"               },
-          { id: "fiscal-sped-contabil",label: "SPED ECD — Contábil",         path: "/fiscal/sped-contabil"},
-          { id: "fiscal-ibs",          label: "IBS / CBS — 2027",             path: "/ibs"                 },
+          { id: "fiscal-manifestacao",  label: "Manifestação do Destinatário", path: "/fiscal/manifestacao",  moduleId: "fiscal_nfe"  },
+          { id: "fiscal-lcdpr",         label: "LCDPR",                        path: "/lcdpr",                moduleId: "fiscal_sped" },
+          { id: "fiscal-sped-contabil", label: "SPED ECD — Contábil",          path: "/fiscal/sped-contabil", moduleId: "fiscal_sped" },
+          { id: "fiscal-ibs",           label: "IBS / CBS — 2027",             path: "/ibs",                  moduleId: "fiscal_sped" },
         ],
       },
-      { id: "fiscal-certificado", label: "Certificado Digital", path: "/fiscal?aba=certificado" },
+      { id: "fiscal-certificado", label: "Certificado Digital", path: "/fiscal?aba=certificado", moduleId: "fiscal_nfe" },
     ],
   },
 
@@ -244,20 +244,21 @@ const NAV: NavItem[] = [
   },
 ];
 
-// ─── Mapeamento nav-id → módulo de permissão ────────────────
-const NAV_MODULE_MAP: Record<string, string> = {
-  "dashboard":       "dashboard",
-  "cadastros":       "cadastros",
-  "comercial":       "comercial",
-  "transporte":      "transporte",
-  "compras":         "estoque",
-  "estoque":         "estoque",
-  "financeiro":      "financeiro",
-  "lavoura":         "lavoura",
-  "fiscal":          "fiscal",
-  "custos":          "relatorios",
-  "configuracoes":   "configuracoes",
-  // "ajuda" não está no mapa → sempre visível
+// ─── Mapeamento nav-id → módulos de permissão ───────────────
+// Grupo visível se pelo menos 1 dos módulos for acessível.
+// IDs batem com MODULOS_PERM em admin/usuarios/page.tsx
+// Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
+const NAV_MODULE_MAP: Record<string, string[]> = {
+  "cadastros":     ["cadastros"],
+  "comercial":     ["contratos", "expedicao", "arrendamento"],
+  "transporte":    ["transporte"],
+  "compras":       ["compras", "nf_entrada", "nf_servico"],
+  "estoque":       ["estoque"],
+  "financeiro":    ["fin_receber", "fin_pagar", "fin_contratos", "fin_tesouraria", "fin_seguros"],
+  "lavoura":       ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades"],
+  "fiscal":        ["fiscal_nfe", "fiscal_sped"],
+  "custos":        ["custos", "fin_relatorios"],
+  "configuracoes": ["configuracoes", "usuarios", "logs"],
 };
 
 // ─── Componente ──────────────────────────────────────────────
@@ -369,6 +370,12 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   // ── Renderiza item do dropdown (link, divider ou subgroup) ──
   function renderChild(child: NavChild, idx: number) {
+    // Filtra links/subgroups com módulo sem acesso
+    if (child.type !== "divider") {
+      const mid = (child as NavLink | NavSubgroup).moduleId;
+      if (mid && !podeAcessar(mid)) return null;
+    }
+
     // Divider
     if (child.type === "divider") {
       return (
@@ -426,7 +433,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
               </div>
-              {sg.children.map(gc => {
+              {sg.children.filter(gc => !gc.moduleId || podeAcessar(gc.moduleId)).map(gc => {
                 const ativoGc = isAtivo(gc.path);
                 return (
                   <Link
@@ -606,10 +613,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       {/* ── Faixa 2: navegação ── */}
       <nav style={{ display: "flex", alignItems: "center", padding: "0 16px", height: 40, gap: 2, background: "#1A5C38", overflow: "visible" }}>
         {NAV.map(item => {
-          // Filtra por permissão de módulo do grupo do usuário
+          // Filtra por permissão: grupo visível se ≥1 módulo mapeado for acessível
           const navId  = item.type === "group" ? item.id : (item as NavLink).id;
-          const modulo = NAV_MODULE_MAP[navId];
-          if (modulo && !podeAcessar(modulo)) return null;
+          const modulos = NAV_MODULE_MAP[navId];
+          if (modulos && !modulos.some(m => podeAcessar(m))) return null;
 
           // During onboarding, items with minStep > stepsCompletos are locked
           const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;
