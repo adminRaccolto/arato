@@ -155,9 +155,17 @@ export default function PendenciasFiscaisPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fotoBase64, fazendaId, pendenciaId: modal.id }),
       });
-      const json = await resultado.json() as { ok: boolean; erro?: string; fornecedor?: string; valor?: number; chaveEncontrada?: string };
+      const json = await resultado.json() as {
+        ok: boolean; erro?: string; fornecedor?: string; valor?: number;
+        chaveEncontrada?: string; tipoNota?: string; mensagem?: string; cnae?: string;
+      };
       if (json.ok) {
-        setMsgResultado({ ok: true, texto: `✅ NF-e lida e recebida! Fornecedor: ${json.fornecedor ?? "—"} · Chave: ${json.chaveEncontrada ? json.chaveEncontrada.substring(0, 12) + "…" : "—"}` });
+        const ehNFSe = json.tipoNota === "nfse";
+        const textoBase = ehNFSe
+          ? `✅ NFS-e registrada! Fornecedor: ${json.fornecedor ?? "—"} · Valor: ${json.valor ? `R$ ${json.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}`
+          : `✅ NF-e lida e recebida! Fornecedor: ${json.fornecedor ?? "—"} · Chave: ${json.chaveEncontrada ? json.chaveEncontrada.substring(0, 12) + "…" : "—"}`;
+        const textoExtra = ehNFSe ? " (NFS-e não possui chave SEFAZ — registrada sem consulta à SEFAZ)" : "";
+        setMsgResultado({ ok: true, texto: textoBase + textoExtra });
         await carregar();
       } else {
         setMsgResultado({ ok: false, texto: json.erro ?? "Não foi possível ler a nota na foto." });

@@ -393,8 +393,30 @@ export async function criarParcelamento(
   return criados;
 }
 
-export async function baixarLancamento(id: string, valor_pago: number, data_baixa: string, conta_bancaria: string): Promise<void> {
-  const { error } = await supabase.from("lancamentos").update({ status: "baixado", valor_pago, data_baixa, conta_bancaria }).eq("id", id);
+export async function baixarLancamento(
+  id: string,
+  valor_pago: number,
+  data_baixa: string,
+  conta_bancaria: string,
+  extras?: {
+    pessoa_id?: string;
+    operacao_gerencial_id?: string;
+    ano_safra_id?: string;
+    ciclo_id?: string;
+    observacao?: string;
+    multa_valor?: number;
+    juros_valor?: number;
+    desconto_valor?: number;
+    salvar_classificacao?: boolean; // flag para gravar regra automática
+  }
+): Promise<void> {
+  const patch: Record<string, unknown> = { status: "baixado", valor_pago, data_baixa, conta_bancaria };
+  if (extras?.pessoa_id)               patch.pessoa_id = extras.pessoa_id;
+  if (extras?.operacao_gerencial_id)   patch.operacao_gerencial_id = extras.operacao_gerencial_id;
+  if (extras?.ano_safra_id)            patch.ano_safra_id = extras.ano_safra_id;
+  if (extras?.ciclo_id)                patch.ciclo_id = extras.ciclo_id;
+  if (extras?.observacao)              patch.observacao = extras.observacao;
+  const { error } = await supabase.from("lancamentos").update(patch).eq("id", id);
   if (error) throw error;
 }
 

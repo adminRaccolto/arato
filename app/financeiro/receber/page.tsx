@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
 import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial } from "../../../lib/supabase";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -116,6 +116,7 @@ export default function ContasReceber() {
 
   const [lancamentos,  setLancamentos]  = useState<Lancamento[]>([]);
   const [anosSafra,    setAnosSafra]    = useState<AnoSafra[]>([]);
+  const [ciclos,       setCiclos]       = useState<Ciclo[]>([]);
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [pessoas,      setPessoas]      = useState<Pessoa[]>([]);
   const [contas,       setContas]       = useState<ContaBancariaMin[]>([]);
@@ -148,7 +149,12 @@ export default function ContasReceber() {
   const [loteSalvando, setLoteSalvando] = useState(false);
   const [loteErro,     setLoteErro]     = useState("");
 
-  const [baixa, setBaixa] = useState({ valorMask: "", data: TODAY, conta: "", obs: "" });
+  const [baixa, setBaixa] = useState({
+    valorMask: "", data: TODAY, conta: "", obs: "",
+    multa_pct: "", juros_pct: "", desconto_pct: "",
+    pessoa_id: "", operacao_gerencial_id: "", og_busca: "",
+    ano_safra_id: "", ciclo_id: "",
+  });
   const [form, setForm] = useState({
     moeda: "BRL" as Moeda,
     pessoa_id: "", descricao: "", categoria: CATS_CR[0], vencimento: "",
@@ -194,6 +200,7 @@ export default function ContasReceber() {
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
       listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "receita", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
+      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
     }
   }, [fazendaId]);
 
@@ -273,18 +280,39 @@ export default function ContasReceber() {
 
   const abrirBaixa = (l: Lancamento) => {
     setModalBaixa(l);
-    setBaixa({ valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)), data: TODAY, conta: "", obs: "" });
+    setBaixa({
+      valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
+      data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
+      multa_pct: "", juros_pct: "", desconto_pct: "",
+      pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+      og_busca: "",
+      ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+    });
   };
 
   const confirmarBaixa = async () => {
     if (!modalBaixa) return;
     if (modalBaixa.moeda !== "barter" && !baixa.valorMask) return;
+    if (modalBaixa.moeda !== "barter" && !baixa.conta) { alert("Selecione a conta bancária de recebimento."); return; }
     const valorPago = modalBaixa.moeda === "barter" ? 0 : desmascarar(baixa.valorMask);
     try {
       setSalvando(true);
-      await baixarLancamento(modalBaixa.id, valorPago, baixa.data, modalBaixa.moeda === "barter" ? "" : baixa.conta);
+      await baixarLancamento(
+        modalBaixa.id, valorPago, baixa.data, modalBaixa.moeda === "barter" ? "" : baixa.conta,
+        {
+          pessoa_id:             baixa.pessoa_id || undefined,
+          operacao_gerencial_id: baixa.operacao_gerencial_id || undefined,
+          ano_safra_id:          baixa.ano_safra_id || undefined,
+          ciclo_id:              baixa.ciclo_id || undefined,
+          observacao:            baixa.obs || undefined,
+        }
+      );
       setLancamentos(prev => prev.map(l =>
-        l.id !== modalBaixa.id ? l : { ...l, status: "baixado" as const, data_baixa: baixa.data, valor_pago: valorPago, conta_bancaria: baixa.conta }
+        l.id !== modalBaixa.id ? l : {
+          ...l, status: "baixado" as const, data_baixa: baixa.data,
+          valor_pago: valorPago, conta_bancaria: baixa.conta,
+          pessoa_id: baixa.pessoa_id || l.pessoa_id,
+        }
       ));
       setModalBaixa(null);
     } catch (e: unknown) {
@@ -757,14 +785,29 @@ export default function ContasReceber() {
       )}
 
       {/* ── Modal Baixa ─────────────────────────────────────────── */}
-      {modalBaixa && (
+      {modalBaixa && (() => {
+        const valorOrig = paraBRL(modalBaixa);
+        const multaV   = valorOrig * (parseFloat(baixa.multa_pct.replace(",", ".")) || 0) / 100;
+        const jurosV   = valorOrig * (parseFloat(baixa.juros_pct.replace(",", ".")) || 0) / 100;
+        const descV    = valorOrig * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
+        const valorCom = valorOrig + multaV + jurosV - descV;
+        const temEncargo = multaV + jurosV + descV !== 0;
+        return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>
-              {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : "Registrar recebimento"}
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>
+                {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : "Registrar recebimento"}
+              </div>
+              <button onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }}>×</button>
             </div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>{modalBaixa.descricao}</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>{modalBaixa.descricao}</div>
+            <div style={{ background: "#F8FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#555", marginBottom: 20, display: "flex", gap: 20 }}>
+              <span>Valor original: <strong style={{ color: "#1A4870" }}>{fmtBRL(valorOrig)}</strong></span>
+              <span>Vencimento: <strong>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
+              {modalBaixa.moeda === "USD" && <span style={{ color: "#7A4300" }}>Venda em {fmtUSD(modalBaixa.valor)}</span>}
+            </div>
 
             {modalBaixa.moeda === "barter" ? (
               <div style={{ display: "grid", gap: 14 }}>
@@ -778,41 +821,135 @@ export default function ContasReceber() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-                <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Valor recebido (R$) *
-                    {modalBaixa.moeda === "USD" && (
-                      <span style={{ fontSize: 10, color: "#7A4300", marginLeft: 8, fontWeight: 400 }}>
-                        Venda em {fmtUSD(modalBaixa.valor)} ≈ {fmtBRL(modalBaixa.valor * (modalBaixa.cotacao_usd ?? COTACAO_USD))}
-                      </span>
-                    )}
-                  </label>
-                  <input style={inp} type="text" inputMode="numeric" placeholder="0,00" value={baixa.valorMask}
-                    onChange={e => setBaixa(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
-                  {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < paraBRL(modalBaixa) && (
-                    <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 4 }}>
-                      Recebimento parcial — restante: {fmtBRL(paraBRL(modalBaixa) - desmascarar(baixa.valorMask))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                {/* ── Classificação ── */}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Classificação</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={lbl}>Cliente / Devedor</label>
+                      <select style={inp} value={baixa.pessoa_id} onChange={e => setBaixa(p => ({ ...p, pessoa_id: e.target.value }))}>
+                        <option value="">— Não informado —</option>
+                        {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Ano Safra</label>
+                      <select style={inp} value={baixa.ano_safra_id} onChange={e => setBaixa(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                        <option value="">— Sem safra —</option>
+                        {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Operação Gerencial</label>
+                      <input style={{ ...inp, marginBottom: 4 }} placeholder="Buscar operação…" value={baixa.og_busca}
+                        onChange={e => setBaixa(p => ({ ...p, og_busca: e.target.value }))} />
+                      <select style={inp} value={baixa.operacao_gerencial_id}
+                        onChange={e => setBaixa(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
+                        <option value="">— Sem operação gerencial —</option>
+                        {Object.entries(
+                          opGerenciais
+                            .filter(o => !baixa.og_busca || `${o.classificacao ?? ""} ${o.descricao}`.toLowerCase().includes(baixa.og_busca.toLowerCase()))
+                            .reduce((acc, o) => {
+                              const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
+                              (acc[k] = acc[k] ?? []).push(o);
+                              return acc;
+                            }, {} as Record<string, typeof opGerenciais>)
+                        ).map(([k, items]) => (
+                          <optgroup key={k} label={k}>
+                            {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Ciclo / Empreendimento</label>
+                      <select style={inp} value={baixa.ciclo_id} onChange={e => setBaixa(p => ({ ...p, ciclo_id: e.target.value }))}>
+                        <option value="">— Sem ciclo —</option>
+                        {ciclos.filter(c => !baixa.ano_safra_id || c.ano_safra_id === baixa.ano_safra_id)
+                          .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Encargos ── */}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Encargos</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                    <div>
+                      <label style={lbl}>Acréscimo (%)</label>
+                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.multa_pct}
+                        onChange={e => {
+                          const v = e.target.value.replace(/[^\d,]/g, "");
+                          const com = valorOrig + valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100 + jurosV - descV;
+                          setBaixa(p => ({ ...p, multa_pct: v, valorMask: numParaMascara(com) }));
+                        }} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Juros (%)</label>
+                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.juros_pct}
+                        onChange={e => {
+                          const v = e.target.value.replace(/[^\d,]/g, "");
+                          const com = valorOrig + multaV + valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100 - descV;
+                          setBaixa(p => ({ ...p, juros_pct: v, valorMask: numParaMascara(com) }));
+                        }} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Desconto (%)</label>
+                      <input style={inp} type="text" inputMode="decimal" placeholder="0,00" value={baixa.desconto_pct}
+                        onChange={e => {
+                          const v = e.target.value.replace(/[^\d,]/g, "");
+                          const com = valorOrig + multaV + jurosV - valorOrig * (parseFloat(v.replace(",", ".")) || 0) / 100;
+                          setBaixa(p => ({ ...p, desconto_pct: v, valorMask: numParaMascara(com) }));
+                        }} />
+                    </div>
+                  </div>
+                  {temEncargo && (
+                    <div style={{ marginTop: 10, background: "#F0F7FF", borderRadius: 7, padding: "7px 12px", fontSize: 12, color: "#0B2D50", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                      {multaV > 0 && <span>Acréscimo: +{fmtBRL(multaV)}</span>}
+                      {jurosV > 0 && <span>Juros: +{fmtBRL(jurosV)}</span>}
+                      {descV  > 0 && <span>Desconto: -{fmtBRL(descV)}</span>}
+                      <span style={{ fontWeight: 700 }}>Total com encargos: {fmtBRL(valorCom)}</span>
                     </div>
                   )}
                 </div>
-                <div>
-                  <label style={lbl}>Data da liquidação</label>
-                  <input style={inp} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={lbl}>Conta bancária</label>
-                  <select style={inp} value={baixa.conta} onChange={e => setBaixa(p => ({ ...p, conta: e.target.value }))}>
-                    <option value="">— Selecionar conta —</option>
-                    {contas.map(c => {
-                      const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
-                      return <option key={c.id} value={label}>{label}</option>;
-                    })}
-                    {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
-                  </select>
-                </div>
-                <div style={{ gridColumn: "1/-1" }}>
-                  <label style={lbl}>Observação</label>
-                  <input style={inp} placeholder="Opcional" value={baixa.obs} onChange={e => setBaixa(p => ({ ...p, obs: e.target.value }))} />
+
+                {/* ── Recebimento ── */}
+                <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Recebimento</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Valor recebido (R$) <span style={{ color: "#E24B4A" }}>*</span></label>
+                      <input style={{ ...inp, fontWeight: 600 }} type="text" inputMode="numeric" placeholder="0,00" value={baixa.valorMask}
+                        onChange={e => setBaixa(p => ({ ...p, valorMask: aplicarMascara(e.target.value) }))} />
+                      {desmascarar(baixa.valorMask) > 0 && desmascarar(baixa.valorMask) < valorOrig && (
+                        <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 4 }}>
+                          Recebimento parcial — restante: {fmtBRL(valorOrig - desmascarar(baixa.valorMask))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label style={lbl}>Data da liquidação</label>
+                      <input style={inp} type="date" value={baixa.data} onChange={e => setBaixa(p => ({ ...p, data: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Conta bancária <span style={{ color: "#E24B4A" }}>*</span></label>
+                      <select style={{ ...inp, borderColor: !baixa.conta ? "#E24B4A" : undefined }} value={baixa.conta} onChange={e => setBaixa(p => ({ ...p, conta: e.target.value }))}>
+                        <option value="">— Selecionar conta —</option>
+                        {contas.map(c => {
+                          const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
+                          return <option key={c.id} value={label}>{label}</option>;
+                        })}
+                        {contas.length === 0 && <option disabled>Cadastre contas em Cadastros › Contas Bancárias</option>}
+                      </select>
+                    </div>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Observação</label>
+                      <input style={inp} placeholder="Opcional" value={baixa.obs} onChange={e => setBaixa(p => ({ ...p, obs: e.target.value }))} />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -822,14 +959,16 @@ export default function ContasReceber() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={confirmarBaixa} disabled={salvando || (modalBaixa.moeda !== "barter" && !baixa.valorMask)}
+              <button onClick={confirmarBaixa}
+                disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta))}
                 style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Salvando…" : "↓ Confirmar recebimento"}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Modal Recebimento em Lote ────────────────────────── */}
       {modalLote && (

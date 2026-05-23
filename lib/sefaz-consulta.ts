@@ -140,14 +140,24 @@ function parseRetornoConsulta(xml: string): {
   valorTotal?: number;
   nomeEmitente?: string;
   chaveAcesso?: string;
+  // Emitente — endereço completo
+  ieEmitente?: string;
+  cnaeEmitente?: string;
+  logradouro?: string;
+  numero?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  cep?: string;
+  telefone?: string;
 } {
-  const tag = (name: string) => {
-    const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`));
+  const tag = (src: string, name: string) => {
+    const m = src.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`));
     return m ? m[1].trim() : "";
   };
 
-  const cStat = tag("cStat");
-  const xMotivo = tag("xMotivo");
+  const cStat = tag(xml, "cStat");
+  const xMotivo = tag(xml, "xMotivo");
 
   // cStat 100 = autorizada, 101 = cancelada, 110 = uso denegado
   const ok = ["100", "101"].includes(cStat);
@@ -160,17 +170,32 @@ function parseRetornoConsulta(xml: string): {
   const protMatch = xml.match(/<protNFe[\s\S]*?<\/protNFe>/);
   const protNFe = protMatch ? protMatch[0] : undefined;
 
+  // Extrair seção <emit> para evitar pegar dados do destinatário
+  const emitMatch = xml.match(/<emit>[\s\S]*?<\/emit>/);
+  const emitXml = emitMatch ? emitMatch[0] : xml;
+  const enderMatch = emitXml.match(/<enderEmit>[\s\S]*?<\/enderEmit>/);
+  const enderXml = enderMatch ? enderMatch[0] : "";
+
   return {
     ok,
     cStat,
     xMotivo,
     nfeXml,
     protNFe,
-    cnpjEmitente: tag("CNPJ") || tag("CPF"),
-    nomeEmitente: tag("xNome"),
-    dataEmissao:  tag("dhEmi").substring(0, 10),
-    valorTotal:   parseFloat(tag("vNF")) || undefined,
-    chaveAcesso:  tag("chNFe"),
+    cnpjEmitente: tag(emitXml, "CNPJ") || tag(emitXml, "CPF"),
+    nomeEmitente: tag(emitXml, "xNome"),
+    dataEmissao:  tag(xml, "dhEmi").substring(0, 10),
+    valorTotal:   parseFloat(tag(xml, "vNF")) || undefined,
+    chaveAcesso:  tag(xml, "chNFe"),
+    ieEmitente:   tag(emitXml, "IE"),
+    cnaeEmitente: tag(emitXml, "CNAE"),
+    logradouro:   tag(enderXml, "xLgr"),
+    numero:       tag(enderXml, "nro"),
+    bairro:       tag(enderXml, "xBairro"),
+    municipio:    tag(enderXml, "xMun"),
+    uf:           tag(enderXml, "UF"),
+    cep:          tag(enderXml, "CEP"),
+    telefone:     tag(enderXml, "fone"),
   };
 }
 
@@ -191,6 +216,15 @@ export async function consultarNfePorChave(
   nomeEmitente?: string;
   dataEmissao?: string;
   valorTotal?: number;
+  ieEmitente?: string;
+  cnaeEmitente?: string;
+  logradouro?: string;
+  numero?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  cep?: string;
+  telefone?: string;
 }> {
   // Validar chave (44 dígitos)
   const chave = chaveAcesso.replace(/\D/g, "");
@@ -242,6 +276,15 @@ export async function consultarNfePorChave(
     nomeEmitente: resultado.nomeEmitente,
     dataEmissao:  resultado.dataEmissao,
     valorTotal:   resultado.valorTotal,
+    ieEmitente:   resultado.ieEmitente,
+    cnaeEmitente: resultado.cnaeEmitente,
+    logradouro:   resultado.logradouro,
+    numero:       resultado.numero,
+    bairro:       resultado.bairro,
+    municipio:    resultado.municipio,
+    uf:           resultado.uf,
+    cep:          resultado.cep,
+    telefone:     resultado.telefone,
   };
 }
 

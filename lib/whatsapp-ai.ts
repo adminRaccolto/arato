@@ -97,10 +97,21 @@ export async function lerNotaFiscal(imagemBase64: string, mimeType: string): Pro
   itens?: { descricao: string; quantidade: number; unidade: string; valor_unitario: number }[];
   numero_nf?: string;
   chave_acesso?: string;
+  tipo_nota?: "nfe" | "nfse" | "cupom" | "recibo" | "outro";
+  // Endereço do emitente
+  logradouro?: string;
+  numero_end?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  cep?: string;
+  telefone?: string;
+  inscricao_estadual?: string;
+  cnae?: string;
 }> {
   const msg = await claude.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1000,
+    max_tokens: 1500,
     messages: [{
       role: "user",
       content: [
@@ -110,10 +121,13 @@ export async function lerNotaFiscal(imagemBase64: string, mimeType: string): Pro
         },
         {
           type: "text",
-          text: `Esta é uma foto de nota fiscal ou cupom fiscal brasileiro. Extraia os dados e retorne um JSON com:
+          text: `Esta é uma foto de nota fiscal ou documento fiscal brasileiro. Extraia os dados e retorne um JSON com:
 cnpj_emitente, razao_social, data_emissao (YYYY-MM-DD), data_vencimento (YYYY-MM-DD se houver),
-valor_total (número), numero_nf, chave_acesso (44 dígitos se NF-e),
-itens: [{descricao, quantidade, unidade, valor_unitario}]
+valor_total (número), numero_nf, chave_acesso (44 dígitos somente se for NF-e ou CT-e — NFS-e não tem chave SEFAZ),
+tipo_nota ("nfe" para NF-e produto, "nfse" para NF de serviços municipal, "cupom" para cupom fiscal, "recibo", "outro"),
+itens: [{descricao, quantidade, unidade, valor_unitario}],
+logradouro, numero_end, bairro, municipio, uf, cep, telefone, inscricao_estadual,
+cnae (código CNAE do emitente se aparecer no documento, como "7490-1/04").
 Retorne APENAS o JSON, sem explicações. Campos não encontrados ficam null.`,
         },
       ],
