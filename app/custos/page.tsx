@@ -6,6 +6,7 @@ import { listarSafras } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { Safra } from "../../lib/supabase";
+import PlanoGate from "../../components/PlanoGate";
 
 type Aba = "dre" | "custoha" | "produtividade" | "custostotais";
 
@@ -144,7 +145,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
 
 // ─── Componente principal ─────────────────────────────────────
 function CustosInner() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const searchParams  = useSearchParams();
   const aba = (searchParams.get("aba") as Aba) || "dre";
 
@@ -808,8 +809,10 @@ function CustosInner() {
 
 export default function Custos() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#F3F6F9" }} />}>
-      <CustosInner />
-    </Suspense>
+    <PlanoGate modulo="custos">
+      <Suspense fallback={<div style={{ minHeight: "100vh", background: "#F3F6F9" }} />}>
+        <CustosInner />
+      </Suspense>
+    </PlanoGate>
   );
 }

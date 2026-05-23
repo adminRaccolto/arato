@@ -5,6 +5,7 @@ import TopNav from "../../../components/TopNav";
 import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor } from "../../../lib/supabase";
+import PlanoGate from "../../../components/PlanoGate";
 
 type AbaFin = "fluxo" | "dfc" | "posicao" | "cpcr";
 
@@ -72,7 +73,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "#555", marginBot
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -1510,8 +1511,10 @@ function FinanceiroRelatoriosInner() {
 
 export default function FinanceiroRelatorios() {
   return (
-    <Suspense fallback={null}>
-      <FinanceiroRelatoriosInner />
-    </Suspense>
+    <PlanoGate modulo="fin_relatorios">
+      <Suspense fallback={null}>
+        <FinanceiroRelatoriosInner />
+      </Suspense>
+    </PlanoGate>
   );
 }
