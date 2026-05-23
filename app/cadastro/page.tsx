@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { PLANOS_DEFAULT, fmtPreco, descontoAnual } from "../../lib/planos";
+import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
 import type { PlanoId } from "../../lib/planos";
 
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
@@ -33,7 +33,6 @@ function CadastroInner() {
 
   const [step, setStep] = useState(1);
   const [plano, setPlano] = useState<PlanoId>((params.get("plano") as PlanoId) || "gestao");
-  const [periodo, setPeriodo] = useState<"mensal" | "anual">((params.get("periodo") as "mensal" | "anual") || "mensal");
 
   const [form, setForm] = useState({
     nome: "", email: "", senha: "", confirmaSenha: "",
@@ -49,7 +48,6 @@ function CadastroInner() {
   const [pixCopiado, setPixCopiado] = useState(false);
 
   const p = PLANOS_DEFAULT[plano];
-  const preco = periodo === "anual" ? p.preco_anual / 12 : p.preco_mensal;
   const c = COR_PLANO[plano];
 
   function setF(campo: string, valor: string) {
@@ -77,7 +75,7 @@ function CadastroInner() {
       const res = await fetch("/api/cadastro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, plano_id: plano, periodo }),
+        body: JSON.stringify({ ...form, plano_id: plano }),
       });
       const data = await res.json();
       setResultado(data);
@@ -148,26 +146,10 @@ function CadastroInner() {
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 6px" }}>Escolha seu plano</h1>
             <p style={{ fontSize: 14, color: "#555", margin: "0 0 24px" }}>14 dias grátis, sem cartão de crédito</p>
 
-            {/* Toggle */}
-            <div style={{ display: "inline-flex", background: "#E4EAF3", borderRadius: 10, padding: 4, gap: 0, marginBottom: 20 }}>
-              {(["mensal", "anual"] as const).map(per => (
-                <button key={per} onClick={() => setPeriodo(per)} style={{
-                  padding: "7px 20px", borderRadius: 8, border: "none", cursor: "pointer",
-                  fontSize: 13, fontWeight: 600,
-                  background: periodo === per ? "#fff" : "transparent",
-                  color: periodo === per ? "#1A4870" : "#888",
-                  boxShadow: periodo === per ? "0 1px 4px #0002" : "none",
-                }}>
-                  {per === "mensal" ? "Mensal" : <span>Anual <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 700 }}>−10%</span></span>}
-                </button>
-              ))}
-            </div>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {ORDEM.map(pid => {
                 const pp = PLANOS_DEFAULT[pid];
                 const cc = COR_PLANO[pid];
-                const preco2 = periodo === "anual" ? pp.preco_anual / 12 : pp.preco_mensal;
                 const selecionado = plano === pid;
                 return (
                   <div key={pid} onClick={() => setPlano(pid)} style={{
@@ -197,8 +179,7 @@ function CadastroInner() {
                       </div>
                     </div>
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: "#0B2D50" }}>{fmtPreco(preco2)}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span></div>
-                      {periodo === "anual" && <div style={{ fontSize: 10, color: "#16A34A" }}>economize {descontoAnual(pp)}%</div>}
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#0B2D50" }}>{fmtPreco(pp.preco_mensal)}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span></div>
                     </div>
                   </div>
                 );
@@ -232,7 +213,7 @@ function CadastroInner() {
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{p.nome}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>{fmtPreco(preco)}/mês</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>{fmtPreco(p.preco_mensal)}/mês</span>
                 <button onClick={() => setStep(1)} style={{ fontSize: 12, color: "#1A4870", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>Trocar</button>
               </div>
             </div>
@@ -346,7 +327,7 @@ function CadastroInner() {
                   <span style={{ fontSize: 20 }}>💳</span>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50" }}>Primeira mensalidade — PIX</div>
-                    <div style={{ fontSize: 12, color: "#666" }}>Vence ao final do trial · {fmtPreco(periodo === "anual" ? p.preco_anual : p.preco_mensal)}</div>
+                    <div style={{ fontSize: 12, color: "#666" }}>Vence ao final do trial · {fmtPreco(p.preco_mensal)}/mês</div>
                   </div>
                 </div>
                 <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 12px", fontSize: 11, fontFamily: "monospace", color: "#333", wordBreak: "break-all", marginBottom: 10, lineHeight: 1.5 }}>

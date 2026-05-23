@@ -42,3 +42,4 @@ next-env.d.ts
 
 # Arquivos de referência locais (PDFs, Excel, binários Agrosoft)
 Arquivos_locais/
+.env*.local

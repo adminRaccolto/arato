@@ -122,7 +122,7 @@ export async function POST(req: Request) {
     // 7. Cria assinatura (em trial)
     const trialFim = new Date();
     trialFim.setDate(trialFim.getDate() + plano.trial_dias);
-    const preco = periodo === "anual" ? plano.preco_anual : plano.preco_mensal;
+    const preco = plano.preco_mensal;
 
     const { data: assinatura } = await supabase
       .from("assinaturas")

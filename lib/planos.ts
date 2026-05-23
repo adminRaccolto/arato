@@ -9,7 +9,6 @@ export interface Plano {
   nome: string;
   descricao: string;
   preco_mensal: number;
-  preco_anual: number;
   trial_dias: number;
   limite_usuarios: number | null;
   destaque: boolean;
@@ -24,7 +23,6 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     nome: "Essencial",
     descricao: "Para quem está começando a digitalizar a fazenda",
     preco_mensal: 387,
-    preco_anual: 3480,
     trial_dias: 14,
     limite_usuarios: 2,
     destaque: false,
@@ -49,7 +47,6 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     nome: "Gestão",
     descricao: "Para quem vende grãos e controla o financeiro completo",
     preco_mensal: 1197,
-    preco_anual: 10770,
     trial_dias: 14,
     limite_usuarios: 5,
     destaque: true,
@@ -79,7 +76,6 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     nome: "Performance",
     descricao: "Para grandes operações com controle fiscal e BI avançado",
     preco_mensal: 1787,
-    preco_anual: 16080,
     trial_dias: 14,
     limite_usuarios: null,
     destaque: false,
@@ -114,7 +110,3 @@ export function fmtPreco(v: number): string {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function descontoAnual(plano: Plano): number {
-  const anualEquiv = plano.preco_mensal * 12;
-  return Math.round((1 - plano.preco_anual / anualEquiv) * 100);
-}

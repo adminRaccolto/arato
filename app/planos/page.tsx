@@ -1,7 +1,6 @@
 "use client";
-import { useState } from "react";
 import Link from "next/link";
-import { PLANOS_DEFAULT, fmtPreco, descontoAnual } from "../../lib/planos";
+import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
 import type { PlanoId } from "../../lib/planos";
 
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
@@ -13,8 +12,6 @@ const COR: Record<PlanoId, { borda: string; bg: string; badge: string; btn: stri
 };
 
 export default function PlanosPage() {
-  const [periodo, setPeriodo] = useState<"mensal" | "anual">("mensal");
-
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", background: "#F4F6FA", minHeight: "100vh" }}>
 
@@ -46,27 +43,10 @@ export default function PlanosPage() {
           <h1 style={{ margin: "0 0 16px", fontSize: 38, fontWeight: 800, color: "#0B2D50", lineHeight: 1.2 }}>
             Escolha o plano certo<br />para a sua fazenda
           </h1>
-          <p style={{ margin: "0 auto 32px", fontSize: 16, color: "#555", maxWidth: 540, lineHeight: 1.6 }}>
+          <p style={{ margin: "0 auto 0", fontSize: 16, color: "#555", maxWidth: 540, lineHeight: 1.6 }}>
             Do plantio ao financeiro, o Arato organiza toda a sua operação agrícola em um só lugar.
+            Cobrança mensal recorrente, cancele quando quiser.
           </p>
-
-          {/* Toggle mensal/anual */}
-          <div style={{ display: "inline-flex", background: "#E4EAF3", borderRadius: 10, padding: 4, gap: 0 }}>
-            {(["mensal", "anual"] as const).map(p => (
-              <button key={p} onClick={() => setPeriodo(p)} style={{
-                padding: "8px 22px", borderRadius: 8, border: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: 600,
-                background: periodo === p ? "#fff" : "transparent",
-                color: periodo === p ? "#1A4870" : "#888",
-                boxShadow: periodo === p ? "0 1px 4px #0002" : "none",
-                transition: "all 0.15s",
-              }}>
-                {p === "mensal" ? "Mensal" : (
-                  <span>Anual <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 700 }}>−10%</span></span>
-                )}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* ── Cards ── */}
@@ -74,8 +54,6 @@ export default function PlanosPage() {
           {ORDEM.map(pid => {
             const p = PLANOS_DEFAULT[pid];
             const c = COR[pid];
-            const preco = periodo === "anual" ? p.preco_anual / 12 : p.preco_mensal;
-            const desconto = descontoAnual(p);
 
             return (
               <div key={pid} style={{
@@ -86,7 +64,6 @@ export default function PlanosPage() {
                 position: "relative",
               }}>
 
-                {/* Badge destaque */}
                 {pid === "gestao" && (
                   <div style={{
                     position: "absolute", top: -13, left: "50%", transform: "translateX(-50%)",
@@ -116,25 +93,19 @@ export default function PlanosPage() {
                   {p.descricao}
                 </div>
 
-                <div style={{ marginBottom: 6 }}>
+                <div style={{ marginBottom: 4 }}>
                   <span style={{ fontSize: 36, fontWeight: 800, color: "#0B2D50" }}>
-                    {fmtPreco(preco)}
+                    {fmtPreco(p.preco_mensal)}
                   </span>
                   <span style={{ fontSize: 13, color: "#888" }}>/mês</span>
                 </div>
 
-                {periodo === "anual" && (
-                  <div style={{ fontSize: 11, color: "#16A34A", fontWeight: 600, marginBottom: 4 }}>
-                    {fmtPreco(p.preco_anual)}/ano · economize {desconto}%
-                  </div>
-                )}
-
                 <div style={{ fontSize: 11, color: "#888", marginBottom: 24 }}>
-                  14 dias grátis · sem cartão
+                  14 dias grátis · cobrança mensal recorrente
                 </div>
 
                 <Link
-                  href={`/cadastro?plano=${pid}&periodo=${periodo}`}
+                  href={`/cadastro?plano=${pid}`}
                   style={{
                     display: "block", textAlign: "center",
                     padding: "12px 0", background: c.btn, color: "#fff",
@@ -218,7 +189,7 @@ export default function PlanosPage() {
           <h2 style={{ textAlign: "center", fontSize: 22, fontWeight: 700, color: "#0B2D50", marginBottom: 32 }}>Perguntas frequentes</h2>
           {[
             ["Como funciona o período de teste gratuito?", "Você tem 14 dias para testar todas as funcionalidades do plano escolhido, sem precisar de cartão de crédito. Ao final do trial, você receberá um link de pagamento via PIX."],
-            ["Posso mudar de plano depois?", "Sim. Você pode fazer upgrade ou downgrade a qualquer momento pelo painel Configurações > Plano. O valor é ajustado proporcionalmente."],
+            ["Posso mudar de plano depois?", "Sim. Você pode fazer upgrade ou downgrade a qualquer momento pelo painel Configurações > Plano. O valor é ajustado na próxima mensalidade."],
             ["O que acontece se eu não pagar?", "Sua conta entra em modo somente leitura — você continua vendo todos os seus dados e pode exportar, mas novos lançamentos ficam bloqueados até a regularização."],
             ["Meus dados ficam seguros?", "Sim. Todos os dados ficam no Supabase (PostgreSQL) com isolamento por empresa (RLS). Nenhum dado de um cliente é visível para outro."],
             ["Aceita PIX e boleto?", "Sim. A cobrança é feita via Asaas — aceita PIX, boleto bancário e cartão de crédito."],

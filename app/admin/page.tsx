@@ -5,7 +5,7 @@ import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { listarContasAdmin, atualizarConta } from "../../lib/db";
 import type { Conta } from "../../lib/supabase";
-import { PLANOS_DEFAULT, fmtPreco, descontoAnual } from "../../lib/planos";
+import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
 import type { PlanoId } from "../../lib/planos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,7 +280,6 @@ function AbaPlanos() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
         {ORDEM_PLANOS.map(pid => {
           const p = PLANOS_DEFAULT[pid];
-          const desconto = descontoAnual(p);
           return (
             <div key={pid} style={{ background: "#fff", borderRadius: 10, border: pid === "gestao" ? "2px solid #1A4870" : "0.5px solid #D4DCE8", padding: "18px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
@@ -294,9 +293,8 @@ function AbaPlanos() {
               <div style={{ marginBottom: 6 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
                   <span style={{ fontSize: 26, fontWeight: 800, color: "#0B2D50" }}>{fmtPreco(p.preco_mensal)}</span>
-                  <span style={{ fontSize: 11, color: "#888" }}>/mês</span>
+                  <span style={{ fontSize: 11, color: "#888" }}>/mês · cobrança recorrente</span>
                 </div>
-                <div style={{ fontSize: 11, color: "#16A34A" }}>{fmtPreco(p.preco_anual)}/ano · economize {desconto}%</div>
               </div>
 
               <div style={{ fontSize: 11, color: "#555", marginBottom: 12 }}>
