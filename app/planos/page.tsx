@@ -152,9 +152,9 @@ export default function PlanosPage() {
               {[
                 ["Cadastros e Talhões", true, true, true],
                 ["Lavoura completa", true, true, true],
-                ["Estoque e Insumos", true, true, true],
                 ["Contas a Pagar e Receber", true, true, true],
-                ["DRE Agrícola", true, true, true],
+                ["Relatório de Aplicações", true, true, true],
+                ["DRE Agrícola", false, true, true],
                 ["Comercialização de Grãos", false, true, true],
                 ["Compras e Pedidos", false, true, true],
                 ["NF de Entrada", false, true, true],
@@ -163,7 +163,9 @@ export default function PlanosPage() {
                 ["Arrendamentos", false, true, true],
                 ["Emissão de NF-e (SEFAZ)", false, false, true],
                 ["SPED ECD / LCDPR", false, false, true],
-                ["BI — Raccotlo Intelligence", false, false, true],
+                ["eSocial Rural", false, false, true],
+                ["Automações", false, false, true],
+                ["Agente WhatsApp (IA)", false, false, true],
                 ["Usuários", "2", "5", "Ilimitado"],
               ].map(([label, ess, gest, perf], i) => (
                 <tr key={i} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>

@@ -29,14 +29,12 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     modulos: [
       "cadastros","propriedades",
       "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
-      "estoque","fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
+      "fin_pagar","fin_receber","configuracoes",
     ],
     features_marketing: [
       "Cadastros completos (fazendas, talhões, insumos)",
       "Lavoura completa (plantio, pulverização, colheita)",
-      "Estoque básico",
       "Contas a Pagar e Receber",
-      "DRE Agrícola",
       "Relatório de Aplicações",
       "2 usuários",
       "Suporte por e-mail",
@@ -53,7 +51,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     modulos: [
       "cadastros","propriedades",
       "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
-      "estoque","fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
+      "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
       "contratos","expedicao","arrendamento",
       "compras","nf_entrada","nf_servico",
       "fin_contratos","fin_tesouraria","fin_seguros",
@@ -63,6 +61,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
       "Tudo do Essencial",
       "Comercialização de Grãos (contratos + expedição)",
       "Compras e Pedidos",
+      "DRE Agrícola",
       "NF de Entrada (Produtos e Serviços)",
       "Financeiro completo (tesouraria, seguros)",
       "Contratos de Arrendamento",
@@ -74,7 +73,7 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
   performance: {
     id: "performance",
     nome: "Performance",
-    descricao: "Para grandes operações com controle fiscal e BI avançado",
+    descricao: "Para grandes operações com controle fiscal e IA via WhatsApp",
     preco_mensal: 1787,
     trial_dias: 14,
     limite_usuarios: null,
@@ -82,21 +81,22 @@ export const PLANOS_DEFAULT: Record<PlanoId, Plano> = {
     modulos: [
       "cadastros","propriedades",
       "lavoura_plantio","lavoura_pulv","lavoura_colheita","lavoura_plan",
-      "estoque","fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
+      "fin_pagar","fin_receber","custos","fin_relatorios","configuracoes",
       "contratos","expedicao","arrendamento",
       "compras","nf_entrada","nf_servico",
       "fin_contratos","fin_tesouraria","fin_seguros",
       "transporte","usuarios",
-      "fiscal_nfe","fiscal_sped","bi",
+      "fiscal_nfe","fiscal_sped","automacoes","whatsapp_agente",
     ],
     features_marketing: [
       "Tudo do Gestão",
       "Emissão de NF-e (integração SEFAZ)",
       "SPED ECD e LCDPR",
       "eSocial Rural",
-      "BI — Raccotlo Intelligence",
       "Usuários ilimitados",
-      "Suporte prioritário + WhatsApp",
+      "Suporte prioritário",
+      "Automações (lançamentos automáticos, relatórios semanais por e-mail...)",
+      "Agente WhatsApp — lançamentos e consultas por foto, texto ou áudio",
     ],
   },
 };
@@ -109,4 +109,3 @@ export function planoInclui(planoId: PlanoId | null | undefined, modulo: string)
 export function fmtPreco(v: number): string {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
-
