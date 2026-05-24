@@ -351,7 +351,20 @@ export default function Login() {
             justifyContent: "space-between",
             alignItems: "center",
           }}>
-            <span style={{ fontSize: 12, color: "#C0CAD6" }}>Raccolto Consultoria · © 2026</span>
+            <a
+              href="https://raccolto.com.br"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "flex", alignItems: "center", gap: 7, textDecoration: "none" }}
+            >
+              <img
+                src="/Logo_Raccolto.png"
+                alt="Raccolto"
+                style={{ height: 18, width: "auto", objectFit: "contain", opacity: 0.55 }}
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+              <span style={{ fontSize: 12, color: "#C0CAD6" }}>Raccolto Consultoria · © 2026</span>
+            </a>
             <span style={{ fontSize: 12, color: "#C0CAD6" }}>v1.0</span>
           </div>
         </div>

@@ -117,6 +117,7 @@ const NAV: NavItem[] = [
     type: "group", id: "estoque", label: "Estoque", minStep: 5,
     children: [
       { id: "est-posicao",       label: "Posição de Estoque",        path: "/estoque"               },
+      { id: "est-kardex",        label: "Kardex (Ficha de Estoque)", path: "/estoque/kardex"        },
       { id: "est-abastecimento", label: "Abastecimento de Máquinas", path: "/estoque/abastecimento" },
     ],
   },
