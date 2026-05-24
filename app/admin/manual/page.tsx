@@ -1,6 +1,5 @@
 "use client";
 import { Suspense } from "react";
-import TopNav from "../../../components/TopNav";
 
 // ─── Componentes internos ────────────────────────────────────
 
@@ -104,7 +103,7 @@ function Tabela({ colunas, linhas }: { colunas: string[]; linhas: string[][] }) 
 function ManualContent() {
   return (
     <>
-      <TopNav />
+
 
       <div className="no-print" style={{ background: "#F4F6FA", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #DDE2EE" }}>
         <div>
