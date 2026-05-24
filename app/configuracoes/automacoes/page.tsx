@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─── Tipos ────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ const CAT_LABEL: Record<string, string> = {
 // ─── Página ───────────────────────────────────────────────────
 
 export default function AutomacoesPage() {
-  const { fazendaId, nomeUsuario } = useAuth();
+  const { fazendaId, nomeUsuario, podeAcessarPlano } = useAuth();
 
   const [status,    setStatus]    = useState<Record<string, StatusExec>>({});
   const [resultados,setResultados]= useState<Record<string, string>>({});
@@ -189,6 +190,7 @@ export default function AutomacoesPage() {
 
   const categorias = [...new Set(AUTOMACOES.map(a => a.categoria))];
 
+  if (!podeAcessarPlano("automacoes")) return <PlanoGate modulo="automacoes" />;
   return (
     <>
       <TopNav />

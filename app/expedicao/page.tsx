@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
 import TopNav from "../../components/TopNav";
+import PlanoGate from "../../components/PlanoGate";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type RotaCarga = "transbordo_sem_nf" | "transbordo_com_remessa" | "direto_comprador";
@@ -97,7 +98,7 @@ const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function Expedicao() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   // Dados de referência
   const [anosS, setAnosS]       = useState<AnoSafra[]>([]);
@@ -298,6 +299,7 @@ export default function Expedicao() {
     boxShadow: "0 16px 48px rgba(0,0,0,0.2)",
   });
 
+  if (!podeAcessarPlano("expedicao")) return <PlanoGate modulo="expedicao" />;
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

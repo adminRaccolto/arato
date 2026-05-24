@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -50,7 +51,7 @@ const TIPOS_OP_PADRAO = [
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function TesourariaPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   const [lancamentos, setLancamentos] = useState<LancTesoura[]>([]);
   const [contas, setContas]           = useState<ContaBancariaMin[]>([]);
@@ -149,6 +150,7 @@ export default function TesourariaPage() {
     }
   }
 
+  if (!podeAcessarPlano("fin_tesouraria")) return <PlanoGate modulo="fin_tesouraria" />;
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

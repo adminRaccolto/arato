@@ -11,6 +11,7 @@ import {
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
+import PlanoGate from "../../components/PlanoGate";
 
 // ── Estilos base ─────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -150,7 +151,7 @@ const PEDIDO_VAZIO: FormPedido = {
 };
 
 export default function ComprasPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   const [pedidos,         setPedidos]         = useState<PedidoCompra[]>([]);
   const [pessoas,         setPessoas]         = useState<Pessoa[]>([]);
@@ -527,6 +528,7 @@ export default function ComprasPage() {
     }}>{label}</button>
   );
 
+  if (!podeAcessarPlano("compras")) return <PlanoGate modulo="compras" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />

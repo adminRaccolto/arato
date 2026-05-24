@@ -6,7 +6,7 @@ import { PLANOS_DEFAULT } from "../../../lib/planos";
 
 // API de cadastro self-service
 // POST /api/cadastro
-// Body: { nome, email, senha, cpf_cnpj, telefone, nome_fazenda, cidade, estado, plano_id, periodo }
+// Body: { nome, email, senha, cpf_cnpj, telefone, nome_fazenda, cidade, estado, plano_id }
 
 const sb = () =>
   createClient(
@@ -17,11 +17,11 @@ const sb = () =>
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { nome, email, senha, cpf_cnpj, telefone, nome_fazenda, cidade, estado, plano_id, periodo } = body as {
+    const { nome, email, senha, cpf_cnpj, telefone, nome_fazenda, cidade, estado, plano_id } = body as {
       nome: string; email: string; senha: string;
       cpf_cnpj: string; telefone?: string;
       nome_fazenda: string; cidade?: string; estado?: string;
-      plano_id: PlanoId; periodo: "mensal" | "anual";
+      plano_id: PlanoId;
     };
 
     if (!nome || !email || !senha || !cpf_cnpj || !nome_fazenda || !plano_id) {
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
         conta_id: conta.id,
         plano_id,
         status: "trial",
-        periodo,
+
         preco,
         data_inicio: new Date().toISOString().split("T")[0],
         trial_fim: trialFim.toISOString().split("T")[0],
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
           billingType: "PIX",
           value: preco,
           dueDate: vencimento,
-          description: `Arato ${plano.nome} — ${periodo === "anual" ? "Anual" : "Mensal"}`,
+          description: `Arato ${plano.nome} — Mensal`,
           externalReference: conta.id,
         });
 
@@ -217,7 +217,7 @@ export async function POST(req: Request) {
 <tr><td><b>Telefone:</b></td><td>${telefone ?? "—"}</td></tr>
 <tr><td><b>Fazenda:</b></td><td>${nome_fazenda}</td></tr>
 <tr><td><b>Cidade/UF:</b></td><td>${cidade ?? "—"} / ${estado ?? "—"}</td></tr>
-<tr><td><b>Plano:</b></td><td>${plano.nome} — ${periodo}</td></tr>
+<tr><td><b>Plano:</b></td><td>${plano.nome}</td></tr>
 <tr><td><b>CPF/CNPJ:</b></td><td>${cpf_cnpj}</td></tr>
 </table>
 <p>Trial de ${plano.trial_dias} dias ativo. Vence em: <b>${trialFim.toLocaleDateString("pt-BR")}</b></p>

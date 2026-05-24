@@ -15,6 +15,7 @@ import {
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
+import PlanoGate from "../../../components/PlanoGate";
 import type {
   ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento,
   GarantiaContrato, CentroCustoContrato, MatriculaImovel,
@@ -175,7 +176,7 @@ const FA_VAZIO = {
 // PÁGINA
 // ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
   const [contas, setContas]       = useState<ContaBancaria[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
@@ -426,6 +427,7 @@ export default function ContratosFinanceiros() {
   }
 
   // ────────────────────────────────────────────────────────
+  if (!podeAcessarPlano("fin_contratos")) return <PlanoGate modulo="fin_contratos" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />

@@ -4511,3 +4511,110 @@ ALTER TABLE perfis ADD CONSTRAINT perfis_role_check
 -- UPDATE perfis SET role = 'raccotlo' WHERE user_id = '<uuid>';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration SaaS Billing — conta_modulos ───────────────────────────────────
+-- Permite sobrescrever (ativar/desativar) módulos por conta independente do plano.
+-- Exemplo: conta em trial recebe acesso a módulo extra por 7 dias (promo).
+
+CREATE TABLE IF NOT EXISTS conta_modulos (
+  conta_id    uuid        NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  modulo      text        NOT NULL,
+  habilitado  boolean     NOT NULL DEFAULT true,
+  motivo      text,                              -- ex: "promo", "downgrade manual"
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (conta_id, modulo)
+);
+
+-- RLS: só raccotlo pode editar; clientes não enxergam esta tabela diretamente
+ALTER TABLE conta_modulos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rls_conta_modulos_admin" ON conta_modulos;
+CREATE POLICY "rls_conta_modulos_admin" ON conta_modulos
+  USING (
+    EXISTS (
+      SELECT 1 FROM perfis
+      WHERE perfis.user_id = auth.uid()
+        AND perfis.role IN ('raccotlo', 'raccotlo_gestor')
+    )
+  );
+
+-- ─── Migration SaaS — assinaturas e pagamentos (se ainda não existirem) ───────
+
+CREATE TABLE IF NOT EXISTS assinaturas (
+  id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id              uuid        NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  plano_id              text        NOT NULL DEFAULT 'gestao',
+  status                text        NOT NULL DEFAULT 'trial'
+                          CHECK (status IN ('trial','ativa','inadimplente','cancelada','suspensa')),
+  preco                 numeric(10,2) NOT NULL DEFAULT 0,
+  trial_inicio          date,
+  trial_fim             date,
+  data_inicio           date,
+  data_proximo_pagamento date,
+  asaas_customer_id     text,
+  asaas_subscription_id text,
+  cancelamento_motivo   text,
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE assinaturas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rls_assinaturas_admin" ON assinaturas;
+CREATE POLICY "rls_assinaturas_admin" ON assinaturas
+  USING (
+    EXISTS (
+      SELECT 1 FROM perfis
+      WHERE perfis.user_id = auth.uid()
+        AND perfis.role IN ('raccotlo', 'raccotlo_gestor')
+    )
+  );
+
+CREATE TABLE IF NOT EXISTS pagamentos (
+  id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  assinatura_id       uuid        REFERENCES assinaturas(id),
+  conta_id            uuid        NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  valor               numeric(10,2) NOT NULL,
+  status              text        NOT NULL DEFAULT 'pendente'
+                        CHECK (status IN ('pendente','pago','vencido','cancelado','estornado')),
+  data_vencimento     date,
+  data_pagamento      date,
+  metodo_pagamento    text        DEFAULT 'pix',
+  asaas_payment_id    text,
+  asaas_invoice_url   text,
+  asaas_pix_qrcode    text,
+  descricao           text,
+  created_at          timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rls_pagamentos_admin" ON pagamentos;
+CREATE POLICY "rls_pagamentos_admin" ON pagamentos
+  USING (
+    EXISTS (
+      SELECT 1 FROM perfis
+      WHERE perfis.user_id = auth.uid()
+        AND perfis.role IN ('raccotlo', 'raccotlo_gestor')
+    )
+  );
+
+-- Índices úteis
+CREATE INDEX IF NOT EXISTS idx_assinaturas_conta ON assinaturas(conta_id);
+CREATE INDEX IF NOT EXISTS idx_assinaturas_status ON assinaturas(status);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_conta ON pagamentos(conta_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_status ON pagamentos(status);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_vencimento ON pagamentos(data_vencimento);
+
+-- Garante que contas tem os campos de status e pacote
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS status         text DEFAULT 'trial';
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS pacote         text DEFAULT 'gestao';
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS data_inicio    date;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS data_vencimento date;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS email_contato  text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS telefone       text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS crm_stage      text DEFAULT 'lead';
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS origem         text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS pro_bono       boolean DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

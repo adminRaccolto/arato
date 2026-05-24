@@ -5,6 +5,7 @@ import InputMonetario from "../../components/InputMonetario";
 import { useAuth } from "../../components/AuthProvider";
 import { listarLancamentos } from "../../lib/db";
 import type { Lancamento } from "../../lib/supabase";
+import PlanoGate from "../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // TABELA DE CÓDIGOS LCDPR — Receita Federal
@@ -80,7 +81,7 @@ interface EntradaLCDPR {
 
 // ─────────────────────────────────────────────────────────────
 export default function LCDPR() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const [aba, setAba]         = useState<AbaLCDPR>("livro");
   const [anoSel, setAnoSel]   = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
@@ -162,6 +163,7 @@ export default function LCDPR() {
   const inpS: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
   const lblS: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
 
+  if (!podeAcessarPlano("fiscal_sped")) return <PlanoGate modulo="fiscal_sped" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />

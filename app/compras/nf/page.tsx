@@ -24,6 +24,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -114,7 +115,7 @@ const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: strin
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfCompraPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   // Dados mestre
   const [nfs, setNfs]             = useState<NfEntrada[]>([]);
@@ -798,6 +799,7 @@ export default function NfCompraPage() {
   // ─────────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────────
+  if (!podeAcessarPlano("nf_entrada")) return <PlanoGate modulo="nf_entrada" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

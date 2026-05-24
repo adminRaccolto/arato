@@ -13,6 +13,7 @@ import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
 import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
+import PlanoGate from "../../components/PlanoGate";
 
 const sbErr = (e: unknown) => {
   if (e instanceof Error) return e.message;
@@ -190,7 +191,7 @@ type AbaLista = "contratos" | "expedicao" | "posicao";
 
 // ═══════════════════════════════════════════════════════════════════
 export default function Contratos() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   // ── dados ────────────────────────────────────────────────────
   const [contratos, setContratos]     = useState<ContratoVM[]>([]);
@@ -800,6 +801,7 @@ export default function Contratos() {
   }
 
   // ── render ────────────────────────────────────────────────────
+  if (!podeAcessarPlano("contratos")) return <PlanoGate modulo="contratos" />;
   return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#F3F6F9", fontFamily:"system-ui, sans-serif", fontSize:13 }}>
       <TopNav />

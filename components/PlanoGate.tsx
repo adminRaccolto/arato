@@ -23,13 +23,87 @@ const COR_PLANO: Record<PlanoId, string> = {
   performance: "#C9921B",
 };
 
+// ── Tela de acesso suspenso por inadimplência ────────────────────────────────
+function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
+  const vencido = contaStatus === "cancelado" || contaStatus === "inativo";
+  return (
+    <div style={{
+      minHeight: "100vh", background: "#F4F6FA",
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: "40px 24px", fontFamily: "system-ui, sans-serif",
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: 16,
+        border: "2px solid #E24B4A",
+        padding: "48px 40px", maxWidth: 500, width: "100%",
+        textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.08)",
+      }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: "50%", background: "#FEF2F2",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 20px", fontSize: 28,
+        }}>⚠️</div>
+
+        <span style={{
+          display: "inline-block", fontSize: 11, fontWeight: 700,
+          color: "#E24B4A", textTransform: "uppercase", letterSpacing: 2,
+          background: "#FEF2F2", padding: "3px 12px", borderRadius: 20, marginBottom: 16,
+        }}>
+          {vencido ? "Conta encerrada" : "Acesso suspenso"}
+        </span>
+
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 10px" }}>
+          {vencido ? "Sua assinatura foi encerrada" : "Pagamento em atraso"}
+        </h2>
+
+        <p style={{ fontSize: 14, color: "#666", margin: "0 0 28px", lineHeight: 1.6 }}>
+          {vencido
+            ? "Sua conta foi encerrada por falta de pagamento. Regularize para reativar o acesso completo."
+            : "Identificamos um pagamento em aberto. Regularize para restaurar o acesso completo ao Arato."}
+        </p>
+
+        <div style={{
+          background: "#FFF9F0", borderRadius: 10, border: "0.5px solid #C9921B50",
+          padding: "14px 18px", marginBottom: 28, textAlign: "left",
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5A12", marginBottom: 8 }}>Dados ficam preservados</div>
+          <div style={{ fontSize: 13, color: "#555", lineHeight: 1.7 }}>
+            ✓ Seus dados não são excluídos<br />
+            ✓ Acesso restaurado automaticamente após pagamento<br />
+            ✓ Suporte disponível via WhatsApp
+          </div>
+        </div>
+
+        <Link href="/pagamento" style={{
+          display: "block", textAlign: "center", padding: "13px 0",
+          background: "#E24B4A", color: "#fff", borderRadius: 10,
+          fontWeight: 700, fontSize: 15, textDecoration: "none", marginBottom: 12,
+        }}>
+          Regularizar pagamento →
+        </Link>
+
+        <a href="https://wa.me/5565981456825?text=Preciso+regularizar+meu+acesso+ao+Arato"
+          target="_blank" rel="noopener noreferrer"
+          style={{ display: "block", textAlign: "center", padding: "10px 0", color: "#888", fontSize: 13, textDecoration: "none" }}>
+          Falar com suporte via WhatsApp
+        </a>
+      </div>
+    </div>
+  );
+}
+
 interface PlanoGateProps {
   modulo: string;
   children?: React.ReactNode;
 }
 
 export default function PlanoGate({ modulo, children }: PlanoGateProps) {
-  const { podeAcessarPlano, planoAtual, userRole } = useAuth();
+  const { podeAcessarPlano, planoAtual, userRole, inadimplente, contaStatus } = useAuth();
+
+  // Inadimplente: bloqueia TUDO independente do plano
+  if (inadimplente && userRole !== "raccotlo") {
+    return <TelaInadimplente contaStatus={contaStatus} />;
+  }
 
   // raccotlo tem acesso irrestrito; plano ainda carregando → não bloqueia
   if (podeAcessarPlano(modulo)) return children ? <>{children}</> : null;

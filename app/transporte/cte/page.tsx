@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -240,7 +241,7 @@ window.onload = function() {
 // Componente
 // ─────────────────────────────────────────────────────────────
 export default function CtePage() {
-  const { fazendaId, logoCliente } = useAuth();
+  const { fazendaId, logoCliente, podeAcessarPlano } = useAuth();
 
   const [ctes,      setCtes]      = useState<Cte[]>([]);
   const [veiculos,  setVeiculos]  = useState<VeiculoMin[]>([]);
@@ -508,6 +509,7 @@ export default function CtePage() {
   const autorizados = ctes.filter(c => c.status === "autorizado");
   const totalFretes = autorizados.reduce((s, c) => s + c.valor_frete, 0);
 
+  if (!podeAcessarPlano("transporte")) return <PlanoGate modulo="transporte" />;
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

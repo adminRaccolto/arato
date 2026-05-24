@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -82,7 +83,7 @@ const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> 
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function ConsorciosPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<"lista" | "parcelas">("lista");
 
   // Dados
@@ -306,6 +307,7 @@ export default function ConsorciosPage() {
     ? parcelas.filter(p => !p.pago && new Date(p.data_vencimento) >= new Date(new Date().setDate(new Date().getDate() - 5)))
     : parcelas.filter(p => expandido && p.consorcio_id === expandido);
 
+  if (!podeAcessarPlano("fin_tesouraria")) return <PlanoGate modulo="fin_tesouraria" />;
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

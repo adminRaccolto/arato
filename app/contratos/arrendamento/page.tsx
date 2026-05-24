@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabase";
 import { listarAnosSafra, criarLancamento, listarProdutores } from "../../../lib/db";
 import type { AnoSafra } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ── tipos ─────────────────────────────────────────────────
 type FormaPage = "sc_soja" | "sc_milho" | "sc_soja_milho" | "brl";
@@ -122,7 +123,7 @@ const initFC = () => ({
 });
 
 export default function Arrendamentos() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<Aba>("lista");
 
   const [arrendamentos, setArrendamentos] = useState<Arrendamento[]>([]);
@@ -755,6 +756,7 @@ export default function Arrendamentos() {
     return grupos;
   }
 
+  if (!podeAcessarPlano("arrendamento")) return <PlanoGate modulo="arrendamento" />;
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

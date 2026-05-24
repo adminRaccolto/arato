@@ -6,6 +6,7 @@ import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutor
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor } from "../../lib/supabase";
+import PlanoGate from "../../components/PlanoGate";
 
 // ── Naturezas fiscais ────────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -2162,8 +2163,10 @@ function FiscalInner() {
 
 export default function Fiscal() {
   return (
-    <Suspense fallback={null}>
-      <FiscalInner />
-    </Suspense>
+    <PlanoGate modulo="fiscal_nfe">
+      <Suspense fallback={null}>
+        <FiscalInner />
+      </Suspense>
+    </PlanoGate>
   );
 }

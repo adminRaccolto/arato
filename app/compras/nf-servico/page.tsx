@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabase";
 import type { Pessoa, CentroCusto, AnoSafra } from "../../../lib/supabase";
 import { listarPessoas, listarCentrosCustoGeral, listarAnosSafra, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
 import InputMonetario from "../../../components/InputMonetario";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos
@@ -120,7 +121,7 @@ const CAB_VAZIO = () => ({
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfServicoPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   const [nfs,      setNfs]      = useState<NfServico[]>([]);
   const [pessoas,  setPessoas]  = useState<Pessoa[]>([]);
@@ -344,6 +345,7 @@ export default function NfServicoPage() {
   });
 
   // ── Render ───────────────────────────────────────────────────
+  if (!podeAcessarPlano("nf_servico")) return <PlanoGate modulo="nf_servico" />;
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

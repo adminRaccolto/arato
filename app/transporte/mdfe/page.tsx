@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -79,7 +80,7 @@ const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","P
 // Componente
 // ─────────────────────────────────────────────────────────────
 export default function MdfePage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
 
   const [mdfes,     setMdfes]     = useState<Mdfe[]>([]);
   const [ctes,      setCtes]      = useState<CteMin[]>([]);
@@ -276,6 +277,7 @@ export default function MdfePage() {
   const encerrados   = mdfes.filter(m => m.status === "encerrado");
   const pesoTransito = emTransito.reduce((s, m) => s + (m.peso_total_kg ?? 0), 0);
 
+  if (!podeAcessarPlano("transporte")) return <PlanoGate modulo="transporte" />;
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

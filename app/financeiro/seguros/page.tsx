@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
+import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -106,7 +107,7 @@ const STATUS_SINISTRO_META: Record<StatusSinistro, { label: string; bg: string; 
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function SegurosPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<"apolices" | "vencimentos" | "sinistros">("apolices");
 
   // Dados
@@ -306,6 +307,7 @@ export default function SegurosPage() {
     aba === "vencimentos" ? !p.pago : (expandido ? p.apolice_id === expandido : false)
   );
 
+  if (!podeAcessarPlano("fin_seguros")) return <PlanoGate modulo="fin_seguros" />;
   return (
     <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />

@@ -1,0 +1,470 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+import { listarContasAdmin, atualizarConta } from "../../../lib/db";
+import type { Conta } from "../../../lib/supabase";
+import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
+import type { PlanoId } from "../../../lib/planos";
+
+// ─── Supabase client ─────────────────────────────────────────────────────────
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// ─── Tipos ───────────────────────────────────────────────────────────────────
+
+type ContaAdmin    = Conta & { fazendas_count: number };
+type StatusCliente = NonNullable<Conta["status"]>;
+type PacoteCliente = NonNullable<Conta["pacote"]>;
+
+// ─── Config de cores ─────────────────────────────────────────────────────────
+
+const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string }> = {
+  trial:     { label: "Trial",     cor: "#C9921B", bg: "#FBF3E0" },
+  ativo:     { label: "Ativo",     cor: "#16A34A", bg: "#F0FDF4" },
+  inativo:   { label: "Inativo",   cor: "#888",    bg: "#F3F4F6" },
+  pro_bono:  { label: "Pro bono",  cor: "#378ADD", bg: "#EFF6FF" },
+  cancelado: { label: "Cancelado", cor: "#E24B4A", bg: "#FEF2F2" },
+};
+
+const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {
+  essencial:   { label: "Essencial",   cor: "#555",    bg: "#F3F4F6", valor: 290  },
+  gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: 590  },
+  performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: 990  },
+};
+
+const CRM_STAGE_CFG: Record<string, { label: string; cor: string }> = {
+  lead:         { label: "Lead",          cor: "#888"    },
+  contato:      { label: "Contato feito", cor: "#378ADD" },
+  demo:         { label: "Demo",          cor: "#EF9F27" },
+  proposta:     { label: "Proposta",      cor: "#C9921B" },
+  cliente:      { label: "Cliente",       cor: "#16A34A" },
+  churn:        { label: "Churn",         cor: "#E24B4A" },
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function fmtDate(s?: string | null) {
+  if (!s) return "—";
+  const [y, m, d] = s.split("T")[0].split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function fmtBRL(v?: number | null) {
+  if (!v && v !== 0) return "—";
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function diasRestantes(venc?: string | null): number | null {
+  if (!venc) return null;
+  return Math.ceil((new Date(venc).getTime() - Date.now()) / 86400000);
+}
+
+// ─── Estilos ─────────────────────────────────────────────────────────────────
+
+const inp: React.CSSProperties = {
+  width: "100%", padding: "8px 10px",
+  border: "0.5px solid #D4DCE8", borderRadius: 8,
+  fontSize: 13, color: "#1a1a1a", background: "#fff",
+  boxSizing: "border-box", outline: "none",
+};
+
+const lbl: React.CSSProperties = {
+  fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600,
+};
+
+const btnPrimary: React.CSSProperties = {
+  padding: "8px 20px", background: "#0B1E35", color: "#fff",
+  border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+};
+
+const btnSecondary: React.CSSProperties = {
+  padding: "8px 18px", background: "#fff", color: "#555",
+  border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+};
+
+const btnSmall: React.CSSProperties = {
+  padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+  cursor: "pointer", border: "0.5px solid #D4DCE8", background: "#fff", color: "#0B1E35",
+};
+
+// ─── Modal editar cliente (reutilizado do admin/page.tsx) ─────────────────────
+
+function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose: () => void; onSalvo: (c: ContaAdmin) => void }) {
+  const [form, setForm] = useState<Partial<Conta>>({
+    nome:              conta.nome,
+    tipo:              conta.tipo,
+    status:            conta.status ?? "trial",
+    pacote:            conta.pacote ?? undefined,
+    data_inicio:       conta.data_inicio ?? "",
+    data_vencimento:   conta.data_vencimento ?? "",
+    valor_mensalidade: conta.valor_mensalidade ?? undefined,
+    pro_bono_motivo:   conta.pro_bono_motivo ?? "",
+    obs_admin:         conta.obs_admin ?? "",
+    email_contato:     conta.email_contato ?? "",
+    telefone:          conta.telefone ?? "",
+  });
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+  const [aba, setAba] = useState<"geral" | "assinatura">("geral");
+
+  async function salvar() {
+    setSalvando(true); setErro("");
+    try {
+      await atualizarConta(conta.id, form);
+      onSalvo({ ...conta, ...form } as ContaAdmin);
+    } catch (e) { setErro(String(e)); }
+    finally { setSalvando(false); }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ background: "#fff", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
+
+        <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>{conta.nome}</div>
+            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, fontFamily: "monospace" }}>{conta.id}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+        </div>
+
+        <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #E4E9F0", padding: "0 24px" }}>
+          {(["geral", "assinatura"] as const).map(t => (
+            <button key={t} onClick={() => setAba(t)} style={{
+              padding: "10px 16px", border: "none", background: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: aba === t ? 700 : 400,
+              color: aba === t ? "#0B1E35" : "#888",
+              borderBottom: aba === t ? "2px solid #C9921B" : "2px solid transparent",
+              marginBottom: -1, textTransform: "capitalize",
+            }}>{t === "geral" ? "Dados gerais" : "Assinatura & Pacote"}</button>
+          ))}
+        </div>
+
+        <div style={{ padding: "20px 24px" }}>
+
+          {aba === "geral" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={lbl}>Nome da conta *</label>
+                  <input style={inp} value={form.nome ?? ""} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>E-mail contato</label>
+                  <input style={inp} type="email" value={form.email_contato ?? ""} onChange={e => setForm(f => ({ ...f, email_contato: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Telefone / WhatsApp</label>
+                  <input style={inp} value={form.telefone ?? ""} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Tipo de conta</label>
+                  <select style={inp} value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value as Conta["tipo"] }))}>
+                    <option value="pf">Pessoa Física</option>
+                    <option value="pj">Pessoa Jurídica</option>
+                    <option value="grupo">Grupo / Holding</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Observações internas</label>
+                <textarea style={{ ...inp, height: 80, resize: "vertical" } as React.CSSProperties}
+                  value={form.obs_admin ?? ""}
+                  onChange={e => setForm(f => ({ ...f, obs_admin: e.target.value }))}
+                  placeholder="Histórico, acordos especiais, contatos..."
+                />
+              </div>
+            </>
+          )}
+
+          {aba === "assinatura" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={lbl}>Status *</label>
+                  <select style={inp} value={form.status ?? "trial"} onChange={e => setForm(f => ({ ...f, status: e.target.value as StatusCliente }))}>
+                    {(Object.keys(STATUS_CFG) as StatusCliente[]).map(s => (
+                      <option key={s} value={s}>{STATUS_CFG[s].label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Pacote</label>
+                  <select style={inp} value={form.pacote ?? ""} onChange={e => {
+                    const v = e.target.value as PacoteCliente | "";
+                    if (v) setForm(f => ({ ...f, pacote: v, valor_mensalidade: PACOTE_CFG[v].valor }));
+                    else setForm(f => ({ ...f, pacote: undefined }));
+                  }}>
+                    <option value="">— Sem pacote —</option>
+                    {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => (
+                      <option key={p} value={p}>{PACOTE_CFG[p].label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Mensalidade (R$)</label>
+                  <input style={inp} type="number" step="0.01"
+                    value={form.valor_mensalidade ?? ""}
+                    onChange={e => setForm(f => ({ ...f, valor_mensalidade: Number(e.target.value) || undefined }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Data início</label>
+                  <input style={inp} type="date" value={form.data_inicio ?? ""} onChange={e => setForm(f => ({ ...f, data_inicio: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Data vencimento</label>
+                  <input style={inp} type="date" value={form.data_vencimento ?? ""} onChange={e => setForm(f => ({ ...f, data_vencimento: e.target.value }))} />
+                </div>
+              </div>
+              {form.status === "pro_bono" && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={lbl}>Motivo pro bono</label>
+                  <input style={inp} value={form.pro_bono_motivo ?? ""}
+                    onChange={e => setForm(f => ({ ...f, pro_bono_motivo: e.target.value }))}
+                    placeholder="Ex: parceiro estratégico, projeto piloto..." />
+                </div>
+              )}
+            </>
+          )}
+
+          {erro && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, color: "#991B1B", fontSize: 12, marginBottom: 12 }}>{erro}</div>}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
+            <button style={btnSecondary} onClick={onClose}>Cancelar</button>
+            <button style={btnPrimary} onClick={salvar} disabled={salvando || !form.nome}>
+              {salvando ? "Salvando…" : "Salvar alterações"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+export default function ClientesPage() {
+  const router = useRouter();
+  const [clientes, setClientes]         = useState<ContaAdmin[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [modalEdit, setModalEdit]       = useState<ContaAdmin | null>(null);
+  const [busca, setBusca]               = useState("");
+  const [filtroStatus, setFiltroStatus] = useState<StatusCliente | "">("");
+  const [filtroPacote, setFiltroPacote] = useState<PacoteCliente | "">("");
+  const [filtroStage, setFiltroStage]   = useState("");
+  const [filtroOrigem, setFiltroOrigem] = useState("");
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    try { setClientes(await listarContasAdmin()); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const filtrados = clientes.filter(c => {
+    if (filtroStatus && c.status !== filtroStatus) return false;
+    if (filtroPacote && c.pacote !== filtroPacote) return false;
+    if (busca && !c.nome.toLowerCase().includes(busca.toLowerCase())
+      && !(c.email_contato ?? "").toLowerCase().includes(busca.toLowerCase())) return false;
+    return true;
+  });
+
+  const mrr = clientes
+    .filter(c => c.status === "ativo" && c.valor_mensalidade)
+    .reduce((s, c) => s + (c.valor_mensalidade ?? 0), 0);
+
+  const kpis = [
+    { label: "Total",         valor: clientes.length,                                          cor: "#0B1E35", bg: "#fff"    },
+    { label: "Ativos",        valor: clientes.filter(c => c.status === "ativo").length,        cor: "#16A34A", bg: "#F0FDF4" },
+    { label: "Trial",         valor: clientes.filter(c => c.status === "trial").length,        cor: "#C9921B", bg: "#FBF3E0" },
+    { label: "Inadimplentes", valor: clientes.filter(c => c.status === "inativo").length,      cor: "#E24B4A", bg: "#FEF2F2" },
+    { label: "MRR",           valor: fmtBRL(mrr),                                              cor: "#0B1E35", bg: "#EFF6FF" },
+  ];
+
+  const origens = Array.from(new Set(clientes.map(c => (c as ContaAdmin & { origem?: string }).origem).filter(Boolean))) as string[];
+
+  return (
+    <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+
+      {modalEdit && (
+        <ModalCliente
+          conta={modalEdit}
+          onClose={() => setModalEdit(null)}
+          onSalvo={upd => { setClientes(cs => cs.map(c => c.id === upd.id ? upd : c)); setModalEdit(null); }}
+        />
+      )}
+
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+        <div>
+          <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+            Clientes
+          </h1>
+          <p style={{ margin: 0, fontSize: 13, color: "#888" }}>
+            Gestão completa da base de clientes
+          </p>
+        </div>
+        <button style={btnPrimary} onClick={() => router.push("/admin/clientes/novo")}>
+          + Novo Cliente
+        </button>
+      </div>
+
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
+        {kpis.map(k => (
+          <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
+            <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: k.cor }}>{k.valor}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtros */}
+      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <input style={{ ...inp, width: 220 }} placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
+        <select style={{ ...inp, width: 150 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusCliente | "")}>
+          <option value="">Todos os status</option>
+          {(Object.keys(STATUS_CFG) as StatusCliente[]).map(s => (
+            <option key={s} value={s}>{STATUS_CFG[s].label}</option>
+          ))}
+        </select>
+        <select style={{ ...inp, width: 150 }} value={filtroPacote} onChange={e => setFiltroPacote(e.target.value as PacoteCliente | "")}>
+          <option value="">Todos os pacotes</option>
+          {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => (
+            <option key={p} value={p}>{PACOTE_CFG[p].label}</option>
+          ))}
+        </select>
+        <select style={{ ...inp, width: 150 }} value={filtroStage} onChange={e => setFiltroStage(e.target.value)}>
+          <option value="">Todos os estágios</option>
+          {Object.entries(CRM_STAGE_CFG).map(([k, v]) => (
+            <option key={k} value={k}>{v.label}</option>
+          ))}
+        </select>
+        {origens.length > 0 && (
+          <select style={{ ...inp, width: 140 }} value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)}>
+            <option value="">Todas as origens</option>
+            {origens.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        )}
+        <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
+        <div style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>
+          {filtrados.length} de {clientes.length} clientes
+        </div>
+      </div>
+
+      {/* Tabela */}
+      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+        {loading ? (
+          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Carregando…</div>
+        ) : filtrados.length === 0 ? (
+          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Nenhum cliente encontrado</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#F8FAFC" }}>
+                {["Cliente", "Pacote", "Status", "CRM", "Local", "Desde", "Vencimento", "Mensalidade", "Fazendas", "Ações"].map((h, i) => (
+                  <th key={i} style={{
+                    padding: "10px 12px", textAlign: i >= 5 && i <= 8 ? "center" : "left",
+                    fontSize: 11, fontWeight: 600, color: "#888",
+                    borderBottom: "0.5px solid #D4DCE8",
+                    textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map((c, i) => {
+                const status  = c.status ?? "trial";
+                const sCfg    = STATUS_CFG[status] ?? STATUS_CFG.trial;
+                const dias    = diasRestantes(c.data_vencimento);
+                const urgente = dias !== null && dias >= 0 && dias <= 14;
+                const vencido = dias !== null && dias < 0;
+                const extC    = c as ContaAdmin & { crm_stage?: string; origem?: string; cidade?: string; estado?: string };
+
+                return (
+                  <tr key={c.id} style={{ borderBottom: i < filtrados.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                    <td style={{ padding: "10px 12px", minWidth: 160 }}>
+                      <div style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 13 }}>{c.nome}</div>
+                      {c.email_contato && <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>{c.email_contato}</div>}
+                      {c.telefone && <div style={{ fontSize: 10, color: "#aaa" }}>{c.telefone}</div>}
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      {c.pacote ? (
+                        <span style={{ padding: "2px 8px", background: PACOTE_CFG[c.pacote].bg, color: PACOTE_CFG[c.pacote].cor, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                          {PACOTE_CFG[c.pacote].label}
+                        </span>
+                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span style={{ padding: "2px 8px", background: sCfg.bg, color: sCfg.cor, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                        {sCfg.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      {extC.crm_stage ? (
+                        <span style={{ fontSize: 11, color: CRM_STAGE_CFG[extC.crm_stage]?.cor ?? "#888" }}>
+                          {CRM_STAGE_CFG[extC.crm_stage]?.label ?? extC.crm_stage}
+                        </span>
+                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                    </td>
+                    <td style={{ padding: "10px 12px", fontSize: 12, color: "#555" }}>
+                      {extC.cidade && extC.estado ? `${extC.cidade}/${extC.estado}` : (extC.estado ?? "—")}
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                      {fmtDate(c.data_inicio)}
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                      {c.data_vencimento ? (
+                        <>
+                          <div style={{ fontSize: 12, color: vencido ? "#E24B4A" : urgente ? "#C9921B" : "#555", fontWeight: (urgente || vencido) ? 600 : 400 }}>
+                            {fmtDate(c.data_vencimento)}
+                          </div>
+                          {dias !== null && (
+                            <div style={{ fontSize: 10, color: vencido ? "#E24B4A" : urgente ? "#C9921B" : "#aaa" }}>
+                              {vencido ? `há ${Math.abs(dias)}d` : `${dias}d`}
+                            </div>
+                          )}
+                        </>
+                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, color: c.valor_mensalidade ? "#0B1E35" : "#aaa" }}>
+                      {fmtBRL(c.valor_mensalidade)}
+                    </td>
+                    <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                      <span style={{ background: "#F3F6F9", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "#555", fontWeight: 600 }}>
+                        {c.fazendas_count}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
+                        <button style={btnSmall} onClick={() => router.push(`/admin/faturamento?conta=${c.id}`)}>
+                          💳
+                        </button>
+                        <button style={btnSmall} onClick={() => router.push(`/admin/modulos?conta=${c.id}`)}>
+                          ⬡
+                        </button>
+                        <button style={btnSmall} onClick={() => setModalEdit(c)}>
+                          ✎ Editar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Nota */}
+      <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
+        <strong>Dica:</strong> Use o botão <strong>💳</strong> para ver o histórico de faturamento do cliente, <strong>⬡</strong> para gerenciar módulos habilitados, e <strong>✎ Editar</strong> para editar dados e assinatura.
+      </div>
+    </div>
+  );
+}
