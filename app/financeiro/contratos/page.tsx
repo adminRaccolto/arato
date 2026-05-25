@@ -180,6 +180,7 @@ type ContratoImportado = {
   tipo: ContratoFinanceiro["tipo"];
   credor: string;
   taxa_juros_aa: number;
+  taxa_juros_am?: number;
   valor_financiado: number;
   moeda: "BRL" | "USD";
   cotacao?: number;
@@ -194,36 +195,70 @@ type ContratoImportado = {
   }[];
 };
 
-function parseDateBR(s: string | number): string {
-  const str = String(s ?? "").trim();
+function parseDateBR(s: unknown): string {
+  if (!s) return "";
+  if (s instanceof Date) return s.toISOString().slice(0, 10);
+  const str = String(s).trim();
   if (!str) return "";
-  const parts = str.split(/[\/\-]/);
+  // YYYY-MM-DD already
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+  // DD/MM/YYYY or DD-MM-YYYY
+  const parts = str.split(/[\/\-\.]/);
   if (parts.length === 3) {
     const [a, b, c] = parts;
     if (a.length === 4) return `${a}-${b.padStart(2,"0")}-${c.padStart(2,"0")}`;
-    return `${c}-${b.padStart(2,"0")}-${a.padStart(2,"0")}`;
+    return `${c.padStart(4,"20")}-${b.padStart(2,"0")}-${a.padStart(2,"0")}`;
   }
   return "";
 }
 
+function parseNumBR(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (!v) return 0;
+  // Remove thousand separators (. in BR) and replace decimal comma
+  return parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
+}
+
 function mapTipoContrato(st: string): ContratoFinanceiro["tipo"] {
+  const s = String(st ?? "").trim();
   const m: Record<string, ContratoFinanceiro["tipo"]> = {
     "I": "investimento", "C": "custeio", "P": "cpr", "O": "outros",
-    "Investimento": "investimento", "Custeio": "custeio", "CPR": "cpr", "Outras": "outros", "Outros": "outros",
+    "Investimento": "investimento", "Custeio": "custeio", "CPR": "cpr",
+    "Outras": "outros", "Outros": "outros", "Securitização": "securitizacao",
   };
-  return m[String(st ?? "").trim()] ?? "outros";
+  return m[s] ?? "outros";
 }
 
 async function lerXLSX(file: File): Promise<ContratoImportado[]> {
   const XLSXLib = await import("xlsx");
   const buf = await file.arrayBuffer();
-  const wb = XLSXLib.read(buf, { type: "array" });
+  // cellDates:true faz SheetJS retornar Date objects para células de data
+  const wb = XLSXLib.read(buf, { type: "array", cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSXLib.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: "" });
 
+  // sheet_to_json retorna objetos cujas chaves são os cabeçalhos da primeira linha
+  const rawRows = XLSXLib.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+
+  // Normaliza chaves: trim + uppercase — elimina espaços ocultos e variação de case
+  const rows = rawRows.map(row => {
+    const n: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) n[k.trim().toUpperCase()] = v;
+    return n;
+  });
+
+  const str = (row: Record<string, unknown>, col: string) =>
+    String(row[col] ?? "").trim();
+
+  const num = (row: Record<string, unknown>, col: string) =>
+    parseNumBR(row[col]);
+
+  const dat = (row: Record<string, unknown>, col: string) =>
+    parseDateBR(row[col]);
+
+  // Agrupa por CD_DIVIDA
   const grupos = new Map<string, typeof rows>();
   for (const row of rows) {
-    const cd = String(row["CD_DIVIDA"] ?? row["Cd_Divida"] ?? "").trim();
+    const cd = str(row, "CD_DIVIDA");
     if (!cd) continue;
     if (!grupos.has(cd)) grupos.set(cd, []);
     grupos.get(cd)!.push(row);
@@ -232,40 +267,48 @@ async function lerXLSX(file: File): Promise<ContratoImportado[]> {
   const contratos: ContratoImportado[] = [];
 
   for (const [cd, linhas] of grupos) {
-    const headerRow = linhas.find(r => {
-      const op = String(r["OPERACAO_CONTA"] ?? "").trim();
-      const vAmort = Number(r["VALOR_AMORTIZACAO"] ?? 0);
-      return op === "Receber" && vAmort === 0;
-    }) ?? linhas.find(r => String(r["OPERACAO_CONTA"] ?? "").trim() === "Receber");
+    const opNorm = (r: Record<string, unknown>) =>
+      str(r, "OPERACAO_CONTA").toLowerCase();
 
-    const parcelasRows = linhas.filter(r => String(r["OPERACAO_CONTA"] ?? "").trim() === "Pagar");
+    // Linha cabeçalho: OPERACAO_CONTA=Receber sem amortização (ou primeira Receber)
+    const headerRow =
+      linhas.find(r => opNorm(r) === "receber" && num(r, "VALOR_AMORTIZACAO") === 0)
+      ?? linhas.find(r => opNorm(r) === "receber");
+
+    // Linhas de parcela: OPERACAO_CONTA=Pagar
+    const parcelasRows = linhas.filter(r => opNorm(r) === "pagar");
 
     if (!headerRow || parcelasRows.length === 0) continue;
 
-    const moedaCd = Number(headerRow["CD_MOEDA"] ?? 1);
+    const moedaCd = num(headerRow, "CD_MOEDA");
     const moeda: "BRL" | "USD" = moedaCd === 2 ? "USD" : "BRL";
-    const cotacaoRaw = Number(headerRow["VL_COTACAO"] ?? 0);
-    const cotacao = cotacaoRaw > 0 ? cotacaoRaw : undefined;
+    const cotacaoRaw = num(headerRow, "VL_COTACAO");
+    // cotacao só faz sentido para USD; para BRL VL_COTACAO=1
+    const cotacao = moeda === "USD" && cotacaoRaw > 1 ? cotacaoRaw : undefined;
+
+    const taxaAa = num(headerRow, "PERC_JUROS");
+    const taxaAm = num(headerRow, "TAXA_JURO_MES");
 
     contratos.push({
       cd_divida: cd,
-      descricao: String(headerRow["DESCRICAO"] ?? `Contrato ${cd}`).trim() || `Contrato ${cd}`,
-      nr_contrato: String(headerRow["NR_CONTRATO"] ?? "").trim(),
-      data_contrato: parseDateBR(headerRow["DATA_DIVIDA"] ?? ""),
-      tipo: mapTipoContrato(String(headerRow["ST_TIPO_DIVIDA"] ?? headerRow["TIPO_DIVIDA"] ?? "O")),
-      credor: String(headerRow["NOME_CREDOR_DEVEDOR"] ?? "").trim(),
-      taxa_juros_aa: Number(headerRow["PERC_JUROS"] ?? 0),
-      valor_financiado: Number(headerRow["VALOR_FINANCIADO"] ?? 0),
+      descricao: str(headerRow, "DESCRICAO") || str(headerRow, "DS_EMPREEND") || `Contrato ${cd}`,
+      nr_contrato: str(headerRow, "NR_CONTRATO"),
+      data_contrato: dat(headerRow, "DATA_DIVIDA"),
+      tipo: mapTipoContrato(str(headerRow, "TIPO_DIVIDA") || str(headerRow, "ST_TIPO_DIVIDA")),
+      credor: str(headerRow, "NOME_CREDOR_DEVEDOR"),
+      taxa_juros_aa: taxaAa,
+      taxa_juros_am: taxaAm > 0 ? taxaAm : undefined,
+      valor_financiado: num(headerRow, "VALOR_FINANCIADO"),
       moeda,
       cotacao,
       parcelas: parcelasRows.map((r, idx) => ({
-        num_parcela: Number(r["NUM_PARC"] ?? idx + 1),
-        data_vencimento: parseDateBR(r["DATA_VENCIMENTO"] ?? ""),
-        amortizacao: Number(r["VALOR_AMORTIZACAO"] ?? 0),
-        juros: Number(r["VALOR_JUROS_ENCARGOS"] ?? 0),
-        despesas_acessorios: Number(r["VALOR_ACESSORIOS"] ?? 0),
-        valor_parcela: Number(r["VALOR_PARCELAS"] ?? 0),
-        saldo_devedor: Number(r["SALDO_DEVEDOR"] ?? 0),
+        num_parcela: num(r, "NUM_PARC") || idx + 1,
+        data_vencimento: dat(r, "DATA_VENCIMENTO"),
+        amortizacao: num(r, "VALOR_AMORTIZACAO"),
+        juros: num(r, "VALOR_JUROS_ENCARGOS"),
+        despesas_acessorios: num(r, "VALOR_ACESSORIOS"),
+        valor_parcela: num(r, "VALOR_PARCELAS"),
+        saldo_devedor: num(r, "SALDO_DEVEDOR"),
       })),
     });
   }
@@ -527,7 +570,7 @@ export default function ContratosFinanceiros() {
     const log: string[] = [];
     for (const c of importPreview) {
       try {
-        const taxa_am = c.taxa_juros_aa ? aaParaAm(c.taxa_juros_aa) : undefined;
+        const taxa_am = c.taxa_juros_am ?? (c.taxa_juros_aa ? aaParaAm(c.taxa_juros_aa) : undefined);
         const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
           fazenda_id: fazendaId,
           descricao: c.descricao || `Contrato ${c.nr_contrato || c.cd_divida}`,
