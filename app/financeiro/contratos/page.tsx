@@ -172,6 +172,107 @@ const FA_VAZIO = {
   novo_valor_financiado: "", novo_num_parcelas: "", obs: "",
 };
 
+type ContratoImportado = {
+  cd_divida: string;
+  descricao: string;
+  nr_contrato: string;
+  data_contrato: string;
+  tipo: ContratoFinanceiro["tipo"];
+  credor: string;
+  taxa_juros_aa: number;
+  valor_financiado: number;
+  moeda: "BRL" | "USD";
+  cotacao?: number;
+  parcelas: {
+    num_parcela: number;
+    data_vencimento: string;
+    amortizacao: number;
+    juros: number;
+    despesas_acessorios: number;
+    valor_parcela: number;
+    saldo_devedor: number;
+  }[];
+};
+
+function parseDateBR(s: string | number): string {
+  const str = String(s ?? "").trim();
+  if (!str) return "";
+  const parts = str.split(/[\/\-]/);
+  if (parts.length === 3) {
+    const [a, b, c] = parts;
+    if (a.length === 4) return `${a}-${b.padStart(2,"0")}-${c.padStart(2,"0")}`;
+    return `${c}-${b.padStart(2,"0")}-${a.padStart(2,"0")}`;
+  }
+  return "";
+}
+
+function mapTipoContrato(st: string): ContratoFinanceiro["tipo"] {
+  const m: Record<string, ContratoFinanceiro["tipo"]> = {
+    "I": "investimento", "C": "custeio", "P": "cpr", "O": "outros",
+    "Investimento": "investimento", "Custeio": "custeio", "CPR": "cpr", "Outras": "outros", "Outros": "outros",
+  };
+  return m[String(st ?? "").trim()] ?? "outros";
+}
+
+async function lerXLSX(file: File): Promise<ContratoImportado[]> {
+  const XLSXLib = await import("xlsx");
+  const buf = await file.arrayBuffer();
+  const wb = XLSXLib.read(buf, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSXLib.utils.sheet_to_json<Record<string, string | number>>(ws, { defval: "" });
+
+  const grupos = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const cd = String(row["CD_DIVIDA"] ?? row["Cd_Divida"] ?? "").trim();
+    if (!cd) continue;
+    if (!grupos.has(cd)) grupos.set(cd, []);
+    grupos.get(cd)!.push(row);
+  }
+
+  const contratos: ContratoImportado[] = [];
+
+  for (const [cd, linhas] of grupos) {
+    const headerRow = linhas.find(r => {
+      const op = String(r["OPERACAO_CONTA"] ?? "").trim();
+      const vAmort = Number(r["VALOR_AMORTIZACAO"] ?? 0);
+      return op === "Receber" && vAmort === 0;
+    }) ?? linhas.find(r => String(r["OPERACAO_CONTA"] ?? "").trim() === "Receber");
+
+    const parcelasRows = linhas.filter(r => String(r["OPERACAO_CONTA"] ?? "").trim() === "Pagar");
+
+    if (!headerRow || parcelasRows.length === 0) continue;
+
+    const moedaCd = Number(headerRow["CD_MOEDA"] ?? 1);
+    const moeda: "BRL" | "USD" = moedaCd === 2 ? "USD" : "BRL";
+    const cotacaoRaw = Number(headerRow["VL_COTACAO"] ?? 0);
+    const cotacao = cotacaoRaw > 0 ? cotacaoRaw : undefined;
+
+    contratos.push({
+      cd_divida: cd,
+      descricao: String(headerRow["DESCRICAO"] ?? `Contrato ${cd}`).trim() || `Contrato ${cd}`,
+      nr_contrato: String(headerRow["NR_CONTRATO"] ?? "").trim(),
+      data_contrato: parseDateBR(headerRow["DATA_DIVIDA"] ?? ""),
+      tipo: mapTipoContrato(String(headerRow["ST_TIPO_DIVIDA"] ?? headerRow["TIPO_DIVIDA"] ?? "O")),
+      credor: String(headerRow["NOME_CREDOR_DEVEDOR"] ?? "").trim(),
+      taxa_juros_aa: Number(headerRow["PERC_JUROS"] ?? 0),
+      valor_financiado: Number(headerRow["VALOR_FINANCIADO"] ?? 0),
+      moeda,
+      cotacao,
+      parcelas: parcelasRows.map((r, idx) => ({
+        num_parcela: Number(r["NUM_PARC"] ?? idx + 1),
+        data_vencimento: parseDateBR(r["DATA_VENCIMENTO"] ?? ""),
+        amortizacao: Number(r["VALOR_AMORTIZACAO"] ?? 0),
+        juros: Number(r["VALOR_JUROS_ENCARGOS"] ?? 0),
+        despesas_acessorios: Number(r["VALOR_ACESSORIOS"] ?? 0),
+        valor_parcela: Number(r["VALOR_PARCELAS"] ?? 0),
+        saldo_devedor: Number(r["SALDO_DEVEDOR"] ?? 0),
+      })),
+    });
+  }
+
+  return contratos;
+}
+
 // ────────────────────────────────────────────────────────
 // PÁGINA
 // ────────────────────────────────────────────────────────
@@ -182,6 +283,10 @@ export default function ContratosFinanceiros() {
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
   const [salvando, setSalvando]   = useState(false);
   const [ptax, setPtax]           = useState<number | null>(null);
+  const [modalImport, setModalImport]     = useState(false);
+  const [importPreview, setImportPreview] = useState<ContratoImportado[] | null>(null);
+  const [importando, setImportando]       = useState(false);
+  const [importLog, setImportLog]         = useState<string[]>([]);
 
   // modal unificado
   const [modalAberto, setModalAberto]       = useState(false);
@@ -415,6 +520,53 @@ export default function ContratosFinanceiros() {
   const totalFinanciado = contratos.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
+  // ── Importar XLSX ──
+  const confirmarImporte = async () => {
+    if (!importPreview || !fazendaId) return;
+    setImportando(true);
+    const log: string[] = [];
+    for (const c of importPreview) {
+      try {
+        const taxa_am = c.taxa_juros_aa ? aaParaAm(c.taxa_juros_aa) : undefined;
+        const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
+          fazenda_id: fazendaId,
+          descricao: c.descricao || `Contrato ${c.nr_contrato || c.cd_divida}`,
+          credor: c.credor || "Importado",
+          tipo: c.tipo,
+          tipo_calculo: "sac",
+          moeda: c.moeda,
+          valor_financiado: c.valor_financiado,
+          valor_cotacao: c.cotacao,
+          valor_financiado_brl: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
+          data_contrato: c.data_contrato || new Date().toISOString().slice(0,10),
+          numero_documento: c.nr_contrato || undefined,
+          taxa_juros_aa: c.taxa_juros_aa || undefined,
+          taxa_juros_am: taxa_am,
+          status: "ativo",
+          carencia_meses: 0,
+          periodicidade_meses: 1,
+          carencia_tipo: "so_juros",
+          rateio_por_vencimento: false,
+          fiscal: true,
+        };
+        const novo = await criarContratoFinanceiro(payload);
+        if (c.parcelas.length > 0) {
+          await salvarParcelasPagamento(
+            novo.id, fazendaId,
+            c.parcelas.map(p => ({ ...p, status: "em_aberto" as const }))
+          );
+        }
+        setContratos(prev => [novo, ...prev]);
+        log.push(`✓ ${c.descricao} (${c.nr_contrato || c.cd_divida}) — ${c.parcelas.length} parcela${c.parcelas.length !== 1 ? "s" : ""}`);
+      } catch (e) {
+        log.push(`✗ ${c.descricao || c.cd_divida} — ${(e as Error).message}`);
+      }
+    }
+    setImportLog(log);
+    setImportPreview(null);
+    setImportando(false);
+  };
+
   // ── Aba desabilitada quando contrato ainda não salvo ──
   function AbaDisabled({ nome }: { nome: string }) {
     return (
@@ -442,6 +594,7 @@ export default function ContratosFinanceiros() {
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {ptax && <span style={{ fontSize: 11, color: "#555", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
+              <button style={{ ...btnR, padding: "9px 20px" }} onClick={() => { setModalImport(true); setImportPreview(null); setImportLog([]); }}>↑ Importar XLSX</button>
               <button style={{ ...btnV, background: "#1A4870", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
             </div>
           </div>
@@ -515,6 +668,133 @@ export default function ContratosFinanceiros() {
           )}
         </div>
       </main>
+
+      {/* ══ Modal Importar XLSX ══ */}
+      {modalImport && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130 }}
+          onClick={e => { if (e.target === e.currentTarget) { setModalImport(false); setImportPreview(null); setImportLog([]); } }}>
+          <div style={{ background: "#fff", borderRadius: 16, width: "min(940px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>Importar Contratos Financeiros — XLSX</div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Formato compatível com AgroSoft, Agrobase e sistemas SAC/Amortização Constante</div>
+              </div>
+              <button onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              {importLog.length > 0 ? (
+                <div>
+                  <div style={{ marginBottom: 12, fontWeight: 600, fontSize: 14, color: "#1A4870" }}>
+                    Resultado da importação — {importLog.filter(l => l.startsWith("✓")).length} sucesso{importLog.filter(l => l.startsWith("✗")).length > 0 ? `, ${importLog.filter(l => l.startsWith("✗")).length} erro` : ""}
+                  </div>
+                  <div style={{ background: "#F3F6F9", borderRadius: 10, padding: 14, fontFamily: "monospace", fontSize: 12, maxHeight: 360, overflowY: "auto" }}>
+                    {importLog.map((l, i) => (
+                      <div key={i} style={{ color: l.startsWith("✓") ? "#1A5C38" : "#E24B4A", marginBottom: 4 }}>{l}</div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end" }}>
+                    <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }}>Fechar</button>
+                  </div>
+                </div>
+              ) : !importPreview ? (
+                <div>
+                  <div style={{ marginBottom: 16, background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#0B2D50" }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Colunas esperadas na planilha:</div>
+                    <div style={{ fontFamily: "monospace", fontSize: 11, lineHeight: 1.8, color: "#0B2D50" }}>
+                      CD_DIVIDA · NR_CONTRATO · DESCRICAO · DATA_DIVIDA · ST_TIPO_DIVIDA · NOME_CREDOR_DEVEDOR · PERC_JUROS · VALOR_FINANCIADO · CD_MOEDA · VL_COTACAO · OPERACAO_CONTA · NUM_PARC · DATA_VENCIMENTO · VALOR_AMORTIZACAO · VALOR_JUROS_ENCARGOS · VALOR_ACESSORIOS · VALOR_PARCELAS · SALDO_DEVEDOR
+                    </div>
+                    <div style={{ marginTop: 8, color: "#555" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
+                  </div>
+                  <label style={{ display: "block", border: "2px dashed #D4DCE8", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "#D4DCE8")}>
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Selecionar arquivo XLSX</div>
+                    <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Clique para abrir ou arraste o arquivo aqui (.xlsx, .xls)</div>
+                    <input type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const preview = await lerXLSX(file);
+                        if (preview.length === 0) {
+                          alert("Nenhum contrato encontrado no arquivo. Verifique se as colunas estão corretas (CD_DIVIDA, OPERACAO_CONTA, etc.).");
+                          return;
+                        }
+                        setImportPreview(preview);
+                      } catch (err) {
+                        alert("Erro ao ler o arquivo: " + (err as Error).message);
+                      }
+                      e.target.value = "";
+                    }} />
+                  </label>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                      {importPreview.length} contrato{importPreview.length !== 1 ? "s" : ""} encontrado{importPreview.length !== 1 ? "s" : ""} — total {importPreview.reduce((s, c) => s + c.parcelas.length, 0)} parcelas
+                    </div>
+                    <button style={{ ...btnR, fontSize: 12 }} onClick={() => setImportPreview(null)}>← Selecionar outro arquivo</button>
+                  </div>
+                  <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          {["Nº Contrato", "Descrição / Data", "Credor", "Tipo", "Taxa a.a.", "Valor Financiado", "Parcelas"].map((h, i) => (
+                            <th key={i} style={{ padding: "8px 10px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.map((c, idx) => {
+                          const tm = TIPO_META[c.tipo];
+                          const primeiraParc = c.parcelas[0];
+                          const ultimaParc = c.parcelas[c.parcelas.length - 1];
+                          return (
+                            <tr key={idx} style={{ borderBottom: idx < importPreview.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                              <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1A4870" }}>{c.nr_contrato || c.cd_divida}</td>
+                              <td style={{ padding: "8px 10px" }}>
+                                <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.descricao}</div>
+                                <div style={{ fontSize: 11, color: "#888" }}>{fmtData(c.data_contrato)}</div>
+                              </td>
+                              <td style={{ padding: "8px 10px", color: "#555", maxWidth: 140 }}>{c.credor}</td>
+                              <td style={{ padding: "8px 10px" }}>
+                                <span style={{ fontSize: 10, background: tm.bg, color: tm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
+                              </td>
+                              <td style={{ padding: "8px 10px", textAlign: "center" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}%` : "—"}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600 }}>
+                                {c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}
+                                {c.cotacao ? <div style={{ fontSize: 10, color: "#888" }}>cotação {fmtNum(c.cotacao, 4)}</div> : null}
+                              </td>
+                              <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                                <span style={{ fontWeight: 700, color: "#1A4870" }}>{c.parcelas.length}x</span>
+                                {primeiraParc && ultimaParc && (
+                                  <div style={{ fontSize: 10, color: "#888" }}>
+                                    {fmtData(primeiraParc.data_vencimento)} → {fmtData(ultimaParc.data_vencimento)}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button style={btnR} onClick={() => { setModalImport(false); setImportPreview(null); }}>Cancelar</button>
+                    <button
+                      style={{ ...btnV, background: "#1A4870", opacity: importando ? 0.5 : 1 }}
+                      disabled={importando}
+                      onClick={confirmarImporte}
+                    >{importando ? "Importando…" : `Importar ${importPreview.length} contrato${importPreview.length !== 1 ? "s" : ""}`}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ Modal Unificado ══ */}
       {modalAberto && (
