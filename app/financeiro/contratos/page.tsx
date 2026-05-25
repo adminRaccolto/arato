@@ -633,14 +633,15 @@ export default function ContratosFinanceiros() {
           data_lancamento: c.data_contrato,
           data_vencimento: c.data_contrato,
           valor: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
-          status: "pago",  // crédito já recebido no passado
+          status: "baixado",  // crédito já recebido
           auto: true,
         }] : [];
 
         // 2. Lançamentos CP por parcela (amortização + juros + encargos)
         const lancsParcelas: Record<string, unknown>[] = [];
         for (const p of c.parcelas) {
-          const statusLanc = p.data_vencimento && p.data_vencimento < hoje ? "pago" : "em_aberto";
+          const isPast = p.data_vencimento && p.data_vencimento < hoje;
+          const statusLanc = isPast ? "baixado" : "em_aberto";
           const descBase = `${c.descricao} — Parcela ${p.num_parcela}`;
           if (p.amortizacao > 0) {
             lancsParcelas.push({
@@ -681,7 +682,8 @@ export default function ContratosFinanceiros() {
         if (todosLancs.length > 0) {
           // Insere em lotes de 200 para evitar limite do Supabase
           for (let i = 0; i < todosLancs.length; i += 200) {
-            await supabase.from("lancamentos").insert(todosLancs.slice(i, i + 200));
+            const { error: errLanc } = await supabase.from("lancamentos").insert(todosLancs.slice(i, i + 200));
+            if (errLanc) throw new Error(`Lançamentos: ${errLanc.message}`);
           }
         }
 
