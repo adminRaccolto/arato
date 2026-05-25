@@ -184,6 +184,7 @@ type ContratoImportado = {
   valor_financiado: number;
   moeda: "BRL" | "USD";
   cotacao?: number;
+  desc_safra?: string;
   parcelas: {
     num_parcela: number;
     data_vencimento: string;
@@ -586,6 +587,22 @@ export default function ContratosFinanceiros() {
     const log: string[] = [];
     const hoje = new Date().toISOString().slice(0, 10);
 
+    // Carrega anos_safra para vincular lancamentos ao filtro de safra do BI
+    const { data: anosSafraDB } = await supabase
+      .from("anos_safra")
+      .select("id, descricao")
+      .eq("fazenda_id", fazendaId);
+    const anosSafraList = anosSafraDB ?? [];
+    const matchAnoSafra = (desc?: string): string | undefined => {
+      if (!desc) return undefined;
+      const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+      const d = norm(desc);
+      return (
+        anosSafraList.find(a => norm(a.descricao) === d)?.id ??
+        anosSafraList.find(a => norm(a.descricao).includes(d) || d.includes(norm(a.descricao)))?.id
+      );
+    };
+
     for (const c of importPreview) {
       try {
         const taxa_am = c.taxa_juros_am ?? (c.taxa_juros_aa ? aaParaAm(c.taxa_juros_aa) : undefined);
@@ -625,6 +642,8 @@ export default function ContratosFinanceiros() {
         }
 
         // ── Gera lançamentos financeiros (cascata) ──────────────────────────
+        const anoSafraId = matchAnoSafra(c.desc_safra);
+
         // 1. Lançamento CR de captação (liberação do crédito)
         const lancsCaptacao = c.valor_financiado > 0 && c.data_contrato ? [{
           fazenda_id: fazendaId, tipo: "receber", moeda: c.moeda,
@@ -635,6 +654,7 @@ export default function ContratosFinanceiros() {
           valor: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
           status: "baixado",  // crédito já recebido
           auto: true,
+          ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
         }] : [];
 
         // 2. Lançamentos CP por parcela (amortização + juros + encargos)
@@ -652,6 +672,7 @@ export default function ContratosFinanceiros() {
               data_vencimento: p.data_vencimento,
               valor: p.amortizacao,
               status: statusLanc, auto: true,
+              ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
             });
           }
           if (p.juros > 0) {
@@ -663,6 +684,7 @@ export default function ContratosFinanceiros() {
               data_vencimento: p.data_vencimento,
               valor: p.juros,
               status: statusLanc, auto: true,
+              ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
             });
           }
           if (p.despesas_acessorios > 0) {
@@ -674,6 +696,7 @@ export default function ContratosFinanceiros() {
               data_vencimento: p.data_vencimento,
               valor: p.despesas_acessorios,
               status: statusLanc, auto: true,
+              ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
             });
           }
         }
@@ -690,7 +713,8 @@ export default function ContratosFinanceiros() {
         setContratos(prev => [novo, ...prev]);
         const nPago  = c.parcelas.filter(p => p.data_vencimento && p.data_vencimento < hoje).length;
         const nAberto = c.parcelas.length - nPago;
-        log.push(`✓ ${c.descricao} (${c.nr_contrato || c.cd_divida}) — ${c.parcelas.length} parcelas, ${nPago} pagas, ${nAberto} em aberto, ${todosLancs.length} lançamentos`);
+        const safraTag = anoSafraId ? ` [safra vinculada]` : c.desc_safra ? ` [safra "${c.desc_safra}" não encontrada]` : "";
+        log.push(`✓ ${c.descricao} (${c.nr_contrato || c.cd_divida}) — ${c.parcelas.length} parcelas, ${nPago} pagas, ${nAberto} em aberto, ${todosLancs.length} lançamentos${safraTag}`);
       } catch (e) {
         log.push(`✗ ${c.descricao || c.cd_divida} — ${(e as Error).message}`);
       }

@@ -530,7 +530,7 @@ export default function BI() {
       if (!mapa.has(label)) mapa.set(label, { label, captado: 0, pago: 0, juros: 0, jurosPend: 0, saldo: 0, area });
       return mapa.get(label)!;
     };
-    for (const l of lancamentos) {
+    for (const l of lancamentosFiltrados) {
       let label: string;
       if (l.ano_safra_id) {
         const safra = anosSafra.find(a => a.id === l.ano_safra_id);
@@ -569,9 +569,9 @@ export default function BI() {
   // Por tipo de operação
   const TIPOS_RT = ["CPR", "Custeio", "EGF", "Empréstimo", "Financiamento", "PRONAF", "Outros"];
   const rtPorTipo = TIPOS_RT.map(tipo => {
-    const captado = lancamentos.filter(l => isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
-    const pago    = lancamentos.filter(l => isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
-    const juros   = lancamentos.filter(l => isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+    const captado = lancamentosFiltrados.filter(l => isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
+    const pago    = lancamentosFiltrados.filter(l => isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+    const juros   = lancamentosFiltrados.filter(l => isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
     return { tipo, captado, pago, juros, saldo: captado - pago };
   }).filter(t => t.captado > 0 || t.pago > 0 || t.juros > 0);
 
