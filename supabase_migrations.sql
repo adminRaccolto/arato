@@ -4570,3 +4570,30 @@ ALTER TABLE contas ADD COLUMN IF NOT EXISTS valor_mensalidade numeric(10,2);
 -- WHERE id IN ('<uuid-conta-1>', '<uuid-conta-2>');
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: RLS na tabela contas (faltava política para raccotlo) ─────────
+-- Sem esta política, listarContasAdmin() retorna 0 linhas pois usa anon key.
+
+ALTER TABLE contas ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "contas_raccotlo_read" ON contas;
+CREATE POLICY "contas_raccotlo_read" ON contas
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM perfis
+      WHERE perfis.user_id = auth.uid()
+        AND perfis.role IN ('raccotlo', 'raccotlo_gestor', 'raccotlo_operacional')
+    )
+  );
+
+DROP POLICY IF EXISTS "contas_cliente_read" ON contas;
+CREATE POLICY "contas_cliente_read" ON contas
+  FOR SELECT
+  USING (
+    id IN (
+      SELECT conta_id FROM perfis WHERE user_id = auth.uid()
+    )
+  );
+
+NOTIFY pgrst, 'reload schema';
