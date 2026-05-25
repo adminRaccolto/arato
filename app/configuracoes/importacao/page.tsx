@@ -35,6 +35,9 @@ type ProdutoRow = {
 type MaquinaRow = {
   nome: string; tipo: string; patrimonio: string; marca: string; modelo: string;
   ano: string; chassi: string; horimetro_atual: string;
+  proprietario_cpf_cnpj: string;
+  nr_nf_aquisicao: string; data_aquisicao: string; valor_aquisicao: string;
+  status_financiamento: string; numero_contrato_financiamento: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type ContratoFinRow = {
@@ -90,13 +93,13 @@ const TEMPLATE_PRODUTOS = [
 ];
 
 const TEMPLATE_MAQUINAS = [
-  ["nome*", "tipo*", "patrimonio*", "marca", "modelo", "ano", "chassi", "horimetro_atual"],
-  ["Trator John Deere 6110J", "trator", "Máquina 1", "John Deere", "6110J", "2022", "1RW6110JXNL123456", "4250"],
-  ["Colhedora S760", "colhedora", "Máquina 2", "John Deere", "S760", "2021", "1HO760JXPL654321", "2180"],
-  ["Plantadeira PD 1113", "plantadeira", "Máquina 3", "Plantio Direto", "PD 1113", "2020", "", "0"],
-  ["Pulverizador Menegatti", "pulverizador", "Máquina 4", "Menegatti", "2500", "2023", "", "1100"],
-  ["Caminhão Volvo FH 460", "caminhao", "Máquina 5", "Volvo", "FH 460", "2019", "9BW3HH4A8KB123456", "0"],
-  ["Toyota Hilux SW4", "carro", "Carro 30", "Toyota", "Hilux SW4", "2023", "9BFBR49H0PB123456", "45000"],
+  ["nome*", "tipo*", "patrimonio*", "marca", "modelo", "ano", "chassi", "horimetro_atual", "proprietario_cpf_cnpj", "nr_nf_aquisicao", "data_aquisicao", "valor_aquisicao", "status_financiamento", "numero_contrato_financiamento"],
+  ["Trator John Deere 6110J", "trator", "Máquina 1", "John Deere", "6110J", "2022", "1RW6110JXNL123456", "4250", "012.345.678-90", "000123", "2022-03-15", "480000.00", "financiado", "131910484"],
+  ["Colhedora S760", "colhedora", "Máquina 2", "John Deere", "S760", "2021", "1HO760JXPL654321", "2180", "012.345.678-90", "000124", "2021-09-01", "1200000.00", "financiado", "131910485"],
+  ["Plantadeira PD 1113", "plantadeira", "Máquina 3", "Plantio Direto", "PD 1113", "2020", "", "0", "", "", "", "", "proprio", ""],
+  ["Pulverizador Menegatti", "pulverizador", "Máquina 4", "Menegatti", "2500", "2023", "", "1100", "012.345.678-90", "", "2023-06-10", "350000.00", "quitado", ""],
+  ["Caminhão Volvo FH 460", "caminhao", "Máquina 5", "Volvo", "FH 460", "2019", "9BW3HH4A8KB123456", "0", "", "", "", "", "proprio", ""],
+  ["Toyota Hilux SW4", "carro", "Carro 30", "Toyota", "Hilux SW4", "2023", "9BFBR49H0PB123456", "45000", "987.654.321-00", "000200", "2023-01-20", "220000.00", "financiado", ""],
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
@@ -219,6 +222,25 @@ const INSTRUCOES_MAQUINAS = [
   ["• ano: somente o número (ex: 2023)"],
   ["• chassi: opcional — 17 caracteres alfanuméricos"],
   ["• horimetro_atual: horas (tratores/colhedoras) ou km (carros/caminhões) — número sem unidade"],
+  [""],
+  ["Campos de propriedade e aquisição (novos):"],
+  ["• proprietario_cpf_cnpj: CPF ou CNPJ do proprietário do bem — vincula ao cadastro de Pessoas"],
+  ["  → Essencial para o IR/IRPF quando há mais de um produtor na fazenda"],
+  ["  → O CPF/CNPJ deve estar previamente cadastrado em Cadastros → Pessoas"],
+  ["• nr_nf_aquisicao: número da Nota Fiscal de compra do bem (ex: 000123)"],
+  ["• data_aquisicao: data da compra no formato AAAA-MM-DD (ex: 2022-03-15)"],
+  ["• valor_aquisicao: valor de compra em R$ (ex: 480000.00) — sem R$, sem pontos de milhar"],
+  [""],
+  ["Campos de financiamento (novos):"],
+  ["• status_financiamento: proprio, financiado ou quitado"],
+  ["  proprio    → bem adquirido com recursos próprios (sem financiamento)"],
+  ["  financiado → financiamento ativo, ainda sendo pago"],
+  ["  quitado    → financiamento encerrado"],
+  ["• numero_contrato_financiamento: Nº do contrato financeiro que financiou este bem"],
+  ["  → Deve corresponder ao campo 'numero_contrato' no cadastro de Contratos Financeiros"],
+  ["  → Se preenchido, o status muda automaticamente para 'quitado' quando a última"],
+  ["    parcela do contrato for baixada no módulo Financeiro → Contratos Financeiros"],
+  ["  → Deixe em branco se status_financiamento = proprio ou se o contrato não existe no sistema"],
   [""],
   ["Tipos disponíveis:"],
   ["  trator        → tratores de todas as potências"],
@@ -482,10 +504,16 @@ function validarMaquina(r: Record<string, string>): MaquinaRow {
   if (!row.patrimonio?.trim()) return { ...row, _status: "erro", _msg: "patrimônio obrigatório" };
   if (row.ano?.trim() && !/^\d{4}$/.test(row.ano.trim()))
     return { ...row, _status: "erro", _msg: "ano deve ter 4 dígitos (ex: 2023)" };
+  const statusFin = row.status_financiamento?.trim().toLowerCase() || "proprio";
+  if (statusFin && !["proprio", "financiado", "quitado"].includes(statusFin))
+    return { ...row, _status: "erro", _msg: "status_financiamento: proprio, financiado ou quitado" };
+  if (row.data_aquisicao?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_aquisicao.trim()))
+    return { ...row, _status: "erro", _msg: "data_aquisicao deve ser AAAA-MM-DD" };
   return {
     ...row,
     nome: limparNomeMaquina(row.nome),
     tipo: tipoNorm,
+    status_financiamento: statusFin || "proprio",
     _status: "ok",
     _msg: "",
   };
@@ -1121,21 +1149,51 @@ export default function ImportacaoPage() {
     if (!fazendaId || !maquinasRows.length) return;
     setLoadingMaquinas(true);
     let ok = 0, erros = 0, duplicados = 0;
+
+    // Mapas de resolução de FK (CPF/CNPJ → id)
+    const { data: pessoasDB } = await supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+    const pessoaMap: Record<string, string> = {};
+    (pessoasDB ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
+      if (p.cpf_cnpj) pessoaMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+    });
+
+    // Mapa: numero_documento → id de contratos financeiros
+    const { data: contratosDB } = await supabase
+      .from("contratos_financeiros")
+      .select("id, numero_documento")
+      .eq("fazenda_id", fazendaId)
+      .not("numero_documento", "is", null);
+    const contratoMap: Record<string, string> = {};
+    (contratosDB ?? []).forEach((c: { id: string; numero_documento: string | null }) => {
+      if (c.numero_documento) contratoMap[c.numero_documento.trim()] = c.id;
+    });
+
     for (const r of maquinasRows) {
       if (r._status === "duplicado") { duplicados++; continue; }
       if (r._status === "erro")      { erros++;      continue; }
-      const isVeiculo = ["carro", "caminhao"].includes(r.tipo);
+
+      const docProp = r.proprietario_cpf_cnpj?.replace(/\D/g, "");
+      const proprietarioId = docProp ? (pessoaMap[docProp] ?? null) : null;
+      const nrContrato = r.numero_contrato_financiamento?.trim();
+      const contratoFinId = nrContrato ? (contratoMap[nrContrato] ?? null) : null;
+
       const { error } = await supabase.from("maquinas").insert({
-        fazenda_id:      fazendaId,
-        nome:            r.nome.trim(),
-        tipo:            normalizarTipoMaquina(r.tipo),
-        patrimonio:      r.patrimonio?.trim() || null,
-        marca:           r.marca?.trim() || null,
-        modelo:          r.modelo?.trim() || null,
-        ano:             r.ano?.trim() ? parseInt(r.ano.trim()) : null,
-        chassi:          r.chassi?.trim() || null,
-        horimetro_atual: r.horimetro_atual?.trim() ? parseFloat(r.horimetro_atual.replace(",", ".")) : null,
-        ativa:           true,
+        fazenda_id:                 fazendaId,
+        nome:                       r.nome.trim(),
+        tipo:                       normalizarTipoMaquina(r.tipo),
+        patrimonio:                 r.patrimonio?.trim() || null,
+        marca:                      r.marca?.trim() || null,
+        modelo:                     r.modelo?.trim() || null,
+        ano:                        r.ano?.trim() ? parseInt(r.ano.trim()) : null,
+        chassi:                     r.chassi?.trim() || null,
+        horimetro_atual:            r.horimetro_atual?.trim() ? parseFloat(r.horimetro_atual.replace(",", ".")) : null,
+        proprietario_id:            proprietarioId,
+        nr_nf_aquisicao:            r.nr_nf_aquisicao?.trim() || null,
+        data_aquisicao:             r.data_aquisicao?.trim() || null,
+        valor_aquisicao:            r.valor_aquisicao?.trim() ? parseFloat(r.valor_aquisicao.replace(/\./g, "").replace(",", ".")) : null,
+        status_financiamento:       r.status_financiamento || "proprio",
+        contrato_financiamento_id:  contratoFinId,
+        ativa:                      true,
       });
       if (error) { r._status = "erro"; r._msg = error.message; erros++; }
       else ok++;
