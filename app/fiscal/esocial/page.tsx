@@ -114,11 +114,6 @@ function funcToTrab(f: any): Trabalhador {
   };
 }
 
-const VAZIO_TRAB: Omit<Trabalhador, "id" | "fazenda_id" | "created_at"> = {
-  nome: "", cpf: "", pis: "", tipo_vinculo: "clt",
-  funcao: "", data_admissao: "", salario_base: 0, status: "ativo",
-};
-
 const VAZIO_EVT: Omit<EsocialEvento, "id" | "fazenda_id" | "created_at"> = {
   codigo_evento: "", descricao_evento: "", competencia: "",
   trabalhador_id: "", status: "pendente",
@@ -139,11 +134,6 @@ export default function EsocialPage() {
   const [trabalhadores, setTrabalhadores] = useState<Trabalhador[]>([]);
   const [eventos,       setEventos]       = useState<EsocialEvento[]>([]);
   const [loading,       setLoading]       = useState(true);
-
-  const [modalTrab,  setModalTrab]  = useState(false);
-  const [editTrab,   setEditTrab]   = useState<Trabalhador | null>(null);
-  const [formTrab,   setFormTrab]   = useState<typeof VAZIO_TRAB>({ ...VAZIO_TRAB });
-  const [salvandoT,  setSalvandoT]  = useState(false);
 
   const [modalEvt,   setModalEvt]   = useState(false);
   const [formEvt,    setFormEvt]    = useState<typeof VAZIO_EVT>({ ...VAZIO_EVT });
@@ -173,46 +163,6 @@ export default function EsocialPage() {
   // Mapa id → trabalhador para lookup em eventos
   const trabMap = Object.fromEntries(trabalhadores.map(t => [t.id, t]));
 
-  // ── Trabalhadores CRUD — salva em funcionarios ────────────
-  async function salvarTrab() {
-    if (!fazendaId || !formTrab.nome) return;
-    setSalvandoT(true);
-    const payload = {
-      fazenda_id:          fazendaId,
-      nome:                formTrab.nome,
-      cpf:                 formTrab.cpf  || null,
-      pis_nis:             formTrab.pis  || null,
-      tipo:                VINCULO_TO_TIPO[formTrab.tipo_vinculo],
-      tipo_vinculo_esocial: formTrab.tipo_vinculo,
-      funcao:              formTrab.funcao || null,
-      data_admissao:       formTrab.data_admissao || null,
-      salario_base:        formTrab.salario_base || null,
-      ativo:               true,
-    };
-
-    if (editTrab) {
-      await supabase.from("funcionarios").update(payload).eq("id", editTrab.id);
-    } else {
-      const { data: novo } = await supabase.from("funcionarios").insert(payload).select().single();
-      // Gera evento automático de admissão
-      if (novo) {
-        const cod  = formTrab.tipo_vinculo === "clt" ? "S-2200" : "S-2300";
-        const desc = EVENTOS_CATALOGO.find(e => e.codigo === cod)?.descricao ?? cod;
-        await supabase.from("esocial_eventos").insert({
-          fazenda_id:      fazendaId,
-          trabalhador_id:  novo.id,
-          codigo_evento:   cod,
-          descricao_evento: desc,
-          competencia:     formTrab.data_admissao?.substring(0, 7) ?? competApuracao,
-          status:          "pendente",
-        });
-      }
-    }
-    setSalvandoT(false);
-    fecharModalTrab();
-    carregar();
-  }
-
   async function desligarTrabalhador(t: Trabalhador) {
     const data = prompt("Data de desligamento (AAAA-MM-DD):", new Date().toISOString().split("T")[0]);
     if (!data) return;
@@ -227,17 +177,6 @@ export default function EsocialPage() {
     });
     carregar();
   }
-
-  function abrirModalTrab(t?: Trabalhador) {
-    setEditTrab(t ?? null);
-    setFormTrab(t ? {
-      nome: t.nome, cpf: t.cpf ?? "", pis: t.pis ?? "",
-      tipo_vinculo: t.tipo_vinculo, funcao: t.funcao ?? "",
-      data_admissao: t.data_admissao ?? "", salario_base: t.salario_base ?? 0, status: t.status,
-    } : { ...VAZIO_TRAB });
-    setModalTrab(true);
-  }
-  function fecharModalTrab() { setModalTrab(false); setEditTrab(null); setFormTrab({ ...VAZIO_TRAB }); }
 
   // ── Eventos CRUD ──────────────────────────────────────────
   async function salvarEvt() {
@@ -313,10 +252,10 @@ export default function EsocialPage() {
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             {aba === "trabalhadores" && (
-              <button onClick={() => abrirModalTrab()}
-                style={{ padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                + Trabalhador
-              </button>
+              <a href="/cadastros?tab=funcionarios"
+                style={{ padding: "9px 20px", background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #B3D0E8", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-block" }}>
+                Gerenciar em Cadastros →
+              </a>
             )}
             {aba === "eventos" && (
               <button onClick={() => setModalEvt(true)}
@@ -380,7 +319,8 @@ export default function EsocialPage() {
                 <div style={{ textAlign: "center", padding: 60, color: "#888" }}>
                   <div style={{ fontSize: 36, marginBottom: 12 }}>👷</div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>Nenhum trabalhador cadastrado</div>
-                  <div style={{ fontSize: 12 }}>Clique em "+ Trabalhador" ou acesse <strong>Cadastros → Funcionários</strong> para adicionar.</div>
+                  <div style={{ fontSize: 12, marginBottom: 14 }}>Acesse <strong>Cadastros → Funcionários</strong> para adicionar trabalhadores.</div>
+                  <a href="/cadastros?tab=funcionarios" style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Ir para Cadastros → Funcionários</a>
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -410,10 +350,10 @@ export default function EsocialPage() {
                           </td>
                           <td style={{ padding: "9px 10px" }}>
                             <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => abrirModalTrab(t)}
-                                style={{ padding: "3px 10px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "#555", cursor: "pointer" }}>
-                                Editar
-                              </button>
+                              <a href="/cadastros?tab=funcionarios"
+                                style={{ padding: "3px 10px", background: "none", border: "0.5px solid #B3D0E8", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", textDecoration: "none", display: "inline-block" }}>
+                                Editar em Cadastros
+                              </a>
                               {t.status === "ativo" && (
                                 <button onClick={() => desligarTrabalhador(t)}
                                   style={{ padding: "3px 10px", background: "#FEE2E2", border: "0.5px solid #FCA5A5", borderRadius: 6, fontSize: 11, color: "#991B1B", cursor: "pointer" }}>
@@ -621,83 +561,6 @@ export default function EsocialPage() {
           </>
         )}
       </div>
-
-      {/* ── Modal Trabalhador ── */}
-      {modalTrab && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-          onClick={e => { if (e.target === e.currentTarget) fecharModalTrab(); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 700, fontSize: 15 }}>{editTrab ? "Editar Trabalhador" : "Novo Trabalhador"}</span>
-              <button onClick={fecharModalTrab} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>✕</button>
-            </div>
-            <div style={{ padding: "22px 24px", display: "grid", gap: 16 }}>
-              {/* Nome + Tipo */}
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
-                <div>
-                  <label style={lbl}>Nome Completo *</label>
-                  <input value={formTrab.nome} onChange={e => setFormTrab(f => ({ ...f, nome: e.target.value }))} style={inp} placeholder="Nome do trabalhador" />
-                </div>
-                <div>
-                  <label style={lbl}>Tipo de Vínculo *</label>
-                  <select value={formTrab.tipo_vinculo} onChange={e => setFormTrab(f => ({ ...f, tipo_vinculo: e.target.value as VinculoTrabalhador }))} style={inp}>
-                    {Object.entries(VINCULOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              {/* CPF + PIS */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <div>
-                  <label style={lbl}>CPF</label>
-                  <input value={formTrab.cpf} onChange={e => setFormTrab(f => ({ ...f, cpf: e.target.value }))} style={inp} placeholder="000.000.000-00" />
-                </div>
-                <div>
-                  <label style={lbl}>PIS / NIT</label>
-                  <input value={formTrab.pis} onChange={e => setFormTrab(f => ({ ...f, pis: e.target.value }))} style={inp} placeholder="000.00000.00-0" />
-                </div>
-              </div>
-              {/* Função + Admissão + Salário */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-                <div>
-                  <label style={lbl}>Função/Cargo</label>
-                  <input value={formTrab.funcao} onChange={e => setFormTrab(f => ({ ...f, funcao: e.target.value }))} style={inp} placeholder="Ex: Operador de Máquinas" />
-                </div>
-                <div>
-                  <label style={lbl}>Data de Admissão</label>
-                  <input type="date" value={formTrab.data_admissao} onChange={e => setFormTrab(f => ({ ...f, data_admissao: e.target.value }))} style={inp} />
-                </div>
-                <div>
-                  <label style={lbl}>Salário / Diária (R$)</label>
-                  <input type="number" min="0" step="0.01" value={formTrab.salario_base}
-                    onChange={e => setFormTrab(f => ({ ...f, salario_base: parseFloat(e.target.value) || 0 }))} style={inp} />
-                </div>
-              </div>
-              {formTrab.tipo_vinculo === "clt" && (
-                <div style={{ background: "#DCFCE7", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#166534" }}>
-                  <strong>CLT:</strong> Gera automaticamente o evento S-2200 (Admissão) ao salvar. Os encargos (FGTS, INSS, provisões) são calculados pelo salário base e podem ser ajustados em <strong>Cadastros → Funcionários</strong>.
-                </div>
-              )}
-              {(formTrab.tipo_vinculo === "avulso_rural" || formTrab.tipo_vinculo === "tsve") && (
-                <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E" }}>
-                  <strong>Avulso / TSVE:</strong> Gera automaticamente o evento S-2300 ao salvar.
-                </div>
-              )}
-              {(formTrab.tipo_vinculo === "meeiro" || formTrab.tipo_vinculo === "parceiro") && (
-                <div style={{ background: "#EDE9FE", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#5B21B6" }}>
-                  <strong>Meeiro / Parceiro:</strong> Parceria agrícola. Não gera FGTS nem INSS empregador direto. Gera evento S-2300.
-                </div>
-              )}
-            </div>
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={fecharModalTrab} style={{ padding: "9px 20px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "#555" }}>Cancelar</button>
-              <button onClick={salvarTrab} disabled={salvandoT || !formTrab.nome}
-                style={{ padding: "9px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoT ? 0.7 : 1 }}>
-                {salvandoT ? "Salvando..." : editTrab ? "Salvar" : "Cadastrar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Modal Evento Manual ── */}
       {modalEvt && (

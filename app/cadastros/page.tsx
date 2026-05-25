@@ -298,7 +298,8 @@ function CadastrosInner() {
   const [fFunc, setFFunc]                   = useState({
     nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
     ctps_numero: "", ctps_serie: "", ctps_uf: "",
-    tipo: "clt" as Funcionario["tipo"], funcao: "", data_admissao: "", data_demissao: "", ativo: true,
+    tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
+    funcao: "", data_admissao: "", data_demissao: "", ativo: true,
     salario_base: "", piso_categoria: "",
     fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
     provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
@@ -1256,7 +1257,8 @@ function CadastrosInner() {
     setFFunc(f ? {
       nome: f.nome, cpf: f.cpf ?? "", rg: f.rg ?? "", data_nascimento: f.data_nascimento ?? "",
       pis_nis: f.pis_nis ?? "", ctps_numero: f.ctps_numero ?? "", ctps_serie: f.ctps_serie ?? "", ctps_uf: f.ctps_uf ?? "",
-      tipo: f.tipo, funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
+      tipo: f.tipo, tipo_vinculo_esocial: f.tipo_vinculo_esocial ?? "",
+      funcao: f.funcao ?? "", data_admissao: f.data_admissao ?? "", data_demissao: f.data_demissao ?? "", ativo: f.ativo,
       salario_base: f.salario_base ? String(f.salario_base) : "",
       piso_categoria: f.piso_categoria ? String(f.piso_categoria) : "",
       fgts_pct: String(f.fgts_pct ?? 8), inss_empregador_pct: String(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)),
@@ -1267,7 +1269,8 @@ function CadastrosInner() {
     } : {
       nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
       ctps_numero: "", ctps_serie: "", ctps_uf: "",
-      tipo: "clt" as Funcionario["tipo"], funcao: "", data_admissao: "", data_demissao: "", ativo: true,
+      tipo: "clt" as Funcionario["tipo"], tipo_vinculo_esocial: "",
+      funcao: "", data_admissao: "", data_demissao: "", ativo: true,
       salario_base: "", piso_categoria: "",
       fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
       provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
@@ -1287,7 +1290,8 @@ function CadastrosInner() {
       rg: fFunc.rg || undefined, data_nascimento: fFunc.data_nascimento || undefined,
       pis_nis: fFunc.pis_nis || undefined, ctps_numero: fFunc.ctps_numero || undefined,
       ctps_serie: fFunc.ctps_serie || undefined, ctps_uf: fFunc.ctps_uf || undefined,
-      tipo: fFunc.tipo, funcao: fFunc.funcao || undefined,
+      tipo: fFunc.tipo, tipo_vinculo_esocial: fFunc.tipo_vinculo_esocial || undefined,
+      funcao: fFunc.funcao || undefined,
       data_admissao: fFunc.data_admissao || undefined, data_demissao: fFunc.data_demissao || undefined,
       ativo: fFunc.ativo,
       salario_base: fFunc.salario_base ? Number(fFunc.salario_base) : undefined,
@@ -6218,6 +6222,17 @@ function CadastrosInner() {
                     <option value="diarista">Diarista / Volante</option>
                     <option value="empreiteiro">Empreiteiro</option>
                     <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div><label style={lbl}>Vínculo eSocial</label>
+                  <select style={inp} value={fFunc.tipo_vinculo_esocial} onChange={e => setFFunc(p => ({ ...p, tipo_vinculo_esocial: e.target.value }))}>
+                    <option value="">— (automático pelo vínculo)</option>
+                    <option value="clt">CLT</option>
+                    <option value="avulso_rural">Avulso Rural</option>
+                    <option value="tsve">TSVE (Trab. Sem Vínculo Empregatício)</option>
+                    <option value="meeiro">Meeiro</option>
+                    <option value="parceiro">Parceiro</option>
+                    <option value="estagiario">Estagiário</option>
                   </select>
                 </div>
                 <div><label style={lbl}>Função / Cargo</label><input style={inp} value={fFunc.funcao} onChange={e => setFFunc(p => ({ ...p, funcao: e.target.value }))} placeholder="Operador de máquina, tratorista…" /></div>

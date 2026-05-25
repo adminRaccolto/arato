@@ -663,6 +663,7 @@ export type Funcionario = {
   banco_pagamento?: string;
   agencia_pagamento?: string;
   conta_pagamento?: string;
+  tipo_vinculo_esocial?: string;
   created_at?: string;
 };
 
