@@ -14,11 +14,12 @@ type StatusCliente = NonNullable<Conta["status"]>;
 type PacoteCliente = NonNullable<Conta["pacote"]>;
 
 const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string }> = {
-  trial:     { label: "Trial",     cor: "#C9921B", bg: "#FBF3E0" },
-  ativo:     { label: "Ativo",     cor: "#16A34A", bg: "#F0FDF4" },
-  inativo:   { label: "Inativo",   cor: "#888",    bg: "#F3F4F6" },
-  pro_bono:  { label: "Pro bono",  cor: "#378ADD", bg: "#EFF6FF" },
-  cancelado: { label: "Cancelado", cor: "#E24B4A", bg: "#FEF2F2" },
+  trial:        { label: "Trial",        cor: "#C9921B", bg: "#FBF3E0" },
+  ativo:        { label: "Ativo",        cor: "#16A34A", bg: "#F0FDF4" },
+  inativo:      { label: "Inativo",      cor: "#888",    bg: "#F3F4F6" },
+  inadimplente: { label: "Inadimplente", cor: "#E24B4A", bg: "#FEF2F2" },
+  pro_bono:     { label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
+  cancelado:    { label: "Cancelado",    cor: "#6B7280", bg: "#F3F4F6" },
 };
 
 const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {

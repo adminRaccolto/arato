@@ -39,6 +39,13 @@ export async function GET(req: NextRequest) {
   const supabase = sb();
   const log: string[] = [];
 
+  // IDs de contas Pro Bono — nunca cobrar, nunca bloquear
+  const { data: contasProBono } = await supabase
+    .from("contas")
+    .select("id")
+    .eq("status", "pro_bono");
+  const idsProBono = new Set((contasProBono ?? []).map(c => c.id));
+
   // ─── 1. Trials expirados → inadimplente ─────────────────────────────────
   const { data: trialsExpirados } = await supabase
     .from("assinaturas")
@@ -47,6 +54,7 @@ export async function GET(req: NextRequest) {
     .lt("trial_fim", hoje());
 
   for (const ass of trialsExpirados ?? []) {
+    if (idsProBono.has(ass.conta_id)) { log.push(`[trial-exp] ${ass.conta_id} → pro bono, ignorado`); continue; }
     // Verifica se já tem pagamento pendente para este período
     const { data: pagExistente } = await supabase
       .from("pagamentos")
@@ -111,6 +119,7 @@ export async function GET(req: NextRequest) {
     .lt("data_vencimento", addDias(-3));
 
   for (const p of pagsVencidos ?? []) {
+    if (idsProBono.has(p.conta_id)) { log.push(`[vencido] ${p.conta_id} → pro bono, ignorado`); continue; }
     await supabase.from("pagamentos").update({ status: "vencido" }).eq("id", p.id);
     await supabase.from("contas").update({ status: "inadimplente" }).eq("id", p.conta_id);
     if (p.assinatura_id) {
@@ -128,6 +137,7 @@ export async function GET(req: NextRequest) {
     .eq("data_proximo_pagamento", emTresDias);
 
   for (const ass of assParaCobrar ?? []) {
+    if (idsProBono.has(ass.conta_id)) { log.push(`[D-3] ${ass.conta_id} → pro bono, ignorado`); continue; }
     // Verifica se já existe cobrança para este período
     const { data: existe } = await supabase
       .from("pagamentos")

@@ -16,18 +16,19 @@ const supabase = createClient(
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-type ContaAdmin    = Conta & { fazendas_count: number };
+type ContaAdmin    = Conta & { fazendas_count: number; crm_stage?: string; origem?: string; cidade?: string; estado?: string };
 type StatusCliente = NonNullable<Conta["status"]>;
 type PacoteCliente = NonNullable<Conta["pacote"]>;
 
 // ─── Config de cores ─────────────────────────────────────────────────────────
 
 const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string }> = {
-  trial:     { label: "Trial",     cor: "#C9921B", bg: "#FBF3E0" },
-  ativo:     { label: "Ativo",     cor: "#16A34A", bg: "#F0FDF4" },
-  inativo:   { label: "Inativo",   cor: "#888",    bg: "#F3F4F6" },
-  pro_bono:  { label: "Pro bono",  cor: "#378ADD", bg: "#EFF6FF" },
-  cancelado: { label: "Cancelado", cor: "#E24B4A", bg: "#FEF2F2" },
+  trial:        { label: "Trial",        cor: "#C9921B", bg: "#FBF3E0" },
+  ativo:        { label: "Ativo",        cor: "#16A34A", bg: "#F0FDF4" },
+  inativo:      { label: "Inativo",      cor: "#888",    bg: "#F3F4F6" },
+  inadimplente: { label: "Inadimplente", cor: "#E24B4A", bg: "#FEF2F2" },
+  pro_bono:     { label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
+  cancelado:    { label: "Cancelado",    cor: "#6B7280", bg: "#F3F4F6" },
 };
 
 const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {
@@ -279,14 +280,29 @@ export default function ClientesPage() {
     .reduce((s, c) => s + (c.valor_mensalidade ?? 0), 0);
 
   const kpis = [
-    { label: "Total",         valor: clientes.length,                                          cor: "#0B1E35", bg: "#fff"    },
-    { label: "Ativos",        valor: clientes.filter(c => c.status === "ativo").length,        cor: "#16A34A", bg: "#F0FDF4" },
-    { label: "Trial",         valor: clientes.filter(c => c.status === "trial").length,        cor: "#C9921B", bg: "#FBF3E0" },
-    { label: "Inadimplentes", valor: clientes.filter(c => c.status === "inativo").length,      cor: "#E24B4A", bg: "#FEF2F2" },
-    { label: "MRR",           valor: fmtBRL(mrr),                                              cor: "#0B1E35", bg: "#EFF6FF" },
+    { label: "Total",         valor: clientes.length,                                                                       cor: "#0B1E35", bg: "#fff"    },
+    { label: "Ativos",        valor: clientes.filter(c => c.status === "ativo").length,                                     cor: "#16A34A", bg: "#F0FDF4" },
+    { label: "Trial",         valor: clientes.filter(c => c.status === "trial").length,                                     cor: "#C9921B", bg: "#FBF3E0" },
+    { label: "Inadimplentes", valor: clientes.filter(c => c.status === "inadimplente" || c.status === "inativo").length,    cor: "#E24B4A", bg: "#FEF2F2" },
+    { label: "Pro Bono",      valor: clientes.filter(c => c.status === "pro_bono").length,                                  cor: "#378ADD", bg: "#EFF6FF" },
+    { label: "MRR",           valor: fmtBRL(mrr),                                                                           cor: "#0B1E35", bg: "#F0FDF4" },
   ];
 
-  const origens = Array.from(new Set(clientes.map(c => (c as ContaAdmin & { origem?: string }).origem).filter(Boolean))) as string[];
+  const origens    = Array.from(new Set(clientes.map(c => c.origem).filter(Boolean))) as string[];
+  const proBonoList = clientes.filter(c => c.status === "pro_bono");
+
+  async function marcarProBono(c: ContaAdmin) {
+    const motivo = window.prompt(`Motivo do Pro Bono para "${c.nome}":\n(Ex: cliente da consultoria, parceiro estratégico...)`, c.pro_bono_motivo ?? "Cliente da consultoria Raccolto");
+    if (motivo === null) return; // cancelou
+    await atualizarConta(c.id, { status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 });
+    setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 } : x));
+  }
+
+  async function removerProBono(c: ContaAdmin) {
+    if (!window.confirm(`Remover Pro Bono de "${c.nome}"?\nO status voltará para "ativo".`)) return;
+    await atualizarConta(c.id, { status: "ativo", pro_bono_motivo: "", valor_mensalidade: undefined });
+    setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "ativo", pro_bono_motivo: "" } : x));
+  }
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
@@ -315,7 +331,7 @@ export default function ClientesPage() {
       </div>
 
       {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map(k => (
           <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
@@ -323,6 +339,50 @@ export default function ClientesPage() {
           </div>
         ))}
       </div>
+
+      {/* Seção Pro Bono */}
+      {proBonoList.length > 0 && (
+        <div style={{
+          background: "#EFF6FF", border: "1px solid #378ADD40",
+          borderRadius: 12, padding: "16px 20px", marginBottom: 16,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>⭐ Clientes Pro Bono</span>
+            <span style={{ fontSize: 11, color: "#378ADD", background: "#DBEAFE", borderRadius: 20, padding: "2px 10px", fontWeight: 700 }}>
+              {proBonoList.length} {proBonoList.length === 1 ? "cliente" : "clientes"}
+            </span>
+            <span style={{ fontSize: 11, color: "#555", marginLeft: 4 }}>
+              — Acesso ao Arato incluso na consultoria Raccolto · não cobrados no SaaS
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            {proBonoList.map(c => (
+              <div key={c.id} style={{
+                background: "#fff", border: "0.5px solid #378ADD60",
+                borderRadius: 10, padding: "10px 14px",
+                display: "flex", alignItems: "center", gap: 12, minWidth: 260,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35" }}>{c.nome}</div>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                    {c.pacote ? `Plano ${c.pacote}` : "Sem plano"}
+                    {c.pro_bono_motivo && <> · {c.pro_bono_motivo}</>}
+                  </div>
+                  {c.email_contato && <div style={{ fontSize: 10, color: "#aaa" }}>{c.email_contato}</div>}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button style={{ ...btnSmall, color: "#378ADD" }} onClick={() => setModalEdit(c)}>✎</button>
+                  <button
+                    style={{ ...btnSmall, color: "#E24B4A", fontSize: 10 }}
+                    onClick={() => removerProBono(c)}
+                    title="Remover Pro Bono"
+                  >✕ PB</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filtros */}
       <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -384,14 +444,25 @@ export default function ClientesPage() {
                 const dias    = diasRestantes(c.data_vencimento);
                 const urgente = dias !== null && dias >= 0 && dias <= 14;
                 const vencido = dias !== null && dias < 0;
-                const extC    = c as ContaAdmin & { crm_stage?: string; origem?: string; cidade?: string; estado?: string };
+                const extC    = c;
 
                 return (
-                  <tr key={c.id} style={{ borderBottom: i < filtrados.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                  <tr key={c.id} style={{
+                    borderBottom: i < filtrados.length - 1 ? "0.5px solid #EEF1F6" : "none",
+                    background: c.status === "pro_bono" ? "#F0F7FF" : "transparent",
+                  }}>
                     <td style={{ padding: "10px 12px", minWidth: 160 }}>
-                      <div style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 13 }}>{c.nome}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 13 }}>{c.nome}</span>
+                        {c.status === "pro_bono" && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#378ADD", background: "#DBEAFE", borderRadius: 10, padding: "1px 6px", letterSpacing: 0.5 }}>PB</span>
+                        )}
+                      </div>
                       {c.email_contato && <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>{c.email_contato}</div>}
-                      {c.telefone && <div style={{ fontSize: 10, color: "#aaa" }}>{c.telefone}</div>}
+                      {c.pro_bono_motivo && c.status === "pro_bono" && (
+                        <div style={{ fontSize: 10, color: "#378ADD", marginTop: 1, fontStyle: "italic" }}>{c.pro_bono_motivo}</div>
+                      )}
+                      {c.telefone && !c.pro_bono_motivo && <div style={{ fontSize: 10, color: "#aaa" }}>{c.telefone}</div>}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {c.pacote ? (
@@ -448,8 +519,25 @@ export default function ClientesPage() {
                         <button style={btnSmall} onClick={() => router.push(`/admin/modulos?conta=${c.id}`)}>
                           ⬡
                         </button>
+                        {c.status !== "pro_bono" ? (
+                          <button
+                            style={{ ...btnSmall, color: "#378ADD", borderColor: "#378ADD60" }}
+                            onClick={() => marcarProBono(c)}
+                            title="Marcar como Pro Bono"
+                          >
+                            ⭐ PB
+                          </button>
+                        ) : (
+                          <button
+                            style={{ ...btnSmall, color: "#E24B4A", borderColor: "#E24B4A60", background: "#FEF2F2" }}
+                            onClick={() => removerProBono(c)}
+                            title="Remover Pro Bono"
+                          >
+                            ✕ PB
+                          </button>
+                        )}
                         <button style={btnSmall} onClick={() => setModalEdit(c)}>
-                          ✎ Editar
+                          ✎
                         </button>
                       </div>
                     </td>

@@ -4557,3 +4557,16 @@ ALTER TABLE contas ADD COLUMN IF NOT EXISTS origem         text;
 ALTER TABLE contas ADD COLUMN IF NOT EXISTS pro_bono       boolean DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: campos Pro Bono e admin em contas ────────────────────────────
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS pro_bono_motivo   text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS obs_admin         text;
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS valor_mensalidade numeric(10,2);
+
+-- O cron de cobrança usa status='inadimplente' — garantir que o campo aceita este valor
+-- (sem CHECK constraint em status para ser flexível)
+-- Confirmar que status permite pro_bono:
+-- UPDATE contas SET status = 'pro_bono', pro_bono_motivo = 'Cliente da consultoria Raccolto'
+-- WHERE id IN ('<uuid-conta-1>', '<uuid-conta-2>');
+
+NOTIFY pgrst, 'reload schema';

@@ -17,7 +17,7 @@ export type Conta = {
   onboarding_ativo?: boolean;
   created_at?: string;
   // ── Gestão SaaS ──
-  status?: "trial" | "ativo" | "inativo" | "pro_bono" | "cancelado";
+  status?: "trial" | "ativo" | "inativo" | "inadimplente" | "pro_bono" | "cancelado";
   pacote?: "essencial" | "gestao" | "performance";
   data_inicio?: string;
   data_vencimento?: string;
