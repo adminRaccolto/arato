@@ -4538,68 +4538,7 @@ CREATE POLICY "rls_conta_modulos_admin" ON conta_modulos
     )
   );
 
--- ─── Migration SaaS — assinaturas e pagamentos (se ainda não existirem) ───────
-
-CREATE TABLE IF NOT EXISTS assinaturas (
-  id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  conta_id              uuid        NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
-  plano_id              text        NOT NULL DEFAULT 'gestao',
-  status                text        NOT NULL DEFAULT 'trial'
-                          CHECK (status IN ('trial','ativa','inadimplente','cancelada','suspensa')),
-  preco                 numeric(10,2) NOT NULL DEFAULT 0,
-  trial_inicio          date,
-  trial_fim             date,
-  data_inicio           date,
-  data_proximo_pagamento date,
-  asaas_customer_id     text,
-  asaas_subscription_id text,
-  cancelamento_motivo   text,
-  created_at            timestamptz NOT NULL DEFAULT now(),
-  updated_at            timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE assinaturas ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "rls_assinaturas_admin" ON assinaturas;
-CREATE POLICY "rls_assinaturas_admin" ON assinaturas
-  USING (
-    EXISTS (
-      SELECT 1 FROM perfis
-      WHERE perfis.user_id = auth.uid()
-        AND perfis.role IN ('raccotlo', 'raccotlo_gestor')
-    )
-  );
-
-CREATE TABLE IF NOT EXISTS pagamentos (
-  id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  assinatura_id       uuid        REFERENCES assinaturas(id),
-  conta_id            uuid        NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
-  valor               numeric(10,2) NOT NULL,
-  status              text        NOT NULL DEFAULT 'pendente'
-                        CHECK (status IN ('pendente','pago','vencido','cancelado','estornado')),
-  data_vencimento     date,
-  data_pagamento      date,
-  metodo_pagamento    text        DEFAULT 'pix',
-  asaas_payment_id    text,
-  asaas_invoice_url   text,
-  asaas_pix_qrcode    text,
-  descricao           text,
-  created_at          timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "rls_pagamentos_admin" ON pagamentos;
-CREATE POLICY "rls_pagamentos_admin" ON pagamentos
-  USING (
-    EXISTS (
-      SELECT 1 FROM perfis
-      WHERE perfis.user_id = auth.uid()
-        AND perfis.role IN ('raccotlo', 'raccotlo_gestor')
-    )
-  );
-
--- Índices úteis
+-- ─── Índices SaaS (assinaturas/pagamentos definidos na Seção 72) ─────────────
 CREATE INDEX IF NOT EXISTS idx_assinaturas_conta ON assinaturas(conta_id);
 CREATE INDEX IF NOT EXISTS idx_assinaturas_status ON assinaturas(status);
 CREATE INDEX IF NOT EXISTS idx_pagamentos_conta ON pagamentos(conta_id);
