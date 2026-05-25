@@ -68,10 +68,14 @@ export default function IdentidadePage() {
 
   // Carrega configurações salvas do Supabase
   const carregar = useCallback(async () => {
+    // fazenda_id IS NULL = config global do sistema (não por fazenda)
     const { data } = await supabase
       .from("configuracoes_modulo")
       .select("valor")
       .eq("modulo", MODULO)
+      .is("fazenda_id", null)
+      .order("created_at" as never, { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (data?.valor) {
@@ -85,20 +89,33 @@ export default function IdentidadePage() {
   useEffect(() => { carregar(); }, [carregar]);
 
   async function salvarConfig(patch: Record<string, unknown>) {
-    // Lê config atual para fazer merge
-    const { data: atual } = await supabase
+    // Busca linha existente com fazenda_id IS NULL
+    // (upsert com NULL não funciona em Postgres — NULL != NULL em constraints)
+    const { data: existente } = await supabase
       .from("configuracoes_modulo")
       .select("valor")
       .eq("modulo", MODULO)
+      .is("fazenda_id", null)
+      .order("created_at" as never, { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    const valorAtual = (atual?.valor ?? {}) as Record<string, unknown>;
+    const valorAtual = (existente?.valor ?? {}) as Record<string, unknown>;
     const novoValor  = { ...valorAtual, ...patch };
 
-    await supabase.from("configuracoes_modulo").upsert(
-      { modulo: MODULO, fazenda_id: null, valor: novoValor },
-      { onConflict: "modulo,fazenda_id" }
-    );
+    if (existente) {
+      // Atualiza a linha existente
+      await supabase
+        .from("configuracoes_modulo")
+        .update({ valor: novoValor })
+        .eq("modulo", MODULO)
+        .is("fazenda_id", null);
+    } else {
+      // Primeira vez: insere
+      await supabase
+        .from("configuracoes_modulo")
+        .insert({ modulo: MODULO, fazenda_id: null, valor: novoValor });
+    }
   }
 
   // ── Logo ──────────────────────────────────────────────────────────────────
