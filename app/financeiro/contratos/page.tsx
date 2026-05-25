@@ -564,10 +564,28 @@ export default function ContratosFinanceiros() {
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
   // ── Importar XLSX ──
+  const CAT_AMORT: Record<ContratoFinanceiro["tipo"], string> = {
+    custeio: "Pagamento de Custeio", investimento: "Pagamento de Financiamento",
+    securitizacao: "Pagamento de Securitização", cpr: "Pagamento de CPR",
+    egf: "Pagamento de EGF", outros: "Pagamento de Empréstimos",
+  };
+  const CAT_JUROS: Record<ContratoFinanceiro["tipo"], string> = {
+    custeio: "Juros de Custeio", investimento: "Juros de Financiamento",
+    securitizacao: "Juros de Securitização", cpr: "Juros de CPR",
+    egf: "Juros de EGF", outros: "Juros de Empréstimos",
+  };
+  const CAT_CAPTACAO: Record<ContratoFinanceiro["tipo"], string> = {
+    custeio: "Captação de Custeio", investimento: "Captação de Financiamento",
+    securitizacao: "Captação de Securitização", cpr: "Captação de CPR",
+    egf: "Captação de EGF", outros: "Captação de Empréstimos",
+  };
+
   const confirmarImporte = async () => {
     if (!importPreview || !fazendaId) return;
     setImportando(true);
     const log: string[] = [];
+    const hoje = new Date().toISOString().slice(0, 10);
+
     for (const c of importPreview) {
       try {
         const taxa_am = c.taxa_juros_am ?? (c.taxa_juros_aa ? aaParaAm(c.taxa_juros_aa) : undefined);
@@ -581,7 +599,7 @@ export default function ContratosFinanceiros() {
           valor_financiado: c.valor_financiado,
           valor_cotacao: c.cotacao,
           valor_financiado_brl: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
-          data_contrato: c.data_contrato || new Date().toISOString().slice(0,10),
+          data_contrato: c.data_contrato || hoje,
           numero_documento: c.nr_contrato || undefined,
           taxa_juros_aa: c.taxa_juros_aa || undefined,
           taxa_juros_am: taxa_am,
@@ -592,19 +610,90 @@ export default function ContratosFinanceiros() {
           rateio_por_vencimento: false,
           fiscal: true,
         };
+
         const novo = await criarContratoFinanceiro(payload);
+
+        // Salva parcelas — passadas como "pago", futuras como "em_aberto"
         if (c.parcelas.length > 0) {
           await salvarParcelasPagamento(
             novo.id, fazendaId,
-            c.parcelas.map(p => ({ ...p, status: "em_aberto" as const }))
+            c.parcelas.map(p => ({
+              ...p,
+              status: (p.data_vencimento && p.data_vencimento < hoje) ? "pago" as const : "em_aberto" as const,
+            }))
           );
         }
+
+        // ── Gera lançamentos financeiros (cascata) ──────────────────────────
+        // 1. Lançamento CR de captação (liberação do crédito)
+        const lancsCaptacao = c.valor_financiado > 0 && c.data_contrato ? [{
+          fazenda_id: fazendaId, tipo: "receber", moeda: c.moeda,
+          descricao: `${c.descricao} — Captação (${c.credor})`,
+          categoria: CAT_CAPTACAO[c.tipo],
+          data_lancamento: c.data_contrato,
+          data_vencimento: c.data_contrato,
+          valor: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
+          status: "pago",  // crédito já recebido no passado
+          auto: true,
+        }] : [];
+
+        // 2. Lançamentos CP por parcela (amortização + juros + encargos)
+        const lancsParcelas: Record<string, unknown>[] = [];
+        for (const p of c.parcelas) {
+          const statusLanc = p.data_vencimento && p.data_vencimento < hoje ? "pago" : "em_aberto";
+          const descBase = `${c.descricao} — Parcela ${p.num_parcela}`;
+          if (p.amortizacao > 0) {
+            lancsParcelas.push({
+              fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
+              descricao: `${descBase} — Amortização`,
+              categoria: CAT_AMORT[c.tipo],
+              data_lancamento: p.data_vencimento,
+              data_vencimento: p.data_vencimento,
+              valor: p.amortizacao,
+              status: statusLanc, auto: true,
+            });
+          }
+          if (p.juros > 0) {
+            lancsParcelas.push({
+              fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
+              descricao: `${descBase} — Juros`,
+              categoria: CAT_JUROS[c.tipo],
+              data_lancamento: p.data_vencimento,
+              data_vencimento: p.data_vencimento,
+              valor: p.juros,
+              status: statusLanc, auto: true,
+            });
+          }
+          if (p.despesas_acessorios > 0) {
+            lancsParcelas.push({
+              fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
+              descricao: `${descBase} — Encargos`,
+              categoria: "Encargos Bancários",
+              data_lancamento: p.data_vencimento,
+              data_vencimento: p.data_vencimento,
+              valor: p.despesas_acessorios,
+              status: statusLanc, auto: true,
+            });
+          }
+        }
+
+        const todosLancs = [...lancsCaptacao, ...lancsParcelas];
+        if (todosLancs.length > 0) {
+          // Insere em lotes de 200 para evitar limite do Supabase
+          for (let i = 0; i < todosLancs.length; i += 200) {
+            await supabase.from("lancamentos").insert(todosLancs.slice(i, i + 200));
+          }
+        }
+
         setContratos(prev => [novo, ...prev]);
-        log.push(`✓ ${c.descricao} (${c.nr_contrato || c.cd_divida}) — ${c.parcelas.length} parcela${c.parcelas.length !== 1 ? "s" : ""}`);
+        const nPago  = c.parcelas.filter(p => p.data_vencimento && p.data_vencimento < hoje).length;
+        const nAberto = c.parcelas.length - nPago;
+        log.push(`✓ ${c.descricao} (${c.nr_contrato || c.cd_divida}) — ${c.parcelas.length} parcelas, ${nPago} pagas, ${nAberto} em aberto, ${todosLancs.length} lançamentos`);
       } catch (e) {
         log.push(`✗ ${c.descricao || c.cd_divida} — ${(e as Error).message}`);
       }
     }
+
     setImportLog(log);
     setImportPreview(null);
     setImportando(false);
