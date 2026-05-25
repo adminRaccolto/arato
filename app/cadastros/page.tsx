@@ -14,6 +14,7 @@ import {
   listarAnosSafra, criarAnoSafra, atualizarAnoSafra, excluirAnoSafra, encerrarAnoSafra, reabrirAnoSafra,
   listarCiclos, criarCiclo, atualizarCiclo, excluirCiclo,
   listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina, excluirMaquinas,
+  listarContratosFinanceiros,
   listarBombas, criarBomba, atualizarBomba, excluirBomba,
   listarFuncionarios, criarFuncionario, atualizarFuncionario, excluirFuncionario,
   listarPremiacoesFuncionario, criarPremiacao, excluirPremiacao,
@@ -47,7 +48,7 @@ import type {
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria,
-  PrincipioAtivo, NomeComercial,
+  PrincipioAtivo, NomeComercial, ContratoFinanceiro,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -277,10 +278,11 @@ function CadastrosInner() {
   // ── Máquinas ──
   const [maquinas, setMaquinas]       = useState<Maquina[]>([]);
   const [selMaquinas, setSelMaquinas] = useState<Set<string>>(new Set());
+  const [contratsFinanc, setContratsFinanc] = useState<ContratoFinanceiro[]>([]);
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
-  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
-  const [tabMaq, setTabMaq]           = useState<"geral" | "seguro">("geral");
+  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
+  const [tabMaq, setTabMaq]           = useState<"geral" | "aquisicao" | "seguro">("geral");
 
   // ── Bombas ──
   const [bombas, setBombas]           = useState<BombaCombustivel[]>([]);
@@ -495,7 +497,11 @@ function CadastrosInner() {
     }
     if (aba === "pessoas")     listarPessoas(fazendaId).then(setPessoas).catch(e => setErro(e.message));
     if (aba === "safras")      listarAnosSafra(fazendaId).then(setAnosSafra).catch(e => setErro(e.message));
-    if (aba === "maquinas")    listarMaquinas(fazendaId).then(setMaquinas).catch(e => setErro(e.message));
+    if (aba === "maquinas") {
+      listarMaquinas(fazendaId).then(setMaquinas).catch(e => setErro(e.message));
+      listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+      listarContratosFinanceiros(fazendaId).then(setContratsFinanc).catch(() => {});
+    }
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
       listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
@@ -1172,12 +1178,18 @@ function CadastrosInner() {
       nome: m.nome, tipo: m.tipo, marca: m.marca ?? "", modelo: m.modelo ?? "",
       ano: String(m.ano ?? ""), patrimonio: m.patrimonio ?? "", chassi: m.chassi ?? "",
       horimetro_atual: String(m.horimetro_atual ?? ""),
+      proprietario_id: m.proprietario_id ?? "",
+      nr_nf_aquisicao: m.nr_nf_aquisicao ?? "", data_aquisicao: m.data_aquisicao ?? "",
+      valor_aquisicao: String(m.valor_aquisicao ?? ""),
+      contrato_financiamento_id: m.contrato_financiamento_id ?? "",
+      status_financiamento: m.status_financiamento ?? "proprio",
+      data_quitacao: m.data_quitacao ?? "",
       seguro_seguradora: m.seguro_seguradora ?? "", seguro_corretora: m.seguro_corretora ?? "",
       seguro_numero_apolice: m.seguro_numero_apolice ?? "",
       seguro_data_contratacao: m.seguro_data_contratacao ?? "",
       seguro_vencimento_apolice: m.seguro_vencimento_apolice ?? "",
       seguro_premio: String(m.seguro_premio ?? ""),
-    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
+    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
@@ -1189,6 +1201,13 @@ function CadastrosInner() {
       ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined,
       chassi: fMaq.chassi || undefined,
       horimetro_atual: fMaq.horimetro_atual ? Number(fMaq.horimetro_atual) : undefined,
+      proprietario_id: fMaq.proprietario_id || undefined,
+      nr_nf_aquisicao: fMaq.nr_nf_aquisicao || undefined,
+      data_aquisicao: fMaq.data_aquisicao || undefined,
+      valor_aquisicao: fMaq.valor_aquisicao ? Number(fMaq.valor_aquisicao) : undefined,
+      contrato_financiamento_id: fMaq.contrato_financiamento_id || undefined,
+      status_financiamento: fMaq.status_financiamento || "proprio",
+      data_quitacao: fMaq.status_financiamento === "quitado" ? (fMaq.data_quitacao || undefined) : undefined,
       seguro_seguradora: fMaq.seguro_seguradora || undefined,
       seguro_corretora: fMaq.seguro_corretora || undefined,
       seguro_numero_apolice: fMaq.seguro_numero_apolice || undefined,
@@ -1861,13 +1880,13 @@ function CadastrosInner() {
                         onChange={e => setSelMaquinas(e.target.checked ? new Set(maquinas.map(m => m.id)) : new Set())}
                         style={{ cursor: "pointer", width: 15, height: 15 }} />
                     </th>
-                    {["Nome", "Patrimônio", "Tipo", "Marca / Modelo", "Chassi", "Ano", "Km / Horímetro", "Seguro", "Status", ""].map((c, i) => (
+                    {["Nome", "Proprietário", "Patrimônio", "Tipo", "Marca / Modelo", "Ano", "Km / Horímetro", "Seguro", "Financiamento", ""].map((c, i) => (
                       <th key={i} style={{ ...thS, textAlign: i === 0 ? "left" : "center" }}>{c}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {maquinas.length === 0 && <tr><td colSpan={11} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
+                  {maquinas.length === 0 && <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma máquina ou veículo cadastrado</td></tr>}
                   {maquinas.map((m, i) => {
                     const vencSeguro = m.seguro_vencimento_apolice ? diasAteDate(m.seguro_vencimento_apolice) : null;
                     const corSeguro = vencSeguro === null ? "#888" : vencSeguro < 0 ? "#E24B4A" : vencSeguro <= 15 ? "#EF9F27" : "#16A34A";
@@ -1879,11 +1898,16 @@ function CadastrosInner() {
                             onChange={e => setSelMaquinas(prev => { const s = new Set(prev); e.target.checked ? s.add(m.id) : s.delete(m.id); return s; })}
                             style={{ cursor: "pointer", width: 15, height: 15 }} />
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{m.nome}</td>
+                        <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>
+                          {m.nome}
+                          {m.nr_nf_aquisicao && <div style={{ fontSize: 10, color: "#888", fontWeight: 400 }}>NF: {m.nr_nf_aquisicao}</div>}
+                        </td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#444", fontSize: 12 }}>
+                          {m.proprietario_id ? (pessoas.find(p => p.id === m.proprietario_id)?.nome ?? "—") : <span style={{ color: "#aaa" }}>—</span>}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870", fontFamily: "monospace", fontSize: 12 }}>{m.patrimonio || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.tipo === "carro" ? "Carro" : m.tipo, "#F1EFE8", "#555")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{[m.marca, m.modelo].filter(Boolean).join(" ") || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#666", fontSize: 12, fontFamily: "monospace" }}>{m.chassi || "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{m.ano ?? "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontVariantNumeric: "tabular-nums" }}>
                           {m.horimetro_atual != null
@@ -1897,7 +1921,13 @@ function CadastrosInner() {
                               </span>
                             : <span style={{ color: "#888", fontSize: 11 }}>—</span>}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(m.ativa ? "Ativa" : "Inativa", m.ativa ? "#D5E8F5" : "#F1EFE8", m.ativa ? "#0B2D50" : "#555")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                          {!m.status_financiamento || m.status_financiamento === "proprio"
+                            ? badge("Próprio", "#F1EFE8", "#555")
+                            : m.status_financiamento === "financiado"
+                            ? badge("Financiado", "#FBF3E0", "#7A5520")
+                            : badge("Quitado", "#D5F0DD", "#1A5C38")}
+                        </td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             <button style={btnE} onClick={() => abrirModalMaq(m)}>Editar</button>
@@ -5152,9 +5182,9 @@ function CadastrosInner() {
         <Modal titulo={editMaq ? "Editar Máquina / Veículo" : "Nova Máquina / Veículo"} onClose={() => setModalMaq(false)} width={820}>
           {/* Abas internas */}
           <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DEE5EE", marginBottom: 18 }}>
-            {(["geral", "seguro"] as const).map(t => (
+            {(["geral", "aquisicao", "seguro"] as const).map(t => (
               <button key={t} onClick={() => setTabMaq(t)} style={{ padding: "8px 20px", border: "none", borderBottom: tabMaq === t ? "2px solid #1A5CB8" : "2px solid transparent", background: "transparent", fontWeight: tabMaq === t ? 600 : 400, color: tabMaq === t ? "#1A5CB8" : "#555", cursor: "pointer", fontSize: 13 }}>
-                {t === "geral" ? "Dados Gerais" : "Seguro"}
+                {t === "geral" ? "Dados Gerais" : t === "aquisicao" ? "Aquisição / Financiamento" : "Seguro"}
               </button>
             ))}
           </div>
@@ -5188,6 +5218,56 @@ function CadastrosInner() {
                 <label style={lbl}>{isVeiculo(fMaq.tipo) ? "Odômetro atual (km)" : "Horímetro atual (h)"}</label>
                 <input style={inp} type="number" min="0" step="0.1" placeholder={isVeiculo(fMaq.tipo) ? "Ex: 125000" : "Ex: 4320"} value={fMaq.horimetro_atual} onChange={e => setFMaq(p => ({ ...p, horimetro_atual: e.target.value }))} />
               </div>
+            </div>
+          )}
+
+          {/* Aba Aquisição / Financiamento */}
+          {tabMaq === "aquisicao" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div style={{ gridColumn: "1/-1", fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Proprietário e Aquisição</div>
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={lbl}>Proprietário (para o IR)</label>
+                <select style={inp} value={fMaq.proprietario_id} onChange={e => setFMaq(p => ({ ...p, proprietario_id: e.target.value }))}>
+                  <option value="">— selecione —</option>
+                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                </select>
+              </div>
+              <div><label style={lbl}>Nº da NF de Aquisição</label><input style={inp} placeholder="Ex: 000.123456" value={fMaq.nr_nf_aquisicao} onChange={e => setFMaq(p => ({ ...p, nr_nf_aquisicao: e.target.value }))} /></div>
+              <div><label style={lbl}>Data de Aquisição</label><input style={inp} type="date" value={fMaq.data_aquisicao} onChange={e => setFMaq(p => ({ ...p, data_aquisicao: e.target.value }))} /></div>
+              <div>
+                <label style={lbl}>Valor de Aquisição (R$)</label>
+                <InputMonetario style={inp} min="0" placeholder="0,00" value={fMaq.valor_aquisicao} onChange={v => setFMaq(p => ({ ...p, valor_aquisicao: String(v) }))} />
+              </div>
+
+              <div style={{ gridColumn: "1/-1", borderTop: "0.5px solid #DDE2EE", paddingTop: 14, marginTop: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8", marginBottom: 6 }}>Financiamento</div>
+              </div>
+              <div>
+                <label style={lbl}>Status</label>
+                <select style={inp} value={fMaq.status_financiamento} onChange={e => setFMaq(p => ({ ...p, status_financiamento: e.target.value as NonNullable<Maquina["status_financiamento"]> }))}>
+                  <option value="proprio">Próprio (sem financiamento)</option>
+                  <option value="financiado">Financiamento Ativo</option>
+                  <option value="quitado">Quitado</option>
+                </select>
+              </div>
+              <div style={{ gridColumn: "2/4" }}>
+                <label style={lbl}>Contrato de Financiamento</label>
+                <select style={inp} value={fMaq.contrato_financiamento_id} onChange={e => setFMaq(p => ({ ...p, contrato_financiamento_id: e.target.value }))}>
+                  <option value="">— selecione —</option>
+                  {contratsFinanc.map(c => <option key={c.id} value={c.id}>{c.descricao}{c.numero_documento ? ` — Nº ${c.numero_documento}` : ""} ({c.credor})</option>)}
+                </select>
+              </div>
+              {fMaq.status_financiamento === "quitado" && (
+                <div>
+                  <label style={lbl}>Data de Quitação</label>
+                  <input style={inp} type="date" value={fMaq.data_quitacao} onChange={e => setFMaq(p => ({ ...p, data_quitacao: e.target.value }))} />
+                </div>
+              )}
+              {fMaq.status_financiamento === "financiado" && fMaq.contrato_financiamento_id && (
+                <div style={{ gridColumn: "1/-1", background: "#FBF3E0", border: "0.5px solid #C9921B30", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5520" }}>
+                  ⚠ O status muda automaticamente para <strong>Quitado</strong> quando a última parcela do contrato vinculado for baixada.
+                </div>
+              )}
             </div>
           )}
 

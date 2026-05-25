@@ -1846,6 +1846,20 @@ export async function baixarParcelaPagamento(
   }
 
   await supabase.from("parcelas_pagamento").update({ status: "pago" }).eq("id", id);
+
+  // Se todas as parcelas do contrato foram pagas → quitação automática das máquinas financiadas
+  const { data: abertas } = await supabase
+    .from("parcelas_pagamento")
+    .select("id")
+    .eq("contrato_id", contrato.id)
+    .neq("status", "pago");
+  if ((abertas ?? []).length === 0) {
+    await supabase
+      .from("maquinas")
+      .update({ status_financiamento: "quitado", data_quitacao: hoje })
+      .eq("contrato_financiamento_id", contrato.id)
+      .eq("status_financiamento", "financiado");
+  }
 }
 
 // Garantias

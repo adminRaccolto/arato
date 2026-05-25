@@ -4597,3 +4597,21 @@ CREATE POLICY "contas_cliente_read" ON contas
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Máquinas — Proprietário, Aquisição e Financiamento ──────────────────────
+-- Execute no Supabase SQL Editor
+
+ALTER TABLE maquinas
+  ADD COLUMN IF NOT EXISTS proprietario_id     UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS nr_nf_aquisicao     TEXT,
+  ADD COLUMN IF NOT EXISTS data_aquisicao      DATE,
+  ADD COLUMN IF NOT EXISTS valor_aquisicao     NUMERIC(14,2),
+  ADD COLUMN IF NOT EXISTS contrato_financiamento_id UUID REFERENCES contratos_financeiros(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS status_financiamento TEXT DEFAULT 'proprio' CHECK (status_financiamento IN ('proprio','financiado','quitado')),
+  ADD COLUMN IF NOT EXISTS data_quitacao       DATE;
+
+COMMENT ON COLUMN maquinas.proprietario_id           IS 'Proprietário do bem para fins de IR/IRPF';
+COMMENT ON COLUMN maquinas.contrato_financiamento_id IS 'Contrato financeiro que financiou a aquisição deste bem';
+COMMENT ON COLUMN maquinas.status_financiamento      IS 'proprio=sem financiamento; financiado=em pagamento; quitado=pago';
+
+NOTIFY pgrst, 'reload schema';

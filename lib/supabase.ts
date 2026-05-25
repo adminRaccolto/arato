@@ -600,6 +600,15 @@ export type Maquina = {
   patrimonio?: string;
   chassi?: string;
   horimetro_atual?: number;
+  // Aquisição
+  proprietario_id?: string;
+  nr_nf_aquisicao?: string;
+  data_aquisicao?: string;
+  valor_aquisicao?: number;
+  // Financiamento
+  contrato_financiamento_id?: string;
+  status_financiamento?: "proprio" | "financiado" | "quitado";
+  data_quitacao?: string;
   // Seguro
   seguro_seguradora?: string;
   seguro_corretora?: string;
