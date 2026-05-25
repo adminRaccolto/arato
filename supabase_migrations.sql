@@ -4615,3 +4615,54 @@ COMMENT ON COLUMN maquinas.contrato_financiamento_id IS 'Contrato financeiro que
 COMMENT ON COLUMN maquinas.status_financiamento      IS 'proprio=sem financiamento; financiado=em pagamento; quitado=pago';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Adiantamentos a Fornecedores ────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS adiantamentos_fornecedor (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id          UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  pessoa_id           UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  descricao           TEXT NOT NULL,
+  nr_documento        TEXT,
+  data_emissao        DATE NOT NULL,
+  data_previsao       DATE,
+  valor               NUMERIC(14,2) NOT NULL CHECK (valor > 0),
+  moeda               TEXT NOT NULL DEFAULT 'BRL' CHECK (moeda IN ('BRL','USD')),
+  cotacao_usd         NUMERIC(10,4),
+  valor_aplicado      NUMERIC(14,2) NOT NULL DEFAULT 0,
+  status              TEXT NOT NULL DEFAULT 'em_aberto'
+                        CHECK (status IN ('em_aberto','parcial','aplicado','cancelado')),
+  lancamento_id       UUID REFERENCES lancamentos(id) ON DELETE SET NULL,
+  conta_bancaria_id   UUID REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  ano_safra_id        UUID REFERENCES anos_safra(id) ON DELETE SET NULL,
+  observacao          TEXT,
+  created_at          TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS adiantamentos_aplicacoes (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  adiantamento_id  UUID NOT NULL REFERENCES adiantamentos_fornecedor(id) ON DELETE CASCADE,
+  fazenda_id       UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  descricao        TEXT NOT NULL,
+  valor_aplicado   NUMERIC(14,2) NOT NULL CHECK (valor_aplicado > 0),
+  data_aplicacao   DATE NOT NULL,
+  nf_entrada_id    UUID REFERENCES nf_entradas(id) ON DELETE SET NULL,
+  nr_nf            TEXT,
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE adiantamentos_fornecedor ENABLE ROW LEVEL SECURITY;
+ALTER TABLE adiantamentos_aplicacoes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "adiant_select" ON adiantamentos_fornecedor;
+CREATE POLICY "adiant_select" ON adiantamentos_fornecedor FOR ALL
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+DROP POLICY IF EXISTS "adiant_aplic_select" ON adiantamentos_aplicacoes;
+CREATE POLICY "adiant_aplic_select" ON adiantamentos_aplicacoes FOR ALL
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+NOTIFY pgrst, 'reload schema';

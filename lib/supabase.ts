@@ -1723,6 +1723,39 @@ export type ConfiguracaoAutomacao = {
   created_at?: string;
 };
 
+// ── Adiantamento a Fornecedores ───────────────────────────────
+export type AdiantamentoFornecedor = {
+  id: string;
+  fazenda_id: string;
+  pessoa_id?: string;           // FK pessoas — fornecedor
+  descricao: string;
+  nr_documento?: string;        // nº pedido, contrato, recibo
+  data_emissao: string;
+  data_previsao?: string;       // previsão de entrega / aplicação
+  valor: number;
+  moeda: "BRL" | "USD";
+  cotacao_usd?: number;
+  valor_aplicado: number;       // total já aplicado (acumulado)
+  status: "em_aberto" | "parcial" | "aplicado" | "cancelado";
+  lancamento_id?: string;       // FK lancamentos — CP gerado
+  conta_bancaria_id?: string;
+  ano_safra_id?: string;
+  observacao?: string;
+  created_at?: string;
+};
+
+export type AdiantamentoAplicacao = {
+  id: string;
+  adiantamento_id: string;
+  fazenda_id: string;
+  descricao: string;
+  valor_aplicado: number;
+  data_aplicacao: string;
+  nf_entrada_id?: string;
+  nr_nf?: string;
+  created_at?: string;
+};
+
 // ── Pendências Operacionais (bot) ─────────────────────────────
 export type PendenciaOperacional = {
   id: string;

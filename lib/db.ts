@@ -3794,6 +3794,115 @@ export async function buscarConfigAutomacao(fazendaId: string, automacaoId: stri
 }
 
 // ————————————————————————————————————————
+// ADIANTAMENTOS A FORNECEDORES
+// ————————————————————————————————————————
+
+import type { AdiantamentoFornecedor, AdiantamentoAplicacao } from "./supabase";
+
+export async function listarAdiantamentos(fazenda_id: string): Promise<AdiantamentoFornecedor[]> {
+  const { data, error } = await supabase
+    .from("adiantamentos_fornecedor")
+    .select("*")
+    .eq("fazenda_id", fazenda_id)
+    .order("data_emissao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarAplicacoesAdiantamento(adiantamento_id: string): Promise<AdiantamentoAplicacao[]> {
+  const { data, error } = await supabase
+    .from("adiantamentos_aplicacoes")
+    .select("*")
+    .eq("adiantamento_id", adiantamento_id)
+    .order("data_aplicacao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarAdiantamento(
+  a: Omit<AdiantamentoFornecedor, "id" | "created_at" | "valor_aplicado" | "lancamento_id">,
+  jaQuitado: boolean,
+): Promise<AdiantamentoFornecedor> {
+  const { data: adiant, error: eAdiant } = await supabase
+    .from("adiantamentos_fornecedor")
+    .insert({ ...a, valor_aplicado: 0, status: "em_aberto" })
+    .select()
+    .single();
+  if (eAdiant) throw eAdiant;
+
+  const { data: lanc, error: eLanc } = await supabase
+    .from("lancamentos")
+    .insert({
+      fazenda_id:      a.fazenda_id,
+      tipo:            "pagar",
+      moeda:           a.moeda,
+      cotacao_usd:     a.cotacao_usd ?? null,
+      descricao:       `Adiantamento — ${a.descricao}`,
+      categoria:       "Adiantamento a Fornecedores",
+      data_lancamento: a.data_emissao,
+      data_vencimento: a.data_emissao,
+      valor:           a.valor,
+      status:          jaQuitado ? "baixado" : "em_aberto",
+      data_baixa:      jaQuitado ? a.data_emissao : null,
+      pessoa_id:       a.pessoa_id ?? null,
+      conta_bancaria:  a.conta_bancaria_id ?? null,
+      ano_safra_id:    a.ano_safra_id ?? null,
+      auto:            true,
+    })
+    .select()
+    .single();
+  if (eLanc) throw eLanc;
+
+  await supabase.from("adiantamentos_fornecedor").update({ lancamento_id: lanc.id }).eq("id", adiant.id);
+  return { ...adiant, lancamento_id: lanc.id };
+}
+
+export async function atualizarAdiantamento(id: string, data: Partial<AdiantamentoFornecedor>): Promise<void> {
+  const { error } = await supabase.from("adiantamentos_fornecedor").update(data).eq("id", id);
+  if (error) throw error;
+}
+
+export async function cancelarAdiantamento(id: string): Promise<void> {
+  const { error } = await supabase.from("adiantamentos_fornecedor").update({ status: "cancelado" }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function aplicarAdiantamento(
+  adiantamento: AdiantamentoFornecedor,
+  valorAplicado: number,
+  dataAplicacao: string,
+  descricao: string,
+  nrNf?: string,
+  nfEntradaId?: string,
+): Promise<AdiantamentoAplicacao> {
+  const novoTotal = (adiantamento.valor_aplicado ?? 0) + valorAplicado;
+  const novoStatus: AdiantamentoFornecedor["status"] =
+    novoTotal >= adiantamento.valor ? "aplicado" : "parcial";
+
+  const { data: apl, error: eApl } = await supabase
+    .from("adiantamentos_aplicacoes")
+    .insert({
+      adiantamento_id: adiantamento.id,
+      fazenda_id:      adiantamento.fazenda_id,
+      descricao,
+      valor_aplicado:  valorAplicado,
+      data_aplicacao:  dataAplicacao,
+      nr_nf:           nrNf ?? null,
+      nf_entrada_id:   nfEntradaId ?? null,
+    })
+    .select()
+    .single();
+  if (eApl) throw eApl;
+
+  await supabase
+    .from("adiantamentos_fornecedor")
+    .update({ valor_aplicado: novoTotal, status: novoStatus })
+    .eq("id", adiantamento.id);
+
+  return apl;
+}
+
+// ————————————————————————————————————————
 // UTILITÁRIOS
 // ————————————————————————————————————————
 
