@@ -2596,7 +2596,7 @@ export default function BI() {
       const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"         : "#EBF3FC";
       const baixado = l.status === "baixado";
       const safra   = l.ano_safra_id ? anosSafra.find(a => a.id === l.ano_safra_id)?.descricao : null;
-      const destino = isCaptacao(l) ? "/financeiro/contratos" : "/financeiro/pagar";
+      const destino = "/financeiro/contratos";
       const lbl: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.4px" };
       const val: React.CSSProperties = { fontSize: 13, color: "#1a1a1a" };
       return (
@@ -2668,7 +2668,7 @@ export default function BI() {
                 </button>
                 <a href={destino}
                   style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
-                  {isCaptacao(l) ? "Ver em Contratos Financeiros →" : "Ver em Contas a Pagar →"}
+                  Ver em Contratos Financeiros →
                 </a>
               </div>
             </div>
