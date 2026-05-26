@@ -213,8 +213,10 @@ export default function BI() {
   const [filtroCicloIds,   setFiltroCicloIds]   = useState<Set<string>>(new Set());
   const [commodity,        setCommodity]         = useState<"Soja" | "Milho" | "Algodão">("Soja");
 
-  // ── Recursos de Terceiros — drill-down ───────────────────────
-  const [rtDrillLabel, setRtDrillLabel] = useState<string | null>(null);
+  // ── Recursos de Terceiros — filtro e drill-down ──────────────
+  const [rtDrillLabel,   setRtDrillLabel]   = useState<string | null>(null);
+  const [rtFiltroLabel,  setRtFiltroLabel]  = useState("todos");
+  const [exportandoRT,   setExportandoRT]   = useState(false);
 
   // ── Sensibilidade ────────────────────────────────────────────
   const [precoMask, setPrecoMask] = useState("");
@@ -2123,23 +2125,126 @@ export default function BI() {
           const corTipo: Record<string, string> = { CPR: "#1A4870", Custeio: "#16A34A", EGF: "#9B59B6", Empréstimo: "#E24B4A", Financiamento: "#378ADD", PRONAF: "#EF9F27", Outros: "#888" };
           const temDados = rtTotalCaptado > 0 || rtTotalPago > 0 || rtTotalJuros > 0;
 
+          // Filtro local por ano/safra
+          const rtPorAnoFiltrado = rtFiltroLabel === "todos" ? rtPorAno : rtPorAno.filter(b => b.label === rtFiltroLabel);
+          const rtFiltCaptado = rtPorAnoFiltrado.reduce((s, b) => s + b.captado, 0);
+          const rtFiltPago    = rtPorAnoFiltrado.reduce((s, b) => s + b.pago,    0);
+          const rtFiltJuros   = rtPorAnoFiltrado.reduce((s, b) => s + b.juros,   0);
+          const rtFiltPend    = rtPorAnoFiltrado.reduce((s, b) => s + b.jurosPend, 0);
+          const rtFiltSaldo   = rtFiltCaptado - rtFiltPago;
+
+          // Exportação XLSX
+          async function exportarXLSX() {
+            setExportandoRT(true);
+            const XLSX = await import("xlsx");
+            const wb = XLSX.utils.book_new();
+            const fazNome = fazenda?.nome ?? "Fazenda";
+            const dataHoje = new Date().toLocaleDateString("pt-BR");
+
+            // Aba Resumo
+            const resumo = [
+              [`Recursos de Terceiros — ${fazNome}`, "", dataHoje],
+              rtFiltroLabel !== "todos" ? ["Filtro:", rtFiltroLabel, ""] : [],
+              [],
+              ["Métrica", "Valor (R$)"],
+              ["Total Captado",    rtFiltCaptado],
+              ["Pago (Principal)", rtFiltPago],
+              ["Saldo Devedor",    rtFiltSaldo],
+              ["Juros Pagos",      rtFiltJuros],
+              ["Juros Pendentes",  rtFiltPend],
+            ].filter(r => r.length > 0);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumo), "Resumo");
+
+            // Aba Histórico por Ano
+            const historico = [
+              ["Ano / Safra", "Captado (R$)", "Pago Principal (R$)", "Juros Pagos (R$)", "Juros Pend. (R$)", "Saldo Devedor (R$)", "% Devolvido"],
+              ...rtPorAnoFiltrado.map(b => {
+                const pct = b.captado > 0 ? Math.round((b.pago + b.juros) / b.captado * 100) : 0;
+                return [b.label, b.captado, b.pago, b.juros, b.jurosPend, b.saldo, `${pct}%`];
+              }),
+              ["TOTAL", rtFiltCaptado, rtFiltPago, rtFiltJuros, rtFiltPend, rtFiltSaldo, ""],
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(historico), "Por Ano");
+
+            // Aba Lançamentos detalhados
+            const rtLancs = lancamentosFiltrados
+              .filter(l => isCaptacao(l) || isPrincipal(l) || isJurosPgto(l))
+              .filter(l => {
+                if (rtFiltroLabel === "todos") return true;
+                const lLabel = l.ano_safra_id
+                  ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
+                  : l.data_vencimento.slice(0, 4);
+                return lLabel === rtFiltroLabel;
+              })
+              .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+            const lancSheet = [
+              ["Ano/Safra", "Descrição", "Categoria", "Vencimento", "Tipo", "Valor (R$)", "Status"],
+              ...rtLancs.map(l => {
+                const label = l.ano_safra_id
+                  ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
+                  : l.data_vencimento.slice(0, 4);
+                return [
+                  label, l.descricao, l.categoria || "",
+                  l.data_vencimento,
+                  isCaptacao(l) ? "Captação" : isJurosPgto(l) ? "Juros/Encargo" : "Amortização",
+                  l.valor,
+                  l.status === "baixado" ? "Baixado" : l.status === "vencido" ? "Vencido" : "Em aberto",
+                ];
+              }),
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lancSheet), "Lançamentos");
+
+            XLSX.writeFile(wb, `RecursosTerceiros_${fazNome.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.xlsx`);
+            setExportandoRT(false);
+          }
+
+          const rtJurosHaFilt = areaTotal > 0 ? (rtFiltJuros + rtFiltPend) / areaTotal : 0;
+
           return (
             <div>
+              {/* Toolbar: filtro + exportação */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>Ano / Safra:</span>
+                  <select value={rtFiltroLabel} onChange={e => { setRtFiltroLabel(e.target.value); setRtDrillLabel(null); }}
+                    style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#1a1a1a", background: "#fff", outline: "none", cursor: "pointer" }}>
+                    <option value="todos">Todos os anos</option>
+                    {rtPorAno.map(b => <option key={b.label} value={b.label}>{b.label}{b.captado === 0 ? " (sem captação)" : ""}</option>)}
+                  </select>
+                  {rtFiltroLabel !== "todos" && (
+                    <button onClick={() => { setRtFiltroLabel("todos"); setRtDrillLabel(null); }}
+                      style={{ padding: "4px 10px", background: "#F4F6FA", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "#555", cursor: "pointer" }}>
+                      ✕ limpar
+                    </button>
+                  )}
+                </div>
+                <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                  <button onClick={() => window.print()}
+                    style={{ padding: "6px 14px", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer", fontWeight: 600 }}>
+                    ⎙ PDF
+                  </button>
+                  <button onClick={exportarXLSX} disabled={exportandoRT}
+                    style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: exportandoRT ? "not-allowed" : "pointer", opacity: exportandoRT ? 0.7 : 1 }}>
+                    {exportandoRT ? "Exportando…" : "↓ XLSX"}
+                  </button>
+                </div>
+              </div>
+
               {/* KPIs */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: "Total Captado",    v: fmtR(rtTotalCaptado),  color: "#14532D", bg: "#ECFDF5",  hint: "Entradas de CPR, custeio, empréstimos, EGF" },
-                  { label: "Pago (Principal)", v: fmtR(rtTotalPago),     color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido (baixados)" },
-                  { label: "Saldo Devedor",    v: fmtR(rtSaldoDevedor),  color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", bg: rtSaldoDevedor > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Captado − principal pago" },
-                  { label: "Juros Pagos",      v: fmtR(rtTotalJuros),    color: "#633806", bg: "#FAEEDA",  hint: "Juros e encargos baixados" },
-                  { label: "Juros / ha",       v: areaTotal > 0 ? fmtR2(rtJurosHa) : "—", color: "#7C3AED", bg: "#F3E8FF", hint: `(juros pagos + pendentes) ÷ ${fmtN(areaTotal,0)} ha` },
+                  { label: "Total Captado",    v: fmtR(rtFiltCaptado),  color: "#14532D", bg: "#ECFDF5",  hint: "Entradas de CPR, custeio, empréstimos, EGF" },
+                  { label: "Pago (Principal)", v: fmtR(rtFiltPago),     color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido (baixados)" },
+                  { label: "Saldo Devedor",    v: fmtR(rtFiltSaldo),    color: rtFiltSaldo > 0 ? "#791F1F" : "#14532D", bg: rtFiltSaldo > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Captado − principal pago" },
+                  { label: "Juros Pagos",      v: fmtR(rtFiltJuros),    color: "#633806", bg: "#FAEEDA",  hint: "Juros e encargos baixados" },
+                  { label: "Juros / ha",       v: areaTotal > 0 ? fmtR2(rtJurosHaFilt) : "—", color: "#7C3AED", bg: "#F3E8FF", hint: `(juros pagos + pendentes) ÷ ${fmtN(areaTotal,0)} ha` },
                 ].map(k => (
                   <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}
                     title={k.hint}>
                     <div style={{ fontSize: 10, color: "#666", marginBottom: 5 }}>{k.label}</div>
                     <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
-                    {k.label === "Juros / ha" && rtJurosPend > 0 && (
-                      <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>+ {fmtR(rtJurosPend)} pendentes</div>
+                    {k.label === "Juros / ha" && rtFiltPend > 0 && (
+                      <div style={{ fontSize: 9, color: "#888", marginTop: 3 }}>+ {fmtR(rtFiltPend)} pendentes</div>
                     )}
                   </div>
                 ))}
@@ -2173,7 +2278,7 @@ export default function BI() {
                         </tr>
                       </thead>
                       <tbody>
-                        {rtPorAno.map((b, bi) => {
+                        {rtPorAnoFiltrado.map((b, bi) => {
                           const pct_pago  = b.captado > 0 ? Math.min(100, (b.pago  / b.captado) * 100) : 0;
                           const pct_juros = b.captado > 0 ? Math.min(100, (b.juros / b.captado) * 100) : 0;
                           const isOpen    = rtDrillLabel === b.label;
@@ -2263,17 +2368,19 @@ export default function BI() {
                             </React.Fragment>
                           );
                         })}
-                        {rtPorAno.length === 0 && (
-                          <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 12 }}>Sem histórico</td></tr>
+                        {rtPorAnoFiltrado.length === 0 && (
+                          <tr><td colSpan={6} style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 12 }}>Sem dados para o filtro selecionado</td></tr>
                         )}
                       </tbody>
                       <tfoot>
                         <tr style={{ background: "#F3F6F9", borderTop: "0.5px solid #D4DCE8" }}>
-                          <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 700 }}>Total</td>
-                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#16A34A" }}>{fmtR(rtTotalCaptado)}</td>
-                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700 }}>{fmtR(rtTotalPago)}</td>
-                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#633806" }}>{fmtR(rtTotalJuros)}</td>
-                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: rtSaldoDevedor > 0 ? "#791F1F" : "#16A34A" }}>{fmtR(rtSaldoDevedor)}</td>
+                          <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 700 }}>
+                            Total{rtFiltroLabel !== "todos" ? ` — ${rtFiltroLabel}` : ""}
+                          </td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#16A34A" }}>{fmtR(rtFiltCaptado)}</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700 }}>{fmtR(rtFiltPago)}</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#633806" }}>{fmtR(rtFiltJuros)}</td>
+                          <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: rtFiltSaldo > 0 ? "#791F1F" : "#16A34A" }}>{fmtR(rtFiltSaldo)}</td>
                           <td />
                         </tr>
                       </tfoot>
