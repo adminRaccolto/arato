@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -212,6 +212,9 @@ export default function BI() {
   const [filtroAnoSafraId, setFiltroAnoSafraId] = useState("");
   const [filtroCicloIds,   setFiltroCicloIds]   = useState<Set<string>>(new Set());
   const [commodity,        setCommodity]         = useState<"Soja" | "Milho" | "Algodão">("Soja");
+
+  // ── Recursos de Terceiros — drill-down ───────────────────────
+  const [rtDrillLabel, setRtDrillLabel] = useState<string | null>(null);
 
   // ── Sensibilidade ────────────────────────────────────────────
   const [precoMask, setPrecoMask] = useState("");
@@ -2171,32 +2174,93 @@ export default function BI() {
                       </thead>
                       <tbody>
                         {rtPorAno.map((b, bi) => {
-                          const pct_pago = b.captado > 0 ? Math.min(100, (b.pago / b.captado) * 100) : 0;
+                          const pct_pago  = b.captado > 0 ? Math.min(100, (b.pago  / b.captado) * 100) : 0;
                           const pct_juros = b.captado > 0 ? Math.min(100, (b.juros / b.captado) * 100) : 0;
+                          const isOpen    = rtDrillLabel === b.label;
+                          const drillLancs = isOpen ? lancamentosFiltrados.filter(l => {
+                            const lLabel = l.ano_safra_id
+                              ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
+                              : l.data_vencimento.slice(0, 4);
+                            return lLabel === b.label && (isCaptacao(l) || isPrincipal(l) || isJurosPgto(l));
+                          }).sort((a, z) => a.data_vencimento.localeCompare(z.data_vencimento)) : [];
                           return (
-                            <tr key={bi} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
-                              <td style={{ padding: "9px 12px", fontWeight: 600, fontSize: 13 }}>{b.label}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: "#16A34A", fontWeight: 600 }}>{fmtR(b.captado)}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12 }}>{b.pago > 0 ? fmtR(b.pago) : "—"}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: b.juros > 0 ? "#633806" : "#aaa" }}>
-                                {b.juros > 0 ? fmtR(b.juros) : "—"}
-                                {b.jurosPend > 0 && <div style={{ fontSize: 9, color: "#EF9F27" }}>+{fmtR(b.jurosPend)} pend.</div>}
-                              </td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: b.saldo > 0 ? "#791F1F" : "#14532D" }}>
-                                {b.saldo > 0 ? fmtR(b.saldo) : <span style={{ color: "#16A34A" }}>Quitado</span>}
-                              </td>
-                              <td style={{ padding: "9px 12px", minWidth: 100 }}>
-                                {b.captado > 0 && (
-                                  <div>
-                                    <div style={{ height: 6, borderRadius: 3, background: "#EEF1F6", overflow: "hidden", display: "flex" }}>
-                                      <div style={{ width: `${pct_pago}%`, background: "#1A4870", borderRadius: 3 }} title={`Principal: ${fmtN(pct_pago,0)}%`} />
-                                      <div style={{ width: `${pct_juros}%`, background: "#EF9F27" }} title={`Juros: ${fmtN(pct_juros,0)}%`} />
+                            <React.Fragment key={bi}>
+                              <tr
+                                onClick={() => setRtDrillLabel(isOpen ? null : b.label)}
+                                style={{ borderBottom: isOpen ? "none" : "0.5px solid #EEF1F6", cursor: "pointer", background: isOpen ? "#EEF6FF" : "transparent" }}>
+                                <td style={{ padding: "9px 12px", fontWeight: 600, fontSize: 13 }}>
+                                  <span style={{ marginRight: 6, fontSize: 9, color: "#1A4870", opacity: 0.5 }}>{isOpen ? "▼" : "▶"}</span>
+                                  {b.label}
+                                </td>
+                                <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: b.captado > 0 ? "#16A34A" : "#aaa", fontWeight: 600 }}>
+                                  {b.captado > 0 ? fmtR(b.captado) : "R$ 0"}
+                                </td>
+                                <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12 }}>{b.pago > 0 ? fmtR(b.pago) : "—"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, color: b.juros > 0 ? "#633806" : "#aaa" }}>
+                                  {b.juros > 0 ? fmtR(b.juros) : "—"}
+                                  {b.jurosPend > 0 && <div style={{ fontSize: 9, color: "#EF9F27" }}>+{fmtR(b.jurosPend)} pend.</div>}
+                                </td>
+                                <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: b.saldo > 0 ? "#791F1F" : "#14532D" }}>
+                                  {b.captado > 0 && b.saldo <= 0
+                                    ? <span style={{ color: "#16A34A" }}>Quitado</span>
+                                    : b.saldo > 0 ? fmtR(b.saldo) : "—"}
+                                </td>
+                                <td style={{ padding: "9px 12px", minWidth: 100 }}>
+                                  {b.captado > 0 && (
+                                    <div>
+                                      <div style={{ height: 6, borderRadius: 3, background: "#EEF1F6", overflow: "hidden", display: "flex" }}>
+                                        <div style={{ width: `${pct_pago}%`,  background: "#1A4870", borderRadius: 3 }} title={`Principal: ${fmtN(pct_pago,0)}%`} />
+                                        <div style={{ width: `${pct_juros}%`, background: "#EF9F27" }}                 title={`Juros: ${fmtN(pct_juros,0)}%`} />
+                                      </div>
+                                      <div style={{ fontSize: 9, color: "#888", marginTop: 2, textAlign: "right" }}>{fmtN(pct_pago+pct_juros,0)}% devolvido</div>
                                     </div>
-                                    <div style={{ fontSize: 9, color: "#888", marginTop: 2, textAlign: "right" }}>{fmtN(pct_pago+pct_juros,0)}% devolvido</div>
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
+                                  )}
+                                </td>
+                              </tr>
+                              {isOpen && (
+                                <tr style={{ background: "#F5F9FF", borderBottom: "0.5px solid #D4DCE8" }}>
+                                  <td colSpan={6} style={{ padding: "0 12px 14px 32px" }}>
+                                    {drillLancs.length === 0 ? (
+                                      <div style={{ padding: "10px 0", fontSize: 12, color: "#aaa" }}>Nenhum lançamento encontrado para esta safra.</div>
+                                    ) : (
+                                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                        <thead>
+                                          <tr>
+                                            {["Descrição","Categoria","Vencimento","Tipo","Valor","Status"].map((h, hi) => (
+                                              <th key={h} style={{ padding: "5px 8px", textAlign: hi >= 2 ? "right" : "left", color: "#888", fontWeight: 600, borderBottom: "0.5px solid #D4DCE8", fontSize: 10, whiteSpace: "nowrap" }}>{h}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {drillLancs.map((l, li) => {
+                                            const tipo    = isCaptacao(l) ? "Captação" : isJurosPgto(l) ? "Juros/Encargo" : "Amortização";
+                                            const tipoCor = isCaptacao(l) ? "#166534"  : isJurosPgto(l) ? "#633806"       : "#0C447C";
+                                            const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"       : "#EBF3FC";
+                                            const baixado = l.status === "baixado";
+                                            return (
+                                              <tr key={li} style={{ borderBottom: "0.5px solid #EEF1F6", background: li % 2 === 0 ? "transparent" : "rgba(26,72,112,0.025)" }}>
+                                                <td style={{ padding: "5px 8px", color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao}>{l.descricao}</td>
+                                                <td style={{ padding: "5px 8px", color: "#555" }}>{l.categoria || "—"}</td>
+                                                <td style={{ padding: "5px 8px", textAlign: "right", color: "#555", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
+                                                <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                                                  <span style={{ background: tipoBg, color: tipoCor, padding: "1px 6px", borderRadius: 4, fontWeight: 600, fontSize: 10 }}>{tipo}</span>
+                                                </td>
+                                                <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600, color: isCaptacao(l) ? "#16A34A" : "#1a1a1a" }}>{fmtR(l.valor)}</td>
+                                                <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                                                  <span style={{ background: baixado ? "#DCFCE7" : "#FEF3C7", color: baixado ? "#166534" : "#92400E", padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 600 }}>
+                                                    {baixado ? "Baixado" : l.status === "vencido" ? "Vencido" : "Em aberto"}
+                                                  </span>
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                         {rtPorAno.length === 0 && (
