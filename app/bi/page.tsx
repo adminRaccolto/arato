@@ -217,6 +217,7 @@ export default function BI() {
   const [rtDrillLabel,   setRtDrillLabel]   = useState<string | null>(null);
   const [rtFiltroLabel,  setRtFiltroLabel]  = useState("todos");
   const [exportandoRT,   setExportandoRT]   = useState(false);
+  const [rtLancModal,    setRtLancModal]    = useState<Lancamento | null>(null);
 
   // ── Sensibilidade ────────────────────────────────────────────
   const [precoMask, setPrecoMask] = useState("");
@@ -2331,7 +2332,7 @@ export default function BI() {
                                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                                         <thead>
                                           <tr>
-                                            {["Descrição","Categoria","Vencimento","Tipo","Valor","Status"].map((h, hi) => (
+                                            {["Descrição","Categoria","Vencimento","Moeda","Tipo","Valor","Status"].map((h, hi) => (
                                               <th key={h} style={{ padding: "5px 8px", textAlign: hi >= 2 ? "right" : "left", color: "#888", fontWeight: 600, borderBottom: "0.5px solid #D4DCE8", fontSize: 10, whiteSpace: "nowrap" }}>{h}</th>
                                             ))}
                                           </tr>
@@ -2343,10 +2344,18 @@ export default function BI() {
                                             const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"       : "#EBF3FC";
                                             const baixado = l.status === "baixado";
                                             return (
-                                              <tr key={li} style={{ borderBottom: "0.5px solid #EEF1F6", background: li % 2 === 0 ? "transparent" : "rgba(26,72,112,0.025)" }}>
-                                                <td style={{ padding: "5px 8px", color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao}>{l.descricao}</td>
+                                              <tr key={li}
+                                                onClick={() => setRtLancModal(l)}
+                                                style={{ borderBottom: "0.5px solid #EEF1F6", background: li % 2 === 0 ? "transparent" : "rgba(26,72,112,0.025)", cursor: "pointer" }}
+                                                title="Clique para ver detalhes do lançamento">
+                                                <td style={{ padding: "5px 8px", color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao}>{l.descricao}</td>
                                                 <td style={{ padding: "5px 8px", color: "#555" }}>{l.categoria || "—"}</td>
                                                 <td style={{ padding: "5px 8px", textAlign: "right", color: "#555", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
+                                                <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                                                  {l.moeda === "USD"
+                                                    ? <span style={{ background: "#FEF9C3", color: "#92400E", padding: "1px 6px", borderRadius: 4, fontWeight: 700, fontSize: 10 }}>US$</span>
+                                                    : <span style={{ background: "#EBF3FC", color: "#0C447C", padding: "1px 6px", borderRadius: 4, fontWeight: 700, fontSize: 10 }}>R$</span>}
+                                                </td>
                                                 <td style={{ padding: "5px 8px", textAlign: "right" }}>
                                                   <span style={{ background: tipoBg, color: tipoCor, padding: "1px 6px", borderRadius: 4, fontWeight: 600, fontSize: 10 }}>{tipo}</span>
                                                 </td>
@@ -2578,6 +2587,95 @@ export default function BI() {
         })()}
 
       </div>
+
+      {/* ── Modal detalhe de lançamento RT ── */}
+      {rtLancModal && (() => {
+      const l = rtLancModal;
+      const tipo    = isCaptacao(l) ? "Captação" : isJurosPgto(l) ? "Juros / Encargo" : "Amortização";
+      const tipoCor = isCaptacao(l) ? "#166534"  : isJurosPgto(l) ? "#633806"         : "#0C447C";
+      const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"         : "#EBF3FC";
+      const baixado = l.status === "baixado";
+      const safra   = l.ano_safra_id ? anosSafra.find(a => a.id === l.ano_safra_id)?.descricao : null;
+      const destino = isCaptacao(l) ? "/financeiro/contratos" : "/financeiro/pagar";
+      const lbl: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.4px" };
+      const val: React.CSSProperties = { fontSize: 13, color: "#1a1a1a" };
+      return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={e => { if (e.target === e.currentTarget) setRtLancModal(null); }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", overflow: "hidden" }}>
+            <div style={{ padding: "14px 20px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento — Recurso de Terceiros</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.4 }}>{l.descricao}</div>
+              </div>
+              <button onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12, flexShrink: 0 }}>✕</button>
+            </div>
+            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={lbl}>Tipo</div>
+                <span style={{ background: tipoBg, color: tipoCor, padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{tipo}</span>
+              </div>
+              <div>
+                <div style={lbl}>Moeda</div>
+                {l.moeda === "USD"
+                  ? <span style={{ background: "#FEF9C3", color: "#92400E", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>Dólar (US$)</span>
+                  : <span style={{ background: "#EBF3FC", color: "#0C447C", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>Real (R$)</span>}
+              </div>
+              <div>
+                <div style={lbl}>Status</div>
+                <span style={{ background: baixado ? "#DCFCE7" : "#FEF3C7", color: baixado ? "#166534" : "#92400E", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
+                  {baixado ? "Baixado" : l.status === "vencido" ? "Vencido" : "Em aberto"}
+                </span>
+              </div>
+              <div>
+                <div style={lbl}>Valor</div>
+                <div style={{ ...val, fontSize: 18, fontWeight: 700, color: isCaptacao(l) ? "#16A34A" : "#1a1a1a" }}>
+                  {l.moeda === "USD" ? `USD ${fmtN(l.valor, 2)}` : fmtR(l.valor)}
+                </div>
+                {l.moeda === "USD" && l.cotacao_usd && (
+                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>≈ {fmtR(l.valor * l.cotacao_usd)} @ R$ {fmtN(l.cotacao_usd, 4)}</div>
+                )}
+              </div>
+              <div>
+                <div style={lbl}>Vencimento</div>
+                <div style={val}>{fmtDt(l.data_vencimento)}</div>
+              </div>
+              <div>
+                <div style={lbl}>Baixa</div>
+                <div style={val}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
+              </div>
+              <div>
+                <div style={lbl}>Categoria</div>
+                <div style={val}>{l.categoria || "—"}</div>
+              </div>
+              <div>
+                <div style={lbl}>Ano / Safra</div>
+                <div style={val}>{safra ?? l.data_vencimento.slice(0, 4)}</div>
+              </div>
+              {l.sacas && l.sacas > 0 ? (
+                <div>
+                  <div style={lbl}>Em Sacas</div>
+                  <div style={val}>{fmtN(l.sacas, 0)} sc {l.cultura_barter ? `(${l.cultura_barter})` : ""}</div>
+                </div>
+              ) : <div />}
+            </div>
+            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFD" }}>
+              <div style={{ fontSize: 11, color: "#aaa" }}>ID: {l.id.slice(0, 8)}…</div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setRtLancModal(null)}
+                  style={{ padding: "8px 18px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer" }}>
+                  Fechar
+                </button>
+                <a href={destino}
+                  style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
+                  {isCaptacao(l) ? "Ver em Contratos Financeiros →" : "Ver em Contas a Pagar →"}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </div>
   );
 }
