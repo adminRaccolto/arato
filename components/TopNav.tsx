@@ -141,10 +141,11 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-fin-relatorios", label: "Relatórios", moduleId: "fin_relatorios",
         children: [
-          { id: "fin-fluxo-prev", label: "Fluxo de Caixa Previsto",  path: "/financeiro/relatorios?aba=fluxo&tipo=previsto",  moduleId: "fin_relatorios" },
-          { id: "fin-fluxo-real", label: "Fluxo de Caixa Realizado", path: "/financeiro/relatorios?aba=fluxo&tipo=realizado", moduleId: "fin_relatorios" },
-          { id: "fin-cpcr",       label: "CP / CR — Contas",         path: "/financeiro/relatorios?aba=cpcr",                moduleId: "fin_relatorios" },
-          { id: "fin-posicao",    label: "Posição por Conta",        path: "/financeiro/relatorios?aba=posicao",             moduleId: "fin_relatorios" },
+          { id: "fin-fluxo-prev",    label: "Fluxo de Caixa Previsto",  path: "/financeiro/relatorios?aba=fluxo&tipo=previsto",  moduleId: "fin_relatorios" },
+          { id: "fin-fluxo-real",    label: "Fluxo de Caixa Realizado", path: "/financeiro/relatorios?aba=fluxo&tipo=realizado", moduleId: "fin_relatorios" },
+          { id: "fin-cpcr",          label: "CP / CR — Contas",         path: "/financeiro/relatorios?aba=cpcr",                moduleId: "fin_relatorios" },
+          { id: "fin-posicao",       label: "Posição por Conta",        path: "/financeiro/relatorios?aba=posicao",             moduleId: "fin_relatorios" },
+          { id: "fin-endividamento", label: "Endividamento",            path: "/financeiro/endividamento",                     moduleId: "fin_relatorios" },
         ],
       },
     ],

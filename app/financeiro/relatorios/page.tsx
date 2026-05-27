@@ -113,7 +113,7 @@ function FinanceiroRelatoriosInner() {
   const [simPopupAberto,    setSimPopupAberto]    = useState(false);
 
   // Fluxo — sub-aba Diário / Mensal
-  const [subAbaFluxo, setSubAbaFluxo] = useState<"diario" | "mensal">("diario");
+  const [subAbaFluxo, setSubAbaFluxo] = useState<"diario" | "mensal" | "anual">("diario");
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
@@ -544,10 +544,10 @@ function FinanceiroRelatoriosInner() {
 
                     {/* Sub-abas Diário / Mensal */}
                     <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
-                      {(["diario", "mensal"] as const).map(t => (
+                      {(["diario", "mensal", "anual"] as const).map(t => (
                         <button key={t} onClick={() => setSubAbaFluxo(t)}
                           style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #1A4870" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "#fff", color: subAbaFluxo === t ? "#1A4870" : "#888", transition: "all 0.15s" }}>
-                          {t === "diario" ? "Diário" : "Mensal"}
+                          {t === "diario" ? "Diário" : t === "mensal" ? "Mensal" : "Anual"}
                         </button>
                       ))}
                     </div>
@@ -964,6 +964,149 @@ function FinanceiroRelatoriosInner() {
                           </div>
                           <div style={{ padding: "8px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
                             {incluirPrevisoes ? "Baixados + pendentes (em aberto/vencidos/previsões). Prev em mostarda." : "Apenas lançamentos com status Baixado."}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ── ANUAL ── */}
+                    {subAbaFluxo === "anual" && (() => {
+                      // Extrai todos os anos presentes nos lançamentos
+                      const anosPresentes = [...new Set(
+                        lancamentos
+                          .map(l => (l.data_vencimento ?? l.data_lancamento ?? "").slice(0, 4))
+                          .filter(a => /^\d{4}$/.test(a))
+                      )].sort();
+                      if (anosPresentes.length === 0) {
+                        return <div style={{ padding: 40, textAlign: "center", color: "#888", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>Nenhum lançamento encontrado.</div>;
+                      }
+
+                      const contasFiltProdA = filtro.produtoresSel.length > 0
+                        ? contasFluxo.filter(c => c.produtor_id && filtro.produtoresSel.includes(c.produtor_id))
+                        : contasFluxo;
+                      const contasEfetivasA = filtro.contasSel.length > 0
+                        ? contasFiltProdA.filter(c => filtro.contasSel.includes(c.id))
+                        : contasFiltProdA;
+                      const contasEfetivasIdsA = new Set(contasEfetivasA.map(c => c.id));
+
+                      const lanBase = lancamentos.filter(l => {
+                        if (filtro.produtoresSel.length > 0 && l.produtor_id && !filtro.produtoresSel.includes(l.produtor_id)) return false;
+                        if (filtro.contasSel.length > 0 && l.conta_bancaria && !contasEfetivasIdsA.has(l.conta_bancaria)) return false;
+                        return true;
+                      });
+                      const lanFiltMoedaA = filtro.moedasSel.length > 0
+                        ? lanBase.filter(l => { const m = l.moeda ?? "BRL"; return filtro.moedasSel.includes(m); })
+                        : lanBase.filter(l => l.moeda !== "barter");
+                      const lanVisA = lanFiltMoedaA.filter(l => {
+                        if (filtro.tipoVis === "realizado") return l.status === "baixado";
+                        if (filtro.tipoVis === "previsto")  return l.status !== "baixado";
+                        return l.status === "baixado" || incluirPrevisoes;
+                      });
+
+                      type CellA = { real: number; prev: number };
+                      type CatRowA = { cat: string; tipo: "receber" | "pagar"; anos: CellA[] };
+                      const catMapA = new Map<string, CatRowA>();
+                      const newRowA = (cat: string, tipo: "receber"|"pagar"): CatRowA =>
+                        ({ cat, tipo, anos: anosPresentes.map(() => ({ real: 0, prev: 0 })) });
+
+                      for (const l of lanVisA) {
+                        const cat = l.categoria || "Sem categoria";
+                        const key = `${l.tipo}__${cat}`;
+                        const ano = (l.data_vencimento ?? l.data_lancamento ?? "").slice(0, 4);
+                        const idxAno = anosPresentes.indexOf(ano);
+                        if (idxAno < 0) continue;
+                        if (!catMapA.has(key)) catMapA.set(key, newRowA(cat, l.tipo as "receber"|"pagar"));
+                        const row = catMapA.get(key)!;
+                        if (l.status === "baixado") row.anos[idxAno].real += paraBRLRel(l, cotacaoUSD);
+                        else                        row.anos[idxAno].prev += paraBRLRel(l, cotacaoUSD);
+                      }
+
+                      const entradasA = Array.from(catMapA.values()).filter(r => r.tipo === "receber").sort((a, b) => a.cat.localeCompare(b.cat));
+                      const saidasA   = Array.from(catMapA.values()).filter(r => r.tipo === "pagar").sort((a, b) => a.cat.localeCompare(b.cat));
+                      const totEntA   = anosPresentes.map((_, i) => entradasA.reduce((s, r) => s + r.anos[i].real + r.anos[i].prev, 0));
+                      const totSaiA   = anosPresentes.map((_, i) => saidasA.reduce(  (s, r) => s + r.anos[i].real + r.anos[i].prev, 0));
+                      const saldoAnoA = anosPresentes.map((_, i) => totEntA[i] - totSaiA[i]);
+                      let _accA = 0;
+                      const saldoAcA  = saldoAnoA.map(v => { _accA += v; return _accA; });
+                      const corSaldoA = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870";
+
+                      const CatRowAEl = ({ row }: { row: CatRowA }) => {
+                        const totRow = row.anos.reduce((s, c) => s + c.real + c.prev, 0);
+                        if (totRow === 0) return null;
+                        const cor = row.tipo === "receber" ? "#1A4870" : "#1a1a1a";
+                        return (
+                          <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
+                            <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: cor, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</td>
+                            {row.anos.map((c, i) => {
+                              const total = c.real + c.prev;
+                              return (
+                                <td key={i} style={{ padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                  {total > 0 ? (
+                                    <>
+                                      <div style={{ fontSize: 12, fontWeight: 600, color: cor }}>{fmtBRL(total, 2)}</div>
+                                      {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
+                                    </>
+                                  ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
+                                </td>
+                              );
+                            })}
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: cor, whiteSpace: "nowrap" }}>{fmtBRL(totRow, 2)}</td>
+                          </tr>
+                        );
+                      };
+
+                      return (
+                        <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                            <div style={{ fontSize: 11, color: "#555" }}>
+                              Entradas e saídas por categoria · visão plurianual · {anosPresentes.join(", ")}
+                            </div>
+                            <button onClick={() => setIncluirPrevisoes(v => !v)}
+                              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer", background: incluirPrevisoes ? "#FBF3E0" : "#F4F6FA", color: incluirPrevisoes ? "#7A4300" : "#555", borderColor: incluirPrevisoes ? "#C9921B" : "#D4DCE8" }}>
+                              {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
+                            </button>
+                          </div>
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
+                              <thead>
+                                <tr style={{ background: "#F4F6FA" }}>
+                                  <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 220, borderBottom: "0.5px solid #DDE2EE" }}>Categoria</th>
+                                  {anosPresentes.map(a => (
+                                    <th key={a} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", minWidth: 110 }}>{a}</th>
+                                  ))}
+                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Total Geral</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr style={{ background: "#F4F6FA" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
+                                {entradasA.length > 0 ? entradasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
+                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Entradas</td>
+                                  {totEntA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{fmtBRL(totEntA.reduce((s, v) => s + v, 0), 2)}</td>
+                                </tr>
+                                <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
+                                {saidasA.length > 0 ? saidasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída.</td></tr>}
+                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#555" }}>Total Saídas</td>
+                                  {totSaiA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "#1a1a1a", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1a1a1a", whiteSpace: "nowrap" }}>{fmtBRL(totSaiA.reduce((s, v) => s + v, 0), 2)}</td>
+                                </tr>
+                                <tr style={{ background: "#EFF3FA", borderTop: "1px solid #C7D7EC" }}>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Ano</td>
+                                  {saldoAnoA.map((v, i) => <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(saldoAnoA.reduce((s, v) => s + v, 0)), whiteSpace: "nowrap" }}>{fmtBRL(saldoAnoA.reduce((s, v) => s + v, 0), 2)}</td>
+                                </tr>
+                                <tr style={{ background: "#EFF3FA" }}>
+                                  <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
+                                  {saldoAcA.map((v, i) => <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldoA(saldoAcA[saldoAcA.length - 1] ?? 0), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcA[saldoAcA.length - 1] ?? 0, 2)}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div style={{ padding: "8px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
+                            {incluirPrevisoes ? "Baixados + pendentes (em aberto/vencidos). Prev em mostarda." : "Apenas lançamentos com status Baixado."}
                           </div>
                         </div>
                       );
