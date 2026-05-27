@@ -4695,3 +4695,31 @@ CREATE POLICY "conc_pend_all" ON conciliacao_pendencias FOR ALL
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Log de Migração de NF entre Contratos ────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS migracoes_nf (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id                UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  romaneio_id               UUID NOT NULL REFERENCES romaneios(id) ON DELETE RESTRICT,
+  romaneio_numero           TEXT NOT NULL,
+  nfe_numero                TEXT,
+  nfe_chave                 TEXT,
+  contrato_origem_id        UUID NOT NULL REFERENCES contratos(id) ON DELETE RESTRICT,
+  contrato_origem_numero    TEXT NOT NULL,
+  contrato_destino_id       UUID NOT NULL REFERENCES contratos(id) ON DELETE RESTRICT,
+  contrato_destino_numero   TEXT NOT NULL,
+  sacas                     NUMERIC(12,3) NOT NULL,
+  usuario                   TEXT NOT NULL,
+  motivo                    TEXT,
+  created_at                TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE migracoes_nf ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "migracoes_nf_all" ON migracoes_nf;
+CREATE POLICY "migracoes_nf_all" ON migracoes_nf FOR ALL
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+NOTIFY pgrst, 'reload schema';

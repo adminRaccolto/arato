@@ -78,6 +78,7 @@ const NAV: NavItem[] = [
         children: [
           { id: "com-contratos",     label: "Contratos de Grãos",       path: "/contratos",              moduleId: "contratos"   },
           { id: "com-arrendamentos", label: "Contratos de Arrendamento", path: "/contratos/arrendamento", moduleId: "arrendamento" },
+          { id: "com-migrar-nf",     label: "Migrar NF entre Contratos", path: "/contratos/migrar-nf",   moduleId: "contratos"   },
         ],
       },
     ],
