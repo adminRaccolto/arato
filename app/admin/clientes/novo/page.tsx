@@ -286,79 +286,83 @@ export default function NovoClientePage() {
       {/* Formulário principal */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* Seção 1 — Dados do cliente */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
-          <div style={secTitle}>Dados do Cliente</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div>
-              <label style={lbl}>Tipo de conta *</label>
-              <select style={inp} value={form.tipo} onChange={e => set("tipo", e.target.value as TipoConta)}>
-                <option value="pf">Pessoa Física</option>
-                <option value="pj">Pessoa Jurídica</option>
-                <option value="grupo">Grupo / Holding</option>
-              </select>
+        {/* Linha 1 — Dados do cliente + Fazenda (lado a lado) */}
+        <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16 }}>
+
+          {/* Seção 1 — Dados do cliente */}
+          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+            <div style={secTitle}>Identificação do Cliente</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <label style={lbl}>Tipo de conta *</label>
+                <select style={inp} value={form.tipo} onChange={e => set("tipo", e.target.value as TipoConta)}>
+                  <option value="pf">Pessoa Física</option>
+                  <option value="pj">Pessoa Jurídica</option>
+                  <option value="grupo">Grupo / Holding</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>{form.tipo === "pf" ? "CPF" : "CNPJ"}</label>
+                <input style={inp} placeholder={form.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"}
+                  value={form.cpf_cnpj} onChange={e => set("cpf_cnpj", e.target.value)} />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Nome completo / Razão Social *</label>
+                <input style={inp} placeholder="Ex: João Silva ou Fazenda São João Ltda"
+                  value={form.nome} onChange={e => set("nome", e.target.value)} />
+              </div>
+              <div>
+                <label style={lbl}>E-mail *</label>
+                <input style={inp} type="email" placeholder="cliente@email.com"
+                  value={form.email_cliente} onChange={e => set("email_cliente", e.target.value)} />
+              </div>
+              <div>
+                <label style={lbl}>Telefone / WhatsApp</label>
+                <input style={inp} placeholder="(65) 99999-0000"
+                  value={form.telefone} onChange={e => set("telefone", e.target.value)} />
+              </div>
             </div>
-            <div style={{ gridColumn: "2 / -1" }}>
-              <label style={lbl}>Nome completo / Razão Social *</label>
-              <input style={inp} placeholder="Ex: João Silva ou Fazenda São João Ltda"
-                value={form.nome} onChange={e => set("nome", e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>{form.tipo === "pf" ? "CPF" : "CNPJ"}</label>
-              <input style={inp} placeholder={form.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"}
-                value={form.cpf_cnpj} onChange={e => set("cpf_cnpj", e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>E-mail *</label>
-              <input style={inp} type="email" placeholder="cliente@email.com"
-                value={form.email_cliente} onChange={e => set("email_cliente", e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Telefone / WhatsApp</label>
-              <input style={inp} placeholder="(65) 99999-0000"
-                value={form.telefone} onChange={e => set("telefone", e.target.value)} />
+          </div>
+
+          {/* Seção 2 — Fazenda */}
+          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+            <div style={secTitle}>Fazenda Principal</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={lbl}>Nome da fazenda *</label>
+                <input style={inp} placeholder="Ex: Fazenda Santa Rosa"
+                  value={form.fazenda_nome} onChange={e => set("fazenda_nome", e.target.value)} />
+              </div>
+              <div>
+                <label style={lbl}>Município</label>
+                <input style={inp} placeholder="Ex: Nova Mutum"
+                  value={form.fazenda_municipio} onChange={e => set("fazenda_municipio", e.target.value)} />
+              </div>
+              <div>
+                <label style={lbl}>Estado</label>
+                <select style={inp} value={form.fazenda_estado} onChange={e => set("fazenda_estado", e.target.value)}>
+                  {ESTADOS_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Seção 2 — Fazenda */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
-          <div style={secTitle}>Fazenda Principal</div>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 14 }}>
-            <div>
-              <label style={lbl}>Nome da fazenda *</label>
-              <input style={inp} placeholder="Ex: Fazenda Santa Rosa"
-                value={form.fazenda_nome} onChange={e => set("fazenda_nome", e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Município</label>
-              <input style={inp} placeholder="Ex: Nova Mutum"
-                value={form.fazenda_municipio} onChange={e => set("fazenda_municipio", e.target.value)} />
-            </div>
-            <div>
-              <label style={lbl}>Estado</label>
-              <select style={inp} value={form.fazenda_estado} onChange={e => set("fazenda_estado", e.target.value)}>
-                {ESTADOS_BR.map(uf => <option key={uf} value={uf}>{uf}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Seção 3 — Acesso */}
+        {/* Linha 2 — Acesso & Assinatura (largura total) */}
         <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
           <div style={secTitle}>Acesso & Assinatura</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ gridColumn: "1 / 3" }}>
               <label style={lbl}>Senha inicial *</label>
               <input style={inp} type="password" placeholder="Mín. 8 caracteres"
                 value={form.user_senha} onChange={e => set("user_senha", e.target.value)} />
             </div>
-            <div>
+            <div style={{ gridColumn: "3 / 5" }}>
               <label style={lbl}>Confirmar senha *</label>
               <input style={inp} type="password" placeholder="Repita a senha"
                 value={form.user_senha_conf} onChange={e => set("user_senha_conf", e.target.value)} />
             </div>
-            <div>
+            <div style={{ gridColumn: "5 / 7" }}>
               <label style={lbl}>Plano</label>
               <select style={inp} value={form.plano} onChange={e => set("plano", e.target.value as Pacote | "")}>
                 <option value="">— Sem plano —</option>
@@ -367,18 +371,18 @@ export default function NovoClientePage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div style={{ gridColumn: "1 / 3" }}>
               <label style={lbl}>Status inicial</label>
               <select style={inp} value={form.status} onChange={e => set("status", e.target.value as StatusInicial)}>
                 <option value="trial">Trial (14 dias)</option>
                 <option value="ativo">Ativo</option>
               </select>
             </div>
-            <div>
+            <div style={{ gridColumn: "3 / 5" }}>
               <label style={lbl}>Data de início</label>
               <input style={inp} type="date" value={form.data_inicio} onChange={e => set("data_inicio", e.target.value)} />
             </div>
-            <div>
+            <div style={{ gridColumn: "5 / 7" }}>
               <label style={lbl}>Data de vencimento</label>
               <input style={inp} type="date" value={form.data_vencimento} onChange={e => set("data_vencimento", e.target.value)} />
             </div>
