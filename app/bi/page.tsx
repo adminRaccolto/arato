@@ -19,6 +19,17 @@ interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: stri
 interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
+interface ParcelaDetalhe { id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
+interface GarantiaDetalhe { id: string; tipo_garantia?: string; tipo_bem?: string; descricao: string; valor_avaliacao?: number }
+interface ContratoDetalhe {
+  id: string; descricao: string; credor: string; numero_documento?: string;
+  tipo: string; moeda: string; taxa_juros_aa?: number; linha_credito?: string;
+  data_contrato: string; periodicidade_meses?: number; valor_financiado: number; valor_cotacao?: number;
+  produtorNome?: string;
+  parcelas: ParcelaDetalhe[];
+  garantias: GarantiaDetalhe[];
+}
+
 // ── Formatadores ──────────────────────────────────────────────
 const fmtR  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const fmtR2 = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -218,6 +229,8 @@ export default function BI() {
   const [rtFiltroLabel,  setRtFiltroLabel]  = useState("todos");
   const [exportandoRT,   setExportandoRT]   = useState(false);
   const [rtLancModal,    setRtLancModal]    = useState<Lancamento | null>(null);
+  const [rtContratoModal, setRtContratoModal] = useState<ContratoDetalhe | null>(null);
+  const [loadingContrato,  setLoadingContrato]  = useState(false);
 
   // ── Sensibilidade ────────────────────────────────────────────
   const [precoMask, setPrecoMask] = useState("");
@@ -643,6 +656,51 @@ export default function BI() {
 
   const inputSt: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
   const labelSt: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+
+  async function abrirContratoRT(l: Lancamento) {
+    setLoadingContrato(true);
+    setRtLancModal(null);
+    try {
+      const nomeContrato = l.descricao.split(" — ")[0].trim();
+      const { data: contratos } = await supabase
+        .from("contratos_financeiros")
+        .select("*")
+        .eq("fazenda_id", fazendaId!)
+        .ilike("descricao", nomeContrato);
+      if (!contratos || contratos.length === 0) { setRtLancModal(l); return; }
+
+      const c = contratos[0] as Record<string, unknown>;
+      const cId = c.id as string;
+
+      const [{ data: parcsRaw }, { data: garsRaw }, { data: prodRaw }] = await Promise.all([
+        supabase.from("parcelas_pagamento").select("*").eq("contrato_id", cId).order("num_parcela"),
+        supabase.from("garantias_contrato").select("*").eq("contrato_id", cId),
+        (c.produtor_id ? supabase.from("produtores").select("id,nome").eq("id", c.produtor_id as string).single() : Promise.resolve({ data: null })),
+      ]);
+
+      setRtContratoModal({
+        id: cId,
+        descricao: (c.descricao ?? c.numero_contrato ?? "") as string,
+        credor: (c.credor ?? "") as string,
+        numero_documento: (c.numero_contrato ?? c.numero_documento) as string | undefined,
+        tipo: (c.tipo ?? "") as string,
+        moeda: (c.moeda ?? "BRL") as string,
+        taxa_juros_aa: c.taxa_juros_aa as number | undefined,
+        linha_credito: (c.linha_credito ?? "") as string | undefined,
+        data_contrato: (c.data_contrato ?? "") as string,
+        periodicidade_meses: c.periodicidade_meses as number | undefined,
+        valor_financiado: (c.valor_total ?? c.valor_financiado ?? 0) as number,
+        valor_cotacao: (c.cotacao_usd ?? c.valor_cotacao) as number | undefined,
+        produtorNome: (prodRaw as {nome?: string} | null)?.nome,
+        parcelas: (parcsRaw ?? []) as ParcelaDetalhe[],
+        garantias: ((garsRaw ?? []) as GarantiaDetalhe[]).map((g: GarantiaDetalhe & {valor?: number}) => ({
+          ...g,
+          valor_avaliacao: g.valor_avaliacao ?? (g as {valor?: number}).valor,
+        })),
+      });
+    } catch { setRtLancModal(l); }
+    finally { setLoadingContrato(false); }
+  }
 
   // ─────────────────────────────────────────────────────────────
   return (
@@ -2345,9 +2403,9 @@ export default function BI() {
                                             const baixado = l.status === "baixado";
                                             return (
                                               <tr key={li}
-                                                onClick={() => setRtLancModal(l)}
-                                                style={{ borderBottom: "0.5px solid #EEF1F6", background: li % 2 === 0 ? "transparent" : "rgba(26,72,112,0.025)", cursor: "pointer" }}
-                                                title="Clique para ver detalhes do lançamento">
+                                                onClick={() => abrirContratoRT(l)}
+                                                style={{ borderBottom: "0.5px solid #EEF1F6", background: li % 2 === 0 ? "transparent" : "rgba(26,72,112,0.025)", cursor: loadingContrato ? "wait" : "pointer" }}
+                                                title="Clique para ver o Contrato Financeiro">
                                                 <td style={{ padding: "5px 8px", color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao}>{l.descricao}</td>
                                                 <td style={{ padding: "5px 8px", color: "#555" }}>{l.categoria || "—"}</td>
                                                 <td style={{ padding: "5px 8px", textAlign: "right", color: "#555", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
@@ -2588,94 +2646,231 @@ export default function BI() {
 
       </div>
 
-      {/* ── Modal detalhe de lançamento RT ── */}
+      {/* ── Modal fallback (lancamento sem contrato vinculado) ── */}
       {rtLancModal && (() => {
-      const l = rtLancModal;
-      const tipo    = isCaptacao(l) ? "Captação" : isJurosPgto(l) ? "Juros / Encargo" : "Amortização";
-      const tipoCor = isCaptacao(l) ? "#166534"  : isJurosPgto(l) ? "#633806"         : "#0C447C";
-      const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"         : "#EBF3FC";
-      const baixado = l.status === "baixado";
-      const safra   = l.ano_safra_id ? anosSafra.find(a => a.id === l.ano_safra_id)?.descricao : null;
-      const destino = "/financeiro/contratos";
-      const lbl: React.CSSProperties = { fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.4px" };
-      const val: React.CSSProperties = { fontSize: 13, color: "#1a1a1a" };
-      return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
-          onClick={e => { if (e.target === e.currentTarget) setRtLancModal(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", overflow: "hidden" }}>
-            <div style={{ padding: "14px 20px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento — Recurso de Terceiros</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.4 }}>{l.descricao}</div>
-              </div>
-              <button onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12, flexShrink: 0 }}>✕</button>
-            </div>
-            <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-              <div>
-                <div style={lbl}>Tipo</div>
-                <span style={{ background: tipoBg, color: tipoCor, padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{tipo}</span>
-              </div>
-              <div>
-                <div style={lbl}>Moeda</div>
-                {l.moeda === "USD"
-                  ? <span style={{ background: "#FEF9C3", color: "#92400E", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>Dólar (US$)</span>
-                  : <span style={{ background: "#EBF3FC", color: "#0C447C", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>Real (R$)</span>}
-              </div>
-              <div>
-                <div style={lbl}>Status</div>
-                <span style={{ background: baixado ? "#DCFCE7" : "#FEF3C7", color: baixado ? "#166534" : "#92400E", padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
-                  {baixado ? "Baixado" : l.status === "vencido" ? "Vencido" : "Em aberto"}
-                </span>
-              </div>
-              <div>
-                <div style={lbl}>Valor</div>
-                <div style={{ ...val, fontSize: 18, fontWeight: 700, color: isCaptacao(l) ? "#16A34A" : "#1a1a1a" }}>
-                  {l.moeda === "USD" ? `USD ${fmtN(l.valor, 2)}` : fmtR(l.valor)}
-                </div>
-                {l.moeda === "USD" && l.cotacao_usd && (
-                  <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>≈ {fmtR(l.valor * l.cotacao_usd)} @ R$ {fmtN(l.cotacao_usd, 4)}</div>
-                )}
-              </div>
-              <div>
-                <div style={lbl}>Vencimento</div>
-                <div style={val}>{fmtDt(l.data_vencimento)}</div>
-              </div>
-              <div>
-                <div style={lbl}>Baixa</div>
-                <div style={val}>{l.data_baixa ? fmtDt(l.data_baixa) : "—"}</div>
-              </div>
-              <div>
-                <div style={lbl}>Categoria</div>
-                <div style={val}>{l.categoria || "—"}</div>
-              </div>
-              <div>
-                <div style={lbl}>Ano / Safra</div>
-                <div style={val}>{safra ?? l.data_vencimento.slice(0, 4)}</div>
-              </div>
-              {l.sacas && l.sacas > 0 ? (
+        const l = rtLancModal;
+        const tipo    = isCaptacao(l) ? "Captação" : isJurosPgto(l) ? "Juros / Encargo" : "Amortização";
+        const tipoCor = isCaptacao(l) ? "#166534"  : isJurosPgto(l) ? "#633806"         : "#0C447C";
+        const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"         : "#EBF3FC";
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+            onClick={e => { if (e.target === e.currentTarget) setRtLancModal(null); }}>
+            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", overflow: "hidden" }}>
+              <div style={{ padding: "14px 20px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={lbl}>Em Sacas</div>
-                  <div style={val}>{fmtN(l.sacas, 0)} sc {l.cultura_barter ? `(${l.cultura_barter})` : ""}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento RT — contrato não localizado</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{l.descricao}</div>
                 </div>
-              ) : <div />}
-            </div>
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFD" }}>
-              <div style={{ fontSize: 11, color: "#aaa" }}>ID: {l.id.slice(0, 8)}…</div>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setRtLancModal(null)}
-                  style={{ padding: "8px 18px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer" }}>
-                  Fechar
-                </button>
-                <a href={destino}
-                  style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
-                  Ver em Contratos Financeiros →
-                </a>
+                <button onClick={() => setRtLancModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 20, cursor: "pointer", marginLeft: 12 }}>✕</button>
+              </div>
+              <div style={{ padding: "18px 22px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                {[["Tipo", <span style={{ background: tipoBg, color: tipoCor, padding: "2px 8px", borderRadius: 5, fontSize: 11, fontWeight: 700 }}>{tipo}</span>],
+                  ["Moeda", l.moeda === "USD" ? "Dólar (US$)" : "Real (R$)"],
+                  ["Status", l.status],
+                  ["Valor", l.moeda === "USD" ? `USD ${fmtN(l.valor, 2)}` : fmtR(l.valor)],
+                  ["Vencimento", fmtDt(l.data_vencimento)],
+                  ["Baixa", l.data_baixa ? fmtDt(l.data_baixa) : "—"],
+                ].map(([k, v], i) => (
+                  <div key={i}>
+                    <div style={{ fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 3, textTransform: "uppercase" }}>{k as string}</div>
+                    <div style={{ fontSize: 13, color: "#1a1a1a" }}>{v as React.ReactNode}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: "12px 22px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10, background: "#F8FAFD" }}>
+                <button onClick={() => setRtLancModal(null)} style={{ padding: "7px 16px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer" }}>Fechar</button>
+                <a href="/financeiro/contratos" style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Contratos Financeiros →</a>
               </div>
             </div>
           </div>
+        );
+      })()}
+
+      {/* ── Loading contrato ── */}
+      {loadingContrato && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: "28px 40px", fontSize: 13, color: "#555", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" }}>
+            Carregando contrato…
+          </div>
         </div>
-      );
-    })()}
+      )}
+
+      {/* ── Modal Contrato Financeiro completo ── */}
+      {rtContratoModal && (() => {
+        const c = rtContratoModal;
+        const isUSD = c.moeda === "USD";
+        const ptax = c.valor_cotacao ?? 0;
+        const tipoLabel: Record<string, string> = { custeio: "Custeio", investimento: "Investimento", securitizacao: "Securitização", cpr: "CPR", egf: "EGF", outros: "Outros" };
+        const garantiaLabel: Record<string, string> = { alienacao_fiduciaria: "Alienação Fiduciária", hipoteca: "Hipoteca", penhor_rural: "Penhor Rural", aval: "Aval", nota_promissoria: "Nota Promissória", cpr_garantia: "CPR Garantia", cessao_recebiveis: "Cessão de Recebíveis", outros: "Outros" };
+        const bemLabel: Record<string, string> = { imovel: "Imóvel", maquina: "Máquina/Equipamento", semovente: "Animal", produto_agricola: "Produto Agrícola", outro: "Outro" };
+        const statusLabel: Record<string, string> = { pago: "Pago", em_aberto: "Em aberto", vencido: "Vencido" };
+        const statusCor:   Record<string, { bg: string; txt: string }> = {
+          pago:      { bg: "#DCFCE7", txt: "#166534" },
+          em_aberto: { bg: "#EBF3FC", txt: "#0C447C" },
+          vencido:   { bg: "#FEF2F2", txt: "#991B1B" },
+        };
+        const totalPago   = c.parcelas.filter(p => p.status === "pago").reduce((s, p) => s + p.valor_parcela, 0);
+        const totalAberto = c.parcelas.filter(p => p.status !== "pago").reduce((s, p) => s + p.valor_parcela, 0);
+        const periodLabel = c.periodicidade_meses === 1 ? "Mensal" : c.periodicidade_meses === 6 ? "Semestral" : c.periodicidade_meses === 12 ? "Anual" : c.periodicidade_meses ? `${c.periodicidade_meses} meses` : "—";
+
+        const thSt: React.CSSProperties = { padding: "7px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#888", borderBottom: "0.5px solid #D4DCE8", textTransform: "uppercase", whiteSpace: "nowrap" };
+        const tdSt: React.CSSProperties = { padding: "7px 10px", fontSize: 12, color: "#1a1a1a", borderBottom: "0.5px solid #EEF1F6" };
+        const secH: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #D4DCE8" };
+
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 20 }}
+            onClick={e => { if (e.target === e.currentTarget) setRtContratoModal(null); }}>
+            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.28)", overflow: "hidden" }}>
+
+              {/* Cabeçalho */}
+              <div style={{ padding: "16px 24px", background: "#1A4870", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 3 }}>Contrato Financeiro — Recurso de Terceiros</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", marginBottom: 6 }}>{c.descricao}</div>
+                    <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                      <div>
+                        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "block" }}>INSTITUIÇÃO</span>
+                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{c.credor || "—"}</span>
+                      </div>
+                      {c.numero_documento && (
+                        <div>
+                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "block" }}>Nº DA CÉDULA / OPERAÇÃO</span>
+                          <span style={{ fontSize: 13, color: "#C9921B", fontWeight: 700, fontFamily: "monospace" }}>{c.numero_documento}</span>
+                        </div>
+                      )}
+                      {c.produtorNome && (
+                        <div>
+                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", display: "block" }}>PRODUTOR</span>
+                          <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{c.produtorNome}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => setRtContratoModal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: 22, cursor: "pointer", lineHeight: 1, flexShrink: 0, marginLeft: 16 }}>✕</button>
+                </div>
+              </div>
+
+              {/* Resumo da operação */}
+              <div style={{ padding: "16px 24px", background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE", flexShrink: 0 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14 }}>
+                  {[
+                    ["Tipo de Recurso", tipoLabel[c.tipo] ?? c.tipo],
+                    ["Moeda", isUSD ? "Dólar (USD)" : "Real (BRL)"],
+                    ["Taxa de Juros", c.taxa_juros_aa ? `${fmtN(c.taxa_juros_aa, 2)}% a.a.` : "—"],
+                    ["Indexador", c.linha_credito || "—"],
+                    ["Periodicidade", periodLabel],
+                    ["Valor Captado", isUSD ? `USD ${fmtN(c.valor_financiado, 2)}` : fmtR(c.valor_financiado)],
+                  ].map(([k, v]) => (
+                    <div key={k}>
+                      <div style={{ fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 3, textTransform: "uppercase" }}>{k}</div>
+                      <div style={{ fontSize: 13, color: "#1a1a1a", fontWeight: 500 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Garantias */}
+                {c.garantias.length > 0 && (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px solid #DDE2EE" }}>
+                    <span style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginRight: 8 }}>Garantias:</span>
+                    {c.garantias.map((g, gi) => (
+                      <span key={gi} style={{ fontSize: 11, background: "#FBF3E0", color: "#7A5A12", border: "0.5px solid #C9921B30", borderRadius: 6, padding: "2px 8px", marginRight: 6 }}>
+                        {garantiaLabel[g.tipo_garantia ?? ""] || g.tipo_garantia || "—"}
+                        {g.tipo_bem ? ` (${bemLabel[g.tipo_bem] ?? g.tipo_bem})` : ""}
+                        {g.descricao ? ` — ${g.descricao}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {isUSD && ptax > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: "#7A5A12", background: "#FEF9C3", padding: "5px 10px", borderRadius: 6, display: "inline-block" }}>
+                    Câmbio de captação (PTAX referência): USD 1 = R$ {fmtN(ptax, 4)}
+                  </div>
+                )}
+              </div>
+
+              {/* Grid de parcelas */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+                <div style={secH}>Parcelas</div>
+                {c.parcelas.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 13 }}>Nenhuma parcela cadastrada</div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#F4F6FA" }}>
+                        <th style={{ ...thSt, textAlign: "center", width: 40 }}>#</th>
+                        <th style={thSt}>Vencimento</th>
+                        <th style={{ ...thSt, textAlign: "right" }}>Amortização</th>
+                        <th style={{ ...thSt, textAlign: "right" }}>Juros</th>
+                        <th style={{ ...thSt, textAlign: "right" }}>Encargos</th>
+                        <th style={{ ...thSt, textAlign: "right" }}>Valor Parcela</th>
+                        {isUSD && <th style={{ ...thSt, textAlign: "right" }}>Equiv. R$</th>}
+                        {isUSD && <th style={{ ...thSt, textAlign: "right" }}>PTAX ref.</th>}
+                        <th style={{ ...thSt, textAlign: "center" }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {c.parcelas.map((p, pi) => {
+                        const sc = statusCor[p.status] ?? statusCor.em_aberto;
+                        const valBRL = isUSD && ptax > 0 ? p.valor_parcela * ptax : null;
+                        return (
+                          <tr key={pi} style={{ background: pi % 2 === 0 ? "#fff" : "#F9FAFB" }}>
+                            <td style={{ ...tdSt, textAlign: "center", color: "#888", fontSize: 11 }}>{p.num_parcela}</td>
+                            <td style={{ ...tdSt, whiteSpace: "nowrap" }}>{fmtDt(p.data_vencimento)}</td>
+                            <td style={{ ...tdSt, textAlign: "right", fontFamily: "monospace" }}>{isUSD ? `USD ${fmtN(p.amortizacao, 2)}` : fmtR(p.amortizacao)}</td>
+                            <td style={{ ...tdSt, textAlign: "right", fontFamily: "monospace" }}>{isUSD ? `USD ${fmtN(p.juros, 2)}` : fmtR(p.juros)}</td>
+                            <td style={{ ...tdSt, textAlign: "right", fontFamily: "monospace", color: "#888" }}>{isUSD ? `USD ${fmtN(p.despesas_acessorios, 2)}` : fmtR(p.despesas_acessorios)}</td>
+                            <td style={{ ...tdSt, textAlign: "right", fontFamily: "monospace", fontWeight: 700 }}>{isUSD ? `USD ${fmtN(p.valor_parcela, 2)}` : fmtR(p.valor_parcela)}</td>
+                            {isUSD && <td style={{ ...tdSt, textAlign: "right", fontFamily: "monospace", color: "#555" }}>{valBRL ? fmtR(valBRL) : "—"}</td>}
+                            {isUSD && <td style={{ ...tdSt, textAlign: "right", color: "#888", fontSize: 11 }}>{ptax > 0 ? `R$ ${fmtN(ptax, 4)}` : "—"}</td>}
+                            <td style={{ ...tdSt, textAlign: "center" }}>
+                              <span style={{ background: sc.bg, color: sc.txt, padding: "2px 8px", borderRadius: 5, fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>
+                                {statusLabel[p.status] ?? p.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Rodapé — totais */}
+              <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", background: "#F4F6FA", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 32 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total Pago</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#16A34A" }}>
+                        {isUSD ? `USD ${fmtN(totalPago, 2)}` : fmtR(totalPago)}
+                        {isUSD && ptax > 0 && <span style={{ fontSize: 11, color: "#888", fontWeight: 400, marginLeft: 6 }}>≈ {fmtR(totalPago * ptax)}</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Total a Vencer</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: totalAberto > 0 ? "#1A4870" : "#888" }}>
+                        {isUSD ? `USD ${fmtN(totalAberto, 2)}` : fmtR(totalAberto)}
+                        {isUSD && ptax > 0 && <span style={{ fontSize: 11, color: "#888", fontWeight: 400, marginLeft: 6 }}>≈ {fmtR(totalAberto * ptax)}</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase", marginBottom: 2 }}>Parcelas</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#555" }}>
+                        {c.parcelas.filter(p => p.status === "pago").length}/{c.parcelas.length} pagas
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer" }}>Fechar</button>
+                    <a href="/financeiro/contratos" style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Abrir em Contratos →</a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

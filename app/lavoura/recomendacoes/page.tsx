@@ -810,7 +810,19 @@ export default function RecomendacoesPage() {
   async function concluirExecucao(ajustes: RecTalhao[], operador: string, obs: string) {
     if (!modalExec) return;
     const { rec } = modalExec;
-    const todosFeitos = ajustes.every(a => a.concluido);
+    // Status: "concluída" só quando TODOS os talhões estão marcados E área total ≥ 99% da recomendada
+    const areaExecTotal = ajustes.filter(a => a.concluido).reduce((s, a) => s + (Number(a.area_executada_ha) || 0), 0);
+    const areaRecTotal  = ajustes.reduce((s, a) => s + (a.area_recomendada_ha || 0), 0);
+    const todosFeitos = ajustes.every(a => a.concluido) && areaExecTotal >= areaRecTotal * 0.99;
+
+    // Delta de área para esta execução — evita dupla baixa em execuções parciais incrementais
+    const { talhoes: talhoesAntes } = modalExec;
+    const areaExecDelta = ajustes
+      .filter(a => a.concluido)
+      .reduce((s, a) => {
+        const antes = Number(talhoesAntes.find(t => t.id === a.id)?.area_executada_ha) || 0;
+        return s + Math.max(0, (Number(a.area_executada_ha) || 0) - antes);
+      }, 0);
 
     // Atualiza área executada por talhão
     for (const a of ajustes) {
@@ -840,9 +852,9 @@ export default function RecomendacoesPage() {
       updated_at: new Date().toISOString(),
     }).eq("id", rec.id);
 
-    // Se concluída: integração completa com estoque e custos
-    if (todosFeitos) {
-      const areaExec = ajustes.filter(a => a.concluido).reduce((s, a) => s + (Number(a.area_executada_ha) || 0), 0);
+    // Integração com estoque e custos — executa sempre que há área nova nesta chamada
+    if (areaExecDelta > 0) {
+      const areaExec = areaExecDelta;
       const produtos = modalExec.produtos;
       const hoje = new Date().toISOString().slice(0, 10);
 

@@ -161,7 +161,7 @@ export type MovimentacaoEstoque = {
   insumo_id: string;
   fazenda_id: string;
   tipo: "entrada" | "saida" | "ajuste";
-  motivo?: "compra" | "ajuste_saldo" | "baixa_uso" | "baixa_perda" | "transferencia" | "inventario" | "outros";
+  motivo?: "compra" | "ajuste_saldo" | "baixa_uso" | "baixa_perda" | "transferencia" | "inventario" | "outros" | "abastecimento";
   quantidade: number;
   valor_unitario?: number;
   custo_unitario_na_baixa?: number;

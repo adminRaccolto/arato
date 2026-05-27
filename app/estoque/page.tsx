@@ -826,17 +826,17 @@ export default function Estoque() {
                     <button key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#D5E8F5" : "#fff", color: filtroMov === k ? "#0B2D50" : "#666", borderColor: filtroMov === k ? "#1A487040" : "#D4DCE8" }}>{l}</button>
                   ))}
                 </div>
-                <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>{movs.filter(m => filtroMov === "todos" || m.tipo === filtroMov).length} registros</span>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>{movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
                 <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => setModalMov(true)}>± Nova Movimentação</button>
               </div>
               <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Origem"]} />
                   <tbody>
-                    {movs.filter(m => filtroMov === "todos" || m.tipo === filtroMov).length === 0 && (
+                    {movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length === 0 && (
                       <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma movimentação registrada</td></tr>
                     )}
-                    {movs.filter(m => filtroMov === "todos" || m.tipo === filtroMov).map((m, i, arr) => {
+                    {movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).map((m, i, arr) => {
                       const ins = insumos.find(x => x.id === m.insumo_id);
                       const dep = depositos.find(x => x.id === m.deposito_id);
                       const MOTIVO_LABEL: Record<string, string> = { compra: "Compra", ajuste_saldo: "Ajuste saldo", baixa_uso: "Baixa uso", baixa_perda: "Baixa perda", transferencia: "Transferência", inventario: "Inventário", outros: "Outros" };
