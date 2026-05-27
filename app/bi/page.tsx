@@ -2717,129 +2717,123 @@ export default function BI() {
         const tdSt: React.CSSProperties = { padding: "7px 10px", fontSize: 12, color: "#1a1a1a", borderBottom: "0.5px solid #EEF1F6" };
         const secH: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #D4DCE8" };
 
+        // ── Abre preview em nova aba ─────────────────────────────
+        const abrirPreview = () => {
+          const win = window.open("", "_blank");
+          if (!win) { alert("Permita popups neste site para visualizar o documento."); return; }
+          const linhasParcelas = c.parcelas.map((p, pi) => {
+            const valBRL = isUSD && ptax > 0 ? p.valor_parcela * ptax : null;
+            const statusCss = p.status === "pago"
+              ? "background:#DCFCE7;color:#166534"
+              : p.status === "vencido"
+              ? "background:#FEE2E2;color:#991B1B"
+              : "background:#EBF3FC;color:#0C447C";
+            return `<tr style="background:${pi % 2 === 0 ? "#fff" : "#F4F6FA"}">
+              <td style="padding:4px 6px;text-align:center;color:#888">${p.num_parcela}</td>
+              <td style="padding:4px 6px;white-space:nowrap">${p.data_vencimento.split("-").reverse().join("/")}</td>
+              <td style="padding:4px 6px;text-align:right;font-family:monospace">${isUSD ? `USD ${fmtN(p.amortizacao,2)}` : fmtR(p.amortizacao)}</td>
+              <td style="padding:4px 6px;text-align:right;font-family:monospace">${isUSD ? `USD ${fmtN(p.juros,2)}` : fmtR(p.juros)}</td>
+              <td style="padding:4px 6px;text-align:right;font-family:monospace;color:#888">${isUSD ? `USD ${fmtN(p.despesas_acessorios,2)}` : fmtR(p.despesas_acessorios)}</td>
+              <td style="padding:4px 6px;text-align:right;font-family:monospace;font-weight:700">${isUSD ? `USD ${fmtN(p.valor_parcela,2)}` : fmtR(p.valor_parcela)}</td>
+              ${isUSD ? `<td style="padding:4px 6px;text-align:right;font-family:monospace;color:#555">${valBRL ? fmtR(valBRL) : "—"}</td>` : ""}
+              ${isUSD ? `<td style="padding:4px 6px;text-align:right;color:#888">${ptax > 0 ? `R$ ${fmtN(ptax,4)}` : "—"}</td>` : ""}
+              <td style="padding:4px 6px;text-align:center"><span style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;${statusCss}">${p.status === "pago" ? "Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span></td>
+            </tr>`;
+          }).join("");
+          const garantiasHtml = c.garantias.length > 0
+            ? `<div style="margin-bottom:12px;padding:6px 10px;background:#FBF3E0;border-radius:6px;border:0.5px solid #C9921B30">
+                <span style="font-size:9px;color:#7A5A12;font-weight:700;text-transform:uppercase;margin-right:8px">Garantias:</span>
+                ${c.garantias.map(g => `<span style="font-size:10px;color:#7A5A12;margin-right:10px">• ${garantiaLabel[g.tipo_garantia??""]}${g.tipo_bem?` (${bemLabel[g.tipo_bem??""]})`:""}${g.descricao?` — ${g.descricao}`:""}</span>`).join("")}
+               </div>`
+            : "";
+          const thPrint = "padding:5px 6px;color:#fff;font-weight:700;font-size:9px;white-space:nowrap;";
+          const colsExtrasHead = isUSD ? `<th style="${thPrint}text-align:right">Equiv. R$</th><th style="${thPrint}text-align:right">PTAX ref.</th>` : "";
+          const emissao = new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+          win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>RacTech — ${c.descricao}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
+  .toolbar{position:sticky;top:0;background:#1A4870;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .toolbar-title{color:#fff;font-size:13px;font-weight:600}
+  .btn-print{display:flex;align-items:center;gap:8px;background:#fff;color:#1A4870;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-print:hover{background:#f0f5fa}
+  .page-wrapper{display:flex;justify-content:center;padding:28px}
+  .page{background:#fff;width:297mm;padding:14mm 16mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+  @media print{
+    @page{size:A4 landscape;margin:12mm 14mm}
+    body{background:#fff}
+    .toolbar{display:none!important}
+    .page-wrapper{padding:0}
+    .page{box-shadow:none;width:100%;padding:0}
+  }
+</style></head><body>
+<div class="toolbar">
+  <span class="toolbar-title">RacTech — Contrato Financeiro / RT</span>
+  <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+</div>
+<div class="page-wrapper"><div class="page">
+  <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:4px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.5px">RacTech</span>
+      <span style="font-size:10px;color:rgba(255,255,255,.55);font-style:italic">Menos cliques, mais campo</span>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:9px;color:rgba(255,255,255,.6)">Emitido em ${emissao}</div>
+      ${fazenda ? `<div style="font-size:11px;color:#fff;font-weight:700">${fazenda.nome}${fazenda.municipio?` — ${fazenda.municipio}/${fazenda.estado}`:""}</div>` : ""}
+    </div>
+  </div>
+  <div style="border-bottom:2px solid #1A4870;padding-bottom:7px;margin-bottom:12px">
+    <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Contrato Financeiro — Recurso de Terceiros</div>
+    <div style="font-size:16px;font-weight:800;color:#1A4870;line-height:1.2">${c.descricao}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 24px;margin-bottom:12px">
+    ${[
+      ["Produtor / Tomador", c.produtorNome || "Não informado"],
+      ["Instituição Financeira", c.credor || "—"],
+      ["Nº da Cédula / Operação", c.numero_documento || "—"],
+      ["Data do Contrato", fmtDt(c.data_contrato) || "—"],
+      ["Tipo de Recurso", tipoLabel[c.tipo] ?? c.tipo],
+      ["Moeda", isUSD ? "Dólar (USD)" : "Real (BRL)"],
+      ["Taxa de Juros", c.taxa_juros_aa ? `${fmtN(c.taxa_juros_aa,2)}% a.a.` : "—"],
+      ["Indexador / Linha de Crédito", c.linha_credito || "—"],
+      ["Periodicidade", periodLabel],
+      ["Valor Captado", isUSD ? `USD ${fmtN(c.valor_financiado,2)}` : fmtR(c.valor_financiado)],
+      ...(isUSD && ptax > 0 ? [["Câmbio Ref. (PTAX)", `USD 1 = R$ ${fmtN(ptax,4)}`]] : []),
+    ].map(([k,v]) => `<div style="display:flex;gap:6px"><span style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;min-width:130px;flex-shrink:0">${k}:</span><span style="font-size:10px;font-weight:500">${v}</span></div>`).join("")}
+  </div>
+  ${garantiasHtml}
+  <div style="font-size:9px;font-weight:700;color:#1A4870;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #1A4870">Parcelas (${c.parcelas.length})</div>
+  <table style="width:100%;border-collapse:collapse;font-size:10px">
+    <thead><tr style="background:#1A4870">
+      <th style="${thPrint}text-align:center">#</th>
+      <th style="${thPrint}text-align:left">Vencimento</th>
+      <th style="${thPrint}text-align:right">Amortização</th>
+      <th style="${thPrint}text-align:right">Juros</th>
+      <th style="${thPrint}text-align:right">Encargos</th>
+      <th style="${thPrint}text-align:right">Valor Parcela</th>
+      ${colsExtrasHead}
+      <th style="${thPrint}text-align:center">Status</th>
+    </tr></thead>
+    <tbody>${linhasParcelas}</tbody>
+  </table>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px;padding-top:8px;border-top:1.5px solid #1A4870">
+    <div style="display:flex;gap:32px">
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Total Pago</div>
+        <div style="font-size:13px;font-weight:800;color:#16A34A">${isUSD ? `USD ${fmtN(totalPago,2)}` : fmtR(totalPago)}${isUSD && ptax > 0 ? ` ≈ ${fmtR(totalPago*ptax)}` : ""}</div></div>
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Total a Vencer</div>
+        <div style="font-size:13px;font-weight:800;color:#1A4870">${isUSD ? `USD ${fmtN(totalAberto,2)}` : fmtR(totalAberto)}${isUSD && ptax > 0 ? ` ≈ ${fmtR(totalAberto*ptax)}` : ""}</div></div>
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Parcelas Pagas</div>
+        <div style="font-size:13px;font-weight:800;color:#555">${c.parcelas.filter(p=>p.status==="pago").length}/${c.parcelas.length}</div></div>
+    </div>
+    <div style="font-size:9px;color:#aaa">Gerado pelo RacTech · ${new Date().toLocaleDateString("pt-BR")}</div>
+  </div>
+</div></div>
+</body></html>`);
+          win.document.close();
+        };
+
         return (
-          <>
-          <style>{`
-            @media print {
-              @page { size: A4 landscape; margin: 12mm 15mm; }
-              body > * { visibility: hidden !important; }
-              #rt-contrato-print { display: block !important; visibility: visible !important; position: fixed !important; inset: 0 !important; background: #fff !important; z-index: 99999 !important; }
-              #rt-contrato-print * { visibility: visible !important; }
-            }
-          `}</style>
-
-          {/* ── Área de impressão (oculta na tela, visível no print) ── */}
-          <div id="rt-contrato-print" style={{ display: "none", fontFamily: "system-ui, sans-serif", color: "#1a1a1a", fontSize: 11 }}>
-            {/* Topo azul */}
-            <div style={{ background: "#1A4870", padding: "10px 0 10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <span style={{ fontSize: 22, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px" }}>RacTech</span>
-                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", fontStyle: "italic" }}>Menos cliques, mais campo</span>
-              </div>
-              <div style={{ textAlign: "right", paddingRight: 16 }}>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}>Emitido em {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-                {fazenda && <div style={{ fontSize: 11, color: "#fff", fontWeight: 700 }}>{fazenda.nome}{fazenda.municipio ? ` — ${fazenda.municipio}/${fazenda.estado}` : ""}</div>}
-              </div>
-            </div>
-
-            {/* Título do documento */}
-            <div style={{ borderBottom: "2px solid #1A4870", paddingBottom: 8, marginBottom: 12 }}>
-              <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Contrato Financeiro — Recurso de Terceiros</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "#1A4870", lineHeight: 1.2 }}>{c.descricao}</div>
-            </div>
-
-            {/* Dados principais — 2 colunas */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", marginBottom: 12 }}>
-              {[
-                ["Produtor / Tomador", c.produtorNome || "Não informado"],
-                ["Instituição Financeira", c.credor || "—"],
-                ["Nº da Cédula / Operação", c.numero_documento || "—"],
-                ["Data do Contrato", fmtDt(c.data_contrato) || "—"],
-                ["Tipo de Recurso", tipoLabel[c.tipo] ?? c.tipo],
-                ["Moeda", isUSD ? "Dólar (USD)" : "Real (BRL)"],
-                ["Taxa de Juros", c.taxa_juros_aa ? `${fmtN(c.taxa_juros_aa, 2)}% a.a.` : "—"],
-                ["Indexador / Linha de Crédito", c.linha_credito || "—"],
-                ["Periodicidade", periodLabel],
-                ["Valor Captado", isUSD ? `USD ${fmtN(c.valor_financiado, 2)}` : fmtR(c.valor_financiado)],
-                ...(isUSD && ptax > 0 ? [["Câmbio de Referência (PTAX)", `USD 1 = R$ ${fmtN(ptax, 4)}`]] : []),
-              ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", gap: 6 }}>
-                  <span style={{ fontSize: 9, color: "#888", fontWeight: 700, textTransform: "uppercase", minWidth: 140, whiteSpace: "nowrap" }}>{k}:</span>
-                  <span style={{ fontSize: 10, color: "#1a1a1a", fontWeight: 500 }}>{v}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Garantias */}
-            {c.garantias.length > 0 && (
-              <div style={{ marginBottom: 12, padding: "6px 10px", background: "#FBF3E0", borderRadius: 6, border: "0.5px solid #C9921B50" }}>
-                <span style={{ fontSize: 9, color: "#7A5A12", fontWeight: 700, textTransform: "uppercase", marginRight: 8 }}>Garantias:</span>
-                {c.garantias.map((g, gi) => (
-                  <span key={gi} style={{ fontSize: 10, color: "#7A5A12", marginRight: 10 }}>
-                    • {garantiaLabel[g.tipo_garantia ?? ""] || g.tipo_garantia || "—"}
-                    {g.tipo_bem ? ` (${bemLabel[g.tipo_bem] ?? g.tipo_bem})` : ""}
-                    {g.descricao ? ` — ${g.descricao}` : ""}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Tabela de parcelas */}
-            <div style={{ fontSize: 9, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, paddingBottom: 4, borderBottom: "0.5px solid #1A4870" }}>Parcelas ({c.parcelas.length})</div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
-              <thead>
-                <tr style={{ background: "#1A4870" }}>
-                  {["#", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", ...(isUSD ? ["Equiv. R$", "PTAX ref."] : []), "Status"].map(h => (
-                    <th key={h} style={{ padding: "4px 6px", color: "#fff", fontWeight: 700, textAlign: h === "#" || h === "Status" ? "center" : "right", whiteSpace: "nowrap", fontSize: 9, ...(h === "Vencimento" || h === "#" ? { textAlign: "left" } : {}) }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {c.parcelas.map((p, pi) => {
-                  const sc = statusCor[p.status] ?? statusCor.em_aberto;
-                  const valBRL = isUSD && ptax > 0 ? p.valor_parcela * ptax : null;
-                  return (
-                    <tr key={pi} style={{ background: pi % 2 === 0 ? "#fff" : "#F4F6FA" }}>
-                      <td style={{ padding: "3px 6px", textAlign: "center", color: "#888", fontWeight: 600 }}>{p.num_parcela}</td>
-                      <td style={{ padding: "3px 6px", whiteSpace: "nowrap" }}>{fmtDt(p.data_vencimento)}</td>
-                      <td style={{ padding: "3px 6px", textAlign: "right", fontFamily: "monospace" }}>{isUSD ? `USD ${fmtN(p.amortizacao, 2)}` : fmtR(p.amortizacao)}</td>
-                      <td style={{ padding: "3px 6px", textAlign: "right", fontFamily: "monospace" }}>{isUSD ? `USD ${fmtN(p.juros, 2)}` : fmtR(p.juros)}</td>
-                      <td style={{ padding: "3px 6px", textAlign: "right", fontFamily: "monospace", color: "#888" }}>{isUSD ? `USD ${fmtN(p.despesas_acessorios, 2)}` : fmtR(p.despesas_acessorios)}</td>
-                      <td style={{ padding: "3px 6px", textAlign: "right", fontFamily: "monospace", fontWeight: 700 }}>{isUSD ? `USD ${fmtN(p.valor_parcela, 2)}` : fmtR(p.valor_parcela)}</td>
-                      {isUSD && <td style={{ padding: "3px 6px", textAlign: "right", fontFamily: "monospace", color: "#555" }}>{valBRL ? fmtR(valBRL) : "—"}</td>}
-                      {isUSD && <td style={{ padding: "3px 6px", textAlign: "right", color: "#888" }}>{ptax > 0 ? `R$ ${fmtN(ptax, 4)}` : "—"}</td>}
-                      <td style={{ padding: "3px 6px", textAlign: "center" }}>
-                        <span style={{ background: sc.bg, color: sc.txt, padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700 }}>
-                          {statusLabel[p.status] ?? p.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            {/* Rodapé com totais */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 12, paddingTop: 8, borderTop: "1px solid #1A4870" }}>
-              <div style={{ display: "flex", gap: 32 }}>
-                <div>
-                  <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", fontWeight: 700, marginBottom: 2 }}>Total Pago</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#16A34A" }}>{isUSD ? `USD ${fmtN(totalPago, 2)}` : fmtR(totalPago)}{isUSD && ptax > 0 ? ` ≈ ${fmtR(totalPago * ptax)}` : ""}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", fontWeight: 700, marginBottom: 2 }}>Total a Vencer</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#1A4870" }}>{isUSD ? `USD ${fmtN(totalAberto, 2)}` : fmtR(totalAberto)}{isUSD && ptax > 0 ? ` ≈ ${fmtR(totalAberto * ptax)}` : ""}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, color: "#888", textTransform: "uppercase", fontWeight: 700, marginBottom: 2 }}>Parcelas Pagas</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#555" }}>{c.parcelas.filter(p => p.status === "pago").length}/{c.parcelas.length}</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 9, color: "#aaa", textAlign: "right" }}>Gerado pelo RacTech · {new Date().toLocaleDateString("pt-BR")}</div>
-            </div>
-          </div>
-
-          {/* ── Modal interativo ── */}
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 20 }}
             onClick={e => { if (e.target === e.currentTarget) setRtContratoModal(null); }}>
             <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.28)", overflow: "hidden" }}>
@@ -2982,7 +2976,7 @@ export default function BI() {
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button onClick={() => setRtContratoModal(null)} style={{ padding: "8px 18px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "#555", cursor: "pointer" }}>Fechar</button>
-                    <button onClick={() => window.print()} style={{ padding: "8px 18px", background: "#F4F6FA", border: "0.5px solid #1A4870", borderRadius: 8, fontSize: 12, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>Imprimir / PDF</button>
+                    <button onClick={abrirPreview} style={{ padding: "8px 18px", background: "#F4F6FA", border: "0.5px solid #1A4870", borderRadius: 8, fontSize: 12, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>Visualizar / PDF</button>
                     <a href="/financeiro/contratos" style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>Abrir em Contratos →</a>
                   </div>
                 </div>
@@ -2990,7 +2984,6 @@ export default function BI() {
 
             </div>
           </div>
-          </>
         );
       })()}
     </div>

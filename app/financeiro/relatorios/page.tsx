@@ -2,6 +2,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
+import { abrirPreviewImpressao } from "../../../lib/print";
 import { listarLancamentos, listarEmpresas, listarContas, listarOperacoesGerenciais, listarProdutores } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import type { Lancamento, Empresa, ContaBancaria, OperacaoGerencial, Produtor } from "../../../lib/supabase";
@@ -263,12 +264,15 @@ function FinanceiroRelatoriosInner() {
             </h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
           </div>
-          <button onClick={() => window.print()} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            ⟳ Exportar PDF
+          <button onClick={() => {
+            const el = document.getElementById("fluxo-print-content");
+            abrirPreviewImpressao("Fluxo de Caixa", el?.innerHTML ?? "", "landscape");
+          }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Visualizar / PDF
           </button>
         </header>
 
-        <div style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
+        <div id="fluxo-print-content" style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 
           {carregando && (
             <div style={{ textAlign: "center", padding: 40, color: "#444" }}>Carregando dados financeiros…</div>

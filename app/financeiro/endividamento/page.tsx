@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { useAuth } from "@/components/AuthProvider";
-import type { ContratoFinanceiro, ParcelaPagamento, GarantiaContrato } from "@/lib/supabase";
+import { useAuth } from "../../../components/AuthProvider";
+import TopNav from "../../../components/TopNav";
+import type { ContratoFinanceiro, ParcelaPagamento, GarantiaContrato } from "../../../lib/supabase";
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -216,29 +217,108 @@ export default function RelatorioEndividamento() {
     </div>
   );
 
+  function abrirPreviewEndividamento() {
+    const win = window.open("", "_blank");
+    if (!win) { alert("Permita popups neste site para visualizar o documento."); return; }
+    const emissao = new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    const linhas = filtrados.flatMap(c =>
+      c.parcelas.map((p, pi) => {
+        const stCss = p.status === "pago" ? "background:#DCFCE7;color:#166534" : p.status === "vencido" ? "background:#FEE2E2;color:#991B1B" : "background:#EBF3FC;color:#0C447C";
+        return `<tr style="background:${pi%2===0?"#fff":"#F8FAFC"}">
+          <td style="padding:3px 8px">${c.credor}</td>
+          <td style="padding:3px 8px;color:#888;font-size:10px">${TIPO_LABEL[c.tipo]??c.tipo}</td>
+          <td style="padding:3px 8px;text-align:center">${p.num_parcela}</td>
+          <td style="padding:3px 8px;white-space:nowrap">${p.data_vencimento.split("-").reverse().join("/")}</td>
+          <td style="padding:3px 8px;text-align:right;font-family:monospace">${fmtBRL(p.amortizacao)}</td>
+          <td style="padding:3px 8px;text-align:right;font-family:monospace;color:#C9921B">${fmtBRL(p.juros)}</td>
+          <td style="padding:3px 8px;text-align:right;font-family:monospace;font-weight:700">${fmtBRL(p.valor_parcela)}</td>
+          <td style="padding:3px 8px;text-align:right;color:#E24B4A">${fmtBRL(p.saldo_devedor)}</td>
+          <td style="padding:3px 8px;text-align:center"><span style="padding:1px 7px;border-radius:4px;font-size:9px;font-weight:700;${stCss}">${p.status==="pago"?"Pago":p.status==="vencido"?"Vencido":"Em aberto"}</span></td>
+        </tr>`;
+      })
+    ).join("");
+    win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>RacTech — Relatório de Endividamento</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:#D1D5DB;color:#1a1a1a}
+  .toolbar{position:sticky;top:0;background:#1A4870;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .toolbar-title{color:#fff;font-size:13px;font-weight:600}
+  .btn-print{display:flex;align-items:center;gap:8px;background:#fff;color:#1A4870;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .btn-print:hover{background:#f0f5fa}
+  .page-wrapper{display:flex;justify-content:center;padding:28px}
+  .page{background:#fff;width:297mm;padding:14mm 16mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+  table{width:100%;border-collapse:collapse;font-size:10px}
+  th{padding:5px 8px;background:#1A4870;color:#fff;font-weight:700;font-size:9px;text-align:right;white-space:nowrap}
+  th:first-child,th:nth-child(2){text-align:left}
+  td{padding:3px 8px;border-bottom:.5px solid #EEF1F6;vertical-align:middle}
+  @media print{
+    @page{size:A4 landscape;margin:12mm 14mm}
+    body{background:#fff}
+    .toolbar{display:none!important}
+    .page-wrapper{padding:0}
+    .page{box-shadow:none;width:100%;padding:0}
+  }
+</style></head><body>
+<div class="toolbar">
+  <span class="toolbar-title">RacTech — Relatório de Endividamento</span>
+  <button class="btn-print" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+</div>
+<div class="page-wrapper"><div class="page">
+  <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:4px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.5px">RacTech</span>
+      <span style="font-size:10px;color:rgba(255,255,255,.55);font-style:italic">Menos cliques, mais campo</span>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:9px;color:rgba(255,255,255,.6)">Emitido em ${emissao}</div>
+    </div>
+  </div>
+  <div style="border-bottom:2px solid #1A4870;padding-bottom:7px;margin-bottom:14px">
+    <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Financeiro — Capital de Terceiros</div>
+    <div style="font-size:16px;font-weight:800;color:#1A4870">Relatório de Endividamento</div>
+    <div style="font-size:10px;color:#555;margin-top:3px">${filtrados.length} contrato${filtrados.length!==1?"s":""} · Total Captado: ${fmtBRL(totalCaptado)} · Saldo Devedor: ${fmtBRL(totalSaldo)} · Amortizado: ${fmtBRL(totalPago)}</div>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="text-align:left">Instituição</th>
+      <th style="text-align:left">Tipo</th>
+      <th style="text-align:center">Parc.</th>
+      <th>Vencimento</th>
+      <th>Amortização</th>
+      <th>Juros</th>
+      <th>Valor Parcela</th>
+      <th>Saldo Devedor</th>
+      <th style="text-align:center">Status</th>
+    </tr></thead>
+    <tbody>${linhas}</tbody>
+  </table>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;padding-top:8px;border-top:1.5px solid #1A4870">
+    <div style="display:flex;gap:28px">
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Total Captado</div><div style="font-size:12px;font-weight:800;color:#1A4870">${fmtBRL(totalCaptado)}</div></div>
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Saldo Devedor</div><div style="font-size:12px;font-weight:800;color:#E24B4A">${fmtBRL(totalSaldo)}</div></div>
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Total Amortizado</div><div style="font-size:12px;font-weight:800;color:#16A34A">${fmtBRL(totalPago)}</div></div>
+      <div><div style="font-size:9px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">Juros Pagos</div><div style="font-size:12px;font-weight:800;color:#C9921B">${fmtBRL(totalJuros)}</div></div>
+    </div>
+    <div style="font-size:9px;color:#aaa">Gerado pelo RacTech · ${new Date().toLocaleDateString("pt-BR")}</div>
+  </div>
+</div></div>
+</body></html>`);
+    win.document.close();
+  }
+
   return (
     <>
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #print-area, #print-area * { visibility: visible !important; }
-          #print-area { position: fixed; top: 0; left: 0; width: 100%; }
-          .no-print { display: none !important; }
-          @page { margin: 15mm; size: A4 landscape; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; }
-        }
-      `}</style>
-
+      <TopNav />
       <div style={{ padding: "24px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
         {/* Cabeçalho */}
-        <div className="no-print" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Relatório de Endividamento</h1>
             <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>Capital de Terceiros — visão consolidada</div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => window.print()}
+            <button onClick={abrirPreviewEndividamento}
               style={{ padding: "8px 18px", background: "#F0F5FA", border: "0.5px solid #1A487040", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1A4870" }}>
               PDF / Imprimir
             </button>
@@ -250,7 +330,7 @@ export default function RelatorioEndividamento() {
         </div>
 
         {/* Filtros */}
-        <div className="no-print" style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
           {[
             { label: "Todos os status", val: "", field: "status" },
             { label: "Ativos", val: "ativo", field: "status" },
@@ -276,17 +356,7 @@ export default function RelatorioEndividamento() {
           </select>
         </div>
 
-        <div id="print-area">
-          {/* Cabeçalho de impressão */}
-          <div style={{ display: "none" }} className="print-header">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "2px solid #1A4870", paddingBottom: 8, marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "#1A4870" }}>RELATÓRIO DE ENDIVIDAMENTO — CAPITAL DE TERCEIROS</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Emitido em {fmtData(hoje)}</div>
-              </div>
-            </div>
-          </div>
-
+        <div>
           {/* KPI Cards */}
           <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
             {card("Total Captado", fmtBRL(totalCaptado), "#1A4870", `${filtrados.length} contratos`)}
@@ -348,7 +418,7 @@ export default function RelatorioEndividamento() {
                             <th style={th}>Próx. Venc.</th>
                             <th style={th}>Garantias</th>
                             <th style={th}>Status</th>
-                            <th style={{ ...th }} className="no-print"></th>
+                            <th style={{ ...th }}></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -425,7 +495,7 @@ export default function RelatorioEndividamento() {
                                       {c.status === "ativo" ? "Ativo" : c.status === "quitado" ? "Quitado" : "Cancelado"}
                                     </span>
                                   </td>
-                                  <td style={td} className="no-print">
+                                  <td style={td}>
                                     {c.parcelas.length > 0 && (
                                       <button onClick={() => setExpandido(isExp ? null : c.id)}
                                         style={{ padding: "4px 10px", background: "#F0F5FA", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, cursor: "pointer", color: "#1A4870" }}>
@@ -519,7 +589,7 @@ export default function RelatorioEndividamento() {
                             <td style={{ padding: "8px 10px", textAlign: "right", color: "#16A34A" }}>{fmtBRL(subTotalPago)}</td>
                             <td style={{ padding: "8px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(subTotalSaldo)}</td>
                             <td colSpan={6} />
-                            <td className="no-print" />
+                            <td />
                           </tr>
                         </tfoot>
                       </table>

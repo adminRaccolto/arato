@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
+import { abrirPreviewImpressao } from "../../../lib/print";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import { listarFazendas } from "../../../lib/db";
@@ -463,7 +464,7 @@ export default function DrePage() {
   return (
     <>
       <TopNav />
-      <main style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
+      <main id="dre-print-content" style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* ── Cabeçalho ── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
@@ -475,10 +476,13 @@ export default function DrePage() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                const el = document.getElementById("dre-print-content");
+                abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", "landscape", "Demonstrativo de Resultado do Exercício");
+              }}
               style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", cursor: "pointer", fontSize: 13, color: "#444" }}
             >
-              Imprimir PDF
+              Visualizar / PDF
             </button>
           </div>
         </div>
@@ -835,16 +839,6 @@ export default function DrePage() {
 
       </main>
 
-      {/* ── Print styles ── */}
-      <style>{`
-        @media print {
-          body { background: #fff !important; }
-          main { padding: 10px !important; background: #fff !important; }
-          button, input[type="checkbox"], label { display: none !important; }
-          .no-print { display: none !important; }
-          @page { size: A4 landscape; margin: 15mm; }
-        }
-      `}</style>
     </>
   );
 }

@@ -353,13 +353,25 @@ export default function RelAplicacoesPage() {
     return `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>Relatório de Aplicações — ${fazNome}</title>
 <style>
-  body{margin:0;padding:14mm;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#fff}
+  body{margin:0;font-family:Arial,sans-serif;font-size:9pt;color:#1a1a1a;background:#D1D5DB}
+  .rt-toolbar{position:sticky;top:0;background:#1A4870;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .rt-toolbar span{color:#fff;font-size:13px;font-weight:700}
+  .rt-btn{background:#fff;color:#1A4870;border:none;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+  .rt-btn:hover{background:#f0f5fa}
+  .rt-page-wrapper{display:flex;justify-content:center;padding:24px}
+  .rt-page{background:#fff;width:297mm;padding:14mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
   @page{size:A4 landscape;margin:14mm}
+  @media print{body{background:#fff}.rt-toolbar{display:none!important}.rt-page-wrapper{padding:0}.rt-page{box-shadow:none;width:100%;padding:0}}
   table{width:100%;border-collapse:collapse;font-size:8pt}
   th{background:#1A4870;color:#fff;padding:4px 6px;text-align:left;border:1px solid #1A4870;white-space:nowrap}
   th.r{text-align:right} tfoot td{background:#1A4870;color:#fff;font-weight:700;padding:4px 6px;border:1px solid #1A4870}
   .r{text-align:right}
 </style></head><body>
+<div class="rt-toolbar">
+  <span>RacTech — Relatório de Aplicações</span>
+  <button class="rt-btn" onclick="window.print()">&#128438; Imprimir / Salvar PDF</button>
+</div>
+<div class="rt-page-wrapper"><div class="rt-page">
 <div style="border-bottom:2px solid #1A4870;padding-bottom:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start">
   <div style="display:flex;align-items:center;gap:12px">
     ${logoFaz ? `<img src="${logoFaz}" style="height:40px;object-fit:contain">` : ""}
@@ -413,6 +425,7 @@ export default function RelAplicacoesPage() {
   <span>RacTech — Gestão Agrícola de Precisão</span>
   <span>Gerado em ${dataGeracao}</span>
 </div>
+</div></div>
 </body></html>`;
   };
 
@@ -567,7 +580,6 @@ export default function RelAplicacoesPage() {
     win.document.write(buildPrintHtml(imgArato));
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); }, 400);
   };
 
   // ── Exportar XLSX ─────────────────────────────────────────
