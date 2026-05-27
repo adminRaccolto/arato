@@ -2523,33 +2523,95 @@ export default function BI() {
 
         {/* ═══════════ EVOLUÇÃO DE ENDIVIDAMENTO ═══════════ */}
         {!loading && aba === "evolucao" && (() => {
-          // Constrói série ano a ano com saldo acumulado
-          const serieAnos = (() => {
-            let saldoAcum = 0;
-            return rtPorAno.map(b => {
-              saldoAcum += b.captado - b.pago;
-              const varPct = b.captado > 0 ? ((b.captado - b.pago) / b.captado) * 100 : 0;
-              return { ...b, saldoAcum, varPct };
-            });
-          })();
+          const temDados = rtTotalCaptado > 0 || rtTotalPago > 0;
 
-          const maxCaptado = Math.max(...serieAnos.map(b => b.captado), 1);
-          const maxAcum    = Math.max(...serieAnos.map(b => b.saldoAcum), 1);
-          const temDados   = rtTotalCaptado > 0 || rtTotalPago > 0;
+          // Anos disponíveis (eixo horizontal = colunas)
+          const anos = rtPorAno.map(b => b.label);
 
-          // KPIs globais
-          const anoMaiorCaptacao = serieAnos.reduce((a, b) => b.captado > a.captado ? b : a, serieAnos[0] ?? { label: "—", captado: 0 });
-          const anoMaiorPagto    = serieAnos.reduce((a, b) => b.pago > a.pago ? b : a, serieAnos[0] ?? { label: "—", pago: 0 });
+          // Captação por ano (já está em rtPorAno)
+          const captPorAno: Record<string, number> = {};
+          for (const b of rtPorAno) captPorAno[b.label] = b.captado;
+
+          // Curto prazo: CPR, Custeio, EGF  |  Longo prazo: Financiamento, PRONAF, Empréstimo, Outros
+          const CURTO_TIPOS = new Set(["CPR", "Custeio", "EGF"]);
+          const curtoPorAno: Record<string, number> = {};
+          const longoPorAno: Record<string, number> = {};
+          for (const ano of anos) { curtoPorAno[ano] = 0; longoPorAno[ano] = 0; }
+          for (const l of lancamentosFiltrados) {
+            if (!isCaptacao(l)) continue;
+            const lbl = l.ano_safra_id
+              ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
+              : l.data_vencimento.slice(0, 4);
+            if (!(lbl in curtoPorAno)) { curtoPorAno[lbl] = 0; longoPorAno[lbl] = 0; }
+            if (CURTO_TIPOS.has(tipoRT(l))) curtoPorAno[lbl] += l.valor;
+            else                            longoPorAno[lbl] += l.valor;
+          }
+
+          // Por moeda
+          const moedasPresentes = [...new Set(
+            lancamentosFiltrados.filter(l => isCaptacao(l)).map(l => l.moeda)
+          )].sort();
+          const captPorMoedaAno: Record<string, Record<string, number>> = {};
+          for (const m of moedasPresentes) {
+            captPorMoedaAno[m] = {};
+            for (const ano of anos) captPorMoedaAno[m][ano] = 0;
+          }
+          for (const l of lancamentosFiltrados) {
+            if (!isCaptacao(l)) continue;
+            const lbl = l.ano_safra_id
+              ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
+              : l.data_vencimento.slice(0, 4);
+            if (!captPorMoedaAno[l.moeda]) captPorMoedaAno[l.moeda] = {};
+            captPorMoedaAno[l.moeda][lbl] = (captPorMoedaAno[l.moeda][lbl] ?? 0) + l.valor;
+          }
+
+          // Helper: variação vs ano anterior
+          const varR   = (vals: Record<string, number>, ano: string, i: number) => i === 0 ? null : vals[ano] - vals[anos[i - 1]];
+          const varPct = (vals: Record<string, number>, ano: string, i: number) => {
+            if (i === 0) return null;
+            const prev = vals[anos[i - 1]];
+            return prev > 0 ? ((vals[ano] - prev) / prev) * 100 : null;
+          };
+
+          // Estilos comuns
+          const thSt: React.CSSProperties = { padding: "8px 10px", fontSize: 10, fontWeight: 600, color: "#555", textAlign: "right", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap", background: "#F3F6F9" };
+          const thFirst: React.CSSProperties = { ...thSt, textAlign: "left", minWidth: 160, position: "sticky", left: 0, background: "#F3F6F9", zIndex: 1 };
+          const tdSt: React.CSSProperties = { padding: "8px 10px", fontSize: 12, textAlign: "right", borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" };
+          const tdFirst: React.CSSProperties = { ...tdSt, textAlign: "left", fontWeight: 600, fontSize: 11, color: "#1a1a1a", position: "sticky", left: 0, background: "inherit", zIndex: 1 };
+          const tdSub: React.CSSProperties = { ...tdSt, fontSize: 11, color: "#888" };
+          const tdSubFirst: React.CSSProperties = { ...tdFirst, fontWeight: 400, color: "#888", fontSize: 11, paddingLeft: 20 };
+
+          const sectionHeader = (titulo: string, subtitulo: string) => (
+            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{titulo}</span>
+              <span style={{ fontSize: 11, color: "#888" }}>{subtitulo}</span>
+            </div>
+          );
+
+          const varCell = (v: number | null, isR: boolean) => {
+            if (v === null) return <td style={tdSub}>—</td>;
+            const up = v > 0;
+            const cor = up ? "#E24B4A" : "#16A34A";
+            const txt = isR
+              ? `${up ? "+" : ""}${fmtR(v)}`
+              : `${up ? "+" : ""}${v.toFixed(1)}%`;
+            return <td style={{ ...tdSub, color: cor, fontWeight: 600 }}>{up ? "▲" : "▼"} {txt}</td>;
+          };
+
+          const maxCapt = Math.max(...anos.map(a => captPorAno[a] ?? 0), 1);
+          const maxCurto = Math.max(...anos.map(a => curtoPorAno[a] ?? 0), 1);
+          const maxLongo = Math.max(...anos.map(a => longoPorAno[a] ?? 0), 1);
+          const maxPrazo = Math.max(maxCurto, maxLongo);
 
           return (
-            <div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* KPIs globais */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
                 {[
-                  { label: "Total Captado (acumulado)",    v: fmtR(rtTotalCaptado),  color: "#14532D", bg: "#ECFDF5",  hint: "Soma de todos os aportes de terceiros" },
-                  { label: "Total Amortizado",             v: fmtR(rtTotalPago),     color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido em todos os anos" },
-                  { label: "Saldo Devedor Atual",          v: fmtR(rtSaldoDevedor),  color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", bg: rtSaldoDevedor > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Saldo total a pagar" },
-                  { label: "Total Juros Pagos",            v: fmtR(rtTotalJuros),    color: "#633806", bg: "#FAEEDA",  hint: "Encargos financeiros históricos" },
+                  { label: "Total Captado",    v: fmtR(rtTotalCaptado),  color: "#14532D", hint: "Soma histórica de todos os aportes" },
+                  { label: "Total Amortizado", v: fmtR(rtTotalPago),     color: "#0C447C", hint: "Principal devolvido" },
+                  { label: "Saldo Devedor",    v: fmtR(rtSaldoDevedor),  color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", hint: "Saldo ainda não pago" },
+                  { label: "Juros Pagos",      v: fmtR(rtTotalJuros),    color: "#633806", hint: "Encargos financeiros históricos" },
                 ].map(k => (
                   <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }} title={k.hint}>
                     <div style={{ fontSize: 10, color: "#666", marginBottom: 5 }}>{k.label}</div>
@@ -2565,126 +2627,221 @@ export default function BI() {
               )}
 
               {temDados && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-
-                  {/* ── Tabela ano a ano ── */}
+                <>
+                  {/* ══ BLOCO 1: Evolução da Captação ══ */}
                   <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                    <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Evolução Ano a Ano</span>
-                      <span style={{ fontSize: 11, color: "#888" }}>captação · amortização · juros · saldo acumulado</span>
+                    {sectionHeader("Evolução da Captação", "crescimento ou queda ano a ano — anos como colunas")}
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 120 + 180 }}>
+                        <thead>
+                          <tr>
+                            <th style={thFirst}>Métrica</th>
+                            {anos.map(a => <th key={a} style={thSt}>{a}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Linha: Captado no ano */}
+                          <tr style={{ background: "#fff" }}>
+                            <td style={tdFirst}>Captado no ano</td>
+                            {anos.map(a => (
+                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#14532D" }}>{fmtR(captPorAno[a] ?? 0)}</td>
+                            ))}
+                          </tr>
+                          {/* Linha: barra visual */}
+                          <tr style={{ background: "#FAFBFD" }}>
+                            <td style={{ ...tdSubFirst }}>volume relativo</td>
+                            {anos.map(a => {
+                              const w = maxCapt > 0 ? ((captPorAno[a] ?? 0) / maxCapt) * 100 : 0;
+                              return (
+                                <td key={a} style={{ padding: "6px 10px" }}>
+                                  <div style={{ height: 8, borderRadius: 4, background: "#EEF1F6", overflow: "hidden" }}>
+                                    <div style={{ height: "100%", width: `${w}%`, background: "#1A4870", borderRadius: 4 }} />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          {/* Linha: variação R$ */}
+                          <tr style={{ background: "#fff" }}>
+                            <td style={tdSubFirst}>variação vs ano ant. (R$)</td>
+                            {anos.map((a, i) => varCell(varR(captPorAno, a, i), true))}
+                          </tr>
+                          {/* Linha: variação % */}
+                          <tr style={{ background: "#FAFBFD", borderBottom: "1.5px solid #D4DCE8" }}>
+                            <td style={tdSubFirst}>variação vs ano ant. (%)</td>
+                            {anos.map((a, i) => varCell(varPct(captPorAno, a, i), false))}
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
-                          {["Ano / Safra", "Captado", "Amortização", "Juros Pagos", "Encargos Pend.", "Saldo do Período", "Saldo Acumulado", "Var. (%)"].map((h, i) => (
-                            <th key={i} style={{ padding: "8px 12px", fontSize: 10, fontWeight: 600, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {serieAnos.map((b, bi) => {
-                          const saldoPeriodo = b.captado - b.pago;
-                          const cresce = saldoPeriodo > 0;
-                          return (
-                            <tr key={bi} style={{ borderBottom: "0.5px solid #EEF1F6", background: bi % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                              <td style={{ padding: "10px 12px", fontWeight: 700, fontSize: 13 }}>{b.label}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: "#14532D", fontWeight: 600 }}>{fmtR(b.captado)}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: "#0C447C" }}>{fmtR(b.pago)}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: "#633806" }}>{fmtR(b.juros)}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: b.jurosPend > 0 ? "#EF9F27" : "#888" }}>{b.jurosPend > 0 ? fmtR(b.jurosPend) : "—"}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: cresce ? "#E24B4A" : "#16A34A" }}>
-                                {cresce ? "+" : ""}{fmtR(saldoPeriodo)}
+                  </div>
+
+                  {/* ══ BLOCO 2: Curto vs Longo Prazo ══ */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                    {sectionHeader("Curto × Longo Prazo", "Curto = CPR, Custeio, EGF  ·  Longo = Financiamento, PRONAF, Empréstimo")}
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 120 + 180 }}>
+                        <thead>
+                          <tr>
+                            <th style={thFirst}>Tipo</th>
+                            {anos.map(a => <th key={a} style={thSt}>{a}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* CURTO PRAZO */}
+                          <tr style={{ background: "#F0FDF4" }}>
+                            <td style={{ ...tdFirst, color: "#14532D" }}>Curto Prazo</td>
+                            {anos.map(a => (
+                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#14532D" }}>
+                                {(curtoPorAno[a] ?? 0) > 0 ? fmtR(curtoPorAno[a]) : <span style={{ color: "#ccc" }}>—</span>}
                               </td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: b.saldoAcum > 0 ? "#791F1F" : "#14532D" }}>{fmtR(b.saldoAcum)}</td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 11, color: cresce ? "#E24B4A" : "#16A34A" }}>
-                                {cresce ? "▲" : "▼"} {Math.abs(b.varPct).toFixed(1)}%
+                            ))}
+                          </tr>
+                          <tr style={{ background: "#F7FEF9" }}>
+                            <td style={{ ...tdSubFirst, paddingLeft: 20 }}>barra</td>
+                            {anos.map(a => {
+                              const w = maxPrazo > 0 ? ((curtoPorAno[a] ?? 0) / maxPrazo) * 100 : 0;
+                              return (
+                                <td key={a} style={{ padding: "5px 10px" }}>
+                                  <div style={{ height: 7, borderRadius: 4, background: "#D1FAE5", overflow: "hidden" }}>
+                                    <div style={{ height: "100%", width: `${w}%`, background: "#16A34A", borderRadius: 4 }} />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          <tr style={{ background: "#F0FDF4" }}>
+                            <td style={tdSubFirst}>var. vs ant. (R$)</td>
+                            {anos.map((a, i) => varCell(varR(curtoPorAno, a, i), true))}
+                          </tr>
+                          <tr style={{ background: "#F7FEF9", borderBottom: "1.5px solid #D4DCE8" }}>
+                            <td style={tdSubFirst}>var. vs ant. (%)</td>
+                            {anos.map((a, i) => varCell(varPct(curtoPorAno, a, i), false))}
+                          </tr>
+
+                          {/* LONGO PRAZO */}
+                          <tr style={{ background: "#EFF6FF" }}>
+                            <td style={{ ...tdFirst, color: "#0C447C" }}>Longo Prazo</td>
+                            {anos.map(a => (
+                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#0C447C" }}>
+                                {(longoPorAno[a] ?? 0) > 0 ? fmtR(longoPorAno[a]) : <span style={{ color: "#ccc" }}>—</span>}
                               </td>
+                            ))}
+                          </tr>
+                          <tr style={{ background: "#F5F9FF" }}>
+                            <td style={{ ...tdSubFirst, paddingLeft: 20 }}>barra</td>
+                            {anos.map(a => {
+                              const w = maxPrazo > 0 ? ((longoPorAno[a] ?? 0) / maxPrazo) * 100 : 0;
+                              return (
+                                <td key={a} style={{ padding: "5px 10px" }}>
+                                  <div style={{ height: 7, borderRadius: 4, background: "#BFDBFE", overflow: "hidden" }}>
+                                    <div style={{ height: "100%", width: `${w}%`, background: "#1A4870", borderRadius: 4 }} />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                          <tr style={{ background: "#EFF6FF" }}>
+                            <td style={tdSubFirst}>var. vs ant. (R$)</td>
+                            {anos.map((a, i) => varCell(varR(longoPorAno, a, i), true))}
+                          </tr>
+                          <tr style={{ background: "#F5F9FF", borderBottom: "1.5px solid #D4DCE8" }}>
+                            <td style={tdSubFirst}>var. vs ant. (%)</td>
+                            {anos.map((a, i) => varCell(varPct(longoPorAno, a, i), false))}
+                          </tr>
+
+                          {/* Participação curto/longo */}
+                          <tr style={{ background: "#FAFBFD" }}>
+                            <td style={{ ...tdFirst, fontSize: 10, color: "#555", fontWeight: 600 }}>% Curto / % Longo</td>
+                            {anos.map(a => {
+                              const tot = (curtoPorAno[a] ?? 0) + (longoPorAno[a] ?? 0);
+                              if (tot === 0) return <td key={a} style={tdSub}>—</td>;
+                              const cp = ((curtoPorAno[a] ?? 0) / tot) * 100;
+                              const lp = 100 - cp;
+                              return (
+                                <td key={a} style={{ padding: "6px 10px" }}>
+                                  <div style={{ height: 8, borderRadius: 4, overflow: "hidden", display: "flex" }}>
+                                    <div title={`Curto: ${cp.toFixed(0)}%`} style={{ height: "100%", width: `${cp}%`, background: "#16A34A" }} />
+                                    <div title={`Longo: ${lp.toFixed(0)}%`} style={{ height: "100%", width: `${lp}%`, background: "#1A4870" }} />
+                                  </div>
+                                  <div style={{ fontSize: 9, color: "#888", marginTop: 2, textAlign: "center" }}>
+                                    <span style={{ color: "#16A34A", fontWeight: 600 }}>{cp.toFixed(0)}%</span>
+                                    {" / "}
+                                    <span style={{ color: "#1A4870", fontWeight: 600 }}>{lp.toFixed(0)}%</span>
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* ══ BLOCO 3: Por Moeda ══ */}
+                  {moedasPresentes.length > 0 && (
+                    <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                      {sectionHeader("Evolução por Moeda", "BRL = valor nominal  ·  USD = valor na moeda de origem")}
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 120 + 180 }}>
+                          <thead>
+                            <tr>
+                              <th style={thFirst}>Moeda</th>
+                              {anos.map(a => <th key={a} style={thSt}>{a}</th>)}
                             </tr>
-                          );
-                        })}
-                        {/* Linha de total */}
-                        <tr style={{ background: "#F3F6F9", borderTop: "1.5px solid #D4DCE8" }}>
-                          <td style={{ padding: "10px 12px", fontWeight: 700, fontSize: 12 }}>TOTAL</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#14532D" }}>{fmtR(rtTotalCaptado)}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#0C447C" }}>{fmtR(rtTotalPago)}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#633806" }}>{fmtR(rtTotalJuros)}</td>
-                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: rtJurosPend > 0 ? "#EF9F27" : "#888" }}>{rtJurosPend > 0 ? fmtR(rtJurosPend) : "—"}</td>
-                          <td colSpan={2} style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D" }}>{fmtR(rtSaldoDevedor)}</td>
-                          <td />
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* ── Gráfico de barras: Captado vs Amortizado por ano ── */}
-                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 20px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Captação × Amortização por Ano</div>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>barras empilhadas — verde = amortizado, azul = saldo devedor</div>
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 160, borderBottom: "1px solid #EEF1F6", paddingBottom: 8 }}>
-                      {serieAnos.map((b, bi) => {
-                        const hCaptado = maxCaptado > 0 ? (b.captado / maxCaptado) * 140 : 0;
-                        const hPago    = b.captado > 0 ? (b.pago    / b.captado) * hCaptado : 0;
-                        const hSaldo   = hCaptado - hPago;
-                        return (
-                          <div key={bi} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                            <div style={{ fontSize: 9, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtR(b.captado)}</div>
-                            <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                              <div style={{ width: "100%", maxWidth: 48, display: "flex", flexDirection: "column-reverse", height: Math.max(hCaptado, 4) + "px" }}>
-                                <div title={`Amortizado: ${fmtR(b.pago)}`} style={{ width: "100%", height: hPago + "px", background: "#16A34A", borderRadius: "0 0 4px 4px" }} />
-                                <div title={`Saldo devedor: ${fmtR(b.saldo)}`} style={{ width: "100%", height: Math.max(hSaldo, 0) + "px", background: "#1A4870" }} />
-                              </div>
-                            </div>
-                            <div style={{ fontSize: 10, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{b.label}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: 10, color: "#555" }}>
-                      <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#1A4870", borderRadius: 2, marginRight: 4 }} />Saldo devedor</span>
-                      <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#16A34A", borderRadius: 2, marginRight: 4 }} />Amortizado</span>
-                    </div>
-                  </div>
-
-                  {/* ── Gráfico de evolução do saldo acumulado ── */}
-                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 20px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Saldo Devedor Acumulado</div>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>evolução do estoque de dívida ao longo dos anos</div>
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 120, borderBottom: "1px solid #EEF1F6", paddingBottom: 8 }}>
-                      {serieAnos.map((b, bi) => {
-                        const h = maxAcum > 0 ? (b.saldoAcum / maxAcum) * 100 : 0;
-                        const cor = b.saldoAcum > (serieAnos[bi - 1]?.saldoAcum ?? 0) ? "#E24B4A" : "#16A34A";
-                        return (
-                          <div key={bi} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                            <div style={{ fontSize: 9, color: cor, fontWeight: 700, whiteSpace: "nowrap" }}>{fmtR(b.saldoAcum)}</div>
-                            <div style={{ width: "100%", maxWidth: 48, height: Math.max(h, 4) + "px", background: cor, borderRadius: 4 }} title={`Saldo acumulado: ${fmtR(b.saldoAcum)}`} />
-                            <div style={{ fontSize: 10, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{b.label}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 8 }}>
-                      <span style={{ color: "#E24B4A", fontWeight: 600 }}>▲ vermelho</span> = endividamento crescendo &nbsp;·&nbsp;
-                      <span style={{ color: "#16A34A", fontWeight: 600 }}>▼ verde</span> = endividamento reduzindo
-                    </div>
-                  </div>
-
-                  {/* ── Destaques ── */}
-                  {serieAnos.length > 0 && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div style={{ background: "#ECFDF5", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #A7F3D0" }}>
-                        <div style={{ fontSize: 10, color: "#065F46", fontWeight: 600, marginBottom: 4 }}>ANO DE MAIOR CAPTAÇÃO</div>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: "#065F46" }}>{anoMaiorCaptacao.label}</div>
-                        <div style={{ fontSize: 12, color: "#047857", marginTop: 2 }}>{fmtR(anoMaiorCaptacao.captado)} captados</div>
-                      </div>
-                      <div style={{ background: "#EBF3FC", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #BFDBFE" }}>
-                        <div style={{ fontSize: 10, color: "#1E3A5F", fontWeight: 600, marginBottom: 4 }}>ANO DE MAIOR PAGAMENTO</div>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: "#1E3A5F" }}>{anoMaiorPagto.label}</div>
-                        <div style={{ fontSize: 12, color: "#0C447C", marginTop: 2 }}>{fmtR(anoMaiorPagto.pago)} amortizados</div>
+                          </thead>
+                          <tbody>
+                            {moedasPresentes.map((moeda, mi) => {
+                              const vals = captPorMoedaAno[moeda] ?? {};
+                              const maxM = Math.max(...anos.map(a => vals[a] ?? 0), 1);
+                              const corM  = moeda === "BRL" ? "#14532D" : moeda === "USD" ? "#7C3AED" : "#633806";
+                              const bgRow = moeda === "BRL" ? "#F0FDF4" : moeda === "USD" ? "#F5F3FF" : "#FAEEDA";
+                              const bgSub = moeda === "BRL" ? "#F7FEF9" : moeda === "USD" ? "#FAF7FF" : "#FBF3E0";
+                              const barCor = moeda === "BRL" ? "#16A34A" : moeda === "USD" ? "#7C3AED" : "#EF9F27";
+                              const barBg  = moeda === "BRL" ? "#D1FAE5" : moeda === "USD" ? "#DDD6FE" : "#FDE9BB";
+                              return (
+                                <React.Fragment key={moeda}>
+                                  <tr style={{ background: bgRow, borderTop: mi > 0 ? "1.5px solid #D4DCE8" : undefined }}>
+                                    <td style={{ ...tdFirst, color: corM }}>
+                                      {moeda === "BRL" ? "🇧🇷 Real (BRL)" : moeda === "USD" ? "🇺🇸 Dólar (USD)" : moeda}
+                                    </td>
+                                    {anos.map(a => (
+                                      <td key={a} style={{ ...tdSt, fontWeight: 700, color: corM }}>
+                                        {(vals[a] ?? 0) > 0 ? fmtR(vals[a]) : <span style={{ color: "#ccc" }}>—</span>}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                  <tr style={{ background: bgSub }}>
+                                    <td style={tdSubFirst}>barra</td>
+                                    {anos.map(a => {
+                                      const w = maxM > 0 ? ((vals[a] ?? 0) / maxM) * 100 : 0;
+                                      return (
+                                        <td key={a} style={{ padding: "5px 10px" }}>
+                                          <div style={{ height: 7, borderRadius: 4, background: barBg, overflow: "hidden" }}>
+                                            <div style={{ height: "100%", width: `${w}%`, background: barCor, borderRadius: 4 }} />
+                                          </div>
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                  <tr style={{ background: bgRow }}>
+                                    <td style={tdSubFirst}>var. vs ant. (R$)</td>
+                                    {anos.map((a, i) => varCell(varR(vals, a, i), true))}
+                                  </tr>
+                                  <tr style={{ background: bgSub }}>
+                                    <td style={tdSubFirst}>var. vs ant. (%)</td>
+                                    {anos.map((a, i) => varCell(varPct(vals, a, i), false))}
+                                  </tr>
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
 
-                </div>
+                </>
               )}
             </div>
           );
