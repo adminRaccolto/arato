@@ -45,9 +45,9 @@ const GARANTIA_LABEL: Record<string, string> = {
   outros: "Outros",
 };
 
-const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-const fmtN = (v: number, d = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
-const fmtPct = (v: number) => `${fmtN(v, 1)}%`;
+const fmtBRL = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+const fmtN = (v: number | null | undefined, d = 2) => (v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtPct = (v: number | null | undefined) => `${fmtN(v ?? 0, 1)}%`;
 const fmtData = (s: string) => {
   if (!s) return "—";
   const [y, m, d] = s.slice(0, 10).split("-");
@@ -72,6 +72,7 @@ export default function RelatorioEndividamento() {
   const { fazendaId } = useAuth();
   const [contratos, setContratos] = useState<ContratoEnriquecido[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("ativo");
   const [filtroMoeda, setFiltroMoeda] = useState("");
@@ -80,13 +81,15 @@ export default function RelatorioEndividamento() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
+    setErro(null);
     try {
-      const { data: ctsRaw } = await supabase
+      const { data: ctsRaw, error: ctsErr } = await supabase
         .from("contratos_financeiros")
         .select("*")
         .eq("fazenda_id", fazendaId)
         .order("data_contrato");
 
+      if (ctsErr) { console.error("endividamento/contratos:", ctsErr); setContratos([]); return; }
       if (!ctsRaw) { setContratos([]); return; }
 
       const ids = ctsRaw.map((c: ContratoFinanceiro) => c.id);
@@ -131,6 +134,9 @@ export default function RelatorioEndividamento() {
       });
 
       setContratos(enriched);
+    } catch (e) {
+      console.error("endividamento error:", e);
+      setErro(String(e));
     } finally {
       setLoading(false);
     }
@@ -371,6 +377,15 @@ export default function RelatorioEndividamento() {
 
           {loading ? (
             <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Carregando contratos...</div>
+          ) : erro ? (
+            <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #FCA5A5" }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#B91C1C" }}>Erro ao carregar dados</div>
+              <div style={{ fontSize: 12, color: "#888", marginTop: 8, marginBottom: 16 }}>{erro}</div>
+              <button onClick={carregar} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>
+                Tentar novamente
+              </button>
+            </div>
           ) : filtrados.length === 0 ? (
             <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>🏦</div>
