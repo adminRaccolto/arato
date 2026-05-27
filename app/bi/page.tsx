@@ -2525,8 +2525,8 @@ export default function BI() {
         {!loading && aba === "evolucao" && (() => {
           const temDados = rtTotalCaptado > 0 || rtTotalPago > 0;
 
-          // Anos disponíveis (eixo horizontal = colunas)
-          const anos = rtPorAno.map(b => b.label);
+          // Anos em ordem crescente (rtPorAno vem decrescente por padrão)
+          const anos = rtPorAno.map(b => b.label).slice().sort((a, b) => a.localeCompare(b));
 
           // Captação por ano (já está em rtPorAno)
           const captPorAno: Record<string, number> = {};
@@ -2598,11 +2598,6 @@ export default function BI() {
             return <td style={{ ...tdSub, color: cor, fontWeight: 600 }}>{up ? "▲" : "▼"} {txt}</td>;
           };
 
-          const maxCapt = Math.max(...anos.map(a => captPorAno[a] ?? 0), 1);
-          const maxCurto = Math.max(...anos.map(a => curtoPorAno[a] ?? 0), 1);
-          const maxLongo = Math.max(...anos.map(a => longoPorAno[a] ?? 0), 1);
-          const maxPrazo = Math.max(maxCurto, maxLongo);
-
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* KPIs globais */}
@@ -2630,9 +2625,9 @@ export default function BI() {
                 <>
                   {/* ══ BLOCO 1: Evolução da Captação ══ */}
                   <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                    {sectionHeader("Evolução da Captação", "crescimento ou queda ano a ano — anos como colunas")}
+                    {sectionHeader("Evolução da Captação", "crescimento ou queda ano a ano — anos em ordem crescente")}
                     <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 120 + 180 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 130 + 200 }}>
                         <thead>
                           <tr>
                             <th style={thFirst}>Métrica</th>
@@ -2640,34 +2635,19 @@ export default function BI() {
                           </tr>
                         </thead>
                         <tbody>
-                          {/* Linha: Captado no ano */}
                           <tr style={{ background: "#fff" }}>
                             <td style={tdFirst}>Captado no ano</td>
                             {anos.map(a => (
-                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#14532D" }}>{fmtR(captPorAno[a] ?? 0)}</td>
+                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#14532D" }}>
+                                {(captPorAno[a] ?? 0) > 0 ? fmtR(captPorAno[a]) : <span style={{ color: "#ccc" }}>—</span>}
+                              </td>
                             ))}
                           </tr>
-                          {/* Linha: barra visual */}
                           <tr style={{ background: "#FAFBFD" }}>
-                            <td style={{ ...tdSubFirst }}>volume relativo</td>
-                            {anos.map(a => {
-                              const w = maxCapt > 0 ? ((captPorAno[a] ?? 0) / maxCapt) * 100 : 0;
-                              return (
-                                <td key={a} style={{ padding: "6px 10px" }}>
-                                  <div style={{ height: 8, borderRadius: 4, background: "#EEF1F6", overflow: "hidden" }}>
-                                    <div style={{ height: "100%", width: `${w}%`, background: "#1A4870", borderRadius: 4 }} />
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                          {/* Linha: variação R$ */}
-                          <tr style={{ background: "#fff" }}>
                             <td style={tdSubFirst}>variação vs ano ant. (R$)</td>
                             {anos.map((a, i) => varCell(varR(captPorAno, a, i), true))}
                           </tr>
-                          {/* Linha: variação % */}
-                          <tr style={{ background: "#FAFBFD", borderBottom: "1.5px solid #D4DCE8" }}>
+                          <tr style={{ background: "#fff", borderBottom: "1.5px solid #D4DCE8" }}>
                             <td style={tdSubFirst}>variação vs ano ant. (%)</td>
                             {anos.map((a, i) => varCell(varPct(captPorAno, a, i), false))}
                           </tr>
@@ -2698,23 +2678,10 @@ export default function BI() {
                             ))}
                           </tr>
                           <tr style={{ background: "#F7FEF9" }}>
-                            <td style={{ ...tdSubFirst, paddingLeft: 20 }}>barra</td>
-                            {anos.map(a => {
-                              const w = maxPrazo > 0 ? ((curtoPorAno[a] ?? 0) / maxPrazo) * 100 : 0;
-                              return (
-                                <td key={a} style={{ padding: "5px 10px" }}>
-                                  <div style={{ height: 7, borderRadius: 4, background: "#D1FAE5", overflow: "hidden" }}>
-                                    <div style={{ height: "100%", width: `${w}%`, background: "#16A34A", borderRadius: 4 }} />
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                          <tr style={{ background: "#F0FDF4" }}>
                             <td style={tdSubFirst}>var. vs ant. (R$)</td>
                             {anos.map((a, i) => varCell(varR(curtoPorAno, a, i), true))}
                           </tr>
-                          <tr style={{ background: "#F7FEF9", borderBottom: "1.5px solid #D4DCE8" }}>
+                          <tr style={{ background: "#F0FDF4", borderBottom: "1.5px solid #D4DCE8" }}>
                             <td style={tdSubFirst}>var. vs ant. (%)</td>
                             {anos.map((a, i) => varCell(varPct(curtoPorAno, a, i), false))}
                           </tr>
@@ -2729,28 +2696,15 @@ export default function BI() {
                             ))}
                           </tr>
                           <tr style={{ background: "#F5F9FF" }}>
-                            <td style={{ ...tdSubFirst, paddingLeft: 20 }}>barra</td>
-                            {anos.map(a => {
-                              const w = maxPrazo > 0 ? ((longoPorAno[a] ?? 0) / maxPrazo) * 100 : 0;
-                              return (
-                                <td key={a} style={{ padding: "5px 10px" }}>
-                                  <div style={{ height: 7, borderRadius: 4, background: "#BFDBFE", overflow: "hidden" }}>
-                                    <div style={{ height: "100%", width: `${w}%`, background: "#1A4870", borderRadius: 4 }} />
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                          <tr style={{ background: "#EFF6FF" }}>
                             <td style={tdSubFirst}>var. vs ant. (R$)</td>
                             {anos.map((a, i) => varCell(varR(longoPorAno, a, i), true))}
                           </tr>
-                          <tr style={{ background: "#F5F9FF", borderBottom: "1.5px solid #D4DCE8" }}>
+                          <tr style={{ background: "#EFF6FF", borderBottom: "1.5px solid #D4DCE8" }}>
                             <td style={tdSubFirst}>var. vs ant. (%)</td>
                             {anos.map((a, i) => varCell(varPct(longoPorAno, a, i), false))}
                           </tr>
 
-                          {/* Participação curto/longo */}
+                          {/* Participação curto/longo — apenas texto */}
                           <tr style={{ background: "#FAFBFD" }}>
                             <td style={{ ...tdFirst, fontSize: 10, color: "#555", fontWeight: 600 }}>% Curto / % Longo</td>
                             {anos.map(a => {
@@ -2759,16 +2713,10 @@ export default function BI() {
                               const cp = ((curtoPorAno[a] ?? 0) / tot) * 100;
                               const lp = 100 - cp;
                               return (
-                                <td key={a} style={{ padding: "6px 10px" }}>
-                                  <div style={{ height: 8, borderRadius: 4, overflow: "hidden", display: "flex" }}>
-                                    <div title={`Curto: ${cp.toFixed(0)}%`} style={{ height: "100%", width: `${cp}%`, background: "#16A34A" }} />
-                                    <div title={`Longo: ${lp.toFixed(0)}%`} style={{ height: "100%", width: `${lp}%`, background: "#1A4870" }} />
-                                  </div>
-                                  <div style={{ fontSize: 9, color: "#888", marginTop: 2, textAlign: "center" }}>
-                                    <span style={{ color: "#16A34A", fontWeight: 600 }}>{cp.toFixed(0)}%</span>
-                                    {" / "}
-                                    <span style={{ color: "#1A4870", fontWeight: 600 }}>{lp.toFixed(0)}%</span>
-                                  </div>
+                                <td key={a} style={{ ...tdSub, textAlign: "center" }}>
+                                  <span style={{ color: "#16A34A", fontWeight: 600 }}>{cp.toFixed(0)}%</span>
+                                  <span style={{ color: "#888" }}> / </span>
+                                  <span style={{ color: "#1A4870", fontWeight: 600 }}>{lp.toFixed(0)}%</span>
                                 </td>
                               );
                             })}
@@ -2793,12 +2741,9 @@ export default function BI() {
                           <tbody>
                             {moedasPresentes.map((moeda, mi) => {
                               const vals = captPorMoedaAno[moeda] ?? {};
-                              const maxM = Math.max(...anos.map(a => vals[a] ?? 0), 1);
                               const corM  = moeda === "BRL" ? "#14532D" : moeda === "USD" ? "#7C3AED" : "#633806";
                               const bgRow = moeda === "BRL" ? "#F0FDF4" : moeda === "USD" ? "#F5F3FF" : "#FAEEDA";
                               const bgSub = moeda === "BRL" ? "#F7FEF9" : moeda === "USD" ? "#FAF7FF" : "#FBF3E0";
-                              const barCor = moeda === "BRL" ? "#16A34A" : moeda === "USD" ? "#7C3AED" : "#EF9F27";
-                              const barBg  = moeda === "BRL" ? "#D1FAE5" : moeda === "USD" ? "#DDD6FE" : "#FDE9BB";
                               return (
                                 <React.Fragment key={moeda}>
                                   <tr style={{ background: bgRow, borderTop: mi > 0 ? "1.5px solid #D4DCE8" : undefined }}>
@@ -2810,19 +2755,6 @@ export default function BI() {
                                         {(vals[a] ?? 0) > 0 ? fmtR(vals[a]) : <span style={{ color: "#ccc" }}>—</span>}
                                       </td>
                                     ))}
-                                  </tr>
-                                  <tr style={{ background: bgSub }}>
-                                    <td style={tdSubFirst}>barra</td>
-                                    {anos.map(a => {
-                                      const w = maxM > 0 ? ((vals[a] ?? 0) / maxM) * 100 : 0;
-                                      return (
-                                        <td key={a} style={{ padding: "5px 10px" }}>
-                                          <div style={{ height: 7, borderRadius: 4, background: barBg, overflow: "hidden" }}>
-                                            <div style={{ height: "100%", width: `${w}%`, background: barCor, borderRadius: 4 }} />
-                                          </div>
-                                        </td>
-                                      );
-                                    })}
                                   </tr>
                                   <tr style={{ background: bgRow }}>
                                     <td style={tdSubFirst}>var. vs ant. (R$)</td>
