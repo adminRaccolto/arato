@@ -181,7 +181,7 @@ function BarraHorizontal({ value, max, color, label, sub }: { value: number; max
   );
 }
 
-type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "controller";
+type Aba = "painel" | "producao" | "custos" | "comercializacao" | "financeiro" | "sensibilidade" | "cambio" | "terceiros" | "evolucao" | "controller";
 
 // ── Controller: constantes ────────────────────────────────────
 type Severidade = ControllerAlerta["severidade"];
@@ -193,7 +193,7 @@ const CAT_ICONE: Record<Categoria,  string> = { Fiscal: "📄", Financeiro: "�
 
 // ── Componente principal ──────────────────────────────────────
 export default function BI() {
-  const { fazendaId, userRole } = useAuth();
+  const { fazendaId, userRole, logoCliente } = useAuth();
   const router = useRouter();
 
   const [fazenda,     setFazenda]     = useState<Fazenda | null>(null);
@@ -585,14 +585,8 @@ export default function BI() {
   const areaTotal       = fazenda?.area_total_ha ?? 0;
   const rtJurosHa       = areaTotal > 0 ? (rtTotalJuros + rtJurosPend) / areaTotal : 0;
 
-  // Por tipo de operação
+  // Por tipo de operação — calculado dentro do IIFE do RT (veja abaixo) para respeitar o filtro de ano
   const TIPOS_RT = ["CPR", "Custeio", "EGF", "Empréstimo", "Financiamento", "PRONAF", "Outros"];
-  const rtPorTipo = TIPOS_RT.map(tipo => {
-    const captado = lancamentosFiltrados.filter(l => isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
-    const pago    = lancamentosFiltrados.filter(l => isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
-    const juros   = lancamentosFiltrados.filter(l => isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
-    return { tipo, captado, pago, juros, saldo: captado - pago };
-  }).filter(t => t.captado > 0 || t.pago > 0 || t.juros > 0);
 
   const precoSc  = desmascarar(precoMask) || precoBrlSoja;
   const prodHa   = desmascarar(prodMask)  || prodBaseRef;
@@ -650,6 +644,7 @@ export default function BI() {
     { key: "financeiro",      label: "Financeiro", badge: alertasCount },
     { key: "cambio",          label: "Câmbio / USD", badge: usdDescasados > 0 ? usdDescasados : undefined },
     { key: "terceiros",       label: "Recursos de Terceiros" },
+    { key: "evolucao",        label: "Evolução de Endividamento" },
     { key: "sensibilidade",   label: "Sensibilidade" },
     { key: "controller",      label: "Controller", badge: alertasCriticos > 0 ? alertasCriticos : (alertasAtivos > 0 ? alertasAtivos : undefined) },
   ];
@@ -2187,6 +2182,22 @@ export default function BI() {
           // Filtro local por ano/safra
           const rtPorAnoFiltrado = rtFiltroLabel === "todos" ? rtPorAno : rtPorAno.filter(b => b.label === rtFiltroLabel);
           const rtFiltCaptado = rtPorAnoFiltrado.reduce((s, b) => s + b.captado, 0);
+
+          // Lançamentos RT filtrados pelo ano selecionado (para "Por Tipo de Operação")
+          const rtLancsFiltAno = rtFiltroLabel === "todos"
+            ? lancamentosFiltrados
+            : lancamentosFiltrados.filter(l => {
+                const lbl = l.ano_safra_id
+                  ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
+                  : l.data_vencimento.slice(0, 4);
+                return lbl === rtFiltroLabel;
+              });
+          const rtPorTipo = TIPOS_RT.map(tipo => {
+            const captado = rtLancsFiltAno.filter(l => isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
+            const pago    = rtLancsFiltAno.filter(l => isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+            const juros   = rtLancsFiltAno.filter(l => isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+            return { tipo, captado, pago, juros, saldo: captado - pago };
+          }).filter(t => t.captado > 0 || t.pago > 0 || t.juros > 0);
           const rtFiltPago    = rtPorAnoFiltrado.reduce((s, b) => s + b.pago,    0);
           const rtFiltJuros   = rtPorAnoFiltrado.reduce((s, b) => s + b.juros,   0);
           const rtFiltPend    = rtPorAnoFiltrado.reduce((s, b) => s + b.jurosPend, 0);
@@ -2292,9 +2303,9 @@ export default function BI() {
               {/* KPIs */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: "Total Captado",    v: fmtR(rtFiltCaptado),  color: "#14532D", bg: "#ECFDF5",  hint: "Entradas de CPR, custeio, empréstimos, EGF" },
-                  { label: "Pago (Principal)", v: fmtR(rtFiltPago),     color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido (baixados)" },
-                  { label: "Saldo Devedor",    v: fmtR(rtFiltSaldo),    color: rtFiltSaldo > 0 ? "#791F1F" : "#14532D", bg: rtFiltSaldo > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Captado − principal pago" },
+                  { label: "Total Captado",    v: fmtR(rtFiltCaptado),    color: "#14532D", bg: "#ECFDF5",  hint: "Entradas de CPR, custeio, empréstimos, EGF" },
+                  { label: "Pago (Principal)", v: fmtR(rtFiltPago),       color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido (baixados)" },
+                  { label: "Saldo Devedor",    v: fmtR(rtSaldoDevedor),   color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", bg: rtSaldoDevedor > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Saldo devedor total acumulado (todos os anos)" },
                   { label: "Juros Pagos",      v: fmtR(rtFiltJuros),    color: "#633806", bg: "#FAEEDA",  hint: "Juros e encargos baixados" },
                   { label: "Juros / ha",       v: areaTotal > 0 ? fmtR2(rtJurosHaFilt) : "—", color: "#7C3AED", bg: "#F3E8FF", hint: `(juros pagos + pendentes) ÷ ${fmtN(areaTotal,0)} ha` },
                 ].map(k => (
@@ -2506,6 +2517,175 @@ export default function BI() {
                 Identificação automática por palavras-chave em categoria e descrição do lançamento: CPR · Custeio · EGF · Empréstimo · Financiamento · PRONAF · Juros · Encargo.
                 Para garantir classificação correta, use essas palavras-chave ao lançar CP/CR no módulo Financeiro.
               </div>
+            </div>
+          );
+        })()}
+
+        {/* ═══════════ EVOLUÇÃO DE ENDIVIDAMENTO ═══════════ */}
+        {!loading && aba === "evolucao" && (() => {
+          // Constrói série ano a ano com saldo acumulado
+          const serieAnos = (() => {
+            let saldoAcum = 0;
+            return rtPorAno.map(b => {
+              saldoAcum += b.captado - b.pago;
+              const varPct = b.captado > 0 ? ((b.captado - b.pago) / b.captado) * 100 : 0;
+              return { ...b, saldoAcum, varPct };
+            });
+          })();
+
+          const maxCaptado = Math.max(...serieAnos.map(b => b.captado), 1);
+          const maxAcum    = Math.max(...serieAnos.map(b => b.saldoAcum), 1);
+          const temDados   = rtTotalCaptado > 0 || rtTotalPago > 0;
+
+          // KPIs globais
+          const anoMaiorCaptacao = serieAnos.reduce((a, b) => b.captado > a.captado ? b : a, serieAnos[0] ?? { label: "—", captado: 0 });
+          const anoMaiorPagto    = serieAnos.reduce((a, b) => b.pago > a.pago ? b : a, serieAnos[0] ?? { label: "—", pago: 0 });
+
+          return (
+            <div>
+              {/* KPIs globais */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+                {[
+                  { label: "Total Captado (acumulado)",    v: fmtR(rtTotalCaptado),  color: "#14532D", bg: "#ECFDF5",  hint: "Soma de todos os aportes de terceiros" },
+                  { label: "Total Amortizado",             v: fmtR(rtTotalPago),     color: "#0C447C", bg: "#EBF3FC",  hint: "Principal devolvido em todos os anos" },
+                  { label: "Saldo Devedor Atual",          v: fmtR(rtSaldoDevedor),  color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", bg: rtSaldoDevedor > 0 ? "#FCEBEB" : "#ECFDF5", hint: "Saldo total a pagar" },
+                  { label: "Total Juros Pagos",            v: fmtR(rtTotalJuros),    color: "#633806", bg: "#FAEEDA",  hint: "Encargos financeiros históricos" },
+                ].map(k => (
+                  <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }} title={k.hint}>
+                    <div style={{ fontSize: 10, color: "#666", marginBottom: 5 }}>{k.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {!temDados && (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 14, color: "#888" }}>Sem dados de captação registrados.</div>
+                </div>
+              )}
+
+              {temDados && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
+
+                  {/* ── Tabela ano a ano ── */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                    <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Evolução Ano a Ano</span>
+                      <span style={{ fontSize: 11, color: "#888" }}>captação · amortização · juros · saldo acumulado</span>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ background: "#F3F6F9" }}>
+                          {["Ano / Safra", "Captado", "Amortização", "Juros Pagos", "Encargos Pend.", "Saldo do Período", "Saldo Acumulado", "Var. (%)"].map((h, i) => (
+                            <th key={i} style={{ padding: "8px 12px", fontSize: 10, fontWeight: 600, color: "#555", textAlign: i === 0 ? "left" : "right", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {serieAnos.map((b, bi) => {
+                          const saldoPeriodo = b.captado - b.pago;
+                          const cresce = saldoPeriodo > 0;
+                          return (
+                            <tr key={bi} style={{ borderBottom: "0.5px solid #EEF1F6", background: bi % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                              <td style={{ padding: "10px 12px", fontWeight: 700, fontSize: 13 }}>{b.label}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: "#14532D", fontWeight: 600 }}>{fmtR(b.captado)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: "#0C447C" }}>{fmtR(b.pago)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: "#633806" }}>{fmtR(b.juros)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, color: b.jurosPend > 0 ? "#EF9F27" : "#888" }}>{b.jurosPend > 0 ? fmtR(b.jurosPend) : "—"}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: cresce ? "#E24B4A" : "#16A34A" }}>
+                                {cresce ? "+" : ""}{fmtR(saldoPeriodo)}
+                              </td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 12, fontWeight: 700, color: b.saldoAcum > 0 ? "#791F1F" : "#14532D" }}>{fmtR(b.saldoAcum)}</td>
+                              <td style={{ padding: "10px 12px", textAlign: "right", fontSize: 11, color: cresce ? "#E24B4A" : "#16A34A" }}>
+                                {cresce ? "▲" : "▼"} {Math.abs(b.varPct).toFixed(1)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {/* Linha de total */}
+                        <tr style={{ background: "#F3F6F9", borderTop: "1.5px solid #D4DCE8" }}>
+                          <td style={{ padding: "10px 12px", fontWeight: 700, fontSize: 12 }}>TOTAL</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#14532D" }}>{fmtR(rtTotalCaptado)}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#0C447C" }}>{fmtR(rtTotalPago)}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#633806" }}>{fmtR(rtTotalJuros)}</td>
+                          <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: rtJurosPend > 0 ? "#EF9F27" : "#888" }}>{rtJurosPend > 0 ? fmtR(rtJurosPend) : "—"}</td>
+                          <td colSpan={2} style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, fontSize: 12, color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D" }}>{fmtR(rtSaldoDevedor)}</td>
+                          <td />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* ── Gráfico de barras: Captado vs Amortizado por ano ── */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 20px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Captação × Amortização por Ano</div>
+                    <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>barras empilhadas — verde = amortizado, azul = saldo devedor</div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 160, borderBottom: "1px solid #EEF1F6", paddingBottom: 8 }}>
+                      {serieAnos.map((b, bi) => {
+                        const hCaptado = maxCaptado > 0 ? (b.captado / maxCaptado) * 140 : 0;
+                        const hPago    = b.captado > 0 ? (b.pago    / b.captado) * hCaptado : 0;
+                        const hSaldo   = hCaptado - hPago;
+                        return (
+                          <div key={bi} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                            <div style={{ fontSize: 9, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtR(b.captado)}</div>
+                            <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                              <div style={{ width: "100%", maxWidth: 48, display: "flex", flexDirection: "column-reverse", height: Math.max(hCaptado, 4) + "px" }}>
+                                <div title={`Amortizado: ${fmtR(b.pago)}`} style={{ width: "100%", height: hPago + "px", background: "#16A34A", borderRadius: "0 0 4px 4px" }} />
+                                <div title={`Saldo devedor: ${fmtR(b.saldo)}`} style={{ width: "100%", height: Math.max(hSaldo, 0) + "px", background: "#1A4870" }} />
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 10, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{b.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: 10, color: "#555" }}>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#1A4870", borderRadius: 2, marginRight: 4 }} />Saldo devedor</span>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#16A34A", borderRadius: 2, marginRight: 4 }} />Amortizado</span>
+                    </div>
+                  </div>
+
+                  {/* ── Gráfico de evolução do saldo acumulado ── */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 20px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Saldo Devedor Acumulado</div>
+                    <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>evolução do estoque de dívida ao longo dos anos</div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 120, borderBottom: "1px solid #EEF1F6", paddingBottom: 8 }}>
+                      {serieAnos.map((b, bi) => {
+                        const h = maxAcum > 0 ? (b.saldoAcum / maxAcum) * 100 : 0;
+                        const cor = b.saldoAcum > (serieAnos[bi - 1]?.saldoAcum ?? 0) ? "#E24B4A" : "#16A34A";
+                        return (
+                          <div key={bi} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                            <div style={{ fontSize: 9, color: cor, fontWeight: 700, whiteSpace: "nowrap" }}>{fmtR(b.saldoAcum)}</div>
+                            <div style={{ width: "100%", maxWidth: 48, height: Math.max(h, 4) + "px", background: cor, borderRadius: 4 }} title={`Saldo acumulado: ${fmtR(b.saldoAcum)}`} />
+                            <div style={{ fontSize: 10, color: "#555", fontWeight: 600, whiteSpace: "nowrap" }}>{b.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 8 }}>
+                      <span style={{ color: "#E24B4A", fontWeight: 600 }}>▲ vermelho</span> = endividamento crescendo &nbsp;·&nbsp;
+                      <span style={{ color: "#16A34A", fontWeight: 600 }}>▼ verde</span> = endividamento reduzindo
+                    </div>
+                  </div>
+
+                  {/* ── Destaques ── */}
+                  {serieAnos.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ background: "#ECFDF5", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #A7F3D0" }}>
+                        <div style={{ fontSize: 10, color: "#065F46", fontWeight: 600, marginBottom: 4 }}>ANO DE MAIOR CAPTAÇÃO</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#065F46" }}>{anoMaiorCaptacao.label}</div>
+                        <div style={{ fontSize: 12, color: "#047857", marginTop: 2 }}>{fmtR(anoMaiorCaptacao.captado)} captados</div>
+                      </div>
+                      <div style={{ background: "#EBF3FC", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #BFDBFE" }}>
+                        <div style={{ fontSize: 10, color: "#1E3A5F", fontWeight: 600, marginBottom: 4 }}>ANO DE MAIOR PAGAMENTO</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#1E3A5F" }}>{anoMaiorPagto.label}</div>
+                        <div style={{ fontSize: 12, color: "#0C447C", marginTop: 2 }}>{fmtR(anoMaiorPagto.pago)} amortizados</div>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              )}
             </div>
           );
         })()}
@@ -2774,13 +2954,12 @@ export default function BI() {
 </div>
 <div class="page-wrapper"><div class="page">
   <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:4px">
-    <div style="display:flex;align-items:baseline;gap:10px">
-      <span style="font-size:20px;font-weight:900;color:#fff;letter-spacing:-.5px">RacTech</span>
-      <span style="font-size:10px;color:rgba(255,255,255,.55);font-style:italic">Menos cliques, mais campo</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="/Logo_Arato.png" style="height:30px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
     </div>
-    <div style="text-align:right">
+    <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      ${logoCliente ? `<img src="${logoCliente}" style="height:28px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />` : (fazenda ? `<div style="font-size:13px;font-weight:700;color:#fff">${fazenda.nome}</div>` : "")}
       <div style="font-size:9px;color:rgba(255,255,255,.6)">Emitido em ${emissao}</div>
-      ${fazenda ? `<div style="font-size:11px;color:#fff;font-weight:700">${fazenda.nome}${fazenda.municipio?` — ${fazenda.municipio}/${fazenda.estado}`:""}</div>` : ""}
     </div>
   </div>
   <div style="border-bottom:2px solid #1A4870;padding-bottom:7px;margin-bottom:12px">
