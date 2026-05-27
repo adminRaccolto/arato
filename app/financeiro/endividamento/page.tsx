@@ -68,8 +68,13 @@ export default function RelatorioEndividamento() {
   // Mostrar só parcelas em aberto (padrão) ou todas
   const [apenasEmAberto, setApenasEmAberto] = useState(true);
 
-  // Linhas expandidas
-  const [expandido, setExpandido] = useState<string | null>(null);
+  // Linhas expandidas (Set para suportar N1 + N2 abertos simultaneamente)
+  const [expandido, setExpandido] = useState<Set<string>>(new Set());
+  const toggle = (key: string) => setExpandido(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -535,11 +540,11 @@ export default function RelatorioEndividamento() {
                     const n1TotalPer = anos.reduce((s, a) => s + (n1.porAno[a]?.total ?? 0), 0);
                     if (n1TotalPer === 0 && !n1.niveis2.some(n2 => anos.some(a => (n2.porAno[a]?.total ?? 0) > 0))) return null;
                     const rowKey = `n1-${ni}`;
-                    const isExp  = expandido === rowKey;
+                    const isExp  = expandido.has(rowKey);
                     return (
                       <React.Fragment key={rowKey}>
                         {/* N1: Instituição */}
-                        <tr onClick={() => setExpandido(isExp ? null : rowKey)}
+                        <tr onClick={() => toggle(rowKey)}
                           style={{ background: "#EBF3FC", cursor: "pointer", borderBottom: "0.5px solid #D5E8F5" }}>
                           <td style={{ padding: "10px 16px", fontWeight: 700, fontSize: 13, color: "#0B2D50", position: "sticky", left: 0, background: "#EBF3FC", zIndex: 1 }}>
                             <span style={{ fontSize: 10, color: "#1A4870", marginRight: 6, opacity: 0.5 }}>{isExp ? "▼" : "▶"}</span>
@@ -570,10 +575,10 @@ export default function RelatorioEndividamento() {
                         {isExp && n1.niveis2.map((n2, n2i) => {
                           const n2TotalPer = anos.reduce((s, a) => s + (n2.porAno[a]?.total ?? 0), 0);
                           const rowKey2 = `n2-${ni}-${n2i}`;
-                          const isExp2  = expandido === rowKey2;
+                          const isExp2  = expandido.has(rowKey2);
                           return (
                             <React.Fragment key={rowKey2}>
-                              <tr onClick={e => { e.stopPropagation(); setExpandido(isExp2 ? rowKey : rowKey2); }}
+                              <tr onClick={e => { e.stopPropagation(); toggle(rowKey2); }}
                                 style={{ background: "#F4F8FC", borderBottom: "0.5px solid #E5EDF5", cursor: "pointer" }}>
                                 <td style={{ padding: "8px 16px 8px 32px", fontSize: 12, fontWeight: 600, color: "#1A4870", position: "sticky", left: 0, background: "#F4F8FC", zIndex: 1 }}>
                                   <span style={{ fontSize: 9, color: "#888", marginRight: 5 }}>{isExp2 ? "▼" : "▶"}</span>
