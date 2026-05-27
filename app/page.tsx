@@ -126,6 +126,14 @@ export default function Dashboard() {
   const [contratosAtivos, setContratosAtivos] = useState(0);
   const [vencidosCp,      setVencidosCp]      = useState(0);
 
+  // Inconsistências de conciliação bancária
+  interface ConciliPendencia {
+    id: string; conta_nome?: string; data: string; descricao: string;
+    valor: number; tipo: "credito" | "debito"; fitid: string; conta_id?: string;
+  }
+  const [conciliPend, setConciliPend] = useState<ConciliPendencia[]>([]);
+  const [resolvendo, setResolvendo]   = useState<string | null>(null);
+
   // Busca global
   const [buscaGlobal,      setBuscaGlobal]      = useState("");
   const [resultadosBusca,  setResultadosBusca]  = useState<ResultadoBusca[]>([]);
@@ -545,7 +553,57 @@ export default function Dashboard() {
 
       setLoadAl(false);
     }).catch(() => setLoadAl(false));
+
+    // Carrega pendências de conciliação independentemente
+    supabase.from("conciliacao_pendencias")
+      .select("id,conta_nome,conta_id,data,descricao,valor,tipo,fitid")
+      .eq("fazenda_id", fazendaId)
+      .eq("status", "pendente")
+      .order("data", { ascending: false })
+      .then(({ data }) => { if (data) setConciliPend(data as ConciliPendencia[]); });
   }, [fazendaId]);
+
+  // ── Resolve inconsistência de conciliação ────────────────────
+  async function resolverInconsistencia(p: ConciliPendencia, categoria: string) {
+    if (!fazendaId || resolvendo) return;
+    setResolvendo(p.id);
+    try {
+      const isoHoje = new Date().toISOString().slice(0, 10);
+      const tipo = p.tipo === "debito" ? "pagar" : "receber";
+      // Cria lançamento (já baixado)
+      const { data: lanc } = await supabase.from("lancamentos").insert({
+        fazenda_id: fazendaId,
+        tipo,
+        descricao: p.descricao,
+        categoria,
+        moeda: "BRL",
+        valor: p.valor,
+        valor_pago: p.valor,
+        data_lancamento: p.data,
+        data_vencimento: p.data,
+        data_baixa: isoHoje,
+        status: "baixado",
+        conta_bancaria: p.conta_id ?? null,
+        auto: false,
+        observacao: `Lançado automaticamente via inconsistência de conciliação (FITID: ${p.fitid})`,
+      }).select("id").single();
+
+      // Marca a inconsistência como resolvida
+      await supabase.from("conciliacao_pendencias").update({
+        status: "resolvido",
+        lancamento_id: lanc?.id ?? null,
+      }).eq("id", p.id);
+
+      setConciliPend(prev => prev.filter(x => x.id !== p.id));
+    } finally {
+      setResolvendo(null);
+    }
+  }
+
+  async function ignorarInconsistencia(id: string) {
+    await supabase.from("conciliacao_pendencias").update({ status: "ignorado" }).eq("id", id);
+    setConciliPend(prev => prev.filter(x => x.id !== id));
+  }
 
   const saldoSemana = crSemana - cpSemana;
 
@@ -694,6 +752,56 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {/* Inconsistências de Conciliação */}
+            {conciliPend.length > 0 && (
+              <div style={{ background: "#fff", border: "0.5px solid #EF9F27", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #FDE9BB", background: "#FBF3E0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#7A4300" }}>
+                    ⚠ Inconsistências de Conciliação
+                  </span>
+                  <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600 }}>
+                    {conciliPend.length} item{conciliPend.length > 1 ? "s" : ""} no extrato bancário sem lançamento
+                  </span>
+                </div>
+                {conciliPend.slice(0, 5).map(p => (
+                  <div key={p.id} style={{ padding: "10px 16px", borderBottom: "0.5px solid #FDE9BB", display: "flex", alignItems: "center", gap: 12, background: "#FFFDF7" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8,
+                      background: p.tipo === "debito" ? "#FCEBEB" : "#DCFCE7",
+                      color: p.tipo === "debito" ? "#E24B4A" : "#16A34A" }}>
+                      {p.tipo === "debito" ? "DÉBITO" : "CRÉDITO"}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.descricao}</div>
+                      <div style={{ fontSize: 11, color: "#888" }}>{p.data.split("-").reverse().join("/")} · {p.conta_nome ?? "—"}</div>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: p.tipo === "debito" ? "#E24B4A" : "#16A34A", whiteSpace: "nowrap" }}>
+                      {p.tipo === "debito" ? "-" : "+"}R$ {p.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                    <button
+                      disabled={resolvendo === p.id}
+                      onClick={() => {
+                        const cat = prompt(`Categoria para este lançamento (${p.descricao}):`, p.tipo === "debito" ? "Taxas Bancárias" : "Outros Créditos");
+                        if (cat !== null) resolverInconsistencia(p, cat || (p.tipo === "debito" ? "Taxas Bancárias" : "Outros Créditos"));
+                      }}
+                      style={{ padding: "5px 12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", opacity: resolvendo === p.id ? 0.6 : 1 }}>
+                      {resolvendo === p.id ? "Lançando…" : "Lançar e Conciliar"}
+                    </button>
+                    <button onClick={() => ignorarInconsistencia(p.id)}
+                      style={{ padding: "5px 10px", background: "#F4F6FA", color: "#888", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>
+                      Ignorar
+                    </button>
+                  </div>
+                ))}
+                {conciliPend.length > 5 && (
+                  <div style={{ padding: "8px 16px", background: "#FBF3E0", textAlign: "center" }}>
+                    <a href="/financeiro/conciliacao" style={{ fontSize: 12, color: "#C9921B", fontWeight: 600, textDecoration: "none" }}>
+                      Ver todas ({conciliPend.length}) na Conciliação →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* KPIs financeiros */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>

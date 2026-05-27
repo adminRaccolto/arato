@@ -4666,3 +4666,32 @@ CREATE POLICY "adiant_aplic_select" ON adiantamentos_aplicacoes FOR ALL
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Inconsistências de Conciliação Bancária ──────────────────────────────────
+-- Linhas de extrato OFX não conciliadas — aparecem no Dashboard para resolução 1-clique
+
+CREATE TABLE IF NOT EXISTS conciliacao_pendencias (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id    UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  conta_id      UUID REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  conta_nome    TEXT,
+  fitid         TEXT NOT NULL,
+  data          DATE NOT NULL,
+  descricao     TEXT NOT NULL,
+  valor         NUMERIC(14,2) NOT NULL,
+  tipo          TEXT NOT NULL CHECK (tipo IN ('credito','debito')),
+  status        TEXT NOT NULL DEFAULT 'pendente'
+                  CHECK (status IN ('pendente','resolvido','ignorado')),
+  lancamento_id UUID REFERENCES lancamentos(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(fazenda_id, fitid)
+);
+
+ALTER TABLE conciliacao_pendencias ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "conc_pend_all" ON conciliacao_pendencias;
+CREATE POLICY "conc_pend_all" ON conciliacao_pendencias FOR ALL
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
+
+NOTIFY pgrst, 'reload schema';

@@ -199,6 +199,25 @@ export default function Conciliacao() {
 
     setExtrato(novoExtrato);
     setExtratos(prev => [novoExtrato, ...prev]);
+
+    // Salva linhas não conciliadas como inconsistências no Dashboard
+    const naoConc = linhas.filter(l => !l.conciliado);
+    if (naoConc.length > 0) {
+      const rows = naoConc.map(l => ({
+        fazenda_id: fazendaId,
+        conta_id: contaSel || null,
+        conta_nome: contaObj?.nome ?? null,
+        fitid: l.id,
+        data: l.data,
+        descricao: l.descricao,
+        valor: l.valor,
+        tipo: l.tipo,
+        status: "pendente",
+      }));
+      await supabase.from("conciliacao_pendencias")
+        .upsert(rows, { onConflict: "fazenda_id,fitid", ignoreDuplicates: true });
+    }
+
     setLoading(false);
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -217,8 +236,12 @@ export default function Conciliacao() {
     setExtrato({ ...extrato, linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN });
     setModalVincular(null);
     setLancSel("");
-    // Atualiza no Supabase
+    // Atualiza extrato e marca inconsistência como resolvida
     supabase.from("extratos_bancarios").update({ linhas, conciliados: conciliadoN, pendentes: linhas.length - conciliadoN }).eq("id", extrato.id);
+    if (fazendaId) {
+      supabase.from("conciliacao_pendencias").update({ status: "resolvido", lancamento_id: lancSel })
+        .eq("fazenda_id", fazendaId).eq("fitid", modalVincular.id);
+    }
   }
 
   // ── Desvincular ───────────────────────────────────────────────────────────
