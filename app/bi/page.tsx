@@ -30,6 +30,10 @@ interface ContratoDetalhe {
   garantias: GarantiaDetalhe[];
 }
 
+// Tipos para a aba Evolução de Endividamento
+interface CFContrato { id: string; descricao: string; credor: string; tipo?: string; moeda: string; data_contrato: string; valor_total?: number; valor_financiado?: number; linha_credito?: string }
+interface CFParcela  { id: string; contrato_id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
+
 // ── Formatadores ──────────────────────────────────────────────
 const fmtR  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const fmtR2 = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -232,6 +236,11 @@ export default function BI() {
   const [rtContratoModal, setRtContratoModal] = useState<ContratoDetalhe | null>(null);
   const [loadingContrato,  setLoadingContrato]  = useState(false);
 
+  // ── Evolução de Endividamento ─────────────────────────────────
+  const [cfContratos, setCfContratos] = useState<CFContrato[]>([]);
+  const [cfParcelas,  setCfParcelas]  = useState<CFParcela[]>([]);
+  const [cfLoading,   setCfLoading]   = useState(false);
+
   // ── Sensibilidade ────────────────────────────────────────────
   const [precoMask, setPrecoMask] = useState("");
   const [prodMask,  setProdMask]  = useState("");
@@ -285,6 +294,30 @@ export default function BI() {
   useEffect(() => {
     if (aba === "controller" && fazendaId) carregarAlertas();
   }, [aba, fazendaId, carregarAlertas]);
+
+  const carregarCF = useCallback(async () => {
+    if (!fazendaId) return;
+    setCfLoading(true);
+    try {
+      const { data: cs } = await supabase
+        .from("contratos_financeiros")
+        .select("id,descricao,credor,tipo,moeda,data_contrato,valor_total,valor_financiado,linha_credito")
+        .eq("fazenda_id", fazendaId);
+      const ids = (cs ?? []).map((c: Record<string, unknown>) => c.id as string);
+      const { data: ps } = ids.length > 0
+        ? await supabase
+            .from("parcelas_pagamento")
+            .select("id,contrato_id,num_parcela,data_vencimento,amortizacao,juros,despesas_acessorios,valor_parcela,saldo_devedor,status")
+            .in("contrato_id", ids)
+        : { data: [] as CFParcela[] };
+      setCfContratos((cs ?? []) as CFContrato[]);
+      setCfParcelas((ps ?? []) as CFParcela[]);
+    } catch { /* ignora */ } finally { setCfLoading(false); }
+  }, [fazendaId]);
+
+  useEffect(() => {
+    if (aba === "evolucao" && fazendaId && cfContratos.length === 0) carregarCF();
+  }, [aba, fazendaId, cfContratos.length, carregarCF]);
 
   async function executarVerificacoes() {
     if (!fazendaId) return;
@@ -2523,256 +2556,353 @@ export default function BI() {
 
         {/* ═══════════ EVOLUÇÃO DE ENDIVIDAMENTO ═══════════ */}
         {!loading && aba === "evolucao" && (() => {
-          const temDados = rtTotalCaptado > 0 || rtTotalPago > 0;
+          // ── Intervalo de anos ─────────────────────────────────
+          const anoAtual = new Date().getFullYear();
+          const anoMin   = anoAtual - 3;
 
-          // Anos em ordem crescente (rtPorAno vem decrescente por padrão)
-          const anos = rtPorAno.map(b => b.label).slice().sort((a, b) => a.localeCompare(b));
+          // Anos das parcelas (vencimento) + anos dos contratos (captação)
+          const anosParc = cfParcelas.map(p => Number(p.data_vencimento.slice(0, 4)));
+          const anosContr = cfContratos.map(c => Number((c.data_contrato ?? "").slice(0, 4))).filter(Boolean);
+          const anoMax = Math.max(anoAtual, ...anosParc, ...anosContr);
 
-          // Captação por ano (já está em rtPorAno)
+          const anos: string[] = [];
+          for (let y = anoMin; y <= anoMax; y++) anos.push(String(y));
+
+          const temDados = cfContratos.length > 0 || cfParcelas.length > 0;
+
+          // ── Captação por ano (data_contrato) ──────────────────
           const captPorAno: Record<string, number> = {};
-          for (const b of rtPorAno) captPorAno[b.label] = b.captado;
-
-          // Curto prazo: CPR, Custeio, EGF  |  Longo prazo: Financiamento, PRONAF, Empréstimo, Outros
-          const CURTO_TIPOS = new Set(["CPR", "Custeio", "EGF"]);
-          const curtoPorAno: Record<string, number> = {};
-          const longoPorAno: Record<string, number> = {};
-          for (const ano of anos) { curtoPorAno[ano] = 0; longoPorAno[ano] = 0; }
-          for (const l of lancamentosFiltrados) {
-            if (!isCaptacao(l)) continue;
-            const lbl = l.ano_safra_id
-              ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
-              : l.data_vencimento.slice(0, 4);
-            if (!(lbl in curtoPorAno)) { curtoPorAno[lbl] = 0; longoPorAno[lbl] = 0; }
-            if (CURTO_TIPOS.has(tipoRT(l))) curtoPorAno[lbl] += l.valor;
-            else                            longoPorAno[lbl] += l.valor;
+          for (const ano of anos) captPorAno[ano] = 0;
+          for (const c of cfContratos) {
+            const ano = (c.data_contrato ?? "").slice(0, 4);
+            if (ano in captPorAno) captPorAno[ano] += (c.valor_total ?? c.valor_financiado ?? 0);
           }
 
-          // Por moeda
-          const moedasPresentes = [...new Set(
-            lancamentosFiltrados.filter(l => isCaptacao(l)).map(l => l.moeda)
-          )].sort();
-          const captPorMoedaAno: Record<string, Record<string, number>> = {};
-          for (const m of moedasPresentes) {
-            captPorMoedaAno[m] = {};
-            for (const ano of anos) captPorMoedaAno[m][ano] = 0;
-          }
-          for (const l of lancamentosFiltrados) {
-            if (!isCaptacao(l)) continue;
-            const lbl = l.ano_safra_id
-              ? (anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? l.data_vencimento.slice(0, 4))
-              : l.data_vencimento.slice(0, 4);
-            if (!captPorMoedaAno[l.moeda]) captPorMoedaAno[l.moeda] = {};
-            captPorMoedaAno[l.moeda][lbl] = (captPorMoedaAno[l.moeda][lbl] ?? 0) + l.valor;
+          // ── Amortização por ano (parcelas.amortizacao) ────────
+          const amortPorAno: Record<string, number> = {};
+          for (const ano of anos) amortPorAno[ano] = 0;
+          for (const p of cfParcelas) {
+            const ano = p.data_vencimento.slice(0, 4);
+            if (ano in amortPorAno) amortPorAno[ano] += (p.amortizacao ?? 0);
           }
 
-          // Helper: variação vs ano anterior
-          const varR   = (vals: Record<string, number>, ano: string, i: number) => i === 0 ? null : vals[ano] - vals[anos[i - 1]];
+          // ── Juros por ano (parcelas.juros + despesas_acessorios) ─
+          const jurosPorAno: Record<string, number> = {};
+          for (const ano of anos) jurosPorAno[ano] = 0;
+          for (const p of cfParcelas) {
+            const ano = p.data_vencimento.slice(0, 4);
+            if (ano in jurosPorAno) jurosPorAno[ano] += (p.juros ?? 0) + (p.despesas_acessorios ?? 0);
+          }
+
+          // ── Saldo devedor acumulado por ano ───────────────────
+          // Para cada contrato: pegar saldo_devedor da última parcela com vencimento <= fim do ano
+          // Se não houver parcela <= fim do ano mas o contrato foi firmado naquele ano ou antes: usar valor_total
+          const saldoPorAno: Record<string, number> = {};
+          for (const ano of anos) {
+            const fimAno = `${ano}-12-31`;
+            let total = 0;
+            for (const c of cfContratos) {
+              if (!c.data_contrato || c.data_contrato.slice(0, 4) > ano) continue;
+              const parcsAte = cfParcelas
+                .filter(p => p.contrato_id === c.id && p.data_vencimento <= fimAno)
+                .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+              if (parcsAte.length > 0) {
+                total += parcsAte[parcsAte.length - 1].saldo_devedor;
+              } else {
+                total += (c.valor_total ?? c.valor_financiado ?? 0);
+              }
+            }
+            saldoPorAno[ano] = total;
+          }
+
+          // ── Helpers ───────────────────────────────────────────
+          const varR   = (vals: Record<string, number>, ano: string, i: number) =>
+            i === 0 ? null : vals[ano] - vals[anos[i - 1]];
           const varPct = (vals: Record<string, number>, ano: string, i: number) => {
             if (i === 0) return null;
             const prev = vals[anos[i - 1]];
             return prev > 0 ? ((vals[ano] - prev) / prev) * 100 : null;
           };
 
-          // Estilos comuns
-          const thSt: React.CSSProperties = { padding: "8px 10px", fontSize: 10, fontWeight: 600, color: "#555", textAlign: "right", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap", background: "#F3F6F9" };
-          const thFirst: React.CSSProperties = { ...thSt, textAlign: "left", minWidth: 160, position: "sticky", left: 0, background: "#F3F6F9", zIndex: 1 };
-          const tdSt: React.CSSProperties = { padding: "8px 10px", fontSize: 12, textAlign: "right", borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" };
-          const tdFirst: React.CSSProperties = { ...tdSt, textAlign: "left", fontWeight: 600, fontSize: 11, color: "#1a1a1a", position: "sticky", left: 0, background: "inherit", zIndex: 1 };
-          const tdSub: React.CSSProperties = { ...tdSt, fontSize: 11, color: "#888" };
-          const tdSubFirst: React.CSSProperties = { ...tdFirst, fontWeight: 400, color: "#888", fontSize: 11, paddingLeft: 20 };
+          const thSt: React.CSSProperties    = { padding: "8px 10px", fontSize: 10, fontWeight: 600, color: "#555", textAlign: "right", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap", background: "#F3F6F9" };
+          const thFirst: React.CSSProperties = { ...thSt, textAlign: "left", minWidth: 180, position: "sticky", left: 0, background: "#F3F6F9", zIndex: 1 };
+          const tdSt: React.CSSProperties    = { padding: "8px 10px", fontSize: 12, textAlign: "right", borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" };
+          const tdFirst: React.CSSProperties = { ...tdSt, textAlign: "left", fontWeight: 700, fontSize: 12, color: "#1a1a1a", position: "sticky", left: 0, background: "inherit", zIndex: 1 };
+          const tdSub: React.CSSProperties   = { ...tdSt, fontSize: 11, color: "#888" };
+          const tdSubFirst: React.CSSProperties = { ...tdFirst, fontWeight: 400, color: "#888", fontSize: 11, paddingLeft: 22 };
 
-          const sectionHeader = (titulo: string, subtitulo: string) => (
-            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{titulo}</span>
-              <span style={{ fontSize: 11, color: "#888" }}>{subtitulo}</span>
-            </div>
-          );
+          const isAtual = (ano: string) => ano === String(anoAtual);
+          const isFuturo = (ano: string) => Number(ano) > anoAtual;
 
-          const varCell = (v: number | null, isR: boolean) => {
+          const thAnoCel = (ano: string) => ({
+            ...thSt,
+            background: isAtual(ano) ? "#EFF6FF" : isFuturo(ano) ? "#F3F6F9" : "#F3F6F9",
+            color: isAtual(ano) ? "#1A4870" : isFuturo(ano) ? "#999" : "#555",
+            borderBottom: `2px solid ${isAtual(ano) ? "#1A4870" : "#D4DCE8"}`,
+          });
+
+          const varCell = (v: number | null, isR: boolean, inverterCores = false) => {
             if (v === null) return <td style={tdSub}>—</td>;
             const up = v > 0;
-            const cor = up ? "#E24B4A" : "#16A34A";
+            // Para saldo: crescimento (up) é ruim; para amort/juros/capt: depende
+            const cor = inverterCores
+              ? (up ? "#16A34A" : "#E24B4A")   // verde = subiu (bom)
+              : (up ? "#E24B4A" : "#16A34A");   // vermelho = subiu (endividamento cresceu)
             const txt = isR
               ? `${up ? "+" : ""}${fmtR(v)}`
               : `${up ? "+" : ""}${v.toFixed(1)}%`;
             return <td style={{ ...tdSub, color: cor, fontWeight: 600 }}>{up ? "▲" : "▼"} {txt}</td>;
           };
 
+          const sectionHeader = (titulo: string, sub: string, cor = "#1a1a1a") => (
+            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFD", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: cor }}>{titulo}</span>
+              <span style={{ fontSize: 11, color: "#888" }}>{sub}</span>
+            </div>
+          );
+
+          // ── KPIs globais ──────────────────────────────────────
+          const saldoAtual   = saldoPorAno[String(anoAtual)] ?? 0;
+          const totalCaptado = Object.values(captPorAno).reduce((s, v) => s + v, 0);
+          const totalAmort   = Object.values(amortPorAno).reduce((s, v) => s + v, 0);
+          const totalJuros   = Object.values(jurosPorAno).reduce((s, v) => s + v, 0);
+          const anoPicoTotal = anos.reduce((best, a) =>
+            ((amortPorAno[a] ?? 0) + (jurosPorAno[a] ?? 0)) > ((amortPorAno[best] ?? 0) + (jurosPorAno[best] ?? 0)) ? a : best, anos[0] ?? "—");
+          const picoVal = (amortPorAno[anoPicoTotal] ?? 0) + (jurosPorAno[anoPicoTotal] ?? 0);
+
+          // Tendência: comparar saldo este ano vs ano passado
+          const saldoPassado = saldoPorAno[String(anoAtual - 1)] ?? 0;
+          const tendencia = saldoAtual > saldoPassado ? "crescendo" : saldoAtual < saldoPassado ? "reduzindo" : "estável";
+
+          // Ano estimado de quitação (saldo ≤ 0)
+          const anoQuit = anos.find(a => (saldoPorAno[a] ?? 0) <= 0 && Number(a) >= anoAtual);
+
+          // Custo financeiro: % juros sobre total pago (amort + juros)
+          const totalPago = totalAmort + totalJuros;
+          const custoFinPct = totalPago > 0 ? (totalJuros / totalPago) * 100 : 0;
+
+          const makeRow = (
+            label: string,
+            vals: Record<string, number>,
+            varInverter: boolean,
+            labelCor: string,
+            rowBg: string,
+            subBg: string,
+            valCor: (v: number) => string,
+          ) => (
+            <React.Fragment>
+              <tr style={{ background: rowBg }}>
+                <td style={{ ...tdFirst, color: labelCor }}>{label}</td>
+                {anos.map(a => {
+                  const v = vals[a] ?? 0;
+                  const fut = isFuturo(a);
+                  return (
+                    <td key={a} style={{ ...tdSt, fontWeight: 700, color: fut && v > 0 ? "#999" : valCor(v), background: isAtual(a) ? "#F0F6FF" : undefined }}>
+                      {v > 0 ? fmtR(v) : <span style={{ color: "#ddd" }}>—</span>}
+                    </td>
+                  );
+                })}
+              </tr>
+              <tr style={{ background: subBg }}>
+                <td style={tdSubFirst}>var. vs ano ant. (R$)</td>
+                {anos.map((a, i) => {
+                  const cell = varCell(varR(vals, a, i), true, varInverter);
+                  return React.cloneElement(cell, { key: a, style: { ...((cell.props as {style?: React.CSSProperties}).style), background: isAtual(a) ? "#F0F6FF" : undefined } });
+                })}
+              </tr>
+              <tr style={{ background: rowBg, borderBottom: "2px solid #D4DCE8" }}>
+                <td style={tdSubFirst}>var. vs ano ant. (%)</td>
+                {anos.map((a, i) => {
+                  const cell = varCell(varPct(vals, a, i), false, varInverter);
+                  return React.cloneElement(cell, { key: a, style: { ...((cell.props as {style?: React.CSSProperties}).style), background: isAtual(a) ? "#F0F6FF" : undefined } });
+                })}
+              </tr>
+            </React.Fragment>
+          );
+
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* KPIs globais */}
+
+              {/* ── KPIs ── */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12 }}>
                 {[
-                  { label: "Total Captado",    v: fmtR(rtTotalCaptado),  color: "#14532D", hint: "Soma histórica de todos os aportes" },
-                  { label: "Total Amortizado", v: fmtR(rtTotalPago),     color: "#0C447C", hint: "Principal devolvido" },
-                  { label: "Saldo Devedor",    v: fmtR(rtSaldoDevedor),  color: rtSaldoDevedor > 0 ? "#791F1F" : "#14532D", hint: "Saldo ainda não pago" },
-                  { label: "Juros Pagos",      v: fmtR(rtTotalJuros),    color: "#633806", hint: "Encargos financeiros históricos" },
+                  { label: "Saldo Devedor Atual", v: fmtR(saldoAtual), color: saldoAtual > 0 ? "#791F1F" : "#14532D", hint: `Endividamento líquido em ${anoAtual}`, sub: tendencia === "crescendo" ? "▲ crescendo" : tendencia === "reduzindo" ? "▼ reduzindo" : "= estável", subCor: tendencia === "crescendo" ? "#E24B4A" : tendencia === "reduzindo" ? "#16A34A" : "#888" },
+                  { label: "Total Captado",        v: fmtR(totalCaptado), color: "#14532D", hint: "Soma de todos os contratos firmados", sub: `${cfContratos.length} contrato${cfContratos.length !== 1 ? "s" : ""}`, subCor: "#888" },
+                  { label: "Total Amortizado",     v: fmtR(totalAmort),   color: "#0C447C", hint: "Soma de principal devolvido/a devolver", sub: `${((totalAmort / (totalCaptado || 1)) * 100).toFixed(0)}% do captado`, subCor: "#888" },
+                  { label: "Pico de Desembolso",   v: picoVal > 0 ? fmtR(picoVal) : "—", color: "#633806", hint: "Ano com maior saída de caixa", sub: picoVal > 0 ? `${anoPicoTotal} (amort + juros)` : "sem dados", subCor: "#888" },
                 ].map(k => (
                   <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }} title={k.hint}>
                     <div style={{ fontSize: 10, color: "#666", marginBottom: 5 }}>{k.label}</div>
                     <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
+                    <div style={{ fontSize: 11, color: k.subCor, marginTop: 4, fontWeight: 600 }}>{k.sub}</div>
                   </div>
                 ))}
               </div>
 
-              {!temDados && (
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center" }}>
-                  <div style={{ fontSize: 14, color: "#888" }}>Sem dados de captação registrados.</div>
+              {cfLoading && (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px", textAlign: "center", color: "#888", fontSize: 13 }}>
+                  Carregando dados de contratos…
                 </div>
               )}
 
-              {temDados && (
+              {!cfLoading && !temDados && (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 14, color: "#888" }}>Nenhum contrato financeiro cadastrado.</div>
+                  <div style={{ fontSize: 12, color: "#bbb", marginTop: 6 }}>Cadastre contratos em Financeiro → Endividamento para visualizar a evolução.</div>
+                </div>
+              )}
+
+              {!cfLoading && temDados && (
                 <>
-                  {/* ══ BLOCO 1: Evolução da Captação ══ */}
+                  {/* ══ TABELA PRINCIPAL ══ */}
                   <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                    {sectionHeader("Evolução da Captação", "crescimento ou queda ano a ano — anos em ordem crescente")}
+                    {sectionHeader("Evolução do Endividamento", "anos anteriores (3) → último vencimento  ·  coluna atual destacada  ·  futuro em cinza")}
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 130 + 200 }}>
                         <thead>
                           <tr>
-                            <th style={thFirst}>Métrica</th>
-                            {anos.map(a => <th key={a} style={thSt}>{a}</th>)}
+                            <th style={thFirst}>Indicador</th>
+                            {anos.map(a => (
+                              <th key={a} style={thAnoCel(a)}>
+                                {a}
+                                {isAtual(a) && <div style={{ fontSize: 9, color: "#1A4870", fontWeight: 700 }}>ATUAL</div>}
+                                {isFuturo(a) && <div style={{ fontSize: 9, color: "#bbb" }}>proj.</div>}
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
-                          <tr style={{ background: "#fff" }}>
-                            <td style={tdFirst}>Captado no ano</td>
-                            {anos.map(a => (
-                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#14532D" }}>
-                                {(captPorAno[a] ?? 0) > 0 ? fmtR(captPorAno[a]) : <span style={{ color: "#ccc" }}>—</span>}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr style={{ background: "#FAFBFD" }}>
-                            <td style={tdSubFirst}>variação vs ano ant. (R$)</td>
-                            {anos.map((a, i) => varCell(varR(captPorAno, a, i), true))}
-                          </tr>
-                          <tr style={{ background: "#fff", borderBottom: "1.5px solid #D4DCE8" }}>
-                            <td style={tdSubFirst}>variação vs ano ant. (%)</td>
-                            {anos.map((a, i) => varCell(varPct(captPorAno, a, i), false))}
-                          </tr>
+                          {/* LINHA 1 — Endividamento acumulado */}
+                          {makeRow(
+                            "Endividamento total",
+                            saldoPorAno,
+                            false,   // crescer = ruim (vermelho)
+                            "#791F1F",
+                            "#FEF2F2",
+                            "#FEF8F8",
+                            v => v > 0 ? "#791F1F" : "#16A34A",
+                          )}
+
+                          {/* LINHA 2 — Captação */}
+                          {makeRow(
+                            "Captação no ano",
+                            captPorAno,
+                            false,
+                            "#14532D",
+                            "#F0FDF4",
+                            "#F7FEF9",
+                            () => "#14532D",
+                          )}
+
+                          {/* LINHA 3 — Amortização */}
+                          {makeRow(
+                            "Amortização",
+                            amortPorAno,
+                            true,    // crescer = bom (verde)
+                            "#0C447C",
+                            "#EFF6FF",
+                            "#F5F9FF",
+                            () => "#0C447C",
+                          )}
+
+                          {/* LINHA 4 — Juros */}
+                          {makeRow(
+                            "Juros e encargos",
+                            jurosPorAno,
+                            false,
+                            "#633806",
+                            "#FAEEDA",
+                            "#FBF5EE",
+                            () => "#633806",
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
 
-                  {/* ══ BLOCO 2: Curto vs Longo Prazo ══ */}
+                  {/* ══ PAINEL DE ANÁLISE ══ */}
                   <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                    {sectionHeader("Curto × Longo Prazo", "Curto = CPR, Custeio, EGF  ·  Longo = Financiamento, PRONAF, Empréstimo")}
-                    <div style={{ overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 120 + 180 }}>
-                        <thead>
-                          <tr>
-                            <th style={thFirst}>Tipo</th>
-                            {anos.map(a => <th key={a} style={thSt}>{a}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {/* CURTO PRAZO */}
-                          <tr style={{ background: "#F0FDF4" }}>
-                            <td style={{ ...tdFirst, color: "#14532D" }}>Curto Prazo</td>
-                            {anos.map(a => (
-                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#14532D" }}>
-                                {(curtoPorAno[a] ?? 0) > 0 ? fmtR(curtoPorAno[a]) : <span style={{ color: "#ccc" }}>—</span>}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr style={{ background: "#F7FEF9" }}>
-                            <td style={tdSubFirst}>var. vs ant. (R$)</td>
-                            {anos.map((a, i) => varCell(varR(curtoPorAno, a, i), true))}
-                          </tr>
-                          <tr style={{ background: "#F0FDF4", borderBottom: "1.5px solid #D4DCE8" }}>
-                            <td style={tdSubFirst}>var. vs ant. (%)</td>
-                            {anos.map((a, i) => varCell(varPct(curtoPorAno, a, i), false))}
-                          </tr>
+                    {sectionHeader("Análise da Evolução", "diagnóstico automático com base nos contratos e parcelas cadastrados", "#1A4870")}
+                    <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
 
-                          {/* LONGO PRAZO */}
-                          <tr style={{ background: "#EFF6FF" }}>
-                            <td style={{ ...tdFirst, color: "#0C447C" }}>Longo Prazo</td>
-                            {anos.map(a => (
-                              <td key={a} style={{ ...tdSt, fontWeight: 700, color: "#0C447C" }}>
-                                {(longoPorAno[a] ?? 0) > 0 ? fmtR(longoPorAno[a]) : <span style={{ color: "#ccc" }}>—</span>}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr style={{ background: "#F5F9FF" }}>
-                            <td style={tdSubFirst}>var. vs ant. (R$)</td>
-                            {anos.map((a, i) => varCell(varR(longoPorAno, a, i), true))}
-                          </tr>
-                          <tr style={{ background: "#EFF6FF", borderBottom: "1.5px solid #D4DCE8" }}>
-                            <td style={tdSubFirst}>var. vs ant. (%)</td>
-                            {anos.map((a, i) => varCell(varPct(longoPorAno, a, i), false))}
-                          </tr>
+                      {/* Tendência do endividamento */}
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: tendencia === "crescendo" ? "#FEF2F2" : tendencia === "reduzindo" ? "#F0FDF4" : "#F9FAFB", border: `0.5px solid ${tendencia === "crescendo" ? "#FCA5A5" : tendencia === "reduzindo" ? "#86EFAC" : "#DDE2EE"}` }}>
+                        <div style={{ fontSize: 22 }}>{tendencia === "crescendo" ? "⚠️" : tendencia === "reduzindo" ? "✅" : "➡️"}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: tendencia === "crescendo" ? "#991B1B" : tendencia === "reduzindo" ? "#14532D" : "#555" }}>
+                            Endividamento {tendencia === "crescendo" ? "crescendo" : tendencia === "reduzindo" ? "reduzindo" : "estável"} em {anoAtual}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                            {saldoPassado > 0
+                              ? `Saldo devedor passou de ${fmtR(saldoPassado)} (${anoAtual - 1}) para ${fmtR(saldoAtual)} (${anoAtual}) — variação de ${fmtR(saldoAtual - saldoPassado)} (${saldoPassado > 0 ? ((saldoAtual - saldoPassado) / saldoPassado * 100).toFixed(1) : "—"}%).`
+                              : `Saldo devedor atual: ${fmtR(saldoAtual)}.`}
+                          </div>
+                        </div>
+                      </div>
 
-                          {/* Participação curto/longo — apenas texto */}
-                          <tr style={{ background: "#FAFBFD" }}>
-                            <td style={{ ...tdFirst, fontSize: 10, color: "#555", fontWeight: 600 }}>% Curto / % Longo</td>
-                            {anos.map(a => {
-                              const tot = (curtoPorAno[a] ?? 0) + (longoPorAno[a] ?? 0);
-                              if (tot === 0) return <td key={a} style={tdSub}>—</td>;
-                              const cp = ((curtoPorAno[a] ?? 0) / tot) * 100;
-                              const lp = 100 - cp;
-                              return (
-                                <td key={a} style={{ ...tdSub, textAlign: "center" }}>
-                                  <span style={{ color: "#16A34A", fontWeight: 600 }}>{cp.toFixed(0)}%</span>
-                                  <span style={{ color: "#888" }}> / </span>
-                                  <span style={{ color: "#1A4870", fontWeight: 600 }}>{lp.toFixed(0)}%</span>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        </tbody>
-                      </table>
+                      {/* Custo financeiro */}
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#FAEEDA", border: "0.5px solid #F9C86C" }}>
+                        <div style={{ fontSize: 22 }}>💸</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#633806" }}>Custo financeiro: {custoFinPct.toFixed(1)}% do total pago são juros</div>
+                          <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                            De {fmtR(totalPago)} previstos de desembolso total, {fmtR(totalJuros)} são encargos financeiros e {fmtR(totalAmort)} são amortização de principal.
+                            {custoFinPct > 30 && " Alta proporção de juros — avaliar renegociação ou quitação antecipada."}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pico de caixa */}
+                      {picoVal > 0 && (
+                        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#EFF6FF", border: "0.5px solid #93C5FD" }}>
+                          <div style={{ fontSize: 22 }}>📅</div>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#1D4ED8" }}>
+                              Pico de desembolso em {anoPicoTotal}: {fmtR(picoVal)}
+                            </div>
+                            <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                              {isFuturo(anoPicoTotal) ? "Ano futuro com maior pressão de caixa." : "Ano com maior saída de caixa registrada."}{" "}
+                              Amortização: {fmtR(amortPorAno[anoPicoTotal] ?? 0)} · Juros: {fmtR(jurosPorAno[anoPicoTotal] ?? 0)}.
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Quitação estimada */}
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: anoQuit ? "#F0FDF4" : "#F9FAFB", border: `0.5px solid ${anoQuit ? "#86EFAC" : "#DDE2EE"}` }}>
+                        <div style={{ fontSize: 22 }}>{anoQuit ? "🏁" : "🔄"}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: anoQuit ? "#14532D" : "#555" }}>
+                            {anoQuit ? `Quitação projetada em ${anoQuit}` : "Quitação além do horizonte visível"}
+                          </div>
+                          <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                            {anoQuit
+                              ? `Com base nas parcelas cadastradas, o saldo devedor chega a zero em ${anoQuit}.`
+                              : "O saldo devedor não chega a zero no período coberto pelos contratos cadastrados."}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Captação recente */}
+                      {(() => {
+                        const anosComCaptacao = anos.filter(a => (captPorAno[a] ?? 0) > 0 && Number(a) >= anoAtual - 2);
+                        return anosComCaptacao.length > 0 ? (
+                          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px", borderRadius: 8, background: "#F0FDF4", border: "0.5px solid #86EFAC" }}>
+                            <div style={{ fontSize: 22 }}>📥</div>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: "#14532D" }}>
+                                Novas captações nos últimos 2 anos
+                              </div>
+                              <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                                {anosComCaptacao.map(a => `${a}: ${fmtR(captPorAno[a])}`).join("  ·  ")}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+
                     </div>
                   </div>
-
-                  {/* ══ BLOCO 3: Por Moeda ══ */}
-                  {moedasPresentes.length > 0 && (
-                    <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                      {sectionHeader("Evolução por Moeda", "BRL = valor nominal  ·  USD = valor na moeda de origem")}
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: anos.length * 120 + 180 }}>
-                          <thead>
-                            <tr>
-                              <th style={thFirst}>Moeda</th>
-                              {anos.map(a => <th key={a} style={thSt}>{a}</th>)}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {moedasPresentes.map((moeda, mi) => {
-                              const vals = captPorMoedaAno[moeda] ?? {};
-                              const corM  = moeda === "BRL" ? "#14532D" : moeda === "USD" ? "#7C3AED" : "#633806";
-                              const bgRow = moeda === "BRL" ? "#F0FDF4" : moeda === "USD" ? "#F5F3FF" : "#FAEEDA";
-                              const bgSub = moeda === "BRL" ? "#F7FEF9" : moeda === "USD" ? "#FAF7FF" : "#FBF3E0";
-                              return (
-                                <React.Fragment key={moeda}>
-                                  <tr style={{ background: bgRow, borderTop: mi > 0 ? "1.5px solid #D4DCE8" : undefined }}>
-                                    <td style={{ ...tdFirst, color: corM }}>
-                                      {moeda === "BRL" ? "🇧🇷 Real (BRL)" : moeda === "USD" ? "🇺🇸 Dólar (USD)" : moeda}
-                                    </td>
-                                    {anos.map(a => (
-                                      <td key={a} style={{ ...tdSt, fontWeight: 700, color: corM }}>
-                                        {(vals[a] ?? 0) > 0 ? fmtR(vals[a]) : <span style={{ color: "#ccc" }}>—</span>}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                  <tr style={{ background: bgRow }}>
-                                    <td style={tdSubFirst}>var. vs ant. (R$)</td>
-                                    {anos.map((a, i) => varCell(varR(vals, a, i), true))}
-                                  </tr>
-                                  <tr style={{ background: bgSub }}>
-                                    <td style={tdSubFirst}>var. vs ant. (%)</td>
-                                    {anos.map((a, i) => varCell(varPct(vals, a, i), false))}
-                                  </tr>
-                                </React.Fragment>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
                 </>
               )}
             </div>
