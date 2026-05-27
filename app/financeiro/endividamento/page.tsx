@@ -11,12 +11,16 @@ const supabase = createBrowserClient(
 );
 
 const TIPO_LABEL: Record<string, string> = {
-  custeio:       "Custeio",
-  investimento:  "Investimento",
-  securitizacao: "Securitização",
-  cpr:           "CPR",
-  egf:           "EGF",
-  outros:        "Outros",
+  custeio:                   "Custeio",
+  investimento:              "Investimento",
+  securitizacao:             "Securitização",
+  cpr:                       "CPR",
+  egf:                       "EGF",
+  compra_terra:              "Compra de Terra",
+  compra_imovel:             "Compra de Imóvel",
+  consorcio_contemplado:     "Consórcio Contemplado",
+  consorcio_nao_contemplado: "Consórcio Não Contemplado",
+  outros:                    "Outros",
 };
 
 const fmtBRL = (v: number | null | undefined) =>
@@ -272,8 +276,12 @@ export default function RelatorioEndividamento() {
     @page{size:A4 landscape;margin:8mm 10mm}
     body{background:#fff}
     .toolbar{display:none!important}
-    .page-wrapper{padding:0}
-    .page{box-shadow:none;width:100%;padding:0}
+    .page-wrapper{padding:0;display:block}
+    .page{box-shadow:none;width:100%;padding:0;overflow:visible;page-break-after:auto}
+    table{page-break-inside:auto;width:100%}
+    thead{display:table-header-group}
+    tfoot{display:table-footer-group}
+    tbody tr{page-break-inside:avoid;break-inside:avoid}
   }
 </style></head><body>
 <div class="toolbar">

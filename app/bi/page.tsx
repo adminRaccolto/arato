@@ -34,6 +34,15 @@ interface ContratoDetalhe {
 interface CFContrato { id: string; descricao: string; credor: string; tipo?: string; moeda: string; data_contrato: string; valor_total?: number; valor_financiado?: number; linha_credito?: string }
 interface CFParcela  { id: string; contrato_id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
 
+// Grupos de categoria para filtro de saldo
+const CF_GRUPOS = [
+  { key: "linhas_credito",             label: "Linhas de Crédito",         cor: "#14532D", bg: "#ECFDF5", tipos: ["custeio","investimento","securitizacao","cpr","egf","pronaf","outros"] },
+  { key: "consorcio_contemplado",      label: "Consórcio Contemplado",      cor: "#7C3AED", bg: "#F5F3FF", tipos: ["consorcio_contemplado"] },
+  { key: "consorcio_nao_contemplado",  label: "Consórcio Não Contemplado",  cor: "#6B21A8", bg: "#FAF5FF", tipos: ["consorcio_nao_contemplado"] },
+  { key: "compra_imovel",              label: "Compra de Imóvel / Terra",   cor: "#C9921B", bg: "#FBF3E0", tipos: ["compra_terra","compra_imovel"] },
+] as const;
+type GrupoKey = typeof CF_GRUPOS[number]["key"];
+
 // ── Formatadores ──────────────────────────────────────────────
 const fmtR  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const fmtR2 = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -236,10 +245,13 @@ export default function BI() {
   const [rtContratoModal, setRtContratoModal] = useState<ContratoDetalhe | null>(null);
   const [loadingContrato,  setLoadingContrato]  = useState(false);
 
-  // ── Evolução de Endividamento ─────────────────────────────────
-  const [cfContratos, setCfContratos] = useState<CFContrato[]>([]);
-  const [cfParcelas,  setCfParcelas]  = useState<CFParcela[]>([]);
-  const [cfLoading,   setCfLoading]   = useState(false);
+  // ── Evolução de Endividamento + Recursos de Terceiros (contratos formais) ─
+  const [cfContratos,     setCfContratos]     = useState<CFContrato[]>([]);
+  const [cfParcelas,      setCfParcelas]      = useState<CFParcela[]>([]);
+  const [cfLoading,       setCfLoading]       = useState(false);
+  const [cfGruposFiltro,  setCfGruposFiltro]  = useState<Set<GrupoKey>>(
+    new Set(CF_GRUPOS.map(g => g.key) as GrupoKey[])
+  );
 
   // ── Sensibilidade ────────────────────────────────────────────
   const [precoMask, setPrecoMask] = useState("");
@@ -316,7 +328,7 @@ export default function BI() {
   }, [fazendaId]);
 
   useEffect(() => {
-    if (aba === "evolucao" && fazendaId && cfContratos.length === 0) carregarCF();
+    if ((aba === "evolucao" || aba === "terceiros") && fazendaId && cfContratos.length === 0) carregarCF();
   }, [aba, fazendaId, cfContratos.length, carregarCF]);
 
   async function executarVerificacoes() {
@@ -548,7 +560,7 @@ export default function BI() {
   }, [loading]);
 
   // ── Recursos de Terceiros ─────────────────────────────────────
-  const RT_TERMOS = ["cpr","empréstimo","emprestimo","custeio","egf","pronaf","financiamento","crédito rural","credito rural","custeio agricola","bco brasil","banco do brasil","sicoob","cresol","rabobank","financ"];
+  const RT_TERMOS = ["cpr","empréstimo","emprestimo","custeio","egf","pronaf","financiamento","crédito rural","credito rural","custeio agricola","bco brasil","banco do brasil","sicoob","cresol","rabobank","financ","consórcio","consorcio","compra terra","compra de terra","compra imóvel","compra imovel","compra de imóvel","compra de imovel"];
   const JUROS_TERMOS = ["juro","encargo financ","iof","mora "];
 
   const textoLanc = (l: Lancamento) => ((l.categoria ?? "") + " " + l.descricao).toLowerCase();
@@ -563,12 +575,17 @@ export default function BI() {
 
   const tipoRT = (l: Lancamento): string => {
     const s = textoLanc(l);
-    if (s.includes("cpr"))                                             return "CPR";
-    if (s.includes("custeio"))                                         return "Custeio";
-    if (s.includes("egf"))                                             return "EGF";
-    if (s.includes("pronaf"))                                          return "PRONAF";
-    if (s.includes("emprestimo") || s.includes("empréstimo"))         return "Empréstimo";
-    if (s.includes("financiamento") || s.includes("financ"))          return "Financiamento";
+    if (s.includes("cpr"))                                                                  return "CPR";
+    if (s.includes("custeio"))                                                              return "Custeio";
+    if (s.includes("egf"))                                                                  return "EGF";
+    if (s.includes("pronaf"))                                                               return "PRONAF";
+    if (s.includes("emprestimo") || s.includes("empréstimo"))                              return "Empréstimo";
+    if (s.includes("financiamento") || s.includes("financ"))                               return "Financiamento";
+    if (s.includes("consórcio contempl") || s.includes("consorcio contempl"))              return "Consórcio Contemplado";
+    if (s.includes("consórcio") || s.includes("consorcio"))                               return "Consórcio Não Contemplado";
+    if (s.includes("compra terra") || s.includes("compra de terra") ||
+        s.includes("compra imóvel") || s.includes("compra imovel") ||
+        s.includes("compra de imóvel") || s.includes("compra de imovel"))                  return "Compra de Terra / Imóvel";
     return "Outros";
   };
 
@@ -619,7 +636,7 @@ export default function BI() {
   const rtJurosHa       = areaTotal > 0 ? (rtTotalJuros + rtJurosPend) / areaTotal : 0;
 
   // Por tipo de operação — calculado dentro do IIFE do RT (veja abaixo) para respeitar o filtro de ano
-  const TIPOS_RT = ["CPR", "Custeio", "EGF", "Empréstimo", "Financiamento", "PRONAF", "Outros"];
+  const TIPOS_RT = ["CPR", "Custeio", "EGF", "Empréstimo", "Financiamento", "PRONAF", "Consórcio Contemplado", "Consórcio Não Contemplado", "Compra de Terra / Imóvel", "Outros"];
 
   const precoSc  = desmascarar(precoMask) || precoBrlSoja;
   const prodHa   = desmascarar(prodMask)  || prodBaseRef;
@@ -2353,6 +2370,57 @@ export default function BI() {
                 ))}
               </div>
 
+              {/* ── Saldo por Categoria (contratos cadastrados) ── */}
+              {(() => {
+                // Computa saldo atual por tipo de contrato formal
+                const saldoGrupo = (tipos: readonly string[]) =>
+                  cfContratos.filter(c => tipos.includes(c.tipo ?? "")).reduce((s, c) => {
+                    const ultima = cfParcelas
+                      .filter(p => p.contrato_id === c.id && p.status === "pago")
+                      .sort((a, b) => b.num_parcela - a.num_parcela)[0];
+                    return s + (ultima?.saldo_devedor ?? (c.valor_total ?? c.valor_financiado ?? 0));
+                  }, 0);
+
+                const totalSelecionado = CF_GRUPOS
+                  .filter(g => cfGruposFiltro.has(g.key))
+                  .reduce((s, g) => s + saldoGrupo(g.tipos), 0);
+
+                return (
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Saldo por Categoria</span>
+                        <span style={{ fontSize: 11, color: "#888", marginLeft: 8 }}>baseado nos contratos formais cadastrados</span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#791F1F" }}>
+                        Total selecionado: {fmtR(totalSelecionado)}
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                      {CF_GRUPOS.map(g => {
+                        const sel = cfGruposFiltro.has(g.key);
+                        const saldo = saldoGrupo(g.tipos);
+                        return (
+                          <label key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "#DDE2EE"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <input type="checkbox" checked={sel} onChange={() => {
+                                const next = new Set(cfGruposFiltro);
+                                if (sel) next.delete(g.key); else next.add(g.key);
+                                setCfGruposFiltro(next);
+                              }} style={{ width: 14, height: 14, cursor: "pointer" }} />
+                              <span style={{ fontSize: 11, fontWeight: 600, color: sel ? g.cor : "#888" }}>{g.label}</span>
+                            </div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: sel && saldo > 0 ? g.cor : "#aaa", paddingLeft: 20 }}>
+                              {cfLoading ? "…" : saldo > 0 ? fmtR(saldo) : <span style={{ fontSize: 12, color: "#ccc" }}>sem saldo</span>}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {!temDados && (
                 <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center" }}>
                   <div style={{ fontSize: 14, color: "#888", marginBottom: 8 }}>Nenhum lançamento identificado como recurso de terceiros.</div>
@@ -2556,24 +2624,33 @@ export default function BI() {
 
         {/* ═══════════ EVOLUÇÃO DE ENDIVIDAMENTO ═══════════ */}
         {!loading && aba === "evolucao" && (() => {
+          // ── Filtro de grupos de categoria ─────────────────────
+          const tiposFiltro: string[] = CF_GRUPOS
+            .filter(g => cfGruposFiltro.has(g.key))
+            .flatMap(g => [...g.tipos] as string[]);
+          const cfFiltrados  = cfContratos.filter(c => tiposFiltro.includes(c.tipo ?? "outros"));
+          // parcelas dos contratos filtrados
+          const cfIdsFilt    = new Set(cfFiltrados.map(c => c.id));
+          const cfParcFilt   = cfParcelas.filter(p => cfIdsFilt.has(p.contrato_id));
+
           // ── Intervalo de anos ─────────────────────────────────
           const anoAtual = new Date().getFullYear();
           const anoMin   = anoAtual - 3;
 
           // Anos das parcelas (vencimento) + anos dos contratos (captação)
-          const anosParc = cfParcelas.map(p => Number(p.data_vencimento.slice(0, 4)));
-          const anosContr = cfContratos.map(c => Number((c.data_contrato ?? "").slice(0, 4))).filter(Boolean);
+          const anosParc = cfParcFilt.map(p => Number(p.data_vencimento.slice(0, 4)));
+          const anosContr = cfFiltrados.map(c => Number((c.data_contrato ?? "").slice(0, 4))).filter(Boolean);
           const anoMax = Math.max(anoAtual, ...anosParc, ...anosContr);
 
           const anos: string[] = [];
           for (let y = anoMin; y <= anoMax; y++) anos.push(String(y));
 
-          const temDados = cfContratos.length > 0 || cfParcelas.length > 0;
+          const temDados = cfFiltrados.length > 0 || cfParcFilt.length > 0;
 
           // ── Captação por ano (data_contrato) ──────────────────
           const captPorAno: Record<string, number> = {};
           for (const ano of anos) captPorAno[ano] = 0;
-          for (const c of cfContratos) {
+          for (const c of cfFiltrados) {
             const ano = (c.data_contrato ?? "").slice(0, 4);
             if (ano in captPorAno) captPorAno[ano] += (c.valor_total ?? c.valor_financiado ?? 0);
           }
@@ -2581,7 +2658,7 @@ export default function BI() {
           // ── Amortização por ano (parcelas.amortizacao) ────────
           const amortPorAno: Record<string, number> = {};
           for (const ano of anos) amortPorAno[ano] = 0;
-          for (const p of cfParcelas) {
+          for (const p of cfParcFilt) {
             const ano = p.data_vencimento.slice(0, 4);
             if (ano in amortPorAno) amortPorAno[ano] += (p.amortizacao ?? 0);
           }
@@ -2589,21 +2666,20 @@ export default function BI() {
           // ── Juros por ano (parcelas.juros + despesas_acessorios) ─
           const jurosPorAno: Record<string, number> = {};
           for (const ano of anos) jurosPorAno[ano] = 0;
-          for (const p of cfParcelas) {
+          for (const p of cfParcFilt) {
             const ano = p.data_vencimento.slice(0, 4);
             if (ano in jurosPorAno) jurosPorAno[ano] += (p.juros ?? 0) + (p.despesas_acessorios ?? 0);
           }
 
           // ── Saldo devedor acumulado por ano ───────────────────
-          // Para cada contrato: pegar saldo_devedor da última parcela com vencimento <= fim do ano
-          // Se não houver parcela <= fim do ano mas o contrato foi firmado naquele ano ou antes: usar valor_total
+          // Para cada contrato filtrado: pegar saldo_devedor da última parcela com vencimento <= fim do ano
           const saldoPorAno: Record<string, number> = {};
           for (const ano of anos) {
             const fimAno = `${ano}-12-31`;
             let total = 0;
-            for (const c of cfContratos) {
+            for (const c of cfFiltrados) {
               if (!c.data_contrato || c.data_contrato.slice(0, 4) > ano) continue;
-              const parcsAte = cfParcelas
+              const parcsAte = cfParcFilt
                 .filter(p => p.contrato_id === c.id && p.data_vencimento <= fimAno)
                 .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
               if (parcsAte.length > 0) {
@@ -2751,6 +2827,37 @@ export default function BI() {
                   <div style={{ fontSize: 12, color: "#bbb", marginTop: 6 }}>Cadastre contratos em Financeiro → Endividamento para visualizar a evolução.</div>
                 </div>
               )}
+
+              {/* ── Filtro de categorias ── */}
+              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Incluir no cálculo
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                  {CF_GRUPOS.map(g => {
+                    const sel = cfGruposFiltro.has(g.key);
+                    const saldoG = cfContratos.filter(c => (g.tipos as readonly string[]).includes(c.tipo ?? "")).reduce((s, c) => {
+                      const ultima = cfParcelas.filter(p => p.contrato_id === c.id && p.status === "pago").sort((a, b) => b.num_parcela - a.num_parcela)[0];
+                      return s + (ultima?.saldo_devedor ?? (c.valor_total ?? c.valor_financiado ?? 0));
+                    }, 0);
+                    return (
+                      <label key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "#DDE2EE"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <input type="checkbox" checked={sel} onChange={() => {
+                            const next = new Set(cfGruposFiltro);
+                            if (sel) next.delete(g.key); else next.add(g.key);
+                            setCfGruposFiltro(next);
+                          }} style={{ width: 14, height: 14, cursor: "pointer" }} />
+                          <span style={{ fontSize: 11, fontWeight: 600, color: sel ? g.cor : "#888" }}>{g.label}</span>
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: sel && saldoG > 0 ? g.cor : "#aaa", paddingLeft: 20 }}>
+                          {cfLoading ? "…" : saldoG > 0 ? fmtR(saldoG) : <span style={{ fontSize: 11, color: "#ccc" }}>sem saldo</span>}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
 
               {!cfLoading && temDados && (
                 <>
