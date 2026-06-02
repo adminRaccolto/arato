@@ -234,9 +234,10 @@ const NAV: NavItem[] = [
       { id: "conf-importacao",   label: "Importações",           path: "/configuracoes/importacao"  },
 
       { type: "divider", label: "Ferramentas do Sistema" },
-      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/admin/usuarios" },
-      { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs"     },
-      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"   },
+      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/admin/usuarios"         },
+      { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs"             },
+      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"           },
+      { id: "conf-admin",    label: "⚠️ Admin de Clientes",  path: "/configuracoes/admin"    },
     ],
   },
 
