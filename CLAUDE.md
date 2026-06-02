@@ -894,6 +894,72 @@ arato/
 
 ---
 
+### Sessão 20 — 2 de junho de 2026
+
+#### Melhorias no Endividamento e BI
+
+**`app/financeiro/endividamento/page.tsx`**
+- Colunas baseadas em `data_vencimento` das parcelas (não mais `data_contrato`) — agora mostra 2027, 2028, etc.
+- Filtro De/Até com atalhos: Próx. 12 meses / 3 anos / 5 anos / Tudo
+- N2 clicável abre N3 (contratos individuais) sem fechar N1 — `expandido` mudou de `string|null` para `Set<string>`
+- Print multi-página: `thead{display:table-header-group}`, `tbody tr{page-break-inside:avoid}`, `table{page-break-inside:auto}`
+- Novos tipos em `TIPO_LABEL`: `compra_terra`, `compra_imovel`, `consorcio_contemplado`, `consorcio_nao_contemplado`
+
+**`app/bi/page.tsx`**
+- Aba "Evolução de Endividamento" redesenhada: usa `contratos_financeiros` + `parcelas_pagamento` (não mais `lancamentos`)
+  - 4 linhas: Endividamento total acumulado · Captação · Amortização · Juros e encargos
+  - Colunas = (anoAtual-3) → último vencimento de parcela
+  - Coluna atual destacada em azul; futuras em cinza com label "proj."
+  - Painel de análise automático: tendência, custo financeiro %, pico de desembolso, quitação projetada
+- Painel "Saldo por Categoria" adicionado em Recursos de Terceiros e Evolução:
+  - 4 grupos com checkbox: Linhas de Crédito · Consórcio Contemplado · Consórcio Não Contemplado · Compra de Imóvel
+  - Estado `cfGruposFiltro` compartilhado entre as duas abas
+- `carregarCF()` dispara tanto para aba "terceiros" quanto "evolucao"
+- Detecção RT expandida: consórcio, compra de terra/imóvel
+- Constante `CF_GRUPOS` define os 4 grupos com tipos, cores e backgrounds
+
+#### Scripts de importação — Rancho Alegre
+Criados em `scripts/`:
+- **`import-produtores-rancho-alegre.sql`** — 7 produtores (família Costa Beber + empresas)
+  Tabela: `produtores` | Lookup por fazenda_id dinâmico
+- **`import-compradores-rancho-alegre.sql`** — 12 compradores de grãos + 5 bancos
+  Tabela: `pessoas` | Inclui AMAGGI, BUNGE, CARGILL, LDC, ADM, ENGELHART, BTG, INPASA×2, FS, MTCOTTON, BERTUOL
+- **`import-contratos-rancho-alegre.sql`** — 8 contratos ativos/parciais (safra 2025/2026 pra frente)
+  - 7 milho (BRL, todos abertos, 0% entregue)
+  - 1 soja BTG P 32460.000 (USD, parcial — 412.860 kg a entregar)
+  - Associa `ano_safra_id` (descricao = '2025/2026'), `ciclo_id` ('Ciclo Soja/Milho 2025/2026'), `produtor_id`, `pessoa_id`
+  - Preço em R$/sc ou US$/sc = valor_pdf_por_kg × 60
+  - Quantidade em KG (padrão do sistema)
+
+#### Tarefa em andamento — PENDENTE para próxima sessão
+**Adicionar novas abas na página de importação** `app/configuracoes/importacao/page.tsx`:
+- **Contratos de Venda** (nova aba `contratos_venda`) — tabela `contratos`
+  - Colunas: `numero*`, `produto*`, `safra*`, `ciclo`, `modalidade*`, `moeda*`, `preco_por_kg*`, `quantidade_kg*`, `entregue_kg`, `data_contrato*`, `data_entrega*`, `comprador*`, `comprador_cpf_cnpj`, `produtor_cpf_cnpj*`, `frete`, `observacao`
+  - Lookups: `ano_safra_id` por descricao, `ciclo_id` por descricao, `pessoa_id` por cpf_cnpj, `produtor_id` por cpf_cnpj
+  - `quantidade_sc` e `entregue_sc` armazenam em KG; preço convertido para /sc
+- **Produtores** (nova aba `produtores`) — tabela `produtores`
+  - Colunas: `nome*`, `tipo*` (pf/pj), `cpf_cnpj*`, `inscricao_est`, `email`, `telefone`, `cep`, `logradouro`, `municipio`, `estado*`
+  - Máscaras: CPF 000.000.000-00, CNPJ 00.000.000/0000-00, CEP 00000-000, IE apenas dígitos
+- **Fazendas** (nova aba `fazendas`) — tabela `fazendas`
+  - Colunas: `nome*`, `municipio*`, `estado*`, `area_total_ha*`, `cep`, `logradouro`, `car`, `nirf`, `itr_area_ha`
+- **Talhões** (nova aba `talhoes`) — tabela `talhoes`
+  - Colunas: `nome*`, `fazenda_nome*`, `area_ha*`, `cultura_predominante`, `tipo_solo`, `latitude`, `longitude`
+  - Lookup: `fazenda_id` por nome da fazenda
+
+#### Padrão da página de importação (para referência)
+```
+Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos"
+Padrão de cada aba:
+  1. type XxxRow = { colunas + _status + _msg }
+  2. TEMPLATE_XXX = [[header], [exemplo1], [exemplo2]]
+  3. INSTRUCOES_XXX = [[linha instrução], ...]
+  4. validarXxx(r) → XxxRow com _status "ok"|"erro"|"duplicado"
+  5. importarXxx() → supabase insert com upsert/verificação
+  6. UI: UploadZone → parseXlsx → validar → PreviewTable → botão Importar → Resultado
+```
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.
