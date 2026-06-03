@@ -332,12 +332,41 @@ export type Contrato = {
   // Comprometimento de arrendamento (não gera financeiro)
   is_arrendamento?: boolean;    // true = comprometimento de grãos de arrendamento
   arrendamento_id?: string;     // FK arrendamentos.id
+  // Adiantamento de cliente
+  adiantamento_total?:    number;   // valor acordado para adiantar
+  adiantamento_recebido?: number;   // soma dos recebimentos registrados
+  adiantamento_aplicado?: number;   // soma abatida nas entregas (romaneios)
   // Cessão — produtor cede o recebível a um fornecedor para quitar débito
   dado_em_cessao?: boolean;
   cessao_fornecedor_id?: string;   // FK pessoas.id
   cessao_fornecedor_nome?: string; // nome do fornecedor (desnormalizado)
   cessao_data?: string;            // data em que a cessão foi formalizada
   cessao_obs?: string;
+  created_at?: string;
+};
+
+export type AdiantamentoCliente = {
+  id: string;
+  fazenda_id: string;
+  contrato_id: string;
+  data: string;
+  valor: number;
+  descricao?: string;
+  lancamento_id?: string;
+  valor_aplicado: number;
+  status: "pendente" | "parcial" | "quitado";
+  created_at?: string;
+};
+
+export type AplicacaoAdiantamento = {
+  id: string;
+  fazenda_id: string;
+  adiantamento_id: string;
+  lancamento_id?: string;
+  romaneio_id?: string;
+  data_aplicacao: string;
+  valor_aplicado: number;
+  observacao?: string;
   created_at?: string;
 };
 

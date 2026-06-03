@@ -11,7 +11,7 @@ import {
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
-import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda } from "../../lib/supabase";
+import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
 
@@ -363,15 +363,22 @@ export default function Contratos() {
   const [modalRomaneio, setModalRomaneio] = useState(false);
   const ROM_VAZIO = () => ({
     contratoId:"", placa:"", pesoBruto:"", tara:"",
-    // classificação — campos comuns
     umidade:"", impureza:"", ph:"",
-    // avariados — detalhados (somados para gerar avariados_pct)
     ardidos:"", mofados:"", fermentados:"", germinados:"",
     esverdeados:"", quebrados:"", carunchados:"", outros_avariados:"",
-    // peso recebido pelo comprador (preenchido após entrega)
     peso_destino:"", sacas_faturadas:"", obs_divergencia:"",
+    // adiantamento
+    aplicarAdiant: false,
+    adiantValor: "",
   });
   const [fRom, setFRom] = useState(ROM_VAZIO());
+
+  // ── adiantamentos de cliente ─────────────────────────────────
+  const [adiantamentos, setAdiantamentos] = useState<Record<string, AdiantamentoCliente[]>>({});
+  const [modalAdiant, setModalAdiant]     = useState(false);
+  const [adiantContratoId, setAdiantContratoId] = useState("");
+  const [fAdiant, setFAdiant] = useState({ data: TODAY, valor: "", descricao: "" });
+  const [salvandoAdiant, setSalvandoAdiant] = useState(false);
 
   // ── ciclos: carrega quando safra muda (formulário) ───────────
   useEffect(() => {
@@ -409,9 +416,23 @@ export default function Contratos() {
       setAnosSafra(aList);
       setDepositos(dList);
       setFazendas(fList);
+      // adiantamentos
+      const { data: adiantList } = await supabase
+        .from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data");
+      const adiantMap: Record<string, AdiantamentoCliente[]> = {};
+      for (const a of (adiantList ?? [])) {
+        adiantMap[a.contrato_id] = [...(adiantMap[a.contrato_id] ?? []), a as AdiantamentoCliente];
+      }
+      setAdiantamentos(adiantMap);
     } catch(e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
     finally { setLoading(false); }
   }
+
+  // ── helper: saldo de adiantamento disponível de um contrato ──
+  const adiantSaldo = (contratoId: string) => {
+    const adts = adiantamentos[contratoId] ?? [];
+    return adts.reduce((s, a) => s + a.valor - a.valor_aplicado, 0);
+  };
 
   const toggleExpand = (id: string) =>
     setExpandido(prev => { const n = new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
@@ -736,11 +757,126 @@ export default function Contratos() {
         const novoSt  = novoEnt >= (c.quantidade_sc??0) ? "encerrado" : "parcial";
         return { ...c, entregue_sc: novoEnt, status: novoSt, romaneios: [...c.romaneios, criado] };
       }));
+      // ── aplicar adiantamento se selecionado ──────────────────
+      if (fRom.aplicarAdiant && fRom.adiantValor) {
+        const valorEntrega  = sacasCalc * (contratoSel.preco ?? 0);
+        const saldoDisp     = adiantSaldo(contratoSel.id);
+        const valorAplicar  = Math.min(
+          Math.max(0, parseFloat(fRom.adiantValor.replace(",", "."))),
+          valorEntrega,
+          saldoDisp,
+        );
+        if (valorAplicar > 0) {
+          const valorCR = Math.max(0, valorEntrega - valorAplicar);
+          // CR líquido para esta entrega
+          let crId: string | null = null;
+          if (valorCR > 0) {
+            const { data: crRow } = await supabase.from("lancamentos").insert({
+              fazenda_id: fazendaId,
+              tipo: "receber",
+              descricao: `Venda — ${contratoSel.comprador.split(" ").slice(0,3).join(" ")} (${criado.numero})`,
+              categoria: "Receita Grãos",
+              data_lancamento: TODAY, data_vencimento: TODAY,
+              valor: Math.round(valorCR * 100) / 100,
+              moeda: contratoSel.moeda,
+              status: "em_aberto",
+              auto: true,
+              observacao: `Adiantamento abatido: ${fmtR$(valorAplicar)} · Valor bruto: ${fmtR$(valorEntrega)}`,
+            }).select("id").maybeSingle();
+            crId = crRow?.id ?? null;
+          }
+          // FIFO: aplica o abatimento nos adiantamentos mais antigos primeiro
+          let restante = valorAplicar;
+          const adiantsPendentes = (adiantamentos[contratoSel.id] ?? [])
+            .filter(a => a.status !== "quitado")
+            .sort((a, b) => a.data.localeCompare(b.data));
+          const adiantUpdates: Record<string, AdiantamentoCliente> = {};
+          for (const adiant of adiantsPendentes) {
+            if (restante <= 0) break;
+            const saldoA  = adiant.valor - adiant.valor_aplicado;
+            const aplicar = Math.min(restante, saldoA);
+            const novoApl = adiant.valor_aplicado + aplicar;
+            const novoSt: AdiantamentoCliente["status"] = novoApl >= adiant.valor ? "quitado" : "parcial";
+            await supabase.from("adiantamentos_cliente")
+              .update({ valor_aplicado: Math.round(novoApl * 100) / 100, status: novoSt })
+              .eq("id", adiant.id);
+            await supabase.from("aplicacoes_adiantamento").insert({
+              fazenda_id: fazendaId, adiantamento_id: adiant.id,
+              lancamento_id: crId, romaneio_id: criado.id,
+              data_aplicacao: TODAY, valor_aplicado: Math.round(aplicar * 100) / 100,
+              observacao: `Romaneio ${criado.numero}`,
+            });
+            adiantUpdates[adiant.id] = { ...adiant, valor_aplicado: novoApl, status: novoSt };
+            restante -= aplicar;
+          }
+          // Atualiza contrato
+          const novoContrApl = (contratoSel.adiantamento_aplicado ?? 0) + valorAplicar;
+          await supabase.from("contratos")
+            .update({ adiantamento_aplicado: Math.round(novoContrApl * 100) / 100 })
+            .eq("id", contratoSel.id);
+          // Atualiza estado local
+          setAdiantamentos(prev => ({
+            ...prev,
+            [contratoSel.id]: (prev[contratoSel.id] ?? []).map(a => adiantUpdates[a.id] ?? a),
+          }));
+          setContratos(prev => prev.map(c =>
+            c.id === contratoSel.id ? { ...c, adiantamento_aplicado: novoContrApl } : c,
+          ));
+        }
+      }
       setFRom(ROM_VAZIO());
       setModalRomaneio(false);
       setAbaLista("expedicao");
     } catch(e: unknown) { alert("Erro ao salvar romaneio: " + sbErr(e)); }
     finally { setSalvando(false); }
+  };
+
+  // ── registrar novo adiantamento ───────────────────────────────
+  const registrarAdiantamento = async () => {
+    if (!fazendaId || !adiantContratoId || !fAdiant.valor) return;
+    setSalvandoAdiant(true);
+    try {
+      const valor    = Math.round(parseFloat(fAdiant.valor.replace(",", ".")) * 100) / 100;
+      const contrato = contratos.find(c => c.id === adiantContratoId);
+      if (!contrato || valor <= 0) return;
+      // 1. CR liquidado
+      const { data: crRow } = await supabase.from("lancamentos").insert({
+        fazenda_id: fazendaId,
+        tipo: "receber",
+        descricao: `Adiantamento — ${contrato.comprador.split(" ").slice(0,3).join(" ")} (Contrato ${contrato.numero ?? ""})`,
+        categoria: "Adiantamento Cliente",
+        data_lancamento: fAdiant.data, data_vencimento: fAdiant.data,
+        valor, moeda: contrato.moeda,
+        status: "liquidado", auto: true,
+        observacao: fAdiant.descricao || null,
+      }).select("id").maybeSingle();
+      // 2. Registro de adiantamento
+      const { data: adiant } = await supabase.from("adiantamentos_cliente").insert({
+        fazenda_id: fazendaId, contrato_id: adiantContratoId,
+        data: fAdiant.data, valor,
+        descricao: fAdiant.descricao || null,
+        lancamento_id: crRow?.id ?? null,
+        valor_aplicado: 0, status: "pendente",
+      }).select("*").maybeSingle();
+      // 3. Atualiza adiantamento_recebido no contrato
+      const novoRec = (contrato.adiantamento_recebido ?? 0) + valor;
+      await supabase.from("contratos")
+        .update({ adiantamento_recebido: Math.round(novoRec * 100) / 100 })
+        .eq("id", adiantContratoId);
+      // 4. Estado local
+      if (adiant) {
+        setAdiantamentos(prev => ({
+          ...prev,
+          [adiantContratoId]: [...(prev[adiantContratoId] ?? []), adiant as AdiantamentoCliente],
+        }));
+      }
+      setContratos(prev => prev.map(c =>
+        c.id === adiantContratoId ? { ...c, adiantamento_recebido: novoRec } : c,
+      ));
+      setModalAdiant(false);
+      setFAdiant({ data: TODAY, valor: "", descricao: "" });
+    } catch(e: unknown) { alert("Erro ao registrar adiantamento: " + sbErr(e)); }
+    finally { setSalvandoAdiant(false); }
   };
 
   // ── filtro da lista ───────────────────────────────────────────
@@ -1077,6 +1213,70 @@ export default function Contratos() {
                                           + Lançar Romaneio
                                         </button>
                                       </div>
+
+                                      {/* ── Adiantamentos ── */}
+                                      {(() => {
+                                        const adts        = adiantamentos[c.id] ?? [];
+                                        const totalRec    = adts.reduce((s, a) => s + a.valor, 0);
+                                        const totalApl    = adts.reduce((s, a) => s + a.valor_aplicado, 0);
+                                        const saldo       = totalRec - totalApl;
+                                        const statusCor   = (st: string) => st === "quitado" ? "#16A34A" : st === "parcial" ? "#C9921B" : "#1A4870";
+                                        const statusLabel = (st: string) => st === "quitado" ? "Quitado" : st === "parcial" ? "Parcial" : "Disponível";
+                                        return (
+                                          <div style={{ marginTop:16, borderTop:"0.5px solid #EEF1F6", paddingTop:12 }}>
+                                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                                              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                                                <span style={{ fontSize:11, fontWeight:600, color:"#555" }}>💰 Adiantamentos</span>
+                                                {saldo > 0 && (
+                                                  <span style={{ background:"#D5E8F5", color:"#1A4870", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>
+                                                    Saldo disponível: {fmtR$(saldo)}
+                                                  </span>
+                                                )}
+                                                {adts.length > 0 && saldo <= 0 && (
+                                                  <span style={{ background:"#DCFCE7", color:"#15803D", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>✓ Totalmente aplicado</span>
+                                                )}
+                                              </div>
+                                              <button onClick={e => { e.stopPropagation(); setAdiantContratoId(c.id); setFAdiant({ data:TODAY, valor:"", descricao:"" }); setModalAdiant(true); }}
+                                                style={{ fontSize:11, padding:"4px 10px", border:"0.5px solid #C9921B", borderRadius:6, background:"#FBF3E0", color:"#7A5A12", cursor:"pointer", fontWeight:600 }}>
+                                                + Registrar Adiantamento
+                                              </button>
+                                            </div>
+                                            {adts.length === 0 ? (
+                                              <div style={{ fontSize:11, color:"#aaa", fontStyle:"italic" }}>Nenhum adiantamento registrado para este contrato.</div>
+                                            ) : (
+                                              <>
+                                                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11, background:"#FAFBFD", border:"0.5px solid #EEF1F6", borderRadius:8, overflow:"hidden" }}>
+                                                  <thead>
+                                                    <tr style={{ background:"#FBF3E0" }}>
+                                                      {["Data","Valor recebido","Aplicado","Saldo","Status"].map((h,i) => (
+                                                        <th key={i} style={{ padding:"5px 10px", textAlign:i===0?"left":"center", fontWeight:600, color:"#555", borderBottom:"0.5px solid #EEF1F6" }}>{h}</th>
+                                                      ))}
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    {adts.map((a, ai) => (
+                                                      <tr key={a.id} style={{ borderBottom: ai<adts.length-1?"0.5px solid #EEF1F6":"none" }}>
+                                                        <td style={{ padding:"6px 10px" }}>{fmtData(a.data)}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600 }}>{fmtR$(a.valor)}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center", color:"#888" }}>{a.valor_aplicado > 0 ? fmtR$(a.valor_aplicado) : "—"}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600, color: a.valor-a.valor_aplicado>0?"#1A4870":"#888" }}>{fmtR$(a.valor - a.valor_aplicado)}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center" }}>
+                                                          <span style={{ background: statusCor(a.status)+"22", color: statusCor(a.status), fontWeight:600, padding:"2px 7px", borderRadius:8, fontSize:10 }}>{statusLabel(a.status)}</span>
+                                                        </td>
+                                                      </tr>
+                                                    ))}
+                                                  </tbody>
+                                                </table>
+                                                <div style={{ display:"flex", gap:20, padding:"6px 10px", fontSize:11, color:"#555" }}>
+                                                  <span>Total recebido: <strong>{fmtR$(totalRec)}</strong></span>
+                                                  <span>Aplicado em entregas: <strong>{fmtR$(totalApl)}</strong></span>
+                                                  <span style={{ fontWeight:700, color: saldo>0?"#1A4870":"#888" }}>Saldo: {fmtR$(saldo)}</span>
+                                                </div>
+                                              </>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   </td>
                                 </tr>
@@ -1879,6 +2079,47 @@ export default function Contratos() {
               </>
             )}
 
+            {/* ── Adiantamento disponível ── */}
+            {contratoSel && sacasCalc > 0 && adiantSaldo(contratoSel.id) > 0 && (
+              <div style={{ background:"#D5E8F5", border:"0.5px solid #1A4870", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: fRom.aplicarAdiant ? 10 : 0 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:"#0B2D50" }}>
+                    💰 Adiantamento disponível: <strong>{fmtR$(adiantSaldo(contratoSel.id))}</strong>
+                  </div>
+                  <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
+                    <input type="checkbox" checked={fRom.aplicarAdiant}
+                      onChange={e => {
+                        const on = e.target.checked;
+                        const sugestao = on ? String(Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0)).toFixed(2)) : "";
+                        setFRom(p => ({ ...p, aplicarAdiant: on, adiantValor: sugestao }));
+                      }} />
+                    <span style={{ fontSize:12, color:"#0B2D50", fontWeight:600 }}>Aplicar nesta entrega</span>
+                  </label>
+                </div>
+                {fRom.aplicarAdiant && (
+                  <div>
+                    <label style={{ ...lbl, color:"#0B2D50" }}>Valor a abater (R$) — máx. {fmtR$(Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0)))}</label>
+                    <input style={{ ...inp, borderColor:"#1A4870" }} type="number" step="0.01" min="0"
+                      max={Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0))}
+                      value={fRom.adiantValor}
+                      onChange={e => setFRom(p => ({ ...p, adiantValor: e.target.value }))} />
+                    {fRom.adiantValor && (() => {
+                      const vBruto = sacasCalc * (contratoSel.preco ?? 0);
+                      const vAbate = Math.min(parseFloat(fRom.adiantValor||"0"), vBruto, adiantSaldo(contratoSel.id));
+                      const vCR    = Math.max(0, vBruto - vAbate);
+                      return (
+                        <div style={{ marginTop:6, fontSize:11, color:"#0B2D50", display:"flex", gap:16, flexWrap:"wrap" }}>
+                          <span>Valor bruto: <strong>{fmtR$(vBruto)}</strong></span>
+                          <span>Abate: <strong style={{ color:"#E24B4A" }}>−{fmtR$(vAbate)}</strong></span>
+                          <span>CR a lançar: <strong style={{ color:"#16A34A" }}>{fmtR$(vCR)}</strong></span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:8 }}>
               <button style={btnR} onClick={() => { setModalRomaneio(false); setFRom(ROM_VAZIO()); }}>Cancelar</button>
               <button onClick={gerarRomaneio} disabled={salvando||!contratoSel||!fRom.placa||plCalc<=0}
@@ -2078,6 +2319,67 @@ export default function Contratos() {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+      {/* ── Modal: Registrar Adiantamento ── */}
+      {modalAdiant && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}
+          onClick={e => { if (e.target===e.currentTarget) setModalAdiant(false); }}>
+          <div style={{ background:"#fff", borderRadius:14, padding:28, width:500, maxWidth:"96vw" }}>
+            <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", marginBottom:4 }}>Registrar Adiantamento de Cliente</div>
+            <div style={{ fontSize:12, color:"#666", marginBottom:18 }}>
+              Um CR com status <strong>Liquidado</strong> é gerado automaticamente — o dinheiro já foi recebido.
+              O saldo fica disponível para abater no próximo romaneio.
+            </div>
+
+            {/* Contrato */}
+            <div style={{ marginBottom:12 }}>
+              <label style={lbl}>Contrato *</label>
+              <select style={inp} value={adiantContratoId} onChange={e => setAdiantContratoId(e.target.value)}>
+                <option value="">— selecione —</option>
+                {contratos.filter(c=>c.status!=="encerrado"&&c.status!=="cancelado").map(c => (
+                  <option key={c.id} value={c.id}>{c.numero} · {c.comprador.split(" ").slice(0,3).join(" ")} · {c.produto}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Data + Valor */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+              <div>
+                <label style={lbl}>Data do recebimento *</label>
+                <input style={inp} type="date" value={fAdiant.data} onChange={e => setFAdiant(p=>({...p,data:e.target.value}))} />
+              </div>
+              <div>
+                <label style={lbl}>Valor recebido (R$) *</label>
+                <input style={inp} type="number" step="0.01" min="0.01" placeholder="0,00"
+                  value={fAdiant.valor} onChange={e => setFAdiant(p=>({...p,valor:e.target.value}))} />
+              </div>
+            </div>
+
+            {/* Descrição */}
+            <div style={{ marginBottom:16 }}>
+              <label style={lbl}>Observação</label>
+              <input style={inp} placeholder="Ex: 30% antecipado via TED, conforme contrato"
+                value={fAdiant.descricao} onChange={e => setFAdiant(p=>({...p,descricao:e.target.value}))} />
+            </div>
+
+            {/* Preview */}
+            {fAdiant.valor && parseFloat(fAdiant.valor) > 0 && (
+              <div style={{ background:"#D5E8F5", border:"0.5px solid #1A4870", borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, color:"#0B2D50" }}>
+                💡 Será gerado CR de <strong>{fmtR$(parseFloat(fAdiant.valor))}</strong> como <strong>Liquidado</strong> em Contas a Receber.
+                O saldo ficará disponível para abatimento no próximo romaneio de expedição deste contrato.
+              </div>
+            )}
+
+            <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+              <button style={btnR} onClick={() => setModalAdiant(false)}>Cancelar</button>
+              <button onClick={registrarAdiantamento}
+                disabled={salvandoAdiant || !adiantContratoId || !fAdiant.valor || parseFloat(fAdiant.valor||"0") <= 0}
+                style={{ ...btnV, opacity: salvandoAdiant||!adiantContratoId||!fAdiant.valor||parseFloat(fAdiant.valor||"0")<=0?0.5:1 }}>
+                {salvandoAdiant ? "Salvando…" : "Registrar Adiantamento"}
+              </button>
+            </div>
           </div>
         </div>
       )}
