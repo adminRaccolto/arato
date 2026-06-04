@@ -1,3 +1,5 @@
+import AdmZip from "adm-zip";
+
 /**
  * lib/sieg.ts
  * Cliente da API Sieg DFe Monitor v1 — autenticação JWT.
@@ -234,10 +236,6 @@ export async function baixarXmlsSieg(
 
     if (isZip) {
       // Extrai XMLs do arquivo ZIP retornado pela API v1
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const AdmZip = require("adm-zip") as new (buf: Buffer) => {
-        getEntries: () => Array<{ name: string; isDirectory: boolean; getData: () => Buffer }>;
-      };
       const zip     = new AdmZip(Buffer.from(buffer));
       const entries = zip.getEntries();
       let   countThisPage = 0;

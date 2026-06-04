@@ -85,11 +85,21 @@ export async function GET(req: NextRequest) {
       }),
     });
 
-    const xmlBody = await xmlRes.text();
-    let xmlParsed: unknown;
-    try { xmlParsed = JSON.parse(xmlBody); } catch { xmlParsed = xmlBody; }
+    const xmlBuffer = await xmlRes.arrayBuffer();
+    const xmlBytes  = new Uint8Array(xmlBuffer);
+    const isZip     = xmlBytes[0] === 0x50 && xmlBytes[1] === 0x4B; // "PK"
 
-    console.log(`[sieg-test] baixar-xmls status=${xmlRes.status} body=${xmlBody.slice(0, 200)}`);
+    let xmlParsed: unknown;
+    let xmlInfo    = "";
+    if (isZip) {
+      xmlParsed = "(resposta ZIP — XMLs serão extraídos pelo sieg-sync)";
+      xmlInfo   = `ZIP válido — ${xmlBuffer.byteLength} bytes`;
+    } else {
+      const txt = Buffer.from(xmlBuffer).toString("utf-8");
+      try { xmlParsed = JSON.parse(txt); } catch { xmlParsed = txt.slice(0, 300); }
+    }
+
+    console.log(`[sieg-test] baixar-xmls status=${xmlRes.status} isZip=${isZip} bytes=${xmlBuffer.byteLength}`);
 
     return NextResponse.json({
       diagCreds,
@@ -97,6 +107,8 @@ export async function GET(req: NextRequest) {
       jwt_preview:   `${jwt.slice(0, 20)}...`,
       sieg_status:   xmlRes.status,
       sieg_ok:       xmlRes.ok,
+      sieg_formato:  isZip ? "ZIP" : "JSON",
+      sieg_info:     xmlInfo || undefined,
       sieg_resposta: xmlParsed,
     });
 
