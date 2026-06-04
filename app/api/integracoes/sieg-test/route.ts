@@ -35,10 +35,12 @@ export async function GET(req: NextRequest) {
     const jwtRes = await fetch("https://api.sieg.com/api/v1/create-jwt", {
       method:  "POST",
       headers: {
-        "accept":       "application/json",
-        "X-Secret-Key": creds.secretKey,
-        "X-Client-Id":  creds.clienteId,
+        "accept":         "application/json",
+        "Content-Length": "0",
+        "X-Secret-Key":   creds.secretKey,
+        "X-Client-Id":    creds.clienteId,
       },
+      body: "",
     });
 
     const jwtBody = await jwtRes.text();
@@ -73,7 +75,14 @@ export async function GET(req: NextRequest) {
         "X-Secret-Key":  creds.secretKey,
         "X-Client-Id":   creds.clienteId,
       },
-      body: JSON.stringify({ TipoXml: 1, Take: 1, Skip: 0, BaixarEventos: false }),
+      body: JSON.stringify({
+        TipoXml:          1,
+        Take:             1,
+        Skip:             0,
+        BaixarEventos:    false,
+        DataUploadInicio: new Date(Date.now() - 7 * 86_400_000).toISOString(),
+        DataUploadFim:    new Date().toISOString(),
+      }),
     });
 
     const xmlBody = await xmlRes.text();

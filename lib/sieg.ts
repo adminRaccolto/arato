@@ -47,10 +47,12 @@ async function getJwt(creds: SiegCredentials): Promise<string> {
   const res = await fetch(`${SIEG_BASE}/create-jwt`, {
     method:  "POST",
     headers: {
-      "accept":       "application/json",
-      "X-Secret-Key": creds.secretKey,
-      "X-Client-Id":  creds.clienteId,
+      "accept":         "application/json",
+      "Content-Length": "0",   // SIEG exige Content-Length mesmo com body vazio (HTTP 411 sem ele)
+      "X-Secret-Key":   creds.secretKey,
+      "X-Client-Id":    creds.clienteId,
     },
+    body: "",
   });
 
   if (!res.ok) {
