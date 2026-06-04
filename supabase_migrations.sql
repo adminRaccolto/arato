@@ -4775,3 +4775,14 @@ CREATE POLICY "aplic_adiant_all" ON aplicacoes_adiantamento FOR ALL
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- MANIFESTAÇÃO DO DESTINATÁRIO — SIEG (sessão 21 — 2026-06-03)
+-- ============================================================
+
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS manifestacao_tipo  INTEGER,       -- 0=Ciência 1=Confirmação 2=Desconhecimento 3=Não Realizada
+  ADD COLUMN IF NOT EXISTS manifestacao_data  DATE,
+  ADD COLUMN IF NOT EXISTS manifestacao_msg   TEXT;
+
+NOTIFY pgrst, 'reload schema';

@@ -247,6 +247,38 @@ export async function baixarXmlsSieg(
   return xmls;
 }
 
+// ─── Manifestar por chave de acesso ──────────────────────────────────────────
+
+export type TipoManifestacao = 0 | 1 | 2 | 3;
+// 0 = Ciência da Operação
+// 1 = Confirmação da Operação
+// 2 = Desconhecimento da Operação
+// 3 = Operação Não Realizada
+
+export async function manifestarPorChave(
+  creds:  SiegCredentials,
+  params: {
+    Chave:            string;
+    CnpjDestinatario: string;
+    Manifestacao:     TipoManifestacao;
+    Justificativa?:   string;
+  }
+): Promise<{ ok: boolean; mensagem: string; httpStatus: number }> {
+  const jwt = await getJwt(creds);
+  const res = await fetch(`${SIEG_BASE}/manifestar-por-chave`, {
+    method:  "POST",
+    headers: authHeaders(creds, jwt),
+    body:    JSON.stringify(params),
+  });
+  const txt = await res.text();
+  let mensagem = txt;
+  try {
+    const obj = JSON.parse(txt) as Record<string, unknown>;
+    mensagem = String(obj.Message ?? obj.message ?? obj.Mensagem ?? obj.mensagem ?? txt);
+  } catch { /* usa txt */ }
+  return { ok: res.ok, mensagem, httpStatus: res.status };
+}
+
 // ─── Contar XMLs disponíveis ──────────────────────────────────────────────────
 
 export async function contarXmlsSieg(
