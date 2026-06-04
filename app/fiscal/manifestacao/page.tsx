@@ -50,7 +50,8 @@ export default function ManifestacaoPage() {
   const [syncMsg,      setSyncMsg]      = useState("");
   const [filtroAba,    setFiltroAba]    = useState<FiltroAba>("pendentes");
   const [busca,        setBusca]        = useState("");
-  const [cnpjDest,     setCnpjDest]     = useState("");
+  const [cnpjDest,          setCnpjDest]          = useState("");
+  const [cnpjsDisponiveis,  setCnpjsDisponiveis]  = useState<string[]>([]);
   const [busy,         setBusy]         = useState<Record<string, boolean>>({});
   const [erros,        setErros]        = useState<Record<string, string>>({});
   const [justModal,    setJustModal]    = useState<{ nf: NfRow; tipo: number } | null>(null);
@@ -67,18 +68,30 @@ export default function ManifestacaoPage() {
       .limit(500);
     setNfs((data ?? []) as NfRow[]);
 
-    // CNPJ do destinatário
+    // CNPJs do destinatário — lidos do módulo SIEG (cnpjs_destino = array)
+    // ou módulo fiscal (cpf_cnpj_emitente = string)
     const { data: cfgs } = await supabase
       .from("configuracoes_modulo")
-      .select("config")
+      .select("config, modulo")
       .eq("fazenda_id", fazendaId)
       .in("modulo", ["sieg", "fiscal", "fiscal_nfe"])
-      .limit(3);
+      .limit(5);
+    const todosDocumentos: string[] = [];
     for (const row of (cfgs ?? [])) {
-      const c = (row.config ?? {}) as Record<string, string>;
-      const doc = (c.cnpj_destino ?? c.cpf_cnpj_emitente ?? c.cnpj ?? "").replace(/\D/g, "");
-      if (doc) { setCnpjDest(doc); break; }
+      const c = (row.config ?? {}) as Record<string, unknown>;
+      // Array (SIEG)
+      if (Array.isArray(c.cnpjs_destino)) {
+        for (const d of c.cnpjs_destino as string[]) {
+          const num = d.replace(/\D/g, "");
+          if (num && !todosDocumentos.includes(num)) todosDocumentos.push(num);
+        }
+      }
+      // String simples
+      const single = String(c.cnpj_destino ?? c.cpf_cnpj_emitente ?? c.cnpj ?? "").replace(/\D/g, "");
+      if (single && !todosDocumentos.includes(single)) todosDocumentos.push(single);
     }
+    setCnpjsDisponiveis(todosDocumentos);
+    if (todosDocumentos.length > 0) setCnpjDest(todosDocumentos[0]);
     setLoading(false);
   }, [fazendaId]);
 
@@ -148,11 +161,24 @@ export default function ManifestacaoPage() {
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Consulta e manifestação de NF-e, CT-e e NFS-e recebidas via SIEG</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {cnpjDest && (
-              <div style={{ fontSize: 11, color: "#555", background: "#D5E8F5", padding: "4px 10px", borderRadius: 6 }}>
-                CNPJ: <strong>{fmtDoc(cnpjDest)}</strong>
+            {cnpjsDisponiveis.length > 1 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: "#555" }}>Destinatário:</span>
+                <select
+                  value={cnpjDest}
+                  onChange={e => setCnpjDest(e.target.value)}
+                  style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "#1a1a1a" }}
+                >
+                  {cnpjsDisponiveis.map(d => (
+                    <option key={d} value={d}>{fmtDoc(d)}</option>
+                  ))}
+                </select>
               </div>
-            )}
+            ) : cnpjDest ? (
+              <div style={{ fontSize: 11, color: "#555", background: "#D5E8F5", padding: "4px 10px", borderRadius: 6 }}>
+                Destinatário: <strong>{fmtDoc(cnpjDest)}</strong>
+              </div>
+            ) : null}
             <button onClick={sincronizar} disabled={syncing}
               style={{ padding: "8px 18px", background: syncing ? "#DDE2EE" : "#1A4870", color: syncing ? "#888" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: syncing ? "default" : "pointer" }}>
               {syncing ? "⏳ Sincronizando…" : "⟳ Sincronizar com SIEG"}
