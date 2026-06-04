@@ -1,87 +1,98 @@
 /**
  * GET /api/integracoes/sieg-test?fazenda_id=xxx
- * Testa a API key Sieg com a conta e retorna diagnóstico completo.
+ * Testa as credenciais SIEG v1 (JWT + baixar-xmls) e retorna diagnóstico.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient }              from "@supabase/supabase-js";
-import { normalizarApiKeySieg }      from "../../../../lib/sieg";
+import { credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
-
-function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function GET(req: NextRequest) {
   const fazendaId = req.nextUrl.searchParams.get("fazenda_id") ?? "";
 
-  const db = sb();
-  const { data: row } = await db
-    .from("configuracoes_modulo")
-    .select("config")
-    .eq("fazenda_id", fazendaId)
-    .eq("modulo", "sieg")
-    .maybeSingle();
+  const creds = credenciaisEnv();
 
-  const cfg          = (row?.config ?? {}) as Record<string, string>;
-  const apiKeyFazRaw = (cfg.api_key ?? "").trim();
-  const apiKeyGlbRaw = (process.env.SIEG_API_KEY ?? "").trim();
-  const apiKeyRaw    = apiKeyFazRaw || apiKeyGlbRaw;
-  const apiKey       = normalizarApiKeySieg(apiKeyRaw);
-  const keySource    = apiKeyFazRaw ? "fazenda (configuracoes_modulo)" : "global (env SIEG_API_KEY)";
-
-  const keyDiag = {
-    fonte:        keySource,
-    comprimento:  apiKey.length,
-    inicio:       apiKey.slice(0, 6),
-    fim:          apiKey.slice(-6),
-    tem_percent:  apiKeyRaw.includes("%"),
-    foi_decoded:  apiKeyRaw !== apiKey,
+  const diagCreds = {
+    apiKey_ok:    !!creds.apiKey,
+    secretKey_ok: !!creds.secretKey,
+    clienteId:    creds.clienteId || "(não configurado)",
+    apiKey_fim:   creds.apiKey   ? `...${creds.apiKey.slice(-6)}`   : "(vazio)",
+    secretKey_fim:creds.secretKey? `...${creds.secretKey.slice(-6)}`: "(vazio)",
   };
 
-  if (!apiKey) {
-    return NextResponse.json({ erro: "Nenhuma API Key configurada", keyDiag });
+  if (!credenciaisValidas(creds)) {
+    return NextResponse.json({
+      erro: "Credenciais SIEG incompletas. Configure SIEG_API_KEY, SIEG_SECRET_KEY e SIEG_CLIENTE_ID.",
+      diagCreds,
+    }, { status: 500 });
   }
 
-  // Testa autenticação via /BaixarXmls (Take=1) — mesmo endpoint do cron.
-  // Resposta 200 com array ou objeto {Status/Mensagens} = chave válida.
-  // Resposta 401/403 = chave inválida ou conta bloqueada.
-  console.log(`[sieg-test] fazenda=${fazendaId} key=${keyDiag.fonte} len=${keyDiag.comprimento} inicio=${keyDiag.inicio} fim=${keyDiag.fim}`);
+  console.log(`[sieg-test] fazenda=${fazendaId} clienteId=${creds.clienteId}`);
 
   try {
-    const res = await fetch(
-      `https://api.sieg.com/BaixarXmls?api_key=${encodeURIComponent(apiKey)}`,
-      {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ XmlType: 1, Take: 1, Skip: 0, Downloadevent: false }),
-      }
-    );
+    // Passo 1: obter JWT
+    const jwtRes = await fetch("https://api.sieg.com/api/v1/create-jwt", {
+      method:  "POST",
+      headers: {
+        "accept":       "application/json",
+        "X-Secret-Key": creds.secretKey,
+        "X-Client-Id":  creds.clienteId,
+      },
+    });
 
-    const body = await res.text();
-    let parsed: unknown;
-    try { parsed = JSON.parse(body); } catch { parsed = body; }
+    const jwtBody = await jwtRes.text();
+    console.log(`[sieg-test] JWT status=${jwtRes.status} body=${jwtBody.slice(0, 100)}`);
 
-    console.log(`[sieg-test] HTTP ${res.status} — resposta: ${body.slice(0, 200)}`);
+    if (!jwtRes.ok) {
+      return NextResponse.json({
+        diagCreds,
+        etapa: "create-jwt",
+        sieg_status: jwtRes.status,
+        sieg_ok: false,
+        sieg_resposta: jwtBody.slice(0, 300),
+      });
+    }
 
-    // 200 = autenticou (pode ter docs ou não)
-    // 401/403 = chave inválida
-    const ok = res.status === 200;
+    let jwt: string;
+    try {
+      const parsed = JSON.parse(jwtBody);
+      jwt = typeof parsed === "string" ? parsed : (parsed.token ?? parsed.Token ?? JSON.stringify(parsed));
+    } catch {
+      jwt = jwtBody.trim().replace(/^["']|["']$/g, "");
+    }
+
+    // Passo 2: testar baixar-xmls (Take=1)
+    const xmlRes = await fetch("https://api.sieg.com/api/v1/baixar-xmls", {
+      method:  "POST",
+      headers: {
+        "accept":        "application/json",
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${jwt}`,
+        "X-API-Key":     creds.apiKey,
+        "X-Secret-Key":  creds.secretKey,
+        "X-Client-Id":   creds.clienteId,
+      },
+      body: JSON.stringify({ TipoXml: 1, Take: 1, Skip: 0, BaixarEventos: false }),
+    });
+
+    const xmlBody = await xmlRes.text();
+    let xmlParsed: unknown;
+    try { xmlParsed = JSON.parse(xmlBody); } catch { xmlParsed = xmlBody; }
+
+    console.log(`[sieg-test] baixar-xmls status=${xmlRes.status} body=${xmlBody.slice(0, 200)}`);
 
     return NextResponse.json({
-      keyDiag,
-      sieg_status:   res.status,
-      sieg_ok:       ok,
-      sieg_resposta: parsed,
-      url_enviada:   `https://api.sieg.com/BaixarXmls?api_key=${apiKey.slice(0, 6)}...${apiKey.slice(-6)}`,
+      diagCreds,
+      jwt_ok:        true,
+      jwt_preview:   `${jwt.slice(0, 20)}...`,
+      sieg_status:   xmlRes.status,
+      sieg_ok:       xmlRes.ok,
+      sieg_resposta: xmlParsed,
     });
 
   } catch (err) {
     console.error("[sieg-test] erro de rede:", err);
-    return NextResponse.json({ keyDiag, erro_rede: String(err) });
+    return NextResponse.json({ diagCreds, erro_rede: String(err) }, { status: 502 });
   }
 }

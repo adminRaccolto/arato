@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
-import { baixarXmlsSieg, parseNFeXml, normalizarApiKeySieg } from "../../../../lib/sieg";
+import { baixarXmlsSieg, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -50,23 +50,15 @@ export async function POST(req: NextRequest) {
 
     const cfg = (row?.config ?? {}) as Record<string, string>;
 
-    // ── API Key: por fazenda (configuracoes_modulo) OU global (env) ──────────
-    const apiKeyFazendaRaw = (cfg.api_key ?? "").trim();
-    const apiKeyGlobalRaw  = (process.env.SIEG_API_KEY ?? "").trim();
-    const apiKeyRaw        = apiKeyFazendaRaw || apiKeyGlobalRaw;
-    const apiKey           = normalizarApiKeySieg(apiKeyRaw);
-
-    if (!apiKey) {
+    // ── Credenciais SIEG (env global) ────────────────────────────────────────
+    const siegCreds = credenciaisEnv();
+    if (!credenciaisValidas(siegCreds)) {
       return NextResponse.json(
-        { erro: "Chave Sieg não configurada. Acesse Configurações → Integrações → Sieg e informe a API Key, ou configure SIEG_API_KEY nas variáveis de ambiente da Vercel." },
+        { erro: "Credenciais SIEG incompletas. Configure SIEG_API_KEY, SIEG_SECRET_KEY e SIEG_CLIENTE_ID nas variáveis de ambiente da Vercel." },
         { status: 500 }
       );
     }
-
-    const keySource    = apiKeyFazendaRaw ? "fazenda" : "env-global";
-    const keyDecodedOk = apiKeyRaw !== apiKey; // true = tinha URL-encoding, foi corrigido
-    const keyInfo      = `${keySource} — ${apiKey.length} chars — início: "${apiKey.slice(0, 4)}" fim: "${apiKey.slice(-4)}"${keyDecodedOk ? " [URL-decoded automaticamente]" : ""}`;
-    console.log(`[sieg-sync] API Key: ${keyInfo}`);
+    console.log(`[sieg-sync] clienteId=${siegCreds.clienteId} apiKey=...${siegCreds.apiKey.slice(-6)}`);
 
     // CPFs/CNPJs monitorados — suporta array (novo) e string única (legado)
     let cnpjs: string[] = [];
@@ -107,15 +99,15 @@ export async function POST(req: NextRequest) {
     const xmlsNFe: string[] = [];
     for (const cnpj of cnpjs) {
       try {
-        const docs = await baixarXmlsSieg(apiKey, {
-          XmlType: 1,
+        const docs = await baixarXmlsSieg(siegCreds, {
+          TipoXml: 1,
           DataUploadInicio: uploadInicio,
           DataUploadFim:    uploadFim,
           CnpjDest:         cnpj,
         });
         xmlsNFe.push(...docs);
       } catch (e) {
-        return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}`, diagnostico: keyInfo }, { status: 502 });
+        return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}` }, { status: 502 });
       }
     }
 

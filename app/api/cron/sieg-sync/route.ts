@@ -14,7 +14,7 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse }     from "next/server";
-import { baixarXmlsSieg, parseNFeXml }  from "../../../../lib/sieg";
+import { baixarXmlsSieg, parseNFeXml, credenciaisEnv } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -54,9 +54,10 @@ function matchRegra(regras: Regra[], cnpj: string, ncm: string, descricao: strin
 async function syncFazenda(
   db: SupabaseClient,
   fazendaId: string,
-  apiKey: string,
+  _apiKey: string,  // mantido por compatibilidade — credenciais lidas do env
   cnpjs: string[]
 ): Promise<{ importadas: number; classificadas: number; pendentes: number; erros: number }> {
+  const siegCreds = credenciaisEnv();
 
   // Última data importada (ou 30 dias atrás)
   const { data: last } = await db
@@ -85,8 +86,8 @@ async function syncFazenda(
   for (const cnpj of cnpjs) {
     let xmls: string[] = [];
     try {
-      xmls = await baixarXmlsSieg(apiKey, {
-        XmlType: 1,
+      xmls = await baixarXmlsSieg(siegCreds, {
+        TipoXml: 1,
         DataUploadInicio: dtIni,
         DataUploadFim:    dtFim,
         CnpjDest:         cnpj,
