@@ -201,6 +201,8 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
 }
 
 // ─── Busca paginada de XMLs (API v1) ─────────────────────────────────────────
+// A API v1 do SIEG retorna os XMLs em um arquivo ZIP (magic "PK") ou em JSON
+// dependendo da versão. Detectamos o formato pelo primeiro byte da resposta.
 
 export async function baixarXmlsSieg(
   creds:  SiegCredentials,
@@ -225,24 +227,48 @@ export async function baixarXmlsSieg(
       throw new Error(`SIEG baixar-xmls HTTP ${res.status}: ${txt.slice(0, 300)}`);
     }
 
-    const raw = await res.json() as unknown;
+    const buffer  = await res.arrayBuffer();
+    const bytes   = new Uint8Array(buffer);
+    // Assinatura ZIP: "PK" = 0x50 0x4B
+    const isZip   = bytes[0] === 0x50 && bytes[1] === 0x4B;
 
-    if (!Array.isArray(raw)) break; // sem resultados ou erro de negócio
+    if (isZip) {
+      // Extrai XMLs do arquivo ZIP retornado pela API v1
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const AdmZip = require("adm-zip") as new (buf: Buffer) => {
+        getEntries: () => Array<{ name: string; isDirectory: boolean; getData: () => Buffer }>;
+      };
+      const zip     = new AdmZip(Buffer.from(buffer));
+      const entries = zip.getEntries();
+      let   countThisPage = 0;
+      for (const entry of entries) {
+        if (entry.isDirectory) continue;
+        if (entry.name.toLowerCase().endsWith(".xml")) {
+          xmls.push(entry.getData().toString("utf-8"));
+          countThisPage++;
+        }
+      }
+      if (countThisPage < take) break; // última página
+    } else {
+      // JSON (formato legado ou resposta de controle)
+      const text = Buffer.from(buffer).toString("utf-8");
+      let raw: unknown;
+      try { raw = JSON.parse(text); } catch { break; }
 
-    const data = raw as unknown[];
-    if (data.length === 0) break;
+      if (!Array.isArray(raw) || (raw as unknown[]).length === 0) break;
 
-    for (const item of data) {
-      if (typeof item !== "object" || !item) continue;
-      const obj = item as Record<string, unknown>;
-      const b64 = String(obj.Xml ?? obj.XML ?? obj.xml ?? obj.XmlBase64 ?? obj.xmlBase64 ?? "");
-      if (!b64) continue;
-      try {
-        xmls.push(Buffer.from(b64, "base64").toString("utf-8"));
-      } catch { /* item malformado */ }
+      const data = raw as unknown[];
+      for (const item of data) {
+        if (typeof item !== "object" || !item) continue;
+        const obj = item as Record<string, unknown>;
+        const b64 = String(obj.Xml ?? obj.XML ?? obj.xml ?? obj.XmlBase64 ?? obj.xmlBase64 ?? "");
+        if (!b64) continue;
+        try { xmls.push(Buffer.from(b64, "base64").toString("utf-8")); } catch { /* ignora */ }
+      }
+
+      if (data.length < take) break;
     }
 
-    if (data.length < take) break;
     skip += take;
   }
 
