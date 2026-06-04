@@ -90,13 +90,15 @@ export default function ManifestacaoPage() {
     try {
       const res  = await fetch("/api/integracoes/sieg-sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: fazendaId }) });
       const data = await res.json() as Record<string, unknown>;
-      if (data.erro) setSyncMsg(`✗ ${data.erro}`);
-      else {
+      if (data.erro) {
+        setSyncMsg(`✗ ${data.erro}`);
+      } else {
         const imp = Number(data.importados_nfe ?? 0);
         const dup = Number(data.duplicados_nfe ?? 0);
         setSyncMsg(`✓ ${imp} NF-e importada${imp !== 1 ? "s" : ""} · ${dup} duplicada${dup !== 1 ? "s" : ""}`);
-        await carregar();
       }
+      // Recarrega do banco sempre — NFs anteriores já podem existir
+      await carregar();
     } catch (e) { setSyncMsg(`✗ Erro de rede: ${e}`); }
     finally { setSyncing(false); }
   }

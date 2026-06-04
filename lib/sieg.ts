@@ -225,6 +225,8 @@ export async function baixarXmlsSieg(
     });
 
     if (!res.ok) {
+      // 404 = nenhum documento localizado nesse período — encerra paginação normalmente
+      if (res.status === 404) break;
       const txt = await res.text();
       throw new Error(`SIEG baixar-xmls HTTP ${res.status}: ${txt.slice(0, 300)}`);
     }
