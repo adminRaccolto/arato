@@ -19,7 +19,7 @@ type LancRow = {
   moeda: string; num_parcela: string; total_parcelas: string;
   tipo_documento_lcdpr: string; numero_documento: string;
   operacao_gerencial: string; produtor_cpf_cnpj: string;
-  _status?: "ok" | "erro"; _msg?: string;
+  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type InsumoRow = {
   nome: string; categoria: string; unidade: string; estoque: string;
@@ -615,6 +615,11 @@ const PERIODICIDADES = ["mensal","bimestral","trimestral","semestral","anual","b
 const ESTRUTURAS_PAGAMENTO = ["simples","juros_semestral_capital_anual"];
 const MESES_POR_PERIODO: Record<string, number> = { mensal:1, bimestral:2, trimestral:3, semestral:6, anual:12 };
 const FORMAS_PAGAMENTO_ARR = ["sc_soja","sc_milho","sc_soja_milho","brl"];
+const CAT_CAPTACAO_IMP: Record<string, string> = {
+  custeio: "Captação de Custeio", investimento: "Captação de Financiamento",
+  securitizacao: "Captação de Securitização", cpr: "Captação de CPR",
+  egf: "Captação de EGF", outros: "Captação de Empréstimos",
+};
 
 function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   const row = r as unknown as ContratoFinRow;
@@ -1005,7 +1010,27 @@ export default function ImportacaoPage() {
 
   async function handleFileCp(file: File) {
     const raw = await parseXlsx(file);
-    setCpRows(raw.map(r => validarLanc(r))); setResultCp(null);
+    const rows = raw.map(r => validarLanc(r));
+    // ── Guarda de duplicidade com contratos financeiros ──────────────────────
+    if (fazendaId) {
+      const { data: autoLancs } = await supabase
+        .from("lancamentos").select("numero_documento")
+        .eq("fazenda_id", fazendaId).eq("tipo", "pagar").eq("auto", true);
+      const autoNums = new Set(
+        (autoLancs ?? []).map((l: { numero_documento: string | null }) =>
+          (l.numero_documento ?? "").toLowerCase().trim()
+        ).filter(Boolean)
+      );
+      rows.forEach(r => {
+        if (r._status === "ok" && r.numero_documento?.trim()) {
+          if (autoNums.has(r.numero_documento.trim().toLowerCase())) {
+            r._status = "duplicado";
+            r._msg = "CP já gerado automaticamente pelo contrato financeiro — não reimporte";
+          }
+        }
+      });
+    }
+    setCpRows(rows); setResultCp(null);
   }
 
   async function handleFileCr(file: File) {
@@ -1115,8 +1140,27 @@ export default function ImportacaoPage() {
     const produtorMap: Record<string, string> = {};
     (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => { if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
 
+    // ── Carregar números de CP auto-gerados por contratos (guarda de duplicidade) ──
+    const { data: autoLancsGlobal } = tipo === "pagar"
+      ? await supabase.from("lancamentos").select("numero_documento")
+          .eq("fazenda_id", fazendaId).eq("tipo", "pagar").eq("auto", true)
+      : { data: [] as { numero_documento: string | null }[] };
+    const autoNumsGlobal = new Set(
+      (autoLancsGlobal ?? []).map((l: { numero_documento: string | null }) =>
+        (l.numero_documento ?? "").toLowerCase().trim()
+      ).filter(Boolean)
+    );
+
     for (const r of rows) {
       if (r._status === "erro") { erros++; continue; }
+      if (r._status === "duplicado") { duplicados++; continue; }
+      // Segunda linha de defesa: bloqueia CP duplicados de contratos financeiros
+      if (tipo === "pagar" && r.numero_documento?.trim() &&
+          autoNumsGlobal.has(r.numero_documento.trim().toLowerCase())) {
+        r._status = "duplicado";
+        r._msg = "CP já gerado automaticamente pelo contrato financeiro";
+        duplicados++; continue;
+      }
       const pessoaId = r.pessoa_cpf_cnpj ? pessoaMap[r.pessoa_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
       const produtorId = r.produtor_cpf_cnpj?.trim() ? produtorMap[r.produtor_cpf_cnpj.replace(/\D/g, "")] ?? null : null;
       const opGerId = r.operacao_gerencial?.trim() ? opGerMap[r.operacao_gerencial.toLowerCase().trim()] ?? null : null;
@@ -1387,7 +1431,45 @@ export default function ImportacaoPage() {
             }
           }
         }
-        if (parcRows.length > 0) await supabase.from("parcelas_pagamento").insert(parcRows);
+        if (parcRows.length > 0) {
+          const numDoc = r.numero_contrato.trim();
+          // ── Guarda de duplicidade: verifica CP auto-gerados anteriores ──────
+          const { count: cpAutoExist } = await supabase
+            .from("lancamentos").select("id", { count: "exact", head: true })
+            .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
+            .eq("auto", true).eq("numero_documento", numDoc);
+
+          if ((cpAutoExist ?? 0) > 0) {
+            // CP já existem — insere apenas parcelas sem criar CP duplicados
+            await supabase.from("parcelas_pagamento").insert(parcRows);
+            r._msg = `Parcelas criadas (${cpAutoExist} CP auto já existiam — não duplicados)`;
+          } else {
+            // ── Cria CP em lancamentos e vincula às parcelas ─────────────────
+            const hoje = new Date().toISOString().slice(0, 10);
+            const categoria = CAT_CAPTACAO_IMP[r.tipo] ?? "Captação de Empréstimos";
+            const totalP = parcRows.length;
+            const lancRows = parcRows.map(p => ({
+              fazenda_id:       fazendaId,
+              tipo:             "pagar",
+              descricao:        `${r.descricao.trim()} — Parcela ${p.num_parcela as number}/${totalP}`,
+              categoria,
+              data_lancamento:  hoje,
+              data_vencimento:  p.data_vencimento as string,
+              valor:            p.valor_parcela as number,
+              moeda:            moedaUp,
+              status:           "em_aberto",
+              auto:             true,
+              numero_documento: numDoc,
+              pessoa_id:        pessoaId,
+            }));
+            const { data: lancCriados } = await supabase
+              .from("lancamentos").insert(lancRows).select("id");
+            if (lancCriados?.length) {
+              parcRows.forEach((p, idx) => { p.lancamento_id = lancCriados[idx]?.id ?? null; });
+            }
+            await supabase.from("parcelas_pagamento").insert(parcRows);
+          }
+        }
       }
 
       // Vincula CP existentes apenas quando prazo_meses não foi informado (fallback)
@@ -1398,7 +1480,7 @@ export default function ImportacaoPage() {
           .eq("numero_documento", r.numero_contrato.trim())
           .order("data_vencimento");
         if (cpExist?.length) {
-          const parcRows = cpExist.map((l: { id: string; valor: number; data_vencimento: string }, idx: number) => ({
+          const parcRowsLink = cpExist.map((l: { id: string; valor: number; data_vencimento: string }, idx: number) => ({
             contrato_id:         contrato.id,
             fazenda_id:          fazendaId,
             num_parcela:         idx + 1,
@@ -1411,7 +1493,7 @@ export default function ImportacaoPage() {
             status:              "em_aberto",
             lancamento_id:       l.id,
           }));
-          await supabase.from("parcelas_pagamento").insert(parcRows);
+          await supabase.from("parcelas_pagamento").insert(parcRowsLink);
         }
       }
     }
