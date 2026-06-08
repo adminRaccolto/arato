@@ -230,31 +230,43 @@ function mapTipoContrato(st: string): ContratoFinanceiro["tipo"] {
   return m[s] ?? "outros";
 }
 
-async function lerXLSX(file: File): Promise<ContratoImportado[]> {
+type LerXLSXResult = {
+  contratos: ContratoImportado[];
+  debug: {
+    colunas: string[];
+    totalLinhas: number;
+    gruposEncontrados: number;
+    valoresOperacao: string[];
+    avisos: string[];
+  };
+};
+
+async function lerXLSX(file: File): Promise<LerXLSXResult> {
   const XLSXLib = await import("xlsx");
   const buf = await file.arrayBuffer();
-  // cellDates:true faz SheetJS retornar Date objects para células de data
   const wb = XLSXLib.read(buf, { type: "array", cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
-
-  // sheet_to_json retorna objetos cujas chaves são os cabeçalhos da primeira linha
   const rawRows = XLSXLib.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 
-  // Normaliza chaves: trim + uppercase — elimina espaços ocultos e variação de case
+  // Normaliza chaves: trim + uppercase
   const rows = rawRows.map(row => {
     const n: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row)) n[k.trim().toUpperCase()] = v;
     return n;
   });
 
+  const colunas = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const avisos: string[] = [];
+
   const str = (row: Record<string, unknown>, col: string) =>
     String(row[col] ?? "").trim();
-
   const num = (row: Record<string, unknown>, col: string) =>
     parseNumBR(row[col]);
-
   const dat = (row: Record<string, unknown>, col: string) =>
     parseDateBR(row[col]);
+
+  // Coleta valores únicos de OPERACAO_CONTA para diagnóstico
+  const valoresOperacao = [...new Set(rows.map(r => str(r, "OPERACAO_CONTA")).filter(Boolean))];
 
   // Agrupa por CD_DIVIDA
   const grupos = new Map<string, typeof rows>();
@@ -269,24 +281,34 @@ async function lerXLSX(file: File): Promise<ContratoImportado[]> {
 
   for (const [cd, linhas] of grupos) {
     const opNorm = (r: Record<string, unknown>) =>
-      str(r, "OPERACAO_CONTA").toLowerCase();
+      str(r, "OPERACAO_CONTA").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-    // Linha cabeçalho: OPERACAO_CONTA=Receber sem amortização (ou primeira Receber)
+    // Cabeçalho: "receber" sem amortização → "receber" qualquer → "c"/"credito" → primeira linha
     const headerRow =
-      linhas.find(r => opNorm(r) === "receber" && num(r, "VALOR_AMORTIZACAO") === 0)
-      ?? linhas.find(r => opNorm(r) === "receber");
+      linhas.find(r => (opNorm(r) === "receber" || opNorm(r) === "c" || opNorm(r) === "credito") && num(r, "VALOR_AMORTIZACAO") === 0)
+      ?? linhas.find(r => opNorm(r) === "receber" || opNorm(r) === "c" || opNorm(r) === "credito")
+      ?? linhas[0];
 
-    // Linhas de parcela: OPERACAO_CONTA=Pagar
-    const parcelasRows = linhas.filter(r => opNorm(r) === "pagar");
+    // Parcelas: "pagar"/"debito"/"d" → todas exceto cabeçalho → cabeçalho sozinho
+    let parcelasRows = linhas.filter(r =>
+      opNorm(r) === "pagar" || opNorm(r) === "d" || opNorm(r) === "debito"
+    );
 
-    if (!headerRow || parcelasRows.length === 0) continue;
+    if (parcelasRows.length === 0 && linhas.length > 1) {
+      parcelasRows = linhas.filter(r => r !== headerRow);
+      avisos.push(`CD_DIVIDA ${cd}: sem linhas "Pagar" — usando ${parcelasRows.length} linha(s) restante(s) como parcelas`);
+    }
+
+    if (parcelasRows.length === 0) {
+      // Contrato de linha única: a própria linha serve como parcela
+      parcelasRows = [headerRow];
+      avisos.push(`CD_DIVIDA ${cd}: linha única — tratada como contrato com 1 parcela`);
+    }
 
     const moedaCd = num(headerRow, "CD_MOEDA");
     const moeda: "BRL" | "USD" = moedaCd === 2 ? "USD" : "BRL";
     const cotacaoRaw = num(headerRow, "VL_COTACAO");
-    // cotacao só faz sentido para USD; para BRL VL_COTACAO=1
     const cotacao = moeda === "USD" && cotacaoRaw > 1 ? cotacaoRaw : undefined;
-
     const taxaAa = num(headerRow, "PERC_JUROS");
     const taxaAm = num(headerRow, "TAXA_JURO_MES");
 
@@ -314,7 +336,10 @@ async function lerXLSX(file: File): Promise<ContratoImportado[]> {
     });
   }
 
-  return contratos;
+  return {
+    contratos,
+    debug: { colunas, totalLinhas: rows.length, gruposEncontrados: grupos.size, valoresOperacao, avisos },
+  };
 }
 
 // ────────────────────────────────────────────────────────
@@ -331,6 +356,7 @@ export default function ContratosFinanceiros() {
   const [importPreview, setImportPreview] = useState<ContratoImportado[] | null>(null);
   const [importando, setImportando]       = useState(false);
   const [importLog, setImportLog]         = useState<string[]>([]);
+  const [importDiag, setImportDiag]       = useState<LerXLSXResult["debug"] | null>(null);
 
   // modal unificado
   const [modalAberto, setModalAberto]       = useState(false);
@@ -864,6 +890,68 @@ export default function ContratosFinanceiros() {
                     </div>
                     <div style={{ marginTop: 8, color: "#555" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
                   </div>
+
+                  {/* Diagnóstico quando arquivo foi lido mas nenhum contrato encontrado */}
+                  {importDiag && (
+                    <div style={{ marginBottom: 16, background: "#FFF8EC", border: "1.5px solid #C9921B", borderRadius: 10, padding: "14px 18px" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "#7A5C00", marginBottom: 10 }}>
+                        ⚠️ Arquivo lido mas nenhum contrato encontrado
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
+                        {[
+                          { label: "Linhas lidas", val: importDiag.totalLinhas },
+                          { label: "Grupos CD_DIVIDA", val: importDiag.gruposEncontrados },
+                          { label: "Colunas detectadas", val: importDiag.colunas.length },
+                        ].map(({ label, val }) => (
+                          <div key={label} style={{ background: "white", borderRadius: 8, padding: "8px 12px", textAlign: "center", border: "0.5px solid #C9921B40" }}>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: val === 0 ? "#E24B4A" : "#C9921B" }}>{val}</div>
+                            <div style={{ fontSize: 11, color: "#555" }}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {importDiag.gruposEncontrados === 0 && (
+                        <div style={{ padding: "8px 12px", background: "#FFF0F0", borderRadius: 7, fontSize: 12, color: "#7A1A1A", marginBottom: 10 }}>
+                          <strong>Coluna CD_DIVIDA não encontrada ou vazia.</strong> Verifique se a planilha tem a coluna CD_DIVIDA preenchida.
+                        </div>
+                      )}
+
+                      {importDiag.valoresOperacao.length > 0 && (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>Valores encontrados em OPERACAO_CONTA:</div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {importDiag.valoresOperacao.map(v => (
+                              <span key={v} style={{ padding: "2px 8px", background: "white", border: "0.5px solid #C9921B", borderRadius: 12, fontSize: 11, color: "#7A5C00", fontFamily: "monospace" }}>{v}</span>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Esperado: <code>Receber</code> (cabeçalho) e <code>Pagar</code> (parcelas)</div>
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>Colunas encontradas no arquivo:</div>
+                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "#555", lineHeight: 1.8, background: "white", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
+                          {importDiag.colunas.join(" · ") || "(nenhuma)"}
+                        </div>
+                      </div>
+
+                      {importDiag.avisos.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>Avisos do parser:</div>
+                          {importDiag.avisos.map((av, i) => (
+                            <div key={i} style={{ fontSize: 11, color: "#7A5C00", marginBottom: 2 }}>• {av}</div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button onClick={() => setImportDiag(null)}
+                        style={{ marginTop: 10, padding: "5px 12px", background: "white", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, color: "#7A5C00", cursor: "pointer" }}>
+                        Tentar outro arquivo
+                      </button>
+                    </div>
+                  )}
+
                   <label style={{ display: "block", border: "2px dashed #D4DCE8", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = "#D4DCE8")}>
@@ -874,12 +962,13 @@ export default function ContratosFinanceiros() {
                       const file = e.target.files?.[0];
                       if (!file) return;
                       try {
-                        const preview = await lerXLSX(file);
-                        if (preview.length === 0) {
-                          alert("Nenhum contrato encontrado no arquivo. Verifique se as colunas estão corretas (CD_DIVIDA, OPERACAO_CONTA, etc.).");
+                        const result = await lerXLSX(file);
+                        if (result.contratos.length === 0) {
+                          setImportDiag(result.debug);
                           return;
                         }
-                        setImportPreview(preview);
+                        setImportDiag(null);
+                        setImportPreview(result.contratos);
                       } catch (err) {
                         alert("Erro ao ler o arquivo: " + (err as Error).message);
                       }
