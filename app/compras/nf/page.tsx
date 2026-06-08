@@ -10,6 +10,7 @@ import {
   criarInsumo,
   listarDepositos,
   listarPessoas,
+  criarPessoa,
   listarCentrosCustoGeral,
   listarRegrasClassificacao,
   aplicarRegraClassificacao,
@@ -168,12 +169,13 @@ export default function NfCompraPage() {
   const [cab, setCab] = useState({
     numero: "", serie: "1", chave_acesso: "",
     emitente_nome: "", emitente_cnpj: "",
+    emitente_municipio: "", emitente_estado: "",
     pessoa_id: "", cfop: "",
     data_emissao: "", data_entrada: new Date().toISOString().split("T")[0],
     valor_total: "", natureza: "",
     pedido_compra_id: "",
-    operacao_gerencial_id: "",  // consumo
-    centro_custo_id: "",        // consumo
+    operacao_gerencial_id: "",
+    centro_custo_id: "",
     data_vencimento_cp: "",
     deposito_destino_id: "",    // remessa
     observacao: "",
@@ -181,6 +183,11 @@ export default function NfCompraPage() {
     vinculo_atividade: "rural" as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
     entidade_contabil: "pf" as "pf" | "pj",
   });
+  // Estado para cadastro rápido de fornecedor
+  const [savingForn, setSavingForn] = useState(false);
+  // Estado para "Aplicar a todos" no passo de itens
+  const [bulkCC,    setBulkCC]    = useState("");
+  const [bulkOpGer, setBulkOpGer] = useState("");
 
   // Itens
   const [itens, setItens] = useState<ItemRascunho[]>([ITEM_VAZIO()]);
@@ -276,6 +283,7 @@ export default function NfCompraPage() {
     setCab({
       numero: "", serie: "1", chave_acesso: "",
       emitente_nome: "", emitente_cnpj: "",
+      emitente_municipio: "", emitente_estado: "",
       pessoa_id: "", cfop: "",
       data_emissao: new Date().toISOString().split("T")[0],
       data_entrada: new Date().toISOString().split("T")[0],
@@ -289,6 +297,7 @@ export default function NfCompraPage() {
       vinculo_atividade: "rural",
       entidade_contabil: "pf",
     });
+    setBulkCC(""); setBulkOpGer("");
     setItens([ITEM_VAZIO()]);
     setErr("");
     setSiegChave("");
@@ -306,6 +315,8 @@ export default function NfCompraPage() {
       chave_acesso: nf.chave_acesso ?? "",
       emitente_nome: nf.emitente_nome,
       emitente_cnpj: nf.emitente_cnpj ?? "",
+      emitente_municipio: "",
+      emitente_estado: "",
       pessoa_id: nf.pessoa_id ?? "",
       cfop: nf.cfop ?? "",
       data_emissao: nf.data_emissao,
@@ -369,6 +380,9 @@ export default function NfCompraPage() {
       const natOp   = ide?.querySelector("natOp")?.textContent ?? "";
       const vNF     = total?.querySelector("vNF")?.textContent ?? "0";
       const chNFe   = doc.querySelector("chNFe, infNFe")?.getAttribute("Id")?.replace(/^NFe/, "") ?? "";
+      const enderEmit = emit?.querySelector("enderEmit");
+      const xMun    = enderEmit?.querySelector("xMun")?.textContent ?? "";
+      const ufEmit  = enderEmit?.querySelector("UF")?.textContent   ?? "";
 
       // Tenta classificação automática com o CNPJ/nome do emitente
       const regraHeader = aplicarRegraClassificacao(regrasClass, cnpj, xNome, "", "", "");
@@ -381,6 +395,8 @@ export default function NfCompraPage() {
         chave_acesso: chNFe,
         emitente_nome: xNome,
         emitente_cnpj: cnpj,
+        emitente_municipio: xMun,
+        emitente_estado: ufEmit,
         data_emissao: dhEmi ? dhEmi.substring(0, 10) : p.data_emissao,
         valor_total: vNF,
         natureza: natOp,
@@ -1061,7 +1077,39 @@ export default function NfCompraPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Emitente (Fornecedor) *</label>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                        <label style={{ ...lbl, marginBottom: 0 }}>Emitente (Fornecedor) *</label>
+                        {!cab.pessoa_id && cab.emitente_nome && (
+                          <button
+                            disabled={savingForn}
+                            onClick={async () => {
+                              if (!fazendaId || !cab.emitente_nome) return;
+                              setSavingForn(true);
+                              try {
+                                const nova = await criarPessoa({
+                                  fazenda_id: fazendaId,
+                                  nome:       cab.emitente_nome,
+                                  tipo:       "pj",
+                                  cliente:    false,
+                                  fornecedor: true,
+                                  cpf_cnpj:   cab.emitente_cnpj || undefined,
+                                  municipio:  cab.emitente_municipio || undefined,
+                                  estado:     cab.emitente_estado   || undefined,
+                                });
+                                await carregar();
+                                setCab(p => ({ ...p, pessoa_id: nova.id }));
+                              } catch (e) {
+                                alert("Erro ao cadastrar fornecedor: " + (e instanceof Error ? e.message : e));
+                              } finally {
+                                setSavingForn(false);
+                              }
+                            }}
+                            style={{ fontSize: 10, padding: "2px 9px", borderRadius: 6, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#0B2D50", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" as const }}
+                          >
+                            {savingForn ? "…" : "+ Cadastrar"}
+                          </button>
+                        )}
+                      </div>
                       <select value={cab.pessoa_id} onChange={e => onPessoaChange(e.target.value)} style={inp}>
                         <option value="">Selecionar do cadastro…</option>
                         {pessoas.map(p => (
@@ -1120,8 +1168,8 @@ export default function NfCompraPage() {
                   </div>
 
                   <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Vinculações e Vencimento</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Vinculações, Vencimento e Operação Gerencial</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={lbl}>Pedido de Compra vinculado</label>
                         <select value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
@@ -1146,6 +1194,13 @@ export default function NfCompraPage() {
                       <div>
                         <label style={lbl}>Vencimento da CP</label>
                         <input type="date" value={cab.data_vencimento_cp} onChange={e => setCab(p=>({...p,data_vencimento_cp:e.target.value}))} style={inp} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Operação Gerencial</label>
+                        <select value={cab.operacao_gerencial_id} onChange={e => setCab(p=>({...p,operacao_gerencial_id:e.target.value}))} style={inp}>
+                          <option value="">Sem operação gerencial</option>
+                          {reclassOps.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
+                        </select>
                       </div>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
@@ -1279,6 +1334,48 @@ export default function NfCompraPage() {
                       + Item
                     </button>
                   </div>
+
+                  {/* Painel "Aplicar a todos" — custo_direto e itens direto em insumos */}
+                  {(tipo === "custo_direto" || tipo === "insumos") && (
+                    <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
+                        {tipo === "custo_direto" ? "Aplicar a todos os itens" : "Aplicar a todos os itens C. Custo"}
+                      </div>
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" as const }}>
+                        <div style={{ flex: "1 1 200px" }}>
+                          <label style={lbl}>Operação Gerencial</label>
+                          <select value={bulkOpGer} onChange={e => setBulkOpGer(e.target.value)} style={{ ...inp, fontSize: 12 }}>
+                            <option value="">— não alterar —</option>
+                            {reclassOps.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
+                          </select>
+                        </div>
+                        <div style={{ flex: "1 1 200px" }}>
+                          <label style={lbl}>Centro de Custo</label>
+                          <select value={bulkCC} onChange={e => setBulkCC(e.target.value)} style={{ ...inp, fontSize: 12 }}>
+                            <option value="">— não alterar —</option>
+                            {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                          </select>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!bulkCC && !bulkOpGer) return;
+                            setItens(prev => prev.map(it => {
+                              const ehDireto = tipo === "custo_direto" || it.tipo_apropiacao === "direto";
+                              if (!ehDireto) return it;
+                              return {
+                                ...it,
+                                ...(bulkCC    ? { centro_custo_id: bulkCC }    : {}),
+                              };
+                            }));
+                            if (bulkOpGer) setCab(p => ({ ...p, operacao_gerencial_id: bulkOpGer }));
+                          }}
+                          style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                        >
+                          Aplicar →
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Grid de itens */}
                   <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
