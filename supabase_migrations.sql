@@ -2398,8 +2398,6 @@ ALTER TABLE lancamentos
 
 CREATE INDEX IF NOT EXISTS idx_lancamentos_natureza ON lancamentos(fazenda_id, natureza);
 
-bs
-
 -- ============================================================
 -- Migration 61 — Log do Sistema + permissoes granulares nos grupos
 -- ============================================================
