@@ -307,14 +307,15 @@ const INSTRUCOES_CONTRATOS_FIN = [
   ["  price → Tabela Price (parcelas fixas)"],
   ["  bullet → paga só juros em cada período, principal no vencimento"],
   ["• cotacao_usd: só para moeda=USD (ex: 5.85)"],
-  ["• auto_parcelas: sim ou nao — gera o cronograma automaticamente"],
+  ["• auto_parcelas: deixe vazio ou 'sim' para gerar parcelas automaticamente"],
+  ["  Use 'nao' apenas se quiser vincular manualmente CP já lançados"],
   ["• credor_cpf_cnpj: CNPJ/CPF do credor para vincular ao cadastro de Pessoas"],
   ["• produtor_cpf_cnpj: CPF/CNPJ do produtor responsável (obrigatório para LCDPR)"],
   ["  Em fazendas com mais de um produtor, identifica quem assinou o contrato"],
   [""],
-  ["⚠️  AVISO — Evitar duplicação do financeiro:"],
-  ["  Se o numero_contrato já existir em lançamentos CP, o sistema vincula os CP"],
-  ["  existentes sem criar duplicatas (auto_parcelas é ignorado nesse caso)."],
+  ["⚠️  Geração de parcelas:"],
+  ["  Se prazo_meses > 0, as parcelas são geradas automaticamente com a periodicidade"],
+  ["  informada. Para desativar e vincular CP já lançados, use auto_parcelas=nao."],
   [""],
   ["Exemplos de periodicidade + estrutura:"],
   ["  Custeio mensal SAC        → periodicidade=mensal,    estrutura=simples,                    tipo_amortizacao=sac"],
@@ -1259,9 +1260,11 @@ export default function ImportacaoPage() {
       ok++;
 
       // Auto-geração de parcelas com suporte a periodicidade
+      // Gera automaticamente sempre que prazo_meses > 0, a menos que auto_parcelas = "nao"
       const prazo = parseInt(r.prazo_meses || "0");
-      const autoP = (r.auto_parcelas || "").toLowerCase() === "sim";
-      if (autoP && prazo > 0 && (r._cp_encontrados ?? 0) === 0 && contrato) {
+      const skipAutoP = (r.auto_parcelas || "").toLowerCase() === "nao";
+      const autoP = !skipAutoP && prazo > 0;
+      if (autoP && contrato) {
         const startDate = r.data_liberacao?.trim() || r.data_contrato.trim();
         let taxaAm = r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : 0;
         if (!taxaAm && r.taxa_juros_aa?.trim()) {
@@ -1332,8 +1335,8 @@ export default function ImportacaoPage() {
         if (parcRows.length > 0) await supabase.from("parcelas_pagamento").insert(parcRows);
       }
 
-      // Se há CP existentes com esse numero_documento, vincula como parcelas
-      if ((r._cp_encontrados ?? 0) > 0 && contrato) {
+      // Vincula CP existentes apenas quando prazo_meses não foi informado (fallback)
+      if (!autoP && (r._cp_encontrados ?? 0) > 0 && contrato) {
         const { data: cpExist } = await supabase.from("lancamentos")
           .select("id, valor, data_vencimento")
           .eq("fazenda_id", fazendaId).eq("tipo", "pagar")
