@@ -430,9 +430,16 @@ export default function PulverizacaoPage() {
                           </select>
                         </td>
                         <td style={{ padding: "6px 8px", width: 70 }}>
-                          <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
-                            {["L","kg","mL","g"].map(u => <option key={u} value={u}>{u}</option>)}
-                          </select>
+                          {it.insumo_id ? (
+                            <div style={{ ...inp, fontSize: 12, background: "#F4F6FA", color: "#1A4870", fontWeight: 600, textAlign: "center", cursor: "default" }}
+                              title="Unidade travada pelo cadastro do insumo">
+                              {it.unidade}
+                            </div>
+                          ) : (
+                            <select style={{ ...inp, fontSize: 12 }} value={it.unidade} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, unidade: e.target.value } : x))}>
+                              {["L","kg","mL","g","sc","t","un"].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          )}
                         </td>
                         <td style={{ padding: "6px 8px", width: 90 }}>
                           <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" placeholder="0,000" value={it.dose_ha} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: e.target.value } : x))} />

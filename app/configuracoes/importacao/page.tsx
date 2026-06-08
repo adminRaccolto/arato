@@ -24,7 +24,8 @@ type LancRow = {
 type InsumoRow = {
   nome: string; categoria: string; unidade: string; estoque: string;
   estoque_minimo: string; valor_unitario: string; fabricante: string; subgrupo: string;
-  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+  _status?: "ok" | "aviso" | "erro" | "duplicado"; _msg?: string;
+  _unidade_original?: string;  // unidade antes da conversão automática
 };
 type ProdutoRow = {
   nome: string; categoria: string; unidade: string; codigo_interno: string;
@@ -473,7 +474,8 @@ function downloadTemplate(aba: Aba) {
       ["• tipo_documento_lcdpr: RECIBO, NF, DUPLICATA, CHEQUE, PIX, TED ou OUTROS"],
       ["• pix_tipo: cpf, cnpj, email, telefone ou aleatoria"],
       ["• categoria insumo: semente, fertilizante, defensivo, inoculante, combustivel, peca, material, uso_consumo, escritorio, outros"],
-      ["• unidade: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, outros"],
+      ["• unidade: kg, g, L, mL, sc, t, un, m, m2, cx, pc, par, bag, outros"],
+      ["• SEMENTES: unidade é sempre kg — se informar 'bag' ou outra unidade, o sistema converte para kg automaticamente"],
     ];
     const instrMap: Record<Aba, (string | number)[][]> = {
       pessoas:          instrBase,
@@ -559,12 +561,28 @@ function validarLanc(r: Record<string, string>): LancRow {
   return { ...row, _status: "ok", _msg: "" };
 }
 
+// Unidades aceitas para conversão automática de sementes
+const UNIDADES_NAO_KG_SEMENTE = ["bag","sc","t","g","L","mL","un","cx","fardo","saco"];
+
 function validarInsumo(r: Record<string, string>): InsumoRow {
   const row = r as unknown as InsumoRow;
   if (!row.nome?.trim())      return { ...row, _status: "erro", _msg: "nome obrigatório" };
   if (!row.categoria?.trim()) return { ...row, _status: "erro", _msg: "categoria obrigatória" };
   if (!row.unidade?.trim())   return { ...row, _status: "erro", _msg: "unidade obrigatória" };
-  return { ...row, _status: "ok", _msg: "" };
+
+  const catNorm = row.categoria.trim().toLowerCase();
+  const unNorm  = row.unidade.trim().toLowerCase();
+
+  // ── Sementes: unidade obrigatoriamente kg ──────────────────────────────────
+  if (catNorm === "semente" && unNorm !== "kg") {
+    const eraBag = unNorm === "bag";
+    const msg = eraBag
+      ? `bag → kg (verifique se estoque ${row.estoque || "0"} já está em kg)`
+      : `${row.unidade} → kg (semente sempre em kg — verifique o estoque)`;
+    return { ...row, categoria: catNorm, unidade: "kg", _unidade_original: row.unidade.trim(), _status: "aviso", _msg: msg };
+  }
+
+  return { ...row, categoria: catNorm, _status: "ok", _msg: "" };
 }
 
 const CATS_PRODUTO = ["peca","material","uso_consumo","escritorio","outros"];
