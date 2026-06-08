@@ -328,8 +328,8 @@ export default function BI() {
   }, [fazendaId]);
 
   useEffect(() => {
-    if ((aba === "evolucao" || aba === "terceiros") && fazendaId && cfContratos.length === 0) carregarCF();
-  }, [aba, fazendaId, cfContratos.length, carregarCF]);
+    if ((aba === "evolucao" || aba === "terceiros" || aba === "cambio") && fazendaId) carregarCF();
+  }, [aba, fazendaId, carregarCF]);
 
   async function executarVerificacoes() {
     if (!fazendaId) return;
@@ -783,7 +783,10 @@ export default function BI() {
                 ))}
               </div>
             )}
-            <button onClick={carregar} style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</button>
+            <button
+              onClick={() => { setCfContratos([]); setCfParcelas([]); carregar(); carregarCF(); }}
+              title="Recarregar todos os dados (use após importar contratos ou lançamentos)"
+              style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</button>
           </div>
         </div>
 
