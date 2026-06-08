@@ -15,7 +15,7 @@ interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cul
 interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha: number; produtividade_esperada: number }
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
-interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string }
+interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
 interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
@@ -31,7 +31,7 @@ interface ContratoDetalhe {
 }
 
 // Tipos para a aba Evolução de Endividamento
-interface CFContrato { id: string; descricao: string; credor: string; tipo?: string; moeda: string; data_contrato: string; valor_total?: number; valor_financiado?: number; linha_credito?: string }
+interface CFContrato { id: string; descricao: string; credor: string; tipo?: string; moeda: string; data_contrato: string; valor_total?: number; valor_financiado?: number; valor_financiado_brl?: number; valor_cotacao?: number; linha_credito?: string; status?: string }
 interface CFParcela  { id: string; contrato_id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
 
 // Grupos de categoria para filtro de saldo
@@ -274,7 +274,7 @@ export default function BI() {
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").eq("fazenda_id", fazendaId),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
-      supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id").eq("fazenda_id", fazendaId),
+      supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").eq("fazenda_id", fazendaId),
       supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,ciclo_id,ano_safra_id,modalidade,tipo").eq("fazenda_id", fazendaId),
       supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").eq("fazenda_id", fazendaId),
       fetch("/api/precos").then(r => r.json()),
@@ -313,7 +313,7 @@ export default function BI() {
     try {
       const { data: cs } = await supabase
         .from("contratos_financeiros")
-        .select("id,descricao,credor,tipo,moeda,data_contrato,valor_total,valor_financiado,linha_credito")
+        .select("id,descricao,credor,tipo,moeda,data_contrato,valor_total,valor_financiado,valor_financiado_brl,valor_cotacao,linha_credito,status")
         .eq("fazenda_id", fazendaId);
       const ids = (cs ?? []).map((c: Record<string, unknown>) => c.id as string);
       const { data: ps } = ids.length > 0
@@ -326,6 +326,10 @@ export default function BI() {
       setCfParcelas((ps ?? []) as CFParcela[]);
     } catch { /* ignora */ } finally { setCfLoading(false); }
   }, [fazendaId]);
+
+  useEffect(() => {
+    if (fazendaId && userRole === "raccotlo") carregarCF();
+  }, [fazendaId, userRole, carregarCF]);
 
   useEffect(() => {
     if ((aba === "evolucao" || aba === "terceiros" || aba === "cambio") && fazendaId) carregarCF();
@@ -592,14 +596,41 @@ export default function BI() {
   // Agrega por ano safra ou por ano calendário
   type RTAnoBucket = { label: string; captado: number; pago: number; juros: number; jurosPend: number; saldo: number; area: number };
 
+  // ── Mapa contrato_id → tipo (para lookup nas parcelas) ──────
+  const cfTipoMap = new Map<string, string>(cfContratos.map(c => [c.id, c.tipo ?? "outros"]));
+
   const rtPorAno = (() => {
-    // Mapa: label → bucket
+    // Usa cfContratos + cfParcelas como fonte primária (autoridade)
     const mapa = new Map<string, RTAnoBucket>();
     const getBucket = (label: string, area = 0): RTAnoBucket => {
       if (!mapa.has(label)) mapa.set(label, { label, captado: 0, pago: 0, juros: 0, jurosPend: 0, saldo: 0, area });
       return mapa.get(label)!;
     };
+    const area = fazenda?.area_total_ha ?? 0;
+    for (const c of cfContratos) {
+      if (c.status === "cancelado") continue;
+      const ano = (c.data_contrato ?? "").slice(0, 4);
+      if (!ano) continue;
+      const b = getBucket(ano, area);
+      const valBrl = c.valor_financiado_brl ?? (c.moeda === "USD" && c.valor_cotacao && c.valor_financiado ? c.valor_financiado * c.valor_cotacao : (c.valor_financiado ?? 0));
+      b.captado += valBrl;
+    }
+    for (const p of cfParcelas) {
+      const ano = p.data_vencimento.slice(0, 4);
+      if (!ano) continue;
+      const b = getBucket(ano);
+      if (p.status === "pago") {
+        b.pago  += p.amortizacao ?? 0;
+        b.juros += p.juros ?? 0;
+      } else {
+        b.jurosPend += p.juros ?? 0;
+      }
+    }
+    // Complementa com lançamentos RT que não vieram de CF (keyword matching)
+    const cfLancDescs = new Set(cfContratos.map(c => c.descricao.toLowerCase()));
     for (const l of lancamentosFiltrados) {
+      // Pula lançamentos que já estão cobertos pelos contratos CF importados
+      if (l.auto) continue;
       let label: string;
       if (l.ano_safra_id) {
         const safra = anosSafra.find(a => a.id === l.ano_safra_id);
@@ -607,20 +638,13 @@ export default function BI() {
       } else {
         label = l.data_vencimento.slice(0, 4);
       }
-      // Área da safra para o bucket
-      const areaLabel = (() => {
-        if (l.ano_safra_id) {
-          const cids = ciclos.filter(c => c.ano_safra_id === l.ano_safra_id).map(c => c.id);
-          return plantios.filter(p => cids.includes(p.ciclo_id)).reduce((s, p) => s + (p.area_ha || 0), 0);
-        }
-        return fazenda?.area_total_ha ?? 0;
-      })();
-      const b = getBucket(label, areaLabel);
+      const b = getBucket(label, area);
       if (isCaptacao(l))          b.captado   += l.valor;
       if (isPrincipal(l) && l.status === "baixado") b.pago  += l.valor;
       if (isJurosPgto(l) && l.status === "baixado") b.juros += l.valor;
       if (isJurosPgto(l) && l.status !== "baixado") b.jurosPend += l.valor;
     }
+    void cfLancDescs;
     // Recalcula saldo
     for (const b of mapa.values()) b.saldo = b.captado - b.pago;
     return Array.from(mapa.values()).sort((a, b) => b.label.localeCompare(a.label));
@@ -1820,6 +1844,10 @@ export default function BI() {
           // ── Fluxo USD por data ──────────────────────────────────
           const cpUsdLan  = lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.moeda === "USD" && l.status !== "baixado");
           const crUsdLan  = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
+          // CF: parcelas em aberto de contratos USD (amortização + juros pendentes)
+          const cfUsdContratos = cfContratos.filter(c => c.moeda === "USD" && c.status !== "cancelado");
+          const cfUsdIds = new Set(cfUsdContratos.map(c => c.id));
+          const cfUsdParcelas = cfParcelas.filter(p => cfUsdIds.has(p.contrato_id) && p.status !== "pago");
           // CR de contratos em USD (usa data_pagamento como data de recebimento)
           const crUsdCon  = contratos.filter(c => c.moeda === "USD" && c.status !== "cancelado" && !c.is_arrendamento && c.data_pagamento && c.preco && c.quantidade_sc);
 
@@ -1849,9 +1877,22 @@ export default function BI() {
             e.crUsd  += val;
             e.items.push({ tipo: "cr", desc: `Contrato ${c.numero ?? c.comprador ?? "—"} — ${c.produto}`, valor: val });
           }
+          // CF: parcelas USD em aberto (amortização + juros = saída USD futura)
+          for (const p of cfUsdParcelas) {
+            const dt = p.data_vencimento;
+            if (!dt) continue;
+            addDate(dt);
+            const e = porData.get(dt)!;
+            const val = (p.amortizacao ?? 0) + (p.juros ?? 0) + (p.despesas_acessorios ?? 0);
+            const cf  = cfUsdContratos.find(c => c.id === p.contrato_id);
+            e.cpUsd  += val;
+            e.items.push({ tipo: "cp", desc: `${cf?.descricao ?? "Contrato"} — Parcela ${p.num_parcela} (CF)`, valor: val });
+          }
 
           const datas = Array.from(porData.keys()).sort();
-          const totalCpUsd = cpUsdLan.reduce((s, l) => s + l.valor, 0);
+          const totalCpUsdLanc = cpUsdLan.reduce((s, l) => s + l.valor, 0);
+          const totalCpUsdCf   = cfUsdParcelas.reduce((s, p) => s + (p.amortizacao ?? 0) + (p.juros ?? 0) + (p.despesas_acessorios ?? 0), 0);
+          const totalCpUsd = totalCpUsdLanc + totalCpUsdCf;
           const totalCrUsd = crUsdLan.reduce((s, l) => s + l.valor, 0) + crUsdCon.reduce((s, c) => s + (c.preco ?? 0) * (c.quantidade_sc ?? 0), 0);
           const saldoUsd   = totalCrUsd - totalCpUsd;
           const descasadas = datas.filter(dt => (porData.get(dt)!.cpUsd) > (porData.get(dt)!.crUsd));
@@ -2230,7 +2271,7 @@ export default function BI() {
         {!loading && aba === "terceiros" && (() => {
           const maxCaptado = Math.max(...rtPorAno.map(b => b.captado), 1);
           const corTipo: Record<string, string> = { CPR: "#1A4870", Custeio: "#16A34A", EGF: "#9B59B6", Empréstimo: "#E24B4A", Financiamento: "#378ADD", PRONAF: "#EF9F27", Outros: "#888" };
-          const temDados = rtTotalCaptado > 0 || rtTotalPago > 0 || rtTotalJuros > 0;
+          const temDados = rtTotalCaptado > 0 || rtTotalPago > 0 || rtTotalJuros > 0 || cfContratos.filter(c => c.status !== "cancelado").length > 0;
 
           // Filtro local por ano/safra
           const rtPorAnoFiltrado = rtFiltroLabel === "todos" ? rtPorAno : rtPorAno.filter(b => b.label === rtFiltroLabel);
@@ -2245,12 +2286,42 @@ export default function BI() {
                   : l.data_vencimento.slice(0, 4);
                 return lbl === rtFiltroLabel;
               });
-          const rtPorTipo = TIPOS_RT.map(tipo => {
-            const captado = rtLancsFiltAno.filter(l => isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
-            const pago    = rtLancsFiltAno.filter(l => isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
-            const juros   = rtLancsFiltAno.filter(l => isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+          const TIPO_CF_LABEL: Record<string, string> = {
+            cpr: "CPR", custeio: "Custeio", egf: "EGF", investimento: "Financiamento",
+            outros: "Empréstimo", securitizacao: "Outros", pronaf: "PRONAF",
+            consorcio_contemplado: "Consórcio Contemplado",
+            consorcio_nao_contemplado: "Consórcio Não Contemplado",
+            compra_terra: "Compra de Terra / Imóvel", compra_imovel: "Compra de Terra / Imóvel",
+          };
+          // CF-based "Por Tipo de Operação"
+          const cfFiltAno = rtFiltroLabel === "todos"
+            ? cfContratos.filter(c => c.status !== "cancelado")
+            : cfContratos.filter(c => c.status !== "cancelado" && (c.data_contrato ?? "").slice(0, 4) === rtFiltroLabel);
+          const cfParcFiltAno = rtFiltroLabel === "todos"
+            ? cfParcelas
+            : cfParcelas.filter(p => p.data_vencimento.slice(0, 4) === rtFiltroLabel);
+          const rtPorTipoCF = TIPOS_RT.map(tipo => {
+            const cfMatches = cfFiltAno.filter(c => (TIPO_CF_LABEL[c.tipo ?? "outros"] ?? "Outros") === tipo);
+            const cfIds = new Set(cfMatches.map(c => c.id));
+            const captado = cfMatches.reduce((s, c) => s + (c.valor_financiado_brl ?? (c.moeda === "USD" && c.valor_cotacao && c.valor_financiado ? c.valor_financiado * c.valor_cotacao : (c.valor_financiado ?? 0))), 0);
+            const pago    = cfParcFiltAno.filter(p => cfIds.has(p.contrato_id) && p.status === "pago").reduce((s, p) => s + (p.amortizacao ?? 0), 0);
+            const juros   = cfParcFiltAno.filter(p => cfIds.has(p.contrato_id) && p.status === "pago").reduce((s, p) => s + (p.juros ?? 0), 0);
             return { tipo, captado, pago, juros, saldo: captado - pago };
-          }).filter(t => t.captado > 0 || t.pago > 0 || t.juros > 0);
+          });
+          // Fallback: lançamentos manuais (não auto) para tipos não cobertos por CF
+          const rtPorTipoLanc = TIPOS_RT.map(tipo => {
+            const captado = rtLancsFiltAno.filter(l => !l.auto && isCaptacao(l)  && tipoRT(l) === tipo).reduce((s, l) => s + l.valor, 0);
+            const pago    = rtLancsFiltAno.filter(l => !l.auto && isPrincipal(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+            const juros   = rtLancsFiltAno.filter(l => !l.auto && isJurosPgto(l) && tipoRT(l) === tipo && l.status === "baixado").reduce((s, l) => s + l.valor, 0);
+            return { tipo, captado, pago, juros, saldo: captado - pago };
+          });
+          const rtPorTipo = TIPOS_RT.map((tipo, i) => ({
+            tipo,
+            captado: rtPorTipoCF[i].captado + rtPorTipoLanc[i].captado,
+            pago:    rtPorTipoCF[i].pago    + rtPorTipoLanc[i].pago,
+            juros:   rtPorTipoCF[i].juros   + rtPorTipoLanc[i].juros,
+            saldo:   (rtPorTipoCF[i].captado + rtPorTipoLanc[i].captado) - (rtPorTipoCF[i].pago + rtPorTipoLanc[i].pago),
+          })).filter(t => t.captado > 0 || t.pago > 0 || t.juros > 0);
           const rtFiltPago    = rtPorAnoFiltrado.reduce((s, b) => s + b.pago,    0);
           const rtFiltJuros   = rtPorAnoFiltrado.reduce((s, b) => s + b.juros,   0);
           const rtFiltPend    = rtPorAnoFiltrado.reduce((s, b) => s + b.jurosPend, 0);
@@ -2618,8 +2689,8 @@ export default function BI() {
 
               {/* Nota metodológica */}
               <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
-                Identificação automática por palavras-chave em categoria e descrição do lançamento: CPR · Custeio · EGF · Empréstimo · Financiamento · PRONAF · Juros · Encargo.
-                Para garantir classificação correta, use essas palavras-chave ao lançar CP/CR no módulo Financeiro.
+                Dados consolidados de Contratos Financeiros cadastrados + lançamentos manuais identificados por palavras-chave.
+                Contratos importados via XLSX aparecem automaticamente assim que cadastrados em Financeiro → Contratos Financeiros.
               </div>
             </div>
           );
