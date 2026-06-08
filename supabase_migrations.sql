@@ -4851,7 +4851,8 @@ INSERT INTO unidades_medida (sigla, nome, tipo, fator_base, base_sigla) VALUES
   ('d',    'Dose (aplicação)',     'quantidade',  NULL, NULL),
   ('h',    'Hora (mão de obra)',   'outro',       NULL, NULL),
   ('hm',   'Hora-máquina',        'outro',       NULL, NULL),
-  ('km',   'Quilômetro',          'comprimento', 1000, 'm')
+  ('km',   'Quilômetro',          'comprimento', 1000, 'm'),
+  ('bag',  'Bag (sementes)',       'quantidade',  NULL, NULL)
 ON CONFLICT (sigla) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';

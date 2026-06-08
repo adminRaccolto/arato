@@ -2909,7 +2909,7 @@ function CadastrosInner() {
                         <label style={lbl}>Categoria *</label>
                         <select style={inp} value={fIns.categoria} onChange={e => {
                           const cat = e.target.value as Insumo["categoria"];
-                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: p.unidade, principio_ativo_id: "", nome: "" }));
+                          setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "semente" ? "kg" : p.unidade, principio_ativo_id: "", nome: "" }));
                         }}>
                           <option value="semente">Semente</option>
                           <option value="fertilizante">Fertilizante</option>
@@ -3005,8 +3005,17 @@ function CadastrosInner() {
                       {/* Unidade */}
                       <div>
                         <label style={lbl}>Unidade *</label>
-                        {isComb ? (
-                          <input style={{ ...inp, background: "#F4F6FA", color: "#555" }} value="L (litros)" readOnly />
+                        {isComb || fIns.categoria === "semente" ? (
+                          <div>
+                            <input style={{ ...inp, background: "#F4F6FA", color: "#555" }}
+                              value={isComb ? "L (litros)" : "kg (quilogramas)"}
+                              readOnly />
+                            {fIns.categoria === "semente" && (
+                              <div style={{ fontSize: 10, color: "#1A4870", marginTop: 3 }}>
+                                Sementes são controladas em <strong>kg</strong>. Entradas em "bag" são convertidas automaticamente.
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
                             <option value="kg">kg</option>
@@ -3477,7 +3486,7 @@ function CadastrosInner() {
                         <label style={lbl}>Categoria *</label>
                         <select style={inp} value={fIns.categoria} onChange={e => {
                           const cat = e.target.value as Insumo["categoria"];
-                          setFIns(p => ({ ...p, categoria: cat, unidade: cat === "combustivel" ? "L" : p.unidade }));
+                          setFIns(p => ({ ...p, categoria: cat, unidade: cat === "combustivel" ? "L" : cat === "semente" ? "kg" : p.unidade }));
                         }}>
                           <option value="peca">Peça</option>
                           <option value="material">Material</option>

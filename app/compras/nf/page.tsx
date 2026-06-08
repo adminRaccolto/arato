@@ -88,6 +88,7 @@ interface ItemRascunho {
   deposito_id: string;
   maquina_id: string;
   centro_custo_id: string;
+  _bag_msg?: string;  // aviso de conversão bag→kg (não vai ao banco)
 }
 
 interface PedidoMin { id: string; nr_pedido?: string; fornecedor_id?: string; contato_fornecedor?: string; status: string; }
@@ -417,19 +418,52 @@ export default function NfCompraPage() {
           const qCom   = parseFloat(prod?.querySelector("qCom")?.textContent  ?? "0");
           const vUnCom = parseFloat(prod?.querySelector("vUnCom")?.textContent ?? "0");
           const vProd  = parseFloat(prod?.querySelector("vProd")?.textContent  ?? "0");
+          // Unidade tributável — em sementes costuma ter qTrib em KG mesmo quando uCom = BAG
+          const uTrib  = prod?.querySelector("uTrib")?.textContent ?? "";
+          const qTrib  = parseFloat(prod?.querySelector("qTrib")?.textContent  ?? "0");
+
+          // ── Conversão automática BAG → KG ──────────────────────────────────
+          // Se a NF informa os bags em uCom e o peso tributável em kg/t em uTrib,
+          // usamos o peso total em kg como quantidade de estoque.
+          const uComNorm  = uCom.toUpperCase().trim();
+          const uTribNorm = uTrib.toUpperCase().trim();
+          const isBag     = uComNorm === "BAG";
+          let   qtdeEstoque = qCom;
+          let   unEstoque   = uCom;
+          let   msgBag: string | undefined;
+
+          if (isBag) {
+            if (uTribNorm === "KG" && qTrib > 0) {
+              // Peso total em kg já disponível no campo tributável
+              qtdeEstoque = qTrib;
+              unEstoque   = "kg";
+              msgBag = `🔄 ${qCom} bag(s) convertidos automaticamente: ${qTrib} kg (via qTrib da NF)`;
+            } else if (uTribNorm === "TON" && qTrib > 0) {
+              qtdeEstoque = qTrib * 1000;
+              unEstoque   = "kg";
+              msgBag = `🔄 ${qCom} bag(s) convertidos automaticamente: ${(qTrib * 1000).toFixed(1)} kg (${qTrib} ton via qTrib da NF)`;
+            } else {
+              // Não foi possível converter automaticamente — alerta ao usuário
+              qtdeEstoque = qCom;
+              unEstoque   = "bag";
+              msgBag = `⚠️ ${qCom} bag(s) sem peso em kg na NF. Informe o peso manualmente.`;
+            }
+          }
+
           // tenta regra específica de item; fallback para regra do header
           const regraItem = aplicarRegraClassificacao(regrasClass, cnpj, xNome, NCM, CFOP, xProd) ?? regraHeader;
           return {
             key: crypto.randomUUID(),
             descricao_nf: xProd, ncm: NCM, cfop: CFOP,
-            unidade_nf: uCom,
-            quantidade: qCom,
+            unidade_nf: unEstoque,
+            quantidade: qtdeEstoque,
             valor_unitario: vUnCom,
             valor_total: vProd,
             insumo_id: "", principio_ativo_id: "", nome_comercial_ref: "", fator_conversao: 1,
             tipo_apropiacao: "estoque" as NfEntradaItem["tipo_apropiacao"],
             deposito_id: "", maquina_id: "",
             centro_custo_id: regraItem?.centro_custo_id ?? "",
+            _bag_msg: msgBag,        // campo auxiliar para exibir aviso na tela (não vai ao banco)
           };
         }));
       }
@@ -1398,13 +1432,33 @@ export default function NfCompraPage() {
                     </div>
 
                     {/* Linhas */}
-                    {itens.map((it) => (
-                      <div key={it.key} style={{
+                    {itens.map((it) => {
+                      // ── Detecção de semente e aviso de bag ──────────────────
+                      const insAtual = insumos.find(i => i.id === it.insumo_id);
+                      const isSemente = insAtual?.categoria === "semente";
+                      const unNorm = it.unidade_nf.toLowerCase().trim();
+                      const isBagManual = (unNorm === "bag") && !it._bag_msg; // inserido manualmente (sem conversão automática)
+                      const avisoSementeBag = isSemente && unNorm === "bag";
+                      return (
+                      <div key={it.key} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
+                        {/* Banner bag — conversão automática ou aviso */}
+                        {it._bag_msg && (
+                          <div style={{
+                            padding: "5px 12px", fontSize: 11,
+                            background: it._bag_msg.startsWith("🔄") ? "#EAF5D5" : "#FEF3CD",
+                            color:      it._bag_msg.startsWith("🔄") ? "#1A5C38"  : "#7A5A12",
+                            borderBottom: "0.5px solid",
+                            borderColor: it._bag_msg.startsWith("🔄") ? "#B4E2A0" : "#F6C87A",
+                          }}>
+                            {it._bag_msg}
+                          </div>
+                        )}
+                        <div style={{
                         display: "grid",
                         gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" :
                                              tipo === "custo_direto" ? "2fr 80px 90px 100px 110px 1.5fr 32px" :
                                              "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
-                        gap: 0, borderBottom: "0.5px solid #F0F2F7", alignItems: "center"
+                        gap: 0, alignItems: "center"
                       }}>
                         {tipo === "insumos" ? (
                           <>
@@ -1567,8 +1621,24 @@ export default function NfCompraPage() {
                             <button onClick={() => setItens(p => p.filter(x => x.key !== it.key))} style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1 }}>×</button>
                           )}
                         </div>
+                        </div>
+                        {/* Aviso semente + bag — entrada manual sem conversão automática */}
+                        {avisoSementeBag && isBagManual && (
+                          <div style={{ padding: "6px 12px", background: "#FCEBEB", borderTop: "0.5px solid #F5C6C6", fontSize: 11, color: "#791F1F", display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 14 }}>⚠️</span>
+                            <span>
+                              <strong>Entrada de semente deve ser efetuada em Kg.</strong>{" "}
+                              Converta o peso do bag para Kg. Essa informação deve estar na nota fiscal.
+                            </span>
+                            <button onClick={() => setItem(it.key, { unidade_nf: "kg" })}
+                              style={{ marginLeft: "auto", fontSize: 10, padding: "2px 10px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap" }}>
+                              Corrigir para kg →
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    );
+                    })}
 
                     {/* Rodapé totais */}
                     <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", background: "#F8FAFB", borderTop: "0.5px solid #D4DCE8", gap: 24 }}>
