@@ -928,6 +928,7 @@ export default function ImportacaoPage() {
   const [loadingCp,          setLoadingCp]          = useState(false);
   const [loadingCr,          setLoadingCr]          = useState(false);
   const [loadingInsumos,     setLoadingInsumos]     = useState(false);
+  const [modoAtualizacaoInsumos, setModoAtualizacaoInsumos] = useState(false);
   const [loadingProdutos,    setLoadingProdutos]    = useState(false);
   const [loadingMaquinas,    setLoadingMaquinas]    = useState(false);
   const [loadingContratoFin, setLoadingContratoFin] = useState(false);
@@ -1142,9 +1143,9 @@ export default function ImportacaoPage() {
     setLoadingInsumos(true);
     let ok = 0, erros = 0, duplicados = 0;
     for (const r of insumosRows) {
-      if (r._status === "duplicado") { duplicados++; continue; }
-      if (r._status === "erro")      { erros++;      continue; }
-      const { error } = await supabase.from("insumos").insert({
+      if (r._status === "erro") { erros++; continue; }
+      if (r._status === "duplicado" && !modoAtualizacaoInsumos) { duplicados++; continue; }
+      const payload = {
         fazenda_id:     fazendaId,
         tipo:           "insumo",
         nome:           r.nome.trim(),
@@ -1155,9 +1156,20 @@ export default function ImportacaoPage() {
         valor_unitario: parseFloat(String(r.valor_unitario).replace(",", ".") || "0"),
         fabricante:     r.fabricante?.trim() || null,
         subgrupo:       r.subgrupo?.trim() || null,
-      });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-      else ok++;
+      };
+      if (r._status === "duplicado" && modoAtualizacaoInsumos) {
+        const { error } = await supabase.from("insumos")
+          .update(payload)
+          .eq("fazenda_id", fazendaId)
+          .eq("tipo", "insumo")
+          .eq("nome", r.nome.trim());
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+        else { r._status = "ok"; ok++; }
+      } else {
+        const { error } = await supabase.from("insumos").insert(payload);
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+        else ok++;
+      }
     }
     setInsumosRows([...insumosRows]);
     setResultInsumos({ ok, erros, duplicados });
@@ -1887,7 +1899,9 @@ export default function ImportacaoPage() {
 
   const cfg      = ABA_CONFIG[aba];
   const totalRows = cfg.rows.length;
-  const okRows    = cfg.rows.filter(r => ["ok","aviso"].includes((r as Record<string, unknown>)._status as string)).length;
+  const dupRows   = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "duplicado").length;
+  const okRows    = cfg.rows.filter(r => ["ok","aviso"].includes((r as Record<string, unknown>)._status as string)).length
+    + (aba === "insumos" && modoAtualizacaoInsumos ? dupRows : 0);
   const erroRows  = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "erro").length;
 
   function limpar() {
@@ -1990,6 +2004,22 @@ export default function ImportacaoPage() {
             {/* Prévia */}
             {totalRows > 0 && (
               <>
+                {aba === "insumos" && dupRows > 0 && (
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#FFFBE0", border: "0.5px solid #C9921B", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={modoAtualizacaoInsumos}
+                        onChange={e => setModoAtualizacaoInsumos(e.target.checked)}
+                        style={{ width: 16, height: 16, accentColor: "#C9921B", cursor: "pointer" }}
+                      />
+                      <span>
+                        <strong style={{ color: "#7A5C00" }}>Modo Atualização</strong>
+                        {" — "}{dupRows} registro{dupRows !== 1 ? "s" : ""} duplicado{dupRows !== 1 ? "s" : ""} {modoAtualizacaoInsumos ? "serão atualizados no banco" : "serão pulados (marque para atualizar)"}
+                      </span>
+                    </label>
+                  </div>
+                )}
                 <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 13, color: "#555" }}>
                     <strong>{totalRows}</strong> linha{totalRows !== 1 ? "s" : ""} lida{totalRows !== 1 ? "s" : ""}
