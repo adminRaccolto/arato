@@ -44,7 +44,7 @@ type MaquinaRow = {
 type ContratoFinRow = {
   numero_contrato: string; descricao: string; credor: string; credor_cpf_cnpj: string;
   tipo: string; linha_credito: string; tipo_calculo: string;
-  moeda: string; valor_financiado: string; cotacao_usd: string;
+  moeda: string; valor_financiado: string; valor_liberado: string; cotacao_usd: string;
   data_contrato: string; data_liberacao: string; data_vencimento: string;
   prazo_meses: string; carencia_meses: string;
   periodicidade_pagamento: string;
@@ -131,12 +131,12 @@ const TEMPLATE_MAQUINAS = [
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
-  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "cotacao_usd", "data_contrato*", "data_liberacao", "data_vencimento", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
-  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "", "2025-06-01", "2025-06-01", "", "12", "0", "mensal", "11.16", "0.89", "", "", "", "sim", "012.345.678-90", ""],
-  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "", "2024-03-15", "2024-03-15", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "Trator John Deere"],
-  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "5.85", "2025-12-28", "2025-12-28", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
-  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "", "bullet", "USD", "28144.00", "5.98", "2025-01-10", "2025-01-10", "2026-01-10", "12", "0", "bullet", "", "", "", "", "", "nao", "", ""],
-  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "", "2024-05-01", "2024-05-01", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "valor_liberado", "cotacao_usd", "data_contrato*", "data_liberacao", "data_vencimento", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "1649927.09", "", "2025-06-01", "2025-06-01", "", "12", "0", "mensal", "11.16", "0.89", "", "6250.00", "", "sim", "012.345.678-90", "TAC R$6.250 retida na liberação"],
+  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "477600.00", "", "2024-03-15", "2024-03-15", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "TAC R$1.200 + IOF retidos"],
+  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "184261.25", "5.85", "2025-12-28", "2025-12-28", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
+  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "", "bullet", "USD", "28144.00", "", "5.98", "2025-01-10", "2025-01-10", "2026-01-10", "12", "0", "bullet", "", "", "", "", "", "nao", "", ""],
+  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "1992400.00", "", "2024-05-01", "2024-05-01", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
 ];
 
 const TEMPLATE_ARRENDAMENTOS = [
@@ -297,7 +297,10 @@ const INSTRUCOES_CONTRATOS_FIN = [
   [""],
   ["CAPTAÇÃO — VALOR E MOEDA"],
   ["• moeda: BRL ou USD (padrão: BRL)"],
-  ["• valor_financiado*: valor captado na moeda do contrato (ex: 185000.00 para US$)"],
+  ["• valor_financiado*: valor nominal do contrato na moeda original (referência, BI)"],
+  ["• valor_liberado: valor efetivamente creditado na conta (após retenções de TAC, IOF,"],
+  ["  spread, registro). Se vazio, usa valor_financiado. Gera CR (crédito) no Fluxo de Caixa."],
+  ["  Ex: financiado=480000 | tac=1200 + iof=1824 retidos → liberado=476976"],
   ["• cotacao_usd: cotação R$/US$ na data do contrato — obrigatório se moeda=USD (ex: 5.85)"],
   ["  O sistema calcula automaticamente o equivalente em R$ para o BI"],
   [""],
@@ -1035,7 +1038,27 @@ export default function ImportacaoPage() {
 
   async function handleFileCr(file: File) {
     const raw = await parseXlsx(file);
-    setCrRows(raw.map(r => validarLanc(r))); setResultCr(null);
+    const rows = raw.map(r => validarLanc(r));
+    // ── Guarda: CR de liberação auto-gerado por contratos financeiros ────────
+    if (fazendaId) {
+      const { data: autoLancsCr } = await supabase
+        .from("lancamentos").select("numero_documento")
+        .eq("fazenda_id", fazendaId).eq("tipo", "receber").eq("auto", true);
+      const autoNumsCr = new Set(
+        (autoLancsCr ?? []).map((l: { numero_documento: string | null }) =>
+          (l.numero_documento ?? "").toLowerCase().trim()
+        ).filter(Boolean)
+      );
+      rows.forEach(r => {
+        if (r._status === "ok" && r.numero_documento?.trim()) {
+          if (autoNumsCr.has(r.numero_documento.trim().toLowerCase())) {
+            r._status = "duplicado";
+            r._msg = "CR de liberação já criado automaticamente pelo contrato financeiro";
+          }
+        }
+      });
+    }
+    setCrRows(rows); setResultCr(null);
   }
 
   async function handleFileInsumos(file: File) {
@@ -1140,11 +1163,10 @@ export default function ImportacaoPage() {
     const produtorMap: Record<string, string> = {};
     (produtoresRes.data ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => { if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id; });
 
-    // ── Carregar números de CP auto-gerados por contratos (guarda de duplicidade) ──
-    const { data: autoLancsGlobal } = tipo === "pagar"
-      ? await supabase.from("lancamentos").select("numero_documento")
-          .eq("fazenda_id", fazendaId).eq("tipo", "pagar").eq("auto", true)
-      : { data: [] as { numero_documento: string | null }[] };
+    // ── Carregar números auto-gerados por contratos (guarda de duplicidade) ──
+    const { data: autoLancsGlobal } = await supabase
+      .from("lancamentos").select("numero_documento")
+      .eq("fazenda_id", fazendaId).eq("tipo", tipo).eq("auto", true);
     const autoNumsGlobal = new Set(
       (autoLancsGlobal ?? []).map((l: { numero_documento: string | null }) =>
         (l.numero_documento ?? "").toLowerCase().trim()
@@ -1365,6 +1387,45 @@ export default function ImportacaoPage() {
 
       if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
       ok++;
+
+      // ── CR de liberação: dinheiro que entra na conta ─────────────────────
+      // valor_liberado = valor creditado após retenções (TAC, IOF, spread)
+      // Se não informado → usa valor_financiado (sem retenções)
+      if (contrato) {
+        const vlRaw     = r.valor_liberado?.trim() ? parseFloat(r.valor_liberado.replace(",", ".")) : null;
+        const vlBRL     = vlRaw !== null
+          ? (moedaUp === "USD" && cotacaoV ? vlRaw * cotacaoV : vlRaw)
+          : valorBRL; // fallback: mesmo valor do financiado
+        const dataLib   = r.data_liberacao?.trim() || r.data_contrato.trim();
+        const hoje      = new Date().toISOString().slice(0, 10);
+        // Verifica se já existe CR auto-gerado para não duplicar
+        const { count: crAutoExist } = await supabase
+          .from("lancamentos").select("id", { count: "exact", head: true })
+          .eq("fazenda_id", fazendaId).eq("tipo", "receber")
+          .eq("auto", true).eq("numero_documento", r.numero_contrato.trim());
+        if ((crAutoExist ?? 0) === 0) {
+          // Status: se data de liberação já passou → baixado (histórico)
+          const jaBaixado = dataLib <= hoje;
+          await supabase.from("lancamentos").insert({
+            fazenda_id:       fazendaId,
+            tipo:             "receber",
+            descricao:        `${r.descricao.trim()} — Liberação de Recurso`,
+            categoria:        CAT_CAPTACAO_IMP[r.tipo] ?? "Captação de Empréstimos",
+            data_lancamento:  dataLib,
+            data_vencimento:  dataLib,
+            valor:            Math.round(vlBRL * 100) / 100,
+            moeda:            "BRL",
+            status:           jaBaixado ? "baixado" : "em_aberto",
+            data_baixa:       jaBaixado ? dataLib : null,
+            auto:             true,
+            numero_documento: r.numero_contrato.trim(),
+            pessoa_id:        pessoaId,
+            observacao:       vlRaw !== null && vlRaw < valorFin
+              ? `Retenções: ${moedaUp === "USD" ? "US$" : "R$"} ${(valorFin - vlRaw).toFixed(2)} (TAC/IOF/spread)`
+              : null,
+          });
+        }
+      }
 
       // Auto-geração de parcelas com suporte a periodicidade
       const prazo = parseInt(r.prazo_meses || "0");
