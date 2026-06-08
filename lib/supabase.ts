@@ -1506,7 +1506,7 @@ export type RateioGlobalCiclo = {
 // Cadastro de Operações Gerenciais
 export type OperacaoGerencial = {
   id: string;
-  fazenda_id: string;
+  fazenda_id: string | null;
   classificacao: string;        // ex: "1.01.01.01.001"
   descricao: string;
   tipo: "receita" | "despesa";

@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { type: "divider", label: "Produto" },
   { type: "link",    id: "planos",    label: "Planos & Preços",        icon: "💰", path: "/admin/planos"   },
   { type: "link",    id: "modulos",   label: "Módulos do Sistema",     icon: "⬡",  path: "/admin/modulos"  },
+  { type: "link",    id: "padroes",   label: "Padrões do Sistema",     icon: "⊞",  path: "/admin/padroes"  },
   { type: "divider", label: "Acesso" },
   { type: "link",    id: "usuarios",  label: "Usuários & Permissões",  icon: "🔑", path: "/admin/usuarios" },
   { type: "link",    id: "logs",      label: "Logs do Sistema",        icon: "📋", path: "/admin/logs"     },
