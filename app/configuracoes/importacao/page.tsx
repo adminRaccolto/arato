@@ -43,13 +43,14 @@ type MaquinaRow = {
 };
 type ContratoFinRow = {
   numero_contrato: string; descricao: string; credor: string; credor_cpf_cnpj: string;
-  tipo: string; moeda: string; valor_total: string; data_contrato: string;
-  data_liberacao: string; prazo_meses: string;
-  periodicidade_pagamento: string; estrutura_pagamento: string;
-  taxa_juros_am: string; taxa_juros_aa: string;
-  iof_pct: string; tac_valor: string; linha_credito: string;
-  tipo_amortizacao: string; cotacao_usd: string; auto_parcelas: string;
-  produtor_cpf_cnpj: string; observacao: string;
+  tipo: string; linha_credito: string; tipo_calculo: string;
+  moeda: string; valor_financiado: string; cotacao_usd: string;
+  data_contrato: string; data_liberacao: string; data_vencimento: string;
+  prazo_meses: string; carencia_meses: string;
+  periodicidade_pagamento: string;
+  taxa_juros_aa: string; taxa_juros_am: string;
+  iof_pct: string; tac_valor: string; outros_custos: string;
+  auto_parcelas: string; produtor_cpf_cnpj: string; observacao: string;
   _status?: "ok" | "erro" | "duplicado" | "aviso"; _msg?: string; _cp_encontrados?: number;
 };
 
@@ -130,11 +131,12 @@ const TEMPLATE_MAQUINAS = [
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
-  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "moeda", "valor_total*", "data_contrato*", "data_liberacao", "prazo_meses", "periodicidade_pagamento", "estrutura_pagamento", "taxa_juros_am", "taxa_juros_aa", "iof_pct", "tac_valor", "linha_credito", "tipo_amortizacao", "cotacao_usd", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
-  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "BRL", "1656177.09", "2025-06-01", "2025-06-01", "12", "mensal", "simples", "0.89", "", "", "", "PRONAMP", "sac", "", "sim", "012.345.678-90", ""],
-  ["131910484", "Investimento Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "480000.00", "2024-03-15", "2024-03-15", "48", "mensal", "simples", "0.75", "", "0.38", "1200.00", "Moderfrota", "price", "", "sim", "012.345.678-90", "Trator John Deere"],
-  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "USD", "1688649.36", "2025-01-10", "2025-01-10", "12", "bullet", "simples", "", "", "", "", "", "bullet", "5.85", "nao", "", ""],
-  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "BRL", "2000000.00", "2024-05-01", "2024-05-01", "60", "semestral", "juros_semestral_capital_anual", "0.72", "", "0.38", "", "FCO Rural", "sac", "", "sim", "012.345.678-90", "Juros semestrais + amortização anual"],
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "cotacao_usd", "data_contrato*", "data_liberacao", "data_vencimento", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "", "2025-06-01", "2025-06-01", "", "12", "0", "mensal", "11.16", "0.89", "", "", "", "sim", "012.345.678-90", ""],
+  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "", "2024-03-15", "2024-03-15", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "Trator John Deere"],
+  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "5.85", "2025-12-28", "2025-12-28", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
+  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "", "bullet", "USD", "28144.00", "5.98", "2025-01-10", "2025-01-10", "2026-01-10", "12", "0", "bullet", "", "", "", "", "", "nao", "", ""],
+  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "", "2024-05-01", "2024-05-01", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
 ];
 
 const TEMPLATE_ARRENDAMENTOS = [
@@ -276,53 +278,59 @@ const INSTRUCOES_TALHOES_IMP = [
 const INSTRUCOES_CONTRATOS_FIN = [
   ["INSTRUÇÕES — IMPORTAÇÃO DE CONTRATOS FINANCEIROS"],
   [""],
-  ["• Campos com * são obrigatórios"],
+  ["• Campos com * são obrigatórios. Os demais são opcionais."],
   ["• Não altere os nomes das colunas (linha 1)"],
-  ["• numero_contrato: número do contrato no banco/instituição (deve ser único)"],
-  ["• tipo: custeio, investimento, cpr, egf, securitizacao, outros"],
-  ["• moeda: BRL ou USD"],
-  ["• valor_total: valor total financiado (sem R$, ex: 1500000.00)"],
-  ["• data_contrato: data de assinatura no formato AAAA-MM-DD"],
-  ["• data_liberacao: data em que o recurso foi liberado (início do cronograma)"],
-  ["• prazo_meses: duração total do contrato em meses (ex: 12, 60)"],
-  ["  O número de parcelas geradas depende da periodicidade_pagamento"],
-  ["• periodicidade_pagamento: mensal, bimestral, trimestral, semestral, anual ou bullet"],
-  ["  mensal    → 1 parcela por mês (padrão)"],
-  ["  bimestral → 1 parcela a cada 2 meses"],
-  ["  trimestral→ 1 parcela a cada 3 meses"],
-  ["  semestral → 1 parcela a cada 6 meses"],
-  ["  anual     → 1 parcela por ano"],
-  ["  bullet    → somente uma parcela no final (não usa estrutura_pagamento)"],
-  ["• estrutura_pagamento: define o que cada parcela contém"],
-  ["  simples                    → cada parcela inclui amortização + juros do período (padrão)"],
-  ["  juros_semestral_capital_anual → juros semestrais + amortização anual (SAC)"],
-  ["    Gera 2 tipos de lançamento: juros a cada 6 meses, capital+juros a cada 12 meses"],
-  ["    Comum em FCO Rural, BNDES e contratos com carência parcial"],
-  ["• taxa_juros_am: taxa mensal em % (ex: 0.89). Informe AM OU AA, não os dois"],
-  ["• taxa_juros_aa: taxa anual em % (ex: 11.16) — convertida automaticamente para AM"],
+  [""],
+  ["IDENTIFICAÇÃO"],
+  ["• numero_contrato*: número único do contrato no banco (ex: 20251215000000410)"],
+  ["• descricao*: nome descritivo do contrato (ex: ORPAG-CREDITO EXPORTAÇÃO)"],
+  ["• credor*: nome do banco/instituição financeira (ex: BANCO DO BRASIL SA)"],
+  ["• credor_cpf_cnpj: CNPJ/CPF do credor para vincular ao cadastro de Pessoas"],
+  ["• tipo*: custeio, investimento, cpr, egf, securitizacao, outros"],
+  ["• linha_credito: programa de crédito (ex: PRONAMP, Moderfrota, FCO Rural, BNDES)"],
+  [""],
+  ["TIPO DE CÁLCULO (= Amortização)"],
+  ["• tipo_calculo: sac, price ou bullet (padrão: sac)"],
+  ["  sac    → SAC — Amortização Constante (parcelas decrescentes)"],
+  ["  price  → Tabela Price (parcelas fixas)"],
+  ["  bullet → só juros no período, principal no vencimento"],
+  [""],
+  ["CAPTAÇÃO — VALOR E MOEDA"],
+  ["• moeda: BRL ou USD (padrão: BRL)"],
+  ["• valor_financiado*: valor captado na moeda do contrato (ex: 185000.00 para US$)"],
+  ["• cotacao_usd: cotação R$/US$ na data do contrato — obrigatório se moeda=USD (ex: 5.85)"],
+  ["  O sistema calcula automaticamente o equivalente em R$ para o BI"],
+  [""],
+  ["DATAS E PRAZO"],
+  ["• data_contrato*: data de assinatura no formato AAAA-MM-DD"],
+  ["• data_liberacao: data em que o recurso foi liberado (padrão: data_contrato)"],
+  ["• data_vencimento: data de vencimento final (opcional, calculada pelo prazo)"],
+  ["• prazo_meses: duração total em meses (ex: 12, 60) — necessário para gerar parcelas"],
+  ["• carencia_meses: meses de carência antes de iniciar pagamentos (ex: 6) — padrão: 0"],
+  [""],
+  ["TAXAS E CUSTOS"],
+  ["• taxa_juros_aa: taxa anual em % (ex: 11.16) — convertida para AM automaticamente"],
+  ["• taxa_juros_am: taxa mensal em % (ex: 0.89) — use AA OU AM, não ambos"],
   ["• iof_pct: IOF em % (ex: 0.38)"],
   ["• tac_valor: Tarifa de Abertura de Crédito em R$ (ex: 1200.00)"],
-  ["• linha_credito: linha de crédito (ex: PRONAMP, Moderfrota, FCO Rural)"],
-  ["• tipo_amortizacao: sac, price ou bullet"],
-  ["  sac   → amortização constante, parcelas decrescentes"],
-  ["  price → Tabela Price (parcelas fixas)"],
-  ["  bullet → paga só juros em cada período, principal no vencimento"],
-  ["• cotacao_usd: só para moeda=USD (ex: 5.85)"],
-  ["• auto_parcelas: deixe vazio ou 'sim' para gerar parcelas automaticamente"],
-  ["  Use 'nao' apenas se quiser vincular manualmente CP já lançados"],
-  ["• credor_cpf_cnpj: CNPJ/CPF do credor para vincular ao cadastro de Pessoas"],
-  ["• produtor_cpf_cnpj: CPF/CNPJ do produtor responsável (obrigatório para LCDPR)"],
-  ["  Em fazendas com mais de um produtor, identifica quem assinou o contrato"],
+  ["• outros_custos: outros custos fixos em R$ (registro, cartório, etc.)"],
   [""],
-  ["⚠️  Geração de parcelas:"],
-  ["  Se prazo_meses > 0, as parcelas são geradas automaticamente com a periodicidade"],
-  ["  informada. Para desativar e vincular CP já lançados, use auto_parcelas=nao."],
+  ["PAGAMENTO"],
+  ["• periodicidade_pagamento: mensal, bimestral, trimestral, semestral, anual ou bullet"],
+  ["• auto_parcelas: sim (padrão) ou nao"],
+  ["  sim → parcelas geradas automaticamente pelo prazo e periodicidade"],
+  ["  nao → sem geração automática (use se já lançou as parcelas manualmente)"],
   [""],
-  ["Exemplos de periodicidade + estrutura:"],
-  ["  Custeio mensal SAC        → periodicidade=mensal,    estrutura=simples,                    tipo_amortizacao=sac"],
-  ["  Custeio bullet            → periodicidade=bullet,    estrutura=simples,                    tipo_amortizacao=bullet"],
-  ["  FCO Rural juros semestrais→ periodicidade=semestral, estrutura=juros_semestral_capital_anual, tipo_amortizacao=sac"],
-  ["  Investimento Price mensal → periodicidade=mensal,    estrutura=simples,                    tipo_amortizacao=price"],
+  ["OUTROS"],
+  ["• produtor_cpf_cnpj: CPF/CNPJ do produtor responsável (necessário para LCDPR)"],
+  ["• observacao: texto livre"],
+  [""],
+  ["EXEMPLOS POR TIPO DE CONTRATO"],
+  ["  Custeio BRL mensal SAC    → tipo=custeio, tipo_calculo=sac, periodicidade=mensal"],
+  ["  Investimento Price        → tipo=investimento, tipo_calculo=price, periodicidade=mensal"],
+  ["  ORPAG/CPR USD             → tipo=outros/cpr, moeda=USD, cotacao_usd=5.85, tipo_calculo=sac"],
+  ["  FCO Rural carência        → tipo=investimento, linha_credito=FCO Rural, carencia_meses=6"],
+  ["  Bullet (pagamento único)  → tipo_calculo=bullet, periodicidade=bullet, prazo_meses=total"],
 ];
 
 const INSTRUCOES_CP_CR = [
@@ -616,24 +624,27 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   const tipo = (row.tipo || "").trim().toLowerCase();
   if (!TIPOS_CONTRATO_FIN.includes(tipo))
     return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_CONTRATO_FIN.join(", ")}` };
-  const valor = parseFloat(String(row.valor_total).replace(",", "."));
-  if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor_total inválido" };
+  const valorField = (row.valor_financiado ?? (r as Record<string, string>).valor_total ?? "").toString();
+  const valor = parseFloat(String(valorField).replace(",", ".").replace(/\./g, (m, o, s) => s.indexOf(",") !== -1 && o !== s.lastIndexOf(".") ? "" : m));
+  if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor_financiado inválido ou zero" };
+  const moeda = (row.moeda || "BRL").trim().toUpperCase();
+  if (moeda === "USD" && !row.cotacao_usd?.trim())
+    return { ...row, _status: "erro", _msg: "cotacao_usd obrigatório quando moeda=USD" };
   if (!row.data_contrato?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_contrato.trim()))
     return { ...row, _status: "erro", _msg: "data_contrato deve ser AAAA-MM-DD" };
   if (row.data_liberacao?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_liberacao.trim()))
     return { ...row, _status: "erro", _msg: "data_liberacao deve ser AAAA-MM-DD" };
+  if (row.data_vencimento?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_vencimento.trim()))
+    return { ...row, _status: "erro", _msg: "data_vencimento deve ser AAAA-MM-DD" };
   if (row.prazo_meses?.trim() && (isNaN(parseInt(row.prazo_meses)) || parseInt(row.prazo_meses) < 1))
     return { ...row, _status: "erro", _msg: "prazo_meses deve ser número inteiro positivo" };
-  const tipoAmort = (row.tipo_amortizacao || "").trim().toLowerCase();
-  if (tipoAmort && !TIPOS_AMORTIZACAO.includes(tipoAmort))
-    return { ...row, _status: "erro", _msg: `tipo_amortizacao deve ser: ${TIPOS_AMORTIZACAO.join(", ")}` };
+  const tipoCalc = (row.tipo_calculo || "sac").trim().toLowerCase();
+  if (tipoCalc && !TIPOS_AMORTIZACAO.includes(tipoCalc))
+    return { ...row, _status: "erro", _msg: `tipo_calculo deve ser: ${TIPOS_AMORTIZACAO.join(", ")}` };
   const periodicidade = (row.periodicidade_pagamento || "mensal").trim().toLowerCase();
   if (row.periodicidade_pagamento?.trim() && !PERIODICIDADES.includes(periodicidade))
     return { ...row, _status: "erro", _msg: `periodicidade_pagamento deve ser: ${PERIODICIDADES.join(", ")}` };
-  const estrutura = (row.estrutura_pagamento || "simples").trim().toLowerCase();
-  if (row.estrutura_pagamento?.trim() && !ESTRUTURAS_PAGAMENTO.includes(estrutura))
-    return { ...row, _status: "erro", _msg: `estrutura_pagamento deve ser: ${ESTRUTURAS_PAGAMENTO.join(", ")}` };
-  return { ...row, tipo, tipo_amortizacao: tipoAmort || "sac", periodicidade_pagamento: periodicidade, estrutura_pagamento: estrutura, _status: "ok", _msg: "" };
+  return { ...row, tipo, moeda, tipo_calculo: tipoCalc || "sac", periodicidade_pagamento: periodicidade, _status: "ok", _msg: "" };
 }
 
 function validarArrendamento(r: Record<string, string>): ArrendamentoRow {
@@ -1268,6 +1279,18 @@ export default function ImportacaoPage() {
         const { data: prd } = await supabase.from("produtores").select("id").eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNumP}%`).limit(1).maybeSingle();
         produtorIdFin = prd?.id ?? null;
       }
+      const valorFin  = parseFloat(String(r.valor_financiado || (r as unknown as Record<string,string>).valor_total || "0").replace(",", "."));
+      const cotacaoV  = r.cotacao_usd?.trim() ? parseFloat(r.cotacao_usd.replace(",", ".")) : null;
+      const moedaUp   = (r.moeda || "BRL").toUpperCase();
+      const valorBRL  = moedaUp === "USD" && cotacaoV ? valorFin * cotacaoV : valorFin;
+      // Calcula taxa AM a partir da AA se necessário
+      let taxaAmFinal: number | null = null;
+      if (r.taxa_juros_am?.trim()) {
+        taxaAmFinal = parseFloat(r.taxa_juros_am.replace(",", "."));
+      } else if (r.taxa_juros_aa?.trim()) {
+        const aa = parseFloat(r.taxa_juros_aa.replace(",", "."));
+        taxaAmFinal = (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100;
+      }
       const { data: contrato, error } = await supabase.from("contratos_financeiros").insert({
         fazenda_id:              fazendaId,
         numero_contrato:         r.numero_contrato.trim(),
@@ -1276,12 +1299,22 @@ export default function ImportacaoPage() {
         pessoa_id:               pessoaId,
         produtor_id:             produtorIdFin,
         tipo:                    r.tipo,
-        moeda:                   (r.moeda || "BRL").toUpperCase(),
-        valor_total:             parseFloat(String(r.valor_total).replace(",", ".")),
+        linha_credito:           r.linha_credito?.trim() || null,
+        moeda:                   moedaUp,
+        valor_total:             valorBRL,        // armazena sempre em BRL
+        cotacao_usd:             cotacaoV,
         data_contrato:           r.data_contrato.trim(),
-        taxa_juros_am:           r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : null,
+        data_liberacao:          r.data_liberacao?.trim() || null,
+        data_vencimento:         r.data_vencimento?.trim() || null,
+        prazo_meses:             r.prazo_meses?.trim() ? parseInt(r.prazo_meses) : null,
+        taxa_juros_aa:           r.taxa_juros_aa?.trim() ? parseFloat(r.taxa_juros_aa.replace(",", ".")) : null,
+        taxa_juros_am:           taxaAmFinal,
+        iof_pct:                 r.iof_pct?.trim() ? parseFloat(r.iof_pct.replace(",", ".")) : null,
+        tac_valor:               r.tac_valor?.trim() ? parseFloat(r.tac_valor.replace(",", ".")) : null,
+        outros_custos:           r.outros_custos?.trim() ? parseFloat(r.outros_custos.replace(",", ".")) : null,
+        tipo_amortizacao:        (r.tipo_calculo || "sac").toUpperCase(),
         periodicidade_pagamento: r.periodicidade_pagamento || "mensal",
-        estrutura_pagamento:     r.estrutura_pagamento || "simples",
+        estrutura_pagamento:     "simples",
         observacao:              r.observacao?.trim() || null,
         status:                  "ativo",
       }).select("id").single();
@@ -1290,42 +1323,34 @@ export default function ImportacaoPage() {
       ok++;
 
       // Auto-geração de parcelas com suporte a periodicidade
-      // Gera automaticamente sempre que prazo_meses > 0, a menos que auto_parcelas = "nao"
       const prazo = parseInt(r.prazo_meses || "0");
       const skipAutoP = (r.auto_parcelas || "").toLowerCase() === "nao";
       const autoP = !skipAutoP && prazo > 0;
       if (autoP && contrato) {
+        const carencia = parseInt(r.carencia_meses || "0") || 0;
         const startDate = r.data_liberacao?.trim() || r.data_contrato.trim();
-        let taxaAm = r.taxa_juros_am?.trim() ? parseFloat(r.taxa_juros_am.replace(",", ".")) : 0;
-        if (!taxaAm && r.taxa_juros_aa?.trim()) {
-          const aa = parseFloat(r.taxa_juros_aa.replace(",", "."));
-          taxaAm = (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100;
-        }
-        const i = taxaAm / 100;
-        const pv = parseFloat(String(r.valor_total).replace(",", "."));
-        const tipoAmort = (r.tipo_amortizacao || "sac").toLowerCase();
+        const i = taxaAmFinal ? taxaAmFinal / 100 : 0;
+        const pv = valorBRL;
+        const tipoAmort = (r.tipo_calculo || "sac").toLowerCase();
         const periodicidade = (r.periodicidade_pagamento || "mensal").toLowerCase();
-        const estrutura = (r.estrutura_pagamento || "simples").toLowerCase();
         const parcRows: Record<string, unknown>[] = [];
 
         const base = { contrato_id: contrato.id, fazenda_id: fazendaId, despesas_acessorios: 0, status: "em_aberto" };
 
-        if (estrutura === "juros_semestral_capital_anual" && tipoAmort !== "bullet") {
+        if (false) { // FCO estrutura especial não suportada na importação
           // Estrutura FCO/BNDES: juros semestrais + amortização anual SAC
           const numAnos = Math.ceil(prazo / 12);
           const amortAnual = pv / numAnos;
           let saldo = pv;
           let numParc = 0;
           for (let ano = 1; ano <= numAnos; ano++) {
-            // Parcela semestral — apenas juros (6 meses)
             numParc++;
             const jSem = Math.round(saldo * i * 6 * 100) / 100;
-            parcRows.push({ ...base, num_parcela: numParc, data_vencimento: addMonths(startDate, (ano - 1) * 12 + 6), amortizacao: 0, juros: jSem, valor_parcela: jSem, saldo_devedor: saldo });
-            // Parcela anual — amortização + juros do segundo semestre
+            parcRows.push({ ...base, num_parcela: numParc, data_vencimento: addMonths(startDate, carencia + (ano - 1) * 12 + 6), amortizacao: 0, juros: jSem, valor_parcela: jSem, saldo_devedor: saldo });
             numParc++;
             const jAnu = Math.round(saldo * i * 6 * 100) / 100;
             saldo -= amortAnual;
-            parcRows.push({ ...base, num_parcela: numParc, data_vencimento: addMonths(startDate, ano * 12), amortizacao: Math.round(amortAnual * 100) / 100, juros: jAnu, valor_parcela: Math.round((amortAnual + jAnu) * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
+            parcRows.push({ ...base, num_parcela: numParc, data_vencimento: addMonths(startDate, carencia + ano * 12), amortizacao: Math.round(amortAnual * 100) / 100, juros: jAnu, valor_parcela: Math.round((amortAnual + jAnu) * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
           }
         } else if (periodicidade === "bullet" || tipoAmort === "bullet") {
           // Bullet: juros periódicos + principal no final
@@ -1334,12 +1359,12 @@ export default function ImportacaoPage() {
           const iPeriod = i === 0 ? 0 : Math.pow(1 + i, mesesPorParcela) - 1;
           const jPeriod = Math.round(pv * iPeriod * 100) / 100;
           if (numParcelas === 1) {
-            parcRows.push({ ...base, num_parcela: 1, data_vencimento: addMonths(startDate, prazo), amortizacao: pv, juros: Math.round(pv * i * prazo * 100) / 100, valor_parcela: Math.round(pv * (1 + i * prazo) * 100) / 100, saldo_devedor: 0 });
+            parcRows.push({ ...base, num_parcela: 1, data_vencimento: addMonths(startDate, carencia + prazo), amortizacao: pv, juros: Math.round(pv * i * prazo * 100) / 100, valor_parcela: Math.round(pv * (1 + i * prazo) * 100) / 100, saldo_devedor: 0 });
           } else {
             for (let m = 1; m < numParcelas; m++) {
-              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, m * mesesPorParcela), amortizacao: 0, juros: jPeriod, valor_parcela: jPeriod, saldo_devedor: pv });
+              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, carencia + m * mesesPorParcela), amortizacao: 0, juros: jPeriod, valor_parcela: jPeriod, saldo_devedor: pv });
             }
-            parcRows.push({ ...base, num_parcela: numParcelas, data_vencimento: addMonths(startDate, numParcelas * mesesPorParcela), amortizacao: pv, juros: jPeriod, valor_parcela: Math.round((pv + jPeriod) * 100) / 100, saldo_devedor: 0 });
+            parcRows.push({ ...base, num_parcela: numParcelas, data_vencimento: addMonths(startDate, carencia + numParcelas * mesesPorParcela), amortizacao: pv, juros: jPeriod, valor_parcela: Math.round((pv + jPeriod) * 100) / 100, saldo_devedor: 0 });
           }
         } else {
           // SAC ou PRICE com periodicidade configurada
@@ -1351,14 +1376,14 @@ export default function ImportacaoPage() {
             let saldo = pv;
             for (let m = 1; m <= numParcelas; m++) {
               const juros = saldo * iPeriod; const amort = pf - juros; saldo -= amort;
-              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, m * mesesPorParcela), amortizacao: Math.round(amort * 100) / 100, juros: Math.round(juros * 100) / 100, valor_parcela: Math.round(pf * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
+              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, carencia + m * mesesPorParcela), amortizacao: Math.round(amort * 100) / 100, juros: Math.round(juros * 100) / 100, valor_parcela: Math.round(pf * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
             }
           } else {
             // SAC
             const amort = pv / numParcelas; let saldo = pv;
             for (let m = 1; m <= numParcelas; m++) {
               const juros = saldo * iPeriod; saldo -= amort;
-              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, m * mesesPorParcela), amortizacao: Math.round(amort * 100) / 100, juros: Math.round(juros * 100) / 100, valor_parcela: Math.round((amort + juros) * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
+              parcRows.push({ ...base, num_parcela: m, data_vencimento: addMonths(startDate, carencia + m * mesesPorParcela), amortizacao: Math.round(amort * 100) / 100, juros: Math.round(juros * 100) / 100, valor_parcela: Math.round((amort + juros) * 100) / 100, saldo_devedor: Math.max(0, Math.round(saldo * 100) / 100) });
             }
           }
         }

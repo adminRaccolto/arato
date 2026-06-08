@@ -31,7 +31,7 @@ interface ContratoDetalhe {
 }
 
 // Tipos para a aba Evolução de Endividamento
-interface CFContrato { id: string; descricao: string; credor: string; tipo?: string; moeda: string; data_contrato: string; valor_total?: number; valor_financiado?: number; valor_financiado_brl?: number; valor_cotacao?: number; linha_credito?: string; status?: string }
+interface CFContrato { id: string; descricao: string; credor: string; tipo?: string; moeda: string; data_contrato: string; valor_total?: number; cotacao_usd?: number; linha_credito?: string; status?: string }
 interface CFParcela  { id: string; contrato_id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
 
 // Grupos de categoria para filtro de saldo
@@ -316,7 +316,7 @@ export default function BI() {
     try {
       const { data: cs } = await supabase
         .from("contratos_financeiros")
-        .select("id,descricao,credor,tipo,moeda,data_contrato,valor_total,valor_financiado,valor_financiado_brl,valor_cotacao,linha_credito,status")
+        .select("id,descricao,credor,tipo,moeda,data_contrato,valor_total,cotacao_usd,linha_credito,status")
         .eq("fazenda_id", fazendaId);
       const ids = (cs ?? []).map((c: Record<string, unknown>) => c.id as string);
       const { data: ps } = ids.length > 0
@@ -615,7 +615,7 @@ export default function BI() {
       const ano = (c.data_contrato ?? "").slice(0, 4);
       if (!ano) continue;
       const b = getBucket(ano, area);
-      const valBrl = c.valor_financiado_brl ?? (c.moeda === "USD" && c.valor_cotacao && c.valor_financiado ? c.valor_financiado * c.valor_cotacao : (c.valor_financiado ?? 0));
+      const valBrl = c.moeda === "USD" ? (c.valor_total ?? 0) * (c.cotacao_usd ?? 5.0) : (c.valor_total ?? 0);
       b.captado += valBrl;
     }
     for (const p of cfParcelas) {
@@ -2464,7 +2464,7 @@ export default function BI() {
           const rtPorTipoCF = TIPOS_RT.map(tipo => {
             const cfMatches = cfFiltAno.filter(c => (TIPO_CF_LABEL[c.tipo ?? "outros"] ?? "Outros") === tipo);
             const cfIds = new Set(cfMatches.map(c => c.id));
-            const captado = cfMatches.reduce((s, c) => s + (c.valor_financiado_brl ?? (c.moeda === "USD" && c.valor_cotacao && c.valor_financiado ? c.valor_financiado * c.valor_cotacao : (c.valor_financiado ?? 0))), 0);
+            const captado = cfMatches.reduce((s, c) => s + (c.moeda === "USD" ? (c.valor_total ?? 0) * (c.cotacao_usd ?? 5.0) : (c.valor_total ?? 0)), 0);
             const pago    = cfParcFiltAno.filter(p => cfIds.has(p.contrato_id) && p.status === "pago").reduce((s, p) => s + (p.amortizacao ?? 0), 0);
             const juros   = cfParcFiltAno.filter(p => cfIds.has(p.contrato_id) && p.status === "pago").reduce((s, p) => s + (p.juros ?? 0), 0);
             return { tipo, captado, pago, juros, saldo: captado - pago };
@@ -2613,7 +2613,7 @@ export default function BI() {
                     const ultima = cfParcelas
                       .filter(p => p.contrato_id === c.id && p.status === "pago")
                       .sort((a, b) => b.num_parcela - a.num_parcela)[0];
-                    return s + (ultima?.saldo_devedor ?? (c.valor_total ?? c.valor_financiado ?? 0));
+                    return s + (ultima?.saldo_devedor ?? (c.valor_total ?? 0));
                   }, 0);
 
                 const totalSelecionado = CF_GRUPOS
@@ -2887,7 +2887,7 @@ export default function BI() {
           for (const ano of anos) captPorAno[ano] = 0;
           for (const c of cfFiltrados) {
             const ano = (c.data_contrato ?? "").slice(0, 4);
-            if (ano in captPorAno) captPorAno[ano] += (c.valor_total ?? c.valor_financiado ?? 0);
+            if (ano in captPorAno) captPorAno[ano] += (c.valor_total ?? 0);
           }
 
           // ── Amortização por ano (parcelas.amortizacao) ────────
@@ -2920,7 +2920,7 @@ export default function BI() {
               if (parcsAte.length > 0) {
                 total += parcsAte[parcsAte.length - 1].saldo_devedor;
               } else {
-                total += (c.valor_total ?? c.valor_financiado ?? 0);
+                total += (c.valor_total ?? 0);
               }
             }
             saldoPorAno[ano] = total;
@@ -3073,7 +3073,7 @@ export default function BI() {
                     const sel = cfGruposFiltro.has(g.key);
                     const saldoG = cfContratos.filter(c => (g.tipos as readonly string[]).includes(c.tipo ?? "")).reduce((s, c) => {
                       const ultima = cfParcelas.filter(p => p.contrato_id === c.id && p.status === "pago").sort((a, b) => b.num_parcela - a.num_parcela)[0];
-                      return s + (ultima?.saldo_devedor ?? (c.valor_total ?? c.valor_financiado ?? 0));
+                      return s + (ultima?.saldo_devedor ?? (c.valor_total ?? 0));
                     }, 0);
                     return (
                       <label key={g.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${sel ? g.cor : "#DDE2EE"}`, background: sel ? g.bg : "#F9FAFB", cursor: "pointer", userSelect: "none" }}>

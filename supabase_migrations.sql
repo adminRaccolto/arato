@@ -2398,6 +2398,8 @@ ALTER TABLE lancamentos
 
 CREATE INDEX IF NOT EXISTS idx_lancamentos_natureza ON lancamentos(fazenda_id, natureza);
 
+bs
+
 -- ============================================================
 -- Migration 61 — Log do Sistema + permissoes granulares nos grupos
 -- ============================================================
@@ -4852,5 +4854,11 @@ INSERT INTO unidades_medida (sigla, nome, tipo, fator_base, base_sigla) VALUES
   ('km',   'Quilômetro',          'comprimento', 1000, 'm'),
   ('bag',  'Bag (sementes)',       'quantidade',  NULL, NULL)
 ON CONFLICT (sigla) DO NOTHING;
+
+-- ─── Migration 60 — contratos_financeiros: campos novos do template ──────────
+-- carencia_meses: período de carência antes do início das parcelas
+ALTER TABLE contratos_financeiros ADD COLUMN IF NOT EXISTS carencia_meses INTEGER DEFAULT 0;
+-- Garante que cotacao_usd existe (já existe na definição original, mas por segurança)
+ALTER TABLE contratos_financeiros ADD COLUMN IF NOT EXISTS cotacao_usd NUMERIC(10,4);
 
 NOTIFY pgrst, 'reload schema';
