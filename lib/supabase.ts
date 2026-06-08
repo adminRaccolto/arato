@@ -1312,6 +1312,17 @@ export type NomeComercial = {
   principio_ativo?: PrincipioAtivo;
 };
 
+export type UnidadeMedida = {
+  id: string;
+  sigla: string;                              // "kg", "L", "sc", "un", "t", "ha", "@", "cx"
+  nome: string;                               // "Quilograma", "Litro", "Saca (60 kg)"
+  tipo: "massa" | "volume" | "area" | "comprimento" | "quantidade" | "outro";
+  fator_base?: number | null;                 // fator para unidade base do tipo (ex: sc → 60)
+  base_sigla?: string | null;                 // sigla da unidade base (ex: "kg")
+  inativo?: boolean;
+  created_at?: string;
+};
+
 export type GrupoInsumo = {
   id: string;
   fazenda_id: string;

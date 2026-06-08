@@ -4786,3 +4786,72 @@ ALTER TABLE nf_entradas
   ADD COLUMN IF NOT EXISTS manifestacao_msg   TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Padrões do Sistema — Templates de Operações Gerenciais ───────────────────
+-- Permite fazenda_id = NULL para registros "padrão Raccotlo"
+ALTER TABLE operacoes_gerenciais
+  ALTER COLUMN fazenda_id DROP NOT NULL;
+
+-- Índice dedicado para busca de templates
+CREATE INDEX IF NOT EXISTS idx_op_gerenciais_template
+  ON operacoes_gerenciais(classificacao)
+  WHERE fazenda_id IS NULL;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ─── Unidades de Medida — tabela global compartilhada ─────────────────────────
+-- Sem fazenda_id: visível e editável por todos os clientes do sistema.
+CREATE TABLE IF NOT EXISTS unidades_medida (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sigla      TEXT NOT NULL UNIQUE,
+  nome       TEXT NOT NULL,
+  tipo       TEXT NOT NULL DEFAULT 'quantidade'
+               CHECK (tipo IN ('massa','volume','area','comprimento','quantidade','outro')),
+  fator_base NUMERIC,         -- fator de conversão para unidade base (ex: saca = 60 → kg)
+  base_sigla TEXT,            -- sigla da unidade base referenciada
+  inativo    BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS: leitura livre para autenticados; escrita apenas para autenticados
+ALTER TABLE unidades_medida ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "um_select_auth" ON unidades_medida FOR SELECT
+  TO authenticated USING (TRUE);
+
+CREATE POLICY "um_insert_auth" ON unidades_medida FOR INSERT
+  TO authenticated WITH CHECK (TRUE);
+
+CREATE POLICY "um_update_auth" ON unidades_medida FOR UPDATE
+  TO authenticated USING (TRUE);
+
+CREATE POLICY "um_delete_auth" ON unidades_medida FOR DELETE
+  TO authenticated USING (TRUE);
+
+-- Unidades padrão do agronegócio brasileiro
+INSERT INTO unidades_medida (sigla, nome, tipo, fator_base, base_sigla) VALUES
+  ('kg',   'Quilograma',          'massa',       1,    'kg'),
+  ('g',    'Grama',               'massa',       0.001,'kg'),
+  ('t',    'Tonelada',            'massa',       1000, 'kg'),
+  ('sc',   'Saca (60 kg)',        'massa',       60,   'kg'),
+  ('@',    'Arroba (15 kg)',       'massa',       15,   'kg'),
+  ('L',    'Litro',               'volume',      1,    'L'),
+  ('mL',   'Mililitro',           'volume',      0.001,'L'),
+  ('m³',   'Metro Cúbico',        'volume',      1000, 'L'),
+  ('ha',   'Hectare',             'area',        1,    'ha'),
+  ('m²',   'Metro Quadrado',      'area',        0.0001,'ha'),
+  ('alq',  'Alqueire (2,42 ha)',   'area',        2.42, 'ha'),
+  ('m',    'Metro',               'comprimento', 1,    'm'),
+  ('un',   'Unidade',             'quantidade',  NULL, NULL),
+  ('cx',   'Caixa',               'quantidade',  NULL, NULL),
+  ('fardo','Fardo',               'quantidade',  NULL, NULL),
+  ('saco', 'Saco (genérico)',      'quantidade',  NULL, NULL),
+  ('bd',   'Balde (20 L)',         'volume',      20,   'L'),
+  ('gl',   'Galão (200 L)',        'volume',      200,  'L'),
+  ('d',    'Dose (aplicação)',     'quantidade',  NULL, NULL),
+  ('h',    'Hora (mão de obra)',   'outro',       NULL, NULL),
+  ('hm',   'Hora-máquina',        'outro',       NULL, NULL),
+  ('km',   'Quilômetro',          'comprimento', 1000, 'm')
+ON CONFLICT (sigla) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';

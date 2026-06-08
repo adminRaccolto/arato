@@ -48,7 +48,7 @@ import type {
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria,
-  PrincipioAtivo, NomeComercial, ContratoFinanceiro,
+  PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -85,7 +85,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -108,6 +108,7 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "grupos_insumo",           label: "Grupos de Insumos"         },
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
     { key: "principios_ativos",       label: "Princípios Ativos (BOT)"   },
+    { key: "unidades_medida",         label: "Unidades de Medida"        },
   ]},
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
@@ -448,6 +449,15 @@ function CadastrosInner() {
   const [fNC, setFNC]                       = useState({ nome_comercial: "" });
   const [salvandobotPA, setSalvandoPA]      = useState(false);
 
+  // ── Unidades de Medida ──
+  const [unidades, setUnidades]           = useState<UnidadeMedida[]>([]);
+  const [modalUM, setModalUM]             = useState(false);
+  const [editUM, setEditUM]               = useState<UnidadeMedida | null>(null);
+  const [fUM, setFUM]                     = useState({ sigla: "", nome: "", tipo: "quantidade" as UnidadeMedida["tipo"], fator_base: "", base_sigla: "", inativo: false });
+  const [salvandoUM, setSalvandoUM]       = useState(false);
+  const [umBusca, setUmBusca]             = useState("");
+  const [umTipo, setUmTipo]               = useState("");
+
   // ── Padrões de Classificação ──
   const [padroesCls, setPadroesCls]     = useState<PadraoClassificacao[]>([]);
   const [modalPCls, setModalPCls]       = useState(false);
@@ -542,6 +552,10 @@ function CadastrosInner() {
     if (aba === "principios_ativos") {
       listarPrincipiosAtivos().then(setPrincipios).catch(e => setErro(e.message));
       listarNomesComerciais().then(setNomesComerciais).catch(() => {});
+    }
+    if (aba === "unidades_medida") {
+      supabase.from("unidades_medida").select("*").order("tipo").order("sigla")
+        .then(({ data, error }) => { if (error) setErro(error.message); else setUnidades((data ?? []) as UnidadeMedida[]); });
     }
     if (aba === "historico_fiscal") {
       setLoadingHisFiscal(true);
@@ -4284,6 +4298,158 @@ function CadastrosInner() {
             );
           })()}
 
+          {/* ══════ ABA: UNIDADES DE MEDIDA ══════ */}
+          {aba === "unidades_medida" && (() => {
+            const TIPOS_UM: UnidadeMedida["tipo"][] = ["massa","volume","area","comprimento","quantidade","outro"];
+            const TIPO_LABEL: Record<UnidadeMedida["tipo"], string> = {
+              massa:       "Massa",
+              volume:      "Volume",
+              area:        "Área",
+              comprimento: "Comprimento",
+              quantidade:  "Quantidade",
+              outro:       "Outro",
+            };
+            const TIPO_COR: Record<UnidadeMedida["tipo"], { bg: string; color: string }> = {
+              massa:       { bg: "#D5E8F5", color: "#0B2D50" },
+              volume:      { bg: "#DCF5F0", color: "#0B4D3A" },
+              area:        { bg: "#DCF5E8", color: "#14532D" },
+              comprimento: { bg: "#FBF3E0", color: "#7A5A12" },
+              quantidade:  { bg: "#F4F6FA", color: "#555"    },
+              outro:       { bg: "#F0F2F7", color: "#888"    },
+            };
+
+            const umFiltradas = unidades.filter(u => {
+              if (umTipo && u.tipo !== umTipo) return false;
+              if (umBusca) {
+                const b = umBusca.toLowerCase();
+                return u.sigla.toLowerCase().includes(b) || u.nome.toLowerCase().includes(b);
+              }
+              return true;
+            });
+
+            const abrirNovaUM = () => {
+              setEditUM(null);
+              setFUM({ sigla: "", nome: "", tipo: "quantidade", fator_base: "", base_sigla: "", inativo: false });
+              setModalUM(true);
+            };
+            const abrirEditarUM = (u: UnidadeMedida) => {
+              setEditUM(u);
+              setFUM({ sigla: u.sigla, nome: u.nome, tipo: u.tipo, fator_base: u.fator_base != null ? String(u.fator_base) : "", base_sigla: u.base_sigla ?? "", inativo: u.inativo ?? false });
+              setModalUM(true);
+            };
+            const excluirUM = async (id: string) => {
+              if (!confirm("Excluir esta unidade de medida? Ela pode estar em uso em insumos e NFs.")) return;
+              await supabase.from("unidades_medida").delete().eq("id", id);
+              setUnidades(x => x.filter(u => u.id !== id));
+            };
+
+            // Agrupar por tipo para exibição
+            const porTipo = TIPOS_UM.map(t => ({
+              tipo: t,
+              label: TIPO_LABEL[t],
+              cor: TIPO_COR[t],
+              items: umFiltradas.filter(u => u.tipo === t),
+            })).filter(g => g.items.length > 0);
+
+            return (
+              <div>
+                {/* Cabeçalho */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                      Unidades de Medida
+                      <span style={{ fontSize: 11, color: "#555", fontWeight: 400, marginLeft: 6 }}>
+                        ({unidades.length} cadastradas · compartilhadas com todos os clientes)
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                      Usadas em insumos, produtos, notas fiscais e operações. Alterações aqui refletem imediatamente para todos.
+                    </div>
+                  </div>
+                  <button style={btnV} onClick={abrirNovaUM}>+ Nova Unidade</button>
+                </div>
+
+                {/* Filtros */}
+                <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+                  <input placeholder="Buscar sigla ou nome…" value={umBusca} onChange={e => setUmBusca(e.target.value)}
+                    style={{ ...inp, width: 220, fontSize: 12, padding: "6px 10px" }} />
+                  <select value={umTipo} onChange={e => setUmTipo(e.target.value)}
+                    style={{ ...inp, width: 160, fontSize: 12, padding: "6px 10px" }}>
+                    <option value="">Todos os tipos</option>
+                    {TIPOS_UM.map(t => <option key={t} value={t}>{TIPO_LABEL[t]}</option>)}
+                  </select>
+                  <span style={{ fontSize: 11, color: "#888" }}>{umFiltradas.length} resultado(s)</span>
+                </div>
+
+                {/* Tabela agrupada por tipo */}
+                {unidades.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "48px 0", color: "#888" }}>
+                    <div style={{ fontSize: 14, marginBottom: 8 }}>Nenhuma unidade cadastrada</div>
+                    <div style={{ fontSize: 12, marginBottom: 16 }}>Execute a migration no Supabase para carregar as unidades padrão.</div>
+                    <button style={btnV} onClick={abrirNovaUM}>+ Cadastrar primeira unidade</button>
+                  </div>
+                ) : porTipo.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: 32, color: "#888", fontSize: 13 }}>Nenhum resultado para o filtro aplicado.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {porTipo.map(grupo => (
+                      <div key={grupo.tipo} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden" }}>
+                        {/* Header do grupo */}
+                        <div style={{ background: grupo.cor.bg, padding: "8px 14px", display: "flex", alignItems: "center", gap: 8, borderBottom: "0.5px solid #D4DCE8" }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: grupo.cor.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{grupo.label}</span>
+                          <span style={{ fontSize: 11, color: grupo.cor.color, opacity: 0.7 }}>({grupo.items.length})</span>
+                        </div>
+                        {/* Tabela de itens */}
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <thead>
+                            <tr style={{ background: "#FAFBFC" }}>
+                              {["Sigla", "Nome", "Conversão", "Status", ""].map((h, i) => (
+                                <th key={i} style={{ padding: "7px 14px", textAlign: i >= 3 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {grupo.items.map(u => (
+                              <tr key={u.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: u.inativo ? "#FAFAFA" : "white" }}>
+                                <td style={{ padding: "8px 14px" }}>
+                                  <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: u.inativo ? "#aaa" : "#1A4870", background: "#EEF5FD", padding: "2px 8px", borderRadius: 5 }}>
+                                    {u.sigla}
+                                  </span>
+                                </td>
+                                <td style={{ padding: "8px 14px", fontSize: 13, color: u.inativo ? "#aaa" : "#1a1a1a" }}>
+                                  {u.nome}
+                                  {u.inativo && <span style={{ marginLeft: 8, fontSize: 9, background: "#F3F3F3", color: "#999", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>INATIVO</span>}
+                                </td>
+                                <td style={{ padding: "8px 14px", fontSize: 11, color: "#555" }}>
+                                  {u.fator_base != null && u.base_sigla
+                                    ? `1 ${u.sigla} = ${u.fator_base} ${u.base_sigla}`
+                                    : <span style={{ color: "#ccc" }}>—</span>}
+                                </td>
+                                <td style={{ padding: "8px 14px", textAlign: "center" }}>
+                                  {u.inativo
+                                    ? <span style={{ fontSize: 10, background: "#F3F3F3", color: "#888", padding: "2px 7px", borderRadius: 8 }}>Inativo</span>
+                                    : <span style={{ fontSize: 10, background: "#DCF5E8", color: "#14532D", padding: "2px 7px", borderRadius: 8 }}>Ativo</span>}
+                                </td>
+                                <td style={{ padding: "8px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                  <button onClick={() => abrirEditarUM(u)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>
+                                    Editar
+                                  </button>
+                                  <button onClick={() => excluirUM(u.id)} style={{ fontSize: 11, padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "transparent", color: "#E24B4A", cursor: "pointer" }}>
+                                    ✕
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
         </div>
       </main>
 
@@ -6597,6 +6763,96 @@ function CadastrosInner() {
               </div>
             );
           })()}
+        </Modal>
+      )}
+
+      {/* Modal Unidade de Medida */}
+      {modalUM && (
+        <Modal titulo={editUM ? `Editar: ${editUM.sigla}` : "Nova Unidade de Medida"} onClose={() => setModalUM(false)} width={540}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={lbl}>Sigla *</label>
+              <input style={{ ...inp, fontFamily: "monospace", fontWeight: 700 }}
+                placeholder="kg, L, sc, un…"
+                value={fUM.sigla}
+                onChange={e => setFUM(p => ({ ...p, sigla: e.target.value }))}
+                disabled={!!editUM}
+              />
+              {editUM && <div style={{ fontSize: 10, color: "#888", marginTop: 3 }}>A sigla não pode ser alterada.</div>}
+            </div>
+            <div>
+              <label style={lbl}>Nome completo *</label>
+              <input style={inp} placeholder="Ex: Quilograma, Litro, Saca (60 kg)"
+                value={fUM.nome}
+                onChange={e => setFUM(p => ({ ...p, nome: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={lbl}>Tipo *</label>
+              <select style={inp} value={fUM.tipo} onChange={e => setFUM(p => ({ ...p, tipo: e.target.value as UnidadeMedida["tipo"] }))}>
+                {(["massa","volume","area","comprimento","quantidade","outro"] as UnidadeMedida["tipo"][]).map(t => (
+                  <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Fator de conversão</label>
+              <input style={inp} type="number" step="any" placeholder="Ex: 60"
+                value={fUM.fator_base}
+                onChange={e => setFUM(p => ({ ...p, fator_base: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>Para unidade base</label>
+              <input style={{ ...inp, fontFamily: "monospace" }} placeholder="Ex: kg"
+                value={fUM.base_sigla}
+                onChange={e => setFUM(p => ({ ...p, base_sigla: e.target.value }))} />
+            </div>
+          </div>
+          {fUM.fator_base && fUM.base_sigla && fUM.sigla && (
+            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
+              1 {fUM.sigla || "?"} = {fUM.fator_base} {fUM.base_sigla}
+            </div>
+          )}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12 }}>
+              <input type="checkbox" checked={fUM.inativo} onChange={e => setFUM(p => ({ ...p, inativo: e.target.checked }))} />
+              Inativo (oculto nas listas de seleção)
+            </label>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button style={btnR} onClick={() => setModalUM(false)}>Cancelar</button>
+            <button
+              style={{ ...btnV, opacity: (!fUM.sigla.trim() || !fUM.nome.trim() || salvandoUM) ? 0.5 : 1 }}
+              disabled={!fUM.sigla.trim() || !fUM.nome.trim() || salvandoUM}
+              onClick={async () => {
+                setSalvandoUM(true);
+                try {
+                  const payload = {
+                    sigla: fUM.sigla.trim(),
+                    nome: fUM.nome.trim(),
+                    tipo: fUM.tipo,
+                    fator_base: fUM.fator_base ? Number(fUM.fator_base) : null,
+                    base_sigla: fUM.base_sigla.trim() || null,
+                    inativo: fUM.inativo,
+                  };
+                  if (editUM) {
+                    const { data, error } = await supabase.from("unidades_medida").update(payload).eq("id", editUM.id).select().single();
+                    if (error) throw error;
+                    setUnidades(x => x.map(u => u.id === editUM.id ? (data as UnidadeMedida) : u));
+                  } else {
+                    const { data, error } = await supabase.from("unidades_medida").insert(payload).select().single();
+                    if (error) throw error;
+                    setUnidades(x => [...x, data as UnidadeMedida].sort((a, b) => a.tipo.localeCompare(b.tipo) || a.sigla.localeCompare(b.sigla)));
+                  }
+                  setModalUM(false);
+                } catch (e: unknown) { alert((e as Error).message); }
+                finally { setSalvandoUM(false); }
+              }}
+            >
+              {salvandoUM ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
         </Modal>
       )}
 
