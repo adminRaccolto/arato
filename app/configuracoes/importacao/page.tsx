@@ -9,6 +9,7 @@ type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "cont
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
+  mao_obra: string;
   email: string; telefone: string; municipio: string; estado: string; cep: string;
   banco_nome: string; pix_chave: string; pix_tipo: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
@@ -90,9 +91,10 @@ type TalhaoImpRow = {
 
 // ─── Templates ────────────────────────────────────────────────
 const TEMPLATE_PESSOAS = [
-  ["nome*", "tipo*", "cpf_cnpj", "cliente", "fornecedor", "email", "telefone", "municipio", "estado", "cep", "banco_nome", "pix_chave", "pix_tipo"],
-  ["Bunge Brasil", "pj", "08.821.250/0001-60", "sim", "nao", "bunge@bunge.com", "(11)3305-0000", "São Paulo", "SP", "04710-070", "Caixa", "08821250000160", "cnpj"],
-  ["João da Silva", "pf", "012.345.678-90", "nao", "sim", "joao@email.com", "(65)99999-0001", "Nova Mutum", "MT", "78450-000", "", "", ""],
+  ["nome*", "tipo*", "cpf_cnpj", "cliente", "fornecedor", "mao_obra", "email", "telefone", "municipio", "estado", "cep", "banco_nome", "pix_chave", "pix_tipo"],
+  ["Bunge Brasil", "pj", "08.821.250/0001-60", "sim", "nao", "nao", "bunge@bunge.com", "(11)3305-0000", "São Paulo", "SP", "04710-070", "Caixa", "08821250000160", "cnpj"],
+  ["João da Silva", "pf", "012.345.678-90", "nao", "sim", "nao", "joao@email.com", "(65)99999-0001", "Nova Mutum", "MT", "78450-000", "", "", ""],
+  ["Pedro Operador", "pf", "111.222.333-44", "nao", "nao", "sim", "pedro@email.com", "(65)99000-0001", "Nova Mutum", "MT", "78450-000", "", "", ""],
 ];
 const TEMPLATE_CP = [
   ["descricao*", "categoria*", "data_lancamento*", "data_vencimento*", "valor*", "pessoa_cpf_cnpj", "moeda", "num_parcela", "total_parcelas", "tipo_documento_lcdpr", "numero_documento", "operacao_gerencial", "produtor_cpf_cnpj"],
@@ -480,7 +482,7 @@ function downloadTemplate(aba: Aba) {
       ["• Datas no formato AAAA-MM-DD (ex: 2026-03-15)"],
       ["• Valores numéricos sem símbolo R$ (ex: 15000.50)"],
       ["• tipo: pf ou pj"],
-      ["• cliente / fornecedor: sim ou nao"],
+      ["• cliente / fornecedor / mao_obra: sim ou nao"],
       ["• moeda: BRL, USD ou barter"],
       ["• tipo_documento_lcdpr: RECIBO, NF, DUPLICATA, CHEQUE, PIX, TED ou OUTROS"],
       ["• pix_tipo: cpf, cnpj, email, telefone ou aleatoria"],
@@ -1125,6 +1127,7 @@ export default function ImportacaoPage() {
         tipo:       (r.tipo as "pf" | "pj") || "pj",
         cliente:    r.cliente?.toLowerCase() === "sim",
         fornecedor: r.fornecedor?.toLowerCase() === "sim",
+        mao_obra:   r.mao_obra?.toLowerCase() === "sim",
         cpf_cnpj:   r.cpf_cnpj?.trim() || null,
         email:      r.email?.trim() || null,
         telefone:   r.telefone?.trim() || null,
@@ -1946,7 +1949,7 @@ export default function ImportacaoPage() {
     pessoas: {
       label: "Pessoas", icon: "👤",
       desc: "Importe fornecedores, clientes, arrendantes e demais pessoas de uma só vez.",
-      cols: ["nome", "tipo", "cpf_cnpj", "cliente", "fornecedor", "email", "telefone", "municipio", "estado"],
+      cols: ["nome", "tipo", "cpf_cnpj", "cliente", "fornecedor", "mao_obra", "email", "telefone", "municipio", "estado"],
       rows: pessoasRows as Record<string, unknown>[],
       loading: loadingPessoas,
       result: resultPessoas,
