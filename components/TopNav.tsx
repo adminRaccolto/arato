@@ -436,7 +436,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               background: "#fff", borderRadius: 10,
               border: "0.5px solid #D4DCE8",
               boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
-              minWidth: 210, zIndex: 300, padding: "6px 0",
+              minWidth: 210, zIndex: 1100, padding: "6px 0",
             }}>
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
@@ -496,7 +496,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     <header
       ref={navRef}
       style={{
-        position: "sticky", top: 0, zIndex: 100, flexShrink: 0,
+        position: "sticky", top: 0, zIndex: 1000, flexShrink: 0,
         background: "#ffffff",
         boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         fontFamily: "system-ui, sans-serif",
@@ -546,7 +546,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 )}
               </div>
               {farmSwitcherOpen && fazendas.length > 1 && (
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 220, zIndex: 200, overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 220, zIndex: 1100, overflow: "hidden" }}>
                   <div style={{ padding: "6px 12px 4px", fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Trocar fazenda</div>
                   {fazendas.map(f => (
                     <div
@@ -674,7 +674,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                       background: "#fff", borderRadius: 10,
                       border: "0.5px solid #D4DCE8",
                       boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
-                      zIndex: 200, display: "flex", overflow: "hidden", minWidth: 360,
+                      zIndex: 1100, display: "flex", overflow: "hidden", minWidth: 360,
                     }}>
                       <div style={{ width: 160, background: "#F3F6F9", borderRight: "0.5px solid #D4DCE8", padding: "6px 0" }}>
                         {grupos.map(g => {
@@ -755,7 +755,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                     background: "#fff", borderRadius: 10,
                     border: "0.5px solid #D4DCE8",
                     boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
-                    minWidth: 220, zIndex: 200, padding: "6px 0",
+                    minWidth: 220, zIndex: 1100, padding: "6px 0",
                   }}>
                     {item.children.map((child, idx) => renderChild(child, idx))}
                   </div>
