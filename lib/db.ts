@@ -421,6 +421,32 @@ export async function baixarLancamento(
 }
 
 /**
+ * Reabre um lançamento baixado, voltando ao status em_aberto ou vencido.
+ */
+export async function reabrirLancamento(id: string): Promise<void> {
+  const { data: l } = await supabase.from("lancamentos").select("data_vencimento").eq("id", id).single();
+  const hoje = new Date().toISOString().slice(0, 10);
+  const novoStatus = l?.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
+  const { error } = await supabase.from("lancamentos").update({
+    status: novoStatus, data_baixa: null, valor_pago: null, lote_id: null,
+  }).eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Reabre múltiplos lançamentos baixados de uma vez.
+ */
+export async function reabrirLancamentos(ids: string[]): Promise<void> {
+  if (!ids.length) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { data: lancs } = await supabase.from("lancamentos").select("id, data_vencimento").in("id", ids);
+  for (const l of (lancs ?? [])) {
+    const novoStatus = l.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
+    await supabase.from("lancamentos").update({ status: novoStatus, data_baixa: null, valor_pago: null, lote_id: null }).eq("id", l.id);
+  }
+}
+
+/**
  * Cria um lote de pagamento (borderô) e baixa todos os títulos de uma vez.
  * Retorna o lote criado.
  */

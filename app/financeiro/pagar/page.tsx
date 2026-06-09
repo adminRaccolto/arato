@@ -5,7 +5,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral } from "../../../lib/db";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -440,6 +440,46 @@ function ContasPagarInner() {
     } catch (e: unknown) {
       const msgBaixa = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
       alert("Erro: " + msgBaixa);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // ── Reabrir títulos ────────────────────────────────────────
+
+  const reabrirUm = async (l: Lancamento) => {
+    if (!confirm(`Reabrir "${l.descricao}"?\n\nO status voltará para em aberto e os dados de pagamento serão apagados.`)) return;
+    try {
+      setSalvando(true);
+      await reabrirLancamento(l.id);
+      const hoje = new Date().toISOString().slice(0, 10);
+      const novoStatus = l.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
+      setLancamentos(prev => prev.map(x =>
+        x.id !== l.id ? x : { ...x, status: novoStatus as Lancamento["status"], data_baixa: undefined, valor_pago: undefined, lote_id: undefined }
+      ));
+    } catch (e: unknown) {
+      alert("Erro: " + (e instanceof Error ? e.message : e));
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const reabrirLote = async () => {
+    const ids = filtrados.filter(l => selecionados.has(l.id) && l.status === "baixado").map(l => l.id);
+    if (!ids.length) return;
+    if (!confirm(`Reabrir ${ids.length} título${ids.length > 1 ? "s" : ""} pago${ids.length > 1 ? "s" : ""}?\n\nOs dados de pagamento serão apagados.`)) return;
+    try {
+      setSalvando(true);
+      await reabrirLancamentos(ids);
+      const hoje = new Date().toISOString().slice(0, 10);
+      setLancamentos(prev => prev.map(l => {
+        if (!ids.includes(l.id)) return l;
+        const novoStatus = l.data_vencimento && l.data_vencimento < hoje ? "vencido" : "em_aberto";
+        return { ...l, status: novoStatus as Lancamento["status"], data_baixa: undefined, valor_pago: undefined, lote_id: undefined };
+      }));
+      setSelecionados(new Set());
+    } catch (e: unknown) {
+      alert("Erro: " + (e instanceof Error ? e.message : e));
     } finally {
       setSalvando(false);
     }
@@ -913,7 +953,15 @@ function ContasPagarInner() {
                                   >
                                     ◈ Baixar
                                   </button>
-                                ) : null}
+                                ) : (
+                                  <button
+                                    onClick={() => reabrirUm(l)}
+                                    title="Reabrir título — apaga dados de pagamento"
+                                    style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B" }}
+                                  >
+                                    ↺ Reabrir
+                                  </button>
+                                )}
                                 {/* Excluir lançamento automático gerado por pedido barter incorretamente em R$ */}
                                 {l.auto && l.pedido_compra_id && l.moeda !== "barter" && l.status === "em_aberto" && (
                                   <button
@@ -1152,7 +1200,9 @@ function ContasPagarInner() {
       )}
 
       {/* ── Barra flutuante de seleção (borderô) ─────────────── */}
-      {selecionados.size > 0 && (
+      {selecionados.size > 0 && (() => {
+        const qtdBaixados = filtrados.filter(l => selecionados.has(l.id) && l.status === "baixado").length;
+        return (
         <div style={{
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           background: "#1A4870", color: "#fff", borderRadius: 14,
@@ -1162,15 +1212,24 @@ function ContasPagarInner() {
         }}>
           <span style={{ fontSize: 13 }}>
             <strong>{selecionados.size}</strong> título{selecionados.size !== 1 ? "s" : ""} selecionado{selecionados.size !== 1 ? "s" : ""}
-            &nbsp;·&nbsp;
-            <strong>{fmtBRL(totalLote)}</strong>
+            {itensLote.length > 0 && <>&nbsp;·&nbsp;<strong>{fmtBRL(totalLote)}</strong></>}
           </span>
+          {itensLote.length > 0 && (
           <button
             onClick={() => { setLoteData(TODAY); setLoteConta(""); setLoteDesc(""); setLoteErro(""); setModalLote(true); }}
             style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
           >
             Pagar em Lote ›
           </button>
+          )}
+          {qtdBaixados > 0 && (
+            <button
+              onClick={reabrirLote}
+              style={{ background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B", borderRadius: 8, padding: "7px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+            >
+              ↺ Reabrir {qtdBaixados} pago{qtdBaixados !== 1 ? "s" : ""}
+            </button>
+          )}
           <button
             onClick={async () => {
               const manuais = filtrados.filter(l => selecionados.has(l.id) && !l.auto);
@@ -1193,7 +1252,8 @@ function ContasPagarInner() {
             Cancelar
           </button>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Modal Baixa ─────────────────────────────────────────── */}
       {modalBaixa && (() => {
