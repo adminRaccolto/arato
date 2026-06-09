@@ -332,6 +332,10 @@ function CadastrosInner() {
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
   const [filtroIns, setFiltroIns]     = useState("todos");
   const [buscaIns, setBuscaIns]       = useState("");
+  const [filtroCult, setFiltroCult]   = useState("todos");
+  const [buscaProd, setBuscaProd]     = useState("");
+  const [filtroIt, setFiltroIt]       = useState("todos");
+  const [buscaIt, setBuscaIt]         = useState("");
   const [modalIns, setModalIns]       = useState(false);
   const [editIns, setEditIns]         = useState<Insumo | null>(null);
   const [fIns, setFIns]               = useState({
@@ -3180,8 +3184,6 @@ function CadastrosInner() {
             const cultMap = Object.fromEntries(CULTURAS.map(c => [c.key, c]));
 
             const prodBase = insumos.filter(i => i.categoria === "produto_agricola");
-            const [filtroCult, setFiltroCult] = useState("todos");
-            const [buscaProd, setBuscaProd]   = useState("");
 
             const prodFiltr = prodBase.filter(i => {
               const matchCult  = filtroCult === "todos" || i.subgrupo === filtroCult;
@@ -3387,8 +3389,6 @@ function CadastrosInner() {
             const CATS_IT_KEYS = CATS_IT.map(c => c.key);
 
             const itBase = insumos.filter(i => CATS_IT_KEYS.includes(i.categoria));
-            const [filtroIt, setFiltroIt] = useState("todos");
-            const [buscaIt, setBuscaIt]   = useState("");
 
             const itFiltr = itBase.filter(i => {
               const matchCat   = filtroIt === "todos" || i.categoria === filtroIt;
