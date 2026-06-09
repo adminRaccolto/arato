@@ -4879,3 +4879,45 @@ CREATE INDEX IF NOT EXISTS idx_ciclos_pai_id ON ciclos(ciclo_pai_id) WHERE ciclo
 ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS mao_obra boolean DEFAULT false;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 103: Culturas — tabela configurável por fazenda
+-- Permite ao usuário cadastrar novas culturas além das padrão do sistema.
+-- Usada nos selects de ciclos, contratos, lavoura etc.
+
+CREATE TABLE IF NOT EXISTS culturas (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id  uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome        text NOT NULL,
+  categoria   text NOT NULL DEFAULT 'graos',  -- graos | fibra | hortifruti | pastagem | cobertura | outro
+  unidade     text NOT NULL DEFAULT 'sc',      -- sc | @ | kg | t | cx | fardo | outro
+  ncm         text,
+  observacao  text,
+  ativa       boolean NOT NULL DEFAULT true,
+  ordem       integer,
+  created_at  timestamptz DEFAULT now(),
+  UNIQUE(fazenda_id, nome)
+);
+
+ALTER TABLE culturas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "culturas_fazenda" ON culturas
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+CREATE INDEX IF NOT EXISTS idx_culturas_fazenda ON culturas(fazenda_id);
+
+-- Seed padrão: insere as 4 culturas base para fazendas existentes
+-- Execute manualmente para cada fazenda, ou deixe o sistema fazer na primeira abertura.
+-- Exemplo para uma fazenda específica:
+-- INSERT INTO culturas (fazenda_id, nome, categoria, unidade, ncm, ordem)
+-- VALUES
+--   ('<FAZENDA_ID>', 'Soja',               'graos', 'sc',  '1201.10.00', 1),
+--   ('<FAZENDA_ID>', 'Milho 1ª',            'graos', 'sc',  '1005.90.10', 2),
+--   ('<FAZENDA_ID>', 'Milho 2ª (Safrinha)', 'graos', 'sc',  '1005.90.10', 3),
+--   ('<FAZENDA_ID>', 'Algodão',             'fibra', '@',   '5201.00.10', 4)
+-- ON CONFLICT (fazenda_id, nome) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';

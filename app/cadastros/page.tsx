@@ -85,7 +85,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -106,6 +106,7 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "maquinas",                label: "Máquinas e Veículos"       },
     { key: "combustivel",             label: "Combustíveis & Bombas"     },
     { key: "grupos_insumo",           label: "Grupos de Insumos"         },
+    { key: "culturas",                 label: "Culturas"                  },
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
     { key: "principios_ativos",       label: "Princípios Ativos (BOT)"   },
     { key: "unidades_medida",         label: "Unidades de Medida"        },
@@ -458,6 +459,15 @@ function CadastrosInner() {
   const [umBusca, setUmBusca]             = useState("");
   const [umTipo, setUmTipo]               = useState("");
 
+  // ── Culturas ──
+  type CulturaItem = { id: string; fazenda_id: string; nome: string; categoria: string; unidade: string; ncm: string | null; observacao: string | null; ativa: boolean; ordem: number | null };
+  const [culturasList, setCulturasList]   = useState<CulturaItem[]>([]);
+  const [modalCultura, setModalCultura]   = useState(false);
+  const [editCultura, setEditCultura]     = useState<CulturaItem | null>(null);
+  const [fCultura, setFCultura]           = useState({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "" });
+  const [salvandoCultura, setSalvandoCultura] = useState(false);
+  const [culturaBusca, setCulturaBusca]   = useState("");
+
   // ── Padrões de Classificação ──
   const [padroesCls, setPadroesCls]     = useState<PadraoClassificacao[]>([]);
   const [modalPCls, setModalPCls]       = useState(false);
@@ -556,6 +566,25 @@ function CadastrosInner() {
     if (aba === "unidades_medida") {
       supabase.from("unidades_medida").select("*").order("tipo").order("sigla")
         .then(({ data, error }) => { if (error) setErro(error.message); else setUnidades((data ?? []) as UnidadeMedida[]); });
+    }
+    if (aba === "culturas" || aba === "safras") {
+      supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome")
+        .then(async ({ data, error }) => {
+          if (error) return;
+          if (!data || data.length === 0) {
+            // Auto-seed: insere as culturas padrão na primeira abertura
+            await supabase.from("culturas").insert([
+              { fazenda_id: fazendaId, nome: "Soja",               categoria: "graos", unidade: "sc", ncm: "1201.10.00", ordem: 1 },
+              { fazenda_id: fazendaId, nome: "Milho 1ª",            categoria: "graos", unidade: "sc", ncm: "1005.90.10", ordem: 2 },
+              { fazenda_id: fazendaId, nome: "Milho 2ª (Safrinha)", categoria: "graos", unidade: "sc", ncm: "1005.90.10", ordem: 3 },
+              { fazenda_id: fazendaId, nome: "Algodão",             categoria: "fibra", unidade: "@",  ncm: "5201.00.10", ordem: 4 },
+            ]);
+            const { data: seeded } = await supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome");
+            setCulturasList((seeded ?? []) as CulturaItem[]);
+          } else {
+            setCulturasList(data as CulturaItem[]);
+          }
+        });
     }
     if (aba === "historico_fiscal") {
       setLoadingHisFiscal(true);
@@ -4481,6 +4510,188 @@ function CadastrosInner() {
             );
           })()}
 
+          {aba === "culturas" && (() => {
+            const CAT_LABEL: Record<string, string> = {
+              graos:     "Grãos",
+              fibra:     "Fibra",
+              hortifruti:"Hortifrúti",
+              pastagem:  "Pastagem",
+              cobertura: "Cobertura de Solo",
+              outro:     "Outro",
+            };
+            const CAT_COR: Record<string, { bg: string; color: string }> = {
+              graos:     { bg: "#D5E8F5", color: "#0B2D50"  },
+              fibra:     { bg: "#FBF3E0", color: "#7A5A12"  },
+              hortifruti:{ bg: "#DCF5E8", color: "#14532D"  },
+              pastagem:  { bg: "#EAFFE6", color: "#166534"  },
+              cobertura: { bg: "#F0F2F7", color: "#444"     },
+              outro:     { bg: "#F4F6FA", color: "#888"     },
+            };
+            const UN_LABEL: Record<string, string> = { sc: "Saca (60 kg)", "@": "Arroba (15 kg)", kg: "Quilograma", t: "Tonelada", cx: "Caixa", fardo: "Fardo", outro: "Outro" };
+
+            const filtradas = culturasList.filter(c =>
+              !culturaBusca || c.nome.toLowerCase().includes(culturaBusca.toLowerCase())
+            );
+
+            const abrirModal = (c?: CulturaItem) => {
+              if (c) {
+                setEditCultura(c);
+                setFCultura({ nome: c.nome, categoria: c.categoria, unidade: c.unidade, ncm: c.ncm ?? "", observacao: c.observacao ?? "", ativa: c.ativa, ordem: c.ordem != null ? String(c.ordem) : "" });
+              } else {
+                setEditCultura(null);
+                setFCultura({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "" });
+              }
+              setModalCultura(true);
+            };
+
+            const salvar = async () => {
+              if (!fCultura.nome.trim()) { alert("Nome obrigatório"); return; }
+              setSalvandoCultura(true);
+              const payload = {
+                fazenda_id:  fazendaId,
+                nome:        fCultura.nome.trim(),
+                categoria:   fCultura.categoria,
+                unidade:     fCultura.unidade,
+                ncm:         fCultura.ncm.trim() || null,
+                observacao:  fCultura.observacao.trim() || null,
+                ativa:       fCultura.ativa,
+                ordem:       fCultura.ordem !== "" ? parseInt(fCultura.ordem) : null,
+              };
+              if (editCultura) {
+                await supabase.from("culturas").update(payload).eq("id", editCultura.id);
+              } else {
+                await supabase.from("culturas").insert(payload);
+              }
+              const { data } = await supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome");
+              setCulturasList((data ?? []) as CulturaItem[]);
+              setModalCultura(false);
+              setSalvandoCultura(false);
+            };
+
+            const excluir = async (id: string) => {
+              if (!confirm("Excluir esta cultura?")) return;
+              await supabase.from("culturas").delete().eq("id", id);
+              setCulturasList(prev => prev.filter(c => c.id !== id));
+            };
+
+            return (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input style={{ ...inp, width: 260 }} placeholder="Buscar cultura…" value={culturaBusca} onChange={e => setCulturaBusca(e.target.value)} />
+                    <span style={{ fontSize: 12, color: "#888" }}>{filtradas.length} cultura{filtradas.length !== 1 ? "s" : ""}</span>
+                  </div>
+                  <button style={{ ...btnV, background: "#1A4870" }} onClick={() => abrirModal()}>+ Nova Cultura</button>
+                </div>
+
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "0.5px solid #DDE2EE" }}>
+                      {["Nome","Categoria","Unidade","NCM","Ordem","Status",""].map((h, i) => (
+                        <th key={i} style={{ textAlign: i === 6 ? "right" : "left", padding: "6px 10px", fontSize: 11, color: "#888", fontWeight: 600 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtradas.length === 0 && (
+                      <tr><td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#888", fontSize: 13 }}>
+                        Nenhuma cultura cadastrada. Clique em "Nova Cultura" para começar.
+                      </td></tr>
+                    )}
+                    {filtradas.map(c => {
+                      const cc = CAT_COR[c.categoria] ?? CAT_COR.outro;
+                      return (
+                        <tr key={c.id} style={{ borderBottom: "0.5px solid #F0F2F7" }}>
+                          <td style={{ padding: "10px 10px", fontWeight: 600 }}>{c.nome}</td>
+                          <td style={{ padding: "10px 10px" }}>
+                            <span style={{ fontSize: 11, background: cc.bg, color: cc.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>
+                              {CAT_LABEL[c.categoria] ?? c.categoria}
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 10px", color: "#555" }}>{UN_LABEL[c.unidade] ?? c.unidade}</td>
+                          <td style={{ padding: "10px 10px", color: "#888", fontFamily: "monospace", fontSize: 12 }}>{c.ncm || "—"}</td>
+                          <td style={{ padding: "10px 10px", color: "#888", textAlign: "center" }}>{c.ordem ?? "—"}</td>
+                          <td style={{ padding: "10px 10px" }}>
+                            {c.ativa
+                              ? <span style={{ fontSize: 11, background: "#EAFFE6", color: "#14532D", padding: "2px 8px", borderRadius: 8 }}>Ativa</span>
+                              : <span style={{ fontSize: 11, background: "#F4F6FA", color: "#888", padding: "2px 8px", borderRadius: 8 }}>Inativa</span>}
+                          </td>
+                          <td style={{ padding: "10px 10px", textAlign: "right" }}>
+                            <button style={btnE} onClick={() => abrirModal(c)}>Editar</button>
+                            {" "}
+                            <button style={btnX} onClick={() => excluir(c.id)}>Excluir</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {modalCultura && (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                    <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 560, maxHeight: "90vh", overflowY: "auto" }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{editCultura ? "Editar Cultura" : "Nova Cultura"}</div>
+                      <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Culturas disponíveis nos ciclos de safra</div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                        <div style={{ gridColumn: "1/-1" }}>
+                          <label style={lbl}>Nome *</label>
+                          <input style={inp} value={fCultura.nome} onChange={e => setFCultura(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Soja, Milho 2ª, Algodão…" autoFocus />
+                        </div>
+                        <div>
+                          <label style={lbl}>Categoria *</label>
+                          <select style={inp} value={fCultura.categoria} onChange={e => setFCultura(p => ({ ...p, categoria: e.target.value }))}>
+                            <option value="graos">Grãos</option>
+                            <option value="fibra">Fibra</option>
+                            <option value="hortifruti">Hortifrúti</option>
+                            <option value="pastagem">Pastagem</option>
+                            <option value="cobertura">Cobertura de Solo</option>
+                            <option value="outro">Outro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Unidade de Medida *</label>
+                          <select style={inp} value={fCultura.unidade} onChange={e => setFCultura(p => ({ ...p, unidade: e.target.value }))}>
+                            <option value="sc">Saca (60 kg)</option>
+                            <option value="@">Arroba (15 kg)</option>
+                            <option value="kg">Quilograma</option>
+                            <option value="t">Tonelada</option>
+                            <option value="cx">Caixa</option>
+                            <option value="fardo">Fardo</option>
+                            <option value="outro">Outro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>NCM</label>
+                          <input style={inp} value={fCultura.ncm} onChange={e => setFCultura(p => ({ ...p, ncm: e.target.value }))} placeholder="Ex: 1201.10.00" maxLength={10} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Ordem de exibição</label>
+                          <input style={inp} type="number" value={fCultura.ordem} onChange={e => setFCultura(p => ({ ...p, ordem: e.target.value }))} placeholder="1, 2, 3…" />
+                        </div>
+                        <div style={{ gridColumn: "1/-1" }}>
+                          <label style={lbl}>Observação</label>
+                          <input style={inp} value={fCultura.observacao} onChange={e => setFCultura(p => ({ ...p, observacao: e.target.value }))} />
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="checkbox" checked={fCultura.ativa} onChange={e => setFCultura(p => ({ ...p, ativa: e.target.checked }))} id="culturaAtiva" />
+                          <label htmlFor="culturaAtiva" style={{ fontSize: 13, cursor: "pointer" }}>Cultura ativa (aparece nos ciclos)</label>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+                        <button style={btnR} onClick={() => setModalCultura(false)}>Cancelar</button>
+                        <button style={{ ...btnV, background: "#1A4870", opacity: salvandoCultura ? 0.6 : 1 }} onClick={salvar} disabled={salvandoCultura}>
+                          {salvandoCultura ? "Salvando…" : editCultura ? "Salvar alterações" : "Criar cultura"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
         </div>
       </main>
 
@@ -5308,13 +5519,10 @@ function CadastrosInner() {
             <div>
               <label style={lbl}>Cultura *</label>
               <select style={inp} value={fCiclo.cultura} onChange={e => setFCiclo(p => ({ ...p, cultura: e.target.value }))}>
-                {CULTURAS.map(c => <option key={c}>{c}</option>)}
-                {fCiclo.is_auxiliar && <option value="Milheto">Milheto</option>}
-                {fCiclo.is_auxiliar && <option value="Crotalária">Crotalária</option>}
-                {fCiclo.is_auxiliar && <option value="Braquiária">Braquiária</option>}
-                {fCiclo.is_auxiliar && <option value="Nabo Forrageiro">Nabo Forrageiro</option>}
-                {fCiclo.is_auxiliar && <option value="Aveia">Aveia</option>}
-                {fCiclo.is_auxiliar && <option value="Urochloa">Urochloa</option>}
+                {(culturasList.filter(c => c.ativa).length > 0
+                  ? culturasList.filter(c => c.ativa).map(c => c.nome)
+                  : CULTURAS
+                ).map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id); }} /></div>
