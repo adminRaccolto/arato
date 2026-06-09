@@ -670,15 +670,11 @@ export default function ContasReceber() {
                           <tr key={l.id} style={{ borderBottom: li < filtrados.length - 1 ? "0.5px solid #DEE5EE" : "none", background: isPrevisao ? "#EFF6FF" : l.moeda === "barter" ? "#FEF8ED" : "transparent", borderLeft: isPrevisao ? "3px dashed #1A5CB8" : `3px solid ${om.border}` }}>
                             {/* ● Sinalizador / Checkbox */}
                             <td style={{ padding: "10px 4px", textAlign: "center" }}>
-                              {l.status !== "baixado" ? (
-                                <input type="checkbox"
-                                  style={{ cursor: "pointer", accentColor: "#1A5CB8" }}
-                                  checked={selecionados.has(l.id)}
-                                  onChange={() => toggleSel(l.id)}
-                                />
-                              ) : (
-                                <span title={dot.title} style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: dot.cor }} />
-                              )}
+                              <input type="checkbox"
+                                style={{ cursor: "pointer", accentColor: l.status === "baixado" ? "#16A34A" : "#1A5CB8" }}
+                                checked={selecionados.has(l.id)}
+                                onChange={() => toggleSel(l.id)}
+                              />
                             </td>
                             {/* Fornecedor/Cliente */}
                             <td style={{ padding: "10px 10px" }}>
