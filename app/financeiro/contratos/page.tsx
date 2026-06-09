@@ -443,6 +443,7 @@ export default function ContratosFinanceiros() {
   const [importando, setImportando]       = useState(false);
   const [importLog, setImportLog]         = useState<string[]>([]);
   const [importDiag, setImportDiag]       = useState<LerXLSXResult["debug"] | null>(null);
+  const [importCriarLanc, setImportCriarLanc] = useState(true);
 
   // modal unificado
   const [modalAberto, setModalAberto]       = useState(false);
@@ -701,9 +702,7 @@ export default function ContratosFinanceiros() {
 
     // Carrega anos_safra para vincular lancamentos ao filtro de safra do BI
     const { data: anosSafraDB } = await supabase
-      .from("anos_safra")
-      .select("id, descricao")
-      .eq("fazenda_id", fazendaId);
+      .from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId);
     const anosSafraList = anosSafraDB ?? [];
     const matchAnoSafra = (desc?: string): string | undefined => {
       if (!desc) return undefined;
@@ -715,12 +714,28 @@ export default function ContratosFinanceiros() {
       );
     };
 
+    // Carrega números de documento já existentes em contratos_financeiros (para dedup)
+    const { data: cfExist } = await supabase
+      .from("contratos_financeiros")
+      .select("numero_documento")
+      .eq("fazenda_id", fazendaId)
+      .not("numero_documento", "is", null);
+    const nrsExistentes = new Set((cfExist ?? []).map(r => String(r.numero_documento).trim()).filter(Boolean));
+
     for (const c of importPreview) {
       try {
+        const nrDoc = (c.nr_contrato || c.cd_divida || "").trim();
+
+        // ── Guarda de duplicidade — pula contrato já importado ──
+        if (nrDoc && nrsExistentes.has(nrDoc)) {
+          log.push(`⚠ ${c.descricao} (${nrDoc}) — já existe no sistema, pulado`);
+          continue;
+        }
+
         const taxa_am = c.taxa_juros_am ?? (c.taxa_juros_aa ? aaParaAm(c.taxa_juros_aa) : undefined);
         const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
           fazenda_id: fazendaId,
-          descricao: c.descricao || `Contrato ${c.nr_contrato || c.cd_divida}`,
+          descricao: c.descricao || `Contrato ${nrDoc}`,
           credor: c.credor || "Importado",
           tipo: c.tipo,
           tipo_calculo: "sac",
@@ -729,7 +744,7 @@ export default function ContratosFinanceiros() {
           valor_cotacao: c.cotacao,
           valor_financiado_brl: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
           data_contrato: c.data_contrato || hoje,
-          numero_documento: c.nr_contrato || undefined,
+          numero_documento: nrDoc || undefined,
           taxa_juros_aa: c.taxa_juros_aa || undefined,
           taxa_juros_am: taxa_am,
           status: "ativo",
@@ -741,6 +756,7 @@ export default function ContratosFinanceiros() {
         };
 
         const novo = await criarContratoFinanceiro(payload);
+        if (nrDoc) nrsExistentes.add(nrDoc);
 
         // Salva parcelas — passadas como "pago", futuras como "em_aberto"
         if (c.parcelas.length > 0) {
@@ -753,8 +769,32 @@ export default function ContratosFinanceiros() {
           );
         }
 
-        // ── Gera lançamentos financeiros (cascata) ──────────────────────────
+        const nPago   = c.parcelas.filter(p => p.data_vencimento && p.data_vencimento < hoje).length;
+        const nAberto = c.parcelas.length - nPago;
         const anoSafraId = matchAnoSafra(c.desc_safra);
+        const safraTag = anoSafraId ? ` [safra vinculada]` : c.desc_safra ? ` [safra "${c.desc_safra}" não encontrada]` : "";
+
+        // ── Lançamentos financeiros (opcional — usuário pode desmarcar se já tem CPs) ──
+        if (!importCriarLanc) {
+          log.push(`✓ ${c.descricao} (${nrDoc}) — ${c.parcelas.length} parcelas (${nPago} pagas, ${nAberto} em aberto), sem lançamentos${safraTag}`);
+          setContratos(prev => [novo, ...prev]);
+          continue;
+        }
+
+        // Verifica se já existem lançamentos auto vinculados a este número de documento
+        let lancJaExistem = false;
+        if (nrDoc) {
+          const { count } = await supabase
+            .from("lancamentos").select("id", { count: "exact", head: true })
+            .eq("fazenda_id", fazendaId).eq("auto", true).eq("numero_documento", nrDoc);
+          lancJaExistem = (count ?? 0) > 0;
+        }
+
+        if (lancJaExistem) {
+          log.push(`✓ ${c.descricao} (${nrDoc}) — ${c.parcelas.length} parcelas importadas; lançamentos já existiam, não duplicados${safraTag}`);
+          setContratos(prev => [novo, ...prev]);
+          continue;
+        }
 
         // 1. Lançamento CR de captação (liberação do crédito)
         const lancsCaptacao = c.valor_financiado > 0 && c.data_contrato ? [{
@@ -764,8 +804,8 @@ export default function ContratosFinanceiros() {
           data_lancamento: c.data_contrato,
           data_vencimento: c.data_contrato,
           valor: c.moeda === "USD" && c.cotacao ? c.valor_financiado * c.cotacao : c.valor_financiado,
-          status: "baixado",  // crédito já recebido
-          auto: true,
+          status: "baixado", auto: true,
+          numero_documento: nrDoc || undefined,
           ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
         }] : [];
 
@@ -780,10 +820,9 @@ export default function ContratosFinanceiros() {
               fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
               descricao: `${descBase} — Amortização`,
               categoria: CAT_AMORT[c.tipo],
-              data_lancamento: p.data_vencimento,
-              data_vencimento: p.data_vencimento,
-              valor: p.amortizacao,
-              status: statusLanc, auto: true,
+              data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+              valor: p.amortizacao, status: statusLanc, auto: true,
+              numero_documento: nrDoc || undefined,
               ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
             });
           }
@@ -792,10 +831,9 @@ export default function ContratosFinanceiros() {
               fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
               descricao: `${descBase} — Juros`,
               categoria: CAT_JUROS[c.tipo],
-              data_lancamento: p.data_vencimento,
-              data_vencimento: p.data_vencimento,
-              valor: p.juros,
-              status: statusLanc, auto: true,
+              data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+              valor: p.juros, status: statusLanc, auto: true,
+              numero_documento: nrDoc || undefined,
               ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
             });
           }
@@ -804,10 +842,21 @@ export default function ContratosFinanceiros() {
               fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
               descricao: `${descBase} — Encargos`,
               categoria: "Encargos Bancários",
-              data_lancamento: p.data_vencimento,
-              data_vencimento: p.data_vencimento,
-              valor: p.despesas_acessorios,
-              status: statusLanc, auto: true,
+              data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+              valor: p.despesas_acessorios, status: statusLanc, auto: true,
+              numero_documento: nrDoc || undefined,
+              ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
+            });
+          }
+          // Parcela sem breakdown: usa valor_parcela total como CP único
+          if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) {
+            lancsParcelas.push({
+              fazenda_id: fazendaId, tipo: "pagar", moeda: c.moeda,
+              descricao: descBase,
+              categoria: CAT_AMORT[c.tipo],
+              data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento,
+              valor: p.valor_parcela, status: statusLanc, auto: true,
+              numero_documento: nrDoc || undefined,
               ...(anoSafraId ? { ano_safra_id: anoSafraId } : {}),
             });
           }
@@ -815,7 +864,6 @@ export default function ContratosFinanceiros() {
 
         const todosLancs = [...lancsCaptacao, ...lancsParcelas];
         if (todosLancs.length > 0) {
-          // Insere em lotes de 200 para evitar limite do Supabase
           for (let i = 0; i < todosLancs.length; i += 200) {
             const { error: errLanc } = await supabase.from("lancamentos").insert(todosLancs.slice(i, i + 200));
             if (errLanc) throw new Error(`Lançamentos: ${errLanc.message}`);
@@ -823,10 +871,7 @@ export default function ContratosFinanceiros() {
         }
 
         setContratos(prev => [novo, ...prev]);
-        const nPago  = c.parcelas.filter(p => p.data_vencimento && p.data_vencimento < hoje).length;
-        const nAberto = c.parcelas.length - nPago;
-        const safraTag = anoSafraId ? ` [safra vinculada]` : c.desc_safra ? ` [safra "${c.desc_safra}" não encontrada]` : "";
-        log.push(`✓ ${c.descricao} (${c.nr_contrato || c.cd_divida}) — ${c.parcelas.length} parcelas, ${nPago} pagas, ${nAberto} em aberto, ${todosLancs.length} lançamentos${safraTag}`);
+        log.push(`✓ ${c.descricao} (${nrDoc}) — ${c.parcelas.length} parcelas (${nPago} pagas, ${nAberto} em aberto), ${todosLancs.length} lançamentos criados${safraTag}`);
       } catch (e) {
         log.push(`✗ ${c.descricao || c.cd_divida} — ${(e as Error).message}`);
       }
@@ -1123,6 +1168,20 @@ export default function ContratosFinanceiros() {
                         })}
                       </tbody>
                     </table>
+                  </div>
+                  <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+                      <input type="checkbox" checked={importCriarLanc} onChange={e => setImportCriarLanc(e.target.checked)} />
+                      <span>Criar lançamentos financeiros (CP/CR) automaticamente</span>
+                    </label>
+                    {!importCriarLanc && (
+                      <div style={{ fontSize: 12, color: "#7A5C00", background: "#FBF3E0", borderRadius: 6, padding: "6px 10px" }}>
+                        Somente os contratos e parcelas serão criados. Use esta opção se você já tem os lançamentos no Contas a Pagar para evitar duplicidade.
+                      </div>
+                    )}
+                    <div style={{ fontSize: 11, color: "#888" }}>
+                      Contratos já existentes (mesmo Nº Contrato) serão automaticamente pulados.
+                    </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                     <button style={btnR} onClick={() => { setModalImport(false); setImportPreview(null); }}>Cancelar</button>
