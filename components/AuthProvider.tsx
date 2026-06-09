@@ -108,7 +108,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setFazendaId(null);
     setNomeFazendaSelecionada(null);
     setNomeProdutor(null);
-    router.push("/raccotlo");
+    router.push("/seletor-cliente");
   }, [router]);
 
   useEffect(() => {
