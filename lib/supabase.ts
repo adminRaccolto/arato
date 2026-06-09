@@ -606,6 +606,10 @@ export type Ciclo = {
   produtividade_esperada_sc_ha?: number | null; // sc/ha esperado na colheita
   preco_esperado_sc?: number | null;            // R$/sc médio esperado na venda
   area_plantada_ha?: number | null;             // soma dos talhões vinculados (calculado)
+  is_auxiliar?: boolean | null;                 // ciclo sem receita, custos absorvidos pelo pai
+  ciclo_pai_id?: string | null;                 // ciclo principal que absorve os custos
+  absorcao_pct?: number | null;                 // % dos custos absorvidos (default 100)
+  motivo_auxiliar?: string | null;              // ex: "Milheto para cobertura de solo"
   created_at?: string;
 };
 

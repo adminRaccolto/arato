@@ -270,7 +270,7 @@ function CadastrosInner() {
   const [fAno, setFAno]               = useState({ descricao: "", data_inicio: "", data_fim: "" });
   const [modalCiclo, setModalCiclo]   = useState(false);
   const [editCiclo, setEditCiclo]     = useState<Ciclo | null>(null);
-  const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "" });
+  const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "" });
   // talhões vinculados ao ciclo: { talhao_id -> area_plantada_ha (string para input) }
   const [cicloTalhoes, setCicloTalhoes] = useState<Record<string, string>>({});
   // área já comprometida por OUTROS ciclos que se sobrepõem no tempo: { talhao_id -> ha }
@@ -1127,7 +1127,11 @@ function CadastrosInner() {
       data_inicio: inicio, data_fim: fim,
       produtividade_esperada_sc_ha: c.produtividade_esperada_sc_ha != null ? String(c.produtividade_esperada_sc_ha) : "",
       preco_esperado_sc: c.preco_esperado_sc != null ? String(c.preco_esperado_sc) : "",
-    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "" });
+      is_auxiliar: c.is_auxiliar ?? false,
+      ciclo_pai_id: c.ciclo_pai_id ?? "",
+      absorcao_pct: c.absorcao_pct != null ? String(c.absorcao_pct) : "100",
+      motivo_auxiliar: c.motivo_auxiliar ?? "",
+    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "" });
     // carrega talhões vinculados se editando
     if (c) {
       const { data: ct } = await supabase.from("ciclo_talhoes").select("talhao_id,area_plantada_ha").eq("ciclo_id", c.id);
@@ -1164,6 +1168,10 @@ function CadastrosInner() {
       data_inicio: fCiclo.data_inicio, data_fim: fCiclo.data_fim,
       produtividade_esperada_sc_ha: fCiclo.produtividade_esperada_sc_ha ? parseFloat(fCiclo.produtividade_esperada_sc_ha) : null,
       preco_esperado_sc: fCiclo.preco_esperado_sc ? parseFloat(fCiclo.preco_esperado_sc) : null,
+      is_auxiliar: fCiclo.is_auxiliar,
+      ciclo_pai_id: fCiclo.is_auxiliar && fCiclo.ciclo_pai_id ? fCiclo.ciclo_pai_id : null,
+      absorcao_pct: fCiclo.is_auxiliar ? (parseFloat(fCiclo.absorcao_pct) || 100) : null,
+      motivo_auxiliar: fCiclo.is_auxiliar && fCiclo.motivo_auxiliar.trim() ? fCiclo.motivo_auxiliar.trim() : null,
     };
     let cicloId: string;
     if (editCiclo) {
@@ -1830,19 +1838,33 @@ function CadastrosInner() {
                   const area = c.area_plantada_ha;
                   const sacasEsp = prod && area ? area * prod : null;
                   const receitaEsp = sacasEsp && preco ? sacasEsp * preco : null;
+                  const isAux = c.is_auxiliar;
+                  const nomePai = isAux && c.ciclo_pai_id ? ciclos.find(x => x.id === c.ciclo_pai_id)?.descricao : null;
+                  const auxiliaresDeste = ciclos.filter(x => x.ciclo_pai_id === c.id);
                   return (
-                    <div key={c.id} style={{ padding: "11px 16px", borderBottom: ci < ciclos.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                    <div key={c.id} style={{ padding: "11px 16px", borderBottom: ci < ciclos.length - 1 ? "0.5px solid #DEE5EE" : "none", background: isAux ? "#FFFBF3" : "transparent", borderLeft: isAux ? "3px solid #C9921B" : "3px solid transparent", paddingLeft: isAux ? 13 : 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div>
-                          <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 13 }}>{c.descricao}</div>
+                          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                            {isAux && <span style={{ fontSize:9, fontWeight:700, background:"#C9921B", color:"#fff", borderRadius:4, padding:"2px 6px", textTransform:"uppercase", letterSpacing:".04em" }}>AUX</span>}
+                            <div style={{ color: isAux ? "#7A5200" : "#1a1a1a", fontWeight: 600, fontSize: 13 }}>{c.descricao}</div>
+                          </div>
+                          {isAux && nomePai && (
+                            <div style={{ fontSize:11, color:"#C9921B", marginTop:2, display:"flex", alignItems:"center", gap:4 }}>
+                              ↳ Custos absorvidos por: <strong>{nomePai}</strong>
+                              {c.absorcao_pct != null && c.absorcao_pct !== 100 && <span style={{ background:"#FDE9BB", color:"#7A5200", borderRadius:4, padding:"1px 5px", fontSize:10 }}>{c.absorcao_pct}%</span>}
+                              {c.motivo_auxiliar && <span style={{ color:"#888", marginLeft:4 }}>· {c.motivo_auxiliar}</span>}
+                            </div>
+                          )}
                           <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{c.data_inicio} → {c.data_fim}</div>
                           <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {badge(c.cultura, "#D5E8F5", "#0B2D50")}
+                            {badge(c.cultura, isAux ? "#FDE9BB" : "#D5E8F5", isAux ? "#7A5200" : "#0B2D50")}
                             {area != null && <span style={{ fontSize: 10, background: "#F0FDF7", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{area.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha plantados</span>}
-                            {prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} sc/ha</span>}
-                            {preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/sc</span>}
+                            {!isAux && prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} sc/ha</span>}
+                            {!isAux && preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/sc</span>}
+                            {auxiliaresDeste.length > 0 && <span style={{ fontSize:10, background:"#FBF3E0", color:"#C9921B", borderRadius:5, padding:"2px 7px", fontWeight:600 }}>{auxiliaresDeste.length} auxiliar{auxiliaresDeste.length > 1 ? "es" : ""} vinculado{auxiliaresDeste.length > 1 ? "s" : ""}</span>}
                           </div>
-                          {receitaEsp != null && (
+                          {!isAux && receitaEsp != null && (
                             <div style={{ fontSize: 11, color: "#14532D", marginTop: 4, fontWeight: 600 }}>
                               Receita bruta estimada: {receitaEsp.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                               <span style={{ fontWeight: 400, color: "#555", marginLeft: 6 }}>({sacasEsp!.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} sc esperadas)</span>
@@ -5225,27 +5247,88 @@ function CadastrosInner() {
       {/* Modal Ciclo */}
       {modalCiclo && (
         <Modal titulo={editCiclo ? "Editar Ciclo" : "Novo Ciclo"} subtitulo={anosSafra.find(a => a.id === anoSel)?.descricao} onClose={() => setModalCiclo(false)} width={860}>
+          {/* Toggle Auxiliar */}
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:18, padding:"10px 14px", background:fCiclo.is_auxiliar?"#FBF3E0":"#F8FAFD", borderRadius:10, border:`0.5px solid ${fCiclo.is_auxiliar?"#C9921B":"#D4DCE8"}` }}>
+            <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
+              <input type="checkbox" checked={fCiclo.is_auxiliar} onChange={e => setFCiclo(p => ({ ...p, is_auxiliar: e.target.checked, ciclo_pai_id: "", absorcao_pct: "100" }))} style={{ width:16, height:16, cursor:"pointer" }} />
+              <span style={{ fontSize:13, fontWeight:700, color:fCiclo.is_auxiliar?"#7A5200":"#1a1a1a" }}>Ciclo Auxiliar</span>
+            </label>
+            <span style={{ fontSize:11, color:"#888" }}>
+              {fCiclo.is_auxiliar
+                ? "Sem receita própria — custos absorvidos pelo ciclo principal vinculado"
+                : "Ciclo produtivo com receita (soja, milho, algodão…). Marque como auxiliar para culturas de cobertura, adubação verde, etc."}
+            </span>
+          </div>
+
+          {/* Seção Auxiliar — ciclo pai + absorção */}
+          {fCiclo.is_auxiliar && (
+            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr", gap:14, marginBottom:18, padding:"14px 16px", background:"#FFFBF3", borderRadius:10, border:"0.5px solid #EDD8A0" }}>
+              <div>
+                <label style={lbl}>Ciclo Principal (absorve os custos) *</label>
+                <select style={inp} value={fCiclo.ciclo_pai_id} onChange={e => setFCiclo(p => ({ ...p, ciclo_pai_id: e.target.value }))}>
+                  <option value="">— selecione —</option>
+                  {ciclos.filter(c => !c.is_auxiliar && c.id !== editCiclo?.id).map(c => (
+                    <option key={c.id} value={c.id}>{c.descricao}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>% de Absorção dos Custos</label>
+                <input style={inp} type="number" min="1" max="100" step="1" placeholder="100"
+                  value={fCiclo.absorcao_pct}
+                  onChange={e => setFCiclo(p => ({ ...p, absorcao_pct: e.target.value }))} />
+              </div>
+              <div>
+                <label style={lbl}>Tipo / Motivo</label>
+                <select style={inp} value={fCiclo.motivo_auxiliar} onChange={e => setFCiclo(p => ({ ...p, motivo_auxiliar: e.target.value }))}>
+                  <option value="">— selecione —</option>
+                  <option value="Milheto (cobertura de solo)">Milheto (cobertura de solo)</option>
+                  <option value="Crotalária (adubação verde)">Crotalária (adubação verde)</option>
+                  <option value="Braquiária (palhada/rotação)">Braquiária (palhada/rotação)</option>
+                  <option value="Nabo forrageiro">Nabo forrageiro</option>
+                  <option value="Urochloa inter-safra">Urochloa inter-safra</option>
+                  <option value="Aveia (cobertura/pastejo)">Aveia (cobertura/pastejo)</option>
+                  <option value="Feijão guandu">Feijão guandu</option>
+                  <option value="Sorgo biomassa">Sorgo biomassa</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              {fCiclo.ciclo_pai_id && (
+                <div style={{ gridColumn:"1/-1", background:"#FDE9BB", borderRadius:8, padding:"8px 12px", fontSize:11, color:"#7A5200" }}>
+                  Os custos deste ciclo serão somados ao DRE do ciclo <strong>{ciclos.find(c => c.id === fCiclo.ciclo_pai_id)?.descricao}</strong>{fCiclo.absorcao_pct !== "100" ? ` (${fCiclo.absorcao_pct}% de absorção)` : ""}.
+                  A cultura principal continua com suas próprias receitas e operações.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Dados básicos */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
-            <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição * (ex: Soja 2026/2027)</label><input style={inp} placeholder="Soja 2026/2027" value={fCiclo.descricao} onChange={e => setFCiclo(p => ({ ...p, descricao: e.target.value }))} /></div>
+            <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição * (ex: Soja 2026/2027)</label><input style={inp} placeholder={fCiclo.is_auxiliar ? "Ex: Milheto 2025/2026" : "Soja 2026/2027"} value={fCiclo.descricao} onChange={e => setFCiclo(p => ({ ...p, descricao: e.target.value }))} /></div>
             <div>
               <label style={lbl}>Cultura *</label>
               <select style={inp} value={fCiclo.cultura} onChange={e => setFCiclo(p => ({ ...p, cultura: e.target.value }))}>
                 {CULTURAS.map(c => <option key={c}>{c}</option>)}
+                {fCiclo.is_auxiliar && <option value="Milheto">Milheto</option>}
+                {fCiclo.is_auxiliar && <option value="Crotalária">Crotalária</option>}
+                {fCiclo.is_auxiliar && <option value="Braquiária">Braquiária</option>}
+                {fCiclo.is_auxiliar && <option value="Nabo Forrageiro">Nabo Forrageiro</option>}
+                {fCiclo.is_auxiliar && <option value="Aveia">Aveia</option>}
+                {fCiclo.is_auxiliar && <option value="Urochloa">Urochloa</option>}
               </select>
             </div>
             <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id); }} /></div>
             <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id); }} /></div>
-            <div>
+            {!fCiclo.is_auxiliar && <div>
               <label style={lbl}>Produtividade esperada (sc/ha)</label>
               <InputMonetario style={inp} placeholder="Ex: 62,00" value={fCiclo.produtividade_esperada_sc_ha}
                 onChange={v => setFCiclo(p => ({ ...p, produtividade_esperada_sc_ha: String(v) }))} />
-            </div>
-            <div>
+            </div>}
+            {!fCiclo.is_auxiliar && <div>
               <label style={lbl}>Preço de venda esperado (R$/sc)</label>
               <InputMonetario style={inp} placeholder="Ex: 118,50" value={fCiclo.preco_esperado_sc}
                 onChange={v => setFCiclo(p => ({ ...p, preco_esperado_sc: String(v) }))} />
-            </div>
+            </div>}
             {/* Preview receita esperada */}
             {(() => {
               const talhoesSel = Object.entries(cicloTalhoes).filter(([, a]) => parseFloat(a) > 0);

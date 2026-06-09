@@ -4862,3 +4862,20 @@ ALTER TABLE contratos_financeiros ADD COLUMN IF NOT EXISTS carencia_meses INTEGE
 ALTER TABLE contratos_financeiros ADD COLUMN IF NOT EXISTS cotacao_usd NUMERIC(10,4);
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 102: Ciclos Auxiliares — absorção de custos entre ciclos
+-- Ciclos de cobertura/adubação verde (Milheto, Crotalária, Braquiária, etc.)
+-- cujos custos são absorvidos por um ciclo principal produtor.
+
+ALTER TABLE ciclos ADD COLUMN IF NOT EXISTS is_auxiliar     boolean     DEFAULT false;
+ALTER TABLE ciclos ADD COLUMN IF NOT EXISTS ciclo_pai_id    uuid        REFERENCES ciclos(id) ON DELETE SET NULL;
+ALTER TABLE ciclos ADD COLUMN IF NOT EXISTS absorcao_pct    numeric(5,2) DEFAULT 100;
+ALTER TABLE ciclos ADD COLUMN IF NOT EXISTS motivo_auxiliar text;
+
+-- Índice para lookup rápido de auxiliares de um ciclo pai
+CREATE INDEX IF NOT EXISTS idx_ciclos_pai_id ON ciclos(ciclo_pai_id) WHERE ciclo_pai_id IS NOT NULL;
+
+-- Coluna mao_obra na tabela pessoas (flag para mão-de-obra rural)
+ALTER TABLE pessoas ADD COLUMN IF NOT EXISTS mao_obra boolean DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';

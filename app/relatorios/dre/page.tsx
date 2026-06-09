@@ -10,7 +10,7 @@ import { getDreGrupo } from "../../../lib/seedOperacoesGerenciais";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type AnoSafra   = { id: string; ano: string; fazenda_id?: string };
-type Ciclo      = { id: string; cultura: string; ano_safra_id: string; fazenda_id: string };
+type Ciclo      = { id: string; cultura: string; ano_safra_id: string; fazenda_id: string; descricao?: string; is_auxiliar?: boolean | null; ciclo_pai_id?: string | null; absorcao_pct?: number | null };
 type DreRow     = { label: string; valor: number; bold?: boolean; indent?: number; tipo?: "receita" | "custo" | "resultado" | "subtotal" };
 
 type DreLinha = {
@@ -140,7 +140,7 @@ export default function DrePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fids.join(",")]);
 
-  // ── Carregar ciclos (por label do ano safra) ──
+  // ── Carregar ciclos (por label do ano safra) — exclui auxiliares do seletor ──
   useEffect(() => {
     if (fids.length === 0 || !anoLabel) return;
     Promise.all(
@@ -149,7 +149,7 @@ export default function DrePage() {
           .then(r => (r.data ?? []).map(a => a.id as string))
           .then(anoIds =>
             anoIds.length > 0
-              ? supabase.from("ciclos").select("id, cultura, ano_safra_id, fazenda_id")
+              ? supabase.from("ciclos").select("id, cultura, ano_safra_id, fazenda_id, descricao, is_auxiliar, ciclo_pai_id, absorcao_pct")
                   .eq("fazenda_id", fid).in("ano_safra_id", anoIds).order("cultura")
                   .then(r => (r.data ?? []) as Ciclo[])
               : Promise.resolve([] as Ciclo[])
@@ -158,7 +158,8 @@ export default function DrePage() {
     ).then(results => {
       const all = results.flat();
       setCiclosArr(all);
-      setCiclosSel(all.map(c => c.id));
+      // Auxiliares são absorvidos automaticamente — não entram no seletor principal
+      setCiclosSel(all.filter(c => !c.is_auxiliar).map(c => c.id));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fids.join(","), anoLabel]);
@@ -228,7 +229,7 @@ export default function DrePage() {
         return "outros";
       }
 
-      // Acumular por grupo DRE
+      // Acumular por grupo DRE (principal)
       const grp: Record<string, number> = {};
       for (const cp of cpRows) {
         const g = cpGrupo(cp as { categoria?: string; operacao_gerencial_id?: string });
@@ -257,11 +258,54 @@ export default function DrePage() {
       const deducoes_total = funrural + senar + fundo_invest;
       const receita_liquida = receita_total - deducoes_total;
 
+      // ── Absorver custos de ciclos auxiliares vinculados ──────────────
+      const auxCiclos = ciclosArr.filter(c => c.is_auxiliar && c.ciclo_pai_id === cicloId);
+      let aux_sementes = 0, aux_fertilizantes = 0, aux_defensivos = 0, aux_correcao_solo = 0;
+      let aux_grp: Record<string, number> = {};
+      for (const aux of auxCiclos) {
+        const pct = (aux.absorcao_pct ?? 100) / 100;
+        const [
+          { data: auxPl }, { data: auxPu }, , { data: auxAd }, { data: auxCo }, , , { data: auxCp },
+        ] = await Promise.all([
+          supabase.from("plantios").select("custo_sementes").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          supabase.from("pulverizacoes").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          Promise.resolve({ data: null }),
+          supabase.from("adubacoes_base").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          Promise.resolve({ data: null }),
+          Promise.resolve({ data: null }),
+          supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+        ]);
+        aux_sementes     += (auxPl ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0) * pct;
+        aux_fertilizantes += (auxAd ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
+        aux_defensivos   += (auxPu ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
+        aux_correcao_solo += (auxCo ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
+        // CPs do auxiliar
+        const auxOgIds = [...new Set((auxCp ?? []).map((c: { operacao_gerencial_id?: string }) => c.operacao_gerencial_id).filter(Boolean))] as string[];
+        const auxOgMap: Record<string, string> = {};
+        if (auxOgIds.length > 0) {
+          const { data: auxOgs } = await supabase.from("operacoes_gerenciais").select("id, classificacao").in("id", auxOgIds);
+          for (const og of auxOgs ?? []) auxOgMap[og.id] = og.classificacao;
+        }
+        for (const cp of (auxCp ?? []) as { valor?: number; categoria?: string; operacao_gerencial_id?: string }[]) {
+          // Usa auxOgMap específico do auxiliar; cpGrupo como fallback para categoria
+          let g: string;
+          if (cp.operacao_gerencial_id && auxOgMap[cp.operacao_gerencial_id]) {
+            g = getDreGrupo(auxOgMap[cp.operacao_gerencial_id]);
+          } else {
+            g = cpGrupo(cp);
+          }
+          aux_grp[g] = (aux_grp[g] ?? 0) + (cp.valor ?? 0) * pct;
+        }
+      }
+      // Merge aux_grp → grp (deve acontecer ANTES de operacoes_mecanizadas/combustivel/etc.)
+      for (const [k, v] of Object.entries(aux_grp)) grp[k] = (grp[k] ?? 0) + v;
+
       // ── CPV ──
-      const sementes = (plantiosData ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0);
-      const fertilizantes = (adubData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0);
-      const defensivos = (pulvsData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0);
-      const correcao_solo = (corrData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0);
+      const sementes = (plantiosData ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0) + aux_sementes;
+      const fertilizantes = (adubData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) + aux_fertilizantes;
+      const defensivos = (pulvsData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) + aux_defensivos;
+      const correcao_solo = (corrData ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) + aux_correcao_solo;
 
       // ── Agrupar CPs por grupo DRE (usando classificação hierárquica quando disponível) ──
       const operacoes_mecanizadas =
