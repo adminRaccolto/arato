@@ -592,19 +592,19 @@ export default function ContasReceber() {
                             title="Selecionar todos"
                           />
                         </th>
-                        <th style={thS(200, "left")}>Fornecedor / Cliente</th>
-                        <th style={thS(110, "center")}>Origem</th>
-                        <th style={thS(160, "left")}>Operação</th>
-                        <th style={thS(120, "left")}>Safra</th>
-                        <th style={thS(100, "center")}>Vencimento ↑</th>
-                        <th style={thS(120, "right")}>Valor</th>
-                        <th style={thS(100, "center")}>Dt. Receb.</th>
-                        <th style={thS(110, "right")}>Valor Receb.</th>
-                        <th style={thS(80, "center")}>Moeda Orig.</th>
-                        <th style={thS(80, "center")}>Moeda Pag.</th>
-                        <th style={thS(130, "left")}>Conta</th>
-                        <th style={thS(140, "left")}>Produtor</th>
-                        <th style={thS(180, "left")}>Observação</th>
+                        <th style={thS(150, "left")}>Fornecedor / Cliente</th>
+                        <th style={thS(150, "left")}>Operação</th>
+                        <th style={thS(85, "left")}>Safra</th>
+                        <th style={thS(130, "left")}>Ciclo</th>
+                        <th style={thS(85, "center")}>Vencimento ↑</th>
+                        <th style={thS(110, "right")}>Valor</th>
+                        <th style={thS(85, "center")}>Dt. Receb.</th>
+                        <th style={thS(100, "right")}>Valor Receb.</th>
+                        <th style={thS(65, "center")}>Moeda</th>
+                        <th style={thS(110, "left")}>Conta</th>
+                        <th style={thS(110, "left")}>Produtor</th>
+                        <th style={thS(160, "left")}>Observação</th>
+                        <th style={thS(90, "center")}>Origem</th>
                         <th style={thS(90, "center")}></th>
                       </tr>
                       {/* Linha de filtros */}
@@ -613,7 +613,6 @@ export default function ContasReceber() {
                         <td style={{ padding: "3px 8px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} />
                         </td>
-                        <td></td>
                         <td style={{ padding: "3px 8px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} />
                         </td>
@@ -627,6 +626,7 @@ export default function ContasReceber() {
                         <td></td>
                         <td></td>
                         <td></td>
+                        <td></td>
                         <td style={{ padding: "3px 8px" }}>
                           <select style={inpF} value={fMoedaOrig} onChange={e => setFMoedaOrig(e.target.value)}>
                             <option value="">Todas</option>
@@ -635,7 +635,6 @@ export default function ContasReceber() {
                             <option value="barter">Barter</option>
                           </select>
                         </td>
-                        <td></td>
                         <td style={{ padding: "3px 8px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} />
                         </td>
@@ -646,12 +645,13 @@ export default function ContasReceber() {
                           <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />
                         </td>
                         <td></td>
+                        <td></td>
                       </tr>
                     </thead>
                     <tbody>
                       {filtrados.length === 0 ? (
                         <tr>
-                          <td colSpan={15} style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 12 }}>
+                          <td colSpan={15} style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 11 }}>
                             Nenhum resultado para os filtros aplicados.
                           </td>
                         </tr>
@@ -661,9 +661,11 @@ export default function ContasReceber() {
                         const conv      = l.moeda === "USD" ? `≈ ${fmtBRL(l.valor * (l.cotacao_usd ?? COTACAO_USD))}` : null;
                         const prod      = produtores.find(p => p.id === l.produtor_id)?.nome ?? "—";
                         const safra     = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? "—";
+                        const cicloDesc = ciclos.find(c => c.id === l.ciclo_id)?.descricao ?? "—";
                         const isVenc    = !isPrevisao && (l.status === "vencido" || l.status === "vencendo");
                         const pessoaNome = pessoas.find(p => p.id === l.pessoa_id)?.nome;
-                        const fornNome  = pessoaNome ?? exibirFornecedor(l.descricao);
+                        const fornRaw   = pessoaNome ?? exibirFornecedor(l.descricao);
+                        const fornNome  = l.categoria ? fornRaw.replace(new RegExp(`\\s*-\\s*${l.categoria.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"), "").trim() : fornRaw;
                         const obsExibir = obsArrendamento(l, safra);
                         const om = origemMeta(l);
                         return (
@@ -677,77 +679,75 @@ export default function ContasReceber() {
                               />
                             </td>
                             {/* Fornecedor/Cliente */}
-                            <td style={{ padding: "6px 10px" }}>
+                            <td style={{ padding: "5px 8px" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                <span style={{ fontWeight: 400, fontSize: 11, color: "#1a1a1a", whiteSpace: "nowrap" }}>{fornNome}</span>
+                                <span style={{ fontWeight: 400, fontSize: 10, color: "#1a1a1a", whiteSpace: "nowrap" }}>{fornNome}</span>
                                 {isPrevisao && <span style={{ fontSize: 9, background: "#1A5CB8", color: "#fff", padding: "1px 5px", borderRadius: 5, fontWeight: 700, letterSpacing: "0.05em" }}>PREVISÃO</span>}
                               </div>
                               {l.nfe_numero && (
-                                <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>NF-e {l.nfe_numero}</div>
+                                <div style={{ fontSize: 9, color: "#555", marginTop: 1 }}>NF-e {l.nfe_numero}</div>
                               )}
                               {l.total_parcelas && l.total_parcelas > 1 && (
-                                <span style={{ fontSize: 10, background: "#E6F1FB", color: "#0C447C", padding: "1px 5px", borderRadius: 5, fontWeight: 600 }}>
+                                <span style={{ fontSize: 9, background: "#E6F1FB", color: "#0C447C", padding: "1px 5px", borderRadius: 5, fontWeight: 600 }}>
                                   {l.num_parcela}/{l.total_parcelas}
                                 </span>
                               )}
                             </td>
-                            {/* Origem */}
-                            <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                              <span style={{ fontSize: 10, background: om.bg, color: om.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{om.label}</span>
-                            </td>
                             {/* Operação */}
-                            <td style={{ padding: "6px 10px" }}>
-                              <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 7px", borderRadius: 8, whiteSpace: "nowrap" }}>{l.categoria}</span>
+                            <td style={{ padding: "5px 8px" }}>
+                              <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>{l.categoria}</span>
                             </td>
                             {/* Safra */}
-                            <td style={{ padding: "6px 10px", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.ano_safra_id ? safra : "—"}
                             </td>
+                            {/* Ciclo */}
+                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {l.ciclo_id ? cicloDesc : "—"}
+                            </td>
                             {/* Vencimento */}
-                            <td style={{ padding: "6px 10px", textAlign: "center", fontSize: 12, whiteSpace: "nowrap", color: isVenc ? "#E24B4A" : "#444", fontWeight: isVenc ? 600 : 400 }}>
+                            <td style={{ padding: "5px 8px", textAlign: "center", fontSize: 11, whiteSpace: "nowrap", color: isVenc ? "#E24B4A" : "#444", fontWeight: isVenc ? 600 : 400 }}>
                               {fmtData(l.data_vencimento)}
                             </td>
                             {/* Valor */}
-                            <td style={{ padding: "6px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                              <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : "#1A4870", fontSize: 13 }}>{exibirValor(l)}</div>
-                              {conv && <div style={{ fontSize: 10, color: "#888" }}>{conv}</div>}
+                            <td style={{ padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                              <div style={{ fontWeight: 600, color: l.moeda === "barter" ? "#8B5E14" : "#1A4870", fontSize: 12 }}>{exibirValor(l)}</div>
+                              {conv && <div style={{ fontSize: 9, color: "#888" }}>{conv}</div>}
                             </td>
                             {/* Data Receb */}
-                            <td style={{ padding: "6px 10px", textAlign: "center", fontSize: 11, color: "#16A34A", whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "5px 8px", textAlign: "center", fontSize: 10, color: "#16A34A", whiteSpace: "nowrap" }}>
                               {fmtData(l.data_baixa)}
                             </td>
                             {/* Valor Recebido */}
-                            <td style={{ padding: "6px 10px", textAlign: "right", fontSize: 12, whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>
                               {l.valor_pago != null && l.valor_pago > 0
                                 ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                 : <span style={{ color: "#bbb" }}>—</span>}
                             </td>
-                            {/* Moeda Orig */}
-                            <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: l.moeda === "USD" ? "#FEF3E2" : l.moeda === "barter" ? "#FBF3E0" : "#F0F4FA", color: l.moeda === "USD" ? "#7A4300" : l.moeda === "barter" ? "#8B5E14" : "#444", fontWeight: 600 }}>
-                                {l.moeda === "barter" ? "Barter" : l.moeda}
+                            {/* Moeda (merged) */}
+                            <td style={{ padding: "5px 8px", textAlign: "center" }}>
+                              <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: l.moeda === "USD" ? "#FEF3E2" : l.moeda === "barter" ? "#FBF3E0" : "#F0F4FA", color: l.moeda === "USD" ? "#7A4300" : l.moeda === "barter" ? "#8B5E14" : "#444", fontWeight: 600, whiteSpace: "nowrap" }}>
+                                {l.moeda === "barter" ? "Barter" : l.moeda}{l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `→${l.moeda_pagamento}` : ""}
                               </span>
                             </td>
-                            {/* Moeda Pag */}
-                            <td style={{ padding: "6px 10px", textAlign: "center" }}>
-                              {l.moeda_pagamento
-                                ? <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: "#F0F4FA", color: "#444", fontWeight: 600 }}>{l.moeda_pagamento}</span>
-                                : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}
-                            </td>
                             {/* Conta */}
-                            <td style={{ padding: "6px 10px", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.conta_bancaria ?? "—"}
                             </td>
                             {/* Produtor */}
-                            <td style={{ padding: "6px 10px", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.produtor_id ? prod : "—"}
                             </td>
                             {/* Observação */}
-                            <td style={{ padding: "6px 10px", fontSize: 11, color: "#666", whiteSpace: "nowrap" }}>
+                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#666", whiteSpace: "nowrap" }}>
                               {obsExibir}
                             </td>
+                            {/* Origem */}
+                            <td style={{ padding: "5px 8px", textAlign: "center" }}>
+                              <span style={{ fontSize: 10, background: om.bg, color: om.cl, padding: "2px 6px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{om.label}</span>
+                            </td>
                             {/* Ação */}
-                            <td style={{ padding: "10px 8px", textAlign: "center" }}>
+                            <td style={{ padding: "5px 8px", textAlign: "center" }}>
                               {isPrevisao ? (
                                 <button
                                   onClick={() => confirmarPrevisao(l)}
@@ -1414,9 +1414,9 @@ export default function ContasReceber() {
 // ── th helper ───────────────────────────────────────────────
 function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.CSSProperties {
   return {
-    padding: "8px 10px",
+    padding: "5px 8px",
     textAlign: align,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 600,
     color: "#555",
     borderBottom: "0.5px solid #D4DCE8",
