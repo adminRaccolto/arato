@@ -4962,3 +4962,29 @@ ALTER TABLE ciclos
   ADD COLUMN IF NOT EXISTS produto_agricola_id uuid REFERENCES insumos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 106: Corrigir RLS da tabela culturas — adicionar bypass raccotlo
+-- Sem este fix, o admin raccotlo não conseguia ler nem inserir culturas
+-- de clientes (SELECT e INSERT bloqueados silenciosamente pela RLS).
+
+DROP POLICY IF EXISTS "culturas_fazenda" ON culturas;
+
+CREATE POLICY "culturas_fazenda" ON culturas
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  )
+  WITH CHECK (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';
