@@ -56,6 +56,7 @@ const NAV: NavItem[] = [
       { id: "cad-maquinas",     label: "Máquinas",              path: "/cadastros?tab=maquinas"     },
       { id: "cad-combustivel",  label: "Combustíveis & Bombas", path: "/cadastros?tab=combustivel"  },
       { id: "cad-grupos-insumo",   label: "Grupos de Insumos",        path: "/cadastros?tab=grupos_insumo"         },
+      { id: "cad-culturas",        label: "Culturas",                 path: "/cadastros?tab=culturas"              },
       { id: "cad-padroes-class",   label: "Padrões de Classificação", path: "/cadastros?tab=padroes_classificacao" },
       { id: "cad-principios-ativos", label: "Princípios Ativos (BOT)", path: "/cadastros?tab=principios_ativos"   },
       { id: "cad-unidades-medida",  label: "Unidades de Medida",     path: "/cadastros?tab=unidades_medida"      },
