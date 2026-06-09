@@ -248,98 +248,184 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rawRows = XLSXLib.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 
-  // Normaliza chaves: trim + uppercase
+  // Normaliza chaves: remove acentos, substitui não-alfanumérico por _, colapsa múltiplos _
+  const normKey = (k: string) =>
+    k.trim().toUpperCase()
+     .normalize("NFD").replace(/[̀-ͯ]/g, "")
+     .replace(/[^A-Z0-9]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+
   const rows = rawRows.map(row => {
     const n: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(row)) n[k.trim().toUpperCase()] = v;
+    for (const [k, v] of Object.entries(row)) n[normKey(k)] = v;
     return n;
   });
 
   const colunas = rows.length > 0 ? Object.keys(rows[0]) : [];
   const avisos: string[] = [];
 
-  const str = (row: Record<string, unknown>, col: string) =>
-    String(row[col] ?? "").trim();
-  const num = (row: Record<string, unknown>, col: string) =>
-    parseNumBR(row[col]);
-  const dat = (row: Record<string, unknown>, col: string) =>
-    parseDateBR(row[col]);
-
-  // Coleta valores únicos de OPERACAO_CONTA para diagnóstico
-  const valoresOperacao = [...new Set(rows.map(r => str(r, "OPERACAO_CONTA")).filter(Boolean))];
-
-  // Agrupa por CD_DIVIDA
-  const grupos = new Map<string, typeof rows>();
-  for (const row of rows) {
-    const cd = str(row, "CD_DIVIDA");
-    if (!cd) continue;
-    if (!grupos.has(cd)) grupos.set(cd, []);
-    grupos.get(cd)!.push(row);
-  }
+  const str = (row: Record<string, unknown>, ...cols: string[]) => {
+    for (const c of cols) { const v = String(row[c] ?? "").trim(); if (v) return v; }
+    return "";
+  };
+  const num = (row: Record<string, unknown>, col: string) => parseNumBR(row[col]);
+  const dat = (row: Record<string, unknown>, ...cols: string[]) => {
+    for (const c of cols) { const v = parseDateBR(row[c]); if (v) return v; }
+    return "";
+  };
 
   const contratos: ContratoImportado[] = [];
 
-  for (const [cd, linhas] of grupos) {
-    const opNorm = (r: Record<string, unknown>) =>
-      str(r, "OPERACAO_CONTA").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  // ── Detecta formato ──────────────────────────────────────
+  // Formato AgroSoft: tem CD_DIVIDA como chave de agrupamento
+  // Formato alternativo: tem N_CONTRATO (Nº CONTRATO) ou DIVIDA como chave
+  const isAgrosoft = colunas.includes("CD_DIVIDA");
+  const isAlt = !isAgrosoft && colunas.some(c => c === "N_CONTRATO" || c === "DIVIDA" || c === "NR_CONTRATO");
 
-    // Cabeçalho: "receber" sem amortização → "receber" qualquer → "c"/"credito" → primeira linha
-    const headerRow =
-      linhas.find(r => (opNorm(r) === "receber" || opNorm(r) === "c" || opNorm(r) === "credito") && num(r, "VALOR_AMORTIZACAO") === 0)
-      ?? linhas.find(r => opNorm(r) === "receber" || opNorm(r) === "c" || opNorm(r) === "credito")
-      ?? linhas[0];
+  if (isAgrosoft) {
+    // Coleta valores de OPERACAO_CONTA para diagnóstico
+    const valoresOperacao = [...new Set(rows.map(r => str(r, "OPERACAO_CONTA")).filter(Boolean))];
 
-    // Parcelas: "pagar"/"debito"/"d" → todas exceto cabeçalho → cabeçalho sozinho
-    let parcelasRows = linhas.filter(r =>
-      opNorm(r) === "pagar" || opNorm(r) === "d" || opNorm(r) === "debito"
-    );
-
-    if (parcelasRows.length === 0 && linhas.length > 1) {
-      parcelasRows = linhas.filter(r => r !== headerRow);
-      avisos.push(`CD_DIVIDA ${cd}: sem linhas "Pagar" — usando ${parcelasRows.length} linha(s) restante(s) como parcelas`);
+    const grupos = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const cd = str(row, "CD_DIVIDA");
+      if (!cd) continue;
+      if (!grupos.has(cd)) grupos.set(cd, []);
+      grupos.get(cd)!.push(row);
     }
 
-    if (parcelasRows.length === 0) {
-      // Contrato de linha única: a própria linha serve como parcela
-      parcelasRows = [headerRow];
-      avisos.push(`CD_DIVIDA ${cd}: linha única — tratada como contrato com 1 parcela`);
+    for (const [cd, linhas] of grupos) {
+      const opNorm = (r: Record<string, unknown>) =>
+        str(r, "OPERACAO_CONTA").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+      const headerRow =
+        linhas.find(r => (opNorm(r) === "receber" || opNorm(r) === "c" || opNorm(r) === "credito") && num(r, "VALOR_AMORTIZACAO") === 0)
+        ?? linhas.find(r => opNorm(r) === "receber" || opNorm(r) === "c" || opNorm(r) === "credito")
+        ?? linhas[0];
+
+      let parcelasRows = linhas.filter(r =>
+        opNorm(r) === "pagar" || opNorm(r) === "d" || opNorm(r) === "debito"
+      );
+      if (parcelasRows.length === 0 && linhas.length > 1) {
+        parcelasRows = linhas.filter(r => r !== headerRow);
+        avisos.push(`CD_DIVIDA ${cd}: sem linhas "Pagar" — usando ${parcelasRows.length} linha(s) restante(s) como parcelas`);
+      }
+      if (parcelasRows.length === 0) {
+        parcelasRows = [headerRow];
+        avisos.push(`CD_DIVIDA ${cd}: linha única — tratada como contrato com 1 parcela`);
+      }
+
+      const moedaCd = num(headerRow, "CD_MOEDA");
+      const moeda: "BRL" | "USD" = moedaCd === 2 ? "USD" : "BRL";
+      const cotacaoRaw = num(headerRow, "VL_COTACAO");
+      const cotacao = moeda === "USD" && cotacaoRaw > 1 ? cotacaoRaw : undefined;
+      const taxaAa = num(headerRow, "PERC_JUROS");
+      const taxaAm = num(headerRow, "TAXA_JURO_MES");
+
+      contratos.push({
+        cd_divida: cd,
+        descricao: str(headerRow, "DESCRICAO", "DS_EMPREEND") || `Contrato ${cd}`,
+        nr_contrato: str(headerRow, "NR_CONTRATO"),
+        data_contrato: dat(headerRow, "DATA_DIVIDA"),
+        tipo: mapTipoContrato(str(headerRow, "TIPO_DIVIDA", "ST_TIPO_DIVIDA")),
+        credor: str(headerRow, "NOME_CREDOR_DEVEDOR"),
+        taxa_juros_aa: taxaAa,
+        taxa_juros_am: taxaAm > 0 ? taxaAm : undefined,
+        valor_financiado: num(headerRow, "VALOR_FINANCIADO"),
+        moeda, cotacao,
+        parcelas: parcelasRows.map((r, idx) => ({
+          num_parcela: num(r, "NUM_PARC") || idx + 1,
+          data_vencimento: dat(r, "DATA_VENCIMENTO"),
+          amortizacao: num(r, "VALOR_AMORTIZACAO"),
+          juros: num(r, "VALOR_JUROS_ENCARGOS"),
+          despesas_acessorios: num(r, "VALOR_ACESSORIOS"),
+          valor_parcela: num(r, "VALOR_PARCELAS"),
+          saldo_devedor: num(r, "SALDO_DEVEDOR"),
+        })),
+      });
     }
 
-    const moedaCd = num(headerRow, "CD_MOEDA");
-    const moeda: "BRL" | "USD" = moedaCd === 2 ? "USD" : "BRL";
-    const cotacaoRaw = num(headerRow, "VL_COTACAO");
-    const cotacao = moeda === "USD" && cotacaoRaw > 1 ? cotacaoRaw : undefined;
-    const taxaAa = num(headerRow, "PERC_JUROS");
-    const taxaAm = num(headerRow, "TAXA_JURO_MES");
-
-    contratos.push({
-      cd_divida: cd,
-      descricao: str(headerRow, "DESCRICAO") || str(headerRow, "DS_EMPREEND") || `Contrato ${cd}`,
-      nr_contrato: str(headerRow, "NR_CONTRATO"),
-      data_contrato: dat(headerRow, "DATA_DIVIDA"),
-      tipo: mapTipoContrato(str(headerRow, "TIPO_DIVIDA") || str(headerRow, "ST_TIPO_DIVIDA")),
-      credor: str(headerRow, "NOME_CREDOR_DEVEDOR"),
-      taxa_juros_aa: taxaAa,
-      taxa_juros_am: taxaAm > 0 ? taxaAm : undefined,
-      valor_financiado: num(headerRow, "VALOR_FINANCIADO"),
-      moeda,
-      cotacao,
-      parcelas: parcelasRows.map((r, idx) => ({
-        num_parcela: num(r, "NUM_PARC") || idx + 1,
-        data_vencimento: dat(r, "DATA_VENCIMENTO"),
-        amortizacao: num(r, "VALOR_AMORTIZACAO"),
-        juros: num(r, "VALOR_JUROS_ENCARGOS"),
-        despesas_acessorios: num(r, "VALOR_ACESSORIOS"),
-        valor_parcela: num(r, "VALOR_PARCELAS"),
-        saldo_devedor: num(r, "SALDO_DEVEDOR"),
-      })),
-    });
+    return { contratos, debug: { colunas, totalLinhas: rows.length, gruposEncontrados: grupos.size, valoresOperacao, avisos } };
   }
 
-  return {
-    contratos,
-    debug: { colunas, totalLinhas: rows.length, gruposEncontrados: grupos.size, valoresOperacao, avisos },
-  };
+  if (isAlt) {
+    // Formato alternativo: colunas com acentos/espaços (ex: "Nº CONTRATO", "DÍVIDA", "% JUROS")
+    // Após normKey: N_CONTRATO, DIVIDA, JUROS, CREDOR_DEVEDOR, DATA_PARCELA, DATA_DIVIDA, MOEDA, VALOR_SALDO
+    const chaveGrupo = colunas.includes("N_CONTRATO") ? "N_CONTRATO" : colunas.includes("NR_CONTRATO") ? "NR_CONTRATO" : "DIVIDA";
+    const colTipo = colunas.includes("TIPO_PARC") ? "TIPO_PARC" : colunas.includes("OPERACAO_CONTA") ? "OPERACAO_CONTA" : "";
+
+    const valoresOperacao = [...new Set(rows.map(r => str(r, colTipo)).filter(Boolean))];
+
+    const grupos = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const key = str(row, chaveGrupo);
+      if (!key) continue;
+      if (!grupos.has(key)) grupos.set(key, []);
+      grupos.get(key)!.push(row);
+    }
+
+    const isCred = (r: Record<string, unknown>) => {
+      const t = str(r, colTipo).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      return t === "r" || t === "c" || t.startsWith("receb") || t.startsWith("cred");
+    };
+    const isDeb = (r: Record<string, unknown>) => {
+      const t = str(r, colTipo).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      return t === "p" || t === "d" || t.startsWith("pag") || t.startsWith("deb");
+    };
+
+    for (const [nrContrato, linhas] of grupos) {
+      const headerRow = linhas.find(r => isCred(r)) ?? linhas[0];
+      let parcelasRows = linhas.filter(r => isDeb(r));
+      if (parcelasRows.length === 0 && linhas.length > 1) {
+        parcelasRows = linhas.filter(r => r !== headerRow);
+        avisos.push(`Contrato ${nrContrato}: sem linhas débito — usando ${parcelasRows.length} linha(s) como parcelas`);
+      }
+      if (parcelasRows.length === 0) {
+        parcelasRows = [headerRow];
+        avisos.push(`Contrato ${nrContrato}: linha única — tratada como contrato com 1 parcela`);
+      }
+
+      // Moeda: texto "BRL"/"USD" ou código numérico
+      const moedaRaw = str(headerRow, "MOEDA", "CD_MOEDA").toUpperCase();
+      const moeda: "BRL" | "USD" = moedaRaw === "USD" || moedaRaw === "2" ? "USD" : "BRL";
+
+      // Taxa: coluna "% JUROS" normaliza para "JUROS"; AgroSoft usa "PERC_JUROS"
+      const taxaAa = num(headerRow, "JUROS") || num(headerRow, "PERC_JUROS") ||
+        num(linhas[0], "JUROS") || num(linhas[0], "PERC_JUROS");
+
+      // Valor financiado: linha crédito → VALOR; ou coluna VALOR_FINANCIADO
+      const valorFin = num(headerRow, "VALOR_FINANCIADO") || num(headerRow, "VALOR");
+
+      // Tipo: tenta coluna de tipo; fallback "outros"
+      const tipo = mapTipoContrato(str(headerRow, "ST_TIPO_DIVIDA", "TIPO_DIVIDA", "TIPO") || "O");
+
+      contratos.push({
+        cd_divida: nrContrato,
+        descricao: str(headerRow, "DIVIDA", "DESCRICAO", "DS_EMPREEND") || `Contrato ${nrContrato}`,
+        nr_contrato: nrContrato,
+        data_contrato: dat(headerRow, "DATA_DIVIDA", "DATA_CONTRATO"),
+        tipo,
+        credor: str(headerRow, "CREDOR_DEVEDOR", "NOME_CREDOR_DEVEDOR", "CREDOR"),
+        taxa_juros_aa: taxaAa,
+        valor_financiado: valorFin,
+        moeda,
+        parcelas: parcelasRows.map((r, idx) => ({
+          num_parcela: num(r, "NUM_PARC") || num(r, "MES") || idx + 1,
+          data_vencimento: dat(r, "DATA_PARCELA", "DATA_VENCIMENTO"),
+          amortizacao: num(r, "VALOR_AMORTIZACAO"),
+          juros: num(r, "VALOR_JUROS_ENCARGOS"),
+          despesas_acessorios: num(r, "VALOR_ACESSORIOS"),
+          valor_parcela: num(r, "VALOR") || num(r, "VALOR_PARCELAS"),
+          saldo_devedor: num(r, "VALOR_SALDO") || num(r, "SALDO_DEVEDOR"),
+        })),
+      });
+    }
+
+    return { contratos, debug: { colunas, totalLinhas: rows.length, gruposEncontrados: grupos.size, valoresOperacao, avisos } };
+  }
+
+  // Formato não reconhecido — retorna debug para o usuário
+  const valoresOperacao = [...new Set(rows.map(r => str(r, "OPERACAO_CONTA", "TIPO_PARC")).filter(Boolean))];
+  return { contratos: [], debug: { colunas, totalLinhas: rows.length, gruposEncontrados: 0, valoresOperacao, avisos } };
 }
 
 // ────────────────────────────────────────────────────────
@@ -884,11 +970,21 @@ export default function ContratosFinanceiros() {
               ) : !importPreview ? (
                 <div>
                   <div style={{ marginBottom: 16, background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#0B2D50" }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Colunas esperadas na planilha:</div>
-                    <div style={{ fontFamily: "monospace", fontSize: 11, lineHeight: 1.8, color: "#0B2D50" }}>
-                      CD_DIVIDA · NR_CONTRATO · DESCRICAO · DATA_DIVIDA · ST_TIPO_DIVIDA · NOME_CREDOR_DEVEDOR · PERC_JUROS · VALOR_FINANCIADO · CD_MOEDA · VL_COTACAO · OPERACAO_CONTA · NUM_PARC · DATA_VENCIMENTO · VALOR_AMORTIZACAO · VALOR_JUROS_ENCARGOS · VALOR_ACESSORIOS · VALOR_PARCELAS · SALDO_DEVEDOR
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Formatos aceitos:</div>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato AgroSoft/Agrobase (colunas padrão):</div>
+                      <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
+                        CD_DIVIDA · NR_CONTRATO · DESCRICAO · DATA_DIVIDA · ST_TIPO_DIVIDA · NOME_CREDOR_DEVEDOR · PERC_JUROS · VALOR_FINANCIADO · CD_MOEDA · VL_COTACAO · OPERACAO_CONTA · NUM_PARC · DATA_VENCIMENTO · VALOR_AMORTIZACAO · VALOR_JUROS_ENCARGOS · VALOR_ACESSORIOS · VALOR_PARCELAS · SALDO_DEVEDOR
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
                     </div>
-                    <div style={{ marginTop: 8, color: "#555" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato alternativo (exportação com acentos/espaços):</div>
+                      <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
+                        Nº CONTRATO · DÍVIDA · CREDOR/DEVEDOR · DATA DÍVIDA · % JUROS · MOEDA · VALOR · DATA PARCELA · VALOR SALDO · TIPO PARC.
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>TIPO PARC.: C/R = crédito (liberação), D/P = débito (parcela) &nbsp;|&nbsp; MOEDA: BRL ou USD</div>
+                    </div>
                   </div>
 
                   {/* Diagnóstico quando arquivo foi lido mas nenhum contrato encontrado */}
@@ -913,7 +1009,7 @@ export default function ContratosFinanceiros() {
 
                       {importDiag.gruposEncontrados === 0 && (
                         <div style={{ padding: "8px 12px", background: "#FFF0F0", borderRadius: 7, fontSize: 12, color: "#7A1A1A", marginBottom: 10 }}>
-                          <strong>Coluna CD_DIVIDA não encontrada ou vazia.</strong> Verifique se a planilha tem a coluna CD_DIVIDA preenchida.
+                          <strong>Formato não reconhecido.</strong> A planilha deve ter a coluna <code>CD_DIVIDA</code> (AgroSoft) ou <code>Nº CONTRATO</code> / <code>DÍVIDA</code> (formato alternativo) para agrupamento dos contratos.
                         </div>
                       )}
 
