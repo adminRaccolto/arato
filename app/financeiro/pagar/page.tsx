@@ -1297,7 +1297,11 @@ function ContasPagarInner() {
                       <label style={lbl}>Fornecedor / Credor</label>
                       <select style={inp} value={baixa.pessoa_id} onChange={e => setBaixa(p => ({ ...p, pessoa_id: e.target.value }))}>
                         <option value="">— Não informado —</option>
-                        {pessoas.filter(p => p.fornecedor || (!p.cliente && !p.fornecedor)).map(p => (
+                        {[...pessoas].sort((a, b) => {
+                          if (a.fornecedor && !b.fornecedor) return -1;
+                          if (!a.fornecedor && b.fornecedor) return 1;
+                          return a.nome.localeCompare(b.nome, "pt-BR");
+                        }).map(p => (
                           <option key={p.id} value={p.id}>{p.nome}</option>
                         ))}
                       </select>
@@ -1639,8 +1643,12 @@ function ContasPagarInner() {
                       <label style={lbl}>Fornecedor / Credor</label>
                       <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                         <option value="">— Selecionar do cadastro —</option>
-                        {pessoas.filter(p => p.fornecedor || (!p.cliente && !p.fornecedor)).map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}{p.cliente ? " (Cli/Forn)" : ""}</option>
+                        {[...pessoas].sort((a, b) => {
+                          if (a.fornecedor && !b.fornecedor) return -1;
+                          if (!a.fornecedor && b.fornecedor) return 1;
+                          return a.nome.localeCompare(b.nome, "pt-BR");
+                        }).map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}{p.fornecedor && p.cliente ? " (Cli/Forn)" : p.cliente ? " (Cliente)" : ""}</option>
                         ))}
                       </select>
                     </div>

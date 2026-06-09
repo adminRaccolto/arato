@@ -1209,8 +1209,12 @@ export default function ContasReceber() {
                       <label style={lbl}>Cliente / Comprador</label>
                       <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))}>
                         <option value="">— Selecionar do cadastro —</option>
-                        {pessoas.filter(p => p.cliente || (!p.cliente && !p.fornecedor)).map(p => (
-                          <option key={p.id} value={p.id}>{p.nome}{p.fornecedor ? " (Cli/Forn)" : ""}</option>
+                        {[...pessoas].sort((a, b) => {
+                          if (a.cliente && !b.cliente) return -1;
+                          if (!a.cliente && b.cliente) return 1;
+                          return a.nome.localeCompare(b.nome, "pt-BR");
+                        }).map(p => (
+                          <option key={p.id} value={p.id}>{p.nome}{p.fornecedor && p.cliente ? " (Cli/Forn)" : p.fornecedor ? " (Fornecedor)" : ""}</option>
                         ))}
                       </select>
                     </div>
