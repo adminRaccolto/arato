@@ -625,7 +625,6 @@ export type Cultura = {
   observacao: string | null;
   ativa: boolean;
   ordem: number | null;
-  produto_agricola_id: string | null;  // FK insumos.id — produto gerado na colheita
   fator_conversao_kg: number | null;   // kg ÷ fator = unidade comercial (60=sc, 15=@, 1=kg)
   created_at?: string;
 };

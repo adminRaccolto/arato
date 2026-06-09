@@ -17,7 +17,7 @@ interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
 interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string }
-interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null; produto_agricola_id: string | null }
+interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
 interface ParcelaDetalhe { id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
@@ -312,7 +312,7 @@ export default function BI() {
     if (cesR.status === "fulfilled") setCessaoDebitos((cesR.value.data ?? []) as CessaoDebito[]);
     if (precR.status === "fulfilled") setPrecos(precR.value as PrecosData);
     // Carrega culturas para lookup preciso de fator_conversao_kg
-    supabase.from("culturas").select("id,nome,fator_conversao_kg,produto_agricola_id")
+    supabase.from("culturas").select("id,nome,fator_conversao_kg")
       .eq("fazenda_id", fazendaId).eq("ativa", true)
       .then(({ data }) => setCulturasBi((data ?? []) as CulturaBI[]));
     setLoading(false);

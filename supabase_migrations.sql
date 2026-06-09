@@ -4988,3 +4988,11 @@ CREATE POLICY "culturas_fazenda" ON culturas
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 107: Remove produto_agricola_id da tabela culturas
+-- O vínculo produto←ciclo foi movido exclusivamente para ciclos.produto_agricola_id.
+-- A tabela culturas mantém apenas fator_conversao_kg (conversão kg→sc/@/kg).
+
+ALTER TABLE culturas DROP COLUMN IF EXISTS produto_agricola_id;
+
+NOTIFY pgrst, 'reload schema';

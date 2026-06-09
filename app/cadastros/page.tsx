@@ -468,7 +468,7 @@ function CadastrosInner() {
   const [insumosPA, setInsumosPA]         = useState<Insumo[]>([]);   // produto_agricola para vínculo
   const [modalCultura, setModalCultura]   = useState(false);
   const [editCultura, setEditCultura]     = useState<CulturaItem | null>(null);
-  const [fCultura, setFCultura]           = useState({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "", produto_agricola_id: "", fator_conversao_kg: "60" });
+  const [fCultura, setFCultura]           = useState({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "", fator_conversao_kg: "60" });
   const [salvandoCultura, setSalvandoCultura] = useState(false);
   const [culturaBusca, setCulturaBusca]   = useState("");
 
@@ -4553,12 +4553,11 @@ function CadastrosInner() {
                   nome: c.nome, categoria: c.categoria, unidade: c.unidade,
                   ncm: c.ncm ?? "", observacao: c.observacao ?? "", ativa: c.ativa,
                   ordem: c.ordem != null ? String(c.ordem) : "",
-                  produto_agricola_id: c.produto_agricola_id ?? "",
                   fator_conversao_kg: c.fator_conversao_kg != null ? String(c.fator_conversao_kg) : fatorPorUnidade(c.unidade),
                 });
               } else {
                 setEditCultura(null);
-                setFCultura({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "", produto_agricola_id: "", fator_conversao_kg: "60" });
+                setFCultura({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "", fator_conversao_kg: "60" });
               }
               setModalCultura(true);
             };
@@ -4575,7 +4574,6 @@ function CadastrosInner() {
                 observacao:          fCultura.observacao.trim() || null,
                 ativa:               fCultura.ativa,
                 ordem:               fCultura.ordem !== "" ? parseInt(fCultura.ordem) : null,
-                produto_agricola_id: fCultura.produto_agricola_id || null,
                 fator_conversao_kg:  parseFloat(fCultura.fator_conversao_kg) || 60,
               };
               if (editCultura) {
@@ -4690,31 +4688,12 @@ function CadastrosInner() {
                           <label style={lbl}>Ordem de exibição</label>
                           <input style={inp} type="number" value={fCultura.ordem} onChange={e => setFCultura(p => ({ ...p, ordem: e.target.value }))} placeholder="1, 2, 3…" />
                         </div>
-                        <div style={{ gridColumn: "1/-1", borderTop: "0.5px solid #D4DCE8", paddingTop: 14, marginTop: 4 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Produto produzido na colheita</div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                            <div>
-                              <label style={lbl}>Produto Agrícola no estoque</label>
-                              <select style={inp} value={fCultura.produto_agricola_id} onChange={e => {
-                                const ins = insumosPA.find(i => i.id === e.target.value);
-                                const unNova = ins?.unidade ?? fCultura.unidade;
-                                setFCultura(p => ({ ...p, produto_agricola_id: e.target.value, fator_conversao_kg: fatorPorUnidade(unNova) }));
-                              }}>
-                                <option value="">Não vinculado</option>
-                                {insumosPA.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
-                              </select>
-                              <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
-                                {insumosPA.length === 0 ? "Cadastre primeiro em Produtos Agrícolas" : "Item de estoque que recebe o grão na colheita"}
-                              </div>
-                            </div>
-                            <div>
-                              <label style={lbl}>Fator de conversão (kg ÷ fator = unidade)</label>
-                              <input style={inp} type="number" step="0.001" value={fCultura.fator_conversao_kg}
-                                onChange={e => setFCultura(p => ({ ...p, fator_conversao_kg: e.target.value }))}
-                                placeholder="60 = sc, 15 = @, 1 = kg" />
-                              <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>Soja/Milho = 60 · Algodão = 15 · kg puro = 1</div>
-                            </div>
-                          </div>
+                        <div style={{ gridColumn: "1/-1" }}>
+                          <label style={lbl}>Fator de conversão (kg ÷ fator = unidade comercial)</label>
+                          <input style={inp} type="number" step="0.001" value={fCultura.fator_conversao_kg}
+                            onChange={e => setFCultura(p => ({ ...p, fator_conversao_kg: e.target.value }))}
+                            placeholder="60 = sc, 15 = @, 1 = kg" />
+                          <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>Soja/Milho = 60 · Algodão = 15 · kg puro = 1</div>
                         </div>
                         <div style={{ gridColumn: "1/-1" }}>
                           <label style={lbl}>Observação</label>
@@ -5567,13 +5546,7 @@ function CadastrosInner() {
               <label style={lbl}>Cultura *</label>
               <select style={inp} value={fCiclo.cultura} onChange={e => {
                 const nome = e.target.value;
-                const cult = culturasList.find(c => c.nome === nome);
-                setFCiclo(p => ({
-                  ...p,
-                  cultura: nome,
-                  // auto-preenche produto se a cultura tiver vínculo e campo ainda vazio
-                  produto_agricola_id: p.produto_agricola_id || (cult?.produto_agricola_id ?? ""),
-                }));
+                setFCiclo(p => ({ ...p, cultura: nome }));
               }}>
                 {(culturasList.filter(c => c.ativa).length > 0
                   ? culturasList.filter(c => c.ativa).map(c => c.nome)

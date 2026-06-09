@@ -18,7 +18,7 @@ import {
   listarDepositos,
   listarInsumos,
 } from "../../../lib/db";
-import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo, Cultura } from "../../../lib/supabase";
+import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo } from "../../../lib/supabase";
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -166,7 +166,6 @@ export default function ColheitaPage() {
   const [formRomaneio, setFormRomaneio] = useState({ ...ROMANEIO_VAZIO });
   const [insumoIdFinal, setInsumoIdFinal] = useState("");
   // Culturas para pré-seleção automática do produto na finalização
-  const [culturas, setCulturas] = useState<Cultura[]>([]);
 
   // ── Carregamento ──────────────────────────────────────────
 
@@ -186,12 +185,6 @@ export default function ColheitaPage() {
       setInsumos(ins.filter(i => i.categoria === "produto_agricola"));
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarTodosCiclos(fazendaId).then(setTodosCiclos).catch(() => {});
-      // Carrega culturas para auto-seleção do produto na finalização
-      import("../../../lib/supabase").then(({ supabase: sb }) => {
-        sb.from("culturas").select("id,nome,produto_agricola_id,fator_conversao_kg")
-          .eq("fazenda_id", fazendaId).eq("ativa", true)
-          .then(({ data }) => setCulturas((data ?? []) as Cultura[]));
-      });
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
@@ -528,11 +521,7 @@ export default function ColheitaPage() {
                         onClick={() => {
                           // Auto-seleciona produto vinculado ao ciclo (definido no planejamento)
                           const ciclo = todosCiclos.find(ci => ci.id === col.ciclo_id);
-                          // Ciclo tem produto_agricola_id direto; fallback para vínculo da cultura
-                          const prodId = ciclo?.produto_agricola_id
-                            ?? culturas.find(cu => cu.nome === ciclo?.cultura)?.produto_agricola_id
-                            ?? "";
-                          setInsumoIdFinal(prodId);
+                          setInsumoIdFinal(ciclo?.produto_agricola_id ?? "");
                           setModalFinalizar(col);
                         }}
                         style={{
