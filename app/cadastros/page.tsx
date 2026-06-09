@@ -48,7 +48,7 @@ import type {
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria,
-  PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida,
+  PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida, Cultura as CulturaItem,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -271,7 +271,7 @@ function CadastrosInner() {
   const [fAno, setFAno]               = useState({ descricao: "", data_inicio: "", data_fim: "" });
   const [modalCiclo, setModalCiclo]   = useState(false);
   const [editCiclo, setEditCiclo]     = useState<Ciclo | null>(null);
-  const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "" });
+  const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: "" });
   // talhões vinculados ao ciclo: { talhao_id -> area_plantada_ha (string para input) }
   const [cicloTalhoes, setCicloTalhoes] = useState<Record<string, string>>({});
   // área já comprometida por OUTROS ciclos que se sobrepõem no tempo: { talhao_id -> ha }
@@ -464,11 +464,11 @@ function CadastrosInner() {
   const [umTipo, setUmTipo]               = useState("");
 
   // ── Culturas ──
-  type CulturaItem = { id: string; fazenda_id: string; nome: string; categoria: string; unidade: string; ncm: string | null; observacao: string | null; ativa: boolean; ordem: number | null };
   const [culturasList, setCulturasList]   = useState<CulturaItem[]>([]);
+  const [insumosPA, setInsumosPA]         = useState<Insumo[]>([]);   // produto_agricola para vínculo
   const [modalCultura, setModalCultura]   = useState(false);
   const [editCultura, setEditCultura]     = useState<CulturaItem | null>(null);
-  const [fCultura, setFCultura]           = useState({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "" });
+  const [fCultura, setFCultura]           = useState({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "", produto_agricola_id: "", fator_conversao_kg: "60" });
   const [salvandoCultura, setSalvandoCultura] = useState(false);
   const [culturaBusca, setCulturaBusca]   = useState("");
 
@@ -572,6 +572,9 @@ function CadastrosInner() {
         .then(({ data, error }) => { if (error) setErro(error.message); else setUnidades((data ?? []) as UnidadeMedida[]); });
     }
     if (aba === "culturas" || aba === "safras") {
+      // Carrega insumos produto_agricola para o select de vínculo
+      supabase.from("insumos").select("id,nome,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome")
+        .then(({ data }) => setInsumosPA((data ?? []) as Insumo[]));
       supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome")
         .then(async ({ data, error }) => {
           if (error) return;
@@ -1164,7 +1167,8 @@ function CadastrosInner() {
       ciclo_pai_id: c.ciclo_pai_id ?? "",
       absorcao_pct: c.absorcao_pct != null ? String(c.absorcao_pct) : "100",
       motivo_auxiliar: c.motivo_auxiliar ?? "",
-    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "" });
+      produto_agricola_id: c.produto_agricola_id ?? "",
+    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: "" });
     // carrega talhões vinculados se editando
     if (c) {
       const { data: ct } = await supabase.from("ciclo_talhoes").select("talhao_id,area_plantada_ha").eq("ciclo_id", c.id);
@@ -1205,6 +1209,7 @@ function CadastrosInner() {
       ciclo_pai_id: fCiclo.is_auxiliar && fCiclo.ciclo_pai_id ? fCiclo.ciclo_pai_id : null,
       absorcao_pct: fCiclo.is_auxiliar ? (parseFloat(fCiclo.absorcao_pct) || 100) : null,
       motivo_auxiliar: fCiclo.is_auxiliar && fCiclo.motivo_auxiliar.trim() ? fCiclo.motivo_auxiliar.trim() : null,
+      produto_agricola_id: fCiclo.produto_agricola_id || null,
     };
     let cicloId: string;
     if (editCiclo) {
@@ -4533,13 +4538,27 @@ function CadastrosInner() {
               !culturaBusca || c.nome.toLowerCase().includes(culturaBusca.toLowerCase())
             );
 
+            // Fator padrão por unidade
+            const fatorPorUnidade = (un: string): string => {
+              if (un === "@") return "15";
+              if (un === "kg") return "1";
+              if (un === "t")  return "1000";
+              return "60";
+            };
+
             const abrirModal = (c?: CulturaItem) => {
               if (c) {
                 setEditCultura(c);
-                setFCultura({ nome: c.nome, categoria: c.categoria, unidade: c.unidade, ncm: c.ncm ?? "", observacao: c.observacao ?? "", ativa: c.ativa, ordem: c.ordem != null ? String(c.ordem) : "" });
+                setFCultura({
+                  nome: c.nome, categoria: c.categoria, unidade: c.unidade,
+                  ncm: c.ncm ?? "", observacao: c.observacao ?? "", ativa: c.ativa,
+                  ordem: c.ordem != null ? String(c.ordem) : "",
+                  produto_agricola_id: c.produto_agricola_id ?? "",
+                  fator_conversao_kg: c.fator_conversao_kg != null ? String(c.fator_conversao_kg) : fatorPorUnidade(c.unidade),
+                });
               } else {
                 setEditCultura(null);
-                setFCultura({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "" });
+                setFCultura({ nome: "", categoria: "graos", unidade: "sc", ncm: "", observacao: "", ativa: true, ordem: "", produto_agricola_id: "", fator_conversao_kg: "60" });
               }
               setModalCultura(true);
             };
@@ -4548,14 +4567,16 @@ function CadastrosInner() {
               if (!fCultura.nome.trim()) { alert("Nome obrigatório"); return; }
               setSalvandoCultura(true);
               const payload = {
-                fazenda_id:  fazendaId,
-                nome:        fCultura.nome.trim(),
-                categoria:   fCultura.categoria,
-                unidade:     fCultura.unidade,
-                ncm:         fCultura.ncm.trim() || null,
-                observacao:  fCultura.observacao.trim() || null,
-                ativa:       fCultura.ativa,
-                ordem:       fCultura.ordem !== "" ? parseInt(fCultura.ordem) : null,
+                fazenda_id:          fazendaId,
+                nome:                fCultura.nome.trim(),
+                categoria:           fCultura.categoria,
+                unidade:             fCultura.unidade,
+                ncm:                 fCultura.ncm.trim() || null,
+                observacao:          fCultura.observacao.trim() || null,
+                ativa:               fCultura.ativa,
+                ordem:               fCultura.ordem !== "" ? parseInt(fCultura.ordem) : null,
+                produto_agricola_id: fCultura.produto_agricola_id || null,
+                fator_conversao_kg:  parseFloat(fCultura.fator_conversao_kg) || 60,
               };
               if (editCultura) {
                 await supabase.from("culturas").update(payload).eq("id", editCultura.id);
@@ -4668,6 +4689,32 @@ function CadastrosInner() {
                         <div>
                           <label style={lbl}>Ordem de exibição</label>
                           <input style={inp} type="number" value={fCultura.ordem} onChange={e => setFCultura(p => ({ ...p, ordem: e.target.value }))} placeholder="1, 2, 3…" />
+                        </div>
+                        <div style={{ gridColumn: "1/-1", borderTop: "0.5px solid #D4DCE8", paddingTop: 14, marginTop: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Produto produzido na colheita</div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                            <div>
+                              <label style={lbl}>Produto Agrícola no estoque</label>
+                              <select style={inp} value={fCultura.produto_agricola_id} onChange={e => {
+                                const ins = insumosPA.find(i => i.id === e.target.value);
+                                const unNova = ins?.unidade ?? fCultura.unidade;
+                                setFCultura(p => ({ ...p, produto_agricola_id: e.target.value, fator_conversao_kg: fatorPorUnidade(unNova) }));
+                              }}>
+                                <option value="">Não vinculado</option>
+                                {insumosPA.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                              </select>
+                              <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
+                                {insumosPA.length === 0 ? "Cadastre primeiro em Produtos Agrícolas" : "Item de estoque que recebe o grão na colheita"}
+                              </div>
+                            </div>
+                            <div>
+                              <label style={lbl}>Fator de conversão (kg ÷ fator = unidade)</label>
+                              <input style={inp} type="number" step="0.001" value={fCultura.fator_conversao_kg}
+                                onChange={e => setFCultura(p => ({ ...p, fator_conversao_kg: e.target.value }))}
+                                placeholder="60 = sc, 15 = @, 1 = kg" />
+                              <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>Soja/Milho = 60 · Algodão = 15 · kg puro = 1</div>
+                            </div>
+                          </div>
                         </div>
                         <div style={{ gridColumn: "1/-1" }}>
                           <label style={lbl}>Observação</label>
@@ -5518,13 +5565,41 @@ function CadastrosInner() {
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição * (ex: Soja 2026/2027)</label><input style={inp} placeholder={fCiclo.is_auxiliar ? "Ex: Milheto 2025/2026" : "Soja 2026/2027"} value={fCiclo.descricao} onChange={e => setFCiclo(p => ({ ...p, descricao: e.target.value }))} /></div>
             <div>
               <label style={lbl}>Cultura *</label>
-              <select style={inp} value={fCiclo.cultura} onChange={e => setFCiclo(p => ({ ...p, cultura: e.target.value }))}>
+              <select style={inp} value={fCiclo.cultura} onChange={e => {
+                const nome = e.target.value;
+                const cult = culturasList.find(c => c.nome === nome);
+                setFCiclo(p => ({
+                  ...p,
+                  cultura: nome,
+                  // auto-preenche produto se a cultura tiver vínculo e campo ainda vazio
+                  produto_agricola_id: p.produto_agricola_id || (cult?.produto_agricola_id ?? ""),
+                }));
+              }}>
                 {(culturasList.filter(c => c.ativa).length > 0
                   ? culturasList.filter(c => c.ativa).map(c => c.nome)
                   : CULTURAS
                 ).map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
+            {!fCiclo.is_auxiliar && (
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={lbl}>Produto colhido neste ciclo *</label>
+                <select style={inp} value={fCiclo.produto_agricola_id} onChange={e => setFCiclo(p => ({ ...p, produto_agricola_id: e.target.value }))}>
+                  <option value="">— selecione o produto que vai para o estoque —</option>
+                  {insumosPA.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                </select>
+                {insumosPA.length === 0 && (
+                  <div style={{ fontSize:11, color:"#C9921B", marginTop:4 }}>
+                    Nenhum produto agrícola cadastrado. Vá em Cadastros → Insumos e crie os produtos (Soja Convencional, Soja Transgênica, Milho, etc.) com categoria <strong>Produto Agrícola</strong>.
+                  </div>
+                )}
+                {fCiclo.produto_agricola_id && (
+                  <div style={{ fontSize:11, color:"#1A4870", marginTop:4 }}>
+                    ⚡ A colheita deste ciclo dará entrada de <strong>{insumosPA.find(i => i.id === fCiclo.produto_agricola_id)?.nome}</strong> no estoque automaticamente.
+                  </div>
+                )}
+              </div>
+            )}
             <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id); }} /></div>
             <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id); }} /></div>
             {!fCiclo.is_auxiliar && <div>

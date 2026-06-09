@@ -18,7 +18,7 @@ import {
   listarDepositos,
   listarInsumos,
 } from "../../../lib/db";
-import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo } from "../../../lib/supabase";
+import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo, Cultura } from "../../../lib/supabase";
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -165,6 +165,8 @@ export default function ColheitaPage() {
   const [formColheita, setFormColheita] = useState({ ...COLHEITA_VAZIO });
   const [formRomaneio, setFormRomaneio] = useState({ ...ROMANEIO_VAZIO });
   const [insumoIdFinal, setInsumoIdFinal] = useState("");
+  // Culturas para pré-seleção automática do produto na finalização
+  const [culturas, setCulturas] = useState<Cultura[]>([]);
 
   // ── Carregamento ──────────────────────────────────────────
 
@@ -184,6 +186,12 @@ export default function ColheitaPage() {
       setInsumos(ins.filter(i => i.categoria === "produto_agricola"));
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarTodosCiclos(fazendaId).then(setTodosCiclos).catch(() => {});
+      // Carrega culturas para auto-seleção do produto na finalização
+      import("../../../lib/supabase").then(({ supabase: sb }) => {
+        sb.from("culturas").select("id,nome,produto_agricola_id,fator_conversao_kg")
+          .eq("fazenda_id", fazendaId).eq("ativa", true)
+          .then(({ data }) => setCulturas((data ?? []) as Cultura[]));
+      });
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
@@ -517,7 +525,16 @@ export default function ColheitaPage() {
                         + Romaneio
                       </button>
                       <button
-                        onClick={() => { setInsumoIdFinal(""); setModalFinalizar(col); }}
+                        onClick={() => {
+                          // Auto-seleciona produto vinculado ao ciclo (definido no planejamento)
+                          const ciclo = todosCiclos.find(ci => ci.id === col.ciclo_id);
+                          // Ciclo tem produto_agricola_id direto; fallback para vínculo da cultura
+                          const prodId = ciclo?.produto_agricola_id
+                            ?? culturas.find(cu => cu.nome === ciclo?.cultura)?.produto_agricola_id
+                            ?? "";
+                          setInsumoIdFinal(prodId);
+                          setModalFinalizar(col);
+                        }}
                         style={{
                           background: "#1A5C38", color: "#fff", border: "none",
                           borderRadius: 7, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
@@ -1034,17 +1051,40 @@ export default function ColheitaPage() {
                 )}
               </div>
 
-              {/* Insumo para entrada de estoque */}
-              <label>
-                <div style={lbStyle}>Produto no Estoque (entrada automática)</div>
-                <select value={insumoIdFinal} onChange={e => setInsumoIdFinal(e.target.value)} style={inpStyle}>
-                  <option value="">Não lançar no estoque agora</option>
-                  {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.estoque} {i.unidade} em estoque)</option>)}
-                </select>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
-                  Selecione o produto para dar entrada das {fmt(modalFinalizar.total_sacas, 1)} sc no estoque de produto agrícola.
-                </div>
-              </label>
+              {/* Produto para entrada de estoque */}
+              {(() => {
+                const ciclo = todosCiclos.find(ci => ci.id === modalFinalizar.ciclo_id);
+                const produtoNoCiclo = ciclo?.produto_agricola_id ? insumos.find(i => i.id === ciclo.produto_agricola_id) : null;
+                return (
+                  <label>
+                    <div style={lbStyle}>Produto colhido — entrada no estoque</div>
+                    {produtoNoCiclo ? (
+                      <div style={{ fontSize: 12, background: "#D5E8F5", color: "#0B2D50", padding: "8px 12px", borderRadius: 8, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>⚡</span>
+                        <span>Definido no planejamento do ciclo: <strong>{produtoNoCiclo.nome}</strong></span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, background: "#FBF3E0", color: "#7A5200", padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>
+                        Produto não definido no ciclo. Configure em <strong>Cadastros → Safras → editar o ciclo</strong> e selecione o produto colhido. Ou selecione manualmente abaixo.
+                      </div>
+                    )}
+                    <select value={insumoIdFinal} onChange={e => setInsumoIdFinal(e.target.value)} style={inpStyle}>
+                      <option value="">Não lançar no estoque agora</option>
+                      {insumos.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.unidade})</option>)}
+                    </select>
+                    {insumos.length === 0 && (
+                      <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>
+                        Nenhum produto agrícola cadastrado. Crie em Cadastros → Insumos com categoria Produto Agrícola.
+                      </div>
+                    )}
+                    {insumoIdFinal && (
+                      <div style={{ fontSize: 11, color: "#1A5C38", marginTop: 4 }}>
+                        Vai dar entrada de <strong>{fmt(modalFinalizar.total_sacas, 1)} sc</strong> de <strong>{insumos.find(i => i.id === insumoIdFinal)?.nome}</strong> no estoque.
+                      </div>
+                    )}
+                  </label>
+                );
+              })()}
 
               <div style={{ background: "#FFFBF0", border: "0.5px solid #FDE68A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#92400E" }}>
                 ⚠️ Ao finalizar, o status da safra será atualizado para <strong>Colhida</strong> e a produtividade registrada automaticamente.

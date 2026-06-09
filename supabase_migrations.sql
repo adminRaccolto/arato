@@ -608,7 +608,8 @@ alter table insumos
   add constraint insumos_categoria_check
   check (categoria in (
     'semente','fertilizante','defensivo','inoculante','adjuvante','corretivo',
-    'combustivel','lubrificante','peca','material','uso_consumo','escritorio','outro'
+    'combustivel','lubrificante','peca','material','uso_consumo','escritorio',
+    'produto_agricola','micronutriente','biologico','outro','outros'
   ));
 
 -- 5. Unidades novas em insumos
@@ -4900,6 +4901,7 @@ CREATE TABLE IF NOT EXISTS culturas (
 
 ALTER TABLE culturas ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "culturas_fazenda" ON culturas;
 CREATE POLICY "culturas_fazenda" ON culturas
   USING (fazenda_id IN (
     SELECT f.id FROM fazendas f
@@ -4919,5 +4921,44 @@ CREATE INDEX IF NOT EXISTS idx_culturas_fazenda ON culturas(fazenda_id);
 --   ('<FAZENDA_ID>', 'Milho 2ª (Safrinha)', 'graos', 'sc',  '1005.90.10', 3),
 --   ('<FAZENDA_ID>', 'Algodão',             'fibra', '@',   '5201.00.10', 4)
 -- ON CONFLICT (fazenda_id, nome) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';
+
+-- Seção 104: Vínculo Cultura → Produto Agrícola
+-- Permite saber qual item de estoque é produzido por cada cultura.
+-- Ex: Cultura "Soja Convencional" → Produto Agrícola "Soja Convencional" (insumos.id)
+-- Ex: Cultura "Soja Transgênica"  → Produto Agrícola "Soja Transgênica"  (insumos.id)
+
+ALTER TABLE culturas
+  ADD COLUMN IF NOT EXISTS produto_agricola_id uuid REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- fator_conversao_kg: kg armazenados ÷ fator = unidade comercial
+-- sc  = 60   (soja, milho, sorgo, trigo, feijão)
+-- @   = 15   (algodão, pecuária)
+-- kg  = 1    (produtos em kg direto)
+-- t   = 1000 (toneladas)
+ALTER TABLE culturas
+  ADD COLUMN IF NOT EXISTS fator_conversao_kg numeric(10,4) DEFAULT 60;
+
+-- Atualiza fator para culturas já existentes com base no campo unidade
+UPDATE culturas SET fator_conversao_kg =
+  CASE unidade
+    WHEN 'sc'    THEN 60
+    WHEN '@'     THEN 15
+    WHEN 'kg'    THEN 1
+    WHEN 't'     THEN 1000
+    ELSE 60
+  END
+WHERE fator_conversao_kg IS NULL OR fator_conversao_kg = 60;
+
+NOTIFY pgrst, 'reload schema';
+
+-- Seção 105: Produto colhido por ciclo
+-- O ciclo de produção define qual produto agrícola será colhido.
+-- Isso permite distinguir Soja Convencional vs Soja Transgênica, Milho vs Milho Pipoca etc.
+-- O produto é escolhido no planejamento do ciclo (Cadastros → Safras), não na colheita.
+
+ALTER TABLE ciclos
+  ADD COLUMN IF NOT EXISTS produto_agricola_id uuid REFERENCES insumos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';

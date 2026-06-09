@@ -610,6 +610,23 @@ export type Ciclo = {
   ciclo_pai_id?: string | null;                 // ciclo principal que absorve os custos
   absorcao_pct?: number | null;                 // % dos custos absorvidos (default 100)
   motivo_auxiliar?: string | null;              // ex: "Milheto para cobertura de solo"
+  produto_agricola_id?: string | null;          // FK insumos.id — produto que este ciclo colhe (ex: Soja Convencional)
+  produto_agricola_nome?: string | null;        // nome denormalizado para exibição rápida
+  created_at?: string;
+};
+
+export type Cultura = {
+  id: string;
+  fazenda_id: string;
+  nome: string;
+  categoria: string;          // graos | fibra | hortifruti | pastagem | cobertura | outro
+  unidade: string;            // sc | @ | kg | t | cx | fardo | outro
+  ncm: string | null;
+  observacao: string | null;
+  ativa: boolean;
+  ordem: number | null;
+  produto_agricola_id: string | null;  // FK insumos.id — produto gerado na colheita
+  fator_conversao_kg: number | null;   // kg ÷ fator = unidade comercial (60=sc, 15=@, 1=kg)
   created_at?: string;
 };
 
