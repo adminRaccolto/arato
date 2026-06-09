@@ -45,41 +45,71 @@ const MODULOS_PERM: ModuloPermissao[] = [
   { id: "custos",           label: "Custos & DRE",              grupo: "Análise",    acoes: ["visualizar","exportar"] },
   { id: "fin_relatorios",   label: "Relatórios Financeiros",    grupo: "Análise",    acoes: ["visualizar","exportar"] },
   { id: "bi",               label: "BI — Raccolto Intelligence",grupo: "Análise",    acoes: ["visualizar"] },
-  // Cadastros & Config
-  { id: "cadastros",        label: "Cadastros",                 grupo: "Admin",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "configuracoes",    label: "Configurações",             grupo: "Admin",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "usuarios",         label: "Usuários & Permissões",     grupo: "Admin",      acoes: ["visualizar","criar","editar","excluir"] },
-  { id: "logs",             label: "Log do Sistema",            grupo: "Admin",      acoes: ["visualizar","exportar"] },
+  // Cadastros
+  { id: "cadastros",           label: "Cadastros (tabelas auxiliares)", grupo: "Admin",          acoes: ["visualizar","criar","editar","excluir"] },
+  // Configurações — cada sub-módulo é controlável individualmente
+  { id: "conf_empresa",        label: "Empresa & Certificado A1",       grupo: "Configurações",  acoes: ["visualizar","editar"] },
+  { id: "conf_fiscal",         label: "Parâmetros Fiscais (NF-e/MDF-e)",grupo: "Configurações",  acoes: ["visualizar","editar"] },
+  { id: "conf_financeiro",     label: "Config. Financeira (Plano/Oper)",grupo: "Configurações",  acoes: ["visualizar","editar"] },
+  { id: "conf_contabilidade",  label: "Configuração Contábil",          grupo: "Configurações",  acoes: ["visualizar","editar"] },
+  { id: "conf_sistema",        label: "Sistema (Automações/Integrações)",grupo: "Configurações", acoes: ["visualizar","editar"] },
+  { id: "conf_importacao",     label: "Importação de Dados",            grupo: "Configurações",  acoes: ["visualizar","criar"] },
+  { id: "usuarios",            label: "Usuários & Permissões",          grupo: "Configurações",  acoes: ["visualizar","criar","editar","excluir"] },
+  { id: "logs",                label: "Log do Sistema",                 grupo: "Configurações",  acoes: ["visualizar","exportar"] },
 ];
 
 // Perfis predefinidos
-const PERFIS_PRESET: Record<string, { label: string; cor: string; permissoes: Record<string, Acao[]> }> = {
+const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: string; permissoes: Record<string, Acao[]> }> = {
   admin: {
     label: "Administrador", cor: "#E24B4A",
+    descricao: "Acesso total a todos os módulos e configurações do sistema.",
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id, [...m.acoes]])),
   },
   gerente: {
     label: "Gerente Geral", cor: "#1A4870",
-    permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id, m.grupo === "Admin" ? ["visualizar"] : [...m.acoes]])),
+    descricao: "Acesso completo às operações. Gerencia usuários e permissões. Sem acesso a parâmetros fiscais e integrações.",
+    permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
+      m.id === "usuarios"           ? ["visualizar","criar","editar","excluir"] as Acao[] :
+      m.id === "conf_empresa"       ? ["visualizar","editar"] as Acao[] :
+      m.id === "conf_financeiro"    ? ["visualizar"] as Acao[] :
+      m.id === "conf_fiscal"        ? ["visualizar"] as Acao[] :
+      m.id === "conf_contabilidade" ? ["visualizar"] as Acao[] :
+      m.id === "conf_sistema"       ? [] as Acao[] :
+      m.id === "conf_importacao"    ? [] as Acao[] :
+      m.id === "logs"               ? ["visualizar"] as Acao[] :
+      m.id === "cadastros"          ? ["visualizar","criar","editar","excluir"] as Acao[] :
+      [...m.acoes]
+    ])),
   },
   operador: {
     label: "Operador de Campo", cor: "#16A34A",
+    descricao: "Lançamentos de campo (plantio, pulverização, colheita) e estoque. Visualização em demais módulos.",
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
-      ["Campo"].includes(m.grupo) ? ["visualizar","criar","editar"] :
-      ["Estoque"].includes(m.grupo) ? ["visualizar","criar"] :
-      ["visualizar"]
+      m.grupo === "Campo"          ? ["visualizar","criar","editar"] as Acao[] :
+      m.grupo === "Estoque"        ? ["visualizar","criar"] as Acao[] :
+      m.grupo === "Configurações"  ? [] as Acao[] :
+      m.id === "cadastros"         ? ["visualizar"] as Acao[] :
+      ["visualizar"] as Acao[]
     ])),
   },
   financeiro: {
     label: "Equipe Financeira", cor: "#C9921B",
+    descricao: "Controle total do financeiro. Acesso a plano de contas e configurações financeiras. Sem acesso a configurações fiscais e de sistema.",
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
-      ["Financeiro","Análise"].includes(m.grupo) ? [...m.acoes] :
-      ["visualizar"]
+      m.grupo === "Financeiro"   ? [...m.acoes] as Acao[] :
+      m.grupo === "Análise"      ? [...m.acoes] as Acao[] :
+      m.id === "conf_financeiro" ? ["visualizar","editar"] as Acao[] :
+      m.grupo === "Configurações"? [] as Acao[] :
+      ["visualizar"] as Acao[]
     ])),
   },
   consultor: {
     label: "Consultor / Contador", cor: "#7C3AED",
-    permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id, ["visualizar","exportar"].filter(a => m.acoes.includes(a as Acao)) as Acao[]])),
+    descricao: "Acesso somente leitura e exportação. Ideal para consultores externos e contadores.",
+    permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
+      m.grupo === "Configurações" ? [] as Acao[] :
+      ["visualizar","exportar"].filter(a => m.acoes.includes(a as Acao)) as Acao[]
+    ])),
   },
 };
 
@@ -369,6 +399,7 @@ export default function AdminUsuarios() {
     setEditGrupo(g ?? null);
     setFGrupo({ nome: g?.nome ?? "", descricao: g?.descricao ?? "" });
     setPermGrupo(g ? permFromGrupo(g) : permEmpty());
+    setPresetAtivo(null);
     setModalGrupo(true);
   };
 
@@ -395,9 +426,15 @@ export default function AdminUsuarios() {
   };
 
   // ── Grupo — aplicar preset ──
+  const [presetAtivo, setPresetAtivo] = useState<string | null>(null);
   const aplicarPreset = (presetId: string) => {
     const p = PERFIS_PRESET[presetId];
-    if (p) setPermGrupo({ ...permEmpty(), ...p.permissoes });
+    if (!p) return;
+    setPermGrupo({ ...permEmpty(), ...p.permissoes });
+    setPresetAtivo(presetId);
+    // Sugere nome e descrição se o campo estiver vazio
+    if (!fGrupo.nome.trim()) setFGrupo(f => ({ ...f, nome: p.label }));
+    if (!fGrupo.descricao.trim()) setFGrupo(f => ({ ...f, descricao: p.descricao }));
   };
 
   // ── Usuário — abrir modal ──
@@ -728,19 +765,24 @@ export default function AdminUsuarios() {
 
             {/* Perfis predefinidos */}
             <div>
-              <label style={lbl}>Aplicar perfil predefinido (substitui configuração atual)</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <label style={lbl}>Perfil predefinido — clique para aplicar na matriz abaixo</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                 {Object.entries(PERFIS_PRESET).map(([id, p]) => (
                   <button key={id} onClick={() => aplicarPreset(id)}
-                    style={{ padding: "6px 14px", border: `0.5px solid ${p.cor}30`, borderRadius: 8, background: p.cor + "10", color: p.cor, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    {p.label}
+                    style={{ padding: "6px 14px", border: `1.5px solid ${presetAtivo === id ? p.cor : p.cor + "40"}`, borderRadius: 8, background: presetAtivo === id ? p.cor + "18" : p.cor + "08", color: p.cor, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {presetAtivo === id ? "✓ " : ""}{p.label}
                   </button>
                 ))}
-                <button onClick={() => setPermGrupo(permEmpty())}
+                <button onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
                   style={{ padding: "6px 14px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#F4F6FA", color: "#555", fontSize: 12, cursor: "pointer" }}>
                   Limpar tudo
                 </button>
               </div>
+              {presetAtivo && PERFIS_PRESET[presetAtivo] && (
+                <div style={{ padding: "8px 12px", background: PERFIS_PRESET[presetAtivo].cor + "08", border: `0.5px solid ${PERFIS_PRESET[presetAtivo].cor}30`, borderRadius: 8, fontSize: 11, color: "#444" }}>
+                  <strong style={{ color: PERFIS_PRESET[presetAtivo].cor }}>{PERFIS_PRESET[presetAtivo].label}:</strong> {PERFIS_PRESET[presetAtivo].descricao}
+                </div>
+              )}
             </div>
 
             {/* Matriz de permissões */}

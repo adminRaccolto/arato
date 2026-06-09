@@ -212,33 +212,33 @@ const NAV: NavItem[] = [
     type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
     children: [
       { type: "divider", label: "Empresa" },
-      { id: "conf-empresa",     label: "Dados da Empresa",  path: "/configuracoes?tab=empresa"     },
-      { id: "conf-certificado", label: "Certificado A1",    path: "/configuracoes?tab=certificado" },
+      { id: "conf-empresa",      label: "Dados da Empresa",  path: "/configuracoes?tab=empresa",     moduleId: "conf_empresa" },
+      { id: "conf-certificado",  label: "Certificado A1",    path: "/configuracoes?tab=certificado", moduleId: "conf_empresa" },
 
       { type: "divider", label: "Fiscal" },
-      { id: "conf-modulos",       label: "Parâmetros NF-e / MDF-e",   path: "/configuracoes/modulos"               },
-      { id: "conf-op-fiscais",    label: "Operações Fiscais",          path: "/configuracoes/modulos?aba=operacoes" },
-      { id: "conf-historico-cfop", label: "Histórico Fiscal (CFOPs)", path: "/cadastros?tab=historico_fiscal"      },
-      { id: "conf-classificacao", label: "Classificação Automática",   path: "/configuracoes/classificacao"         },
+      { id: "conf-modulos",        label: "Parâmetros NF-e / MDF-e",   path: "/configuracoes/modulos",               moduleId: "conf_fiscal" },
+      { id: "conf-op-fiscais",     label: "Operações Fiscais",          path: "/configuracoes/modulos?aba=operacoes", moduleId: "conf_fiscal" },
+      { id: "conf-historico-cfop", label: "Histórico Fiscal (CFOPs)",   path: "/cadastros?tab=historico_fiscal",      moduleId: "conf_fiscal" },
+      { id: "conf-classificacao",  label: "Classificação Automática",   path: "/configuracoes/classificacao",         moduleId: "conf_fiscal" },
 
       { type: "divider", label: "Financeiro" },
-      { id: "conf-plano-contas",  label: "Plano de Contas",       path: "/configuracoes?tab=plano_contas"     },
-      { id: "conf-op-gerenciais", label: "Operações Gerenciais",  path: "/cadastros?tab=operacoes_gerenciais" },
-      { id: "conf-formas-pgto",   label: "Formas de Pagamento",   path: "/cadastros?tab=formas_pagamento"     },
+      { id: "conf-plano-contas",  label: "Plano de Contas",       path: "/configuracoes?tab=plano_contas",     moduleId: "conf_financeiro" },
+      { id: "conf-op-gerenciais", label: "Operações Gerenciais",  path: "/cadastros?tab=operacoes_gerenciais", moduleId: "conf_financeiro" },
+      { id: "conf-formas-pgto",   label: "Formas de Pagamento",   path: "/cadastros?tab=formas_pagamento",     moduleId: "conf_financeiro" },
 
       { type: "divider", label: "Contabilidade" },
-      { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade" },
+      { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade", moduleId: "conf_contabilidade" },
 
       { type: "divider", label: "Sistema" },
-      { id: "conf-integracoes",  label: "Integrações",           path: "/configuracoes/integracoes" },
-      { id: "conf-automacoes",   label: "Automações",            path: "/configuracoes/automacoes"  },
-      { id: "conf-backup",       label: "Backup & Restauração",  path: "/configuracoes/backup"      },
-      { id: "conf-importacao",   label: "Importações",           path: "/configuracoes/importacao"  },
+      { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_sistema" },
+      { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_sistema" },
+      { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_sistema" },
+      { id: "conf-importacao",  label: "Importações",          path: "/configuracoes/importacao",  moduleId: "conf_importacao" },
 
-      { type: "divider", label: "Ferramentas do Sistema" },
-      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/admin/usuarios"         },
-      { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs"             },
-      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"           },
+      { type: "divider", label: "Usuários" },
+      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/admin/usuarios", moduleId: "usuarios" },
+      { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs",     moduleId: "logs"     },
+      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"                        },
     ],
   },
 
@@ -265,7 +265,7 @@ const NAV_MODULE_MAP: Record<string, string[]> = {
   "lavoura":       ["lavoura_plantio", "lavoura_pulv", "lavoura_colheita", "lavoura_plan", "propriedades"],
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],
   "custos":        ["custos", "fin_relatorios"],
-  "configuracoes": ["configuracoes", "usuarios", "logs"],
+  "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs"],
 };
 
 // ─── Componente ──────────────────────────────────────────────
