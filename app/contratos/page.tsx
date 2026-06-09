@@ -11,7 +11,7 @@ import {
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
-import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente } from "../../lib/supabase";
+import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
 
@@ -114,8 +114,8 @@ const NATUREZAS_OPERACAO = [
 // Regras para MT: soja/milho exportados via trading → VFE (CFOP 6.501).
 // Demais commodities → venda produção própria (CFOP 6.101).
 const COMMODITIES_VFE = ["Soja", "Milho 1ª", "Milho 2ª (Safrinha)", "Sorgo", "Feijão"];
-function sugerirNatureza(produto: string, tipoPessoa: "pf" | "pj"): string {
-  const isVfe = COMMODITIES_VFE.includes(produto);
+function sugerirNatureza(produto: string, tipoPessoa: "pf" | "pj", commoditiesVfe?: string[]): string {
+  const isVfe = (commoditiesVfe ?? COMMODITIES_VFE).includes(produto);
   if (isVfe) return tipoPessoa === "pf" ? "VFE-PF" : "VFE-PJ";
   return tipoPessoa === "pf" ? "VPE-PF" : "VPE-PJ";
 }
@@ -201,6 +201,7 @@ export default function Contratos() {
   const [ciclos, setCiclos]           = useState<Ciclo[]>([]);
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
   const [fazendas, setFazendas]       = useState<Fazenda[]>([]);
+  const [culturasCont, setCulturasCont] = useState<CulturaContrato[]>([]);
 
   // ── UI ───────────────────────────────────────────────────────
   const [abaLista, setAbaLista]       = useState<AbaLista>("contratos");
@@ -342,7 +343,7 @@ export default function Contratos() {
     const produtoPrincipal = itens[0]?.produto ?? fC.produto;
     const prod = produtores.find(p => p.id === fC.produtor_id);
     const tipo = tipoProdutorDeCpfCnpj(prod?.cpf_cnpj);
-    const sugestao = sugerirNatureza(produtoPrincipal, tipo);
+    const sugestao = sugerirNatureza(produtoPrincipal, tipo, COMMODITIES_VFE_DIN);
     // Só aplica se campo vazio ou ainda na sugestão anterior (não foi editado manualmente nem é contrato existente)
     if (naturezaSugerida === "__manual__") return; // contrato existente — não sobrescrever
     if (!fC.natureza_codigo || fC.natureza_codigo === naturezaSugerida) {
@@ -416,6 +417,10 @@ export default function Contratos() {
       setAnosSafra(aList);
       setDepositos(dList);
       setFazendas(fList);
+      // culturas
+      const { data: cultList } = await supabase.from("culturas").select("*")
+        .eq("fazenda_id", fazendaId!).eq("ativa", true).order("ordem").order("nome");
+      if (cultList && cultList.length > 0) setCulturasCont(cultList as CulturaContrato[]);
       // adiantamentos
       const { data: adiantList } = await supabase
         .from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data");
@@ -508,11 +513,22 @@ export default function Contratos() {
     setModalContrato(true);
   };
 
+  // ── listas dinâmicas derivadas das culturas carregadas ────────
+  const PRODUTOS_DIN: string[] = culturasCont.length > 0 ? culturasCont.map(c => c.nome) : PRODUTOS;
+  const COMMODITIES_VFE_DIN: string[] = culturasCont.length > 0
+    ? culturasCont.filter(c => c.categoria === "graos").map(c => c.nome)
+    : COMMODITIES_VFE;
+  const classeCommodityDin = (produto: string): CommodityClass => {
+    const cult = culturasCont.find(c => c.nome === produto);
+    const base = CLASSE_COMMODITY[produto] ?? { umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, kg_saca: 60 };
+    return { ...base, kg_saca: cult?.fator_conversao_kg ?? base.kg_saca };
+  };
+
   // ── calcular totais dos itens ─────────────────────────────────
   // _qKg = kg, _qSc = sc — ambos derivados conforme unidade do item
   type ItemCalc = typeof itens[0] & { _qKg: number; _qSc: number; valor_total: number };
   const itensCalc: ItemCalc[] = itens.map(i => {
-    const kgSaca = classeCommodity(i.produto).kg_saca;
+    const kgSaca = classeCommodityDin(i.produto).kg_saca;
     const _qKg = i.unidade === "kg" ? (i.quantidade||0) : (i.quantidade||0) * kgSaca;
     const _qSc = i.unidade === "kg" ? (i.quantidade||0) / kgSaca : (i.quantidade||0);
     return { ...i, _qKg, _qSc, valor_total: _qSc * (i.valor_unitario||0) };
@@ -530,7 +546,7 @@ export default function Contratos() {
       }
       if (campo === "quantidade_sc") {
         // usuário digitou em sc → converte para kg antes de salvar
-        return { ...it, quantidade: num(valor) * classeCommodity(it.produto).kg_saca, unidade: "kg" as const };
+        return { ...it, quantidade: num(valor) * classeCommodityDin(it.produto).kg_saca, unidade: "kg" as const };
       }
       if (campo === "produto") {
         // ao trocar produto, mantém unidade atual (já é kg para novos itens)
@@ -677,7 +693,7 @@ export default function Contratos() {
   // ── romaneio — cálculos em tempo real ─────────────────────────
   const contratoSel   = contratos.find(c => c.id === fRom.contratoId);
   const produto_rom   = contratoSel?.produto ?? "Soja";
-  const clsComm       = classeCommodity(produto_rom);
+  const clsComm       = classeCommodityDin(produto_rom);
   const isSoja        = produto_rom.toLowerCase().startsWith("soja");
   const isMilho       = produto_rom.toLowerCase().startsWith("milho");
 
@@ -907,7 +923,7 @@ export default function Contratos() {
   const contratosAtivos = contratosFiltrados.filter(c => c.status !== "encerrado" && c.status !== "cancelado").length;
   const todosRomaneios  = contratos.flatMap(c => c.romaneios.map(r => ({ ...r, contratoNumero: c.numero, comprador: c.comprador, produto: c.produto })));
 
-  const posicao = PRODUTOS.slice(0,3).map(produto => {
+  const posicao = PRODUTOS_DIN.map(produto => {
     const csProd = contratos.filter(c => c.produto === produto);
     const contratado = csProd.reduce((a,c) => a + (c.quantidade_sc??0), 0);
     const entregue   = csProd.reduce((a,c) => a + (c.entregue_sc??0), 0);
@@ -1034,7 +1050,7 @@ export default function Contratos() {
                     <select value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)}
                       style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
                       <option value="">Todos os produtos</option>
-                      {PRODUTOS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {PRODUTOS_DIN.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     {/* comprador */}
                     <select value={filtroComprador} onChange={e => setFiltroComprador(e.target.value)}
@@ -1642,7 +1658,7 @@ export default function Contratos() {
                             </td>
                             <td style={{ padding:"6px 8px", minWidth:130 }}>
                               <select style={{ ...inp, fontSize:11 }} value={it.produto} onChange={e => atualizarItem(idx,"produto",e.target.value)}>
-                                {PRODUTOS.map(pr => <option key={pr}>{pr}</option>)}
+                                {PRODUTOS_DIN.map(pr => <option key={pr}>{pr}</option>)}
                               </select>
                             </td>
                             {/* Peso em kg — campo primário */}
@@ -1659,7 +1675,7 @@ export default function Contratos() {
                                 value={it._qSc > 0 ? +it._qSc.toFixed(3) : ""}
                                 onChange={e => atualizarItem(idx,"quantidade_sc",e.target.value)}
                                 placeholder="0 sc" />
-                              <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodity(it.produto).kg_saca} kg/sc)</span>
+                              <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodityDin(it.produto).kg_saca} kg/sc)</span>
                             </td>
                             <td style={{ padding:"6px 8px", width:120 }}>
                               <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,00" />

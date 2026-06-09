@@ -17,6 +17,7 @@ interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
 interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string }
+interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null; produto_agricola_id: string | null }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
 interface ParcelaDetalhe { id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
@@ -54,26 +55,37 @@ const pct   = (v: number, total: number) => total > 0 ? Math.min(100, Math.max(0
 
 // ── Helpers de unidade de volume (contratos armazenam em kg) ─────────────
 // quantidade_sc em contratos = kg; arrendamento_pagamentos.sacas_previstas = sc
-function unidProd(produto: string): { div: number; label: string } {
+
+// Mapa de culturas: nome → { fator_conversao_kg }. Fallback por string matching.
+type CulturaMap = Map<string, CulturaBI>;
+
+function unidProd(produto: string, cultMap?: CulturaMap): { div: number; label: string } {
+  // 1. Lookup exato pelo nome da cultura (case-insensitive)
+  if (cultMap) {
+    const c = cultMap.get(produto) ?? [...cultMap.values()].find(c => c.nome.toLowerCase() === produto.toLowerCase());
+    if (c && c.fator_conversao_kg) {
+      return { div: c.fator_conversao_kg, label: c.fator_conversao_kg === 15 ? "@" : c.fator_conversao_kg === 1 ? "kg" : "sc" };
+    }
+  }
+  // 2. Fallback: string matching para garantir retrocompatibilidade
   const p = produto.toLowerCase();
   if (p.includes("algodão") || p.includes("algodao")) return { div: 15, label: "@" };
   return { div: 60, label: "sc" };
 }
 // Converte kg → sc ou @ conforme produto; retorna { valor, label, kg }
-function kgParaVol(kg: number, produto: string): { valor: number; label: string; kg: number } {
-  const { div, label } = unidProd(produto);
+function kgParaVol(kg: number, produto: string, cultMap?: CulturaMap): { valor: number; label: string; kg: number } {
+  const { div, label } = unidProd(produto, cultMap);
   return { valor: kg / div, label, kg };
 }
 // Soma contratos em unidades convertidas
-function somarContratos(lista: { quantidade_sc?: number | null; produto: string }[]): { valor: number; kg: number; label: string } {
+function somarContratos(lista: { quantidade_sc?: number | null; produto: string }[], cultMap?: CulturaMap): { valor: number; kg: number; label: string } {
   let totalKg = 0, totalConv = 0;
   for (const c of lista) {
     const kg = c.quantidade_sc || 0;
     totalKg += kg;
-    totalConv += kg / unidProd(c.produto).div;
+    totalConv += kg / unidProd(c.produto, cultMap).div;
   }
-  // label predominante = do primeiro item (ou "sc" se vazio)
-  const label = lista.length > 0 ? unidProd(lista[0].produto).label : "sc";
+  const label = lista.length > 0 ? unidProd(lista[0].produto, cultMap).label : "sc";
   return { valor: totalConv, kg: totalKg, label };
 }
 
@@ -86,12 +98,17 @@ const aplicarMascara = (raw: string): string => {
 const desmascarar = (masked: string): number =>
   Number(masked.replace(/\./g, "").replace(",", ".")) || 0;
 
-function culturaToCommodity(cultura: string): "Soja" | "Milho" | "Algodão" {
+// Agrupa cultura por commodity genérico (retrocompatibilidade com painéis existentes).
+// Para painéis que precisam de agrupamento exato, usar diretamente ciclo.cultura.
+function culturaToCommodity(cultura: string, cultMap?: CulturaMap): string {
+  // Com mapa: retorna o próprio nome da cultura (sem agrupamento forçado)
+  if (cultMap && cultMap.has(cultura)) return cultura;
+  // Fallback: agrupa por keyword para retrocompatibilidade
   const c = cultura.toLowerCase();
   if (c.includes("soja"))                                    return "Soja";
   if (c.includes("milho"))                                   return "Milho";
   if (c.includes("algodao") || c.includes("algodão"))        return "Algodão";
-  return "Soja";
+  return cultura; // retorna próprio nome se não reconhecido
 }
 
 function grupoCategoria(cat?: string): string {
@@ -111,7 +128,7 @@ function grupoCategoria(cat?: string): string {
   return "Outros";
 }
 
-const BENCHMARK = {
+const BENCHMARK: Record<string, { sc_ha: number; custo_ha: number; unidade: string }> = {
   Soja:    { sc_ha: 62,  custo_ha: 5800, unidade: "sc/ha" },
   Milho:   { sc_ha: 110, custo_ha: 3500, unidade: "sc/ha" },
   Algodão: { sc_ha: 250, custo_ha: 8500, unidade: "@/ha"  },
@@ -219,6 +236,7 @@ export default function BI() {
   const [contratos,     setContratos]     = useState<Contrato[]>([]);
   const [cessaoDebitos, setCessaoDebitos] = useState<CessaoDebito[]>([]);
   const [precos,      setPrecos]      = useState<PrecosData | null>(null);
+  const [culturasBi,  setCulturasBi]  = useState<CulturaBI[]>([]);
 
   const [loading,     setLoading]     = useState(true);
   const [aba,         setAba]         = useState<Aba>("painel");
@@ -293,6 +311,10 @@ export default function BI() {
     if (conR.status === "fulfilled") setContratos((conR.value.data ?? []) as Contrato[]);
     if (cesR.status === "fulfilled") setCessaoDebitos((cesR.value.data ?? []) as CessaoDebito[]);
     if (precR.status === "fulfilled") setPrecos(precR.value as PrecosData);
+    // Carrega culturas para lookup preciso de fator_conversao_kg
+    supabase.from("culturas").select("id,nome,fator_conversao_kg,produto_agricola_id")
+      .eq("fazenda_id", fazendaId).eq("ativa", true)
+      .then(({ data }) => setCulturasBi((data ?? []) as CulturaBI[]));
     setLoading(false);
   }, [fazendaId]);
 
@@ -404,6 +426,9 @@ export default function BI() {
     setFiltroAnoSafraId(id);
     setFiltroCicloIds(new Set());
   }
+
+  // Mapa de culturas para lookup preciso de unidade/fator (evita string matching)
+  const cultMap: CulturaMap = new Map(culturasBi.map(c => [c.nome, c]));
 
   const ciclosPorAnoSafra = filtroAnoSafraId
     ? ciclos.filter(c => c.ano_safra_id === filtroAnoSafraId)
@@ -1210,8 +1235,8 @@ export default function BI() {
                    (c.ano_safra_id && anoSafraIdsFiltSet.has(c.ano_safra_id));
           });
 
-          const recSc = (c: Contrato) => (c.quantidade_sc || 0) / unidProd(c.produto).div;
-          const entSc = (c: Contrato) => (c.entregue_sc   || 0) / unidProd(c.produto).div;
+          const recSc = (c: Contrato) => (c.quantidade_sc || 0) / unidProd(c.produto, cultMap).div;
+          const entSc = (c: Contrato) => (c.entregue_sc   || 0) / unidProd(c.produto, cultMap).div;
           const ptax = precos?.usdBrl ?? 5.10;
 
           // ── KPIs globais ─────────────────────────────────────────────────
@@ -1235,25 +1260,25 @@ export default function BI() {
 
           // ── Por cultura ─────────────────────────────────────────────────
           type CultRow = { cultura: string; sc: number; entSc: number; saldoSc: number; valBRL: number; mediaBRL: number; mediaUSD: number; qtd: number };
-          const cultMap = new Map<string, CultRow>();
+          const cultRowMap = new Map<string, CultRow>();
           for (const c of contratosVisiveis) {
             const k = c.produto || "Outros";
-            if (!cultMap.has(k)) cultMap.set(k, { cultura: k, sc: 0, entSc: 0, saldoSc: 0, valBRL: 0, mediaBRL: 0, mediaUSD: 0, qtd: 0 });
-            const e = cultMap.get(k)!;
+            if (!cultRowMap.has(k)) cultRowMap.set(k, { cultura: k, sc: 0, entSc: 0, saldoSc: 0, valBRL: 0, mediaBRL: 0, mediaUSD: 0, qtd: 0 });
+            const e = cultRowMap.get(k)!;
             const sc = recSc(c); const es = entSc(c);
             e.sc += sc; e.entSc += es;
             const v = sc * (c.preco || 0);
             e.valBRL += c.moeda === "USD" ? v * ptax : v;
             e.qtd += 1;
           }
-          for (const r of cultMap.values()) {
+          for (const r of cultRowMap.values()) {
             r.saldoSc = Math.max(0, r.sc - r.entSc);
             const brlC = contratosVisiveis.filter(c => c.produto === r.cultura && c.moeda !== "USD" && (c.preco ?? 0) > 0);
             const usdC = contratosVisiveis.filter(c => c.produto === r.cultura && c.moeda === "USD"  && (c.preco ?? 0) > 0);
             r.mediaBRL = brlC.length > 0 ? brlC.reduce((s, c) => s + c.preco!, 0) / brlC.length : 0;
             r.mediaUSD = usdC.length > 0 ? usdC.reduce((s, c) => s + c.preco!, 0) / usdC.length : 0;
           }
-          const culturas = Array.from(cultMap.values()).sort((a, b) => b.sc - a.sc);
+          const culturas = Array.from(cultRowMap.values()).sort((a, b) => b.sc - a.sc);
           const maxCultSc = culturas.length > 0 ? culturas[0].sc : 1;
 
           // ── Por produtor ─────────────────────────────────────────────────
