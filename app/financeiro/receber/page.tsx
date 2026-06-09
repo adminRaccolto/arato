@@ -371,9 +371,9 @@ export default function ContasReceber() {
     setSelecionados(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const toggleTodos = () => {
-    const abertos = filtrados.filter(l => l.status !== "baixado").map(l => l.id);
-    const todosSel = abertos.every(id => selecionados.has(id));
-    setSelecionados(todosSel ? new Set() : new Set(abertos));
+    const todos = filtrados.map(l => l.id);
+    const todosSel = todos.length > 0 && todos.every(id => selecionados.has(id));
+    setSelecionados(todosSel ? new Set() : new Set(todos));
   };
 
   const receberEmLote = async () => {
@@ -587,7 +587,7 @@ export default function ContasReceber() {
                         <th style={thS(32)}>
                           <input type="checkbox"
                             style={{ cursor: "pointer", accentColor: "#1A5CB8" }}
-                            checked={filtrados.filter(l => l.status !== "baixado").length > 0 && filtrados.filter(l => l.status !== "baixado").every(l => selecionados.has(l.id))}
+                            checked={filtrados.length > 0 && filtrados.every(l => selecionados.has(l.id))}
                             onChange={toggleTodos}
                             title="Selecionar todos"
                           />
