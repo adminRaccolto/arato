@@ -187,39 +187,7 @@ const itemVazio = (): Omit<ContratoItem,"id"|"created_at"|"contrato_id"|"fazenda
 });
 
 type AbaForm = "principal" | "adicionais";
-type AbaLista = "contratos" | "expedicao" | "painel";
-
-// ── Cores para gráficos ───────────────────────────────────────────────────────
-const COR_BAR: Record<string, string> = {
-  "Soja": "#1A4870", "Milho 1ª": "#EF9F27", "Milho 2ª (Safrinha)": "#C9921B",
-  "Algodão": "#378ADD", "Sorgo": "#16A34A", "Trigo": "#E24B4A", "Feijão": "#8B5CF6",
-};
-const corBar = (p: string) => COR_BAR[p] ?? "#888";
-const CORES_PROD = ["#1A4870","#EF9F27","#16A34A","#E24B4A","#378ADD","#C9921B","#8B5CF6","#888"];
-
-// ── Donut chart helper ────────────────────────────────────────────────────────
-function mkDonut(segments: { value: number; color: string }[], size = 120) {
-  const total = segments.reduce((a, s) => a + s.value, 0);
-  const r = 40, circ = 2 * Math.PI * r;
-  let offset = 0;
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size} style={{ flexShrink: 0 }}>
-      <circle cx="50" cy="50" r={r} fill="none" stroke="#EEF1F6" strokeWidth="18" />
-      {total > 0 && segments.filter(s => s.value > 0).map((s, i) => {
-        const dash = (s.value / total) * circ;
-        const el = (
-          <circle key={i} cx="50" cy="50" r={r} fill="none"
-            stroke={s.color} strokeWidth="18"
-            strokeDasharray={`${dash} ${circ}`}
-            strokeDashoffset={-offset}
-            transform="rotate(-90 50 50)" />
-        );
-        offset += dash;
-        return el;
-      })}
-    </svg>
-  );
-}
+type AbaLista = "contratos" | "expedicao" | "posicao";
 
 // ═══════════════════════════════════════════════════════════════════
 export default function Contratos() {
@@ -249,8 +217,6 @@ export default function Contratos() {
   const [filtroStatus,  setFiltroStatus]  = useState("");
   const [filtroComprador, setFiltroComprador] = useState("");
   const [filtroBusca,   setFiltroBusca]   = useState("");
-  const [painelAno,     setPainelAno]     = useState("");
-  const [painelCultura, setPainelCultura] = useState("");
 
   // ── PTAX dinâmico para contratos em USD ─────────────────────
   const [ptaxAtual, setPtaxAtual] = useState<number>(5.90);
@@ -941,58 +907,12 @@ export default function Contratos() {
   const contratosAtivos = contratosFiltrados.filter(c => c.status !== "encerrado" && c.status !== "cancelado").length;
   const todosRomaneios  = contratos.flatMap(c => c.romaneios.map(r => ({ ...r, contratoNumero: c.numero, comprador: c.comprador, produto: c.produto })));
 
-  // ── Painel Comercial — dados derivados ───────────────────────────────────────
-  const painelContratos = contratos.filter(c => {
-    if (c.status === "cancelado") return false;
-    if (painelAno     && c.ano_safra_id !== painelAno)     return false;
-    if (painelCultura && c.produto      !== painelCultura) return false;
-    return true;
-  });
-  const ptaxDoCon = (c: ContratoVM) => c.cotacao_usd ?? ptaxAtual;
-  const painelTotalSc   = painelContratos.reduce((a, c) => a + (c.quantidade_sc ?? 0), 0);
-  const painelEntregaSc = painelContratos.reduce((a, c) => a + (c.entregue_sc   ?? 0), 0);
-  const painelSaldoSc   = painelTotalSc - painelEntregaSc;
-  const painelValorBRL  = painelContratos.reduce((a, c) => {
-    const v = (c.quantidade_sc ?? 0) * (c.preco ?? 0);
-    return a + (c.moeda === "USD" ? v * ptaxDoCon(c) : v);
-  }, 0);
-  const painelPrecoMedio = painelTotalSc > 0 ? painelValorBRL / painelTotalSc : 0;
-
-  const painelPorCultura = PRODUTOS.map(produto => {
-    const cs = painelContratos.filter(c => c.produto === produto);
-    if (!cs.length) return null;
-    const sc       = cs.reduce((a, c) => a + (c.quantidade_sc ?? 0), 0);
-    const entregue = cs.reduce((a, c) => a + (c.entregue_sc   ?? 0), 0);
-    const vBRL     = cs.reduce((a, c) => {
-      const v = (c.quantidade_sc ?? 0) * (c.preco ?? 0);
-      return a + (c.moeda === "USD" ? v * ptaxDoCon(c) : v);
-    }, 0);
-    const precoMedio = sc > 0 ? vBRL / sc : 0;
-    return { produto, sc, entregue, saldo: sc - entregue, valorBRL: vBRL, precoMedio, saldoFinProj: (sc - entregue) * precoMedio };
-  }).filter((p): p is NonNullable<typeof p> => p !== null);
-
-  const scBRL    = painelContratos.filter(c => c.modalidade !== "barter" && c.moeda === "BRL").reduce((a, c) => a + (c.quantidade_sc ?? 0), 0);
-  const scUSD    = painelContratos.filter(c => c.moeda === "USD").reduce((a, c) => a + (c.quantidade_sc ?? 0), 0);
-  const scBarter = painelContratos.filter(c => c.modalidade === "barter").reduce((a, c) => a + (c.quantidade_sc ?? 0), 0);
-
-  const _prodMap = new Map<string, { nome: string; sc: number; valorBRL: number }>();
-  for (const c of painelContratos) {
-    const nome = c.produtor_nome || produtores.find(p => p.id === c.produtor_id)?.nome || "Não informado";
-    const key  = c.produtor_id ?? nome;
-    const prev = _prodMap.get(key) ?? { nome, sc: 0, valorBRL: 0 };
-    const v    = (c.quantidade_sc ?? 0) * (c.preco ?? 0);
-    _prodMap.set(key, { nome, sc: prev.sc + (c.quantidade_sc ?? 0), valorBRL: prev.valorBRL + (c.moeda === "USD" ? v * ptaxDoCon(c) : v) });
-  }
-  const painelProdutores = [..._prodMap.values()].sort((a, b) => b.sc - a.sc);
-
-  const _compMap = new Map<string, { nome: string; sc: number }>();
-  for (const c of painelContratos) {
-    const nome = c.comprador || "Não informado";
-    const prev = _compMap.get(nome) ?? { nome, sc: 0 };
-    _compMap.set(nome, { nome, sc: prev.sc + (c.quantidade_sc ?? 0) });
-  }
-  const painelCompradores   = [..._compMap.values()].sort((a, b) => b.sc - a.sc).slice(0, 10);
-  const painelSaldoFinTotal = painelPorCultura.reduce((a, c) => a + c.saldoFinProj, 0);
+  const posicao = PRODUTOS.slice(0,3).map(produto => {
+    const csProd = contratos.filter(c => c.produto === produto);
+    const contratado = csProd.reduce((a,c) => a + (c.quantidade_sc??0), 0);
+    const entregue   = csProd.reduce((a,c) => a + (c.entregue_sc??0), 0);
+    return { produto, contratado, entregue, saldo: contratado-entregue, pct: contratado>0 ? Math.round(entregue/contratado*100) : 0 };
+  }).filter(p => p.contratado > 0);
 
   async function encerrarSafrasAnteriores() {
     // Safras com data_inicio <= 2025-12-31 cobre até 2025/2026
@@ -1074,7 +994,7 @@ export default function Contratos() {
                 {([
                   { key:"contratos", label:"Contratos",              count: contratos.length },
                   { key:"expedicao", label:"Expedição / Romaneios",  count: todosRomaneios.length },
-                  { key:"painel",    label:"Painel Comercial",        count: null },
+                  { key:"posicao",   label:"Posição de Estoque",     count: null },
                 ] as { key: AbaLista; label: string; count: number|null }[]).map(a => (
                   <button key={a.key} onClick={() => setAbaLista(a.key)} style={{
                     padding:"11px 20px", border:"none", background:"transparent", cursor:"pointer",
@@ -1415,297 +1335,45 @@ export default function Contratos() {
                 </div>
               )}
 
-              {/* ── ABA PAINEL COMERCIAL ── */}
-              {abaLista === "painel" && (
+              {/* ── ABA POSIÇÃO DE ESTOQUE ── */}
+              {abaLista === "posicao" && (
                 <div style={{ background:"#F3F6F9", border:"0.5px solid #D4DCE8", borderTop:"none", borderRadius:"0 0 12px 12px", padding:20 }}>
-
-                  {/* Filtros do painel */}
-                  <div style={{ display:"flex", gap:10, marginBottom:18, background:"#fff", padding:"10px 14px", borderRadius:10, border:"0.5px solid #D4DCE8", alignItems:"center", flexWrap:"wrap" }}>
-                    <span style={{ fontSize:12, fontWeight:600, color:"#555" }}>Filtros:</span>
-                    <select value={painelAno} onChange={e => setPainelAno(e.target.value)}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, background:"#fff", outline:"none", color:"#1a1a1a" }}>
-                      <option value="">Todos os anos safra</option>
-                      {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                    </select>
-                    <select value={painelCultura} onChange={e => setPainelCultura(e.target.value)}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, background:"#fff", outline:"none", color:"#1a1a1a" }}>
-                      <option value="">Todas as culturas</option>
-                      {PRODUTOS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                    {(painelAno || painelCultura) && (
-                      <button onClick={() => { setPainelAno(""); setPainelCultura(""); }}
-                        style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:11, color:"#555", background:"#fff", cursor:"pointer" }}>
-                        ✕ Limpar
-                      </button>
-                    )}
-                    <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>
-                      {painelContratos.length} contrato{painelContratos.length !== 1 ? "s" : ""} · {painelTotalSc.toLocaleString("pt-BR")} sc
-                    </span>
-                  </div>
-
-                  {painelContratos.length === 0 ? (
-                    <div style={{ textAlign:"center", padding:48, color:"#888", fontSize:13 }}>Nenhum contrato encontrado para os filtros selecionados.</div>
+                  {posicao.length === 0 ? (
+                    <div style={{ textAlign:"center", padding:48, color:"#888", fontSize:13 }}>Nenhum contrato ativo com saldo.</div>
                   ) : (
-                    <>
-                      {/* ── KPIs ── */}
-                      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:14 }}>
-                        {[
-                          { label:"Total Comercializado", valor:painelTotalSc.toLocaleString("pt-BR")+" sc", sub:`${painelContratos.length} contrato${painelContratos.length!==1?"s":""}`, cor:"#1A4870" },
-                          { label:"Valor Total (BRL)",    valor:fmtR$(painelValorBRL),                        sub:"incl. conversão USD→BRL",                                                  cor:"#16A34A" },
-                          { label:"Preço Médio Pond.",    valor:fmtR$(painelPrecoMedio)+"/sc",                sub:"ponderado por volume",                                                     cor:"#EF9F27" },
-                          { label:"Saldo a Entregar",     valor:painelSaldoSc.toLocaleString("pt-BR")+" sc",  sub:`${painelEntregaSc>0&&painelTotalSc>0?Math.round(painelEntregaSc/painelTotalSc*100):0}% já entregue`, cor:painelSaldoSc>0?"#E24B4A":"#16A34A" },
-                        ].map((k, i) => (
-                          <div key={i} style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px", borderTop:`3px solid ${k.cor}` }}>
-                            <div style={{ fontSize:11, color:"#555", marginBottom:4 }}>{k.label}</div>
-                            <div style={{ fontSize:17, fontWeight:700, color:"#1a1a1a", lineHeight:1.2 }}>{k.valor}</div>
-                            <div style={{ fontSize:10, color:"#888", marginTop:5 }}>{k.sub}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* ── Row: Barras por Cultura + Donut Moeda ── */}
-                      <div style={{ display:"grid", gridTemplateColumns:"3fr 2fr", gap:12, marginBottom:12 }}>
-
-                        {/* 1. Comercialização Total por Cultura */}
-                        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:14 }}>Comercialização Total por Cultura (sc)</div>
-                          {painelPorCultura.length === 0 ? (
-                            <div style={{ color:"#888", fontSize:11, padding:"16px 0" }}>Sem dados.</div>
-                          ) : (
-                            <div style={{ display:"flex", alignItems:"flex-end", gap:10, height:150, padding:"0 8px" }}>
-                              {(() => {
-                                const maxSc = Math.max(...painelPorCultura.map(p => p.sc));
-                                return painelPorCultura.map((c, i) => {
-                                  const h = Math.max(6, Math.round((c.sc / maxSc) * 115));
-                                  return (
-                                    <div key={i} title={`${c.produto}: ${c.sc.toLocaleString("pt-BR")} sc`}
-                                      style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
-                                      <div style={{ fontSize:9, color:"#555", fontWeight:600 }}>
-                                        {c.sc >= 1000 ? `${(c.sc/1000).toFixed(1)}k` : c.sc}
-                                      </div>
-                                      <div style={{ width:"100%", height:h, background:corBar(c.produto), borderRadius:"3px 3px 0 0" }} />
-                                      <div style={{ fontSize:8, color:"#666", textAlign:"center", lineHeight:1.3 }}>
-                                        {c.produto.replace(" (Safrinha)","").replace("Milho 1ª","M.1ª").replace("Milho 2ª","M.2ª")}
-                                      </div>
-                                    </div>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* 2. Volume por Moeda */}
-                        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:14 }}>Volume por Moeda</div>
-                          <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-                            {mkDonut([
-                              { value: scBRL,    color: "#1A4870" },
-                              { value: scUSD,    color: "#16A34A" },
-                              { value: scBarter, color: "#EF9F27" },
-                            ], 100)}
-                            <div style={{ flex:1 }}>
-                              {[
-                                { label:"R$ — Real",   sc:scBRL,    color:"#1A4870" },
-                                { label:"US$ — Dólar", sc:scUSD,    color:"#16A34A" },
-                                { label:"Barter",      sc:scBarter, color:"#EF9F27" },
-                              ].filter(m => m.sc > 0).map((m, i) => (
-                                <div key={i} style={{ marginBottom:10 }}>
-                                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
-                                    <div style={{ width:9, height:9, borderRadius:2, background:m.color, flexShrink:0 }} />
-                                    <span style={{ fontSize:11, fontWeight:600, color:"#1a1a1a" }}>{m.label}</span>
-                                    <span style={{ fontSize:10, color:"#555", marginLeft:"auto" }}>
-                                      {painelTotalSc > 0 ? Math.round(m.sc / painelTotalSc * 100) : 0}%
-                                    </span>
-                                  </div>
-                                  <div style={{ fontSize:11, color:"#555", paddingLeft:15 }}>{m.sc.toLocaleString("pt-BR")} sc</div>
+                    <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:10, overflow:"hidden" }}>
+                      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+                        <thead>
+                          <tr style={{ background:"#F8FAFD", borderBottom:"0.5px solid #D4DCE8" }}>
+                            <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"#555" }}>Cultura</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>Contratado (sc)</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>Entregue (sc)</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>Saldo (sc)</th>
+                            <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"#555" }}>Progresso</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>% Entregue</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {posicao.map((p, i) => (
+                            <tr key={p.produto} style={{ borderBottom:"0.5px solid #EEF1F6", background:i%2===0?"#fff":"#FAFBFD" }}>
+                              <td style={{ padding:"10px 16px", fontWeight:600, color:"#1a1a1a" }}>{p.produto}</td>
+                              <td style={{ padding:"10px 16px", textAlign:"right", color:"#1a1a1a" }}>{p.contratado.toLocaleString("pt-BR")}</td>
+                              <td style={{ padding:"10px 16px", textAlign:"right", color:"#16A34A", fontWeight:600 }}>{p.entregue.toLocaleString("pt-BR")}</td>
+                              <td style={{ padding:"10px 16px", textAlign:"right", color:p.saldo>0?"#E24B4A":"#16A34A", fontWeight:600 }}>{p.saldo.toLocaleString("pt-BR")}</td>
+                              <td style={{ padding:"10px 16px", minWidth:140 }}>
+                                <div style={{ height:8, background:"#EEF1F6", borderRadius:4, overflow:"hidden" }}>
+                                  <div style={{ height:"100%", width:p.pct+"%", background:p.pct===100?"#16A34A":"#1A4870", borderRadius:4 }} />
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ── Row: Tabela Valor+Preço + Por Produtor ── */}
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-
-                        {/* 3+4. Valor de Venda e Preço Médio por Cultura */}
-                        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:12 }}>Valor de Venda e Preço Médio por Cultura</div>
-                          <table style={{ width:"100%", borderCollapse:"collapse" }}>
-                            <thead>
-                              <tr style={{ background:"#F3F6F9" }}>
-                                {["Cultura","Sc Total","Valor Total (BRL)","Preço Médio"].map((h, i) => (
-                                  <th key={i} style={{ padding:"6px 10px", textAlign:i>0?"right":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8" }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {painelPorCultura.map((c, i) => {
-                                const cp = corProduto(c.produto);
-                                return (
-                                  <tr key={i} style={{ borderBottom:"0.5px solid #F0F2F6" }}>
-                                    <td style={{ padding:"7px 10px" }}>
-                                      <span style={{ fontSize:10, background:cp.bg, color:cp.color, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{c.produto}</span>
-                                    </td>
-                                    <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11, fontWeight:600 }}>{c.sc.toLocaleString("pt-BR")}</td>
-                                    <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11 }}>{fmtR$(c.valorBRL)}</td>
-                                    <td style={{ padding:"7px 10px", textAlign:"right", fontSize:12, fontWeight:700, color:"#1A4870" }}>{fmtR$(c.precoMedio)}</td>
-                                  </tr>
-                                );
-                              })}
-                              <tr style={{ borderTop:"0.5px solid #D4DCE8", background:"#F8FAFD" }}>
-                                <td style={{ padding:"7px 10px", fontSize:11, fontWeight:700 }}>Total</td>
-                                <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11, fontWeight:700 }}>{painelTotalSc.toLocaleString("pt-BR")}</td>
-                                <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11, fontWeight:700 }}>{fmtR$(painelValorBRL)}</td>
-                                <td style={{ padding:"7px 10px", textAlign:"right", fontSize:12, fontWeight:700, color:"#1A4870" }}>{fmtR$(painelPrecoMedio)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* 5. Por Produtor (donut + grid) */}
-                        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:12 }}>Comercializado por Produtor</div>
-                          {painelProdutores.length === 0 ? (
-                            <div style={{ color:"#888", fontSize:11, padding:"16px 0" }}>Nenhum produtor vinculado aos contratos.</div>
-                          ) : (
-                            <div style={{ display:"flex", gap:14, alignItems:"flex-start" }}>
-                              {mkDonut(painelProdutores.slice(0, 7).map((p, i) => ({
-                                value: p.sc, color: CORES_PROD[i] ?? "#888",
-                              })), 110)}
-                              <div style={{ flex:1, overflowY:"auto", maxHeight:140 }}>
-                                {painelProdutores.map((p, i) => (
-                                  <div key={i} style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 0", borderBottom:"0.5px solid #F0F2F6" }}>
-                                    <div style={{ width:8, height:8, borderRadius:2, background:CORES_PROD[Math.min(i,6)] ?? "#888", flexShrink:0 }} />
-                                    <span style={{ fontSize:11, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.nome}</span>
-                                    <span style={{ fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>{p.sc.toLocaleString("pt-BR")} sc</span>
-                                    <span style={{ fontSize:10, color:"#555", whiteSpace:"nowrap" }}>
-                                      {painelTotalSc > 0 ? Math.round(p.sc / painelTotalSc * 100) : 0}%
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* ── 6. Saldo em Sacas por Cultura ── */}
-                      <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
-                        <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:14 }}>Saldo em Sacas a Comercializar por Cultura</div>
-                        <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(Math.max(painelPorCultura.length, 1), 4)},1fr)`, gap:12 }}>
-                          {painelPorCultura.map((c, i) => {
-                            const pct = c.sc > 0 ? Math.round((c.entregue / c.sc) * 100) : 0;
-                            const cp  = corProduto(c.produto);
-                            return (
-                              <div key={i} style={{ border:`0.5px solid ${cp.color}40`, borderRadius:10, overflow:"hidden" }}>
-                                <div style={{ padding:"8px 12px", background:cp.bg, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                                  <span style={{ fontWeight:600, fontSize:11, color:cp.color }}>{c.produto.replace(" (Safrinha)","")}</span>
-                                  <span style={{ fontSize:9, color:cp.color }}>{pct}% entregue</span>
-                                </div>
-                                <div style={{ padding:"10px 12px" }}>
-                                  {[
-                                    { label:"Contratado", val:c.sc,       cor:"#1a1a1a" },
-                                    { label:"Entregue",   val:c.entregue, cor:"#16A34A" },
-                                    { label:"Saldo",      val:c.saldo,    cor:c.saldo>0?"#E24B4A":"#16A34A" },
-                                  ].map((row, ri) => (
-                                    <div key={ri} style={{ display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:ri<2?6:10 }}>
-                                      <span style={{ color:"#555" }}>{row.label}</span>
-                                      <span style={{ fontWeight:ri===2?700:600, color:row.cor }}>{row.val.toLocaleString("pt-BR")} sc</span>
-                                    </div>
-                                  ))}
-                                  <div style={{ height:6, background:"#DEE5EE", borderRadius:4, overflow:"hidden" }}>
-                                    <div style={{ height:"100%", width:`${pct}%`, background:pct>=100?"#16A34A":pct>60?"#1A4870":"#EF9F27", borderRadius:4 }} />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* ── Row: Saldo Financeiro + Por Cliente ── */}
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-
-                        {/* 7. Saldo Financeiro Projetado */}
-                        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:12 }}>Saldo Financeiro Projetado a Realizar</div>
-                          <table style={{ width:"100%", borderCollapse:"collapse" }}>
-                            <thead>
-                              <tr style={{ background:"#F3F6F9" }}>
-                                {["Cultura","Saldo (sc)","Preço Médio","Projeção (BRL)"].map((h, i) => (
-                                  <th key={i} style={{ padding:"6px 10px", textAlign:i>0?"right":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8" }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {painelPorCultura.map((c, i) => {
-                                const cp = corProduto(c.produto);
-                                return (
-                                  <tr key={i} style={{ borderBottom:"0.5px solid #F0F2F6" }}>
-                                    <td style={{ padding:"7px 10px" }}>
-                                      <span style={{ fontSize:10, background:cp.bg, color:cp.color, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{c.produto}</span>
-                                    </td>
-                                    <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11, fontWeight:600, color:c.saldo>0?"#E24B4A":"#16A34A" }}>
-                                      {c.saldo.toLocaleString("pt-BR")}
-                                    </td>
-                                    <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11 }}>{fmtR$(c.precoMedio)}</td>
-                                    <td style={{ padding:"7px 10px", textAlign:"right", fontSize:12, fontWeight:700, color:"#1A4870" }}>{fmtR$(c.saldoFinProj)}</td>
-                                  </tr>
-                                );
-                              })}
-                              <tr style={{ borderTop:"0.5px solid #D4DCE8", background:"#F8FAFD" }}>
-                                <td style={{ padding:"7px 10px", fontSize:11, fontWeight:700 }}>Total</td>
-                                <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11, fontWeight:700, color:painelSaldoSc>0?"#E24B4A":"#16A34A" }}>
-                                  {painelSaldoSc.toLocaleString("pt-BR")}
-                                </td>
-                                <td style={{ padding:"7px 10px", textAlign:"right", fontSize:11, fontWeight:600 }}>{fmtR$(painelPrecoMedio)}</td>
-                                <td style={{ padding:"7px 10px", textAlign:"right", fontSize:12, fontWeight:700, color:"#1A4870" }}>{fmtR$(painelSaldoFinTotal)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* 8. Por Cliente / Comprador */}
-                        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"14px 16px" }}>
-                          <div style={{ fontSize:12, fontWeight:600, color:"#1a1a1a", marginBottom:12 }}>Volume por Cliente / Comprador</div>
-                          {painelCompradores.length === 0 ? (
-                            <div style={{ color:"#888", fontSize:11 }}>Sem compradores registrados.</div>
-                          ) : (
-                            painelCompradores.map((c, i) => {
-                              const pct = painelCompradores[0].sc > 0 ? (c.sc / painelCompradores[0].sc * 100) : 0;
-                              return (
-                                <div key={i} style={{ marginBottom:10 }}>
-                                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, marginBottom:3 }}>
-                                    <span style={{ color:"#1a1a1a", fontWeight:i===0?600:400, maxWidth:"55%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                                      {c.nome}
-                                    </span>
-                                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                                      <span style={{ color:"#888", fontSize:10 }}>
-                                        {painelTotalSc > 0 ? Math.round(c.sc / painelTotalSc * 100) : 0}%
-                                      </span>
-                                      <span style={{ color:"#1A4870", fontWeight:600, whiteSpace:"nowrap" }}>
-                                        {c.sc.toLocaleString("pt-BR")} sc
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div style={{ height:7, background:"#EEF1F6", borderRadius:4, overflow:"hidden" }}>
-                                    <div style={{ height:"100%", width:`${pct}%`,
-                                      background:i===0?"#1A4870":i===1?"#2E6FB5":i===2?"#4285C4":"#6B9ED8",
-                                      borderRadius:4 }} />
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </div>
-                    </>
+                              </td>
+                              <td style={{ padding:"10px 16px", textAlign:"right", fontWeight:700, color:p.pct===100?"#16A34A":"#1A4870" }}>{p.pct}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
-              )}
-            </>
+              )}            </>
           )}
         </div>
       </main>
