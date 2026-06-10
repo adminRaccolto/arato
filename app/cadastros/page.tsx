@@ -817,18 +817,19 @@ function CadastrosInner() {
     let contaIdParaFaz: string | undefined = contaId ?? undefined;
 
     if (userRole === "raccotlo" && fazendaId) {
-      // Raccotlo admin: usar o cliente da fazenda ativa como dono
-      const { data: clientPerfil } = await supabase
-        .from("perfis").select("user_id, conta_id")
-        .eq("fazenda_id", fazendaId)
-        .neq("role", "raccotlo")
-        .limit(1).maybeSingle();
-      if (clientPerfil?.user_id) ownerUserId = clientPerfil.user_id;
-      if (clientPerfil?.conta_id) contaIdParaFaz = clientPerfil.conta_id;
-      // Fallback: buscar conta_id da fazenda ativa
-      if (!contaIdParaFaz) {
-        const { data: af } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single();
-        if (af?.conta_id) contaIdParaFaz = af.conta_id;
+      // Raccotlo admin: sempre prioriza conta_id da fazenda ativa (mais confiável)
+      const { data: af } = await supabase.from("fazendas").select("conta_id, owner_user_id").eq("id", fazendaId).single();
+      if (af?.conta_id)      contaIdParaFaz = af.conta_id;
+      if (af?.owner_user_id) ownerUserId    = af.owner_user_id;
+      // Refinamento: buscar user_id do cliente via perfis (opcional, não bloqueia)
+      if (!ownerUserId || ownerUserId === user?.id) {
+        const { data: clientPerfil } = await supabase
+          .from("perfis").select("user_id, conta_id")
+          .eq("fazenda_id", fazendaId)
+          .neq("role", "raccotlo")
+          .limit(1).maybeSingle();
+        if (clientPerfil?.user_id) ownerUserId    = clientPerfil.user_id;
+        if (clientPerfil?.conta_id) contaIdParaFaz = clientPerfil.conta_id;
       }
     }
 

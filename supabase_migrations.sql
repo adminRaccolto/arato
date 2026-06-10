@@ -5012,3 +5012,46 @@ NOTIFY pgrst, 'reload schema';
 UPDATE fazendas SET raccolto_acesso = true WHERE raccolto_acesso IS NULL OR raccolto_acesso = false;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- Seção 110: Corrige RLS fazendas — INSERT com bypass raccotlo explícito
+-- Causa do erro 42501: INSERT policy não tinha raccotlo bypass.
+
+DO $$ DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+ALTER TABLE fazendas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "fazendas_select" ON fazendas FOR SELECT
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "fazendas_insert" ON fazendas FOR INSERT
+  WITH CHECK (
+    auth.uid() IS NOT NULL
+    AND (
+      conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+      OR conta_id IS NULL
+    )
+  );
+
+CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';
