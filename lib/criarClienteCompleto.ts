@@ -64,11 +64,12 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
   const { data: fazenda, error: fazErr } = await supabase
     .from("fazendas")
     .insert({
-      nome:          fazenda_nome,
-      municipio:     fazenda_municipio,
-      estado:        fazenda_estado,
-      area_total_ha: parseFloat(fazenda_area ?? "0") || 0,
-      conta_id:      contaId,
+      nome:             fazenda_nome,
+      municipio:        fazenda_municipio,
+      estado:           fazenda_estado,
+      area_total_ha:    parseFloat(fazenda_area ?? "0") || 0,
+      conta_id:         contaId,
+      raccolto_acesso:  true,
     })
     .select("id")
     .single();

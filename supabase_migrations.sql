@@ -4996,3 +4996,11 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE culturas DROP COLUMN IF EXISTS produto_agricola_id;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- Seção 108: raccolto_acesso habilitado por padrão nas novas fazendas
+-- Permite que a Raccolto acesse imediatamente para auxiliar na implantação.
+
+ALTER TABLE fazendas ALTER COLUMN raccolto_acesso SET DEFAULT true;
+
+NOTIFY pgrst, 'reload schema';
