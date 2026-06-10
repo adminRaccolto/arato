@@ -1911,32 +1911,42 @@ function ImportacaoInner() {
     if (!fazendasImpRows.length) return;
     setLoadingFazendasImp(true);
     let ok = 0, erros = 0, duplicados = 0;
-    const { data: { user } } = await supabase.auth.getUser();
-    const ownerUserId = user?.id ?? null;
-    for (const r of fazendasImpRows) {
-      if (r._status === "duplicado") { duplicados++; continue; }
-      if (r._status === "erro")      { erros++;      continue; }
-      const area = parseFloat(String(r.area_total_ha).replace(",", "."));
-      const itrArea = r.itr_area_ha?.trim() ? parseFloat(String(r.itr_area_ha).replace(",", ".")) : null;
-      const { error } = await supabase.from("fazendas").insert({
-        conta_id:      contaId ?? null,
-        owner_user_id: ownerUserId,
-        nome:          r.nome.trim(),
-        municipio:     r.municipio.trim(),
-        estado:        r.estado.trim(),
-        area_total_ha: area,
-        cep:           r.cep?.trim() || null,
-        logradouro:    r.logradouro?.trim() || null,
-        car:           r.car?.trim() || null,
-        nirf:          r.nirf?.trim() || null,
-        itr:           itrArea ? String(itrArea) : null,
-      });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-      else ok++;
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const ownerUserId = authData?.user?.id ?? null;
+      for (const r of fazendasImpRows) {
+        if (r._status === "duplicado") { duplicados++; continue; }
+        if (r._status === "erro")      { erros++;      continue; }
+        const area = parseFloat(String(r.area_total_ha).replace(",", "."));
+        const itrArea = r.itr_area_ha?.trim() ? parseFloat(String(r.itr_area_ha).replace(",", ".")) : null;
+        const { error } = await supabase.from("fazendas").insert({
+          conta_id:      contaId ?? null,
+          owner_user_id: ownerUserId,
+          nome:          r.nome.trim(),
+          municipio:     r.municipio.trim(),
+          estado:        r.estado.trim(),
+          area_total_ha: area,
+          cep:           r.cep?.trim() || null,
+          logradouro:    r.logradouro?.trim() || null,
+          car:           r.car?.trim() || null,
+          nirf:          r.nirf?.trim() || null,
+          itr:           itrArea ? String(itrArea) : null,
+        });
+        if (error) {
+          r._status = "erro";
+          r._msg = error.code === "42501"
+            ? "Sem permissão (execute Seção 113 no Supabase SQL Editor)"
+            : error.message;
+          erros++;
+        } else ok++;
+      }
+    } catch (e) {
+      alert("Erro inesperado ao importar: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setFazendasImpRows([...fazendasImpRows]);
+      setResultFazendasImp({ ok, erros, duplicados });
+      setLoadingFazendasImp(false);
     }
-    setFazendasImpRows([...fazendasImpRows]);
-    setResultFazendasImp({ ok, erros, duplicados });
-    setLoadingFazendasImp(false);
   }
 
   // ─── Talhões ──────────────────────────────────────────────
