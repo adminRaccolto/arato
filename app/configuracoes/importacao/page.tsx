@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
@@ -929,7 +929,7 @@ function RefCategorias() {
 }
 
 // ─── Página principal ─────────────────────────────────────────
-export default function ImportacaoPage() {
+function ImportacaoInner() {
   const { fazendaId, contaId, userRole } = useAuth();
   const searchParams = useSearchParams();
   const [aba, setAba] = useState<Aba>((searchParams.get("aba") as Aba) ?? "pessoas");
@@ -2310,4 +2310,8 @@ export default function ImportacaoPage() {
     </div>
     </>
   );
+}
+
+export default function ImportacaoPage() {
+  return <Suspense><ImportacaoInner /></Suspense>;
 }
