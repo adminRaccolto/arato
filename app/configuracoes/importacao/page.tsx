@@ -75,7 +75,8 @@ type ProdutorImpRow = {
   nome: string; tipo: string; cpf_cnpj: string; inscricao_est: string;
   email: string; telefone: string; cep: string; logradouro: string;
   municipio: string; estado: string;
-  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+  _status?: "ok" | "erro" | "duplicado" | "ie_merge"; _msg?: string;
+  _merge_into_id?: string; // produtor_id no banco para mesclagem de IE
 };
 type FazendaImpRow = {
   nome: string; municipio: string; estado: string; area_total_ha: string;
@@ -877,14 +878,14 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
 }
 
 // ─── Resultado resumo ─────────────────────────────────────────
-function Resultado({ ok, erros, duplicados, total }: { ok: number; erros: number; duplicados: number; total: number }) {
+function Resultado({ ok, erros, duplicados, total, labelDuplicados = "Duplicadas" }: { ok: number; erros: number; duplicados: number; total: number; labelDuplicados?: string }) {
   return (
     <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
       {[
-        { label: "Total lidas", valor: total,      cor: "#1A4870", bg: "#D5E8F5" },
-        { label: "Importadas",  valor: ok,          cor: "#16A34A", bg: "#DCFCE7" },
-        { label: "Duplicadas",  valor: duplicados,  cor: "#C9921B", bg: "#FBF3E0" },
-        { label: "Com erro",    valor: erros,       cor: "#E24B4A", bg: "#FFF0F0" },
+        { label: "Total lidas",      valor: total,      cor: "#1A4870", bg: "#D5E8F5" },
+        { label: "Importadas",       valor: ok,          cor: "#16A34A", bg: "#DCFCE7" },
+        { label: labelDuplicados,    valor: duplicados,  cor: "#C9921B", bg: "#FBF3E0" },
+        { label: "Com erro",         valor: erros,       cor: "#E24B4A", bg: "#FFF0F0" },
       ].map(({ label, valor, cor, bg }) => (
         <div key={label} style={{ padding: "10px 20px", borderRadius: 8, background: bg, border: `0.5px solid ${cor}40` }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: cor }}>{valor}</div>
@@ -1785,19 +1786,29 @@ export default function ImportacaoPage() {
   async function handleFileProdutoresImp(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarProdutorImp(r));
-    const cpfs = rows.map(r => r.cpf_cnpj?.replace(/\D/g, "")).filter(Boolean);
+    // Primeira ocorrência de cada CPF no arquivo
+    const cpfFirstIndex: Record<string, number> = {};
     rows.forEach((r, i) => {
       if (r._status === "ok" && r.cpf_cnpj) {
         const c = r.cpf_cnpj.replace(/\D/g, "");
-        if (c && cpfs.indexOf(c) !== i) { r._status = "duplicado"; r._msg = "CPF/CNPJ duplicado no arquivo"; }
+        if (c) {
+          if (cpfFirstIndex[c] === undefined) cpfFirstIndex[c] = i;
+          else { r._status = "ie_merge"; r._msg = `→ IE mesclada ao produtor da linha ${cpfFirstIndex[c] + 1}`; }
+        }
       }
     });
     if (fazendaId) {
-      const { data: exist } = await supabase.from("produtores").select("cpf_cnpj").eq("fazenda_id", fazendaId);
-      const existSet = new Set((exist ?? []).map((p: { cpf_cnpj: string | null }) => (p.cpf_cnpj ?? "").replace(/\D/g, "")));
+      const { data: exist } = await supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+      const existMap: Record<string, string> = {};
+      (exist ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
+        if (p.cpf_cnpj) existMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+      });
       rows.forEach(r => {
-        if (r._status === "ok" && r.cpf_cnpj && existSet.has(r.cpf_cnpj.replace(/\D/g, "")))
-          { r._status = "duplicado"; r._msg = "produtor já cadastrado"; }
+        if (r._status === "ok" && r.cpf_cnpj && existMap[r.cpf_cnpj.replace(/\D/g, "")]) {
+          r._status = "ie_merge";
+          r._merge_into_id = existMap[r.cpf_cnpj.replace(/\D/g, "")];
+          r._msg = r.inscricao_est?.trim() ? "→ IE adicionada ao produtor existente" : "→ produtor já cadastrado (sem IE nova)";
+        }
       });
     }
     setProdutoresImpRows(rows); setResultProdutoresImp(null);
@@ -1806,11 +1817,35 @@ export default function ImportacaoPage() {
   async function importarProdutoresImp() {
     if (!fazendaId || !produtoresImpRows.length) return;
     setLoadingProdutoresImp(true);
-    let ok = 0, erros = 0, duplicados = 0;
+    let ok = 0, erros = 0, mesclados = 0;
+    // Mapa cpf → produtor_id recém-criado (para IEs de duplicatas internas do arquivo)
+    const criados: Record<string, string> = {};
+
     for (const r of produtoresImpRows) {
-      if (r._status === "duplicado") { duplicados++; continue; }
-      if (r._status === "erro")      { erros++;      continue; }
-      const { error } = await supabase.from("produtores").insert({
+      if (r._status === "erro") { erros++; continue; }
+
+      if (r._status === "ie_merge") {
+        // Resolve o produtor_id: banco (merge_into_id) ou recém-criado na mesma importação
+        let prodId = r._merge_into_id;
+        if (!prodId && r.cpf_cnpj) prodId = criados[r.cpf_cnpj.replace(/\D/g, "")];
+        if (prodId && r.inscricao_est?.trim()) {
+          await supabase.from("produtor_inscricoes_estaduais").insert({
+            produtor_id:       prodId,
+            inscricao_estadual: r.inscricao_est.trim(),
+            municipio:         r.municipio?.trim() || null,
+            estado:            r.estado?.trim() || "MT",
+            ativa:             true,
+          });
+          r._msg = "→ IE adicionada ✓";
+        } else if (!r.inscricao_est?.trim()) {
+          r._msg = "→ sem IE para mesclar";
+        }
+        mesclados++;
+        continue;
+      }
+
+      // Status "ok" → inserir produtor
+      const { data: novo, error } = await supabase.from("produtores").insert({
         fazenda_id:    fazendaId,
         conta_id:      contaId,
         nome:          r.nome.trim(),
@@ -1823,12 +1858,23 @@ export default function ImportacaoPage() {
         logradouro:    r.logradouro?.trim() || null,
         municipio:     r.municipio?.trim() || null,
         estado:        r.estado?.trim() || null,
-      });
-      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-      else ok++;
+      }).select("id").single();
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
+      ok++;
+      if (novo?.id && r.cpf_cnpj) criados[r.cpf_cnpj.replace(/\D/g, "")] = novo.id;
+      // Registra também a IE principal na tabela auxiliar
+      if (novo?.id && r.inscricao_est?.trim()) {
+        await supabase.from("produtor_inscricoes_estaduais").insert({
+          produtor_id:       novo.id,
+          inscricao_estadual: r.inscricao_est.trim(),
+          municipio:         r.municipio?.trim() || null,
+          estado:            r.estado?.trim() || "MT",
+          ativa:             true,
+        });
+      }
     }
     setProdutoresImpRows([...produtoresImpRows]);
-    setResultProdutoresImp({ ok, erros, duplicados });
+    setResultProdutoresImp({ ok, erros, duplicados: mesclados });
     setLoadingProdutoresImp(false);
   }
 
@@ -2230,6 +2276,7 @@ export default function ImportacaoPage() {
                 erros={cfg.result.erros}
                 duplicados={cfg.result.duplicados}
                 total={cfg.result.ok + cfg.result.erros + cfg.result.duplicados}
+                labelDuplicados={aba === "produtores_imp" ? "IEs mescladas" : "Duplicadas"}
               />
             )}
 

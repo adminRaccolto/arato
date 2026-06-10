@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -673,6 +673,33 @@ export async function listarProdutoresDaConta(conta_id: string): Promise<Produto
   const { data, error } = await supabase.from("produtores").select("*").eq("conta_id", conta_id).order("nome");
   if (error) throw error;
   return data ?? [];
+}
+
+// ————————————————————————————————————————
+// INSCRIÇÕES ESTADUAIS DO PRODUTOR
+// ————————————————————————————————————————
+
+export async function listarIEsDoProdutor(produtor_id: string): Promise<ProdutorIE[]> {
+  const { data } = await supabase
+    .from("produtor_inscricoes_estaduais")
+    .select("*")
+    .eq("produtor_id", produtor_id)
+    .order("estado");
+  return data ?? [];
+}
+
+export async function salvarIEsDoProdutor(produtor_id: string, ies: Omit<ProdutorIE, "id" | "created_at">[]): Promise<void> {
+  await supabase.from("produtor_inscricoes_estaduais").delete().eq("produtor_id", produtor_id);
+  if (ies.length > 0) {
+    await supabase.from("produtor_inscricoes_estaduais").insert(
+      ies.map(ie => ({ ...ie, produtor_id }))
+    );
+  }
+}
+
+export async function adicionarIEAoProdutor(ie: Omit<ProdutorIE, "id" | "created_at">): Promise<void> {
+  const { error } = await supabase.from("produtor_inscricoes_estaduais").insert(ie);
+  if (error) throw error;
 }
 
 // ————————————————————————————————————————

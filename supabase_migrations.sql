@@ -5055,3 +5055,77 @@ CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─────────────────────────────────────────────────────────────
+-- Seção 111: Inscrições Estaduais do Produtor
+-- Um produtor (PF/PJ) pode ter múltiplas IEs em municípios/UFs
+-- diferentes. Cada IE corresponde a um imóvel rural específico.
+-- Impacto: NF-e usa a IE da fazenda de origem; LCDPR consolida
+-- por CPF (não por IE); SPED ECD por entidade contábil.
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS produtor_inscricoes_estaduais (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  produtor_id          UUID NOT NULL REFERENCES produtores(id) ON DELETE CASCADE,
+  fazenda_id           UUID REFERENCES fazendas(id) ON DELETE SET NULL,
+  inscricao_estadual   TEXT NOT NULL,
+  municipio            TEXT,
+  estado               TEXT NOT NULL DEFAULT 'MT',
+  ativa                BOOLEAN NOT NULL DEFAULT true,
+  created_at           TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_prod_ies_produtor ON produtor_inscricoes_estaduais(produtor_id);
+CREATE INDEX IF NOT EXISTS idx_prod_ies_fazenda  ON produtor_inscricoes_estaduais(fazenda_id);
+
+ALTER TABLE produtor_inscricoes_estaduais ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "prod_ies_select" ON produtor_inscricoes_estaduais FOR SELECT
+  USING (
+    produtor_id IN (
+      SELECT p.id FROM produtores p
+      JOIN fazendas f ON f.id = p.fazenda_id
+      WHERE f.conta_id IN (
+        SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+      )
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "prod_ies_insert" ON produtor_inscricoes_estaduais FOR INSERT
+  WITH CHECK (
+    produtor_id IN (
+      SELECT p.id FROM produtores p
+      JOIN fazendas f ON f.id = p.fazenda_id
+      WHERE f.conta_id IN (
+        SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+      )
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "prod_ies_update" ON produtor_inscricoes_estaduais FOR UPDATE
+  USING (
+    produtor_id IN (
+      SELECT p.id FROM produtores p
+      JOIN fazendas f ON f.id = p.fazenda_id
+      WHERE f.conta_id IN (
+        SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+      )
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "prod_ies_delete" ON produtor_inscricoes_estaduais FOR DELETE
+  USING (
+    produtor_id IN (
+      SELECT p.id FROM produtores p
+      JOIN fazendas f ON f.id = p.fazenda_id
+      WHERE f.conta_id IN (
+        SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL
+      )
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';

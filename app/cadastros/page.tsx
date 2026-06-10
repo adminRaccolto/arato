@@ -35,6 +35,7 @@ import {
   listarPlanoContas,
   listarPrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
+  listarIEsDoProdutor, salvarIEsDoProdutor,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -43,7 +44,7 @@ import { seedOperacoesGerenciais, seedCfopsFiscais } from "../../lib/seedOperaco
 import InputMonetario from "../../components/InputMonetario";
 import type {
   Fazenda as FazendaDB, Talhao,
-  Produtor, Empresa, MatriculaImovel, Pessoa,
+  Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
   AnoSafra, Ciclo, CicloTalhao, Maquina, BombaCombustivel,
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
@@ -221,6 +222,9 @@ function CadastrosInner() {
   const [editProd, setEditProd]       = useState<Produtor | null>(null);
   const [fProd, setFProd]             = useState({ nome: "", tipo: "pf" as "pf"|"pj", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT" });
   const [buscandoCep, setBuscandoCep] = useState(false);
+  const [tabProd, setTabProd]         = useState<"dados"|"ies">("dados");
+  const [prodIEs, setProdIEs]         = useState<ProdutorIE[]>([]);
+  const [newIE, setNewIE]             = useState({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
 
   // ── Fazendas ──
   const [fazendas, setFazendas]       = useState<FazendaDB[]>([]);
@@ -668,7 +672,7 @@ function CadastrosInner() {
   }
 
   // ─────────────── PRODUTORES ───────────────
-  const abrirModalProd = (p?: Produtor) => {
+  const abrirModalProd = async (p?: Produtor) => {
     setEditProd(p ?? null);
     setFProd(p ? {
       nome: p.nome, tipo: p.tipo, incra: p.incra ?? "", cpf_cnpj: p.cpf_cnpj ?? "",
@@ -680,6 +684,9 @@ function CadastrosInner() {
       nome: "", tipo: "pf", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "",
       cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT",
     });
+    setTabProd("dados");
+    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
+    setProdIEs(p ? await listarIEsDoProdutor(p.id) : []);
     setModalProd(true);
   };
 
@@ -730,8 +737,24 @@ function CadastrosInner() {
       municipio: fProd.municipio || undefined,
       estado: fProd.estado || undefined,
     };
-    if (editProd) { await atualizarProdutor(editProd.id, pp); setProdutores(p => p.map(x => x.id === editProd.id ? { ...x, ...pp } : x)); }
-    else { const n = await criarProdutor(pp); setProdutores(p => [...p, n]); }
+    let prodId: string;
+    if (editProd) {
+      await atualizarProdutor(editProd.id, pp);
+      setProdutores(p => p.map(x => x.id === editProd.id ? { ...x, ...pp } : x));
+      prodId = editProd.id;
+    } else {
+      const n = await criarProdutor(pp);
+      setProdutores(p => [...p, n]);
+      prodId = n.id;
+    }
+    await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
+      produtor_id: prodId,
+      fazenda_id: ie.fazenda_id ?? null,
+      inscricao_estadual: ie.inscricao_estadual,
+      municipio: ie.municipio ?? null,
+      estado: ie.estado,
+      ativa: ie.ativa,
+    })));
     setModalProd(false);
   });
 
@@ -4820,60 +4843,148 @@ function CadastrosInner() {
 
       {/* Modal Produtor */}
       {modalProd && (
-        <Modal titulo={editProd ? "Editar Produtor" : "Novo Produtor"} onClose={() => setModalProd(false)} width={920}>
-          {/* Identificação */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Identificação</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
-            <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome completo / Razão Social *</label><input style={inp} value={fProd.nome} onChange={e => setFProd(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div>
-              <label style={lbl}>Tipo *</label>
-              <select style={inp} value={fProd.tipo} onChange={e => setFProd(p => ({ ...p, tipo: e.target.value as "pf"|"pj", cpf_cnpj: "" }))}>
-                <option value="pf">Pessoa Física (CPF)</option>
-                <option value="pj">Pessoa Jurídica (CNPJ)</option>
-              </select>
-            </div>
-            <div><label style={lbl}>{fProd.tipo === "pf" ? "CPF" : "CNPJ"}</label><input style={inp} value={fProd.cpf_cnpj} onChange={e => setFProd(p => ({ ...p, cpf_cnpj: maskCpfCnpj(e.target.value, p.tipo) }))} placeholder={fProd.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"} /></div>
-            <div><label style={lbl}>Inscrição Estadual</label><input style={inp} value={fProd.inscricao_est} onChange={e => setFProd(p => ({ ...p, inscricao_est: e.target.value }))} /></div>
-            <div><label style={lbl}>INCRA</label><input style={inp} value={fProd.incra} onChange={e => setFProd(p => ({ ...p, incra: e.target.value }))} placeholder="Nº certificado INCRA" /></div>
-            <div><label style={lbl}>E-mail</label><input style={inp} type="email" value={fProd.email} onChange={e => setFProd(p => ({ ...p, email: e.target.value }))} /></div>
-            <div><label style={lbl}>Telefone</label><input style={inp} value={fProd.telefone} onChange={e => setFProd(p => ({ ...p, telefone: e.target.value }))} /></div>
+        <Modal titulo={editProd ? "Editar Produtor" : "Novo Produtor"} onClose={() => setModalProd(false)} width={960}>
+          {/* Abas */}
+          <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #DDE2EE", marginBottom: 20 }}>
+            {([["dados","Dados Cadastrais"],["ies",`Inscrições Estaduais${prodIEs.length > 0 ? ` (${prodIEs.length})` : ""}`]] as [string,string][]).map(([k,l]) => (
+              <button key={k} onClick={() => setTabProd(k as "dados"|"ies")} style={{ padding: "8px 18px", fontSize: 13, fontWeight: tabProd === k ? 600 : 400, color: tabProd === k ? "#1A4870" : "#666", background: "none", border: "none", borderBottom: tabProd === k ? "2px solid #1A4870" : "2px solid transparent", cursor: "pointer", marginBottom: -1 }}>{l}</button>
+            ))}
           </div>
 
-          {/* Endereço */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Endereço</div>
-          <div style={{ display: "grid", gridTemplateColumns: "140px 1fr 1fr", gap: 14, marginBottom: 12 }}>
-            {/* CEP — busca automática */}
-            <div>
-              <label style={lbl}>CEP</label>
-              <div style={{ position: "relative" }}>
-                <input style={{ ...inp, paddingRight: 32 }}
-                  value={fProd.cep}
-                  placeholder="00000-000"
-                  maxLength={9}
-                  onChange={e => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                    const masked = v.length > 5 ? `${v.slice(0,5)}-${v.slice(5)}` : v;
-                    setFProd(p => ({ ...p, cep: masked }));
-                    if (v.length === 8) buscarCepProd(v);
-                  }}
-                />
-                {buscandoCep && (
-                  <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#1A4870" }}>⟳</span>
-                )}
+          {tabProd === "dados" && (<>
+            {/* Identificação */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Identificação</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+              <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome completo / Razão Social *</label><input style={inp} value={fProd.nome} onChange={e => setFProd(p => ({ ...p, nome: e.target.value }))} /></div>
+              <div>
+                <label style={lbl}>Tipo *</label>
+                <select style={inp} value={fProd.tipo} onChange={e => setFProd(p => ({ ...p, tipo: e.target.value as "pf"|"pj", cpf_cnpj: "" }))}>
+                  <option value="pf">Pessoa Física (CPF)</option>
+                  <option value="pj">Pessoa Jurídica (CNPJ)</option>
+                </select>
+              </div>
+              <div><label style={lbl}>{fProd.tipo === "pf" ? "CPF" : "CNPJ"}</label><input style={inp} value={fProd.cpf_cnpj} onChange={e => setFProd(p => ({ ...p, cpf_cnpj: maskCpfCnpj(e.target.value, p.tipo) }))} placeholder={fProd.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"} /></div>
+              <div><label style={lbl}>INCRA</label><input style={inp} value={fProd.incra} onChange={e => setFProd(p => ({ ...p, incra: e.target.value }))} placeholder="Nº certificado INCRA" /></div>
+              <div><label style={lbl}>E-mail</label><input style={inp} type="email" value={fProd.email} onChange={e => setFProd(p => ({ ...p, email: e.target.value }))} /></div>
+              <div><label style={lbl}>Telefone</label><input style={inp} value={fProd.telefone} onChange={e => setFProd(p => ({ ...p, telefone: e.target.value }))} /></div>
+            </div>
+
+            {/* Endereço */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Endereço</div>
+            <div style={{ display: "grid", gridTemplateColumns: "140px 1fr 1fr", gap: 14, marginBottom: 12 }}>
+              <div>
+                <label style={lbl}>CEP</label>
+                <div style={{ position: "relative" }}>
+                  <input style={{ ...inp, paddingRight: 32 }} value={fProd.cep} placeholder="00000-000" maxLength={9}
+                    onChange={e => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                      const masked = v.length > 5 ? `${v.slice(0,5)}-${v.slice(5)}` : v;
+                      setFProd(p => ({ ...p, cep: masked }));
+                      if (v.length === 8) buscarCepProd(v);
+                    }}
+                  />
+                  {buscandoCep && <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#1A4870" }}>⟳</span>}
+                </div>
+              </div>
+              <div style={{ gridColumn: "2/-1" }}>
+                <label style={lbl}>Logradouro</label>
+                <input style={inp} value={fProd.logradouro} onChange={e => setFProd(p => ({ ...p, logradouro: e.target.value }))} placeholder="Rua, Avenida, Rodovia…" />
               </div>
             </div>
-            <div style={{ gridColumn: "2/-1" }}>
-              <label style={lbl}>Logradouro</label>
-              <input style={inp} value={fProd.logradouro} onChange={e => setFProd(p => ({ ...p, logradouro: e.target.value }))} placeholder="Rua, Avenida, Rodovia…" />
+            <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 1fr 80px", gap: 14 }}>
+              <div><label style={lbl}>Número</label><input style={inp} value={fProd.numero} onChange={e => setFProd(p => ({ ...p, numero: e.target.value }))} placeholder="S/N" /></div>
+              <div><label style={lbl}>Complemento</label><input style={inp} value={fProd.complemento} onChange={e => setFProd(p => ({ ...p, complemento: e.target.value }))} placeholder="Sala, Bloco…" /></div>
+              <div><label style={lbl}>Bairro</label><input style={inp} value={fProd.bairro} onChange={e => setFProd(p => ({ ...p, bairro: e.target.value }))} /></div>
+              <div><label style={lbl}>Município</label><input style={inp} value={fProd.municipio} onChange={e => setFProd(p => ({ ...p, municipio: e.target.value }))} /></div>
+              <div><label style={lbl}>UF</label><select style={inp} value={fProd.estado} onChange={e => setFProd(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select></div>
             </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 1fr 1fr 80px", gap: 14 }}>
-            <div><label style={lbl}>Número</label><input style={inp} value={fProd.numero} onChange={e => setFProd(p => ({ ...p, numero: e.target.value }))} placeholder="S/N" /></div>
-            <div><label style={lbl}>Complemento</label><input style={inp} value={fProd.complemento} onChange={e => setFProd(p => ({ ...p, complemento: e.target.value }))} placeholder="Sala, Bloco…" /></div>
-            <div><label style={lbl}>Bairro</label><input style={inp} value={fProd.bairro} onChange={e => setFProd(p => ({ ...p, bairro: e.target.value }))} /></div>
-            <div><label style={lbl}>Município</label><input style={inp} value={fProd.municipio} onChange={e => setFProd(p => ({ ...p, municipio: e.target.value }))} /></div>
-            <div><label style={lbl}>UF</label><select style={inp} value={fProd.estado} onChange={e => setFProd(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select></div>
-          </div>
+          </>)}
+
+          {tabProd === "ies" && (<>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 16, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "10px 14px" }}>
+              Cada Inscrição Estadual corresponde a um imóvel rural em um município específico.
+              O sistema usará automaticamente a IE da fazenda de origem ao emitir NF-e.
+            </div>
+
+            {/* Tabela de IEs existentes */}
+            {prodIEs.length > 0 && (
+              <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16, fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "#F4F6FA" }}>
+                    {["Inscrição Estadual","Município","UF","Fazenda vinculada","Ativa",""].map(h => (
+                      <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {prodIEs.map((ie, i) => (
+                    <tr key={ie.id ?? i} style={{ borderBottom: "0.5px solid #EEF1F7" }}>
+                      <td style={{ padding: "7px 10px", fontWeight: 600, color: "#1A4870" }}>{ie.inscricao_estadual}</td>
+                      <td style={{ padding: "7px 10px" }}>{ie.municipio ?? "—"}</td>
+                      <td style={{ padding: "7px 10px" }}>{ie.estado}</td>
+                      <td style={{ padding: "7px 10px", color: "#888" }}>
+                        {ie.fazenda_id ? (fazendas.find(f => f.id === ie.fazenda_id)?.nome ?? ie.fazenda_id) : "—"}
+                      </td>
+                      <td style={{ padding: "7px 10px" }}>
+                        <input type="checkbox" checked={ie.ativa} onChange={e => setProdIEs(p => p.map((x,j) => j===i ? {...x, ativa: e.target.checked} : x))} />
+                      </td>
+                      <td style={{ padding: "7px 10px" }}>
+                        <button onClick={() => setProdIEs(p => p.filter((_,j) => j!==i))} style={{ background: "none", border: "none", color: "#E24B4A", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {prodIEs.length === 0 && (
+              <div style={{ textAlign: "center", color: "#888", fontSize: 13, padding: "20px 0 16px" }}>Nenhuma inscrição estadual cadastrada</div>
+            )}
+
+            {/* Linha para adicionar nova IE */}
+            <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>Adicionar Inscrição Estadual</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 1fr auto", gap: 10, alignItems: "flex-end" }}>
+                <div>
+                  <label style={lbl}>IE *</label>
+                  <input style={inp} value={newIE.inscricao_estadual} onChange={e => setNewIE(p => ({ ...p, inscricao_estadual: e.target.value.replace(/\D/g,"") }))} placeholder="Apenas dígitos" />
+                </div>
+                <div>
+                  <label style={lbl}>Município</label>
+                  <input style={inp} value={newIE.municipio} onChange={e => setNewIE(p => ({ ...p, municipio: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>UF</label>
+                  <select style={inp} value={newIE.estado} onChange={e => setNewIE(p => ({ ...p, estado: e.target.value }))}>
+                    {ESTADOS.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Fazenda vinculada</label>
+                  <select style={inp} value={newIE.fazenda_id} onChange={e => setNewIE(p => ({ ...p, fazenda_id: e.target.value }))}>
+                    <option value="">Nenhuma</option>
+                    {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                  </select>
+                </div>
+                <button
+                  disabled={!newIE.inscricao_estadual.trim()}
+                  onClick={() => {
+                    if (!newIE.inscricao_estadual.trim()) return;
+                    setProdIEs(p => [...p, {
+                      id: crypto.randomUUID(),
+                      produtor_id: editProd?.id ?? "",
+                      fazenda_id: newIE.fazenda_id || null,
+                      inscricao_estadual: newIE.inscricao_estadual.trim(),
+                      municipio: newIE.municipio.trim() || null,
+                      estado: newIE.estado,
+                      ativa: true,
+                    }]);
+                    setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
+                  }}
+                  style={{ ...btnV, padding: "8px 16px", opacity: !newIE.inscricao_estadual.trim() ? 0.5 : 1, whiteSpace: "nowrap" }}
+                >+ Adicionar</button>
+              </div>
+            </div>
+          </>)}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalProd(false)}>Cancelar</button>

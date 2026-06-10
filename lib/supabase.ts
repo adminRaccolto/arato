@@ -530,6 +530,17 @@ export type Produtor = {
   created_at?: string;
 };
 
+export type ProdutorIE = {
+  id: string;
+  produtor_id: string;
+  fazenda_id?: string | null;
+  inscricao_estadual: string;
+  municipio?: string | null;
+  estado: string;
+  ativa: boolean;
+  created_at?: string;
+};
+
 export type MatriculaImovel = {
   id: string;
   fazenda_id: string;
