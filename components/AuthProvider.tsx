@@ -253,7 +253,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setOnboardingAtivo(ativo);
       if (conta?.logo_url) setLogoCliente(conta.logo_url);
       if (ativo) {
-        const completos = await calcularStepsCompletos(fid, cid);
+        const completos = await calcularStepsCompletos(fid);
         setStepsCompletos(completos);
       }
     } catch {

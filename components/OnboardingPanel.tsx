@@ -8,6 +8,7 @@ export default function OnboardingPanel() {
   const router = useRouter();
 
   const pct = Math.round((stepsCompletos / TOTAL_STEPS) * 100);
+  const stepAtual = ONBOARDING_STEPS[stepsCompletos] ?? null; // próximo a fazer
   const todosCompletos = stepsCompletos >= TOTAL_STEPS;
 
   return (
@@ -50,7 +51,6 @@ export default function OnboardingPanel() {
           const completo = i < stepsCompletos;
           const atual    = i === stepsCompletos;
           const futuro   = i > stepsCompletos;
-          const isRaccolto = !!step.apenasRaccolto;
 
           return (
             <div key={step.id} style={{
@@ -59,10 +59,8 @@ export default function OnboardingPanel() {
               gap: 14,
               padding: "14px 16px",
               borderRadius: 8,
-              border: `0.5px solid ${atual ? (isRaccolto ? "#C9921B" : "#1A4870") : "#DDE2EE"}`,
-              background: atual
-                ? (isRaccolto ? "#FBF3E0" : "#D5E8F5")
-                : completo ? "#F4F6FA" : "#fff",
+              border: `0.5px solid ${atual ? "#1A4870" : "#DDE2EE"}`,
+              background: atual ? "#D5E8F5" : completo ? "#F4F6FA" : "#fff",
               opacity: futuro ? 0.45 : 1,
             }}>
               {/* Ícone */}
@@ -70,11 +68,7 @@ export default function OnboardingPanel() {
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
-                background: completo
-                  ? "#1A4870"
-                  : atual
-                    ? (isRaccolto ? "#C9921B" : "#1A5CB8")
-                    : "#DDE2EE",
+                background: completo ? "#1A4870" : atual ? "#1A5CB8" : "#DDE2EE",
                 color: completo || atual ? "#fff" : "#888",
                 display: "flex",
                 alignItems: "center",
@@ -84,7 +78,7 @@ export default function OnboardingPanel() {
                 flexShrink: 0,
                 marginTop: 1,
               }}>
-                {completo ? "✓" : isRaccolto && atual ? "⚑" : step.id}
+                {completo ? "✓" : step.id}
               </div>
 
               {/* Texto */}
@@ -92,80 +86,53 @@ export default function OnboardingPanel() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{step.titulo}</div>
                 <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{step.subtitulo}</div>
 
-                {/* Step atual expandido */}
+                {/* Instruções expandidas só no step atual */}
                 {atual && (
                   <div style={{ marginTop: 10 }}>
-                    {isRaccolto ? (
-                      /* Step Raccolto — sem botões de ação para o cliente */
-                      <div style={{
-                        marginTop: 8,
-                        padding: "10px 14px",
-                        background: "#FBF3E0",
-                        border: "0.5px solid #C9921B40",
-                        borderRadius: 8,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}>
-                        <span style={{ fontSize: 18 }}>⏳</span>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5200" }}>
-                            Aguardando liberação pela equipe Raccolto
-                          </div>
-                          <div style={{ fontSize: 11, color: "#A06820", marginTop: 2 }}>
-                            Em breve seu consultor irá liberar o acesso. Qualquer dúvida, entre em contato.
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Steps normais */
-                      <>
-                        <div style={{ fontSize: 12, color: "#0B2D50", fontWeight: 600, marginBottom: 6 }}>
-                          Como fazer:
-                        </div>
-                        <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
-                          {step.instrucoes.map((inst, j) => (
-                            <li key={j} style={{ fontSize: 12, color: "#333", lineHeight: 1.5 }}>{inst}</li>
-                          ))}
-                        </ol>
-                        <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-                          <button
-                            onClick={() => router.push(step.path)}
-                            style={{
-                              background: "#1A4870",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 6,
-                              padding: "7px 16px",
-                              fontSize: 13,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {step.pathLabel}
-                          </button>
-                          <button
-                            onClick={refetchOnboarding}
-                            style={{
-                              background: "transparent",
-                              color: "#1A4870",
-                              border: "0.5px solid #1A4870",
-                              borderRadius: 6,
-                              padding: "7px 14px",
-                              fontSize: 13,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Já fiz isso ↺
-                          </button>
-                        </div>
-                      </>
-                    )}
+                    <div style={{ fontSize: 12, color: "#0B2D50", fontWeight: 600, marginBottom: 6 }}>
+                      Como fazer:
+                    </div>
+                    <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {step.instrucoes.map((inst, j) => (
+                        <li key={j} style={{ fontSize: 12, color: "#333", lineHeight: 1.5 }}>{inst}</li>
+                      ))}
+                    </ol>
+                    <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+                      <button
+                        onClick={() => router.push(step.path)}
+                        style={{
+                          background: "#1A4870",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "7px 16px",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {step.pathLabel}
+                      </button>
+                      <button
+                        onClick={refetchOnboarding}
+                        style={{
+                          background: "transparent",
+                          color: "#1A4870",
+                          border: "0.5px solid #1A4870",
+                          borderRadius: 6,
+                          padding: "7px 14px",
+                          fontSize: 13,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Já fiz isso ↺
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Badge direita */}
+              {/* Badge */}
               {completo && (
                 <div style={{
                   fontSize: 11,
@@ -177,20 +144,6 @@ export default function OnboardingPanel() {
                   flexShrink: 0,
                 }}>
                   Concluído
-                </div>
-              )}
-              {atual && isRaccolto && (
-                <div style={{
-                  fontSize: 11,
-                  background: "#FBF3E0",
-                  color: "#7A5200",
-                  borderRadius: 99,
-                  padding: "2px 10px",
-                  fontWeight: 600,
-                  flexShrink: 0,
-                  border: "0.5px solid #C9921B60",
-                }}>
-                  Pendente Raccolto
                 </div>
               )}
               {futuro && (

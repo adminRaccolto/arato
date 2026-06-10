@@ -4,40 +4,16 @@ export type OnboardingStep = {
   id: number;
   titulo: string;
   subtitulo: string;
-  instrucoes: string[];
-  path: string;
+  instrucoes: string[];   // lista de tópicos explicativos
+  path: string;           // onde ir para completar
   pathLabel: string;
-  minStep: number;
-  /** Se true, só a equipe Raccolto pode marcar como concluído — sem botões para o cliente */
-  apenasRaccolto?: boolean;
-  check: (fazendaId: string, contaId: string) => Promise<boolean>;
+  minStep: number;        // itens do menu com minStep <= stepsCompletos ficam visíveis
+  check: (fazendaId: string) => Promise<boolean>;
 };
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 1,
-    titulo: "Liberação pela equipe Raccolto",
-    subtitulo: "A equipe Raccolto verifica seus dados e libera o acesso completo ao sistema",
-    instrucoes: [
-      "Este passo é realizado pela equipe Raccolto — você não precisa fazer nada.",
-      "Após a confirmação do seu cadastro, a equipe liberará sua conta e você poderá prosseguir com a configuração.",
-      "Qualquer dúvida, entre em contato com seu consultor.",
-    ],
-    path: "",
-    pathLabel: "",
-    minStep: 1,
-    apenasRaccolto: true,
-    check: async (_fazendaId, contaId) => {
-      const { data } = await supabase
-        .from("contas")
-        .select("liberado_raccolto")
-        .eq("id", contaId)
-        .maybeSingle();
-      return !!(data as { liberado_raccolto?: boolean } | null)?.liberado_raccolto;
-    },
-  },
-  {
-    id: 2,
     titulo: "Cadastrar Talhões",
     subtitulo: "Divida sua fazenda em talhões — a unidade básica de plantio",
     instrucoes: [
@@ -49,7 +25,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     ],
     path: "/cadastros?tab=fazendas",
     pathLabel: "Ir para Fazendas & Talhões",
-    minStep: 2,
+    minStep: 1,
     check: async (fazendaId) => {
       const { count } = await supabase
         .from("talhoes")
@@ -59,7 +35,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     },
   },
   {
-    id: 3,
+    id: 2,
     titulo: "Cadastrar Funcionários",
     subtitulo: "Registre quem executa as operações na propriedade",
     instrucoes: [
@@ -70,7 +46,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     ],
     path: "/cadastros?tab=funcionarios",
     pathLabel: "Ir para Funcionários",
-    minStep: 3,
+    minStep: 2,
     check: async (fazendaId) => {
       const { count } = await supabase
         .from("funcionarios")
@@ -80,7 +56,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     },
   },
   {
-    id: 4,
+    id: 3,
     titulo: "Cadastrar Safra e Ciclo",
     subtitulo: "Defina o período agrícola e a cultura que será plantada",
     instrucoes: [
@@ -92,7 +68,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     ],
     path: "/cadastros?tab=safras",
     pathLabel: "Ir para Safras & Ciclos",
-    minStep: 4,
+    minStep: 3,
     check: async (fazendaId) => {
       const { count } = await supabase
         .from("ciclos")
@@ -102,7 +78,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     },
   },
   {
-    id: 5,
+    id: 4,
     titulo: "Cadastrar Pessoas",
     subtitulo: "Registre fornecedores, prestadores e parceiros da fazenda",
     instrucoes: [
@@ -114,7 +90,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     ],
     path: "/cadastros?tab=pessoas",
     pathLabel: "Ir para Pessoas",
-    minStep: 5,
+    minStep: 4,
     check: async (fazendaId) => {
       const { count } = await supabase
         .from("pessoas")
@@ -124,19 +100,19 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     },
   },
   {
-    id: 6,
+    id: 5,
     titulo: "Cadastrar Insumos",
     subtitulo: "Monte o catálogo de produtos que você usa na fazenda",
     instrucoes: [
       "Acesse Cadastros → Insumos.",
       "Cadastre sementes, fertilizantes, defensivos agrícolas e outros insumos.",
       "Informe nome, categoria, unidade de medida e custo médio por unidade.",
-      "Insumos são usados nos pedidos de compra, operações de lavoura e controle de estoque.",
+      "Insumos são usados nos pedidos de compra, operações de lavoura (plantio, adubação, pulverização) e controle de estoque.",
       "Você pode importar insumos via NF de Entrada mais tarde — os produtos serão adicionados automaticamente.",
     ],
     path: "/cadastros?tab=insumos",
     pathLabel: "Ir para Insumos",
-    minStep: 6,
+    minStep: 5,
     check: async (fazendaId) => {
       const { count } = await supabase
         .from("insumos")
@@ -146,7 +122,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     },
   },
   {
-    id: 7,
+    id: 6,
     titulo: "Cadastrar Conta Bancária",
     subtitulo: "Vincule a conta bancária da fazenda para controlar o fluxo de caixa",
     instrucoes: [
@@ -157,7 +133,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     ],
     path: "/cadastros?tab=contas_bancarias",
     pathLabel: "Ir para Contas Bancárias",
-    minStep: 7,
+    minStep: 6,
     check: async (fazendaId) => {
       const { count } = await supabase
         .from("contas_bancarias")
@@ -167,7 +143,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     },
   },
   {
-    id: 8,
+    id: 7,
     titulo: "Configurar Parâmetros Fiscais",
     subtitulo: "Prepare o sistema para emissão de NF-e e documentos fiscais",
     instrucoes: [
@@ -180,7 +156,7 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     ],
     path: "/configuracoes/modulos",
     pathLabel: "Ir para Parâmetros Fiscais",
-    minStep: 8,
+    minStep: 7,
     check: async (fazendaId) => {
       const { data } = await supabase
         .from("configuracoes_modulo")
@@ -195,12 +171,12 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
 
 export const TOTAL_STEPS = ONBOARDING_STEPS.length;
 
-export async function calcularStepsCompletos(fazendaId: string, contaId: string): Promise<number> {
+export async function calcularStepsCompletos(fazendaId: string): Promise<number> {
   let completos = 0;
   for (const step of ONBOARDING_STEPS) {
-    const done = await step.check(fazendaId, contaId);
+    const done = await step.check(fazendaId);
     if (done) completos++;
-    else break;
+    else break; // passos são sequenciais — para no primeiro incompleto
   }
   return completos;
 }
