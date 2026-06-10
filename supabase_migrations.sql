@@ -5004,3 +5004,11 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE fazendas ALTER COLUMN raccolto_acesso SET DEFAULT true;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- Seção 109: Backfill raccolto_acesso — habilita em todas as fazendas existentes
+-- Clientes já cadastrados passam a ter acesso Raccolto ativo sem precisar configurar.
+
+UPDATE fazendas SET raccolto_acesso = true WHERE raccolto_acesso IS NULL OR raccolto_acesso = false;
+
+NOTIFY pgrst, 'reload schema';
