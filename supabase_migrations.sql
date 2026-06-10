@@ -5250,3 +5250,46 @@ CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 114: Backfill owner_user_id + conta_id em fazendas existentes
+-- Problema: fazendas criadas via API admin ou SQL direto podem ter
+--   owner_user_id=null e/ou conta_id=null, bloqueando o UPDATE via RLS.
+-- Fix: sincroniza owner_user_id e conta_id via perfis.
+-- =============================================================================
+
+-- 1. Preenche owner_user_id nas fazendas que têm conta_id mas não têm owner
+UPDATE fazendas f
+SET    owner_user_id = p.user_id
+FROM   perfis p
+WHERE  f.conta_id IS NOT NULL
+  AND  f.conta_id = p.conta_id
+  AND  p.user_id  IS NOT NULL
+  AND  (f.owner_user_id IS NULL);
+
+-- 2. Preenche conta_id nas fazendas que têm owner_user_id mas não têm conta
+UPDATE fazendas f
+SET    conta_id = p.conta_id
+FROM   perfis p
+WHERE  f.owner_user_id = p.user_id
+  AND  f.conta_id IS NULL
+  AND  p.conta_id IS NOT NULL;
+
+-- 3. Recria política UPDATE para ser mais permissiva com owner_user_id
+DO $$ DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' AND policyname LIKE '%update%' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+    OR conta_id IS NULL
+  )
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+NOTIFY pgrst, 'reload schema';

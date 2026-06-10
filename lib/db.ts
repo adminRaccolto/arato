@@ -96,14 +96,14 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
   if (id) {
     q = q.eq("id", id);
   } else {
-    // Isolamento por tenant: retorna todas as fazendas da conta do usuário atual
+    // Retorna fazendas da conta OU do owner — usa OR para cobrir ambos os padrões de tenant
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     const { data: perfil } = await supabase.from("perfis").select("conta_id").eq("user_id", user.id).maybeSingle();
     if (perfil?.conta_id) {
-      q = q.eq("conta_id", perfil.conta_id);
+      // Inclui fazendas da conta E fazendas cujo owner é o próprio usuário (migração parcial)
+      q = q.or(`conta_id.eq.${perfil.conta_id},owner_user_id.eq.${user.id}`);
     } else {
-      // Fallback para owner_user_id (contas ainda não migradas)
       q = q.eq("owner_user_id", user.id);
     }
   }
@@ -115,12 +115,16 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
 export async function criarFazenda(f: Omit<Fazenda, "id" | "created_at">): Promise<Fazenda> {
   const { data, error } = await supabase.from("fazendas").insert(f).select().single();
   if (error) throw error;
+  if (!data) throw new Error("Fazenda não foi criada — verifique as permissões (RLS) no Supabase.");
   return data;
 }
 
 export async function atualizarFazenda(id: string, f: Partial<Fazenda>): Promise<void> {
-  const { error } = await supabase.from("fazendas").update(f).eq("id", id);
+  const { data, error } = await supabase.from("fazendas").update(f).eq("id", id).select();
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Fazenda não foi salva — sem permissão para editar este registro (RLS). Execute a Seção 113 no Supabase SQL Editor.");
+  }
 }
 
 export async function excluirFazenda(id: string): Promise<void> {
