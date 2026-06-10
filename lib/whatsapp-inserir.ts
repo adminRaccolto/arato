@@ -774,7 +774,22 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   };
   if (jaPago) { cpPayload.data_baixa = hoje; cpPayload.valor_pago = valor; }
 
-  const { data: lancRow, error: errCp } = await sb().from("lancamentos").insert(cpPayload).select("id").maybeSingle();
+  const cpPayloadBase: Record<string, unknown> = {
+    fazenda_id:      fazendaId, tipo: "pagar",
+    descricao:       cpPayload.descricao,
+    categoria:       "combustivel",
+    data_lancamento: hoje, data_vencimento: vencimento,
+    valor, moeda:    "BRL",
+    status:          jaPago ? "baixado" : "em_aberto",
+    ano_safra_id:    cicloAb?.ano_safra_id ?? null,
+    observacao:      "Inserido via Arato-IA",
+  };
+
+  let { data: lancRow, error: errCp } = await sb().from("lancamentos").insert(cpPayload).select("id").maybeSingle();
+  if (errCp?.code === "42703") {
+    console.warn("[BOT] Colunas ausentes em lancamentos (abastecimento) — usando payload base.");
+    ({ data: lancRow, error: errCp } = await sb().from("lancamentos").insert(cpPayloadBase).select("id").maybeSingle() as { data: typeof lancRow; error: typeof errCp });
+  }
   if (errCp) {
     console.error("[BOT] Erro insert lancamentos abastecimento:", JSON.stringify(errCp));
     return { ok: false, mensagem: `❌ Erro DB lancamentos: [${errCp.code}] ${errCp.message}` };
@@ -947,12 +962,14 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
     if (!insumo && dados.produto) {
       // Insumo não encontrado — cria pendência para resolver depois
-      await criarPendenciaInsumo(fazendaId, "pulverizacao", pulv.id, {
-        tipo_op: "pulverizacao", tipo_produto: tipoProduto,
-        produto: dados.produto, talhao: dados.talhao,
-        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
-        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      try {
+        await criarPendenciaInsumo(fazendaId, "pulverizacao", pulv.id, {
+          tipo_op: "pulverizacao", tipo_produto: tipoProduto,
+          produto: dados.produto, talhao: dados.talhao,
+          talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+          dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+        }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      } catch (e) { console.warn("[BOT-PULV] pendência não salva (tabela ausente?):", e instanceof Error ? e.message : e); }
       return {
         ok: true,
         mensagem: `⚠️ Pulverização registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo e processar custo/estoque._\n_🔍 ${pulv.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -976,14 +993,20 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "pulverizacao", String(dados.produto ?? ""), dataOp, `Pulverização ${tipoProduto} — ${insumo.nome} via WhatsApp`);
       await sb().from("pulverizacoes").update({ custo_total: custoTotal }).eq("id", pulv.id);
       if (custoTotal > 0) {
-        await sb().from("lancamentos").insert({
+        const cpPulv: Record<string, unknown> = {
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Pulverização ${tipoProduto} — ${insumo.nome}`,
           categoria: "Insumos — Defensivos",
           data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: dataOp, valor: custoTotal,
-          safra_id: ciclo?.id ?? null, status: "em_aberto",
-        });
+          data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
+          ciclo_id: ciclo?.id ?? null,
+        };
+        let { error: cpErrP } = await sb().from("lancamentos").insert(cpPulv).select("id").maybeSingle();
+        if (cpErrP?.code === "42703") {
+          delete cpPulv.ciclo_id;
+          ({ error: cpErrP } = await sb().from("lancamentos").insert(cpPulv).select("id").maybeSingle() as { error: typeof cpErrP });
+        }
+        if (cpErrP) console.warn("[BOT-PULV] CP não criado:", cpErrP.message);
       }
     }
 
@@ -1024,11 +1047,13 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     if (!adub)   return { ok: false, mensagem: "❌ Erro ao obter ID da adubação." };
 
     if (!insumo && dados.produto) {
-      await criarPendenciaInsumo(fazendaId, "adubacao", adub.id, {
-        tipo_op: "adubacao", produto: dados.produto, talhao: dados.talhao,
-        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
-        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      try {
+        await criarPendenciaInsumo(fazendaId, "adubacao", adub.id, {
+          tipo_op: "adubacao", produto: dados.produto, talhao: dados.talhao,
+          talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+          dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+        }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      } catch (e) { console.warn("[BOT-ADUB] pendência não salva (tabela ausente?):", e instanceof Error ? e.message : e); }
       return {
         ok: true,
         mensagem: `⚠️ Adubação registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo._\n_🔍 ${adub.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -1045,14 +1070,20 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
       });
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "adubacao", String(dados.produto ?? ""), dataOp, `Adubação de Base — ${insumo.nome} via WhatsApp`);
       if (custoTotal > 0) {
-        await sb().from("lancamentos").insert({
+        const cpAdub: Record<string, unknown> = {
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Adubação de Base — ${insumo.nome}`,
           categoria: "Insumos — Fertilizantes",
           data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: dataOp, valor: custoTotal,
-          safra_id: ciclo?.id ?? null, status: "em_aberto",
-        });
+          data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
+          ciclo_id: ciclo?.id ?? null,
+        };
+        let { error: cpErrA } = await sb().from("lancamentos").insert(cpAdub).select("id").maybeSingle();
+        if (cpErrA?.code === "42703") {
+          delete cpAdub.ciclo_id;
+          ({ error: cpErrA } = await sb().from("lancamentos").insert(cpAdub).select("id").maybeSingle() as { error: typeof cpErrA });
+        }
+        if (cpErrA) console.warn("[BOT-ADUB] CP não criado:", cpErrA.message);
       }
     }
 
@@ -1097,11 +1128,13 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     if (!plantioRow) return { ok: false, mensagem: "❌ Erro ao obter ID do plantio." };
 
     if (!insumo && dados.produto) {
-      await criarPendenciaInsumo(fazendaId, "plantio", plantioRow.id, {
-        tipo_op: "plantio", produto: dados.produto, talhao: dados.talhao,
-        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
-        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      try {
+        await criarPendenciaInsumo(fazendaId, "plantio", plantioRow.id, {
+          tipo_op: "plantio", produto: dados.produto, talhao: dados.talhao,
+          talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+          dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+        }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      } catch (e) { console.warn("[BOT-PLANT] pendência não salva (tabela ausente?):", e instanceof Error ? e.message : e); }
       return {
         ok: true,
         mensagem: `⚠️ Plantio registrado com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular a semente._\n_🔍 ${plantioRow.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -1111,14 +1144,20 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     if (insumo && totalNativo > 0) {
       await deduzirEstoqueInsumo(fazendaId, insumo, totalNativo, "manual", String(dados.produto ?? ""), dataOp, `Plantio — ${insumo.nome} via WhatsApp`);
       if (custoSementes > 0) {
-        const { data: lanc } = await sb().from("lancamentos").insert({
+        const cpPlant: Record<string, unknown> = {
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Plantio — ${insumo.nome}`,
           categoria: "Insumos — Sementes",
           data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: dataOp, valor: custoSementes,
-          safra_id: ciclo?.id ?? null, status: "em_aberto",
-        }).select("id").single();
+          data_vencimento: dataOp, valor: custoSementes, status: "em_aberto",
+          ciclo_id: ciclo?.id ?? null,
+        };
+        let { data: lanc, error: cpErrPl } = await sb().from("lancamentos").insert(cpPlant).select("id").maybeSingle();
+        if (cpErrPl?.code === "42703") {
+          delete cpPlant.ciclo_id;
+          ({ data: lanc, error: cpErrPl } = await sb().from("lancamentos").insert(cpPlant).select("id").maybeSingle() as { data: typeof lanc; error: typeof cpErrPl });
+        }
+        if (cpErrPl) console.warn("[BOT-PLANT] CP não criado:", cpErrPl.message);
         if (lanc?.id) {
           await sb().from("plantios").update({ lancamento_id: lanc.id }).eq("id", plantioRow.id);
         }
@@ -1163,11 +1202,13 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
     if (!corr)   return { ok: false, mensagem: "❌ Erro ao obter ID da correção." };
 
     if (!insumo && dados.produto) {
-      await criarPendenciaInsumo(fazendaId, "correcao_solo", corr.id, {
-        tipo_op: "correcao_solo", produto: dados.produto, talhao: dados.talhao,
-        talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
-        dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
-      }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      try {
+        await criarPendenciaInsumo(fazendaId, "correcao_solo", corr.id, {
+          tipo_op: "correcao_solo", produto: dados.produto, talhao: dados.talhao,
+          talhao_id: talhao?.id ?? null, ciclo_id: ciclo!.id,
+          dose: doseNum, unidade: unidadeUsuario, area_ha: areaHa, data_op: dataOp,
+        }, String(dados.produto), talhao ? null : String(dados.talhao ?? ""), usuarioNome, usuarioWhatsapp);
+      } catch (e) { console.warn("[BOT-CORR] pendência não salva (tabela ausente?):", e instanceof Error ? e.message : e); }
       return {
         ok: true,
         mensagem: `⚠️ Correção de Solo registrada com pendência!\n• Talhão: ${talhao?.nome ?? dados.talhao}\n• Produto *"${dados.produto}"* não encontrado no cadastro.\n_Acesse Pendências → Operacionais para vincular o insumo._\n_🔍 ${corr.id.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
@@ -1191,15 +1232,20 @@ async function inserirOperacaoLavoura(dados: Record<string, unknown>, fazendaId:
 
       // CP
       if (custoTotal > 0) {
-        await sb().from("lancamentos").insert({
+        const cpCorr: Record<string, unknown> = {
           fazenda_id: fazendaId, tipo: "pagar", moeda: "BRL",
           descricao: `Correção de Solo — ${insumo.nome}`,
           categoria: "Insumos — Corretivos",
           data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: dataOp, valor: custoTotal,
-          safra_id: ciclo?.id ?? null,
-          status: "em_aberto",
-        });
+          data_vencimento: dataOp, valor: custoTotal, status: "em_aberto",
+          ciclo_id: ciclo?.id ?? null,
+        };
+        let { error: cpErrC } = await sb().from("lancamentos").insert(cpCorr).select("id").maybeSingle();
+        if (cpErrC?.code === "42703") {
+          delete cpCorr.ciclo_id;
+          ({ error: cpErrC } = await sb().from("lancamentos").insert(cpCorr).select("id").maybeSingle() as { error: typeof cpErrC });
+        }
+        if (cpErrC) console.warn("[BOT-CORR] CP não criado:", cpErrC.message);
       }
     }
 
@@ -1332,7 +1378,8 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
   const conta   = await buscarContaBancaria(fazendaId, String(dados.conta_bancaria ?? ""));
   const cicloLanc = await buscarCicloVigente(fazendaId, hoje);
 
-  const payload: Record<string, unknown> = {
+  // Payload completo (requer Seções 71+72 no DB)
+  const payloadFull: Record<string, unknown> = {
     fazenda_id: fazendaId, tipo,
     descricao: String(dados.descricao ?? ""),
     categoria: String(dados.categoria ?? "outros"),
@@ -1346,9 +1393,28 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
     observacao:    "Inserido via Arato-IA",
     auto: false,
   };
-  if (jaPago) { payload.data_baixa = hoje; payload.valor_pago = valor; }
+  if (jaPago) { payloadFull.data_baixa = hoje; payloadFull.valor_pago = valor; }
 
-  const { data: lancRowCP, error } = await sb().from("lancamentos").insert(payload).select("id").maybeSingle();
+  // Payload mínimo (colunas base que sempre existem)
+  const payloadBase: Record<string, unknown> = {
+    fazenda_id: fazendaId, tipo,
+    descricao: String(dados.descricao ?? ""),
+    categoria: String(dados.categoria ?? "outros"),
+    data_lancamento: hoje,
+    data_vencimento: vencimento, valor, moeda: "BRL",
+    status: jaPago ? "baixado" : "em_aberto",
+    ano_safra_id: cicloLanc?.ano_safra_id ?? null,
+    observacao: "Inserido via Arato-IA",
+  };
+
+  let { data: lancRowCP, error } = await sb().from("lancamentos").insert(payloadFull).select("id").maybeSingle();
+
+  // Fallback: se falhar por coluna inexistente (migrações pendentes), tenta colunas base
+  if (error?.code === "42703") {
+    console.warn("[BOT] Colunas ausentes em lancamentos — tentando payload base. Execute Seções 71+72 do migration.");
+    const fallback = await sb().from("lancamentos").insert(payloadBase).select("id").maybeSingle();
+    ({ data: lancRowCP, error } = fallback as typeof fallback);
+  }
 
   if (error) {
     console.error("[BOT] Erro insert lancamentos:", JSON.stringify(error));
@@ -1357,15 +1423,15 @@ async function inserirLancamento(tipo: "pagar" | "receber", dados: Record<string
 
   // Pendência fiscal para CPs de insumos/combustível (categorias que exigem NF)
   const catsFiscais = ["combustivel", "insumo", "Insumos — Sementes", "Insumos — Fertilizantes", "Insumos — Defensivos", "Insumos — Inoculantes", "Insumos — Corretivos"];
-  const catAtual = String(payload.categoria ?? "");
+  const catAtual = String(payloadFull.categoria ?? "");
   if (tipo === "pagar" && catsFiscais.some(c => catAtual.toLowerCase().includes(c.toLowerCase()))) {
     await sb().from("pendencias_fiscais").insert({
       fazenda_id: fazendaId,
       lancamento_id: lancRowCP?.id ?? null,
       tipo: "lancamento_cp",
       status: "aguardando",
-      descricao: String(payload.descricao),
-      valor: parseValor(String(payload.valor ?? 0)),
+      descricao: String(payloadFull.descricao),
+      valor: parseValor(String(payloadFull.valor ?? 0)),
       data_operacao: hoje,
       fornecedor_nome: nomePessoa || null,
       origem: "whatsapp",

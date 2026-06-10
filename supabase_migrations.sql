@@ -5129,3 +5129,66 @@ CREATE POLICY "prod_ies_delete" ON produtor_inscricoes_estaduais FOR DELETE
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 112: Consolidação das colunas do bot WhatsApp
+-- Execute se o bot retornar ❌ "column X does not exist"
+-- Cobre Seções 71, 72, 76, 77, 80 de uma só vez (idempotente)
+-- ============================================================
+
+-- Colunas extras em lancamentos (rastreio, baixa, vínculo bot)
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS auto           boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS origem         text,
+  ADD COLUMN IF NOT EXISTS conta_bancaria uuid REFERENCES contas_bancarias(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS safra_id       uuid,
+  ADD COLUMN IF NOT EXISTS pessoa_id      uuid REFERENCES pessoas(id)          ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS data_baixa     date,
+  ADD COLUMN IF NOT EXISTS valor_pago     numeric(15,2),
+  ADD COLUMN IF NOT EXISTS ciclo_id       uuid REFERENCES ciclos(id)           ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS nf_entrada_id  uuid REFERENCES nf_entradas(id)      ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_ciclo      ON lancamentos(ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_nf_entrada ON lancamentos(nf_entrada_id);
+
+-- Tabela de pendências operacionais (insumo não encontrado pelo bot)
+CREATE TABLE IF NOT EXISTS pendencias_operacionais (
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id             uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo                   varchar(50) NOT NULL DEFAULT 'operacao_lavoura',
+  subtipo                varchar(50),
+  status                 varchar(20) NOT NULL DEFAULT 'pendente'
+                           CHECK (status IN ('pendente','resolvida','cancelada')),
+  motivo                 varchar(200),
+  descricao              text,
+  dados_originais        jsonb NOT NULL DEFAULT '{}',
+  operacao_id            uuid,
+  produto_nome_pendente  varchar(200),
+  talhao_nome_pendente   varchar(200),
+  origem                 varchar(50) DEFAULT 'whatsapp',
+  usuario_nome           text,
+  usuario_whatsapp       text,
+  criado_em              timestamptz DEFAULT now(),
+  resolvido_em           timestamptz
+);
+
+-- Adiciona colunas caso a tabela já exista sem elas
+ALTER TABLE pendencias_operacionais
+  ADD COLUMN IF NOT EXISTS usuario_nome     text,
+  ADD COLUMN IF NOT EXISTS usuario_whatsapp text;
+
+CREATE INDEX IF NOT EXISTS idx_pendencias_op_fazenda_status
+  ON pendencias_operacionais(fazenda_id, status);
+
+ALTER TABLE pendencias_operacionais ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'pendencias_operacionais' AND policyname = 'pendencias_op_all'
+  ) THEN
+    CREATE POLICY "pendencias_op_all" ON pendencias_operacionais FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
