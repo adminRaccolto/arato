@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import {
   listarFazendas, criarFazenda, atualizarFazenda, excluirFazenda,
@@ -203,6 +203,7 @@ function TH({ cols }: { cols: string[] }) {
 // ══════════════════════════════════════════════════════
 function CadastrosInner() {
   const params = useSearchParams();
+  const router = useRouter();
   const { fazendaId, contaId, userRole } = useAuth();
   const [aba, setAba] = useState<TabCad>((params.get("tab") as TabCad) ?? "produtores");
 
@@ -1598,7 +1599,8 @@ function CadastrosInner() {
           {/* ══ FAZENDAS ══ */}
           {aba === "fazendas" && (
             <div>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 12 }}>
+                <button style={{ padding: "7px 14px", background: "white", border: "0.5px solid #1A4870", borderRadius: 8, color: "#1A4870", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={() => router.push("/configuracoes/importacao?aba=fazendas_imp")}>⬆ Importar em lote</button>
                 <button style={btnV} onClick={() => abrirModalFaz()}>+ Nova Fazenda</button>
               </div>
               {fazendas.length === 0 && <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 32, textAlign: "center", color: "#444" }}>Nenhuma fazenda cadastrada</div>}

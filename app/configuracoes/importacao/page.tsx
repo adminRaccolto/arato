@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -930,7 +931,13 @@ function RefCategorias() {
 // ─── Página principal ─────────────────────────────────────────
 export default function ImportacaoPage() {
   const { fazendaId, contaId, userRole } = useAuth();
-  const [aba, setAba] = useState<Aba>("pessoas");
+  const searchParams = useSearchParams();
+  const [aba, setAba] = useState<Aba>((searchParams.get("aba") as Aba) ?? "pessoas");
+
+  useEffect(() => {
+    const a = searchParams.get("aba") as Aba | null;
+    if (a) setAba(a);
+  }, [searchParams]);
 
   // Estados por aba
   const [pessoasRows,  setPessoasRows]  = useState<PessoaRow[]>([]);
@@ -1901,7 +1908,7 @@ export default function ImportacaoPage() {
   }
 
   async function importarFazendasImp() {
-    if (!contaId || !fazendasImpRows.length) return;
+    if (!fazendasImpRows.length) return;
     setLoadingFazendasImp(true);
     let ok = 0, erros = 0, duplicados = 0;
     const { data: { user } } = await supabase.auth.getUser();
@@ -1912,7 +1919,7 @@ export default function ImportacaoPage() {
       const area = parseFloat(String(r.area_total_ha).replace(",", "."));
       const itrArea = r.itr_area_ha?.trim() ? parseFloat(String(r.itr_area_ha).replace(",", ".")) : null;
       const { error } = await supabase.from("fazendas").insert({
-        conta_id:      contaId,
+        conta_id:      contaId ?? null,
         owner_user_id: ownerUserId,
         nome:          r.nome.trim(),
         municipio:     r.municipio.trim(),
@@ -1944,10 +1951,12 @@ export default function ImportacaoPage() {
     setLoadingTalhoesImp(true);
     let ok = 0, erros = 0, duplicados = 0;
 
-    // Mapa de fazendas da conta pelo nome
+    // Mapa de fazendas da conta pelo nome (usa conta_id se disponível, senão owner_user_id)
     const { data: fazendasDB } = contaId
       ? await supabase.from("fazendas").select("id, nome").eq("conta_id", contaId)
-      : { data: [] };
+      : fazendaId
+        ? await supabase.from("fazendas").select("id, nome").eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+        : { data: [] };
     const fazendaMap: Record<string, string> = {};
     (fazendasDB ?? []).forEach((f: { id: string; nome: string }) => {
       fazendaMap[f.nome.trim().toLowerCase()] = f.id;
