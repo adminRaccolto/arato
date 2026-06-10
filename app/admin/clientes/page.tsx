@@ -250,14 +250,16 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
 export default function ClientesPage() {
   const router = useRouter();
-  const [clientes, setClientes]         = useState<ContaAdmin[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [modalEdit, setModalEdit]       = useState<ContaAdmin | null>(null);
-  const [busca, setBusca]               = useState("");
-  const [filtroStatus, setFiltroStatus] = useState<StatusCliente | "">("");
-  const [filtroPacote, setFiltroPacote] = useState<PacoteCliente | "">("");
-  const [filtroStage, setFiltroStage]   = useState("");
-  const [filtroOrigem, setFiltroOrigem] = useState("");
+  const [clientes, setClientes]           = useState<ContaAdmin[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [modalEdit, setModalEdit]         = useState<ContaAdmin | null>(null);
+  const [modalPlano, setModalPlano]       = useState<ContaAdmin | null>(null);
+  const [acaoLoading, setAcaoLoading]     = useState<string | null>(null); // conta_id em progresso
+  const [busca, setBusca]                 = useState("");
+  const [filtroStatus, setFiltroStatus]   = useState<StatusCliente | "">("");
+  const [filtroPacote, setFiltroPacote]   = useState<PacoteCliente | "">("");
+  const [filtroStage, setFiltroStage]     = useState("");
+  const [filtroOrigem, setFiltroOrigem]   = useState("");
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -293,7 +295,7 @@ export default function ClientesPage() {
 
   async function marcarProBono(c: ContaAdmin) {
     const motivo = window.prompt(`Motivo do Pro Bono para "${c.nome}":\n(Ex: cliente da consultoria, parceiro estratégico...)`, c.pro_bono_motivo ?? "Cliente da consultoria Raccolto");
-    if (motivo === null) return; // cancelou
+    if (motivo === null) return;
     await atualizarConta(c.id, { status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 });
     setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 } : x));
   }
@@ -304,15 +306,118 @@ export default function ClientesPage() {
     setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "ativo", pro_bono_motivo: "" } : x));
   }
 
+  // ── Mudar plano inline ──────────────────────────────────────────────────────
+  async function mudarPlano(c: ContaAdmin, novoPacote: PacoteCliente) {
+    setAcaoLoading(c.id);
+    try {
+      const valor = PACOTE_CFG[novoPacote].valor;
+      await atualizarConta(c.id, { pacote: novoPacote, valor_mensalidade: valor });
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, pacote: novoPacote, valor_mensalidade: valor } : x));
+    } finally {
+      setAcaoLoading(null);
+      setModalPlano(null);
+    }
+  }
+
+  // ── Cancelar acesso (bloqueia auth + marca cancelado) ──────────────────────
+  async function cancelarAcesso(c: ContaAdmin) {
+    const isTrial = c.status === "trial";
+    const msg = isTrial
+      ? `Encerrar trial de "${c.nome}"?\n\nIsso irá:\n• Revogar o acesso imediatamente\n• Marcar conta como "Cancelado"\n• Bloquear login de todos os usuários\n\nEsta ação pode ser desfeita manualmente alterando o status.`
+      : `Cancelar acesso de "${c.nome}"?\n\nIsso irá:\n• Revogar o acesso imediatamente\n• Bloquear login de todos os usuários da conta\n\nEsta ação pode ser desfeita manualmente alterando o status.`;
+    if (!window.confirm(msg)) return;
+    setAcaoLoading(c.id);
+    try {
+      const res = await fetch("/api/admin/cancelar-cliente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conta_id: c.id, acao: "cancelar" }),
+      });
+      const json = await res.json();
+      if (!res.ok) { alert("Erro: " + json.error); return; }
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "cancelado", data_vencimento: new Date().toISOString().split("T")[0] } : x));
+      alert(`Acesso cancelado. ${json.users_bloqueados} usuário(s) bloqueado(s).`);
+    } catch (e) {
+      alert("Erro de conexão: " + String(e));
+    } finally {
+      setAcaoLoading(null);
+    }
+  }
+
+  // ── Excluir conta permanentemente ─────────────────────────────────────────
+  async function excluirConta(c: ContaAdmin) {
+    const confirmacao = window.prompt(
+      `ATENÇÃO — EXCLUSÃO PERMANENTE\n\nEsta ação APAGA TODOS os dados de "${c.nome}" (fazendas, lançamentos, contratos, etc.) e NÃO pode ser desfeita.\n\nDigite o nome da conta para confirmar:`
+    );
+    if (confirmacao !== c.nome) {
+      if (confirmacao !== null) alert("Nome não confere. Exclusão cancelada.");
+      return;
+    }
+    setAcaoLoading(c.id);
+    try {
+      const res = await fetch("/api/admin/cancelar-cliente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conta_id: c.id, acao: "excluir" }),
+      });
+      const json = await res.json();
+      if (!res.ok) { alert("Erro: " + json.error); return; }
+      setClientes(cs => cs.filter(x => x.id !== c.id));
+      alert(`Conta "${c.nome}" excluída permanentemente. ${json.users_removidos} usuário(s) removido(s).`);
+    } catch (e) {
+      alert("Erro de conexão: " + String(e));
+    } finally {
+      setAcaoLoading(null);
+    }
+  }
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
 
+      {/* Modal editar cliente */}
       {modalEdit && (
         <ModalCliente
           conta={modalEdit}
           onClose={() => setModalEdit(null)}
           onSalvo={upd => { setClientes(cs => cs.map(c => c.id === upd.id ? upd : c)); setModalEdit(null); }}
         />
+      )}
+
+      {/* Modal upgrade / downgrade de plano */}
+      {modalPlano && (
+        <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) setModalPlano(null); }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: 560, padding: "24px", boxShadow: "0 12px 48px #0004" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>Alterar Plano</div>
+                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{modalPlano.nome}</div>
+              </div>
+              <button onClick={() => setModalPlano(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(pk => {
+                const cfg = PACOTE_CFG[pk];
+                const plano = PLANOS_DEFAULT[pk as PlanoId];
+                const isCurrent = modalPlano.pacote === pk;
+                const loading = acaoLoading === modalPlano.id;
+                return (
+                  <button key={pk} disabled={loading || isCurrent} onClick={() => mudarPlano(modalPlano, pk)}
+                    style={{ padding: "16px 12px", border: `2px solid ${isCurrent ? cfg.cor : "#E4E9F0"}`, borderRadius: 10, background: isCurrent ? cfg.bg : "#FAFBFC", cursor: isCurrent ? "default" : "pointer", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
+                    <div style={{ fontWeight: 700, color: cfg.cor, fontSize: 14, marginBottom: 4 }}>{cfg.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "#0B1E35", marginBottom: 6 }}>{fmtPreco(plano?.preco_mensal ?? cfg.valor)}</div>
+                    <div style={{ fontSize: 10, color: "#888" }}>{plano?.limite_usuarios ? `até ${plano.limite_usuarios} usuários` : "ilimitado"}</div>
+                    {isCurrent && <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: cfg.cor }}>PLANO ATUAL</div>}
+                    {!isCurrent && !loading && <div style={{ marginTop: 6, fontSize: 11, color: "#555", fontWeight: 600 }}>{(modalPlano.pacote && PACOTE_CFG[modalPlano.pacote].valor < cfg.valor) ? "⬆ Upgrade" : "⬇ Downgrade"}</div>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 16, padding: "10px 14px", background: "#FBF3E0", borderRadius: 8, fontSize: 11, color: "#7A5200" }}>
+              A alteração de plano é imediata. O valor de cobrança será atualizado no próximo ciclo.
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
@@ -512,13 +617,25 @@ export default function ClientesPage() {
                       </span>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
-                        <button style={btnSmall} onClick={() => router.push(`/admin/faturamento?conta=${c.id}`)}>
+                      <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                        {/* Faturamento */}
+                        <button style={btnSmall} onClick={() => router.push(`/admin/faturamento?conta=${c.id}`)} title="Histórico de faturamento">
                           💳
                         </button>
-                        <button style={btnSmall} onClick={() => router.push(`/admin/modulos?conta=${c.id}`)}>
+                        {/* Módulos */}
+                        <button style={btnSmall} onClick={() => router.push(`/admin/modulos?conta=${c.id}`)} title="Gerenciar módulos">
                           ⬡
                         </button>
+                        {/* Alterar plano */}
+                        <button
+                          style={{ ...btnSmall, color: "#1A4870", borderColor: "#1A487060" }}
+                          onClick={() => setModalPlano(c)}
+                          title="Upgrade / Downgrade de plano"
+                          disabled={acaoLoading === c.id}
+                        >
+                          ↑↓
+                        </button>
+                        {/* Pro Bono */}
                         {c.status !== "pro_bono" ? (
                           <button
                             style={{ ...btnSmall, color: "#378ADD", borderColor: "#378ADD60" }}
@@ -536,9 +653,32 @@ export default function ClientesPage() {
                             ✕ PB
                           </button>
                         )}
-                        <button style={btnSmall} onClick={() => setModalEdit(c)}>
+                        {/* Editar */}
+                        <button style={btnSmall} onClick={() => setModalEdit(c)} title="Editar dados">
                           ✎
                         </button>
+                        {/* Cancelar acesso */}
+                        {c.status !== "cancelado" && (
+                          <button
+                            style={{ ...btnSmall, color: "#E24B4A", borderColor: "#E24B4A60" }}
+                            onClick={() => cancelarAcesso(c)}
+                            title={c.status === "trial" ? "Encerrar trial e revogar acesso" : "Cancelar acesso (revoga login)"}
+                            disabled={acaoLoading === c.id}
+                          >
+                            {acaoLoading === c.id ? "…" : "🚫"}
+                          </button>
+                        )}
+                        {/* Excluir permanentemente — só para trial/cancelado */}
+                        {(c.status === "trial" || c.status === "cancelado" || c.status === "pro_bono") && (
+                          <button
+                            style={{ ...btnSmall, color: "#6B7280", borderColor: "#6B728060" }}
+                            onClick={() => excluirConta(c)}
+                            title="Excluir conta permanentemente (irreversível)"
+                            disabled={acaoLoading === c.id}
+                          >
+                            🗑
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -551,7 +691,7 @@ export default function ClientesPage() {
 
       {/* Nota */}
       <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
-        <strong>Dica:</strong> Use o botão <strong>💳</strong> para ver o histórico de faturamento do cliente, <strong>⬡</strong> para gerenciar módulos habilitados, e <strong>✎ Editar</strong> para editar dados e assinatura.
+        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
       </div>
     </div>
   );
