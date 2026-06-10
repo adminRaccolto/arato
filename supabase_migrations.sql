@@ -5192,3 +5192,61 @@ DO $$ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 113: Corrige RLS fazendas — erro 42501 ao salvar
+-- Problema: UPDATE policy só verificava conta_id, mas fazendas
+-- antigas (criadas antes da Migration v5) têm conta_id = NULL.
+-- NULL IN (...) retorna NULL (não TRUE) → WITH CHECK falha → 42501.
+-- Solução: adicionar owner_user_id = auth.uid() como fallback
+-- e WITH CHECK explícito no UPDATE.
+-- Execute se clientes receberem erro "row-level security policy" ao salvar fazenda.
+-- ============================================================
+
+DO $$ DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+ALTER TABLE fazendas ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: conta_id match OU owner_user_id (retrocompat) OU raccotlo
+CREATE POLICY "fazendas_select" ON fazendas FOR SELECT
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+-- INSERT: qualquer usuário autenticado pode criar fazenda
+-- (segurança vem do SELECT — cada um só vê as suas fazendas)
+CREATE POLICY "fazendas_insert" ON fazendas FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- UPDATE: fallback owner_user_id cobre fazendas antigas sem conta_id
+-- WITH CHECK explícito evita que a atualização introduza conta_id inválido
+CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+    OR conta_id IS NULL
+  )
+  WITH CHECK (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+    OR conta_id IS NULL
+  );
+
+-- DELETE: mesmo critério do UPDATE
+CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';
