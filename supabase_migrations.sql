@@ -5293,3 +5293,60 @@ CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
   WITH CHECK (auth.uid() IS NOT NULL);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 115: Consolida acesso por conta_id (não por owner_user_id individual)
+-- Contexto: múltiplos usuários por conta, múltiplas fazendas por conta.
+--   owner_user_id é legado — novas fazendas usam apenas conta_id.
+-- =============================================================================
+
+-- Garante que todas as fazendas com owner_user_id tenham conta_id preenchido
+-- (migração única — não afeta fazendas que já têm conta_id)
+UPDATE fazendas f
+SET    conta_id = p.conta_id
+FROM   perfis p
+WHERE  f.owner_user_id = p.user_id
+  AND  f.conta_id IS NULL
+  AND  p.conta_id IS NOT NULL;
+
+-- Recriar todas as políticas de fazendas com acesso por conta_id
+DO $$ DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'fazendas' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON fazendas';
+  END LOOP;
+END $$;
+
+ALTER TABLE fazendas ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: vê fazendas da própria conta OU legado por owner_user_id
+CREATE POLICY "fazendas_select" ON fazendas FOR SELECT
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+-- INSERT: qualquer usuário autenticado pode criar
+CREATE POLICY "fazendas_insert" ON fazendas FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- UPDATE: acesso por conta OU owner legado; WITH CHECK permissivo (validação é no SELECT)
+CREATE POLICY "fazendas_update" ON fazendas FOR UPDATE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+    OR conta_id IS NULL
+  )
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- DELETE: mesmo critério do UPDATE USING
+CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR owner_user_id = auth.uid()
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';

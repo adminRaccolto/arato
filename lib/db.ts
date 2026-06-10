@@ -96,14 +96,14 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
   if (id) {
     q = q.eq("id", id);
   } else {
-    // Retorna fazendas da conta OU do owner — usa OR para cobrir ambos os padrões de tenant
+    // Acesso por conta (não por usuário individual) — múltiplos usuários por conta, múltiplas fazendas por conta
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     const { data: perfil } = await supabase.from("perfis").select("conta_id").eq("user_id", user.id).maybeSingle();
     if (perfil?.conta_id) {
-      // Inclui fazendas da conta E fazendas cujo owner é o próprio usuário (migração parcial)
-      q = q.or(`conta_id.eq.${perfil.conta_id},owner_user_id.eq.${user.id}`);
+      q = q.eq("conta_id", perfil.conta_id);
     } else {
+      // Fallback para contas legadas ainda sem conta_id: filtra por owner_user_id
       q = q.eq("owner_user_id", user.id);
     }
   }

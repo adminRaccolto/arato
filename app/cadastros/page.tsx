@@ -847,28 +847,8 @@ function CadastrosInner() {
     if (!fFaz.nome.trim() || !fFaz.area) return;
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Determinar owner_user_id e conta_id para a nova fazenda
-    let ownerUserId = user?.id;
-    let contaIdParaFaz: string | undefined = contaId ?? undefined;
-
-    if (userRole === "raccotlo" && fazendaId) {
-      // Raccotlo admin: sempre prioriza conta_id da fazenda ativa (mais confiável)
-      const { data: af } = await supabase.from("fazendas").select("conta_id, owner_user_id").eq("id", fazendaId).single();
-      if (af?.conta_id)      contaIdParaFaz = af.conta_id;
-      if (af?.owner_user_id) ownerUserId    = af.owner_user_id;
-      // Refinamento: buscar user_id do cliente via perfis (opcional, não bloqueia)
-      if (!ownerUserId || ownerUserId === user?.id) {
-        const { data: clientPerfil } = await supabase
-          .from("perfis").select("user_id, conta_id")
-          .eq("fazenda_id", fazendaId)
-          .neq("role", "raccotlo")
-          .limit(1).maybeSingle();
-        if (clientPerfil?.user_id) ownerUserId    = clientPerfil.user_id;
-        if (clientPerfil?.conta_id) contaIdParaFaz = clientPerfil.conta_id;
-      }
-    }
-
-    const payload: Omit<FazendaDB, "id" | "created_at"> = {
+    // Campos de formulário — nunca incluem owner_user_id/conta_id (imutáveis)
+    const camposForm = {
       nome: fFaz.nome.trim(), municipio: fFaz.municipio.trim(), estado: fFaz.estado,
       area_total_ha: Number(fFaz.area), cnpj: fFaz.cnpj || undefined,
       car: fFaz.car || undefined, car_vencimento: fFaz.car_vencimento || undefined,
@@ -879,39 +859,54 @@ function CadastrosInner() {
       cep: fFaz.cep || undefined, logradouro: fFaz.logradouro || undefined,
       numero_end: fFaz.numero_end || undefined, complemento: fFaz.complemento || undefined,
       bairro: fFaz.bairro || undefined,
-      owner_user_id: ownerUserId,
-      conta_id: contaIdParaFaz,
     };
+
     let fazId: string;
     if (editFaz) {
-      await atualizarFazenda(editFaz.id, payload);
-      setFazendas(p => p.map(x => x.id === editFaz.id ? { ...x, ...payload } : x));
+      // Edição: atualiza apenas campos de formulário — owner_user_id e conta_id são imutáveis
+      await atualizarFazenda(editFaz.id, camposForm);
+      setFazendas(p => p.map(x => x.id === editFaz.id ? { ...x, ...camposForm } : x));
       fazId = editFaz.id;
     } else {
-      const n = await criarFazenda(payload);
+      // Nova fazenda: determina conta_id pelo contexto (conta, não usuário individual)
+      let contaIdParaFaz: string | undefined = contaId ?? undefined;
+
+      if (userRole === "raccotlo" && fazendaId) {
+        // Admin criando fazenda para o cliente ativo — lê conta_id da fazenda ativa do cliente
+        const { data: af } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single();
+        if (af?.conta_id) contaIdParaFaz = af.conta_id;
+        else {
+          // Fazenda ativa sem conta_id: tenta via perfis do cliente
+          const { data: cp } = await supabase.from("perfis").select("conta_id")
+            .eq("fazenda_id", fazendaId).neq("role", "raccotlo").limit(1).maybeSingle();
+          if (cp?.conta_id) contaIdParaFaz = cp.conta_id;
+        }
+      }
+
+      const novaFazPayload: Omit<FazendaDB, "id" | "created_at"> = {
+        ...camposForm,
+        conta_id: contaIdParaFaz,
+      };
+      const n = await criarFazenda(novaFazPayload);
       setFazendas(p => [...p, n]);
       fazId = n.id;
-      // Bootstrap: se ainda não há fazendaId no contexto, criar conta e vincular perfil
-      if (!fazendaId) {
-        if (user) {
-          // Criar conta para o novo usuário se ainda não existir
-          let novaContaId = contaId;
+      // Bootstrap: se ainda não há fazendaId no contexto (primeiro login do cliente)
+      if (!fazendaId && user) {
+        let novaContaId = contaIdParaFaz ?? null;
+        if (!novaContaId) {
+          const { data: perfAtual } = await supabase.from("perfis").select("conta_id, nome").eq("user_id", user.id).maybeSingle();
+          novaContaId = (perfAtual as { conta_id?: string } | null)?.conta_id ?? null;
           if (!novaContaId) {
-            const { data: perfAtual } = await supabase.from("perfis").select("conta_id, nome").eq("user_id", user.id).maybeSingle();
-            novaContaId = (perfAtual as { conta_id?: string } | null)?.conta_id ?? null;
-            if (!novaContaId) {
-              const nc = await criarContaTenant({ nome: (perfAtual as { nome?: string } | null)?.nome || user.email || "Minha Conta", tipo: "pf" });
-              novaContaId = nc.id;
-              // Vincular conta_id à fazenda recém-criada
-              await supabase.from("fazendas").update({ conta_id: novaContaId }).eq("id", fazId);
-            }
+            const nc = await criarContaTenant({ nome: (perfAtual as { nome?: string } | null)?.nome || user.email || "Minha Conta", tipo: "pf" });
+            novaContaId = nc.id;
+            await supabase.from("fazendas").update({ conta_id: novaContaId }).eq("id", fazId);
           }
-          await supabase.from("perfis").upsert(
-            { user_id: user.id, fazenda_id: fazId, conta_id: novaContaId, nome: user.email },
-            { onConflict: "user_id" }
-          );
-          alert("Fazenda criada com sucesso! Recarregue a página (Cmd+R) para ativar o sistema.");
         }
+        await supabase.from("perfis").upsert(
+          { user_id: user.id, fazenda_id: fazId, conta_id: novaContaId, nome: user.email },
+          { onConflict: "user_id" }
+        );
+        alert("Fazenda criada com sucesso! Recarregue a página (Cmd+R) para ativar o sistema.");
       }
     }
     // Salva matrículas inline
