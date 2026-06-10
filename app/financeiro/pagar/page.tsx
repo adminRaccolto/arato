@@ -265,6 +265,7 @@ function ContasPagarInner() {
   const [parcelas, setParcelas] = useState<ParcelaGrid[]>([]);
 
   // ── Filtros de coluna ─────────────────────────────────────
+  const [mostrarObs,  setMostrarObs]  = useState(false);
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
   const [fSafra,      setFSafra]      = useState("");
@@ -778,8 +779,8 @@ function ContasPagarInner() {
                         </th>
                         <th style={thS(150, "left")}>Fornecedor / Cliente</th>
                         <th style={thS(150, "left")}>Operação</th>
-                        <th style={thS(85, "left")}>Safra</th>
-                        <th style={thS(130, "left")}>Ciclo</th>
+                        <th style={thS(100, "left")}>Safra</th>
+                        <th style={thS(180, "left")}>Ciclo</th>
                         <th style={thS(85, "center")}>Vencimento ↑</th>
                         <th style={thS(110, "right")}>Valor</th>
                         <th style={thS(85, "center")}>Dt. Pgto</th>
@@ -787,9 +788,13 @@ function ContasPagarInner() {
                         <th style={thS(65, "center")}>Moeda</th>
                         <th style={thS(110, "left")}>Conta</th>
                         <th style={thS(110, "left")}>Produtor</th>
-                        <th style={thS(160, "left")}>Observação</th>
+                        <th style={{ ...thS(mostrarObs ? 160 : 28), display: mostrarObs ? undefined : "table-cell", overflow: "hidden", maxWidth: mostrarObs ? undefined : 28 }}>
+                          <button onClick={() => setMostrarObs(v => !v)} title={mostrarObs ? "Ocultar observação" : "Mostrar observação"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: mostrarObs ? "#1A4870" : "#aaa", padding: 0, lineHeight: 1 }}>
+                            {mostrarObs ? "👁 Obs" : "👁"}
+                          </button>
+                        </th>
                         <th style={thS(90, "center")}>Origem</th>
-                        <th style={thS(90, "center")}></th>
+                        <th style={thS(70, "center")}></th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "#FAFBFC", borderBottom: "0.5px solid #D4DCE8" }}>
@@ -817,9 +822,11 @@ function ContasPagarInner() {
                         <td style={{ padding: "3px 6px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} />
                         </td>
-                        <td style={{ padding: "3px 6px" }}>
-                          <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />
-                        </td>
+                        {mostrarObs ? (
+                          <td style={{ padding: "3px 6px" }}>
+                            <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />
+                          </td>
+                        ) : <td style={{ maxWidth: 28, overflow: "hidden", padding: 0 }}></td>}
                         <td></td>
                         <td></td>
                       </tr>
@@ -912,44 +919,39 @@ function ContasPagarInner() {
                             <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.produtor_id ? prod : "—"}
                             </td>
-                            {/* Observação */}
-                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#666", whiteSpace: "nowrap" }}>
-                              {obsExibir}
+                            {/* Observação — ocultável */}
+                            <td style={{ padding: mostrarObs ? "5px 8px" : 0, fontSize: 10, color: "#666", whiteSpace: "nowrap", display: mostrarObs ? undefined : "table-cell", maxWidth: mostrarObs ? undefined : 28, overflow: "hidden" }}>
+                              {mostrarObs ? obsExibir : null}
                             </td>
                             {/* Origem — penúltima */}
                             <td style={{ padding: "5px 8px", textAlign: "center" }}>
                               <span style={{ fontSize: 9, background: om.bg, color: om.cl, padding: "2px 6px", borderRadius: 7, fontWeight: 600, whiteSpace: "nowrap" }}>{om.label}</span>
                             </td>
                             {/* Ação */}
-                            <td style={{ padding: "10px 8px", textAlign: "center" }}>
-                              <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
+                            <td style={{ padding: "5px 6px", textAlign: "center" }}>
+                              <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center" }}>
                                 {isPrevisao ? (
                                   <button
                                     onClick={() => confirmarPrevisao(l)}
-                                    style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#1A5CB8", color: "#fff", border: "none" }}
-                                  >
-                                    ✓ Confirmar
-                                  </button>
+                                    title="Confirmar previsão"
+                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#1A5CB8", color: "#fff", border: "none", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                  >✓</button>
                                 ) : l.moeda === "barter" ? (
-                                  /* Barter: liquidado no fechamento da safra, não via baixa manual */
-                                  <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", whiteSpace: "nowrap" }}>
-                                    🌾 Liquidar na Safra
+                                  <span title="Liquidar no fechamento da safra" style={{ width: 28, height: 26, borderRadius: 6, background: "#FBF3E0", color: "#7A5200", border: "0.5px solid #C9921B50", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>
+                                    🌾
                                   </span>
                                 ) : l.status !== "baixado" ? (
                                   <button
                                     onClick={() => abrirBaixa(l)}
-                                    style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#C9921B", color: "#fff", border: "none" }}
-                                  >
-                                    ◈ Baixar
-                                  </button>
+                                    title="Baixar / Registrar pagamento"
+                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#C9921B", color: "#fff", border: "none", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                  >↓</button>
                                 ) : (
                                   <button
                                     onClick={() => reabrirUm(l)}
-                                    title="Reabrir título — apaga dados de pagamento"
-                                    style={{ fontSize: 11, padding: "4px 11px", borderRadius: 6, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap", background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B" }}
-                                  >
-                                    ↺ Reabrir
-                                  </button>
+                                    title="Reabrir — apaga dados de pagamento"
+                                    style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                  >↺</button>
                                 )}
                                 {/* Excluir lançamento automático gerado por pedido barter incorretamente em R$ */}
                                 {l.auto && l.pedido_compra_id && l.moeda !== "barter" && l.status === "em_aberto" && (
