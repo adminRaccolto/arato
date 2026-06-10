@@ -306,6 +306,24 @@ export default function ClientesPage() {
     setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "ativo", pro_bono_motivo: "" } : x));
   }
 
+  // ── Liberar conta (marca liberado_raccolto = true) ─────────────────────────
+  async function liberarConta(c: ContaAdmin) {
+    const ja = (c as ContaAdmin & { liberado_raccolto?: boolean }).liberado_raccolto;
+    if (ja) {
+      if (!window.confirm(`Revogar a liberação de "${c.nome}"?`)) return;
+      setAcaoLoading(c.id);
+      await atualizarConta(c.id, { liberado_raccolto: false } as Parameters<typeof atualizarConta>[1]);
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, liberado_raccolto: false } : x));
+      setAcaoLoading(null);
+    } else {
+      if (!window.confirm(`Liberar acesso de "${c.nome}"?\n\nIsso marca a etapa de liberação Raccolto como concluída no checklist de implantação do cliente.`)) return;
+      setAcaoLoading(c.id);
+      await atualizarConta(c.id, { liberado_raccolto: true } as Parameters<typeof atualizarConta>[1]);
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, liberado_raccolto: true } : x));
+      setAcaoLoading(null);
+    }
+  }
+
   // ── Mudar plano inline ──────────────────────────────────────────────────────
   async function mudarPlano(c: ContaAdmin, novoPacote: PacoteCliente) {
     setAcaoLoading(c.id);
@@ -653,6 +671,26 @@ export default function ClientesPage() {
                             ✕ PB
                           </button>
                         )}
+                        {/* Liberar implantação */}
+                        {(() => {
+                          const liberado = !!(c as ContaAdmin & { liberado_raccolto?: boolean }).liberado_raccolto;
+                          return (
+                            <button
+                              style={{
+                                ...btnSmall,
+                                color: liberado ? "#16A34A" : "#C9921B",
+                                borderColor: liberado ? "#16A34A60" : "#C9921B60",
+                                background: liberado ? "#F0FDF4" : "#FBF3E0",
+                                fontWeight: 700,
+                              }}
+                              onClick={() => liberarConta(c)}
+                              title={liberado ? "Liberação Raccolto concluída — clique para revogar" : "Liberar implantação (marcar etapa Raccolto como feita)"}
+                              disabled={acaoLoading === c.id}
+                            >
+                              {liberado ? "✓ OK" : "⚑ Lib"}
+                            </button>
+                          );
+                        })()}
                         {/* Editar */}
                         <button style={btnSmall} onClick={() => setModalEdit(c)} title="Editar dados">
                           ✎
@@ -691,7 +729,7 @@ export default function ClientesPage() {
 
       {/* Nota */}
       <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
-        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
+        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>⚑ Lib / ✓ OK</strong> liberação Raccolto (etapa 1 do checklist do cliente) · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
       </div>
     </div>
   );

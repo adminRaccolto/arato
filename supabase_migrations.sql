@@ -4996,3 +4996,11 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE culturas DROP COLUMN IF EXISTS produto_agricola_id;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- Seção 108: Liberação Raccolto no onboarding de novos clientes
+-- Campo marcado pela equipe Raccolto para liberar a etapa 1 do checklist de implantação.
+
+ALTER TABLE contas ADD COLUMN IF NOT EXISTS liberado_raccolto BOOLEAN NOT NULL DEFAULT false;
+
+NOTIFY pgrst, 'reload schema';
