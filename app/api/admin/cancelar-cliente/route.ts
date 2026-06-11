@@ -26,70 +26,110 @@ export async function POST(req: Request) {
       .from("perfis")
       .select("role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (perfil?.role !== "raccotlo") {
+    const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
+    if (perfil?.role !== "raccotlo" && !isRaccoltoEmail) {
       return NextResponse.json({ ok: false, error: "Acesso restrito" }, { status: 403 });
     }
 
-    const { conta_id, acao } = await req.json() as { conta_id: string; acao: "cancelar" | "excluir" };
-    if (!conta_id || !["cancelar", "excluir"].includes(acao)) {
+    const body = await req.json() as {
+      conta_id?: string;
+      fazenda_ids?: string[];   // alternativa para clientes sem conta
+      acao: "cancelar" | "excluir";
+    };
+
+    const { acao } = body;
+    if (!acao || !["cancelar", "excluir"].includes(acao)) {
       return NextResponse.json({ ok: false, error: "Parâmetros inválidos" }, { status: 400 });
     }
 
-    // ── 2. Buscar todos os user_ids vinculados a esta conta ──
-    const { data: perfis } = await admin
-      .from("perfis")
-      .select("user_id")
-      .eq("conta_id", conta_id);
+    // ── 2. Resolver as fazendas do cliente ──
+    // Aceita conta_id (clientes com conta) ou fazenda_ids diretos (clientes sem conta)
+    let fazendaIds: string[] = [];
 
-    const userIds: string[] = (perfis ?? []).map((p: { user_id: string }) => p.user_id);
+    if (body.fazenda_ids && body.fazenda_ids.length > 0) {
+      fazendaIds = body.fazenda_ids;
+    } else if (body.conta_id) {
+      const { data: fazendas } = await admin
+        .from("fazendas")
+        .select("id")
+        .eq("conta_id", body.conta_id);
+      fazendaIds = (fazendas ?? []).map((f: { id: string }) => f.id);
+    }
 
+    // ── 3. Buscar todos os user_ids vinculados a este cliente ──
+    // Procura por conta_id E por fazenda_id (cobre clientes antigos sem conta_id em perfis)
+    const perfilQuery = admin.from("perfis").select("user_id");
+    let perfilData: { user_id: string }[] = [];
+
+    if (body.conta_id) {
+      const { data } = await perfilQuery.eq("conta_id", body.conta_id);
+      perfilData = data ?? [];
+    }
+    // Se não achou por conta_id, tenta por fazenda_id
+    if (perfilData.length === 0 && fazendaIds.length > 0) {
+      const { data } = await admin.from("perfis").select("user_id").in("fazenda_id", fazendaIds);
+      perfilData = data ?? [];
+    }
+
+    const userIds: string[] = perfilData.map((p: { user_id: string }) => p.user_id);
+
+    // ── 4. Ação: cancelar ──
     if (acao === "cancelar") {
-      // Bloquear cada usuário no Auth (ban permanente = 876600h ≈ 100 anos)
       await Promise.all(
         userIds.map(uid =>
           admin.auth.admin.updateUserById(uid, { ban_duration: "876600h" })
         )
       );
-      // Marcar conta como cancelada e vencimento para hoje
-      await admin
-        .from("contas")
-        .update({
-          status: "cancelado",
-          data_vencimento: new Date().toISOString().split("T")[0],
-        })
-        .eq("id", conta_id);
-
+      if (body.conta_id) {
+        await admin
+          .from("contas")
+          .update({ status: "cancelado", data_vencimento: new Date().toISOString().split("T")[0] })
+          .eq("id", body.conta_id);
+      }
+      // Marca fazendas como sem acesso raccotlo
+      if (fazendaIds.length > 0) {
+        await admin.from("fazendas").update({ raccolto_acesso: false }).in("id", fazendaIds);
+      }
       return NextResponse.json({ ok: true, users_bloqueados: userIds.length });
     }
 
+    // ── 5. Ação: excluir ──
     if (acao === "excluir") {
-      // Excluir usuários do Auth primeiro
+      // 5a. Deletar auth users
       await Promise.all(userIds.map(uid => admin.auth.admin.deleteUser(uid)));
 
-      // Excluir dados em cascata (a ordem importa por FKs)
+      // 5b. Deletar dados em cascata por fazenda_id
       const tabelas = [
         "lancamentos", "romaneios", "plantios", "pulverizacoes", "colheitas",
-        "contratos", "estoque_posicao", "movimentacoes_estoque",
-        "pedidos_compra", "nf_entradas", "nf_entrada_itens",
-        "ciclos", "talhoes", "produtores", "fazendas",
-        "usuarios", "perfis",
+        "correcoes_solo", "adubacoes_base",
+        "contratos", "contrato_itens", "cargas_expedicao",
+        "estoque_posicao", "movimentacoes_estoque", "estoque_itens",
+        "pedidos_compra", "pedidos_compra_itens",
+        "nf_entradas", "nf_entrada_itens",
+        "arrendamentos", "arrendamento_matriculas", "arrendamento_pagamentos",
+        "ciclos", "talhoes", "depositos", "maquinas",
+        "produtores", "pessoas",
+        "configuracoes_modulo", "regras_rateio",
+        "orcamentos", "orcamento_itens",
       ];
-      for (const tabela of tabelas) {
-        // Tenta por fazenda_id (maioria) e depois por conta_id
-        const { data: fazendas } = await admin
-          .from("fazendas")
-          .select("id")
-          .eq("conta_id", conta_id);
-        const fazendaIds = (fazendas ?? []).map((f: { id: string }) => f.id);
-        if (fazendaIds.length > 0 && !["usuarios","perfis"].includes(tabela)) {
-          await admin.from(tabela).delete().in("fazenda_id", fazendaIds);
+
+      if (fazendaIds.length > 0) {
+        for (const tabela of tabelas) {
+          try { await admin.from(tabela).delete().in("fazenda_id", fazendaIds); } catch { /* tabela pode não existir */ }
         }
+        // Deletar perfis por fazenda_id
+        try { await admin.from("perfis").delete().in("fazenda_id", fazendaIds); } catch { /* ignora */ }
+        // Deletar as fazendas por último
+        await admin.from("fazendas").delete().in("id", fazendaIds);
       }
-      // Remove perfis e conta
-      await admin.from("perfis").delete().eq("conta_id", conta_id);
-      await admin.from("contas").delete().eq("id", conta_id);
+
+      // 5c. Deletar perfis por conta_id (se houver)
+      if (body.conta_id) {
+        try { await admin.from("perfis").delete().eq("conta_id", body.conta_id); } catch { /* ignora */ }
+        try { await admin.from("contas").delete().eq("id", body.conta_id); } catch { /* ignora */ }
+      }
 
       return NextResponse.json({ ok: true, excluido: true, users_removidos: userIds.length });
     }

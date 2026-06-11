@@ -411,10 +411,17 @@ export default function ClientesPage() {
     if (!window.confirm(msg)) return;
     setAcaoLoading(c.id);
     try {
+      const cancelPayload: Record<string, unknown> = { acao: "cancelar" };
+      if (c._sem_conta) {
+        cancelPayload.fazenda_ids = c._fazendas_prod.map(f => f.id);
+      } else {
+        cancelPayload.conta_id = c.id;
+        if (c._fazendas_prod.length > 0) cancelPayload.fazenda_ids = c._fazendas_prod.map(f => f.id);
+      }
       const res = await fetch("/api/admin/cancelar-cliente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conta_id: c.id, acao: "cancelar" }),
+        body: JSON.stringify(cancelPayload),
       });
       const json = await res.json();
       if (!res.ok) { alert("Erro: " + json.error); return; }
@@ -430,7 +437,7 @@ export default function ClientesPage() {
   // ── Excluir conta permanentemente ─────────────────────────────────────────
   async function excluirConta(c: ClienteAdmin) {
     const confirmacao = window.prompt(
-      `ATENÇÃO — EXCLUSÃO PERMANENTE\n\nEsta ação APAGA TODOS os dados de "${c.nome}" (fazendas, lançamentos, contratos, etc.) e NÃO pode ser desfeita.\n\nDigite o nome da conta para confirmar:`
+      `ATENÇÃO — EXCLUSÃO PERMANENTE\n\nEsta ação APAGA TODOS os dados de "${c.nome}" (fazendas, lançamentos, contratos, etc.) e NÃO pode ser desfeita.\n\nDigite o nome do cliente para confirmar:`
     );
     if (confirmacao !== c.nome) {
       if (confirmacao !== null) alert("Nome não confere. Exclusão cancelada.");
@@ -438,15 +445,26 @@ export default function ClientesPage() {
     }
     setAcaoLoading(c.id);
     try {
+      const payload: Record<string, unknown> = { acao: "excluir" };
+      if (c._sem_conta) {
+        // Sem conta — usa fazenda_ids diretamente
+        payload.fazenda_ids = c._fazendas_prod.map(f => f.id);
+      } else {
+        payload.conta_id = c.id;
+        // Passa também os fazenda_ids para garantir cascade completo
+        if (c._fazendas_prod.length > 0) {
+          payload.fazenda_ids = c._fazendas_prod.map(f => f.id);
+        }
+      }
       const res = await fetch("/api/admin/cancelar-cliente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conta_id: c.id, acao: "excluir" }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) { alert("Erro: " + json.error); return; }
       setClientes(cs => cs.filter(x => x.id !== c.id));
-      alert(`Conta "${c.nome}" excluída permanentemente. ${json.users_removidos} usuário(s) removido(s).`);
+      alert(`"${c.nome}" excluído permanentemente. ${json.users_removidos} usuário(s) removido(s).`);
     } catch (e) {
       alert("Erro de conexão: " + String(e));
     } finally {
@@ -713,7 +731,7 @@ export default function ClientesPage() {
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {c._sem_conta ? (
-                        /* Cliente sem conta admin — só botão de criar conta */
+                        /* Cliente sem conta admin */
                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                           <button
                             style={{ ...btnSmall, color: "#C9921B", borderColor: "#C9921B60", background: "#FBF3E0", fontSize: 11 }}
@@ -721,6 +739,14 @@ export default function ClientesPage() {
                             title="Criar conta admin para este cliente"
                           >
                             + Criar conta
+                          </button>
+                          <button
+                            style={{ ...btnSmall, color: "#6B7280", borderColor: "#6B728060" }}
+                            onClick={() => excluirConta(c)}
+                            title="Excluir cliente permanentemente (irreversível)"
+                            disabled={acaoLoading === c.id}
+                          >
+                            🗑
                           </button>
                         </div>
                       ) : (
@@ -775,17 +801,15 @@ export default function ClientesPage() {
                               {acaoLoading === c.id ? "…" : "🚫"}
                             </button>
                           )}
-                          {/* Excluir permanentemente — só para trial/cancelado */}
-                          {(c.status === "trial" || c.status === "cancelado" || c.status === "pro_bono") && (
-                            <button
-                              style={{ ...btnSmall, color: "#6B7280", borderColor: "#6B728060" }}
-                              onClick={() => excluirConta(c)}
-                              title="Excluir conta permanentemente (irreversível)"
-                              disabled={acaoLoading === c.id}
-                            >
-                              🗑
-                            </button>
-                          )}
+                              {/* Excluir permanentemente */}
+                          <button
+                            style={{ ...btnSmall, color: "#6B7280", borderColor: "#6B728060" }}
+                            onClick={() => excluirConta(c)}
+                            title="Excluir cliente permanentemente (irreversível)"
+                            disabled={acaoLoading === c.id}
+                          >
+                            🗑
+                          </button>
                         </div>
                       )}
                     </td>
