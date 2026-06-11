@@ -588,6 +588,16 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {nomeProdutor}
               </span>
+              <button
+                onClick={clearFazenda}
+                style={{
+                  background: "none", border: "0.5px solid #D4DCE8",
+                  borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                  fontSize: 11, color: "#555", fontWeight: 600,
+                }}
+              >
+                Trocar cliente
+              </button>
               <div style={{ width: 1, height: 24, background: "#D4DCE8" }} />
             </div>
           )}
