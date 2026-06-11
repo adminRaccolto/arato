@@ -13,7 +13,7 @@ type NfComItens = NfImportadaSieg & {
 };
 
 type Insumo = { id: string; nome: string; categoria?: string };
-type CentroCusto = { id: string; nome: string; codigo?: string };
+type CentroCusto = { id: string; nome: string; codigo?: string; parent_id?: string };
 
 const CATEGORIAS = [
   "sementes", "fertilizantes", "defensivos", "correcao_solo",
@@ -460,7 +460,7 @@ export default function PendenciasNfPage() {
                               style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12 }}
                             >
                               <option value="">— Nenhum —</option>
-                              {centrosCusto.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
+                              {centrosCusto.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                             </select>
                           </div>
 

@@ -6,7 +6,7 @@ import { supabase } from "../../../lib/supabase";
 import type { RegraClassificacaoNf } from "../../../lib/supabase";
 
 type Insumo      = { id: string; nome: string; categoria?: string };
-type CentroCusto = { id: string; nome: string; codigo?: string };
+type CentroCusto = { id: string; nome: string; codigo?: string; parent_id?: string };
 
 const CATEGORIAS = [
   "sementes", "fertilizantes", "defensivos", "correcao_solo",
@@ -352,7 +352,7 @@ export default function ClassificacaoPage() {
                       style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
                     >
                       <option value="">— Nenhum —</option>
-                      {centrosCusto.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
+                      {centrosCusto.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                     </select>
                   </div>
                 </div>

@@ -1856,7 +1856,7 @@ function ContasPagarInner() {
                     <label style={lbl}>Centro de Custo</label>
                     <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
                       <option value="">— Sem vínculo —</option>
-                      {centrosCusto.map(c => (
+                      {centrosCusto.filter(c => c.parent_id).map(c => (
                         <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
                       ))}
                     </select>

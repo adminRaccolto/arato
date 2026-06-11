@@ -728,7 +728,7 @@ export default function NfServicoPage() {
                       <label style={lbl}>Centro de Custo</label>
                       <select value={cab.centro_custo_id} onChange={e => setCab(p=>({...p,centro_custo_id:e.target.value}))} style={inp}>
                         <option value="">Sem centro de custo</option>
-                        {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                        {centros.filter(c => c.parent_id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
                       </select>
                     </div>
                   </div>

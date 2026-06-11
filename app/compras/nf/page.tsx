@@ -1247,7 +1247,7 @@ export default function NfCompraPage() {
                         </div>
                         <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); }} style={inp}>
                           <option value="">Sem centro de custo</option>
-                          {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                          {centros.filter(c => c.parent_id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1387,7 +1387,7 @@ export default function NfCompraPage() {
                           <label style={lbl}>Centro de Custo</label>
                           <select value={bulkCC} onChange={e => setBulkCC(e.target.value)} style={{ ...inp, fontSize: 12 }}>
                             <option value="">— não alterar —</option>
-                            {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                            {centros.filter(c => c.parent_id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
                           </select>
                         </div>
                         <button
@@ -1601,7 +1601,7 @@ export default function NfCompraPage() {
                             <div style={{ padding: "6px 8px" }}>
                               <select value={it.centro_custo_id} onChange={e => setItem(it.key, { centro_custo_id: e.target.value })} style={{ ...inp, fontSize: 12, padding: "5px 8px" }}>
                                 <option value="">—</option>
-                                {centros.map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
+                                {centros.filter(c => c.parent_id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} ` : ""}{c.nome}</option>)}
                               </select>
                             </div>
                             <div style={{ padding: "6px 8px" }}>

@@ -1034,7 +1034,7 @@ export default function ComprasPage() {
                               <label style={lbl}>Centro de Custo</label>
                               <select style={inp} value={it.centro_custo_id} onChange={e => setItens(prev => prev.map((x, j) => j === idx ? { ...x, centro_custo_id: e.target.value } : x))}>
                                 <option value="">— Sem vínculo —</option>
-                                {centrosCusto.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} — ` : ""}{cc.nome}</option>)}
+                                {centrosCusto.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} — ` : ""}{cc.nome}</option>)}
                               </select>
                             </div>
                           </div>

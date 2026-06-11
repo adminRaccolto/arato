@@ -528,7 +528,7 @@ export default function RateioPage() {
                   <label style={lbl}>Centro de Custo de Origem *</label>
                   <select style={{ ...inp, borderColor: !f.centro_custo_id ? "#E24B4A80" : "#D4DCE8" }} value={f.centro_custo_id} onChange={e => setF(p => ({ ...p, centro_custo_id: e.target.value }))}>
                     <option value="">— Selecionar CC —</option>
-                    {ccs.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
+                    {ccs.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                   </select>
                 </div>
               </div>
@@ -647,7 +647,7 @@ export default function RateioPage() {
                   <label style={lbl}>Centro de Custo de Origem (opcional)</label>
                   <select style={inp} value={gf.centro_custo_id} onChange={e => setGf(p => ({ ...p, centro_custo_id: e.target.value }))}>
                     <option value="">— Sem vínculo —</option>
-                    {ccs.map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
+                    {ccs.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                   </select>
                 </div>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer", paddingBottom: 2 }}>
