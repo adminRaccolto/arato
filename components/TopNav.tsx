@@ -574,31 +574,20 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
           <div style={{ width: 1, height: 32, background: "#D4DCE8" }} />
 
-          {/* Badge "Acessando como Raccolto" */}
-          {userRole === "raccotlo" && nomeFazendaSelecionada && (
+          {/* Nome + logo do cliente ativo (raccotlo navegando por um cliente) */}
+          {userRole === "raccotlo" && nomeProdutor && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                background: "#FBF3E0", border: "0.5px solid #C9921B",
-                borderRadius: 6, padding: "4px 10px",
-                fontSize: 11, color: "#7A5A12", fontWeight: 600,
-                display: "flex", alignItems: "center", gap: 6,
-              }}>
-                <span style={{ opacity: 0.7 }}>Acessando:</span>
-                <span>{nomeProdutor ?? nomeFazendaSelecionada}</span>
-                {nomeProdutor && (
-                  <span style={{ opacity: 0.55, fontWeight: 400 }}>· {nomeFazendaSelecionada}</span>
-                )}
-              </div>
-              <button
-                onClick={clearFazenda}
-                style={{
-                  background: "none", border: "0.5px solid #C9921B",
-                  borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                  fontSize: 11, color: "#7A5A12", fontWeight: 600,
-                }}
-              >
-                Trocar cliente
-              </button>
+              {logoCliente
+                ? <img src={logoCliente} alt="" style={{ height: 26, width: 26, objectFit: "contain", borderRadius: 4, border: "0.5px solid #DDE2EE" }} />
+                : (
+                  <div style={{ width: 26, height: 26, borderRadius: 4, background: "#D5E8F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1A4870", flexShrink: 0 }}>
+                    {nomeProdutor.substring(0, 2).toUpperCase()}
+                  </div>
+                )
+              }
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {nomeProdutor}
+              </span>
               <div style={{ width: 1, height: 24, background: "#D4DCE8" }} />
             </div>
           )}

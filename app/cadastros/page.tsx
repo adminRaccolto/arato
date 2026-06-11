@@ -509,17 +509,18 @@ function CadastrosInner() {
     }
     if (aba === "fazendas") {
       if (userRole === "raccotlo" && fazendaId) {
-        // Raccotlo admin: busca todas as fazendas da conta do cliente ativo
-        supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single()
-          .then(({ data: af }) => {
-            const q = af?.conta_id
-              ? supabase.from("fazendas").select("*").eq("conta_id", af.conta_id).order("nome")
-              : supabase.from("fazendas").select("*").eq("id", fazendaId);
-            q.then(({ data, error }) => {
-              if (error) setErro(error.message);
-              else setFazendas(data ?? []);
-            });
-          });
+        // Raccotlo admin: usa endpoint server-side (service role) para listar fazendas da conta
+        fetch("/api/fazenda/da-conta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazenda_id: fazendaId }),
+        })
+          .then(r => r.json())
+          .then(json => {
+            if (json.ok) setFazendas(json.fazendas ?? []);
+            else setErro(json.error ?? "Erro ao carregar fazendas");
+          })
+          .catch(e => setErro(e.message));
       } else {
         listarFazendas().then(setFazendas).catch(e => setErro(e.message));
       }
@@ -879,17 +880,18 @@ function CadastrosInner() {
       let ownerUserId: string | undefined = user?.id;
 
       if (userRole === "raccotlo" && fazendaId) {
-        // Admin criando fazenda para o cliente ativo — lê conta_id E owner_user_id do cliente
-        const { data: af } = await supabase.from("fazendas").select("conta_id, owner_user_id").eq("id", fazendaId).maybeSingle();
-        if (af?.conta_id) contaIdParaFaz = af.conta_id;
-        if (af?.owner_user_id) ownerUserId = af.owner_user_id as string;
-        if (!af?.conta_id) {
-          // Fazenda ativa sem conta_id: tenta via perfis do cliente
-          const { data: cp } = await supabase.from("perfis").select("conta_id, user_id")
-            .eq("fazenda_id", fazendaId).neq("role", "raccotlo").limit(1).maybeSingle();
-          if (cp?.conta_id) contaIdParaFaz = cp.conta_id;
-          if (cp?.user_id) ownerUserId = cp.user_id;
-        }
+        // Raccotlo criando fazenda para o cliente ativo — resolve conta_id e owner via API (service role)
+        const r = await fetch("/api/fazenda/da-conta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazenda_id: fazendaId }),
+        });
+        const j = await r.json();
+        if (j.conta_id) contaIdParaFaz = j.conta_id;
+        // Busca owner via perfis do cliente (anon consegue ler perfis com user_id próprio)
+        const { data: cp } = await supabase.from("perfis").select("user_id")
+          .eq("conta_id", j.conta_id ?? "").neq("role", "raccotlo").limit(1).maybeSingle();
+        if (cp?.user_id) ownerUserId = cp.user_id;
       }
 
       const novaFazPayload: Omit<FazendaDB, "id" | "created_at"> = {
@@ -897,7 +899,21 @@ function CadastrosInner() {
         conta_id: contaIdParaFaz,
         owner_user_id: ownerUserId,
       };
-      const n = await criarFazenda(novaFazPayload);
+
+      let n: FazendaDB;
+      if (userRole === "raccotlo") {
+        // Usa API com service role para contornar RLS no INSERT (owner_user_id ≠ raccotlo uid)
+        const res = await fetch("/api/fazenda/criar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(novaFazPayload),
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error ?? "Erro ao criar fazenda");
+        n = json.fazenda;
+      } else {
+        n = await criarFazenda(novaFazPayload);
+      }
       setFazendas(p => [...p, n]);
       fazId = n.id;
       // Bootstrap: se ainda não há fazendaId no contexto (primeiro login do cliente)

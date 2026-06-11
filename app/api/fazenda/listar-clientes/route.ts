@@ -41,10 +41,10 @@ export async function GET(req: Request) {
 
   // Enriquece com nome da conta
   const contaIds = [...new Set((faz ?? []).filter(f => f.conta_id).map(f => f.conta_id as string))];
-  let contaMap: Record<string, string> = {};
+  let contaMap: Record<string, { nome: string; logo_url?: string }> = {};
   if (contaIds.length > 0) {
-    const { data: contas } = await sb.from("contas").select("id, nome").in("id", contaIds);
-    contaMap = Object.fromEntries((contas ?? []).map(c => [c.id, c.nome]));
+    const { data: contas } = await sb.from("contas").select("id, nome, logo_url").in("id", contaIds);
+    contaMap = Object.fromEntries((contas ?? []).map(c => [c.id, { nome: c.nome, logo_url: c.logo_url ?? undefined }]));
   }
 
   // Agrupa por conta_id — uma entrada por cliente
@@ -52,6 +52,7 @@ export async function GET(req: Request) {
     conta_id: string;
     conta_nome: string;
     produtor_nome: string | null;
+    logo_url?: string;
     fazendas: { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number }[];
     area_total: number;
   }> = {};
@@ -59,15 +60,17 @@ export async function GET(req: Request) {
   for (const f of (faz ?? [])) {
     const cid = f.conta_id ?? `sem_conta_${f.id}`;
     const prodNome = f.produtor_id ? (produtorMap[f.produtor_id] ?? null) : null;
-    const contaNome = f.conta_id ? (contaMap[f.conta_id] ?? f.nome) : f.nome;
+    const contaInfo = f.conta_id ? contaMap[f.conta_id] : undefined;
+    const contaNome = contaInfo?.nome ?? f.nome;
 
     if (!contaIndex[cid]) {
       contaIndex[cid] = {
-        conta_id:     cid,
-        conta_nome:   contaNome,
+        conta_id:      cid,
+        conta_nome:    contaNome,
         produtor_nome: prodNome,
-        fazendas:     [],
-        area_total:   0,
+        logo_url:      contaInfo?.logo_url,
+        fazendas:      [],
+        area_total:    0,
       };
     }
     // Usa o primeiro produtor encontrado para representar a conta

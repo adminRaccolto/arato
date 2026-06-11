@@ -16,6 +16,7 @@ interface ClienteItem {
   conta_id: string;
   conta_nome: string;
   produtor_nome: string | null;
+  logo_url?: string;
   fazendas: FazendaResumida[];
   area_total: number;
 }
@@ -71,10 +72,12 @@ export default function SeletorCliente() {
   });
 
   // Clica no cliente → entra direto na primeira fazenda
-  // O farm switcher da TopNav cuida de trocar se houver mais de uma
+  // Guarda logo do cliente no localStorage para exibir no TopNav
   function acessarCliente(c: ClienteItem) {
     if (c.fazendas.length === 0) return;
     const f = c.fazendas[0];
+    if (c.logo_url) localStorage.setItem("raccotlo_cliente_logo", c.logo_url);
+    else            localStorage.removeItem("raccotlo_cliente_logo");
     selectFazenda(f.id, f.nome, c.produtor_nome);
   }
 
