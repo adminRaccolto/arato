@@ -5373,3 +5373,70 @@ CREATE INDEX IF NOT EXISTS idx_contrato_fazenda ON contratos(fazenda_id);
 CREATE INDEX IF NOT EXISTS idx_lanc_fazenda     ON lancamentos(fazenda_id);
 CREATE INDEX IF NOT EXISTS idx_lanc_venc        ON lancamentos(fazenda_id, data_vencimento);
 CREATE INDEX IF NOT EXISTS idx_contas_pk        ON contas(id);
+
+-- =============================================================================
+-- Seção 118: Triangulação de NF — operações com múltiplos destinatários
+-- Tipos: venda_a_ordem | barter | pagamento_terceiro | entrega_terceiro
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS triangulacoes (
+  id                   UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  fazenda_id           UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo                 TEXT NOT NULL CHECK (tipo IN ('venda_a_ordem','barter','pagamento_terceiro','entrega_terceiro')),
+  -- Referências
+  contrato_ref         TEXT,
+  safra                TEXT,
+  produto              TEXT,
+  quantidade_kg        NUMERIC,
+  preco_unitario       NUMERIC,
+  moeda                TEXT DEFAULT 'BRL',
+  -- Partes
+  produtor_id          UUID REFERENCES produtores(id),
+  comprador_a_id       UUID REFERENCES pessoas(id),   -- Trading A / comprador da NF
+  comprador_b_id       UUID REFERENCES pessoas(id),   -- Trading B / local de entrega
+  fornecedor_id        UUID REFERENCES pessoas(id),   -- Barter: fornecedor de insumos
+  beneficiario_id      UUID REFERENCES pessoas(id),   -- Pag. terceiro: quem recebe
+  -- Campos específicos
+  nf_entrada_ref       TEXT,                          -- Barter: ref NF entrada
+  valor_insumos        NUMERIC,                       -- Barter: valor insumos
+  valor_terceiro       NUMERIC,                       -- Pag. terceiro: valor ao beneficiário
+  local_entrega_nome   TEXT,                          -- Entrega terceiro: nome do local
+  local_entrega_endereco TEXT,
+  local_entrega_cnpj   TEXT,
+  -- Cadeia de documentos (JSON)
+  nfs_geradas          JSONB DEFAULT '[]',
+  -- Status e obs
+  status               TEXT DEFAULT 'rascunho' CHECK (status IN ('rascunho','em_andamento','concluido','cancelado')),
+  observacao           TEXT,
+  created_at           TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE triangulacoes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "triangulacoes_acesso" ON triangulacoes
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL
+    )
+    OR fazenda_id IN (SELECT id FROM fazendas WHERE owner_user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "triangulacoes_escrita" ON triangulacoes FOR ALL
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid() AND p.conta_id IS NOT NULL
+    )
+    OR fazenda_id IN (SELECT id FROM fazendas WHERE owner_user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE INDEX IF NOT EXISTS idx_triangulacoes_fazenda ON triangulacoes(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_triangulacoes_tipo    ON triangulacoes(tipo);
+
+NOTIFY pgrst, 'reload schema';

@@ -178,9 +178,10 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "fiscal", label: "Fiscal", minStep: 7,
     children: [
-      { id: "fiscal-monitor",    label: "Monitor NF-e Emitidas", path: "/fiscal",            moduleId: "fiscal_nfe"  },
-      { id: "fiscal-pendencias", label: "Pendências Fiscais",    path: "/fiscal/pendencias", moduleId: "fiscal_nfe"  },
-      { id: "fiscal-gnre",       label: "GNRE",                  path: "/fiscal/gnre",       moduleId: "fiscal_nfe"  },
+      { id: "fiscal-monitor",       label: "Monitor NF-e Emitidas",  path: "/fiscal",                     moduleId: "fiscal_nfe"  },
+      { id: "fiscal-triangulacao",  label: "Triangulação de NF",     path: "/fiscal/triangulacao",        moduleId: "fiscal_nfe"  },
+      { id: "fiscal-pendencias",    label: "Pendências Fiscais",      path: "/fiscal/pendencias",          moduleId: "fiscal_nfe"  },
+      { id: "fiscal-gnre",          label: "GNRE",                    path: "/fiscal/gnre",                moduleId: "fiscal_nfe"  },
       { id: "fiscal-esocial",    label: "eSocial Rural",         path: "/fiscal/esocial",    moduleId: "fiscal_sped" },
       {
         type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais", moduleId: "fiscal_sped",
