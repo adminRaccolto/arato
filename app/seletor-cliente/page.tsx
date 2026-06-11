@@ -39,12 +39,21 @@ export default function SeletorCliente() {
   const [loading,   setLoading]   = useState(true);
   const [busca,     setBusca]     = useState("");
   const [expandido, setExpandido] = useState<string | null>(null); // conta_id com fazendas expandidas
+  const [menuAberto, setMenuAberto] = useState<string | null>(null); // conta_id com menu ⋯ aberto
+  const [removendo,  setRemovendoId] = useState<string | null>(null);
   const [logoUrl,   setLogoUrl]   = useState("/Logo_Arato.png");
 
   useEffect(() => {
     const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");
     if (data?.publicUrl) setLogoUrl(data.publicUrl);
   }, []);
+
+  useEffect(() => {
+    if (!menuAberto) return;
+    const handler = () => setMenuAberto(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [menuAberto]);
 
   // ── Modal Criar Novo Cliente ─────────────────────────────────────────────
   const [modalAberto, setModalAberto] = useState(false);
@@ -114,6 +123,26 @@ export default function SeletorCliente() {
     )) return true;
     return false;
   });
+
+  async function removerDoSeletor(c: ClienteItem) {
+    if (!confirm(`Remover "${c.produtor_nome ?? c.conta_nome}" do seletor?\n\nOs dados NÃO serão excluídos — apenas o acesso Raccolto será revogado.`)) return;
+    setRemovendoId(c.conta_id);
+    setMenuAberto(null);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
+    try {
+      await Promise.all(c.fazendas.map(f =>
+        fetch("/api/fazenda/raccolto-acesso", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ fazenda_id: f.id, ativo: false }),
+        })
+      ));
+      setClientes(p => p.filter(x => x.conta_id !== c.conta_id));
+    } finally {
+      setRemovendoId(null);
+    }
+  }
 
   function acessar(c: ClienteItem, f: FazendaResumida) {
     selectFazenda(f.id, f.nome, c.produtor_nome);
@@ -194,11 +223,32 @@ export default function SeletorCliente() {
                     background: "#fff",
                     border: `0.5px solid ${aberto ? "#1A5C38" : "#DDE2EE"}`,
                     borderRadius: 12,
-                    overflow: "hidden",
+                    overflow: "visible",
                     boxShadow: aberto ? "0 4px 16px rgba(26,92,56,0.12)" : "0 1px 4px rgba(0,0,0,0.05)",
                     transition: "box-shadow 0.15s, border-color 0.15s",
+                    position: "relative",
                   }}
                 >
+                  {/* Botão ⋯ de opções (raccotlo) */}
+                  <div style={{ position: "absolute", top: 8, right: 8, zIndex: 10 }}>
+                    <button
+                      onClick={e => { e.stopPropagation(); setMenuAberto(menuAberto === c.conta_id ? null : c.conta_id); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 16, padding: "2px 6px", borderRadius: 5, lineHeight: 1 }}
+                      title="Opções"
+                    >⋯</button>
+                    {menuAberto === c.conta_id && (
+                      <div style={{ position: "absolute", right: 0, top: 24, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 14px rgba(0,0,0,0.12)", minWidth: 180, zIndex: 20 }}>
+                        <button
+                          onClick={e => { e.stopPropagation(); removerDoSeletor(c); }}
+                          disabled={removendo === c.conta_id}
+                          style={{ width: "100%", padding: "10px 14px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#E24B4A", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}
+                        >
+                          {removendo === c.conta_id ? "⟳ Removendo…" : "✕  Remover do seletor"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Cabeçalho do card — clicável */}
                   <button
                     onClick={() => clicarCard(c)}
