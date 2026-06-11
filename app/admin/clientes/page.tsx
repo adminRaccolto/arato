@@ -276,16 +276,19 @@ export default function ClientesPage() {
       const resProd = await fetch("/api/fazenda/listar-clientes", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const { clientes: clientesProd } = await resProd.json() as {
-        clientes: Array<{
+      const bodyProd = await resProd.json() as {
+        clientes?: Array<{
           conta_id: string; conta_nome: string; produtor_nome: string | null;
           fazendas: Array<{ id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number }>;
           area_total: number;
-        }>
+        }>; error?: string;
       };
+      const clientesProd = bodyProd.clientes ?? [];
+      if (!resProd.ok) { console.error("listar-clientes:", bodyProd.error); }
 
-      // 2. Carrega registros de contas (billing/subscription)
-      const contasDB = await listarContasAdmin();
+      // 2. Carrega registros de contas (billing/subscription) — ignora erros de RLS
+      let contasDB: ContaAdmin[] = [];
+      try { contasDB = await listarContasAdmin(); } catch { /* sem contas ainda = ok */ }
       const contaMap = new Map<string, ContaAdmin>(contasDB.map(c => [c.id, c]));
 
       // 3. Mescla: produção + billing
