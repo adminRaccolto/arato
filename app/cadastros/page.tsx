@@ -876,21 +876,26 @@ function CadastrosInner() {
       // Nova fazenda: determina conta_id pelo contexto (conta, não usuário individual)
       let contaIdParaFaz: string | undefined = contaId ?? undefined;
 
+      let ownerUserId: string | undefined = user?.id;
+
       if (userRole === "raccotlo" && fazendaId) {
-        // Admin criando fazenda para o cliente ativo — lê conta_id da fazenda ativa do cliente
-        const { data: af } = await supabase.from("fazendas").select("conta_id").eq("id", fazendaId).single();
+        // Admin criando fazenda para o cliente ativo — lê conta_id E owner_user_id do cliente
+        const { data: af } = await supabase.from("fazendas").select("conta_id, owner_user_id").eq("id", fazendaId).maybeSingle();
         if (af?.conta_id) contaIdParaFaz = af.conta_id;
-        else {
+        if (af?.owner_user_id) ownerUserId = af.owner_user_id as string;
+        if (!af?.conta_id) {
           // Fazenda ativa sem conta_id: tenta via perfis do cliente
-          const { data: cp } = await supabase.from("perfis").select("conta_id")
+          const { data: cp } = await supabase.from("perfis").select("conta_id, user_id")
             .eq("fazenda_id", fazendaId).neq("role", "raccotlo").limit(1).maybeSingle();
           if (cp?.conta_id) contaIdParaFaz = cp.conta_id;
+          if (cp?.user_id) ownerUserId = cp.user_id;
         }
       }
 
       const novaFazPayload: Omit<FazendaDB, "id" | "created_at"> = {
         ...camposForm,
         conta_id: contaIdParaFaz,
+        owner_user_id: ownerUserId,
       };
       const n = await criarFazenda(novaFazPayload);
       setFazendas(p => [...p, n]);
