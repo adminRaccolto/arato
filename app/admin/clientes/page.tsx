@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import { listarContasAdmin, atualizarConta } from "../../../lib/db";
+import { listarContasAdmin } from "../../../lib/db";
 import type { Conta } from "../../../lib/supabase";
 import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
@@ -131,7 +131,13 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
   async function salvar() {
     setSalvando(true); setErro("");
     try {
-      await atualizarConta(conta.id, form);
+      const res = await fetch("/api/admin/atualizar-conta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: conta.id, campos: form }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Erro ao salvar");
       onSalvo({ ...conta, ...form } as ContaAdmin);
     } catch (e) { setErro(String(e)); }
     finally { setSalvando(false); }
@@ -401,14 +407,24 @@ export default function ClientesPage() {
   async function marcarProBono(c: ClienteAdmin) {
     const motivo = window.prompt(`Motivo do Pro Bono para "${c.nome}":\n(Ex: cliente da consultoria, parceiro estratégico...)`, c.pro_bono_motivo ?? "Cliente da consultoria Raccolto");
     if (motivo === null) return;
-    await atualizarConta(c.id, { status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 });
-    setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 } : x));
+    const campos = { status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 };
+    const res = await fetch("/api/admin/atualizar-conta", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: c.id, campos }),
+    });
+    if (!res.ok) { const j = await res.json(); alert("Erro: " + j.error); return; }
+    setClientes(cs => cs.map(x => x.id === c.id ? { ...x, ...campos } as ClienteAdmin : x));
   }
 
   async function removerProBono(c: ClienteAdmin) {
     if (!window.confirm(`Remover Pro Bono de "${c.nome}"?\nO status voltará para "ativo".`)) return;
-    await atualizarConta(c.id, { status: "ativo", pro_bono_motivo: "", valor_mensalidade: undefined });
-    setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "ativo", pro_bono_motivo: "" } : x));
+    const campos = { status: "ativo", pro_bono_motivo: "" };
+    const res = await fetch("/api/admin/atualizar-conta", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: c.id, campos }),
+    });
+    if (!res.ok) { const j = await res.json(); alert("Erro: " + j.error); return; }
+    setClientes(cs => cs.map(x => x.id === c.id ? { ...x, ...campos } as ClienteAdmin : x));
   }
 
   // ── Mudar plano inline ──────────────────────────────────────────────────────
@@ -416,7 +432,11 @@ export default function ClientesPage() {
     setAcaoLoading(c.id);
     try {
       const valor = PACOTE_CFG[novoPacote].valor;
-      await atualizarConta(c.id, { pacote: novoPacote, valor_mensalidade: valor });
+      const res = await fetch("/api/admin/atualizar-conta", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c.id, campos: { pacote: novoPacote, valor_mensalidade: valor } }),
+      });
+      if (!res.ok) { const j = await res.json(); alert("Erro: " + j.error); return; }
       setClientes(cs => cs.map(x => x.id === c.id ? { ...x, pacote: novoPacote, valor_mensalidade: valor } : x));
     } finally {
       setAcaoLoading(null);
