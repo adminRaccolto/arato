@@ -26,9 +26,16 @@ function aplicarMascara(raw: string): string {
 
 function valorParaDisplay(v: number | string | undefined | null): string {
   if (v === "" || v === null || v === undefined) return "";
-  const n = typeof v === "string"
-    ? Number(v.replace(/\./g, "").replace(",", ".")) || 0
-    : Number(v) || 0;
+  let n: number;
+  if (typeof v === "number") {
+    n = v;
+  } else if (v.includes(",")) {
+    // pt-BR formatado: "1.234,56" — ponto é milhar, vírgula é decimal
+    n = Number(v.replace(/\./g, "").replace(",", ".")) || 0;
+  } else {
+    // Notação inglesa do banco/JSON: "100.2" ou inteiro "1002" — ponto é decimal
+    n = Number(v) || 0;
+  }
   return n > 0 ? formatar(n) : "";
 }
 
