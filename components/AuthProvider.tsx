@@ -191,35 +191,50 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setFazendaId(fid);
       setContaId(cid);
 
-      // Carrega plano e status da conta
-      if (cid) {
-        try {
-          const { data: conta } = await supabase
-            .from("contas")
-            .select("pacote, status")
-            .eq("id", cid)
-            .maybeSingle();
-          if (conta) {
-            setPlanoAtual((conta.pacote as PlanoId) ?? null);
-            setContaStatus(conta.status ?? null);
-          }
-        } catch { /* ignora — conta pode não ter campo ainda */ }
-      }
-
-      // Carrega permissões do grupo do usuário
-      try {
-        const { data: usuarioData } = await supabase
-          .from("usuarios")
+      // Carrega conta + usuário em paralelo (evita 2 round-trips sequenciais)
+      const [contaRes, usuarioRes] = await Promise.allSettled([
+        cid
+          ? supabase.from("contas")
+              .select("pacote, status, onboarding_ativo, logo_url")
+              .eq("id", cid)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+        supabase.from("usuarios")
           .select("grupo_id, grupos_usuarios(permissoes)")
           .eq("auth_user_id", user.id)
-          .maybeSingle();
-        const perms = (
-          (Array.isArray(usuarioData?.grupos_usuarios)
-            ? usuarioData?.grupos_usuarios[0]
-            : usuarioData?.grupos_usuarios) as { permissoes?: Record<string, string> } | null
-        )?.permissoes ?? {};
-        setPermissoes(perms as Record<string, ModuloPermissao>);
-      } catch {
+          .maybeSingle(),
+      ]);
+
+      // Processa conta
+      if (contaRes.status === "fulfilled") {
+        const conta = contaRes.value.data as Record<string, unknown> | null;
+        if (conta) {
+          setPlanoAtual((conta.pacote as PlanoId) ?? null);
+          setContaStatus((conta.status as string) ?? null);
+          const ativo = (conta.onboarding_ativo as boolean) ?? false;
+          setOnboardingAtivo(ativo);
+          if (conta.logo_url) setLogoCliente(conta.logo_url as string);
+          // Calcula steps só se onboarding ativo (evita 7 queries desnecessárias)
+          if (ativo && fid) {
+            calcularStepsCompletos(fid).then(setStepsCompletos).catch(() => {});
+          }
+        }
+      }
+
+      // Processa permissões
+      if (usuarioRes.status === "fulfilled") {
+        try {
+          const usuarioData = usuarioRes.value.data;
+          const perms = (
+            (Array.isArray(usuarioData?.grupos_usuarios)
+              ? usuarioData?.grupos_usuarios[0]
+              : usuarioData?.grupos_usuarios) as { permissoes?: Record<string, string> } | null
+          )?.permissoes ?? {};
+          setPermissoes(perms as Record<string, ModuloPermissao>);
+        } catch {
+          setPermissoes({});
+        }
+      } else {
         setPermissoes({});
       }
     }
@@ -242,33 +257,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchOnboarding = useCallback(async (fid: string, cid: string) => {
-    try {
-      const { data: conta } = await supabase
-        .from("contas")
-        .select("onboarding_ativo, logo_url")
-        .eq("id", cid)
-        .maybeSingle();
-      const ativo = conta?.onboarding_ativo ?? false;
-      setOnboardingAtivo(ativo);
-      if (conta?.logo_url) setLogoCliente(conta.logo_url);
-      if (ativo) {
-        const completos = await calcularStepsCompletos(fid);
-        setStepsCompletos(completos);
-      }
-    } catch {
-      // onboarding_ativo column may not exist yet (migration pending)
-    }
-  }, []);
-
-  // Re-executa a detecção de steps (chamar após o usuário completar um passo)
+  // Re-executa só os steps (chamar após o usuário completar um passo do onboarding)
   const refetchOnboarding = useCallback(() => {
-    if (fazendaId && contaId) fetchOnboarding(fazendaId, contaId).catch(() => {});
-  }, [fazendaId, contaId, fetchOnboarding]);
-
-  useEffect(() => {
-    if (fazendaId && contaId) fetchOnboarding(fazendaId, contaId).catch(() => {});
-  }, [fazendaId, contaId, fetchOnboarding]);
+    if (fazendaId && onboardingAtivo) {
+      calcularStepsCompletos(fazendaId).then(setStepsCompletos).catch(() => {});
+    }
+  }, [fazendaId, onboardingAtivo]);
 
   // Rastreamento de inatividade — ativo somente quando há sessão autenticada
   useEffect(() => {
