@@ -25,6 +25,7 @@ type ClienteAdmin  = ContaAdmin & {
 };
 type StatusCliente = NonNullable<Conta["status"]>;
 type PacoteCliente = NonNullable<Conta["pacote"]>;
+type AbaContrato   = "" | "trial" | "ativo" | "pro_bono" | "inadimplente" | "cancelado";
 
 // ─── Config de cores ─────────────────────────────────────────────────────────
 
@@ -42,6 +43,15 @@ const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string
   gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: 590  },
   performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: 990  },
 };
+
+const ABAS_CONTRATO: Array<{ key: AbaContrato; label: string; cor?: string; bg?: string }> = [
+  { key: "",             label: "Todos"         },
+  { key: "trial",        label: "Trial",        cor: "#C9921B", bg: "#FBF3E0" },
+  { key: "ativo",        label: "Pagantes",     cor: "#16A34A", bg: "#F0FDF4" },
+  { key: "pro_bono",     label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
+  { key: "inadimplente", label: "Inadimplentes",cor: "#E24B4A", bg: "#FEF2F2" },
+  { key: "cancelado",    label: "Cancelados",   cor: "#6B7280", bg: "#F3F4F6" },
+];
 
 const CRM_STAGE_CFG: Record<string, { label: string; cor: string }> = {
   lead:         { label: "Lead",          cor: "#888"    },
@@ -262,7 +272,7 @@ export default function ClientesPage() {
   const [modalPlano, setModalPlano]       = useState<ClienteAdmin | null>(null);
   const [acaoLoading, setAcaoLoading]     = useState<string | null>(null); // conta_id em progresso
   const [busca, setBusca]                 = useState("");
-  const [filtroStatus, setFiltroStatus]   = useState<StatusCliente | "">("");
+  const [abaContrato, setAbaContrato]     = useState<AbaContrato>("");
   const [filtroPacote, setFiltroPacote]   = useState<PacoteCliente | "">("");
   const [filtroStage, setFiltroStage]     = useState("");
   const [filtroOrigem, setFiltroOrigem]   = useState("");
@@ -322,9 +332,21 @@ export default function ClientesPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  function countAba(key: AbaContrato) {
+    if (!key) return clientes.length;
+    if (key === "inadimplente") return clientes.filter(c => c.status === "inadimplente" || c.status === "inativo").length;
+    return clientes.filter(c => c.status === key).length;
+  }
+
   const filtrados = clientes.filter(c => {
-    if (filtroStatus && c.status !== filtroStatus) return false;
+    if (abaContrato) {
+      if (abaContrato === "inadimplente") {
+        if (c.status !== "inadimplente" && c.status !== "inativo") return false;
+      } else if (c.status !== abaContrato) return false;
+    }
     if (filtroPacote && c.pacote !== filtroPacote) return false;
+    if (filtroStage && c.crm_stage !== filtroStage) return false;
+    if (filtroOrigem && c.origem !== filtroOrigem) return false;
     if (busca && !c.nome.toLowerCase().includes(busca.toLowerCase())
       && !(c.email_contato ?? "").toLowerCase().includes(busca.toLowerCase())) return false;
     return true;
@@ -546,8 +568,44 @@ export default function ClientesPage() {
         ))}
       </div>
 
-      {/* Seção Pro Bono */}
-      {proBonoList.length > 0 && (
+      {/* Abas de tipo de contrato */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        {ABAS_CONTRATO.map(aba => {
+          const count = countAba(aba.key);
+          const ativa = abaContrato === aba.key;
+          return (
+            <button
+              key={aba.key}
+              onClick={() => setAbaContrato(aba.key)}
+              style={{
+                padding: "6px 14px",
+                border: `1.5px solid ${ativa ? (aba.cor ?? "#0B1E35") : "#D4DCE8"}`,
+                borderRadius: 20,
+                background: ativa ? (aba.bg ?? "#F0F4FA") : "#fff",
+                color: ativa ? (aba.cor ?? "#0B1E35") : "#555",
+                fontWeight: ativa ? 700 : 400,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
+              {aba.label}
+              <span style={{
+                fontSize: 11, fontWeight: 700,
+                background: ativa ? (aba.cor ?? "#0B1E35") : "#E8ECF2",
+                color: ativa ? "#fff" : "#666",
+                borderRadius: 10, padding: "1px 7px",
+                minWidth: 20, textAlign: "center",
+              }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Seção Pro Bono — só na aba Todos ou Pro Bono */}
+      {proBonoList.length > 0 && (abaContrato === "" || abaContrato === "pro_bono") && (
         <div style={{
           background: "#EFF6FF", border: "1px solid #378ADD40",
           borderRadius: 12, padding: "16px 20px", marginBottom: 16,
@@ -592,20 +650,14 @@ export default function ClientesPage() {
 
       {/* Filtros */}
       <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <input style={{ ...inp, width: 220 }} placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
-        <select style={{ ...inp, width: 150 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusCliente | "")}>
-          <option value="">Todos os status</option>
-          {(Object.keys(STATUS_CFG) as StatusCliente[]).map(s => (
-            <option key={s} value={s}>{STATUS_CFG[s].label}</option>
-          ))}
-        </select>
+        <input style={{ ...inp, width: 240 }} placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
         <select style={{ ...inp, width: 150 }} value={filtroPacote} onChange={e => setFiltroPacote(e.target.value as PacoteCliente | "")}>
           <option value="">Todos os pacotes</option>
           {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => (
             <option key={p} value={p}>{PACOTE_CFG[p].label}</option>
           ))}
         </select>
-        <select style={{ ...inp, width: 150 }} value={filtroStage} onChange={e => setFiltroStage(e.target.value)}>
+        <select style={{ ...inp, width: 160 }} value={filtroStage} onChange={e => setFiltroStage(e.target.value)}>
           <option value="">Todos os estágios</option>
           {Object.entries(CRM_STAGE_CFG).map(([k, v]) => (
             <option key={k} value={k}>{v.label}</option>
