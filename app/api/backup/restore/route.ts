@@ -71,6 +71,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Este backup pertence a outra fazenda" }, { status: 403 });
   }
 
+  // Verificar se a conta existe; se não, recriar a partir dos dados da fazenda no backup
+  // (necessário quando a conta foi excluída e os dados do FK precisam existir)
+  const fazendaDoBackup = (backup.dados?.fazendas ?? []) as Array<{ id?: string; nome?: string; conta_id?: string }>;
+  const contaId = fazendaDoBackup[0]?.conta_id;
+  if (contaId) {
+    const { data: contaExiste } = await admin.from("contas").select("id").eq("id", contaId).maybeSingle();
+    if (!contaExiste) {
+      const nomeFazenda = fazendaDoBackup[0]?.nome ?? "Conta Restaurada";
+      await admin.from("contas").insert({ id: contaId, nome: nomeFazenda, tipo: "pf" });
+    }
+  }
+
   // Upsert em cada tabela na ordem correta
   const resultados: Record<string, { restaurados: number; erro?: string }> = {};
   let totalRestaurados = 0;

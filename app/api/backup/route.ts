@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 // ── Tabelas exportadas no backup (em ordem de dependência) ──────
 const TABELAS: string[] = [
+  "contas",
   "fazendas", "produtores", "pessoas", "matriculas_imoveis",
   "anos_safra", "ciclos", "talhoes", "depositos",
   "maquinas", "bombas_combustivel", "funcionarios", "contas_bancarias",

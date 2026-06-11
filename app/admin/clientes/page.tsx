@@ -17,6 +17,12 @@ const supabase = createClient(
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 type ContaAdmin    = Conta & { fazendas_count: number; crm_stage?: string; origem?: string; cidade?: string; estado?: string };
+// Clientes carregados do seletor de produção (podem não ter conta cadastrada)
+type ClienteAdmin  = ContaAdmin & {
+  _sem_conta: boolean;
+  _fazendas_prod: Array<{ id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number }>;
+  _area_total: number;
+};
 type StatusCliente = NonNullable<Conta["status"]>;
 type PacoteCliente = NonNullable<Conta["pacote"]>;
 
@@ -250,10 +256,10 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
 export default function ClientesPage() {
   const router = useRouter();
-  const [clientes, setClientes]           = useState<ContaAdmin[]>([]);
+  const [clientes, setClientes]           = useState<ClienteAdmin[]>([]);
   const [loading, setLoading]             = useState(true);
-  const [modalEdit, setModalEdit]         = useState<ContaAdmin | null>(null);
-  const [modalPlano, setModalPlano]       = useState<ContaAdmin | null>(null);
+  const [modalEdit, setModalEdit]         = useState<ClienteAdmin | null>(null);
+  const [modalPlano, setModalPlano]       = useState<ClienteAdmin | null>(null);
   const [acaoLoading, setAcaoLoading]     = useState<string | null>(null); // conta_id em progresso
   const [busca, setBusca]                 = useState("");
   const [filtroStatus, setFiltroStatus]   = useState<StatusCliente | "">("");
@@ -263,8 +269,60 @@ export default function ClientesPage() {
 
   const carregar = useCallback(async () => {
     setLoading(true);
-    try { setClientes(await listarContasAdmin()); }
-    finally { setLoading(false); }
+    try {
+      // 1. Carrega todos os clientes de produção (fazendas com raccolto_acesso)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const resProd = await fetch("/api/fazenda/listar-clientes", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const { clientes: clientesProd } = await resProd.json() as {
+        clientes: Array<{
+          conta_id: string; conta_nome: string; produtor_nome: string | null;
+          fazendas: Array<{ id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number }>;
+          area_total: number;
+        }>
+      };
+
+      // 2. Carrega registros de contas (billing/subscription)
+      const contasDB = await listarContasAdmin();
+      const contaMap = new Map<string, ContaAdmin>(contasDB.map(c => [c.id, c]));
+
+      // 3. Mescla: produção + billing
+      const merged: ClienteAdmin[] = (clientesProd ?? []).map(fc => {
+        const semConta = fc.conta_id.startsWith("sem_conta_");
+        const realContaId = semConta ? null : fc.conta_id;
+        const conta = realContaId ? contaMap.get(realContaId) : undefined;
+
+        return {
+          id:               realContaId ?? fc.conta_id,
+          nome:             conta?.nome ?? fc.conta_nome,
+          tipo:             conta?.tipo ?? "pf",
+          status:           conta?.status ?? null,
+          pacote:           conta?.pacote ?? null,
+          data_inicio:      conta?.data_inicio ?? null,
+          data_vencimento:  conta?.data_vencimento ?? null,
+          valor_mensalidade: conta?.valor_mensalidade ?? null,
+          pro_bono_motivo:  conta?.pro_bono_motivo ?? null,
+          obs_admin:        conta?.obs_admin ?? null,
+          email_contato:    conta?.email_contato ?? null,
+          telefone:         conta?.telefone ?? null,
+          created_at:       conta?.created_at ?? null,
+          fazendas_count:   fc.fazendas.length,
+          crm_stage:        conta?.crm_stage,
+          origem:           conta?.origem,
+          cidade:           conta?.cidade,
+          estado:           conta?.estado,
+          _sem_conta:       !conta || semConta,
+          _fazendas_prod:   fc.fazendas,
+          _area_total:      fc.area_total,
+        } as ClienteAdmin;
+      });
+
+      setClientes(merged);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
@@ -293,21 +351,51 @@ export default function ClientesPage() {
   const origens    = Array.from(new Set(clientes.map(c => c.origem).filter(Boolean))) as string[];
   const proBonoList = clientes.filter(c => c.status === "pro_bono");
 
-  async function marcarProBono(c: ContaAdmin) {
+  // ── Criar conta admin para cliente sem conta ─────────────────────────────
+  async function criarContaAdmin(c: ClienteAdmin) {
+    const pacote = window.prompt(
+      `Criar conta admin para "${c.nome}".\n\nEscolha o pacote:\n  essencial / gestao / performance / pro_bono\n\nDigite o pacote:`,
+      "pro_bono",
+    ) as "essencial" | "gestao" | "performance" | "pro_bono" | null;
+    if (!pacote) return;
+    const statusInicial = pacote === "pro_bono" ? "pro_bono" : "ativo";
+    const valor = pacote === "pro_bono" ? 0 : (PACOTE_CFG[pacote as keyof typeof PACOTE_CFG]?.valor ?? 0);
+    try {
+      const { data: novaConta, error } = await supabase.from("contas").insert({
+        nome: c.nome,
+        tipo: c.tipo ?? "pf",
+        status: statusInicial,
+        pacote: pacote === "pro_bono" ? "essencial" : pacote,
+        valor_mensalidade: valor,
+        data_inicio: new Date().toISOString().split("T")[0],
+      }).select().single();
+      if (error || !novaConta) { alert("Erro ao criar conta: " + error?.message); return; }
+      // Vincular as fazendas à nova conta
+      for (const faz of c._fazendas_prod) {
+        await supabase.from("fazendas").update({ conta_id: novaConta.id }).eq("id", faz.id);
+      }
+      alert(`Conta criada com sucesso para "${c.nome}"! ID: ${novaConta.id}\n\nAjuste os detalhes clicando em ✎ Editar.`);
+      await carregar();
+    } catch (e) {
+      alert("Erro: " + String(e));
+    }
+  }
+
+  async function marcarProBono(c: ClienteAdmin) {
     const motivo = window.prompt(`Motivo do Pro Bono para "${c.nome}":\n(Ex: cliente da consultoria, parceiro estratégico...)`, c.pro_bono_motivo ?? "Cliente da consultoria Raccolto");
     if (motivo === null) return;
     await atualizarConta(c.id, { status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 });
     setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "pro_bono", pro_bono_motivo: motivo, valor_mensalidade: 0 } : x));
   }
 
-  async function removerProBono(c: ContaAdmin) {
+  async function removerProBono(c: ClienteAdmin) {
     if (!window.confirm(`Remover Pro Bono de "${c.nome}"?\nO status voltará para "ativo".`)) return;
     await atualizarConta(c.id, { status: "ativo", pro_bono_motivo: "", valor_mensalidade: undefined });
     setClientes(cs => cs.map(x => x.id === c.id ? { ...x, status: "ativo", pro_bono_motivo: "" } : x));
   }
 
   // ── Mudar plano inline ──────────────────────────────────────────────────────
-  async function mudarPlano(c: ContaAdmin, novoPacote: PacoteCliente) {
+  async function mudarPlano(c: ClienteAdmin, novoPacote: PacoteCliente) {
     setAcaoLoading(c.id);
     try {
       const valor = PACOTE_CFG[novoPacote].valor;
@@ -320,7 +408,7 @@ export default function ClientesPage() {
   }
 
   // ── Cancelar acesso (bloqueia auth + marca cancelado) ──────────────────────
-  async function cancelarAcesso(c: ContaAdmin) {
+  async function cancelarAcesso(c: ClienteAdmin) {
     const isTrial = c.status === "trial";
     const msg = isTrial
       ? `Encerrar trial de "${c.nome}"?\n\nIsso irá:\n• Revogar o acesso imediatamente\n• Marcar conta como "Cancelado"\n• Bloquear login de todos os usuários\n\nEsta ação pode ser desfeita manualmente alterando o status.`
@@ -345,7 +433,7 @@ export default function ClientesPage() {
   }
 
   // ── Excluir conta permanentemente ─────────────────────────────────────────
-  async function excluirConta(c: ContaAdmin) {
+  async function excluirConta(c: ClienteAdmin) {
     const confirmacao = window.prompt(
       `ATENÇÃO — EXCLUSÃO PERMANENTE\n\nEsta ação APAGA TODOS os dados de "${c.nome}" (fazendas, lançamentos, contratos, etc.) e NÃO pode ser desfeita.\n\nDigite o nome da conta para confirmar:`
     );
@@ -379,7 +467,7 @@ export default function ClientesPage() {
         <ModalCliente
           conta={modalEdit}
           onClose={() => setModalEdit(null)}
-          onSalvo={upd => { setClientes(cs => cs.map(c => c.id === upd.id ? upd : c)); setModalEdit(null); }}
+          onSalvo={upd => { setClientes(cs => cs.map(c => c.id === upd.id ? { ...c, ...upd } as ClienteAdmin : c)); setModalEdit(null); }}
         />
       )}
 
@@ -549,12 +637,11 @@ export default function ClientesPage() {
                 const dias    = diasRestantes(c.data_vencimento);
                 const urgente = dias !== null && dias >= 0 && dias <= 14;
                 const vencido = dias !== null && dias < 0;
-                const extC    = c;
 
                 return (
                   <tr key={c.id} style={{
                     borderBottom: i < filtrados.length - 1 ? "0.5px solid #EEF1F6" : "none",
-                    background: c.status === "pro_bono" ? "#F0F7FF" : "transparent",
+                    background: c._sem_conta ? "#FFFBF0" : c.status === "pro_bono" ? "#F0F7FF" : "transparent",
                   }}>
                     <td style={{ padding: "10px 12px", minWidth: 160 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -562,12 +649,21 @@ export default function ClientesPage() {
                         {c.status === "pro_bono" && (
                           <span style={{ fontSize: 9, fontWeight: 700, color: "#378ADD", background: "#DBEAFE", borderRadius: 10, padding: "1px 6px", letterSpacing: 0.5 }}>PB</span>
                         )}
+                        {c._sem_conta && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#C9921B", background: "#FBF3E0", borderRadius: 10, padding: "1px 6px" }}>SEM CONTA</span>
+                        )}
                       </div>
                       {c.email_contato && <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>{c.email_contato}</div>}
                       {c.pro_bono_motivo && c.status === "pro_bono" && (
                         <div style={{ fontSize: 10, color: "#378ADD", marginTop: 1, fontStyle: "italic" }}>{c.pro_bono_motivo}</div>
                       )}
                       {c.telefone && !c.pro_bono_motivo && <div style={{ fontSize: 10, color: "#aaa" }}>{c.telefone}</div>}
+                      {c._sem_conta && (
+                        <div style={{ fontSize: 10, color: "#C9921B", marginTop: 2 }}>
+                          {c._fazendas_prod.map(f => f.nome).slice(0, 2).join(", ")}
+                          {c._fazendas_prod.length > 2 ? ` +${c._fazendas_prod.length - 2}` : ""}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {c.pacote ? (
@@ -577,19 +673,23 @@ export default function ClientesPage() {
                       ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <span style={{ padding: "2px 8px", background: sCfg.bg, color: sCfg.cor, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
-                        {sCfg.label}
-                      </span>
+                      {c._sem_conta ? (
+                        <span style={{ color: "#C9921B", fontSize: 11 }}>—</span>
+                      ) : (
+                        <span style={{ padding: "2px 8px", background: sCfg.bg, color: sCfg.cor, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                          {sCfg.label}
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      {extC.crm_stage ? (
-                        <span style={{ fontSize: 11, color: CRM_STAGE_CFG[extC.crm_stage]?.cor ?? "#888" }}>
-                          {CRM_STAGE_CFG[extC.crm_stage]?.label ?? extC.crm_stage}
+                      {c.crm_stage ? (
+                        <span style={{ fontSize: 11, color: CRM_STAGE_CFG[c.crm_stage]?.cor ?? "#888" }}>
+                          {CRM_STAGE_CFG[c.crm_stage]?.label ?? c.crm_stage}
                         </span>
                       ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
                     </td>
                     <td style={{ padding: "10px 12px", fontSize: 12, color: "#555" }}>
-                      {extC.cidade && extC.estado ? `${extC.cidade}/${extC.estado}` : (extC.estado ?? "—")}
+                      {c.cidade && c.estado ? `${c.cidade}/${c.estado}` : (c.estado ?? (c._fazendas_prod[0]?.municipio ? `${c._fazendas_prod[0].municipio}/${c._fazendas_prod[0].estado ?? ""}` : "—"))}
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, color: "#555" }}>
                       {fmtDate(c.data_inicio)}
@@ -617,69 +717,82 @@ export default function ClientesPage() {
                       </span>
                     </td>
                     <td style={{ padding: "10px 12px" }}>
-                      <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                        {/* Faturamento */}
-                        <button style={btnSmall} onClick={() => router.push(`/admin/faturamento?conta=${c.id}`)} title="Histórico de faturamento">
-                          💳
-                        </button>
-                        {/* Módulos */}
-                        <button style={btnSmall} onClick={() => router.push(`/admin/modulos?conta=${c.id}`)} title="Gerenciar módulos">
-                          ⬡
-                        </button>
-                        {/* Alterar plano */}
-                        <button
-                          style={{ ...btnSmall, color: "#1A4870", borderColor: "#1A487060" }}
-                          onClick={() => setModalPlano(c)}
-                          title="Upgrade / Downgrade de plano"
-                          disabled={acaoLoading === c.id}
-                        >
-                          ↑↓
-                        </button>
-                        {/* Pro Bono */}
-                        {c.status !== "pro_bono" ? (
+                      {c._sem_conta ? (
+                        /* Cliente sem conta admin — só botão de criar conta */
+                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                           <button
-                            style={{ ...btnSmall, color: "#378ADD", borderColor: "#378ADD60" }}
-                            onClick={() => marcarProBono(c)}
-                            title="Marcar como Pro Bono"
+                            style={{ ...btnSmall, color: "#C9921B", borderColor: "#C9921B60", background: "#FBF3E0", fontSize: 11 }}
+                            onClick={() => criarContaAdmin(c)}
+                            title="Criar conta admin para este cliente"
                           >
-                            ⭐ PB
+                            + Criar conta
                           </button>
-                        ) : (
-                          <button
-                            style={{ ...btnSmall, color: "#E24B4A", borderColor: "#E24B4A60", background: "#FEF2F2" }}
-                            onClick={() => removerProBono(c)}
-                            title="Remover Pro Bono"
-                          >
-                            ✕ PB
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: 5, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                          {/* Faturamento */}
+                          <button style={btnSmall} onClick={() => router.push(`/admin/faturamento?conta=${c.id}`)} title="Histórico de faturamento">
+                            💳
                           </button>
-                        )}
-                        {/* Editar */}
-                        <button style={btnSmall} onClick={() => setModalEdit(c)} title="Editar dados">
-                          ✎
-                        </button>
-                        {/* Cancelar acesso */}
-                        {c.status !== "cancelado" && (
+                          {/* Módulos */}
+                          <button style={btnSmall} onClick={() => router.push(`/admin/modulos?conta=${c.id}`)} title="Gerenciar módulos">
+                            ⬡
+                          </button>
+                          {/* Alterar plano */}
                           <button
-                            style={{ ...btnSmall, color: "#E24B4A", borderColor: "#E24B4A60" }}
-                            onClick={() => cancelarAcesso(c)}
-                            title={c.status === "trial" ? "Encerrar trial e revogar acesso" : "Cancelar acesso (revoga login)"}
+                            style={{ ...btnSmall, color: "#1A4870", borderColor: "#1A487060" }}
+                            onClick={() => setModalPlano(c)}
+                            title="Upgrade / Downgrade de plano"
                             disabled={acaoLoading === c.id}
                           >
-                            {acaoLoading === c.id ? "…" : "🚫"}
+                            ↑↓
                           </button>
-                        )}
-                        {/* Excluir permanentemente — só para trial/cancelado */}
-                        {(c.status === "trial" || c.status === "cancelado" || c.status === "pro_bono") && (
-                          <button
-                            style={{ ...btnSmall, color: "#6B7280", borderColor: "#6B728060" }}
-                            onClick={() => excluirConta(c)}
-                            title="Excluir conta permanentemente (irreversível)"
-                            disabled={acaoLoading === c.id}
-                          >
-                            🗑
+                          {/* Pro Bono */}
+                          {c.status !== "pro_bono" ? (
+                            <button
+                              style={{ ...btnSmall, color: "#378ADD", borderColor: "#378ADD60" }}
+                              onClick={() => marcarProBono(c)}
+                              title="Marcar como Pro Bono"
+                            >
+                              ⭐ PB
+                            </button>
+                          ) : (
+                            <button
+                              style={{ ...btnSmall, color: "#E24B4A", borderColor: "#E24B4A60", background: "#FEF2F2" }}
+                              onClick={() => removerProBono(c)}
+                              title="Remover Pro Bono"
+                            >
+                              ✕ PB
+                            </button>
+                          )}
+                          {/* Editar */}
+                          <button style={btnSmall} onClick={() => setModalEdit(c)} title="Editar dados">
+                            ✎
                           </button>
-                        )}
-                      </div>
+                          {/* Cancelar acesso */}
+                          {c.status !== "cancelado" && (
+                            <button
+                              style={{ ...btnSmall, color: "#E24B4A", borderColor: "#E24B4A60" }}
+                              onClick={() => cancelarAcesso(c)}
+                              title={c.status === "trial" ? "Encerrar trial e revogar acesso" : "Cancelar acesso (revoga login)"}
+                              disabled={acaoLoading === c.id}
+                            >
+                              {acaoLoading === c.id ? "…" : "🚫"}
+                            </button>
+                          )}
+                          {/* Excluir permanentemente — só para trial/cancelado */}
+                          {(c.status === "trial" || c.status === "cancelado" || c.status === "pro_bono") && (
+                            <button
+                              style={{ ...btnSmall, color: "#6B7280", borderColor: "#6B728060" }}
+                              onClick={() => excluirConta(c)}
+                              title="Excluir conta permanentemente (irreversível)"
+                              disabled={acaoLoading === c.id}
+                            >
+                              🗑
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
