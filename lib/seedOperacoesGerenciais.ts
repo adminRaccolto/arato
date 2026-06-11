@@ -1941,8 +1941,10 @@ const CFOP_SEED: Record<number, CfopRecord[]> = {
 
 // Importa CFOPs padrão para a tabela operacao_cfop_fiscal
 // Deve ser chamada APÓS seedOperacoesGerenciais (pois precisa dos UUIDs)
-export async function seedCfopsFiscais(fazenda_id: string): Promise<{ inseridos: number; ignorados: number }> {
-  const db = supabase;
+// Aceita client externo (service role) para contornar RLS
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function seedCfopsFiscais(fazenda_id: string, client?: any): Promise<{ inseridos: number; ignorados: number }> {
+  const db = client ?? supabase;
 
   // 1. Buscar mapeamento ref_id → uuid das operações desta fazenda
   const { data: ops, error: opErr } = await db

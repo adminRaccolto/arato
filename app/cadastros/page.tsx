@@ -40,7 +40,7 @@ import {
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { planoContasPadrao, labelConta, type ContaContabil } from "../../lib/planoContas";
-import { seedOperacoesGerenciais, seedCfopsFiscais } from "../../lib/seedOperacoesGerenciais";
+import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
 import InputMonetario from "../../components/InputMonetario";
 import type {
   Fazenda as FazendaDB, Talhao,
@@ -2487,14 +2487,17 @@ function CadastrosInner() {
                       if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão do sistema (352 registros). Continuar?")) return;
                       setSeedingCfop(true);
                       try {
-                        const { inseridos, ignorados } = await seedCfopsFiscais(fazIdEff!);
+                        const res = await fetch("/api/seed-cfops", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ fazenda_id: fazIdEff }),
+                        });
+                        const json = await res.json();
+                        if (!res.ok) throw new Error(json.error ?? "Erro desconhecido");
+                        const { inseridos, ignorados } = json as { inseridos: number; ignorados: number };
                         alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados (operações sem ref_id correspondente)` : ""}.`);
                       } catch (e: unknown) {
-                        const msg = e instanceof Error
-                          ? e.message
-                          : (e && typeof e === "object" && "message" in e)
-                            ? String((e as Record<string, unknown>).message)
-                            : JSON.stringify(e);
+                        const msg = e instanceof Error ? e.message : JSON.stringify(e);
                         alert("Erro ao importar CFOPs:\n" + msg);
                       } finally {
                         setSeedingCfop(false);
@@ -2655,7 +2658,14 @@ function CadastrosInner() {
                           if (!confirm("Isso vai substituir TODOS os CFOPs vinculados às operações pelo padrão do sistema (352 registros). Continuar?")) return;
                           setSeedingCfop(true);
                           try {
-                            const { inseridos, ignorados } = await seedCfopsFiscais(fazIdEff!);
+                            const res = await fetch("/api/seed-cfops", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ fazenda_id: fazIdEff }),
+                            });
+                            const json = await res.json();
+                            if (!res.ok) throw new Error(json.error ?? "Erro desconhecido");
+                            const { inseridos, ignorados } = json as { inseridos: number; ignorados: number };
                             alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados` : ""}.`);
                             // Recarregar
                             setLoadingHisFiscal(true);
