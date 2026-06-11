@@ -237,6 +237,7 @@ function CadastrosInner() {
   const [editFaz, setEditFaz]         = useState<FazendaDB | null>(null);
   const [tabFaz, setTabFaz]           = useState<"geral"|"matriculas"|"certidoes"|"arrendamentos">("geral");
   const [buscandoCepFaz, setBuscandoCepFaz] = useState(false);
+  const [cepAutoOk, setCepAutoOk]           = useState(false);
   const [fazArrendamentos, setFazArrendamentos] = useState<ArrFaz[]>([]);
   const [fazMatsLocal, setFazMatsLocal] = useState<FazMatLocal[]>([]);
   const [fFaz, setFFaz]               = useState({
@@ -775,6 +776,8 @@ function CadastrosInner() {
           municipio:  d.localidade ?? p.municipio,
           estado:     d.uf         ?? p.estado,
         }));
+        setCepAutoOk(true);
+        setTimeout(() => setCepAutoOk(false), 3000);
       }
     } catch { /* silencioso */ }
     finally { setBuscandoCepFaz(false); }
@@ -791,6 +794,7 @@ function CadastrosInner() {
   const abrirModalFaz = async (f?: FazendaDB) => {
     setEditFaz(f ?? null);
     setTabFaz("geral");
+    setCepAutoOk(false);
     setFFaz(f ? {
       nome: f.nome, municipio: f.municipio, estado: f.estado,
       area: String(f.area_total_ha), cnpj: f.cnpj ?? "",
@@ -5088,27 +5092,48 @@ function CadastrosInner() {
                   <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome da fazenda *</label><input style={inp} value={fFaz.nome} onChange={e => setFFaz(p => ({ ...p, nome: e.target.value }))} /></div>
                   <div style={{ gridColumn: "1/3" }}>
                     <label style={lbl}>Produtor responsável <span style={{ color: "#888", fontWeight: 400 }}>(PF ou parceria)</span></label>
-                    <select style={inp} value={fFaz.produtor_id} onChange={e => setFFaz(p => ({ ...p, produtor_id: e.target.value }))}>
+                    <select style={inp} value={fFaz.produtor_id} onChange={e => {
+                      const pid = e.target.value;
+                      const prod = produtores.find(x => x.id === pid);
+                      setFFaz(p => ({
+                        ...p,
+                        produtor_id: pid,
+                        empresa_id: "",
+                        ...(prod?.cpf_cnpj ? { cnpj: prod.cpf_cnpj } : {}),
+                      }));
+                    }}>
                       <option value="">Nenhum (vínculo via empresa)</option>
                       {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.tipo.toUpperCase()})</option>)}
                     </select>
                   </div>
                   <div>
                     <label style={lbl}>Empresa responsável <span style={{ color: "#888", fontWeight: 400 }}>(PJ)</span></label>
-                    <select style={inp} value={fFaz.empresa_id} onChange={e => setFFaz(p => ({ ...p, empresa_id: e.target.value }))}>
+                    <select style={inp} value={fFaz.empresa_id} onChange={e => {
+                      const eid = e.target.value;
+                      const emp = empresas.find(x => x.id === eid);
+                      setFFaz(p => ({
+                        ...p,
+                        empresa_id: eid,
+                        produtor_id: "",
+                        ...(emp?.cpf_cnpj ? { cnpj: emp.cpf_cnpj } : {}),
+                      }));
+                    }}>
                       <option value="">Nenhuma</option>
                       {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
                     </select>
                   </div>
                   <div><label style={lbl}>Área total (ha) *</label><InputMonetario style={inp} value={fFaz.area} onChange={v => setFFaz(p => ({ ...p, area: String(v) }))} /></div>
-                  <div><label style={lbl}>CNPJ / CPF</label><input style={inp} value={fFaz.cnpj} onChange={e => setFFaz(p => ({ ...p, cnpj: e.target.value }))} /></div>
+                  <div>
+                    <label style={lbl}>CNPJ / CPF</label>
+                    <input style={inp} value={fFaz.cnpj} onChange={e => setFFaz(p => ({ ...p, cnpj: e.target.value }))} placeholder="Preenchido automaticamente ao selecionar produtor/empresa" />
+                  </div>
                   <div />
                 </div>
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid #D4DCE8" }}>Endereço</div>
                 <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 14, marginBottom: 14 }}>
                   <div>
-                    <label style={lbl}>CEP{buscandoCepFaz && <span style={{ marginLeft: 6, color: "#888", fontSize: 11 }}>⟳</span>}</label>
+                    <label style={lbl}>CEP{buscandoCepFaz && <span style={{ marginLeft: 6, color: "#888", fontSize: 11 }}>⟳ buscando…</span>}{cepAutoOk && <span style={{ marginLeft: 6, color: "#16A34A", fontSize: 11, fontWeight: 600 }}>✓ endereço preenchido</span>}</label>
                     <input style={inp} value={fFaz.cep} placeholder="00000-000" onChange={e => { const v = maskCep(e.target.value); setFFaz(p => ({ ...p, cep: v })); if (v.replace(/\D/g,"").length === 8) buscarCepFaz(v); }} />
                   </div>
                   <div><label style={lbl}>Logradouro</label><input style={inp} value={fFaz.logradouro} onChange={e => setFFaz(p => ({ ...p, logradouro: e.target.value }))} /></div>
@@ -5117,8 +5142,14 @@ function CadastrosInner() {
                   <div><label style={lbl}>Número</label><input style={inp} value={fFaz.numero_end} onChange={e => setFFaz(p => ({ ...p, numero_end: e.target.value }))} /></div>
                   <div><label style={lbl}>Complemento</label><input style={inp} value={fFaz.complemento} onChange={e => setFFaz(p => ({ ...p, complemento: e.target.value }))} /></div>
                   <div><label style={lbl}>Bairro</label><input style={inp} value={fFaz.bairro} onChange={e => setFFaz(p => ({ ...p, bairro: e.target.value }))} /></div>
-                  <div><label style={lbl}>Município</label><input style={inp} value={fFaz.municipio} onChange={e => setFFaz(p => ({ ...p, municipio: e.target.value }))} /></div>
-                  <div><label style={lbl}>UF</label><select style={inp} value={fFaz.estado} onChange={e => setFFaz(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select></div>
+                  <div>
+                    <label style={lbl}>Município</label>
+                    <input style={{ ...inp, ...(cepAutoOk ? { borderColor: "#16A34A" } : {}) }} value={fFaz.municipio} onChange={e => setFFaz(p => ({ ...p, municipio: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>UF</label>
+                    <select style={{ ...inp, ...(cepAutoOk ? { borderColor: "#16A34A" } : {}) }} value={fFaz.estado} onChange={e => setFFaz(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select>
+                  </div>
                 </div>
               </div>
             )}
