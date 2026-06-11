@@ -145,7 +145,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         .from("perfis")
         .select("fazenda_id, conta_id, nome, role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       const nome = perfil?.nome || user.email || null;
       setNomeUsuario(nome);

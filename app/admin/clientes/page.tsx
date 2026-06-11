@@ -270,55 +270,47 @@ export default function ClientesPage() {
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Carrega todos os clientes de produção (fazendas com raccolto_acesso)
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? "";
-      const resProd = await fetch("/api/fazenda/listar-clientes", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // 1. Carrega todos os clientes de produção (usa cookie session — sem bearer token)
+      const resProd = await fetch("/api/admin/listar-clientes-admin");
       const bodyProd = await resProd.json() as {
         clientes?: Array<{
-          conta_id: string; conta_nome: string; produtor_nome: string | null;
+          conta_id: string | null; conta_nome: string; produtor_nome: string | null;
           fazendas: Array<{ id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number }>;
-          area_total: number;
+          area_total: number; conta_data: Record<string, unknown> | null;
         }>; error?: string;
       };
       const clientesProd = bodyProd.clientes ?? [];
-      if (!resProd.ok) { console.error("listar-clientes:", bodyProd.error); }
+      if (!resProd.ok) { console.error("listar-clientes-admin:", bodyProd.error); }
 
-      // 2. Carrega registros de contas (billing/subscription) — ignora erros de RLS
-      let contasDB: ContaAdmin[] = [];
-      try { contasDB = await listarContasAdmin(); } catch { /* sem contas ainda = ok */ }
-      const contaMap = new Map<string, ContaAdmin>(contasDB.map(c => [c.id, c]));
+      // 2. Mescla: produção + billing (conta_data já vem no endpoint)
+      const merged: ClienteAdmin[] = clientesProd.map(fc => {
+        const semConta = !fc.conta_id;
+        const realContaId = fc.conta_id;
+        const conta = fc.conta_data as Record<string, unknown> | null;
 
-      // 3. Mescla: produção + billing
-      const merged: ClienteAdmin[] = (clientesProd ?? []).map(fc => {
-        const semConta = fc.conta_id.startsWith("sem_conta_");
-        const realContaId = semConta ? null : fc.conta_id;
-        const conta = realContaId ? contaMap.get(realContaId) : undefined;
-
+        const g = (k: string) => conta?.[k] ?? null;
         return {
-          id:               realContaId ?? fc.conta_id,
-          nome:             conta?.nome ?? fc.conta_nome,
-          tipo:             conta?.tipo ?? "pf",
-          status:           conta?.status ?? null,
-          pacote:           conta?.pacote ?? null,
-          data_inicio:      conta?.data_inicio ?? null,
-          data_vencimento:  conta?.data_vencimento ?? null,
-          valor_mensalidade: conta?.valor_mensalidade ?? null,
-          pro_bono_motivo:  conta?.pro_bono_motivo ?? null,
-          obs_admin:        conta?.obs_admin ?? null,
-          email_contato:    conta?.email_contato ?? null,
-          telefone:         conta?.telefone ?? null,
-          created_at:       conta?.created_at ?? null,
-          fazendas_count:   fc.fazendas.length,
-          crm_stage:        conta?.crm_stage,
-          origem:           conta?.origem,
-          cidade:           conta?.cidade,
-          estado:           conta?.estado,
-          _sem_conta:       !conta || semConta,
-          _fazendas_prod:   fc.fazendas,
-          _area_total:      fc.area_total,
+          id:                realContaId ?? `sem_${fc.fazendas[0]?.id ?? Math.random()}`,
+          nome:              (g("nome") as string) ?? fc.conta_nome,
+          tipo:              (g("tipo") as string) ?? "pf",
+          status:            g("status") as StatusCliente | null,
+          pacote:            g("pacote") as PacoteCliente | null,
+          data_inicio:       g("data_inicio") as string | null,
+          data_vencimento:   g("data_vencimento") as string | null,
+          valor_mensalidade: g("valor_mensalidade") as number | null,
+          pro_bono_motivo:   g("pro_bono_motivo") as string | null,
+          obs_admin:         g("obs_admin") as string | null,
+          email_contato:     g("email_contato") as string | null,
+          telefone:          g("telefone") as string | null,
+          created_at:        g("created_at") as string | null,
+          fazendas_count:    fc.fazendas.length,
+          crm_stage:         g("crm_stage") as string | undefined,
+          origem:            g("origem") as string | undefined,
+          cidade:            g("cidade") as string | undefined,
+          estado:            g("estado") as string | undefined,
+          _sem_conta:        semConta,
+          _fazendas_prod:    fc.fazendas,
+          _area_total:       fc.area_total,
         } as ClienteAdmin;
       });
 
