@@ -673,8 +673,15 @@ export async function excluirProdutor(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function listarProdutoresDaConta(conta_id: string): Promise<Produtor[]> {
-  const { data, error } = await supabase.from("produtores").select("*").eq("conta_id", conta_id).order("nome");
+export async function listarProdutoresDaConta(conta_id: string, fazenda_id?: string): Promise<Produtor[]> {
+  // Inclui produtores vinculados à conta OU à fazenda ativa (para registros legados sem conta_id)
+  let q = supabase.from("produtores").select("*").order("nome");
+  if (fazenda_id) {
+    q = q.or(`conta_id.eq.${conta_id},fazenda_id.eq.${fazenda_id}`);
+  } else {
+    q = q.eq("conta_id", conta_id);
+  }
+  const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
 }

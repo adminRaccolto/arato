@@ -496,10 +496,10 @@ function CadastrosInner() {
     if (!fazendaId) return;
     setErro(null);
     const carregarProdutores = () => contaId
-      ? listarProdutoresDaConta(contaId).then(setProdutores).catch(e => setErro(e.message))
+      ? listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(e => setErro(e.message))
       : listarProdutores(fazendaId).then(setProdutores).catch(e => setErro(e.message));
     const carregarProdutoresSilencioso = () => contaId
-      ? listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {})
+      ? listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(() => {})
       : listarProdutores(fazendaId).then(setProdutores).catch(() => {});
 
     if (aba === "produtores")  carregarProdutores();
@@ -725,6 +725,7 @@ function CadastrosInner() {
     }
     const pp: Omit<Produtor, "id" | "created_at"> = {
       fazenda_id: fazIdProd,
+      conta_id: contaId ?? undefined,
       nome: fProd.nome.trim(), tipo: fProd.tipo,
       incra: fProd.incra || undefined,
       cpf_cnpj: fProd.cpf_cnpj || undefined,
