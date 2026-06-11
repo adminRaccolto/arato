@@ -106,7 +106,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("raccotlo_fazenda_nome");
     localStorage.removeItem("raccotlo_produtor_nome");
     localStorage.removeItem("raccotlo_cliente_logo");
+    localStorage.removeItem("raccotlo_cliente_conta_id");
     setFazendaId(null);
+    setContaId(null);
     setNomeFazendaSelecionada(null);
     setNomeProdutor(null);
     setLogoCliente(null);
@@ -173,11 +175,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const savedNome         = localStorage.getItem("raccotlo_fazenda_nome");
         const savedProdutorNome = localStorage.getItem("raccotlo_produtor_nome");
         const savedLogoUrl      = localStorage.getItem("raccotlo_cliente_logo");
+        const savedClienteContaId = localStorage.getItem("raccotlo_cliente_conta_id");
         if (savedId) {
           setFazendaId(savedId);
           setNomeFazendaSelecionada(savedNome);
           setNomeProdutor(savedProdutorNome);
-          if (savedLogoUrl) setLogoCliente(savedLogoUrl);
+          if (savedLogoUrl)       setLogoCliente(savedLogoUrl);
+          if (savedClienteContaId) setContaId(savedClienteContaId);
         } else {
           // Sem farm: hub (/raccotlo), seletor e admin são rotas livres
           const pathname = typeof window !== "undefined" ? window.location.pathname : "";

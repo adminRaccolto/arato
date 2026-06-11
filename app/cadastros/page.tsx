@@ -508,12 +508,12 @@ function CadastrosInner() {
       carregarProdutoresSilencioso();
     }
     if (aba === "fazendas") {
-      if (userRole === "raccotlo" && fazendaId) {
-        // Raccotlo admin: usa endpoint server-side (service role) para listar fazendas da conta
+      if (userRole === "raccotlo" && (contaId || fazendaId)) {
+        // Raccotlo admin: usa endpoint server-side (service role) para listar todas as fazendas da conta do cliente
         fetch("/api/fazenda/da-conta", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fazenda_id: fazendaId }),
+          body: JSON.stringify({ conta_id: contaId, fazenda_id: fazendaId }),
         })
           .then(r => r.json())
           .then(json => {

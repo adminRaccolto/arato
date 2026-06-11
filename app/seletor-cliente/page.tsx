@@ -71,13 +71,16 @@ export default function SeletorCliente() {
     return false;
   });
 
-  // Clica no cliente → entra direto na primeira fazenda
-  // Guarda logo do cliente no localStorage para exibir no TopNav
+  // Clica no cliente → entra no contexto do cliente (conta_id)
+  // A primeira fazenda é usada apenas como âncora inicial para compatibilidade
   function acessarCliente(c: ClienteItem) {
     if (c.fazendas.length === 0) return;
     const f = c.fazendas[0];
     if (c.logo_url) localStorage.setItem("raccotlo_cliente_logo", c.logo_url);
     else            localStorage.removeItem("raccotlo_cliente_logo");
+    // Guarda conta_id do cliente para que o sistema exiba dados de TODAS as fazendas
+    if (c.conta_id) localStorage.setItem("raccotlo_cliente_conta_id", c.conta_id);
+    else            localStorage.removeItem("raccotlo_cliente_conta_id");
     selectFazenda(f.id, f.nome, c.produtor_nome);
   }
 
