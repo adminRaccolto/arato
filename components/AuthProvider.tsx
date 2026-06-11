@@ -156,13 +156,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole(role);
 
       // Garante que o banco reflete o role correto para @raccolto.com.br
-      if (isRaccoltoEmail && dbRole !== "raccotlo") {
+      // Preserva raccotlo_operacional intencionalmente — não sobrescreve
+      if (isRaccoltoEmail && dbRole !== "raccotlo" && dbRole !== "raccotlo_operacional") {
         supabase.from("perfis").update({ role: "raccotlo" }).eq("user_id", user.id).then(() => {});
       }
 
       if (role === "raccotlo") {
-        // Sub-perfil: operacional (só clientes) ou gestor (admin + clientes)
-        setRaccotloGestor(dbRole !== "raccotlo_operacional");
+        // Todos os usuários raccotlo têm acesso total (gestor)
+        // raccotlo_operacional existe como sub-role futuro mas não restringe nada por ora
+        setRaccotloGestor(true);
 
         // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
         const savedId           = localStorage.getItem("raccotlo_fazenda_id");
