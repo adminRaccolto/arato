@@ -5350,3 +5350,26 @@ CREATE POLICY "fazendas_delete" ON fazendas FOR DELETE
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 117: Índices para performance de RLS e queries frequentes
+-- Problema: políticas RLS usam subqueries em perfis sem índice → full table scan
+-- em TODA checagem de linha → sistema lento com 2+ usuários simultâneos.
+-- =============================================================================
+
+-- Índices críticos para RLS de fazendas (subquery em toda operação)
+CREATE INDEX IF NOT EXISTS idx_perfis_user_id   ON perfis(user_id);
+CREATE INDEX IF NOT EXISTS idx_perfis_conta_id  ON perfis(conta_id) WHERE conta_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_fazendas_conta   ON fazendas(conta_id) WHERE conta_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_fazendas_owner   ON fazendas(owner_user_id) WHERE owner_user_id IS NOT NULL;
+
+-- Índices para tabelas que usam fazenda_id como FK (queries de listagem)
+CREATE INDEX IF NOT EXISTS idx_produtores_conta ON produtores(conta_id) WHERE conta_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_talhoes_fazenda  ON talhoes(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_ciclos_fazenda   ON ciclos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_plantios_ciclo   ON plantios(ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_pulv_ciclo       ON pulverizacoes(ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_contrato_fazenda ON contratos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_lanc_fazenda     ON lancamentos(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_lanc_venc        ON lancamentos(fazenda_id, data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_contas_pk        ON contas(id);

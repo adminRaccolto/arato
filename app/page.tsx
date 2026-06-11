@@ -219,10 +219,10 @@ export default function Dashboard() {
       .catch(() => setLoadPr(false));
   }, []);
 
-  // ── Polling 30s ──
+  // ── Polling 5 min (preços de commodities não mudam por segundo) ──
   useEffect(() => {
     buscarPrecos();
-    const id = setInterval(buscarPrecos, 30_000);
+    const id = setInterval(buscarPrecos, 5 * 60_000);
     return () => clearInterval(id);
   }, [buscarPrecos]);
 
