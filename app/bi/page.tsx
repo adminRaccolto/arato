@@ -282,6 +282,8 @@ export default function BI() {
   const [filtroAnoSafraId, setFiltroAnoSafraId] = useState("");
   const [filtroCicloIds,   setFiltroCicloIds]   = useState<Set<string>>(new Set());
   const [commodity,        setCommodity]         = useState<"Soja" | "Milho" | "Algodão">("Soja");
+  // Câmbio/USD: filtro por ano civil independente do filtro de safra
+  const [filtroCambioAno,  setFiltroCambioAno]  = useState<string>(String(new Date().getFullYear()));
 
   // ── Comercialização — filtros e compradores expandidos ──────
   const [biComCultura, setBiComCultura] = useState("");
@@ -2303,23 +2305,35 @@ export default function BI() {
 
         {/* ═══════════ CÂMBIO / USD ═══════════ */}
         {!loading && aba === "cambio" && (() => {
-          // ── Fluxo USD por data ──────────────────────────────────
-          const cpUsdLan  = lancamentosFiltrados.filter(l => l.tipo === "pagar"   && l.moeda === "USD" && l.status !== "baixado");
-          const crUsdLan  = lancamentosFiltrados.filter(l => l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado");
-          // CF: parcelas em aberto de contratos USD (amortização + juros pendentes)
+          // ── Fluxo USD — filtrado por ANO CIVIL (independente do filtro de safra) ──
+          const anoFiltro = filtroCambioAno === "todos" ? null : Number(filtroCambioAno);
+          const dentroDoAno = (dt?: string | null) => {
+            if (!dt) return false;
+            if (!anoFiltro) return true;
+            return dt.startsWith(String(anoFiltro));
+          };
+
+          // Lançamentos USD — usa lista bruta (não filtrada por safra)
+          const cpUsdLan = lancamentos.filter(l =>
+            l.tipo === "pagar" && l.moeda === "USD" && l.status !== "baixado" && dentroDoAno(l.data_vencimento)
+          );
+          const crUsdLan = lancamentos.filter(l =>
+            l.tipo === "receber" && l.moeda === "USD" && l.status !== "baixado" && dentroDoAno(l.data_vencimento)
+          );
+          // CF: parcelas em aberto de contratos USD
           const cfUsdContratos = cfContratos.filter(c => c.moeda === "USD" && c.status !== "cancelado");
           const cfUsdIds = new Set(cfUsdContratos.map(c => c.id));
-          const cfUsdParcelas = cfParcelas.filter(p => cfUsdIds.has(p.contrato_id) && p.status !== "pago");
-          // CR de contratos de grãos USD — respeitam o filtro de safra selecionado
-          const crUsdCon  = contratos.filter(c =>
+          const cfUsdParcelas = cfParcelas.filter(p =>
+            cfUsdIds.has(p.contrato_id) && p.status !== "pago" && dentroDoAno(p.data_vencimento)
+          );
+          // CR de contratos de grãos USD — filtro por ano civil do vencimento
+          const crUsdCon = contratos.filter(c =>
             c.moeda === "USD" &&
             c.status !== "cancelado" &&
             !c.is_arrendamento &&
-            (c.data_pagamento || c.data_entrega) &&
             c.preco &&
             c.quantidade_sc &&
-            // Filtro de safra: mostra contratos da safra selecionada (ou sem safra vinculada)
-            (!filtroAnoSafraId || !c.ano_safra_id || c.ano_safra_id === filtroAnoSafraId)
+            dentroDoAno(c.data_pagamento || c.data_entrega)
           );
 
           // Agrupa por data
@@ -2392,16 +2406,28 @@ export default function BI() {
                 ))}
               </div>
 
-              {/* Cotação + nota sobre filtro */}
+              {/* Cotação + seletor de ano civil */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: -6 }}>
                 <span style={{ fontSize: 11, color: "#888" }}>
                   Cotação usada: USD/BRL {fmtN(cotacao, 4)} · {precos ? "ao vivo" : "estimada"}
                 </span>
-                {filtroAnoSafraId && (
-                  <span style={{ fontSize: 11, color: "#888", background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px" }}>
-                    CP inclui todas as obrigações financeiras em USD (multi-ano) · CR filtrado por {anosSafra.find(a => a.id === filtroAnoSafraId)?.descricao ?? "safra"}
-                  </span>
-                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, color: "#555" }}>Ano civil:</span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {["todos", ...Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() + i - 1))].map(ano => (
+                      <button key={ano} type="button" onClick={() => setFiltroCambioAno(ano)}
+                        style={{
+                          fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "0.5px solid",
+                          cursor: "pointer",
+                          borderColor:  filtroCambioAno === ano ? "#1A4870" : "#DDE2EE",
+                          background:   filtroCambioAno === ano ? "#1A4870" : "#fff",
+                          color:        filtroCambioAno === ano ? "#fff"    : "#555",
+                        }}>
+                        {ano === "todos" ? "Todos" : ano}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Timeline de fluxo USD */}
