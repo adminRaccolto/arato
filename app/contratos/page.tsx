@@ -11,7 +11,7 @@ import {
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
-import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato } from "../../lib/supabase";
+import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato, Insumo } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
 
@@ -202,6 +202,7 @@ export default function Contratos() {
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
   const [fazendas, setFazendas]       = useState<Fazenda[]>([]);
   const [culturasCont, setCulturasCont] = useState<CulturaContrato[]>([]);
+  const [prodAgricolas, setProdAgricolas] = useState<Insumo[]>([]);
 
   // ── UI ───────────────────────────────────────────────────────
   const [abaLista, setAbaLista]       = useState<AbaLista>("contratos");
@@ -421,6 +422,10 @@ export default function Contratos() {
       const { data: cultList } = await supabase.from("culturas").select("*")
         .eq("fazenda_id", fazendaId!).eq("ativa", true).order("ordem").order("nome");
       if (cultList && cultList.length > 0) setCulturasCont(cultList as CulturaContrato[]);
+      // produtos agrícolas (insumos com categoria=produto_agricola)
+      const { data: prodList2 } = await supabase.from("insumos").select("*")
+        .eq("fazenda_id", fazendaId!).eq("categoria", "produto_agricola").order("nome");
+      if (prodList2 && prodList2.length > 0) setProdAgricolas(prodList2 as Insumo[]);
       // adiantamentos
       const { data: adiantList } = await supabase
         .from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data");
@@ -513,14 +518,37 @@ export default function Contratos() {
     setModalContrato(true);
   };
 
-  // ── listas dinâmicas derivadas das culturas carregadas ────────
-  const PRODUTOS_DIN: string[] = culturasCont.length > 0 ? culturasCont.map(c => c.nome) : PRODUTOS;
+  // Mapeamento subgrupo do produto agrícola → chave em CLASSE_COMMODITY
+  const SUBGRUPO_CLASSE: Record<string, string> = {
+    soja: "Soja", milho: "Milho 1ª", milho_pipoca: "Milho 1ª",
+    algodao: "Algodão", algodão: "Algodão",
+    sorgo: "Sorgo", trigo: "Trigo", feijao: "Feijão", feijão: "Feijão",
+  };
+
+  // ── listas dinâmicas — prioridade: produtos agrícolas > culturas > hardcoded ──
+  const PRODUTOS_DIN: string[] =
+    prodAgricolas.length > 0 ? prodAgricolas.map(p => p.nome) :
+    culturasCont.length  > 0 ? culturasCont.map(c => c.nome)  :
+    PRODUTOS;
   const COMMODITIES_VFE_DIN: string[] = culturasCont.length > 0
     ? culturasCont.filter(c => c.categoria === "graos").map(c => c.nome)
     : COMMODITIES_VFE;
   const classeCommodityDin = (produto: string): CommodityClass => {
+    // Tenta match direto no CLASSE_COMMODITY
+    if (CLASSE_COMMODITY[produto]) {
+      const cult = culturasCont.find(c => c.nome === produto);
+      return { ...CLASSE_COMMODITY[produto], kg_saca: cult?.fator_conversao_kg ?? CLASSE_COMMODITY[produto].kg_saca };
+    }
+    // Tenta via produto agrícola → subgrupo → CLASSE_COMMODITY
+    const prodAgr = prodAgricolas.find(p => p.nome === produto);
+    if (prodAgr?.subgrupo) {
+      const classeKey = SUBGRUPO_CLASSE[prodAgr.subgrupo] ?? null;
+      const base = classeKey ? CLASSE_COMMODITY[classeKey] : null;
+      if (base) return { ...base, kg_saca: prodAgr.unidade === "sc" ? 60 : base.kg_saca };
+    }
+    // Tenta via culturasCont
     const cult = culturasCont.find(c => c.nome === produto);
-    const base = CLASSE_COMMODITY[produto] ?? { umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, kg_saca: 60 };
+    const base: CommodityClass = CLASSE_COMMODITY[produto] ?? { umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, kg_saca: 60 };
     return { ...base, kg_saca: cult?.fator_conversao_kg ?? base.kg_saca };
   };
 
