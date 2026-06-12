@@ -5469,6 +5469,8 @@ BEGIN
   END IF;
 END $$;
 
+-- Remove contratos órfãos (sem fazenda) antes de impor NOT NULL
+DELETE FROM contratos_financeiros WHERE fazenda_id IS NULL;
 -- Garante que fazenda_id não aceita NULL nos novos contratos financeiros
 ALTER TABLE contratos_financeiros
   ALTER COLUMN fazenda_id SET NOT NULL;

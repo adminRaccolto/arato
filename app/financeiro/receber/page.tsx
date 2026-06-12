@@ -501,22 +501,6 @@ export default function ContasReceber() {
 
         <div style={{ padding: "18px 24px", flex: 1, overflowY: "auto" }}>
 
-          {/* Stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 18 }}>
-            {[
-              { label: "Total a receber",    valor: fmtBRL(totalAberto),         cor: "#1A4870", sub: `${qAberto} lançamentos em aberto` },
-              { label: "A vencer (30 dias)", valor: fmtBRL(aVencer30),            cor: "#378ADD", sub: "Previsão de recebimento" },
-              { label: "Vencidos/Vencendo",  valor: String(qVencido + qVencendo), cor: (qVencido + qVencendo) > 0 ? "#E24B4A" : "#444", sub: "Aguardam liquidação" },
-              { label: `Recebido em ${mesAtual.slice(0,7)}`, valor: fmtBRL(recebidosNoMes), cor: "#1A4870", sub: "Total de baixas no mês" },
-            ].map((s, i) => (
-              <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 5 }}>{s.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: s.cor, marginBottom: 3 }}>{s.valor}</div>
-                <div style={{ fontSize: 10, color: "#444" }}>{s.sub}</div>
-              </div>
-            ))}
-          </div>
-
           {/* Banner barter */}
           {qtdBarter > 0 && (
             <div style={{ background: "#FBF3E0", border: "0.5px solid #8B5E1430", borderRadius: 8, padding: "9px 14px", marginBottom: 12, fontSize: 12, color: "#8B5E14", display: "flex", gap: 8 }}>

@@ -148,6 +148,10 @@ function grupoCategoria(cat?: string): string {
   if (c.includes("mão de obra") || c.includes("mao de obra") ||
       c.includes("funcionário") || c.includes("funcionario") ||
       c.includes("salário") || c.includes("salario"))                                return "Mão de Obra";
+  // Juros e encargos bancários = custo financeiro real (despesa, não movimento de caixa)
+  if (c.includes("juros") || c.includes("encargo") || c.includes("iof"))            return "Encargos Financeiros";
+  // Amortizações e captações = movimentos de caixa, NÃO são custo — excluir
+  if (c.startsWith("pagamento de") || c.startsWith("captação de") || c.startsWith("captacao de")) return "__amortizacao__";
   return "Outros";
 }
 
@@ -157,10 +161,11 @@ const BENCHMARK: Record<string, { sc_ha: number; custo_ha: number; unidade: stri
   Algodão: { sc_ha: 250, custo_ha: 8500, unidade: "@/ha"  },
 };
 
-const GRUPOS_CUSTO = ["Sementes", "Fertilizantes", "Defensivos", "Operações", "Arrendamento", "Mão de Obra", "Outros"] as const;
+const GRUPOS_CUSTO = ["Sementes", "Fertilizantes", "Defensivos", "Operações", "Arrendamento", "Mão de Obra", "Encargos Financeiros", "Outros"] as const;
 const CORES_GRUPO: Record<string, string> = {
   Sementes: "#C9921B", Fertilizantes: "#1A4870", Defensivos: "#E24B4A",
-  Operações: "#378ADD", Arrendamento: "#9B59B6", "Mão de Obra": "#16A34A", Outros: "#888",
+  Operações: "#378ADD", Arrendamento: "#9B59B6", "Mão de Obra": "#16A34A",
+  "Encargos Financeiros": "#EF9F27", Outros: "#888",
 };
 
 // ── Componentes visuais ───────────────────────────────────────
@@ -1185,9 +1190,11 @@ export default function BI() {
         {/* ═══════════ CUSTOS & INSUMOS ═══════════ */}
         {!loading && aba === "custos" && (() => {
           // Filtro estrito: quando uma safra está selecionada, mostra apenas lançamentos vinculados a ela
-          const cpCusto = filtroAnoSafraId
+          // Amortizações e captações (movimentos de caixa) são excluídas — só entram despesas operacionais
+          const cpCusto = (filtroAnoSafraId
             ? cpFiltrados.filter(l => l.ano_safra_id === filtroAnoSafraId)
-            : cpFiltrados;
+            : cpFiltrados
+          ).filter(l => grupoCategoria(l.categoria) !== "__amortizacao__");
 
           // ── Construir lista de itens consumidos das operações de campo ─
           const talhaoMap = new Map(talhoes.map(t => [t.id, t.nome]));
@@ -1280,7 +1287,7 @@ export default function BI() {
           }
 
           // ── Custo por grupo (operações + CP para grupos sem tabela de ops) ─
-          const GRUPOS_CP_ONLY = new Set(["Operações", "Arrendamento", "Mão de Obra", "Outros"]);
+          const GRUPOS_CP_ONLY = new Set(["Operações", "Arrendamento", "Mão de Obra", "Encargos Financeiros", "Outros"]);
           const cPorGrupo: Record<string, number> = {};
           for (const g of GRUPOS_CUSTO) cPorGrupo[g] = 0;
           for (const item of consumoItems) {
@@ -1347,10 +1354,24 @@ export default function BI() {
             drillRows.sort((a, b) => b.custo_total - a.custo_total);
           }
 
-          // Para grupos CP
-          const drillLancs = custoGrupoAtivo && GRUPOS_CP_ONLY.has(custoGrupoAtivo)
-            ? cpCusto.filter(l => grupoCategoria(l.categoria) === custoGrupoAtivo).sort((a, b) => b.valor - a.valor)
-            : [];
+          // Para grupos CP — agrupa por CATEGORIA (objeto de custo), não por fornecedor
+          type DrillCategRow = { categoria: string; total: number; count: number; custo_ha: number; pct: number };
+          const drillCategs: DrillCategRow[] = [];
+          if (custoGrupoAtivo && GRUPOS_CP_ONLY.has(custoGrupoAtivo)) {
+            const grupoLancs = cpCusto.filter(l => grupoCategoria(l.categoria) === custoGrupoAtivo);
+            const totalGrupo = grupoLancs.reduce((s, l) => s + l.valor, 0);
+            const catMap = new Map<string, { total: number; count: number }>();
+            for (const l of grupoLancs) {
+              const cat = l.categoria || "Outros";
+              const e = catMap.get(cat) ?? { total: 0, count: 0 };
+              e.total += l.valor; e.count++;
+              catMap.set(cat, e);
+            }
+            for (const [categoria, { total, count }] of catMap.entries()) {
+              drillCategs.push({ categoria, total, count, custo_ha: areaFiltrada > 0 ? total / areaFiltrada : 0, pct: totalGrupo > 0 ? (total / totalGrupo) * 100 : 0 });
+            }
+            drillCategs.sort((a, b) => b.total - a.total);
+          }
 
           // ── Texto dos filtros aplicados (para PDF) ──────────────────────
           const filtroTexto = [
@@ -1559,28 +1580,40 @@ export default function BI() {
                             </div>
                           )
                         ) : (
-                          /* Tabela de lançamentos para grupos financeiros */
+                          /* Tabela por categoria de custo (objeto de custo, não fornecedor) */
                           <div style={{ overflowY: "auto", maxHeight: 300 }}>
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: `${cor}10` }}>
-                                  <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Descrição</th>
-                                  <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Vencimento</th>
-                                  <th style={{ textAlign: "right", padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Valor</th>
+                                  <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Categoria</th>
+                                  <th style={{ textAlign: "right", padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>R$/ha</th>
+                                  <th style={{ textAlign: "right", padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Total</th>
+                                  <th style={{ textAlign: "right", padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>%</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {drillLancs.map((l, i) => (
-                                  <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                                    <td style={{ padding: "5px 8px", fontSize: 11, color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao || "—"}</td>
-                                    <td style={{ padding: "5px 8px", fontSize: 10, color: "#888", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
-                                    <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#E24B4A", whiteSpace: "nowrap" }}>{fmtR(l.valor)}</td>
+                                {drillCategs.map((r, i) => (
+                                  <tr key={r.categoria} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                    <td style={{ padding: "5px 8px", fontSize: 11, color: "#1a1a1a" }}>{r.categoria}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>{r.custo_ha > 0 ? fmtR(r.custo_ha) : "—"}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, fontWeight: 700, color: cor, whiteSpace: "nowrap" }}>{fmtR(r.total)}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 10, color: "#888", whiteSpace: "nowrap" }}>{fmtN(r.pct, 1)}%</td>
                                   </tr>
                                 ))}
-                                {drillLancs.length === 0 && (
-                                  <tr><td colSpan={3} style={{ padding: 14, textAlign: "center", color: "#aaa", fontSize: 11 }}>Sem lançamentos</td></tr>
+                                {drillCategs.length === 0 && (
+                                  <tr><td colSpan={4} style={{ padding: 14, textAlign: "center", color: "#aaa", fontSize: 11 }}>Sem lançamentos</td></tr>
                                 )}
                               </tbody>
+                              {drillCategs.length > 0 && (
+                                <tfoot>
+                                  <tr style={{ background: `${cor}08`, borderTop: `1px solid ${cor}30` }}>
+                                    <td style={{ padding: "5px 8px", fontWeight: 700, color: "#1a1a1a" }}>Total — {drillCategs.reduce((s, r) => s + r.count, 0)} lançamentos</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600, color: "#555" }}>{areaFiltrada > 0 ? fmtR(cPorGrupo[custoGrupoAtivo!] / areaFiltrada) : "—"}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cor }}>{fmtR(cPorGrupo[custoGrupoAtivo!] ?? 0)}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cor }}>100%</td>
+                                  </tr>
+                                </tfoot>
+                              )}
                             </table>
                           </div>
                         )}
