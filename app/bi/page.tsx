@@ -266,6 +266,7 @@ export default function BI() {
   const [rtLancModal,    setRtLancModal]    = useState<Lancamento | null>(null);
   const [rtContratoModal, setRtContratoModal] = useState<ContratoDetalhe | null>(null);
   const [loadingContrato,  setLoadingContrato]  = useState(false);
+  const [custoGrupoAtivo, setCustoGrupoAtivo] = useState<string | null>(null);
 
   // ── Evolução de Endividamento + Recursos de Terceiros (contratos formais) ─
   const [cfContratos,     setCfContratos]     = useState<CFContrato[]>([]);
@@ -1119,45 +1120,103 @@ export default function BI() {
         )}
 
         {/* ═══════════ CUSTOS & INSUMOS ═══════════ */}
-        {!loading && aba === "custos" && (
-          <div>
-            {/* KPIs de custo */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
-              {[
-                { label: "Custo Total (CP em aberto)", v: fmtR(totalCustos),         color: "#E24B4A", bg: "#FCEBEB" },
-                { label: "Custo por Hectare",          v: custoHaEstimado > 0 ? fmtR(custoHaEstimado) + "/ha" : "—", color: "#1A4870", bg: "#EBF3FC" },
-                { label: "Benchmark MT (soja)",        v: "R$ 5.800/ha",             color: "#555",    bg: "#F4F6FA" },
-                { label: "Desvio vs Benchmark",        v: custoHaEstimado > 0 ? (custoHaEstimado > 5800 ? "+" : "") + fmtR(custoHaEstimado - 5800) : "—",
-                  color: custoHaEstimado > 6200 ? "#791F1F" : custoHaEstimado > 5800 ? "#7A5A12" : "#14532D",
-                  bg:    custoHaEstimado > 6200 ? "#FCEBEB" : custoHaEstimado > 5800 ? "#FBF3E0"  : "#ECFDF5" },
-              ].map(k => (
-                <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
-                  <div style={{ fontSize: 10, color: "#666", marginBottom: 4 }}>{k.label}</div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
-                </div>
-              ))}
-            </div>
+        {!loading && aba === "custos" && (() => {
+          // Filtro estrito: quando uma safra está selecionada, mostra apenas lançamentos vinculados a ela
+          const cpCusto = filtroAnoSafraId
+            ? cpFiltrados.filter(l => l.ano_safra_id === filtroAnoSafraId)
+            : cpFiltrados;
+          const totalCusto = cpCusto.reduce((s, l) => s + l.valor, 0);
+          const cpOcultos = filtroAnoSafraId ? cpFiltrados.length - cpCusto.length : 0;
+          const custoHaLocal = areaFiltrada > 0 ? totalCusto / areaFiltrada : 0;
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* Breakdown por grupo */}
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: 14 }}>Composição dos Custos</div>
-                {totalCustos === 0 ? (
-                  <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 16 }}>Nenhum CP no período filtrado</div>
-                ) : (
-                  GRUPOS_CUSTO.filter(g => custosPorGrupo[g] > 0).sort((a, b) => custosPorGrupo[b] - custosPorGrupo[a]).map(g => (
-                    <BarraHorizontal
-                      key={g} label={g} value={custosPorGrupo[g]} max={totalCustos}
-                      color={CORES_GRUPO[g]}
-                      sub={`${fmtR(custosPorGrupo[g])} (${fmtN(pct(custosPorGrupo[g], totalCustos), 0)}%)`}
-                    />
-                  ))
-                )}
+          const cPorGrupo: Record<string, number> = {};
+          for (const g of GRUPOS_CUSTO) cPorGrupo[g] = 0;
+          for (const l of cpCusto) {
+            const g = grupoCategoria(l.categoria);
+            cPorGrupo[g] = (cPorGrupo[g] ?? 0) + l.valor;
+          }
+
+          const drillLancs = custoGrupoAtivo
+            ? cpCusto.filter(l => grupoCategoria(l.categoria) === custoGrupoAtivo).sort((a, b) => b.valor - a.valor)
+            : [];
+
+          return (
+            <div>
+              {/* KPIs de custo */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
+                {[
+                  { label: "Custo Total (CP em aberto)", v: fmtR(totalCusto),       color: "#E24B4A", bg: "#FCEBEB" },
+                  { label: "Custo por Hectare",          v: custoHaLocal > 0 ? fmtR(custoHaLocal) + "/ha" : "—", color: "#1A4870", bg: "#EBF3FC" },
+                  { label: "Benchmark MT (soja)",        v: "R$ 5.800/ha",           color: "#555",    bg: "#F4F6FA" },
+                  { label: "Desvio vs Benchmark",        v: custoHaLocal > 0 ? (custoHaLocal > 5800 ? "+" : "") + fmtR(custoHaLocal - 5800) : "—",
+                    color: custoHaLocal > 6200 ? "#791F1F" : custoHaLocal > 5800 ? "#7A5A12" : "#14532D",
+                    bg:    custoHaLocal > 6200 ? "#FCEBEB" : custoHaLocal > 5800 ? "#FBF3E0"  : "#ECFDF5" },
+                ].map(k => (
+                  <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
+                    <div style={{ fontSize: 10, color: "#666", marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.v}</div>
+                  </div>
+                ))}
               </div>
 
-              {/* Custo/ha vs benchmark + top itens */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {/* Custo/ha por commodity vs benchmark */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {/* Composição dos Custos — clicável com drill-down */}
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: cpOcultos > 0 ? 6 : 14 }}>Composição dos Custos</div>
+
+                  {cpOcultos > 0 && (
+                    <div style={{ fontSize: 10, color: "#888", marginBottom: 12, padding: "5px 10px", background: "#F4F6FA", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>
+                      {cpOcultos} lançamento{cpOcultos !== 1 ? "s" : ""} sem safra vinculada oculto{cpOcultos !== 1 ? "s" : ""} pelo filtro
+                    </div>
+                  )}
+
+                  {totalCusto === 0 ? (
+                    <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 16 }}>Nenhum CP no período filtrado</div>
+                  ) : (
+                    GRUPOS_CUSTO.filter(g => cPorGrupo[g] > 0).sort((a, b) => cPorGrupo[b] - cPorGrupo[a]).map(g => {
+                      const isAtivo = custoGrupoAtivo === g;
+                      return (
+                        <div key={g}>
+                          <div
+                            onClick={() => setCustoGrupoAtivo(isAtivo ? null : g)}
+                            style={{ cursor: "pointer", borderRadius: 8, padding: "4px 8px", marginLeft: -8, background: isAtivo ? `${CORES_GRUPO[g]}12` : "transparent", transition: "background 0.15s" }}
+                          >
+                            <BarraHorizontal
+                              label={g} value={cPorGrupo[g]} max={totalCusto}
+                              color={CORES_GRUPO[g]}
+                              sub={`${fmtR(cPorGrupo[g])} (${fmtN(pct(cPorGrupo[g], totalCusto), 0)}%)`}
+                            />
+                          </div>
+
+                          {isAtivo && (
+                            <div style={{ marginBottom: 10, borderRadius: 8, border: `0.5px solid ${CORES_GRUPO[g]}40`, overflow: "hidden" }}>
+                              <div style={{ padding: "8px 12px", background: `${CORES_GRUPO[g]}10`, borderBottom: `0.5px solid ${CORES_GRUPO[g]}30`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: CORES_GRUPO[g] }}>{g} — {drillLancs.length} lançamento{drillLancs.length !== 1 ? "s" : ""}</span>
+                                <button onClick={() => setCustoGrupoAtivo(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#888", padding: "0 2px" }}>✕</button>
+                              </div>
+                              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                <tbody>
+                                  {drillLancs.map((l, i) => (
+                                    <tr key={l.id} style={{ borderBottom: i < drillLancs.length - 1 ? "0.5px solid #EEF1F6" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                      <td style={{ padding: "6px 12px", fontSize: 11, color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao || "—"}</td>
+                                      <td style={{ padding: "6px 12px", fontSize: 10, color: "#888", whiteSpace: "nowrap" }}>{l.data_vencimento ? new Date(l.data_vencimento).toLocaleDateString("pt-BR") : "—"}</td>
+                                      <td style={{ padding: "6px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#E24B4A", whiteSpace: "nowrap" }}>{fmtR(l.valor)}</td>
+                                    </tr>
+                                  ))}
+                                  {drillLancs.length === 0 && (
+                                    <tr><td colSpan={3} style={{ padding: "12px", textAlign: "center", color: "#aaa", fontSize: 11 }}>Sem lançamentos</td></tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Custo/ha vs benchmark */}
                 <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
                   <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: 12 }}>Custo/ha vs Benchmarks MT</div>
                   {(["Soja", "Milho"] as const).map(comm => {
@@ -1168,7 +1227,7 @@ export default function BI() {
                     }).reduce((s, p) => s + (p.area_ha || 0), 0);
                     if (cultArea === 0) return null;
                     const cultProp = areaFiltrada > 0 ? cultArea / areaFiltrada : 0;
-                    const cultCusto = totalCustos * cultProp;
+                    const cultCusto = totalCusto * cultProp;
                     const cultCustoHa = cultArea > 0 ? cultCusto / cultArea : 0;
                     const maxBar = bm.custo_ha * 1.4;
                     return (
@@ -1190,34 +1249,17 @@ export default function BI() {
                       </div>
                     );
                   })}
-                </div>
 
-                {/* Top 10 maiores CPs */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", flex: 1 }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 12, color: "#1a1a1a" }}>Top 10 Maiores Despesas</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <tbody>
-                      {cpFiltrados.sort((a, b) => b.valor - a.valor).slice(0, 10).map((l, i) => (
-                        <tr key={l.id} style={{ borderBottom: i < 9 ? "0.5px solid #EEF1F6" : "none" }}>
-                          <td style={{ padding: "7px 14px", fontSize: 11, color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</td>
-                          <td style={{ padding: "7px 14px", fontSize: 10, color: "#888" }}>
-                            <span style={{ background: `${CORES_GRUPO[grupoCategoria(l.categoria)]}15`, color: CORES_GRUPO[grupoCategoria(l.categoria)], borderRadius: 4, padding: "1px 6px" }}>
-                              {grupoCategoria(l.categoria)}
-                            </span>
-                          </td>
-                          <td style={{ padding: "7px 14px", textAlign: "right", fontSize: 12, fontWeight: 700, color: "#E24B4A" }}>{fmtR(l.valor)}</td>
-                        </tr>
-                      ))}
-                      {cpFiltrados.length === 0 && (
-                        <tr><td colSpan={3} style={{ padding: "16px 14px", textAlign: "center", color: "#aaa", fontSize: 12 }}>Nenhum CP no período</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                  {totalCusto === 0 && (
+                    <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 16 }}>
+                      Sem área de plantio no período para calcular custo/ha
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ═══════════ COMERCIALIZAÇÃO ═══════════ */}
         {!loading && aba === "comercializacao" && (() => {
