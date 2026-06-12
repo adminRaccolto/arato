@@ -20,6 +20,29 @@ interface Contrato   { id: string; fazenda_id: string; produto: string; quantida
 interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
+// ── Tipos para aba Custos & Insumos (operações de campo) ──────
+interface BiTalhao    { id: string; nome: string }
+interface BiPulvOp    { id: string; ciclo_id: string; talhao_id?: string | null; area_ha: number }
+interface BiPulvItem  { id: string; pulverizacao_id: string; nome_produto: string; dose_ha: number; unidade: string; total_consumido: number; valor_unitario: number; custo_ha: number; custo_total: number }
+interface BiAdubOp    { id: string; ciclo_id: string; talhao_id?: string | null; area_ha: number }
+interface BiAdubItem  { id: string; adubacao_id: string; produto_nome?: string; dose_kg_ha?: number; quantidade_kg?: number; valor_unitario?: number; custo_total?: number }
+interface BiCSoloOp   { id: string; ciclo_id: string; talhao_id?: string | null; area_ha: number }
+interface BiCSoloItem { id: string; correcao_id: string; produto_nome?: string; dose_ton_ha?: number; quantidade_ton?: number; valor_unitario?: number; custo_total?: number }
+interface BiPlantioFull { id: string; ciclo_id: string; talhao_id: string; variedade?: string; area_ha: number; dose_kg_ha?: number; quantidade_kg?: number; custo_sementes?: number }
+
+interface ConsumoItemBi {
+  produto: string;
+  grupo: string;
+  talhao_id?: string | null;
+  talhao_nome?: string;
+  area_ha: number;
+  quantidade: number;
+  unidade: string;
+  valor_unitario: number;
+  custo_ha: number;
+  custo_total: number;
+}
+
 interface ParcelaDetalhe { id: string; num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number; status: string }
 interface GarantiaDetalhe { id: string; tipo_garantia?: string; tipo_bem?: string; descricao: string; valor_avaliacao?: number }
 interface ContratoDetalhe {
@@ -267,6 +290,17 @@ export default function BI() {
   const [rtContratoModal, setRtContratoModal] = useState<ContratoDetalhe | null>(null);
   const [loadingContrato,  setLoadingContrato]  = useState(false);
   const [custoGrupoAtivo, setCustoGrupoAtivo] = useState<string | null>(null);
+  const [custoPorTalhao, setCustoPorTalhao]   = useState(false);
+  const [opsLoaded,      setOpsLoaded]        = useState(false);
+  const [opsLoading,     setOpsLoading]       = useState(false);
+  const [talhoes,        setTalhoes]          = useState<BiTalhao[]>([]);
+  const [pulvOps,        setPulvOps]          = useState<BiPulvOp[]>([]);
+  const [pulvItens,      setPulvItens]        = useState<BiPulvItem[]>([]);
+  const [adubOps,        setAdubOps]          = useState<BiAdubOp[]>([]);
+  const [adubItens,      setAdubItens]        = useState<BiAdubItem[]>([]);
+  const [csOps,          setCsOps]            = useState<BiCSoloOp[]>([]);
+  const [csItens,        setCsItens]          = useState<BiCSoloItem[]>([]);
+  const [plantiosFull,   setPlantiosFull]     = useState<BiPlantioFull[]>([]);
 
   // ── Evolução de Endividamento + Recursos de Terceiros (contratos formais) ─
   const [cfContratos,     setCfContratos]     = useState<CFContrato[]>([]);
@@ -361,6 +395,35 @@ export default function BI() {
   useEffect(() => {
     if ((aba === "evolucao" || aba === "terceiros" || aba === "cambio") && fazendaId) carregarCF();
   }, [aba, fazendaId, carregarCF]);
+
+  const carregarOps = useCallback(async () => {
+    if (!fazendaId) return;
+    setOpsLoading(true);
+    const [talR, pulvOpR, pulvItR, adubOpR, adubItR, csOpR, csItR, plFulR] = await Promise.allSettled([
+      supabase.from("talhoes").select("id,nome").eq("fazenda_id", fazendaId),
+      supabase.from("pulverizacoes").select("id,ciclo_id,talhao_id,area_ha").eq("fazenda_id", fazendaId),
+      supabase.from("pulverizacao_itens").select("id,pulverizacao_id,nome_produto,dose_ha,unidade,total_consumido,valor_unitario,custo_ha,custo_total").eq("fazenda_id", fazendaId),
+      supabase.from("adubacoes_base").select("id,ciclo_id,talhao_id,area_ha").eq("fazenda_id", fazendaId),
+      supabase.from("adubacoes_base_itens").select("id,adubacao_id,produto_nome,dose_kg_ha,quantidade_kg,valor_unitario,custo_total").eq("fazenda_id", fazendaId),
+      supabase.from("correcoes_solo").select("id,ciclo_id,talhao_id,area_ha").eq("fazenda_id", fazendaId),
+      supabase.from("correcoes_solo_itens").select("id,correcao_id,produto_nome,dose_ton_ha,quantidade_ton,valor_unitario,custo_total").eq("fazenda_id", fazendaId),
+      supabase.from("plantios").select("id,ciclo_id,talhao_id,variedade,area_ha,dose_kg_ha,quantidade_kg,custo_sementes").eq("fazenda_id", fazendaId),
+    ]);
+    if (talR.status    === "fulfilled") setTalhoes((talR.value.data ?? []) as BiTalhao[]);
+    if (pulvOpR.status === "fulfilled") setPulvOps((pulvOpR.value.data ?? []) as BiPulvOp[]);
+    if (pulvItR.status === "fulfilled") setPulvItens((pulvItR.value.data ?? []) as BiPulvItem[]);
+    if (adubOpR.status === "fulfilled") setAdubOps((adubOpR.value.data ?? []) as BiAdubOp[]);
+    if (adubItR.status === "fulfilled") setAdubItens((adubItR.value.data ?? []) as BiAdubItem[]);
+    if (csOpR.status   === "fulfilled") setCsOps((csOpR.value.data ?? []) as BiCSoloOp[]);
+    if (csItR.status   === "fulfilled") setCsItens((csItR.value.data ?? []) as BiCSoloItem[]);
+    if (plFulR.status  === "fulfilled") setPlantiosFull((plFulR.value.data ?? []) as BiPlantioFull[]);
+    setOpsLoaded(true);
+    setOpsLoading(false);
+  }, [fazendaId]);
+
+  useEffect(() => {
+    if (aba === "custos" && fazendaId && !opsLoaded && !opsLoading) carregarOps();
+  }, [aba, fazendaId, opsLoaded, opsLoading, carregarOps]);
 
   async function executarVerificacoes() {
     if (!fazendaId) return;
@@ -1125,30 +1188,205 @@ export default function BI() {
           const cpCusto = filtroAnoSafraId
             ? cpFiltrados.filter(l => l.ano_safra_id === filtroAnoSafraId)
             : cpFiltrados;
-          const totalCusto = cpCusto.reduce((s, l) => s + l.valor, 0);
-          const cpOcultos = filtroAnoSafraId ? cpFiltrados.length - cpCusto.length : 0;
-          const custoHaLocal = areaFiltrada > 0 ? totalCusto / areaFiltrada : 0;
 
-          const cPorGrupo: Record<string, number> = {};
-          for (const g of GRUPOS_CUSTO) cPorGrupo[g] = 0;
-          for (const l of cpCusto) {
-            const g = grupoCategoria(l.categoria);
-            cPorGrupo[g] = (cPorGrupo[g] ?? 0) + l.valor;
+          // ── Construir lista de itens consumidos das operações de campo ─
+          const talhaoMap = new Map(talhoes.map(t => [t.id, t.nome]));
+
+          // Mapas de ops filtrados por ciclo
+          const pulvOpMap = new Map(
+            pulvOps.filter(op => cicloIdsSet.has(op.ciclo_id)).map(op => [op.id, op])
+          );
+          const adubOpMap = new Map(
+            adubOps.filter(op => cicloIdsSet.has(op.ciclo_id)).map(op => [op.id, op])
+          );
+          const csOpMap = new Map(
+            csOps.filter(op => cicloIdsSet.has(op.ciclo_id)).map(op => [op.id, op])
+          );
+
+          const consumoItems: ConsumoItemBi[] = [];
+
+          // DEFENSIVOS — pulverizacao_itens
+          for (const item of pulvItens) {
+            const op = pulvOpMap.get(item.pulverizacao_id);
+            if (!op) continue;
+            consumoItems.push({
+              produto: item.nome_produto || "—",
+              grupo: "Defensivos",
+              talhao_id: op.talhao_id,
+              talhao_nome: op.talhao_id ? (talhaoMap.get(op.talhao_id) ?? op.talhao_id) : "—",
+              area_ha: op.area_ha,
+              quantidade: item.total_consumido,
+              unidade: item.unidade,
+              valor_unitario: item.valor_unitario,
+              custo_ha: item.custo_ha,
+              custo_total: item.custo_total,
+            });
           }
 
-          const drillLancs = custoGrupoAtivo
+          // FERTILIZANTES — adubacoes_base_itens
+          for (const item of adubItens) {
+            const op = adubOpMap.get(item.adubacao_id);
+            if (!op) continue;
+            const ct = item.custo_total ?? 0;
+            consumoItems.push({
+              produto: item.produto_nome || "—",
+              grupo: "Fertilizantes",
+              talhao_id: op.talhao_id,
+              talhao_nome: op.talhao_id ? (talhaoMap.get(op.talhao_id) ?? op.talhao_id) : "—",
+              area_ha: op.area_ha,
+              quantidade: item.quantidade_kg ?? 0,
+              unidade: "kg",
+              valor_unitario: item.valor_unitario ?? 0,
+              custo_ha: op.area_ha > 0 ? ct / op.area_ha : 0,
+              custo_total: ct,
+            });
+          }
+
+          // CORREÇÃO DE SOLO — correcoes_solo_itens (agrupa em Fertilizantes)
+          for (const item of csItens) {
+            const op = csOpMap.get(item.correcao_id);
+            if (!op) continue;
+            const ct = item.custo_total ?? 0;
+            consumoItems.push({
+              produto: item.produto_nome || "—",
+              grupo: "Fertilizantes",
+              talhao_id: op.talhao_id,
+              talhao_nome: op.talhao_id ? (talhaoMap.get(op.talhao_id) ?? op.talhao_id) : "—",
+              area_ha: op.area_ha,
+              quantidade: item.quantidade_ton ?? 0,
+              unidade: "t",
+              valor_unitario: item.valor_unitario ?? 0,
+              custo_ha: op.area_ha > 0 ? ct / op.area_ha : 0,
+              custo_total: ct,
+            });
+          }
+
+          // SEMENTES — plantios
+          for (const pl of plantiosFull.filter(p => cicloIdsSet.has(p.ciclo_id))) {
+            if (!pl.custo_sementes || pl.custo_sementes === 0) continue;
+            const qty = pl.quantidade_kg ?? 0;
+            consumoItems.push({
+              produto: pl.variedade || "Semente",
+              grupo: "Sementes",
+              talhao_id: pl.talhao_id,
+              talhao_nome: talhaoMap.get(pl.talhao_id) ?? "—",
+              area_ha: pl.area_ha,
+              quantidade: qty,
+              unidade: "kg",
+              valor_unitario: qty > 0 ? pl.custo_sementes / qty : 0,
+              custo_ha: pl.area_ha > 0 ? pl.custo_sementes / pl.area_ha : 0,
+              custo_total: pl.custo_sementes,
+            });
+          }
+
+          // ── Custo por grupo (operações + CP para grupos sem tabela de ops) ─
+          const GRUPOS_CP_ONLY = new Set(["Operações", "Arrendamento", "Mão de Obra", "Outros"]);
+          const cPorGrupo: Record<string, number> = {};
+          for (const g of GRUPOS_CUSTO) cPorGrupo[g] = 0;
+          for (const item of consumoItems) {
+            cPorGrupo[item.grupo] = (cPorGrupo[item.grupo] ?? 0) + item.custo_total;
+          }
+          for (const l of cpCusto) {
+            const g = grupoCategoria(l.categoria);
+            if (GRUPOS_CP_ONLY.has(g)) cPorGrupo[g] = (cPorGrupo[g] ?? 0) + l.valor;
+          }
+
+          const totalCusto = Object.values(cPorGrupo).reduce((s, v) => s + v, 0);
+          const custoHaLocal = areaFiltrada > 0 ? totalCusto / areaFiltrada : 0;
+
+          // ── Drill-down: itens do grupo clicado ──────────────────────────
+          const isGrupoOps = custoGrupoAtivo && !GRUPOS_CP_ONLY.has(custoGrupoAtivo);
+
+          // Para grupos de operações: agrupar por produto (ou por produto+talhão)
+          type DrillRow = { produto: string; talhao_nome?: string; area_ha: number; quantidade: number; unidade: string; valor_unitario: number; custo_ha: number; custo_total: number; pct: number };
+          const drillRows: DrillRow[] = [];
+
+          if (custoGrupoAtivo && isGrupoOps) {
+            const grupoItens = consumoItems.filter(i => i.grupo === custoGrupoAtivo);
+            const totalGrupo = grupoItens.reduce((s, i) => s + i.custo_total, 0);
+
+            if (custoPorTalhao) {
+              // Agrupar por produto + talhão
+              const map = new Map<string, DrillRow>();
+              for (const item of grupoItens) {
+                const key = `${item.produto}||${item.talhao_id ?? "—"}`;
+                if (!map.has(key)) {
+                  map.set(key, { produto: item.produto, talhao_nome: item.talhao_nome, area_ha: 0, quantidade: 0, unidade: item.unidade, valor_unitario: 0, custo_ha: 0, custo_total: 0, pct: 0 });
+                }
+                const r = map.get(key)!;
+                r.area_ha += item.area_ha;
+                r.quantidade += item.quantidade;
+                r.custo_total += item.custo_total;
+              }
+              for (const r of map.values()) {
+                r.custo_ha = r.area_ha > 0 ? r.custo_total / r.area_ha : 0;
+                r.valor_unitario = r.quantidade > 0 ? r.custo_total / r.quantidade : 0;
+                r.pct = totalGrupo > 0 ? (r.custo_total / totalGrupo) * 100 : 0;
+                drillRows.push(r);
+              }
+            } else {
+              // Agrupar apenas por produto
+              const map = new Map<string, DrillRow>();
+              for (const item of grupoItens) {
+                const key = item.produto;
+                if (!map.has(key)) {
+                  map.set(key, { produto: item.produto, area_ha: 0, quantidade: 0, unidade: item.unidade, valor_unitario: 0, custo_ha: 0, custo_total: 0, pct: 0 });
+                }
+                const r = map.get(key)!;
+                r.area_ha += item.area_ha;
+                r.quantidade += item.quantidade;
+                r.custo_total += item.custo_total;
+              }
+              for (const r of map.values()) {
+                r.custo_ha = r.area_ha > 0 ? r.custo_total / r.area_ha : 0;
+                r.valor_unitario = r.quantidade > 0 ? r.custo_total / r.quantidade : 0;
+                r.pct = totalGrupo > 0 ? (r.custo_total / totalGrupo) * 100 : 0;
+                drillRows.push(r);
+              }
+            }
+            drillRows.sort((a, b) => b.custo_total - a.custo_total);
+          }
+
+          // Para grupos CP
+          const drillLancs = custoGrupoAtivo && GRUPOS_CP_ONLY.has(custoGrupoAtivo)
             ? cpCusto.filter(l => grupoCategoria(l.categoria) === custoGrupoAtivo).sort((a, b) => b.valor - a.valor)
             : [];
 
+          // ── Texto dos filtros aplicados (para PDF) ──────────────────────
+          const filtroTexto = [
+            filtroAnoSafraId ? anosSafra.find(a => a.id === filtroAnoSafraId)?.descricao : "Todas as safras",
+            filtroCicloIds.size > 0 ? `${filtroCicloIds.size} ciclo(s)` : null,
+            custoGrupoAtivo ?? null,
+          ].filter(Boolean).join(" · ");
+
+          const safraLabel = filtroAnoSafraId
+            ? (anosSafra.find(a => a.id === filtroAnoSafraId)?.descricao ?? "")
+            : "Todas";
+
+          const cor = custoGrupoAtivo ? (CORES_GRUPO[custoGrupoAtivo] ?? "#1A4870") : "#1A4870";
+
           return (
             <div>
+              {/* Estilos de impressão */}
+              <style>{`
+                @media print {
+                  body > *:not(.bi-print-root) { display: none !important; }
+                  .bi-no-print { display: none !important; }
+                  .bi-print-section { display: block !important; }
+                  @page { size: A4 landscape; margin: 12mm 15mm; }
+                  .bi-print-table th, .bi-print-table td { border: 0.5px solid #ccc !important; }
+                }
+                .bi-print-section { display: none; }
+              `}</style>
+
               {/* KPIs de custo */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
+              <div className="bi-no-print" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 18 }}>
                 {[
-                  { label: "Custo Total (CP em aberto)", v: fmtR(totalCusto),       color: "#E24B4A", bg: "#FCEBEB" },
+                  { label: "Custo Total (consumo + CP)", v: fmtR(totalCusto), color: "#E24B4A", bg: "#FCEBEB" },
                   { label: "Custo por Hectare",          v: custoHaLocal > 0 ? fmtR(custoHaLocal) + "/ha" : "—", color: "#1A4870", bg: "#EBF3FC" },
-                  { label: "Benchmark MT (soja)",        v: "R$ 5.800/ha",           color: "#555",    bg: "#F4F6FA" },
-                  { label: "Desvio vs Benchmark",        v: custoHaLocal > 0 ? (custoHaLocal > 5800 ? "+" : "") + fmtR(custoHaLocal - 5800) : "—",
+                  { label: "Benchmark MT (soja)",        v: "R$ 5.800/ha",    color: "#555",    bg: "#F4F6FA" },
+                  { label: "Desvio vs Benchmark",
+                    v: custoHaLocal > 0 ? (custoHaLocal > 5800 ? "+" : "") + fmtR(custoHaLocal - 5800) : "—",
                     color: custoHaLocal > 6200 ? "#791F1F" : custoHaLocal > 5800 ? "#7A5A12" : "#14532D",
                     bg:    custoHaLocal > 6200 ? "#FCEBEB" : custoHaLocal > 5800 ? "#FBF3E0"  : "#ECFDF5" },
                 ].map(k => (
@@ -1159,27 +1397,33 @@ export default function BI() {
                 ))}
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                {/* Composição dos Custos — clicável com drill-down */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: cpOcultos > 0 ? 6 : 14 }}>Composição dos Custos</div>
+              {opsLoading && (
+                <div className="bi-no-print" style={{ textAlign: "center", padding: 24, color: "#888", fontSize: 13 }}>
+                  Carregando dados de operações…
+                </div>
+              )}
 
-                  {cpOcultos > 0 && (
-                    <div style={{ fontSize: 10, color: "#888", marginBottom: 12, padding: "5px 10px", background: "#F4F6FA", borderRadius: 6, border: "0.5px solid #DDE2EE" }}>
-                      {cpOcultos} lançamento{cpOcultos !== 1 ? "s" : ""} sem safra vinculada oculto{cpOcultos !== 1 ? "s" : ""} pelo filtro
+              {!opsLoading && (
+                <div className="bi-no-print" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  {/* ── Esquerda: Composição dos Custos (barras clicáveis) ── */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: 14 }}>
+                      Composição dos Custos
+                      <span style={{ fontSize: 10, fontWeight: 400, color: "#888", marginLeft: 6 }}>clique para detalhar →</span>
                     </div>
-                  )}
 
-                  {totalCusto === 0 ? (
-                    <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 16 }}>Nenhum CP no período filtrado</div>
-                  ) : (
-                    GRUPOS_CUSTO.filter(g => cPorGrupo[g] > 0).sort((a, b) => cPorGrupo[b] - cPorGrupo[a]).map(g => {
-                      const isAtivo = custoGrupoAtivo === g;
-                      return (
-                        <div key={g}>
+                    {totalCusto === 0 ? (
+                      <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 20 }}>
+                        {opsLoaded ? "Nenhum custo de campo no período filtrado" : "Carregando…"}
+                      </div>
+                    ) : (
+                      GRUPOS_CUSTO.filter(g => cPorGrupo[g] > 0).sort((a, b) => cPorGrupo[b] - cPorGrupo[a]).map(g => {
+                        const isAtivo = custoGrupoAtivo === g;
+                        return (
                           <div
-                            onClick={() => setCustoGrupoAtivo(isAtivo ? null : g)}
-                            style={{ cursor: "pointer", borderRadius: 8, padding: "4px 8px", marginLeft: -8, background: isAtivo ? `${CORES_GRUPO[g]}12` : "transparent", transition: "background 0.15s" }}
+                            key={g}
+                            onClick={() => { setCustoGrupoAtivo(isAtivo ? null : g); setCustoPorTalhao(false); }}
+                            style={{ cursor: "pointer", borderRadius: 8, padding: "4px 8px", marginLeft: -8, background: isAtivo ? `${CORES_GRUPO[g]}15` : "transparent", transition: "background 0.15s", border: isAtivo ? `0.5px solid ${CORES_GRUPO[g]}40` : "0.5px solid transparent", marginBottom: 2 }}
                           >
                             <BarraHorizontal
                               label={g} value={cPorGrupo[g]} max={totalCusto}
@@ -1187,74 +1431,231 @@ export default function BI() {
                               sub={`${fmtR(cPorGrupo[g])} (${fmtN(pct(cPorGrupo[g], totalCusto), 0)}%)`}
                             />
                           </div>
+                        );
+                      })
+                    )}
+                  </div>
 
-                          {isAtivo && (
-                            <div style={{ marginBottom: 10, borderRadius: 8, border: `0.5px solid ${CORES_GRUPO[g]}40`, overflow: "hidden" }}>
-                              <div style={{ padding: "8px 12px", background: `${CORES_GRUPO[g]}10`, borderBottom: `0.5px solid ${CORES_GRUPO[g]}30`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: CORES_GRUPO[g] }}>{g} — {drillLancs.length} lançamento{drillLancs.length !== 1 ? "s" : ""}</span>
-                                <button onClick={() => setCustoGrupoAtivo(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#888", padding: "0 2px" }}>✕</button>
+                  {/* ── Direita: Detalhe do grupo ou benchmark ── */}
+                  <div style={{ background: "#fff", borderRadius: 12, border: `0.5px solid ${custoGrupoAtivo ? cor + "60" : "#DDE2EE"}`, padding: "16px 20px" }}>
+                    {!custoGrupoAtivo ? (
+                      <>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: 12 }}>Custo/ha vs Benchmarks MT</div>
+                        {(["Soja", "Milho"] as const).map(comm => {
+                          const bm = BENCHMARK[comm];
+                          const cultArea = plantiosFiltrados.filter(p => {
+                            const c = ciclos.find(x => x.id === p.ciclo_id);
+                            return c && culturaToCommodity(c.cultura) === comm;
+                          }).reduce((s, p) => s + (p.area_ha || 0), 0);
+                          if (cultArea === 0) return null;
+                          const cultProp = areaFiltrada > 0 ? cultArea / areaFiltrada : 0;
+                          const cultCusto = totalCusto * cultProp;
+                          const cultCustoHa = cultArea > 0 ? cultCusto / cultArea : 0;
+                          const maxBar = bm.custo_ha * 1.4;
+                          return (
+                            <div key={comm} style={{ marginBottom: 14 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>{comm}</span>
+                                <span style={{ fontSize: 12, color: "#555" }}>Benchmark: {fmtR(bm.custo_ha)}/ha</span>
                               </div>
-                              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <div style={{ height: 10, borderRadius: 5, background: "#EEF1F6", position: "relative", overflow: "hidden" }}>
+                                <div style={{ width: `${pct(cultCustoHa, maxBar)}%`, height: "100%", background: cultCustoHa > bm.custo_ha * 1.1 ? "#E24B4A" : cultCustoHa > bm.custo_ha ? "#EF9F27" : "#16A34A", borderRadius: 5 }} />
+                                <div style={{ position: "absolute", top: 0, left: `${pct(bm.custo_ha, maxBar)}%`, width: 2, height: "100%", background: "#1A4870" }} />
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                                <span style={{ fontSize: 10, color: "#888" }}>Estimado: {cultCustoHa > 0 ? fmtR(cultCustoHa) + "/ha" : "—"} ({fmtN(cultArea, 0)} ha)</span>
+                                <span style={{ fontSize: 10, color: cultCustoHa > bm.custo_ha ? "#E24B4A" : "#16A34A" }}>
+                                  {cultCustoHa > 0 ? (cultCustoHa > bm.custo_ha ? "+" : "") + fmtR(cultCustoHa - bm.custo_ha) : ""}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {totalCusto === 0 && <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 16 }}>Sem área de plantio no período</div>}
+                      </>
+                    ) : (
+                      <>
+                        {/* Header do detalhe */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: cor }}>{custoGrupoAtivo}</span>
+                            <span style={{ fontSize: 11, color: "#888" }}>{fmtR(cPorGrupo[custoGrupoAtivo])} · {fmtN(pct(cPorGrupo[custoGrupoAtivo], totalCusto), 0)}% CT</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            {isGrupoOps && (
+                              <button
+                                onClick={() => setCustoPorTalhao(v => !v)}
+                                style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: `0.5px solid ${custoPorTalhao ? cor : "#DDE2EE"}`, background: custoPorTalhao ? `${cor}10` : "#F4F6FA", color: custoPorTalhao ? cor : "#555", cursor: "pointer", fontWeight: custoPorTalhao ? 700 : 400 }}
+                              >
+                                Por Talhão
+                              </button>
+                            )}
+                            <button
+                              onClick={() => window.print()}
+                              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "0.5px solid #DDE2EE", background: "#F4F6FA", color: "#555", cursor: "pointer" }}
+                            >
+                              PDF
+                            </button>
+                            <button
+                              onClick={() => setCustoGrupoAtivo(null)}
+                              style={{ fontSize: 12, padding: "2px 6px", borderRadius: 5, border: "0.5px solid #DDE2EE", background: "#F4F6FA", color: "#888", cursor: "pointer" }}
+                            >✕</button>
+                          </div>
+                        </div>
+
+                        {/* Tabela de produtos (grupos com dados de operações) */}
+                        {isGrupoOps ? (
+                          drillRows.length === 0 ? (
+                            <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 20 }}>
+                              Sem registros de campo para este grupo no período
+                            </div>
+                          ) : (
+                            <div style={{ overflowX: "auto" }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                <thead>
+                                  <tr style={{ background: `${cor}10` }}>
+                                    <th style={{ textAlign: "left",   padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Produto</th>
+                                    {custoPorTalhao && <th style={{ textAlign: "left",   padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Talhão</th>}
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Área (ha)</th>
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Qtde Total</th>
+                                    <th style={{ textAlign: "center", padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Un</th>
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Qtde/ha</th>
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>R$ Unit.</th>
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>R$/ha</th>
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30`, whiteSpace: "nowrap" }}>Total</th>
+                                    <th style={{ textAlign: "right",  padding: "5px 8px", color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>% CT</th>
+                                  </tr>
+                                </thead>
                                 <tbody>
-                                  {drillLancs.map((l, i) => (
-                                    <tr key={l.id} style={{ borderBottom: i < drillLancs.length - 1 ? "0.5px solid #EEF1F6" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
-                                      <td style={{ padding: "6px 12px", fontSize: 11, color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao || "—"}</td>
-                                      <td style={{ padding: "6px 12px", fontSize: 10, color: "#888", whiteSpace: "nowrap" }}>{l.data_vencimento ? new Date(l.data_vencimento).toLocaleDateString("pt-BR") : "—"}</td>
-                                      <td style={{ padding: "6px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#E24B4A", whiteSpace: "nowrap" }}>{fmtR(l.valor)}</td>
+                                  {drillRows.map((r, i) => (
+                                    <tr key={i} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                      <td style={{ padding: "5px 8px", color: "#1a1a1a", fontWeight: 500, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.produto}</td>
+                                      {custoPorTalhao && <td style={{ padding: "5px 8px", color: "#555", whiteSpace: "nowrap" }}>{r.talhao_nome || "—"}</td>}
+                                      <td style={{ padding: "5px 8px", textAlign: "right", color: "#555" }}>{fmtN(r.area_ha, 1)}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "right", color: "#555" }}>{fmtN(r.quantidade, 2)}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "center", color: "#888" }}>{r.unidade}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "right", color: "#555" }}>{fmtN(r.area_ha > 0 ? r.quantidade / r.area_ha : 0, 3)}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "right", color: "#555" }}>{r.valor_unitario > 0 ? fmtR2(r.valor_unitario) : "—"}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "right", color: "#555" }}>{fmtR2(r.custo_ha)}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cor }}>{fmtR(r.custo_total)}</td>
+                                      <td style={{ padding: "5px 8px", textAlign: "right", color: "#888" }}>{fmtN(r.pct, 1)}%</td>
                                     </tr>
                                   ))}
-                                  {drillLancs.length === 0 && (
-                                    <tr><td colSpan={3} style={{ padding: "12px", textAlign: "center", color: "#aaa", fontSize: 11 }}>Sem lançamentos</td></tr>
-                                  )}
                                 </tbody>
+                                <tfoot>
+                                  <tr style={{ background: `${cor}08`, borderTop: `1px solid ${cor}30` }}>
+                                    <td colSpan={custoPorTalhao ? 2 : 1} style={{ padding: "5px 8px", fontWeight: 700, color: "#1a1a1a" }}>Total</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600, color: "#555" }}>{fmtN(drillRows.reduce((s, r) => s + r.area_ha, 0), 1)}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600, color: "#555" }}>{fmtN(drillRows.reduce((s, r) => s + r.quantidade, 0), 2)}</td>
+                                    <td />
+                                    <td />
+                                    <td />
+                                    <td />
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cor }}>{fmtR(cPorGrupo[custoGrupoAtivo])}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 700, color: cor }}>100%</td>
+                                  </tr>
+                                </tfoot>
                               </table>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
+                          )
+                        ) : (
+                          /* Tabela de lançamentos para grupos financeiros */
+                          <div style={{ overflowY: "auto", maxHeight: 300 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <thead>
+                                <tr style={{ background: `${cor}10` }}>
+                                  <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Descrição</th>
+                                  <th style={{ textAlign: "left",  padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Vencimento</th>
+                                  <th style={{ textAlign: "right", padding: "5px 8px", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: `1px solid ${cor}30` }}>Valor</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {drillLancs.map((l, i) => (
+                                  <tr key={l.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                                    <td style={{ padding: "5px 8px", fontSize: 11, color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao || "—"}</td>
+                                    <td style={{ padding: "5px 8px", fontSize: 10, color: "#888", whiteSpace: "nowrap" }}>{fmtDt(l.data_vencimento)}</td>
+                                    <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "#E24B4A", whiteSpace: "nowrap" }}>{fmtR(l.valor)}</td>
+                                  </tr>
+                                ))}
+                                {drillLancs.length === 0 && (
+                                  <tr><td colSpan={3} style={{ padding: 14, textAlign: "center", color: "#aaa", fontSize: 11 }}>Sem lançamentos</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
+              )}
 
-                {/* Custo/ha vs benchmark */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "#1a1a1a", marginBottom: 12 }}>Custo/ha vs Benchmarks MT</div>
-                  {(["Soja", "Milho"] as const).map(comm => {
-                    const bm = BENCHMARK[comm];
-                    const cultArea = plantiosFiltrados.filter(p => {
-                      const c = ciclos.find(x => x.id === p.ciclo_id);
-                      return c && culturaToCommodity(c.cultura) === comm;
-                    }).reduce((s, p) => s + (p.area_ha || 0), 0);
-                    if (cultArea === 0) return null;
-                    const cultProp = areaFiltrada > 0 ? cultArea / areaFiltrada : 0;
-                    const cultCusto = totalCusto * cultProp;
-                    const cultCustoHa = cultArea > 0 ? cultCusto / cultArea : 0;
-                    const maxBar = bm.custo_ha * 1.4;
-                    return (
-                      <div key={comm} style={{ marginBottom: 14 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>{comm}</span>
-                          <span style={{ fontSize: 12, color: "#555" }}>Benchmark: {fmtR(bm.custo_ha)}/ha</span>
-                        </div>
-                        <div style={{ height: 10, borderRadius: 5, background: "#EEF1F6", position: "relative", overflow: "hidden" }}>
-                          <div style={{ width: `${pct(cultCustoHa, maxBar)}%`, height: "100%", background: cultCustoHa > bm.custo_ha * 1.1 ? "#E24B4A" : cultCustoHa > bm.custo_ha ? "#EF9F27" : "#16A34A", borderRadius: 5 }} />
-                          <div style={{ position: "absolute", top: 0, left: `${pct(bm.custo_ha, maxBar)}%`, width: 2, height: "100%", background: "#1A4870" }} />
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-                          <span style={{ fontSize: 10, color: "#888" }}>Estimado: {cultCustoHa > 0 ? fmtR(cultCustoHa) + "/ha" : "—"} ({fmtN(cultArea, 0)} ha)</span>
-                          <span style={{ fontSize: 10, color: cultCustoHa > bm.custo_ha ? "#E24B4A" : "#16A34A" }}>
-                            {cultCustoHa > 0 ? (cultCustoHa > bm.custo_ha ? "+" : "") + fmtR(cultCustoHa - bm.custo_ha) : ""}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {totalCusto === 0 && (
-                    <div style={{ color: "#aaa", fontSize: 12, textAlign: "center", padding: 16 }}>
-                      Sem área de plantio no período para calcular custo/ha
+              {/* ── Seção para PDF / impressão ───────────────────────── */}
+              <div className="bi-print-section">
+                <div style={{ marginBottom: 16, borderBottom: "2px solid #1A4870", paddingBottom: 8 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>
+                    {fazenda?.nome ?? ""} — Relatório de Custos &amp; Insumos
+                  </div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                    Filtro: {filtroTexto} · Gerado em {new Date().toLocaleDateString("pt-BR")}
+                  </div>
+                </div>
+                {custoGrupoAtivo && isGrupoOps && (
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: cor, marginBottom: 8 }}>
+                      {custoGrupoAtivo} — Safra {safraLabel}
+                      {custoPorTalhao ? " (Por Talhão)" : ""}
                     </div>
-                  )}
+                    <table className="bi-print-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                      <thead>
+                        <tr style={{ background: "#EEF1F6" }}>
+                          <th style={{ textAlign: "left",  padding: "5px 8px" }}>Produto</th>
+                          {custoPorTalhao && <th style={{ textAlign: "left", padding: "5px 8px" }}>Talhão</th>}
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>Área (ha)</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>Qtde Total</th>
+                          <th style={{ textAlign: "center",padding: "5px 8px" }}>Un</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>Qtde/ha</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>R$ Unit.</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>R$/ha</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>Total</th>
+                          <th style={{ textAlign: "right", padding: "5px 8px" }}>% CT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drillRows.map((r, i) => (
+                          <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#F9FAFB" }}>
+                            <td style={{ padding: "4px 8px", fontWeight: 500 }}>{r.produto}</td>
+                            {custoPorTalhao && <td style={{ padding: "4px 8px" }}>{r.talhao_nome || "—"}</td>}
+                            <td style={{ padding: "4px 8px", textAlign: "right" }}>{fmtN(r.area_ha, 1)}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right" }}>{fmtN(r.quantidade, 2)}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "center" }}>{r.unidade}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right" }}>{fmtN(r.area_ha > 0 ? r.quantidade / r.area_ha : 0, 3)}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right" }}>{r.valor_unitario > 0 ? fmtR2(r.valor_unitario) : "—"}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right" }}>{fmtR2(r.custo_ha)}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 700 }}>{fmtR(r.custo_total)}</td>
+                            <td style={{ padding: "4px 8px", textAlign: "right" }}>{fmtN(r.pct, 1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ background: "#EEF1F6", fontWeight: 700 }}>
+                          <td colSpan={custoPorTalhao ? 2 : 1} style={{ padding: "5px 8px" }}>TOTAL</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right" }}>{fmtN(drillRows.reduce((s, r) => s + r.area_ha, 0), 1)}</td>
+                          <td colSpan={5} />
+                          <td style={{ padding: "5px 8px", textAlign: "right" }}>{fmtR(cPorGrupo[custoGrupoAtivo])}</td>
+                          <td style={{ padding: "5px 8px", textAlign: "right" }}>100%</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </>
+                )}
+                {(!custoGrupoAtivo || !isGrupoOps) && (
+                  <div style={{ color: "#888", fontSize: 12 }}>
+                    Selecione um grupo no painel Composição dos Custos e clique em PDF para exportar o detalhe.
+                  </div>
+                )}
+                <div style={{ marginTop: 16, fontSize: 9, color: "#aaa", borderTop: "0.5px solid #ddd", paddingTop: 6 }}>
+                  RacTech — Gestão Agrícola · Raccolto Agronegócios
                 </div>
               </div>
             </div>
