@@ -31,7 +31,7 @@ import {
   listarInsumos, criarInsumo, atualizarInsumo, excluirInsumo,
   listarFormasPagamento, criarFormaPagamento, atualizarFormaPagamento, excluirFormaPagamento,
   listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
-  listarContas, criarConta, atualizarContaBancaria, excluirConta,
+  listarBancos, listarContas, criarConta, atualizarContaBancaria, excluirConta,
   listarPlanoContas,
   listarPrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
@@ -48,7 +48,7 @@ import type {
   AnoSafra, Ciclo, CicloTalhao, Maquina, BombaCombustivel,
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
-  Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria,
+  Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria, Banco,
   PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida, Cultura as CulturaItem,
 } from "../../lib/supabase";
 
@@ -331,9 +331,10 @@ function CadastrosInner() {
 
   // ── Contas Bancárias ──
   const [contas, setContas]           = useState<ContaBancaria[]>([]);
+  const [bancos, setBancos]           = useState<Banco[]>([]);
   const [modalConta, setModalConta]   = useState(false);
   const [editConta, setEditConta]     = useState<ContaBancaria | null>(null);
-  const [fConta, setFConta]           = useState({ nome: "", banco: "", agencia: "", conta: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"investimento"|"caixa"|"transitoria", saldo_inicial: "" });
+  const [fConta, setFConta]           = useState({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: "" });
 
   // ── Insumos ──
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
@@ -547,6 +548,7 @@ function CadastrosInner() {
     if (aba === "depositos")       listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
       listarContas(fazendaId).then(setContas).catch(e => setErro(e.message));
+      if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {});
       if (produtores.length === 0) carregarProdutoresSilencioso();
     }
     if (aba === "funcionarios") listarFuncionarios(fazendaId).then(setFuncs).catch(e => setErro(e.message));
@@ -4171,7 +4173,7 @@ function CadastrosInner() {
                   <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Contas Bancárias <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({contas.filter(c => c.ativa).length} ativas)</span></div>
                   <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Contas utilizadas no Fluxo de Caixa, CP/CR e LCDPR</div>
                 </div>
-                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco: "", agencia: "", conta: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "" }); setModalConta(true); }}>+ Nova Conta</button>
+                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "" }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>+ Nova Conta</button>
               </div>
               {contas.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0", color: "#888", fontSize: 13 }}>Nenhuma conta bancária cadastrada</div>
@@ -4200,8 +4202,17 @@ function CadastrosInner() {
                           <td style={{ padding: "10px 14px" }}>
                             <span style={{ background: tp.bg, color: tp.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{tp.label}</span>
                           </td>
-                          <td style={{ padding: "10px 14px", color: "#555" }}>{c.banco ? `${c.banco}${c.agencia ? ` · ${c.agencia}` : ""}` : "—"}</td>
-                          <td style={{ padding: "10px 14px", color: "#555" }}>{c.conta || "—"}</td>
+                          <td style={{ padding: "10px 14px", color: "#555" }}>
+                            {(() => {
+                              const b = bancos.find(x => x.id === c.banco_id);
+                              const nome = b ? `${b.nome_curto} (${b.codigo_compe})` : (c.banco || "—");
+                              const ag = c.agencia ? [c.agencia, c.agencia_dv].filter(Boolean).join("-") : "";
+                              return ag ? `${nome} · Ag. ${ag}` : nome;
+                            })()}
+                          </td>
+                          <td style={{ padding: "10px 14px", color: "#555" }}>
+                            {c.conta ? [c.conta, c.conta_dv].filter(Boolean).join("-") : "—"}
+                          </td>
                           <td style={{ padding: "10px 14px", textAlign: "right", color: (c.saldo_inicial ?? 0) >= 0 ? "#1A4870" : "#E24B4A", fontWeight: 600, fontSize: 12 }}>
                             {(c.saldo_inicial ?? 0) !== 0 ? (c.saldo_inicial! < 0 ? "− " : "") + Math.abs(c.saldo_inicial!).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
                           </td>
@@ -4212,7 +4223,7 @@ function CadastrosInner() {
                             <span style={{ background: c.ativa ? "#DCF5E8" : "#F4F6FA", color: c.ativa ? "#14532D" : "#888", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.ativa ? "Ativa" : "Inativa"}</span>
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco: c.banco ?? "", agencia: c.agencia ?? "", conta: c.conta ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? "") }); setModalConta(true); }}>Editar</button>
+                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco_id: c.banco_id ?? "", banco: c.banco ?? "", agencia: c.agencia ?? "", agencia_dv: c.agencia_dv ?? "", conta: c.conta ?? "", conta_dv: c.conta_dv ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? "") }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>Editar</button>
                             <button style={{ ...btnX, marginLeft: 6, color: "#E24B4A" }} onClick={async () => { if (!confirm("Excluir esta conta?")) return; await excluirConta(c.id); setContas(x => x.filter(r => r.id !== c.id)); }}>Excluir</button>
                           </td>
                         </tr>
@@ -4797,60 +4808,119 @@ function CadastrosInner() {
 
       {/* Modal Conta Bancária */}
       {modalConta && (
-        <Modal titulo={editConta ? "Editar Conta Bancária" : "Nova Conta Bancária"} onClose={() => setModalConta(false)} width={680}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={lbl}>Nome / Apelido *</label>
-              <input style={inp} placeholder="Ex: Bradesco PJ, Sicredi Rural" value={fConta.nome} onChange={e => setFConta(p => ({ ...p, nome: e.target.value }))} />
-            </div>
-            {empresas.length > 0 && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={lbl}>Empresa vinculada</label>
-                <select style={inp} value={fConta.empresa_id} onChange={e => setFConta(p => ({ ...p, empresa_id: e.target.value }))}>
-                  <option value="">— Sem vínculo —</option>
-                  {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome ?? e.id}</option>)}
-                </select>
+        <Modal titulo={editConta ? "Editar Conta Bancária" : "Nova Conta Bancária"} onClose={() => setModalConta(false)} width={720}>
+          {(() => {
+            const bancoDados = bancos.find(b => b.id === fConta.banco_id);
+            const fmtCnpj = (s: string) => s.length === 14 ? `${s.slice(0,2)}.${s.slice(2,5)}.${s.slice(5,8)}/${s.slice(8,12)}-${s.slice(12)}` : s;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+                {/* Nome */}
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={lbl}>Nome / Apelido *</label>
+                  <input style={inp} placeholder="Ex: Bradesco PJ Rural, Sicredi Conta Movimento" value={fConta.nome} onChange={e => setFConta(p => ({ ...p, nome: e.target.value }))} />
+                </div>
+
+                {/* Empresa */}
+                {empresas.length > 0 && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={lbl}>Empresa vinculada</label>
+                    <select style={inp} value={fConta.empresa_id} onChange={e => setFConta(p => ({ ...p, empresa_id: e.target.value }))}>
+                      <option value="">— Sem vínculo (fazenda) —</option>
+                      {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social ?? e.nome ?? e.id}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {/* Banco select */}
+                <div style={{ gridColumn: "1 / 3" }}>
+                  <label style={lbl}>Banco *</label>
+                  <select style={inp} value={fConta.banco_id}
+                    onChange={e => {
+                      const b = bancos.find(x => x.id === e.target.value);
+                      setFConta(p => ({ ...p, banco_id: e.target.value, banco: b?.nome_curto ?? "" }));
+                    }}>
+                    <option value="">— Selecione o banco —</option>
+                    {bancos.map(b => (
+                      <option key={b.id} value={b.id}>{b.codigo_compe} · {b.nome_curto} — {b.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Código COMPE */}
+                <div>
+                  <label style={lbl}>Cód. COMPE</label>
+                  <input style={{ ...inp, background: "#F4F6FA", color: "#555", cursor: "default" }} readOnly
+                    value={bancoDados?.codigo_compe ?? "—"} />
+                </div>
+
+                {/* CNPJ do banco */}
+                {bancoDados && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={lbl}>CNPJ do Banco</label>
+                    <input style={{ ...inp, background: "#F4F6FA", color: "#555", cursor: "default" }} readOnly
+                      value={fmtCnpj(bancoDados.cnpj)} />
+                  </div>
+                )}
+
+                {/* Agência + DV + Conta + DV */}
+                <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "2fr 1fr 2fr 1fr", gap: 10 }}>
+                  <div>
+                    <label style={lbl}>Agência</label>
+                    <input style={inp} placeholder="0000" value={fConta.agencia}
+                      onChange={e => setFConta(p => ({ ...p, agencia: e.target.value.replace(/\D/g, "") }))} maxLength={6} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Dígito Ag.</label>
+                    <input style={inp} placeholder="0" value={fConta.agencia_dv}
+                      onChange={e => setFConta(p => ({ ...p, agencia_dv: e.target.value.replace(/[^0-9xX]/g, "").slice(0,1) }))} maxLength={1} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Conta</label>
+                    <input style={inp} placeholder="000000" value={fConta.conta}
+                      onChange={e => setFConta(p => ({ ...p, conta: e.target.value.replace(/\D/g, "") }))} maxLength={12} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Dígito Cta.</label>
+                    <input style={inp} placeholder="0" value={fConta.conta_dv}
+                      onChange={e => setFConta(p => ({ ...p, conta_dv: e.target.value.replace(/[^0-9xX]/g, "").slice(0,1) }))} maxLength={1} />
+                  </div>
+                </div>
+
+                {/* Tipo / Saldo / Moeda */}
+                <div>
+                  <label style={lbl}>Tipo de Conta *</label>
+                  <select style={inp} value={fConta.tipo_conta} onChange={e => setFConta(p => ({ ...p, tipo_conta: e.target.value as typeof fConta.tipo_conta }))}>
+                    <option value="corrente">Conta Corrente</option>
+                    <option value="poupanca">Conta Poupança</option>
+                    <option value="investimento">Conta Investimento</option>
+                    <option value="caixa">Caixa</option>
+                    <option value="transitoria">Transitória</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>Saldo Inicial (R$)</label>
+                  <InputMonetario style={inp} placeholder="0,00" value={fConta.saldo_inicial} onChange={v => setFConta(p => ({ ...p, saldo_inicial: String(v) }))} />
+                </div>
+                <div>
+                  <label style={lbl}>Moeda</label>
+                  <select style={inp} value={fConta.moeda} onChange={e => setFConta(p => ({ ...p, moeda: e.target.value as "BRL"|"USD" }))}>
+                    <option value="BRL">BRL — Real</option>
+                    <option value="USD">USD — Dólar</option>
+                  </select>
+                </div>
+
+                {/* Ativa */}
+                <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 8 }}>
+                  <input type="checkbox" id="contaAtiva" checked={fConta.ativa} onChange={e => setFConta(p => ({ ...p, ativa: e.target.checked }))} />
+                  <label htmlFor="contaAtiva" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Conta ativa</label>
+                </div>
               </div>
-            )}
-            <div>
-              <label style={lbl}>Banco</label>
-              <input style={inp} placeholder="Ex: Bradesco, Sicredi, BB" value={fConta.banco} onChange={e => setFConta(p => ({ ...p, banco: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Agência</label>
-              <input style={inp} placeholder="0000-0" value={fConta.agencia} onChange={e => setFConta(p => ({ ...p, agencia: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Conta</label>
-              <input style={inp} placeholder="00000-0" value={fConta.conta} onChange={e => setFConta(p => ({ ...p, conta: e.target.value }))} />
-            </div>
-            <div>
-              <label style={lbl}>Tipo de Conta *</label>
-              <select style={inp} value={fConta.tipo_conta} onChange={e => setFConta(p => ({ ...p, tipo_conta: e.target.value as "corrente"|"investimento"|"caixa"|"transitoria" }))}>
-                <option value="corrente">Conta Corrente</option>
-                <option value="investimento">Conta Investimento</option>
-                <option value="caixa">Conta Caixa</option>
-                <option value="transitoria">Conta Transitória</option>
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Saldo Inicial (R$)</label>
-              <InputMonetario style={inp} placeholder="0,00" value={fConta.saldo_inicial} onChange={v => setFConta(p => ({ ...p, saldo_inicial: String(v) }))} />
-            </div>
-            <div>
-              <label style={lbl}>Moeda</label>
-              <select style={inp} value={fConta.moeda} onChange={e => setFConta(p => ({ ...p, moeda: e.target.value as "BRL"|"USD" }))}>
-                <option value="BRL">BRL — Real</option>
-                <option value="USD">USD — Dólar</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 18 }}>
-              <input type="checkbox" id="contaAtiva" checked={fConta.ativa} onChange={e => setFConta(p => ({ ...p, ativa: e.target.checked }))} />
-              <label htmlFor="contaAtiva" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Conta ativa</label>
-            </div>
-          </div>
+            );
+          })()}
+
           <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>
-            Contas do tipo <strong>Caixa</strong> e <strong>Transitória</strong> são excluídas automaticamente do Fluxo de Caixa.
+            Código COMPE e CNPJ são usados automaticamente em <strong>CNAB/Borderô</strong>, <strong>OFX/Conciliação</strong>, <strong>LCDPR</strong> e <strong>SPED ECD</strong>.
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
             <button style={btnR} onClick={() => setModalConta(false)}>Cancelar</button>
@@ -4860,7 +4930,22 @@ function CadastrosInner() {
                 setSalvando(true);
                 try {
                   const saldoIni = fConta.saldo_inicial !== "" ? parseFloat(fConta.saldo_inicial) : 0;
-                  const payload = { fazenda_id: fazendaId, empresa_id: fConta.empresa_id || empresas[0]?.id || null, nome: fConta.nome.trim(), banco: fConta.banco || undefined, agencia: fConta.agencia || undefined, conta: fConta.conta || undefined, moeda: fConta.moeda, ativa: fConta.ativa, tipo_conta: fConta.tipo_conta, saldo_inicial: isNaN(saldoIni) ? 0 : saldoIni };
+                  const banco = bancos.find(b => b.id === fConta.banco_id);
+                  const payload = {
+                    fazenda_id: fazendaId,
+                    empresa_id: fConta.empresa_id || empresas[0]?.id || null,
+                    nome: fConta.nome.trim(),
+                    banco_id: fConta.banco_id || null,
+                    banco: banco?.nome_curto || fConta.banco || undefined,
+                    agencia: fConta.agencia || undefined,
+                    agencia_dv: fConta.agencia_dv || null,
+                    conta: fConta.conta || undefined,
+                    conta_dv: fConta.conta_dv || null,
+                    moeda: fConta.moeda,
+                    ativa: fConta.ativa,
+                    tipo_conta: fConta.tipo_conta,
+                    saldo_inicial: isNaN(saldoIni) ? 0 : saldoIni,
+                  };
                   if (editConta) {
                     await atualizarContaBancaria(editConta.id, payload);
                     setContas(x => x.map(r => r.id === editConta.id ? { ...r, ...payload } : r));

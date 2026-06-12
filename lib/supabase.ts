@@ -804,17 +804,30 @@ export type Empresa = {
   created_at?: string;
 };
 
+export type Banco = {
+  id: string;
+  codigo_compe: string;   // "001", "237", etc. — código COMPE 3 dígitos (CNAB/OFX/LCDPR)
+  nome: string;           // nome oficial completo
+  nome_curto: string;     // nome comum: "BB", "Bradesco", "Sicredi"
+  cnpj: string;           // 14 dígitos sem máscara — obrigatório LCDPR/SPED
+  ispb?: string | null;   // 8 dígitos — roteamento TED/PIX
+  ativo: boolean;
+};
+
 export type ContaBancaria = {
   id: string;
   empresa_id?: string | null;
   fazenda_id: string;
   nome: string;
-  banco?: string;
+  banco_id?: string | null;     // FK → bancos (resolve codigo_compe + cnpj)
+  banco?: string;               // legado — mantido para retrocompatibilidade
   agencia?: string;
+  agencia_dv?: string | null;
   conta?: string;
+  conta_dv?: string | null;
   moeda: "BRL" | "USD";
   ativa: boolean;
-  tipo_conta: "corrente" | "investimento" | "caixa" | "transitoria";
+  tipo_conta: "corrente" | "poupanca" | "investimento" | "caixa" | "transitoria";
   saldo_inicial?: number;
   produtor_id?: string | null;  // FK produtores — conta pertence a este produtor (LCDPR)
   created_at?: string;

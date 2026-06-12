@@ -1107,6 +1107,12 @@ export async function excluirEmpresa(id: string): Promise<void> {
 // CONTAS BANCÁRIAS
 // ————————————————————————————————————————
 
+export async function listarBancos(): Promise<import("./supabase").Banco[]> {
+  const { data, error } = await supabase.from("bancos").select("*").eq("ativo", true).order("nome_curto");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function listarContas(fazenda_id: string): Promise<ContaBancaria[]> {
   const { data, error } = await supabase.from("contas_bancarias").select("*").eq("fazenda_id", fazenda_id).order("nome");
   if (error) throw error;

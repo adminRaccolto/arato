@@ -5478,3 +5478,72 @@ ALTER TABLE contratos_financeiros
 NOTIFY pgrst, 'reload schema';
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 120 — Tabela bancos + refatoração contas_bancarias
+-- =============================================================================
+
+-- Tabela de bancos brasileiros (COMPE/SPB)
+CREATE TABLE IF NOT EXISTS bancos (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo_compe VARCHAR(3)  NOT NULL UNIQUE,
+  nome         TEXT        NOT NULL,
+  nome_curto   VARCHAR(30) NOT NULL,
+  cnpj         VARCHAR(14) NOT NULL,   -- 14 dígitos sem máscara
+  ispb         VARCHAR(8),
+  ativo        BOOLEAN     NOT NULL DEFAULT true
+);
+
+-- Popula os principais bancos brasileiros
+INSERT INTO bancos (codigo_compe, nome, nome_curto, cnpj, ispb) VALUES
+  ('001', 'Banco do Brasil S.A.',                                    'BB',           '00000000000191', '00000000'),
+  ('003', 'Banco da Amazônia S.A.',                                  'BASA',         '04902979000144', '04902979'),
+  ('004', 'Banco do Nordeste do Brasil S.A.',                        'BNB',          '07237373000120', '07237373'),
+  ('021', 'Banco do Estado do Espírito Santo S.A.',                  'Banestes',     '28127603000178', '28127603'),
+  ('025', 'Banco Alfa S.A.',                                         'Alfa',         '03323840000199', '03323840'),
+  ('033', 'Banco Santander (Brasil) S.A.',                           'Santander',    '90400888000142', '90400888'),
+  ('041', 'Banco do Estado do Rio Grande do Sul S.A.',               'Banrisul',     '92702067000196', '92702067'),
+  ('070', 'BRB - Banco de Brasília S.A.',                            'BRB',          '00000208000100', '00000208'),
+  ('077', 'Banco Inter S.A.',                                        'Inter',        '00416968000101', '00416968'),
+  ('085', 'Cooperativa Central de Crédito - AILOS',                  'AILOS',        '05463212000129', '05463212'),
+  ('099', 'UNIPRIME Coopcentral',                                    'Uniprime',     '00315557000114', '00315557'),
+  ('104', 'Caixa Econômica Federal',                                 'CEF',          '00360305000104', '00360305'),
+  ('136', 'Confederação Nacional das Cooperativas Centrais Unicred', 'Unicred',      '00315557000114', '00315557'),
+  ('197', 'Stone Pagamentos S.A.',                                   'Stone',        '16501555000157', '16501555'),
+  ('208', 'Banco BTG Pactual S.A.',                                  'BTG Pactual',  '30306294000145', '30306294'),
+  ('212', 'Banco Original S.A.',                                     'Original',     '92894922000108', '92894922'),
+  ('237', 'Banco Bradesco S.A.',                                     'Bradesco',     '60746948000112', '60746948'),
+  ('260', 'Nu Pagamentos S.A.',                                      'Nubank',       '18236120000158', '18236120'),
+  ('290', 'PagSeguro Internet Institucional S.A.',                   'PagBank',      '08561701000101', '08561701'),
+  ('318', 'Banco BMG S.A.',                                          'BMG',          '61190658000100', '61190658'),
+  ('323', 'Mercado Pago',                                            'Mercado Pago', '10573521000191', '10573521'),
+  ('336', 'Banco C6 S.A.',                                           'C6 Bank',      '31872495000172', '31872495'),
+  ('341', 'Itaú Unibanco S.A.',                                      'Itaú',         '60701190000104', '60701190'),
+  ('380', 'PicPay Serviços S.A.',                                    'PicPay',       '22896431000110', '22896431'),
+  ('403', 'Cora SCD S.A.',                                           'Cora',         '37880206000163', '37880206'),
+  ('422', 'Banco Safra S.A.',                                        'Safra',        '58160789000128', '58160789'),
+  ('461', 'Asaas IP S.A.',                                           'Asaas',        '19540550000121', '19540550'),
+  ('655', 'Banco Votorantim S.A.',                                   'BV',           '59588111000103', '59588111'),
+  ('748', 'Banco Cooperativo Sicredi S.A.',                          'Sicredi',      '01181521000155', '01181521'),
+  ('756', 'Banco Cooperativo do Brasil S.A.',                        'Sicoob',       '02038232000164', '02038232')
+ON CONFLICT (codigo_compe) DO NOTHING;
+
+-- Adiciona colunas estruturadas em contas_bancarias
+ALTER TABLE contas_bancarias
+  ADD COLUMN IF NOT EXISTS banco_id   UUID REFERENCES bancos(id),
+  ADD COLUMN IF NOT EXISTS agencia_dv VARCHAR(1),
+  ADD COLUMN IF NOT EXISTS conta_dv   VARCHAR(1);
+
+-- Adiciona poupança ao tipo_conta (caso seja ENUM)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tipo_conta_enum') THEN
+    ALTER TYPE tipo_conta_enum ADD VALUE IF NOT EXISTS 'poupanca';
+  END IF;
+END $$;
+
+-- RLS: bancos é público para leitura (sem dados sensíveis de clientes)
+ALTER TABLE bancos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "bancos_select_public" ON bancos FOR SELECT USING (true);
+
+NOTIFY pgrst, 'reload schema';
