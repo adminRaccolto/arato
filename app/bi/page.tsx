@@ -16,7 +16,7 @@ interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
 interface Lancamento { id: string; fazenda_id: string; tipo: string; moeda: string; status: string; valor: number; sacas?: number; cultura_barter?: string; data_vencimento: string; descricao: string; categoria?: string; cotacao_usd?: number; ano_safra_id?: string; data_baixa?: string; auto?: boolean }
-interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string }
+interface Contrato   { id: string; fazenda_id: string; produto: string; quantidade_sc: number; entregue_sc: number; status: string; is_arrendamento?: boolean; preco?: number; moeda?: string; safra?: string; comprador?: string; numero?: string; dado_em_cessao?: boolean; cessao_fornecedor_nome?: string; cessao_data?: string; data_pagamento?: string; data_entrega?: string; ciclo_id?: string; ano_safra_id?: string; modalidade?: string; tipo?: string; produtor_nome?: string }
 interface CulturaBI  { id: string; nome: string; fator_conversao_kg: number | null }
 interface CessaoDebito { id: string; contrato_id: string; lancamento_id: string; valor_cessao: number }
 
@@ -297,7 +297,7 @@ export default function BI() {
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
       supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").eq("fazenda_id", fazendaId),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome").eq("fazenda_id", fazendaId),
+      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome").eq("fazenda_id", fazendaId),
       supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").eq("fazenda_id", fazendaId),
       fetch("/api/precos").then(r => r.json()),
     ]);
@@ -1835,7 +1835,15 @@ export default function BI() {
           const cfUsdIds = new Set(cfUsdContratos.map(c => c.id));
           const cfUsdParcelas = cfParcelas.filter(p => cfUsdIds.has(p.contrato_id) && p.status !== "pago");
           // CR de contratos em USD (usa data_pagamento como data de recebimento)
-          const crUsdCon  = contratos.filter(c => c.moeda === "USD" && c.status !== "cancelado" && !c.is_arrendamento && c.data_pagamento && c.preco && c.quantidade_sc);
+          // data_entrega = prazo do contrato (campo obrigatório); data_pagamento = opcional
+          const crUsdCon  = contratos.filter(c =>
+            c.moeda === "USD" &&
+            c.status !== "cancelado" &&
+            !c.is_arrendamento &&
+            (c.data_pagamento || c.data_entrega) &&   // usa prazo de entrega quando pagamento não está separado
+            c.preco &&
+            c.quantidade_sc
+          );
 
           // Agrupa por data
           const porData: Map<string, { cpUsd: number; crUsd: number; items: { tipo: "cp"|"cr"; desc: string; valor: number }[] }> = new Map();
@@ -1856,10 +1864,12 @@ export default function BI() {
             e.items.push({ tipo: "cr", desc: l.descricao || "—", valor: l.valor });
           }
           for (const c of crUsdCon) {
-            const dt = c.data_pagamento!;
+            const dt = c.data_pagamento || c.data_entrega!;
             addDate(dt);
             const e = porData.get(dt)!;
-            const val = (c.preco ?? 0) * (c.quantidade_sc ?? 0);
+            // quantidade_sc armazena KG — divide por 60 para obter sacas
+            const sacas = (c.quantidade_sc ?? 0) / 60;
+            const val   = (c.preco ?? 0) * sacas;
             e.crUsd  += val;
             e.items.push({ tipo: "cr", desc: `Contrato ${c.numero ?? c.comprador ?? "—"} — ${c.produto}`, valor: val });
           }
@@ -1879,7 +1889,7 @@ export default function BI() {
           const totalCpUsdLanc = cpUsdLan.reduce((s, l) => s + l.valor, 0);
           const totalCpUsdCf   = cfUsdParcelas.reduce((s, p) => s + (p.amortizacao ?? 0) + (p.juros ?? 0) + (p.despesas_acessorios ?? 0), 0);
           const totalCpUsd = totalCpUsdLanc + totalCpUsdCf;
-          const totalCrUsd = crUsdLan.reduce((s, l) => s + l.valor, 0) + crUsdCon.reduce((s, c) => s + (c.preco ?? 0) * (c.quantidade_sc ?? 0), 0);
+          const totalCrUsd = crUsdLan.reduce((s, l) => s + l.valor, 0) + crUsdCon.reduce((s, c) => s + (c.preco ?? 0) * ((c.quantidade_sc ?? 0) / 60), 0);
           const saldoUsd   = totalCrUsd - totalCpUsd;
           const descasadas = datas.filter(dt => (porData.get(dt)!.cpUsd) > (porData.get(dt)!.crUsd));
           const cotacao    = precos?.usdBrl ?? 5.10;
@@ -2068,7 +2078,9 @@ export default function BI() {
                     {conCessao.map((c, ci) => {
                       const debitos = cessaoDebitos.filter(d => d.contrato_id === c.id);
                       const totalCessao = debitos.reduce((s, d) => s + d.valor_cessao, 0);
-                      const receitaContrato = (c.preco ?? 0) * (c.quantidade_sc ?? 0);
+                      // quantidade_sc armazena KG — divide por 60 para sacas
+                      const sacasContrato  = (c.quantidade_sc ?? 0) / 60;
+                      const receitaContrato = (c.preco ?? 0) * sacasContrato;
                       const coberturaPct = receitaContrato > 0 ? Math.min(100, (totalCessao / receitaContrato) * 100) : 0;
                       return (
                         <div key={c.id} style={{ borderBottom: ci < conCessao.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
@@ -2089,7 +2101,7 @@ export default function BI() {
                             <div>
                               <div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>Valor do contrato</div>
                               <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
-                                {fmtN(c.quantidade_sc ?? 0, 0)} sc × {c.preco ? (c.moeda === "USD" ? `USD ${fmtN(c.preco, 2)}` : fmtR2(c.preco)) : "—"}
+                                {fmtN((c.quantidade_sc ?? 0) / 60, 0)} sc × {c.preco ? (c.moeda === "USD" ? `USD ${fmtN(c.preco, 2)}` : fmtR2(c.preco)) : "—"}
                               </div>
                               <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{receitaContrato > 0 ? fmtR(receitaContrato) : "—"}</div>
                             </div>
