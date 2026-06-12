@@ -198,9 +198,9 @@ export default function Financeiro() {
   const [aba, setAba]           = useState<Aba>("lancamentos");
   const [filtro, setFiltro]     = useState<FiltroCP>("todos");
 
-  // ── Período de consulta (12 meses: -3 meses até +9 meses) ────
+  // ── Período de consulta (-12 meses até +10 meses) ────
   const [periodoInicio, setPeriodoInicio] = useState(() => {
-    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 3);
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 12);
     return d.toISOString().split("T")[0];
   });
   const [periodoFim, setPeriodoFim] = useState(() => {

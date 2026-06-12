@@ -128,7 +128,7 @@ export default function ContasReceber() {
 
   // ── Janela padrão: 1º do mês atual até 12 meses à frente ────
   const [periodoInicio, setPeriodoInicio] = useState(() => {
-    const d = new Date(); d.setDate(1);
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 12);
     return d.toISOString().split("T")[0];
   });
   const [periodoFim, setPeriodoFim] = useState(() => {
