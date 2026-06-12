@@ -17,21 +17,40 @@ const POLL_INTERVALO = 1000;   // ms entre cada leitura
 const TIMEOUT_TCP    = 3000;   // ms para desistir se Toledo não responder
 
 // ── Parser Toledo PRIX ──────────────────────────────────────────
-function parseToledo(linha) {
-  const limpa = linha.replace(/[\x00-\x1F\x7F]/g, " ").trim();
-  if (!limpa) return null;
+// Formato real confirmado: 02 31 70 60 [11 dígitos ASCII] 0d b0
+// Bytes:  STX  '1'  'p'  '`'  "00000000000"  CR  checksum
+// Os 11 dígitos = peso em gramas (últimos 3 = decimal → divide por 1000 = kg)
+// Exemplo: "00043800000" → 43800000 / 1000 = 43800.000 kg
+function parseToledo(buf) {
+  // Aceita Buffer ou string
+  const bytes = Buffer.isBuffer(buf) ? buf : Buffer.from(buf, "binary");
 
-  const m1 = limpa.match(/[+-]?\d+[\.,]?\d*\s*kg/i);
-  if (m1) {
-    const v = parseFloat(m1[0].replace(/kg/i, "").replace(",", ".").trim());
-    return isFinite(v) && v > 0 ? v : null;
+  // Procura o padrão: STX (02) + 3 bytes cabeçalho + dígitos ASCII + CR (0d)
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] !== 0x02) continue;
+    // Pula STX + 3 bytes de header = posição i+4
+    const digitStart = i + 4;
+    if (digitStart >= bytes.length) continue;
+
+    let digits = "";
+    for (let j = digitStart; j < bytes.length; j++) {
+      const c = bytes[j];
+      if (c >= 0x30 && c <= 0x39) {          // '0'–'9'
+        digits += String.fromCharCode(c);
+      } else if (c === 0x0d || c === 0x0a) { // CR ou LF — fim do campo
+        break;
+      } else {
+        digits = ""; break;                  // byte inesperado — descarta
+      }
+    }
+
+    if (digits.length >= 6) {
+      const raw = parseInt(digits, 10);
+      // 3 casas decimais implícitas → kg
+      const kg = raw / 1000;
+      if (isFinite(kg) && kg >= 0) return kg;
+    }
   }
-  const m2 = limpa.match(/^P\s+0*(\d+)/i);
-  if (m2) { const v = parseInt(m2[1], 10); return v > 0 ? v : null; }
-
-  const m3 = limpa.match(/^[+-]?\s*0*(\d{3,7}[\.,]?\d*)\s*$/);
-  if (m3) { const v = parseFloat(m3[1].replace(",", ".")); return isFinite(v) && v >= 100 ? v : null; }
-
   return null;
 }
 
@@ -82,22 +101,16 @@ function lerUmaVez() {
     });
 
     tcp.on("data", data => {
-      // Log raw para diagnóstico (hex + texto)
-      const hex  = data.toString("hex").match(/.{1,2}/g).join(" ");
-      const txt  = data.toString().replace(/[\x00-\x1F\x7F]/g, "·");
+      const hex = data.toString("hex").match(/.{1,2}/g).join(" ");
+      const txt = data.toString().replace(/[\x00-\x1F\x7F]/g, "·");
       console.log(`[RAW] hex: ${hex}`);
       console.log(`[RAW] txt: "${txt}"`);
 
-      buffer += data.toString();
-      const linhas = buffer.split(/\r?\n/);
-      buffer = linhas.pop() ?? "";
-      for (const linha of linhas) {
-        const peso = parseToledo(linha);
-        if (peso !== null) {
-          clearTimeout(timer);
-          finalizar(peso);
-          return;
-        }
+      // Parser binário — não usa split por linha pois o protocolo é binário
+      const peso = parseToledo(data);
+      if (peso !== null) {
+        clearTimeout(timer);
+        finalizar(peso);
       }
     });
 
