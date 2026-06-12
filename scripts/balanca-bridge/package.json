@@ -1,0 +1,16 @@
+{
+  "name": "ractech-balanca-bridge",
+  "version": "1.0.0",
+  "description": "Bridge Toledo PRIX → WebSocket para RacTech",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js",
+    "build-win": "pkg bridge.js --target node18-win-x64 --output bridge.exe"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}
