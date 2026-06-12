@@ -237,7 +237,7 @@ const NAV: NavItem[] = [
       { id: "conf-importacao",  label: "Importações",          path: "/configuracoes/importacao",  moduleId: "conf_importacao" },
 
       { type: "divider", label: "Usuários" },
-      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/admin/usuarios", moduleId: "usuarios" },
+      { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/configuracoes/usuarios", moduleId: "usuarios" },
       { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs",     moduleId: "logs"     },
       { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"                        },
     ],
