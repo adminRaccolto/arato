@@ -1207,6 +1207,16 @@ function CadastrosInner() {
     if (!anoSel) return;
     setOcupado({});
     setEditCiclo(c ?? null);
+    // Garante que talhões de todas as fazendas estejam carregados (importados via SQL ou nunca expandidos)
+    const fazendasSemTalhoes = fazendas.filter(f => !talhoes[f.id]);
+    if (fazendasSemTalhoes.length > 0) {
+      const resultados = await Promise.all(fazendasSemTalhoes.map(f => listarTalhoes(f.id)));
+      setTalhoes(prev => {
+        const novo = { ...prev };
+        fazendasSemTalhoes.forEach((f, i) => { novo[f.id] = resultados[i]; });
+        return novo;
+      });
+    }
     const inicio = c?.data_inicio ?? "";
     const fim    = c?.data_fim    ?? "";
     setFCiclo(c ? {
