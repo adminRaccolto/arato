@@ -1834,15 +1834,16 @@ export default function BI() {
           const cfUsdContratos = cfContratos.filter(c => c.moeda === "USD" && c.status !== "cancelado");
           const cfUsdIds = new Set(cfUsdContratos.map(c => c.id));
           const cfUsdParcelas = cfParcelas.filter(p => cfUsdIds.has(p.contrato_id) && p.status !== "pago");
-          // CR de contratos em USD (usa data_pagamento como data de recebimento)
-          // data_entrega = prazo do contrato (campo obrigatório); data_pagamento = opcional
+          // CR de contratos de grãos USD — respeitam o filtro de safra selecionado
           const crUsdCon  = contratos.filter(c =>
             c.moeda === "USD" &&
             c.status !== "cancelado" &&
             !c.is_arrendamento &&
-            (c.data_pagamento || c.data_entrega) &&   // usa prazo de entrega quando pagamento não está separado
+            (c.data_pagamento || c.data_entrega) &&
             c.preco &&
-            c.quantidade_sc
+            c.quantidade_sc &&
+            // Filtro de safra: mostra contratos da safra selecionada (ou sem safra vinculada)
+            (!filtroAnoSafraId || !c.ano_safra_id || c.ano_safra_id === filtroAnoSafraId)
           );
 
           // Agrupa por data
@@ -1915,9 +1916,16 @@ export default function BI() {
                 ))}
               </div>
 
-              {/* Cotação usada */}
-              <div style={{ fontSize: 11, color: "#888", marginTop: -6 }}>
-                Cotação usada: USD/BRL {fmtN(cotacao, 4)} · {precos ? "ao vivo" : "estimada"}
+              {/* Cotação + nota sobre filtro */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: -6 }}>
+                <span style={{ fontSize: 11, color: "#888" }}>
+                  Cotação usada: USD/BRL {fmtN(cotacao, 4)} · {precos ? "ao vivo" : "estimada"}
+                </span>
+                {filtroAnoSafraId && (
+                  <span style={{ fontSize: 11, color: "#888", background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px" }}>
+                    CP inclui todas as obrigações financeiras em USD (multi-ano) · CR filtrado por {anosSafra.find(a => a.id === filtroAnoSafraId)?.descricao ?? "safra"}
+                  </span>
+                )}
               </div>
 
               {/* Timeline de fluxo USD */}
