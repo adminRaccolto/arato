@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import TopNav from "../../../components/TopNav";
+import BalancaSerial from "../../../components/BalancaSerial";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -1017,10 +1018,63 @@ export default function IntegracoesPage() {
             )}
 
             {abaCat === "balanca" && (
-              <div style={{ marginTop: 20, padding: "14px 18px", background: "#F0F4FF",
-                            border: "0.5px solid #7C8FD9", borderRadius: 8, fontSize: 13, color: "#3B5BDB" }}>
-                A leitura de balança usa a <strong>Web Serial API</strong>, disponível no Google Chrome 89+.
-                O PC precisa estar fisicamente conectado à balança via cabo serial/USB.
+              <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 4 }}>
+
+                {/* Card Toledo PRIX */}
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #1A4870", padding: 20, maxWidth: 560 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 32, lineHeight: 1 }}>⚖️</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Toledo PRIX</div>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Toledo do Brasil · Balança de pesagem de caminhões</div>
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <span style={{ padding: "2px 8px", background: "#FBF3E0", color: "#7A5A12", border: "0.5px solid #C9921B", borderRadius: 20, fontSize: 11 }}>Requer hardware</span>
+                        <span style={{ padding: "2px 8px", background: "#DCFCE7", color: "#166534", border: "0.5px solid #16A34A40", borderRadius: 20, fontSize: 11 }}>Integrado</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: "#555", lineHeight: 1.6, marginBottom: 14 }}>
+                    Leitura automática do peso via porta serial USB. Ao abrir um romaneio,
+                    clique em <strong>"Conectar"</strong> e os campos de Peso Bruto e Tara
+                    serão preenchidos diretamente da balança com um clique.
+                  </div>
+
+                  {/* Parâmetros técnicos */}
+                  <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
+                    {[
+                      ["Protocolo",    "RS-232 via USB"],
+                      ["Baud rate",    "9600"],
+                      ["Paridade",     "None"],
+                      ["Data bits",    "8"],
+                      ["Stop bits",    "1"],
+                      ["Conector",     "RJ45 proprietário Toledo → DB9 → USB-Serial"],
+                    ].map(([k, v]) => (
+                      <div key={k} style={{ display: "flex", gap: 6, fontSize: 11 }}>
+                        <span style={{ color: "#888", whiteSpace: "nowrap" }}>{k}:</span>
+                        <span style={{ color: "#1a1a1a", fontWeight: 600 }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Teste de conexão ao vivo */}
+                  <div style={{ borderTop: "0.5px solid #EEF1F6", paddingTop: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Testar conexão</div>
+                    <BalancaSerial
+                      onCapturarBruto={kg => alert(`✓ Peso Bruto capturado: ${kg.toLocaleString("pt-BR")} kg`)}
+                      onCapturarTara={kg  => alert(`✓ Tara capturada: ${kg.toLocaleString("pt-BR")} kg`)}
+                    />
+                    <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
+                      Use este painel para confirmar que a balança está enviando dados corretamente antes de usar no romaneio.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dica de hardware */}
+                <div style={{ padding: "12px 16px", background: "#F0F4FF", border: "0.5px solid #7C8FD9", borderRadius: 8, fontSize: 12, color: "#3B5BDB", maxWidth: 560 }}>
+                  <strong>Cabo necessário:</strong> Toledo RJ45 proprietário → DB9 fêmea + adaptador USB-Serial (Prolific PL2303 ou FTDI).
+                  Disponível em lojas de automação ou diretamente com a Toledo do Brasil.
+                </div>
               </div>
             )}
           </>
