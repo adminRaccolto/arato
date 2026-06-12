@@ -1,8 +1,43 @@
 -- =============================================================================
 -- Gera lançamentos CR (Contas a Receber) para contratos importados sem CR
 -- Rode no Supabase SQL Editor — seguro (idempotente: só processa sem lancamento_cr_id)
+--
+-- NOTA: quantidade_sc armazena KG (não sacas). preco é em R$/sc ou US$/sc.
+-- Fórmula correta: valor = (quantidade_kg / 60) * preco_por_sc
 -- =============================================================================
 
+-- ─── Passo 1: Limpa CRs gerados incorretamente por versões anteriores deste script ──
+-- (somente os marcados com a observação de importação retroativa)
+DO $$
+DECLARE
+  ids_errados UUID[];
+BEGIN
+  -- Coleta IDs dos CRs retroativos que estão vinculados a contratos
+  SELECT ARRAY_AGG(lancamento_cr_id)
+  INTO ids_errados
+  FROM contratos
+  WHERE lancamento_cr_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM lancamentos l
+      WHERE l.id = contratos.lancamento_cr_id
+        AND l.observacao = 'CR gerado retroativamente — contrato importado sem financeiro'
+    );
+
+  IF ids_errados IS NOT NULL AND array_length(ids_errados, 1) > 0 THEN
+    -- Desvincula contratos antes de deletar
+    UPDATE contratos SET lancamento_cr_id = NULL
+    WHERE lancamento_cr_id = ANY(ids_errados);
+
+    -- Deleta os lançamentos incorretos
+    DELETE FROM lancamentos WHERE id = ANY(ids_errados);
+
+    RAISE NOTICE '=== % CR(s) incorreto(s) removido(s) ===', array_length(ids_errados, 1);
+  ELSE
+    RAISE NOTICE '=== Nenhum CR incorreto encontrado para limpar ===';
+  END IF;
+END $$;
+
+-- ─── Passo 2: Gera os CRs com o valor correto ────────────────────────────────
 DO $$
 DECLARE
   c        RECORD;
@@ -10,6 +45,7 @@ DECLARE
   v_status TEXT;
   v_venc   DATE;
   v_valor  NUMERIC;
+  v_sacas  NUMERIC;
   contador INTEGER := 0;
 BEGIN
   FOR c IN
@@ -28,14 +64,23 @@ BEGIN
       AND fazenda_id IS NOT NULL
     ORDER BY data_contrato ASC NULLS LAST
   LOOP
-    -- Valor total do contrato (sacas × preço/sc)
-    v_valor := ROUND(c.quantidade_sc * c.preco, 2);
+    -- quantidade_sc armazena KG — converter para sacas antes de multiplicar pelo preço
+    v_sacas := ROUND(c.quantidade_sc / 60.0, 4);
+    v_valor := ROUND(v_sacas * c.preco, 2);
 
     -- Status do lançamento:
     -- encerrado + data no passado → baixado (entregue e presumidamente pago)
     -- todos os outros → em_aberto
-    IF c.status = 'encerrado' AND c.data_entrega::date <= CURRENT_DATE THEN
-      v_status := 'baixado';
+    IF c.status = 'encerrado' THEN
+      BEGIN
+        IF c.data_entrega::date <= CURRENT_DATE THEN
+          v_status := 'baixado';
+        ELSE
+          v_status := 'em_aberto';
+        END IF;
+      EXCEPTION WHEN OTHERS THEN
+        v_status := 'em_aberto';
+      END;
     ELSE
       v_status := 'em_aberto';
     END IF;
@@ -96,8 +141,8 @@ BEGIN
     WHERE id = c.id;
 
     contador := contador + 1;
-    RAISE NOTICE 'Contrato % → CR % | % | R$ % | status: %',
-      COALESCE(c.numero, c.id::text), lanc_id, c.comprador, v_valor, v_status;
+    RAISE NOTICE 'Contrato % → CR % | % sc × % = % % | status: %',
+      COALESCE(c.numero, c.id::text), lanc_id, v_sacas, c.preco, v_valor, c.moeda, v_status;
   END LOOP;
 
   RAISE NOTICE '=== % lançamento(s) CR gerado(s) ===', contador;
