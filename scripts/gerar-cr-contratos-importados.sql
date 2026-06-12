@@ -40,12 +40,20 @@ BEGIN
       v_status := 'em_aberto';
     END IF;
 
-    -- Data de vencimento: usa data_pagamento se existir, senão data_entrega
-    v_venc := COALESCE(
-      NULLIF(c.data_pagamento, '')::date,
-      NULLIF(c.data_entrega,   '')::date,
-      CURRENT_DATE
-    );
+    -- Data de vencimento: cast seguro (ignora strings inválidas)
+    BEGIN
+      v_venc := c.data_pagamento::date;
+    EXCEPTION WHEN OTHERS THEN
+      v_venc := NULL;
+    END;
+    IF v_venc IS NULL THEN
+      BEGIN
+        v_venc := c.data_entrega::date;
+      EXCEPTION WHEN OTHERS THEN
+        v_venc := CURRENT_DATE;
+      END;
+    END IF;
+    IF v_venc IS NULL THEN v_venc := CURRENT_DATE; END IF;
 
     -- Insere o lançamento CR
     INSERT INTO lancamentos (
