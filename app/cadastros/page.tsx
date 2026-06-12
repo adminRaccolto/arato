@@ -917,21 +917,15 @@ function CadastrosInner() {
       setFazendas(p => [...p, n]);
       fazId = n.id;
       // Bootstrap: se ainda não há fazendaId no contexto (primeiro login do cliente)
+      // Usa API server-side para contornar RLS no INSERT em contas
       if (!fazendaId && user) {
-        let novaContaId = contaIdParaFaz ?? null;
-        if (!novaContaId) {
-          const { data: perfAtual } = await supabase.from("perfis").select("conta_id, nome").eq("user_id", user.id).maybeSingle();
-          novaContaId = (perfAtual as { conta_id?: string } | null)?.conta_id ?? null;
-          if (!novaContaId) {
-            const nc = await criarContaTenant({ nome: (perfAtual as { nome?: string } | null)?.nome || user.email || "Minha Conta", tipo: "pf" });
-            novaContaId = nc.id;
-            await supabase.from("fazendas").update({ conta_id: novaContaId }).eq("id", fazId);
-          }
-        }
-        await supabase.from("perfis").upsert(
-          { user_id: user.id, fazenda_id: fazId, conta_id: novaContaId, nome: user.email },
-          { onConflict: "user_id" }
-        );
+        const bsRes = await fetch("/api/conta/bootstrap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fazenda_id: fazId, nome: user.email }),
+        });
+        const bsJson = await bsRes.json();
+        if (!bsJson.ok) throw new Error(bsJson.error ?? "Erro ao configurar conta");
         alert("Fazenda criada com sucesso! Recarregue a página (Cmd+R) para ativar o sistema.");
       }
     }
