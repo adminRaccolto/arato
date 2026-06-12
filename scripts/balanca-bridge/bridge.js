@@ -76,12 +76,18 @@ function lerUmaVez() {
     const timer = setTimeout(() => finalizar(null), TIMEOUT_TCP);
 
     tcp.connect(TOLEDO_PORT, TOLEDO_HOST, () => {
-      // Alguns modelos Toledo precisam de ENQ (0x05) para enviar o peso
-      // Tente sem enviar primeiro; se não funcionar, descomente a linha abaixo:
-      // tcp.write(Buffer.from([0x05]));
+      // Toledo PRIX requer comando de solicitação — tenta ENQ (0x05) seguido de "P\r\n"
+      tcp.write(Buffer.from([0x05]));
+      setTimeout(() => { if (!resolveu) tcp.write(Buffer.from("P\r\n")); }, 200);
     });
 
     tcp.on("data", data => {
+      // Log raw para diagnóstico (hex + texto)
+      const hex  = data.toString("hex").match(/.{1,2}/g).join(" ");
+      const txt  = data.toString().replace(/[\x00-\x1F\x7F]/g, "·");
+      console.log(`[RAW] hex: ${hex}`);
+      console.log(`[RAW] txt: "${txt}"`);
+
       buffer += data.toString();
       const linhas = buffer.split(/\r?\n/);
       buffer = linhas.pop() ?? "";
