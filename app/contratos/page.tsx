@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
+import BalancaSerial from "../../components/BalancaSerial";
 import {
   listarContratos, criarContrato, atualizarContrato, excluirContrato, encerrarContratosPorSafras,
   listarRomaneios, criarRomaneio,
@@ -1934,6 +1935,10 @@ export default function Contratos() {
             )}
 
             {/* Pesagem */}
+            <BalancaSerial
+              onCapturarBruto={kg => setFRom(p => ({ ...p, pesoBruto: String(Math.round(kg)) }))}
+              onCapturarTara={kg  => setFRom(p => ({ ...p, tara:      String(Math.round(kg)) }))}
+            />
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:14 }}>
               <div>
                 <label style={lbl}>Placa do caminhão *</label>
