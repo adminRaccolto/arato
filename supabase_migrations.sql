@@ -5439,4 +5439,40 @@ CREATE POLICY "triangulacoes_escrita" ON triangulacoes FOR ALL
 CREATE INDEX IF NOT EXISTS idx_triangulacoes_fazenda ON triangulacoes(fazenda_id);
 CREATE INDEX IF NOT EXISTS idx_triangulacoes_tipo    ON triangulacoes(tipo);
 
+-- ─── Migration: Garante policy RLS em contratos_financeiros e tabelas filhas ──
+-- Recria as políticas permissivas caso não existam (safe idempotente)
+DO $$
+BEGIN
+  -- contratos_financeiros
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'contratos_financeiros'
+      AND policyname IN ('allow_all_contratos_financeiros','fazenda_rls_contratos_financeiros')
+  ) THEN
+    EXECUTE 'CREATE POLICY "allow_all_contratos_financeiros" ON contratos_financeiros FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+  -- parcelas_liberacao
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'parcelas_liberacao' AND policyname LIKE 'allow_all%') THEN
+    EXECUTE 'CREATE POLICY "allow_all_parcelas_liberacao" ON parcelas_liberacao FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+  -- parcelas_pagamento
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'parcelas_pagamento' AND policyname LIKE 'allow_all%') THEN
+    EXECUTE 'CREATE POLICY "allow_all_parcelas_pagamento" ON parcelas_pagamento FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+  -- garantias_contrato
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'garantias_contrato' AND policyname LIKE 'allow_all%') THEN
+    EXECUTE 'CREATE POLICY "allow_all_garantias_contrato" ON garantias_contrato FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+  -- centros_custo_contrato
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'centros_custo_contrato' AND policyname LIKE 'allow_all%') THEN
+    EXECUTE 'CREATE POLICY "allow_all_centros_custo_contrato" ON centros_custo_contrato FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+END $$;
+
+-- Garante que fazenda_id não aceita NULL nos novos contratos financeiros
+ALTER TABLE contratos_financeiros
+  ALTER COLUMN fazenda_id SET NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
+
 NOTIFY pgrst, 'reload schema';

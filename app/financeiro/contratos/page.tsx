@@ -437,6 +437,7 @@ export default function ContratosFinanceiros() {
   const [contas, setContas]       = useState<ContaBancaria[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
   const [salvando, setSalvando]   = useState(false);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [ptax, setPtax]           = useState<number | null>(null);
   const [modalImport, setModalImport]     = useState(false);
   const [importPreview, setImportPreview] = useState<ContratoImportado[] | null>(null);
@@ -470,7 +471,13 @@ export default function ContratosFinanceiros() {
   // ── Carregar base ──
   useEffect(() => {
     if (!fazendaId) return;
-    listarContratosFinanceiros(fazendaId).then(setContratos).catch(() => {});
+    setErroCarregamento(null);
+    listarContratosFinanceiros(fazendaId)
+      .then(setContratos)
+      .catch(err => {
+        console.error("[CF] Erro ao carregar contratos financeiros:", err);
+        setErroCarregamento(String(err?.message ?? err ?? "Erro desconhecido ao carregar contratos"));
+      });
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
     supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
     const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
@@ -542,6 +549,7 @@ export default function ContratosFinanceiros() {
 
   // ── Salvar contrato (Principal) ──
   const salvarContrato = () => salvar(async () => {
+    if (!fazendaId) { alert("Fazenda não identificada. Recarregue a página."); return; }
     if (!fC.descricao.trim() || !fC.data_contrato || !fC.valor_financiado) return;
     const credorNome = fC.pessoa_id ? (pessoas.find(p => p.id === fC.pessoa_id)?.nome ?? fC.credor) : fC.credor.trim();
     if (!credorNome) { alert("Informe o credor."); return; }
@@ -931,7 +939,15 @@ export default function ContratosFinanceiros() {
           )}
 
           {/* Tabela */}
-          {contratos.length === 0 ? (
+          {erroCarregamento ? (
+            <div style={{ background: "#FCEBEB", borderRadius: 14, border: "0.5px solid #E24B4A50", padding: "32px 24px", textAlign: "center" }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "#791F1F", marginBottom: 6 }}>Erro ao carregar contratos</div>
+              <div style={{ fontSize: 12, color: "#791F1F", marginBottom: 16 }}>{erroCarregamento}</div>
+              <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceiros(fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : contratos.length === 0 ? (
             <div style={{ background: "#fff", borderRadius: 14, border: "0.5px solid #DDE2EE", padding: "56px 0", textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🏦</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>

@@ -1723,7 +1723,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   // ── Salvar ──────────────────────────────────────────────────────────────
   const hoje = new Date().toISOString().split("T")[0];
 
-  // 1. Upsert Pessoa (fornecedor) por CNPJ
+  // 1. Upsert Pessoa (fornecedor) por CNPJ; fallback por nome quando sem CNPJ
   let pessoaId: string | null = null;
   let pessoaNova = false;
   if (cnpj) {
@@ -1732,11 +1732,40 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
     if (existente) {
       pessoaId = existente.id;
     } else {
+      // Antes de criar, verifica se já existe com esse nome (evita duplicata sem CNPJ antigo)
+      const primeiroToken = razao.split(/\s+/)[0];
+      if (primeiroToken.length > 2) {
+        const { data: porNome } = await sb().from("pessoas")
+          .select("id").eq("fazenda_id", fazendaId).ilike("nome", `%${primeiroToken}%`).limit(1).maybeSingle();
+        if (porNome) { pessoaId = porNome.id; }
+      }
+      if (!pessoaId) {
+        const { data: nova, error: errP } = await sb().from("pessoas").insert({
+          fazenda_id: fazendaId,
+          nome:       razao,
+          tipo:       "pj",
+          cpf_cnpj:   cnpj,
+          fornecedor: true,
+          cliente:    false,
+        }).select("id").maybeSingle();
+        if (!errP && nova) { pessoaId = nova.id; pessoaNova = true; }
+      }
+    }
+  } else if (razao && razao !== "Fornecedor") {
+    // Sem CNPJ: busca por nome exato ou similar antes de criar
+    const primeiroToken = razao.split(/\s+/)[0];
+    const { data: porNome } = await sb().from("pessoas")
+      .select("id, nome").eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${primeiroToken.length > 2 ? primeiroToken : razao}%`)
+      .limit(5);
+    if (porNome && porNome.length > 0) {
+      const exato = porNome.find(p => String(p.nome).toLowerCase() === razao.toLowerCase());
+      pessoaId = (exato ?? porNome[0]).id as string;
+    } else {
       const { data: nova, error: errP } = await sb().from("pessoas").insert({
         fazenda_id: fazendaId,
         nome:       razao,
         tipo:       "pj",
-        cpf_cnpj:   cnpj,
         fornecedor: true,
         cliente:    false,
       }).select("id").maybeSingle();
@@ -1778,7 +1807,17 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
       ? await buscarInsumo(fazendaId, i.insumo.nome)
       : null;
 
-    // Se não existe e não parece ser serviço/frete → cria automaticamente
+    // Se não existe e não parece ser serviço/frete → tenta busca mais ampla antes de criar
+    if (!insumo && !pareceServico(String(i.descricao))) {
+      // Última tentativa: busca pela palavra mais longa da descrição (≥4 chars, não numérica)
+      const palavras = String(i.descricao).split(/\s+/).filter(w => w.length >= 4 && !/^\d+$/.test(w));
+      palavras.sort((a, b) => b.length - a.length);
+      for (const p of palavras.slice(0, 3)) {
+        const { data: r } = await sb().from("insumos").select("id, nome, unidade, custo_medio, valor_unitario, estoque")
+          .eq("fazenda_id", fazendaId).ilike("nome", `%${p}%`).limit(1).maybeSingle();
+        if (r) { insumo = r as InsumoRow; break; }
+      }
+    }
     if (!insumo && !pareceServico(String(i.descricao))) {
       const unidade = mapearUnidade(String(i.unidade ?? "un"));
       const { data: novoRow } = await sb().from("insumos").insert({

@@ -920,7 +920,7 @@ export default function BI() {
             ))}
           </select>
 
-          {filtroAnoSafraId && ciclosPorAnoSafra.length > 0 && (
+          {filtroAnoSafraId && ciclosPorAnoSafra.length > 0 && ["painel","producao","custos","comercializacao","sensibilidade"].includes(aba) && (
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
               <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>Ciclos:</span>
               {ciclosPorAnoSafra.map(c => {
@@ -940,7 +940,7 @@ export default function BI() {
             </div>
           )}
 
-          {(filtroAnoSafraId || filtroCicloIds.size > 0) && (
+          {(filtroAnoSafraId || filtroCicloIds.size > 0) && ["painel","producao","custos","comercializacao","sensibilidade"].includes(aba) && (
             <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>
               {ciclosFiltrados.length} ciclo{ciclosFiltrados.length !== 1 ? "s" : ""} · {fmtN(areaFiltrada, 0)} ha
             </span>
