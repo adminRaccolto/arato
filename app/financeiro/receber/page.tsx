@@ -100,6 +100,7 @@ const dotStatus = (s: string) => ({
   em_aberto: { cor: "#378ADD", title: "Em aberto"  },
   vencido:   { cor: "#E24B4A", title: "Vencido"    },
   vencendo:  { cor: "#EF9F27", title: "Vencendo"   },
+  parcial:   { cor: "#C9921B", title: "Parcial"    },
   baixado:   { cor: "#16A34A", title: "Recebido"   },
 }[s] ?? { cor: "#888", title: s });
 
@@ -250,7 +251,7 @@ export default function ContasReceber() {
   const filtradosBase = useMemo(() => {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
-      if (filtro === "aberto")   return isReal && (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo") && l.moeda !== "barter";
+      if (filtro === "aberto")   return isReal && (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo" || l.status === "parcial") && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (l.status === "vencido" || l.status === "vencendo");
       if (filtro === "baixado")  return isReal && l.status === "baixado";
       if (filtro === "barter")   return isReal && l.moeda === "barter";
@@ -280,9 +281,10 @@ export default function ContasReceber() {
   // ── Baixar ─────────────────────────────────────────────────
 
   const abrirBaixa = (l: Lancamento) => {
+    const saldoRestante = paraBRL(l) - (l.valor_pago ?? 0);
     setModalBaixa(l);
     setBaixa({
-      valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
+      valorMask: l.moeda === "barter" ? "" : numParaMascara(Math.max(0, saldoRestante)),
       data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
       multa_pct: "", juros_pct: "", desconto_pct: "",
       pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
@@ -308,10 +310,13 @@ export default function ContasReceber() {
           observacao:            baixa.obs || undefined,
         }
       );
+      const novoTotalPago = (modalBaixa.valor_pago ?? 0) + valorPago;
+      const valorOriginal = paraBRL(modalBaixa);
+      const novoStatus = novoTotalPago >= valorOriginal - 0.01 ? "baixado" : "parcial";
       setLancamentos(prev => prev.map(l =>
         l.id !== modalBaixa.id ? l : {
-          ...l, status: "baixado" as const, data_baixa: baixa.data,
-          valor_pago: valorPago, conta_bancaria: baixa.conta,
+          ...l, status: novoStatus as Lancamento["status"], data_baixa: baixa.data,
+          valor_pago: novoTotalPago, conta_bancaria: baixa.conta,
           pessoa_id: baixa.pessoa_id || l.pessoa_id,
         }
       ));
@@ -711,7 +716,15 @@ export default function ContasReceber() {
                             </td>
                             {/* Valor Recebido */}
                             <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>
-                              {l.valor_pago != null && l.valor_pago > 0
+                              {l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0
+                                ? <div>
+                                    <span style={{ color: "#C9921B", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
+                                    <div style={{ fontSize: 9, color: "#888" }}>de {fmtBRL(paraBRL(l))}</div>
+                                    <div style={{ height: 3, borderRadius: 2, background: "#F0EBE0", marginTop: 2 }}>
+                                      <div style={{ height: 3, borderRadius: 2, background: "#C9921B", width: `${Math.min(100, (l.valor_pago / paraBRL(l)) * 100)}%` }} />
+                                    </div>
+                                  </div>
+                                : l.valor_pago != null && l.valor_pago > 0
                                 ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                 : <span style={{ color: "#bbb" }}>—</span>}
                             </td>
@@ -837,7 +850,9 @@ export default function ContasReceber() {
 
       {/* ── Modal Baixa ─────────────────────────────────────────── */}
       {modalBaixa && (() => {
-        const valorOrig = paraBRL(modalBaixa);
+        const valorTotal = paraBRL(modalBaixa);
+        const jaPago     = modalBaixa.valor_pago ?? 0;
+        const valorOrig  = Math.max(0, valorTotal - jaPago);  // saldo restante — base para encargos
         const multaV   = valorOrig * (parseFloat(baixa.multa_pct.replace(",", ".")) || 0) / 100;
         const jurosV   = valorOrig * (parseFloat(baixa.juros_pct.replace(",", ".")) || 0) / 100;
         const descV    = valorOrig * (parseFloat(baixa.desconto_pct.replace(",", ".")) || 0) / 100;
@@ -849,13 +864,15 @@ export default function ContasReceber() {
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>
-                {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : "Registrar recebimento"}
+                {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : modalBaixa.status === "parcial" ? "Registrar recebimento parcial" : "Registrar recebimento"}
               </div>
               <button onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#888" }}>×</button>
             </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 16 }}>{modalBaixa.descricao}</div>
-            <div style={{ background: "#F8FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#555", marginBottom: 20, display: "flex", gap: 20 }}>
-              <span>Valor original: <strong style={{ color: "#1A4870" }}>{fmtBRL(valorOrig)}</strong></span>
+            <div style={{ background: "#F8FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#555", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
+              <span>Valor original: <strong style={{ color: "#1A4870" }}>{fmtBRL(valorTotal)}</strong></span>
+              {jaPago > 0 && <span>Já recebido: <strong style={{ color: "#16A34A" }}>{fmtBRL(jaPago)}</strong></span>}
+              {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#C9921B" }}>{fmtBRL(valorOrig)}</strong></span>}
               <span>Vencimento: <strong>{modalBaixa.data_vencimento ? new Date(modalBaixa.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</strong></span>
               {modalBaixa.moeda === "USD" && <span style={{ color: "#7A4300" }}>Venda em {fmtUSD(modalBaixa.valor)}</span>}
             </div>

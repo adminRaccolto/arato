@@ -644,7 +644,7 @@ function FinanceiroRelatoriosInner() {
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               {(filtro.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => {
-                                const tp = { corrente: "Corrente", investimento: "Invest.", caixa: "Caixa", transitoria: "Transit." }[c.tipo_conta ?? "corrente"] ?? "Corrente";
+                                const tp = { corrente: "Corrente", investimento: "Invest.", caixa: "Caixa", transitoria: "Transit.", poupanca: "Poupança" }[c.tipo_conta ?? "corrente"] ?? "Corrente";
                                 return (
                                   <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
                                     <input type="checkbox" checked={filtro.contasSel.includes(c.id)}
