@@ -878,7 +878,8 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     }).select("id").single();
 
     if (abastErr || !abastRec) {
-      return { ok: false, mensagem: `❌ Erro ao registrar abastecimento: ${abastErr?.message ?? "falha desconhecida"}` };
+      console.error("[BOT] Erro insert abastecimentos (interna):", abastErr?.code, abastErr?.message);
+      return { ok: false, mensagem: `❌ Erro ao registrar abastecimento [${abastErr?.code ?? "?"}]: ${abastErr?.message ?? "falha desconhecida"}` };
     }
 
     // Deduzir estoque da bomba
@@ -978,7 +979,7 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
   const maqExtId = await resolverMaquina(fazendaId, String(dados.veiculo ?? ""));
   const maqExtData = maqExtId ? { id: maqExtId } : null;
 
-  const { data: absRow } = await sb().from("abastecimentos").insert({
+  const absPayload = {
     fazenda_id:     fazendaId,
     bomba_id:       bomba?.id ?? null,
     maquina_id:     maqExtData?.id ?? null,
@@ -988,21 +989,41 @@ async function inserirAbastecimento(dados: Record<string, unknown>, fazendaId: s
     data:           hoje,
     observacao:     String(dados.veiculo ?? "") || null,
     lancamento_id:  lancRow?.id ?? null,
-  }).select("id").maybeSingle();
+  };
+  let { data: absRow, error: absErr } = await sb().from("abastecimentos").insert(absPayload).select("id").maybeSingle();
+  if (absErr?.code === "23502" && absPayload.bomba_id === null) {
+    // bomba_id NOT NULL mas migrations não rodadas — tenta sem o campo
+    const { id: _id, ...absPayloadSemBomba } = absPayload as typeof absPayload & { id?: string };
+    void _id;
+    const fallback = { ...absPayloadSemBomba, bomba_id: undefined };
+    ({ data: absRow, error: absErr } = await sb().from("abastecimentos").insert(fallback).select("id").maybeSingle() as { data: typeof absRow; error: typeof absErr });
+  }
+  if (absErr) console.error("[BOT] Erro insert abastecimentos (externo):", absErr.code, absErr.message);
 
-  // Pendência fiscal — aguardando NF do posto
-  await sb().from("pendencias_fiscais").insert({
-    fazenda_id:      fazendaId,
-    lancamento_id:   lancRow?.id ?? null,
-    abastecimento_id: absRow?.id ?? null,
-    tipo:            "abastecimento",
-    status:          "aguardando",
-    descricao:       String(cpPayload.descricao),
-    valor,
-    data_operacao:   hoje,
-    fornecedor_nome: bombaStr || String(dados.veiculo ?? ""),
-    origem:          "whatsapp",
-  });
+  // Pendência fiscal — aguardando NF do posto (não-fatal: migration pode estar pendente)
+  try {
+    const pfPayload: Record<string, unknown> = {
+      fazenda_id:      fazendaId,
+      lancamento_id:   lancRow?.id ?? null,
+      abastecimento_id: absRow?.id ?? null,
+      tipo:            "abastecimento",
+      status:          "aguardando",
+      descricao:       String(cpPayload.descricao),
+      valor,
+      data_operacao:   hoje,
+      fornecedor_nome: bombaStr || String(dados.veiculo ?? ""),
+      origem:          "whatsapp",
+    };
+    let { error: pfErr } = await sb().from("pendencias_fiscais").insert(pfPayload);
+    if (pfErr?.code === "42703") {
+      const { abastecimento_id: _aid, ...pfBase } = pfPayload;
+      void _aid;
+      ({ error: pfErr } = await sb().from("pendencias_fiscais").insert(pfBase) as { error: typeof pfErr });
+    }
+    if (pfErr) console.error("[BOT] Erro insert pendencias_fiscais:", pfErr.code, pfErr.message);
+  } catch (pfEx) {
+    console.error("[BOT] Exceção pendencias_fiscais:", pfEx);
+  }
 
   const statusLabel = jaPago
     ? `Pago ✓${conta ? ` — debitado de *${conta.nome}*` : ""}`
