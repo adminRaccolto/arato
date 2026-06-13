@@ -263,6 +263,63 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["comprador", "produto", "quantidade_sc"],
     },
   },
+  {
+    name: "registrar_recomendacao_agronomica",
+    description: "Registra uma Receita/Recomendação Agronômica no sistema. Use quando o agrônomo enviar uma receita de pulverização, adubação, plantio, correção de solo ou tratamento de sementes. Capture todos os dados da recomendação e mostre o resumo (confirmado=false) antes de salvar. Só salva com confirmado=true após o usuário confirmar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        tipo:               { type: "string", enum: ["pulverizacao","adubacao","plantio","correcao_solo","tratamento_sementes","colheita"], description: "Tipo de operação recomendada" },
+        agronomo_nome:      { type: "string", description: "Nome do agrônomo responsável pela recomendação" },
+        agronomo_crea:      { type: "string", description: "Número do CREA do agrônomo (opcional)" },
+        codigo:             { type: "string", description: "Código/número da receita ou recomendação (opcional)" },
+        data_recomendacao:  { type: "string", description: "Data da recomendação: dd/mm/aaaa ou 'hoje'" },
+        data_prevista_inicio: { type: "string", description: "Data prevista para início da operação: dd/mm/aaaa" },
+        data_prevista_fim:    { type: "string", description: "Data prevista para fim da operação: dd/mm/aaaa" },
+        talhoes: {
+          type: "array",
+          description: "Lista de talhões/áreas onde a operação será realizada",
+          items: {
+            type: "object",
+            properties: {
+              nome:    { type: "string",  description: "Nome ou identificação do talhão" },
+              area_ha: { type: "number",  description: "Área em hectares" },
+            },
+          },
+        },
+        produtos: {
+          type: "array",
+          description: "Produtos/insumos recomendados com dose e unidade",
+          items: {
+            type: "object",
+            properties: {
+              produto: { type: "string", description: "Nome do produto/insumo" },
+              dose:    { type: "number", description: "Dose por hectare (número)" },
+              unidade: { type: "string", description: "Unidade da dose: L/ha, kg/ha, ml/ha, g/ha, sc/ha" },
+            },
+          },
+        },
+        // Condições de aplicação (pulverização)
+        vazao_lha:       { type: "number", description: "Vazão em L/ha (pulverização)" },
+        cap_tanque_l:    { type: "number", description: "Capacidade do tanque em litros (pulverização)" },
+        bico:            { type: "string", description: "Tipo de bico pulverizador (ex: TT110015)" },
+        pressao_min:     { type: "number", description: "Pressão mínima (bar)" },
+        pressao_max:     { type: "number", description: "Pressão máxima (bar)" },
+        ph_min:          { type: "number", description: "pH mínimo da calda" },
+        ph_max:          { type: "number", description: "pH máximo da calda" },
+        velocidade_min:  { type: "number", description: "Velocidade mínima de aplicação (km/h)" },
+        velocidade_max:  { type: "number", description: "Velocidade máxima de aplicação (km/h)" },
+        vento_max:       { type: "number", description: "Velocidade máxima do vento (km/h)" },
+        umidade_min:     { type: "number", description: "Umidade relativa mínima (%)" },
+        umidade_max:     { type: "number", description: "Umidade relativa máxima (%)" },
+        temperatura_min: { type: "number", description: "Temperatura mínima (°C)" },
+        temperatura_max: { type: "number", description: "Temperatura máxima (°C)" },
+        observacoes:     { type: "string", description: "Observações gerais da recomendação" },
+        confirmado:      { type: "boolean", description: "false = mostra resumo (padrão). true = salva após confirmação do usuário." },
+      },
+      required: ["tipo", "agronomo_nome"],
+    },
+  },
 ];
 
 // ── Executor das ferramentas ────────────────────────────────────────────────
@@ -418,6 +475,36 @@ async function executarFerramenta(
         }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
+      case "registrar_recomendacao_agronomica": {
+        const res = await executarInsercao("recomendacao_agronomica", {
+          tipo:               input.tipo ?? "pulverizacao",
+          agronomo_nome:      input.agronomo_nome ?? "",
+          agronomo_crea:      input.agronomo_crea ?? "",
+          codigo:             input.codigo ?? "",
+          data_recomendacao:  input.data_recomendacao ?? "hoje",
+          data_prevista_inicio: input.data_prevista_inicio ?? "",
+          data_prevista_fim:    input.data_prevista_fim ?? "",
+          talhoes:            input.talhoes ?? [],
+          produtos:           input.produtos ?? [],
+          vazao_lha:          input.vazao_lha ?? null,
+          cap_tanque_l:       input.cap_tanque_l ?? null,
+          bico:               input.bico ?? "",
+          pressao_min:        input.pressao_min ?? null,
+          pressao_max:        input.pressao_max ?? null,
+          ph_min:             input.ph_min ?? null,
+          ph_max:             input.ph_max ?? null,
+          velocidade_min:     input.velocidade_min ?? null,
+          velocidade_max:     input.velocidade_max ?? null,
+          vento_max:          input.vento_max ?? null,
+          umidade_min:        input.umidade_min ?? null,
+          umidade_max:        input.umidade_max ?? null,
+          temperatura_min:    input.temperatura_min ?? null,
+          temperatura_max:    input.temperatura_max ?? null,
+          observacoes:        input.observacoes ?? "",
+          confirmado:         input.confirmado === true,
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+        return res.mensagem;
+      }
       default:
         return "Ferramenta não reconhecida.";
     }
@@ -452,6 +539,9 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
     "contrato de venda", "contrato de grão", "contrato de soja", "contrato de milho",
     "contrato de algodão", "vender soja", "vender milho", "fechei contrato",
     "fechamos contrato", "novo contrato", "registrar contrato",
+    "recomendação", "recomendacao", "receita agronômica", "receita agronomica",
+    "rec técnica", "rec tecnica", "prescrição", "prescricao", "agronomo recomenda",
+    "agrônomo recomenda", "crea", "receita de aplicação", "receita de aplicacao",
   ];
   if (kw.some(k => t.includes(k))) return true;
 
@@ -548,6 +638,16 @@ REGRA #9 — PEDIDO DE COMPRA ≠ NOTA FISCAL:
   → Responda: "📋 Parece um *pedido de compra*, não uma NF fiscal. Deseja que eu registre uma Conta a Pagar com os dados desse pedido? Ou aguardamos a NF chegar para lançar o estoque?"
   → Se o usuário confirmar que quer lançar o CP → use registrar_conta_pagar com os dados do pedido.
 - Se não tiver certeza se é NF ou pedido: pergunte ao usuário antes de chamar qualquer ferramenta.
+
+REGRA #10 — RECOMENDAÇÃO AGRONÔMICA:
+- Quando o agrônomo enviar uma receita/recomendação agronômica (texto descrevendo produtos, doses, talhões, condições de aplicação, CREA):
+  → Leia o documento/texto e extraia: tipo de operação, nome e CREA do agrônomo, código da receita, data, talhões e áreas, produtos e doses, condições de aplicação.
+  → Chame registrar_recomendacao_agronomica com confirmado=false para mostrar o resumo.
+  → Quando o usuário confirmar com "sim", chame novamente com confirmado=true.
+- Campo talhoes: array JSON [{nome: "Talhão A-01", area_ha: 45.0}, ...] — extraia nomes e áreas do texto.
+- Campo produtos: array JSON [{produto: "Herbicida X", dose: 1.5, unidade: "L/ha"}, ...] — extraia todos os produtos.
+- Para pulverização, capture também: vazão (L/ha), bico, pressão (min/max), pH calda, velocidade (min/max), vento máximo, umidade (min/max), temperatura (min/max).
+- Se o documento for uma foto/PDF de receita agronômica → leia o documento e chame a ferramenta com todos os dados extraídos.
 
 COMPORTAMENTO GERAL:
 - Seu nome é Arato. Responda em português, direto e prático.

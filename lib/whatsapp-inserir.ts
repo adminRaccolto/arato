@@ -576,6 +576,184 @@ async function inserirContratoGraos(dados: Record<string, unknown>, fazendaId: s
   };
 }
 
+// ── Recomendação Agronômica ─────────────────────────────────────────────────
+
+type RecTalhaoInput  = { nome: string; area_ha: number };
+type RecProdutoInput = { produto: string; dose: number; unidade: string };
+
+async function inserirRecomendacaoAgronomica(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const tipo          = String(dados.tipo ?? "pulverizacao");
+  const agronomoNome  = String(dados.agronomo_nome ?? "").trim();
+  const agronomoCrea  = String(dados.agronomo_crea ?? "").trim();
+  const codigo        = String(dados.codigo ?? "").trim();
+  const observacoes   = String(dados.observacoes ?? "").trim();
+  const confirmado    = dados.confirmado === true;
+
+  const dataRec   = dados.data_recomendacao   ? parseData(String(dados.data_recomendacao))   : new Date().toISOString().split("T")[0];
+  const dataIni   = dados.data_prevista_inicio ? parseData(String(dados.data_prevista_inicio)) : null;
+  const dataFim   = dados.data_prevista_fim    ? parseData(String(dados.data_prevista_fim))    : null;
+
+  const talhoesInput  = (dados.talhoes  as RecTalhaoInput[]  | null) ?? [];
+  const produtosInput = (dados.produtos as RecProdutoInput[] | null) ?? [];
+
+  if (!agronomoNome) return { ok: false, mensagem: "❓ Qual o nome do agrônomo responsável pela recomendação?" };
+  if (talhoesInput.length === 0 && produtosInput.length === 0) {
+    return { ok: false, mensagem: "❓ Informe ao menos um talhão com área e um produto com dose." };
+  }
+
+  const TIPO_LABEL: Record<string, string> = {
+    pulverizacao: "Pulverização", adubacao: "Adubação", plantio: "Plantio",
+    correcao_solo: "Correção de Solo", tratamento_sementes: "Tratamento de Sementes", colheita: "Colheita",
+  };
+
+  // ── Resumo para confirmação ──────────────────────────────────────────────
+  if (!confirmado) {
+    const areaTotal = talhoesInput.reduce((s, t) => s + (t.area_ha ?? 0), 0);
+    const linhas = [
+      `📋 *Recomendação Agronômica — ${TIPO_LABEL[tipo] ?? tipo}*`,
+      `• Agrônomo: *${agronomoNome}*${agronomoCrea ? ` (CREA ${agronomoCrea})` : ""}`,
+      codigo ? `• Código: ${codigo}` : "",
+      `• Data: ${fmtIso(dataRec)}`,
+      dataIni ? `• Período: ${fmtIso(dataIni)}${dataFim ? ` → ${fmtIso(dataFim)}` : ""}` : "",
+      "",
+      talhoesInput.length > 0
+        ? `*Talhões (${talhoesInput.length}):*\n${talhoesInput.map(t => `  • ${t.nome} — ${t.area_ha} ha`).join("\n")}\n  _Área total: ${areaTotal.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha_`
+        : "",
+      produtosInput.length > 0
+        ? `*Produtos (${produtosInput.length}):*\n${produtosInput.map(p => `  • ${p.produto}: ${p.dose} ${p.unidade}`).join("\n")}`
+        : "",
+      // Condições de aplicação (pulverização)
+      tipo === "pulverizacao" && (dados.bico || dados.vazao_lha || dados.vento_max)
+        ? `*Condições de aplicação:*\n${[
+            dados.bico        ? `  • Bico: ${dados.bico}` : "",
+            dados.vazao_lha   ? `  • Vazão: ${dados.vazao_lha} L/ha` : "",
+            dados.vento_max   ? `  • Vento máx: ${dados.vento_max} km/h` : "",
+            (dados.umidade_min || dados.umidade_max) ? `  • Umidade: ${dados.umidade_min ?? "?"}–${dados.umidade_max ?? "?"}%` : "",
+            (dados.temperatura_min || dados.temperatura_max) ? `  • Temp: ${dados.temperatura_min ?? "?"}–${dados.temperatura_max ?? "?"}°C` : "",
+            (dados.pressao_min || dados.pressao_max) ? `  • Pressão: ${dados.pressao_min ?? "?"}–${dados.pressao_max ?? "?"} bar` : "",
+            (dados.ph_min || dados.ph_max) ? `  • pH calda: ${dados.ph_min ?? "?"}–${dados.ph_max ?? "?"}` : "",
+            (dados.velocidade_min || dados.velocidade_max) ? `  • Velocidade: ${dados.velocidade_min ?? "?"}–${dados.velocidade_max ?? "?"} km/h` : "",
+          ].filter(Boolean).join("\n")}`
+        : "",
+      observacoes ? `\n_Obs: ${observacoes}_` : "",
+      "",
+      "*Confirma? Responda _sim_ para registrar no sistema.*",
+    ].filter(l => l !== "").join("\n");
+    return { ok: false, mensagem: linhas };
+  }
+
+  // ── Buscar ciclo vigente ──────────────────────────────────────────────────
+  const ciclo = await buscarCicloVigente(fazendaId, dataRec);
+
+  // ── Resolver talhões pelo nome ────────────────────────────────────────────
+  const talhoesResolvidos: { talhao_id: string | null; talhao_nome: string; area_recomendada_ha: number }[] = [];
+  for (const t of talhoesInput) {
+    const { data: rows } = await sb().from("talhoes")
+      .select("id, nome").eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${t.nome}%`).limit(1);
+    talhoesResolvidos.push({
+      talhao_id: rows?.[0]?.id ?? null,
+      talhao_nome: (rows?.[0]?.nome ?? t.nome) as string,
+      area_recomendada_ha: t.area_ha ?? 0,
+    });
+  }
+
+  // ── Resolver insumos pelos produtos ──────────────────────────────────────
+  const produtosResolvidos: { insumo_id: string | null; produto_nome: string; dose_ha: number; unidade: string; quantidade_total: number | null }[] = [];
+  const areaTotal = talhoesInput.reduce((s, t) => s + (t.area_ha ?? 0), 0);
+  for (let i = 0; i < produtosInput.length; i++) {
+    const p = produtosInput[i];
+    const insumo = await buscarInsumo(fazendaId, p.produto);
+    const qtdTotal = areaTotal > 0 ? p.dose * areaTotal : null;
+    produtosResolvidos.push({
+      insumo_id: insumo?.id ?? null,
+      produto_nome: insumo?.nome ?? p.produto,
+      dose_ha: p.dose,
+      unidade: p.unidade,
+      quantidade_total: qtdTotal,
+    });
+  }
+
+  // ── Inserir cabeçalho da recomendação ─────────────────────────────────────
+  const { data: rec, error: recErr } = await sb().from("recomendacoes").insert({
+    fazenda_id:                fazendaId,
+    ciclo_id:                  ciclo?.id ?? null,
+    tipo,
+    status:                    "pendente",
+    codigo:                    codigo || null,
+    agronomo_nome:             agronomoNome,
+    agronomo_crea:             agronomoCrea || null,
+    data_recomendacao:         dataRec,
+    data_prevista_inicio:      dataIni,
+    data_prevista_fim:         dataFim,
+    area_total_recomendada_ha: areaTotal > 0 ? areaTotal : null,
+    vazao_lha:        dados.vazao_lha    ? Number(dados.vazao_lha)    : null,
+    cap_tanque_l:     dados.cap_tanque_l ? Number(dados.cap_tanque_l) : null,
+    bico:             dados.bico         ? String(dados.bico)         : null,
+    pressao_min:      dados.pressao_min  ? Number(dados.pressao_min)  : null,
+    pressao_max:      dados.pressao_max  ? Number(dados.pressao_max)  : null,
+    ph_min:           dados.ph_min       ? Number(dados.ph_min)       : null,
+    ph_max:           dados.ph_max       ? Number(dados.ph_max)       : null,
+    velocidade_min:   dados.velocidade_min ? Number(dados.velocidade_min) : null,
+    velocidade_max:   dados.velocidade_max ? Number(dados.velocidade_max) : null,
+    vento_max:        dados.vento_max    ? Number(dados.vento_max)    : null,
+    umidade_min:      dados.umidade_min  ? Number(dados.umidade_min)  : null,
+    umidade_max:      dados.umidade_max  ? Number(dados.umidade_max)  : null,
+    temperatura_min:  dados.temperatura_min ? Number(dados.temperatura_min) : null,
+    temperatura_max:  dados.temperatura_max ? Number(dados.temperatura_max) : null,
+    observacoes:      observacoes || null,
+  }).select("id").single();
+
+  if (recErr || !rec) {
+    console.error("[BOT-REC] Erro insert recomendacoes:", JSON.stringify(recErr));
+    return { ok: false, mensagem: `❌ Erro ao salvar recomendação: ${recErr?.message ?? "falha desconhecida"}` };
+  }
+  const recId = rec.id as string;
+
+  // ── Inserir talhões ───────────────────────────────────────────────────────
+  if (talhoesResolvidos.length > 0) {
+    const { error: talErr } = await sb().from("recomendacao_talhoes").insert(
+      talhoesResolvidos.map((t, i) => ({
+        recomendacao_id: recId, talhao_id: t.talhao_id,
+        talhao_nome: t.talhao_nome, area_recomendada_ha: t.area_recomendada_ha, ordem: i,
+      }))
+    );
+    if (talErr) console.warn("[BOT-REC] Erro ao salvar talhões:", talErr.message);
+  }
+
+  // ── Inserir produtos ──────────────────────────────────────────────────────
+  if (produtosResolvidos.length > 0) {
+    const { error: prodErr } = await sb().from("recomendacao_produtos").insert(
+      produtosResolvidos.map((p, i) => ({
+        recomendacao_id: recId, insumo_id: p.insumo_id,
+        produto_nome: p.produto_nome, dose_ha: p.dose_ha,
+        unidade: p.unidade, quantidade_total: p.quantidade_total, ordem: i,
+      }))
+    );
+    if (prodErr) console.warn("[BOT-REC] Erro ao salvar produtos:", prodErr.message);
+  }
+
+  const semVinculo = produtosResolvidos.filter(p => !p.insumo_id).map(p => p.produto_nome);
+  const avisoVinculo = semVinculo.length > 0
+    ? `\n⚠️ Produtos não encontrados no cadastro: ${semVinculo.join(", ")} — acesse Lavoura → Recomendações para vincular manualmente.`
+    : "";
+
+  return {
+    ok: true,
+    mensagem: [
+      `✅ Recomendação Agronômica registrada! (${TIPO_LABEL[tipo] ?? tipo})`,
+      `• Agrônomo: ${agronomoNome}${agronomoCrea ? ` (CREA ${agronomoCrea})` : ""}`,
+      codigo ? `• Código: ${codigo}` : "",
+      `• Data: ${fmtIso(dataRec)}`,
+      areaTotal > 0 ? `• Área total: ${areaTotal.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ha em ${talhoesResolvidos.length} talhão(ões)` : "",
+      produtosResolvidos.length > 0 ? `• ${produtosResolvidos.length} produto(s) registrado(s)` : "",
+      avisoVinculo,
+      `• Status: _Pendente_ — acesse Lavoura → Recomendações para iniciar a execução.`,
+      `_🔍 ${recId.slice(-8)} · faz:${fazendaId.slice(-6)}_`,
+    ].filter(Boolean).join("\n"),
+  };
+}
+
 // ── Roteador principal ──────────────────────────────────────────────────────
 export async function executarInsercao(
   fluxo: FluxoNome,
@@ -599,7 +777,8 @@ export async function executarInsercao(
     case "nf_compra_foto":     return inserirNfCompraFoto(dados, fazendaId);
     case "cadastrar_fornecedor": return inserirNovoFornecedor(dados, fazendaId);
     case "cadastrar_insumo":     return inserirNovoInsumo(dados, fazendaId);
-    case "contrato_graos":       return inserirContratoGraos(dados, fazendaId);
+    case "contrato_graos":            return inserirContratoGraos(dados, fazendaId);
+    case "recomendacao_agronomica":   return inserirRecomendacaoAgronomica(dados, fazendaId);
     default:                   return { ok: false, mensagem: "Fluxo desconhecido." };
   }
 }
