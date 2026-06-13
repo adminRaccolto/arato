@@ -5547,3 +5547,95 @@ ALTER TABLE bancos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "bancos_select_public" ON bancos FOR SELECT USING (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 121: Storage RLS — bucket "arquivos" e RLS da tabela talhoes
+-- Problema: "new row violates row-level security policy" ao fazer upload de KML
+-- Causa: bucket "arquivos" criado sem políticas INSERT/UPDATE/DELETE
+-- =============================================================================
+
+-- Políticas do bucket "arquivos" para storage.objects
+-- Usuário autenticado pode inserir, atualizar e deletar seus próprios arquivos
+-- Leitura é pública (bucket público — URLs compartilháveis)
+
+DO $$
+BEGIN
+  -- SELECT público (download de arquivos, KML, XMLs, PDFs)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname = 'arquivos_select_public'
+  ) THEN
+    CREATE POLICY "arquivos_select_public"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'arquivos');
+  END IF;
+
+  -- INSERT para usuários autenticados
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname = 'arquivos_insert_auth'
+  ) THEN
+    CREATE POLICY "arquivos_insert_auth"
+      ON storage.objects FOR INSERT
+      TO authenticated
+      WITH CHECK (bucket_id = 'arquivos');
+  END IF;
+
+  -- UPDATE para usuários autenticados (re-upload / upsert)
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname = 'arquivos_update_auth'
+  ) THEN
+    CREATE POLICY "arquivos_update_auth"
+      ON storage.objects FOR UPDATE
+      TO authenticated
+      USING (bucket_id = 'arquivos');
+  END IF;
+
+  -- DELETE para usuários autenticados
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname = 'arquivos_delete_auth'
+  ) THEN
+    CREATE POLICY "arquivos_delete_auth"
+      ON storage.objects FOR DELETE
+      TO authenticated
+      USING (bucket_id = 'arquivos');
+  END IF;
+END $$;
+
+-- RLS da tabela talhoes: garantir que UPDATE em kml_url funcione
+-- (talhoes precisam de policy que permita UPDATE quando fazenda_id é da conta do usuário)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'talhoes' AND policyname = 'talhoes_all_tenant'
+  ) THEN
+    ALTER TABLE talhoes ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "talhoes_all_tenant" ON talhoes
+      FOR ALL
+      USING (
+        fazenda_id IN (
+          SELECT f.id FROM fazendas f
+          JOIN perfis p ON p.conta_id = f.conta_id
+          WHERE p.user_id = auth.uid()
+        )
+        OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+      )
+      WITH CHECK (
+        fazenda_id IN (
+          SELECT f.id FROM fazendas f
+          JOIN perfis p ON p.conta_id = f.conta_id
+          WHERE p.user_id = auth.uid()
+        )
+        OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+      );
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
