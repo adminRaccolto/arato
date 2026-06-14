@@ -207,7 +207,7 @@ export type Lancamento = {
   data_prorrogacao?: string;
   valor: number;
   valor_pago?: number;
-  status: "em_aberto" | "vencido" | "vencendo" | "baixado";
+  status: "em_aberto" | "vencido" | "vencendo" | "parcial" | "baixado";
   auto: boolean;
   // Parcelamento
   num_parcela?: number;
@@ -887,6 +887,13 @@ export type NfEntrada = {
   // Contabilidade — LCDPR + SPED ECD
   vinculo_atividade?: "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel";
   entidade_contabil?: "pf" | "pj";
+  // Impostos adicionados ao total
+  valor_produtos?: number;
+  valor_ipi?: number;
+  valor_st?: number;
+  valor_fcp_st?: number;
+  valor_difal?: number;
+  valor_desconto?: number;
   created_at?: string;
 };
 

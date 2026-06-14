@@ -5639,3 +5639,148 @@ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 122: Monitoramento Pragas — GPS, fotos, vínculo recomendação
+-- =============================================================================
+
+ALTER TABLE monitoramento_pragas
+  ADD COLUMN IF NOT EXISTS gps_lat          numeric(10,7),
+  ADD COLUMN IF NOT EXISTS gps_lng          numeric(11,7),
+  ADD COLUMN IF NOT EXISTS gps_accuracy_m   numeric(8,2),
+  ADD COLUMN IF NOT EXISTS foto_url         text,
+  ADD COLUMN IF NOT EXISTS foto_url_2       text,
+  ADD COLUMN IF NOT EXISTS foto_url_3       text,
+  ADD COLUMN IF NOT EXISTS recomendacao_id  uuid REFERENCES recomendacoes(id) ON DELETE SET NULL;
+
+-- Alias data_monitoramento: app usa este nome, DB tem 'data'
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'monitoramento_pragas' AND column_name = 'data_monitoramento'
+  ) THEN
+    ALTER TABLE monitoramento_pragas ADD COLUMN data_monitoramento date;
+    UPDATE monitoramento_pragas SET data_monitoramento = data WHERE data_monitoramento IS NULL;
+  END IF;
+END $$;
+
+-- Alias estagio_cultura: app usa este nome, DB tem 'estagio'
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'monitoramento_pragas' AND column_name = 'estagio_cultura'
+  ) THEN
+    ALTER TABLE monitoramento_pragas ADD COLUMN estagio_cultura text;
+    UPDATE monitoramento_pragas SET estagio_cultura = estagio WHERE estagio_cultura IS NULL;
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 123: Leituras Pluviométricas Manuais
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS leituras_pluviometricas (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id   uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  talhao_id    uuid REFERENCES talhoes(id) ON DELETE SET NULL,
+  data         date NOT NULL DEFAULT CURRENT_DATE,
+  hora         time,
+  chuva_mm     numeric(8,2) NOT NULL CHECK (chuva_mm >= 0),
+  duracao_min  integer,
+  intensidade  text CHECK (intensidade IN ('fraca','moderada','forte','muito_forte')),
+  fonte        text NOT NULL DEFAULT 'manual' CHECK (fonte IN ('manual','pluviometro','estacao')),
+  observacao   text,
+  usuario_id   uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at   timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_leituras_pluv_fazenda ON leituras_pluviometricas (fazenda_id, data DESC);
+CREATE INDEX IF NOT EXISTS idx_leituras_pluv_talhao  ON leituras_pluviometricas (talhao_id);
+
+ALTER TABLE leituras_pluviometricas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "leituras_pluv_fazenda" ON leituras_pluviometricas
+  FOR ALL
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+  ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  WITH CHECK (fazenda_id IN (
+    SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+  ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 124: Múltiplos CARs por Fazenda + Vínculo com Matrículas
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS fazenda_cars (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id         uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  numero             text NOT NULL,
+  estado             text NOT NULL,
+  municipio          text,
+  area_ha            numeric(14,4),
+  area_preservada_ha numeric(14,4),
+  status             text NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo','pendente','suspenso','cancelado')),
+  data_inscricao     date,
+  data_aprovacao     date,
+  observacao         text,
+  created_at         timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_fazenda_cars_fazenda ON fazenda_cars (fazenda_id);
+
+ALTER TABLE fazenda_cars ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "fazenda_cars_tenant" ON fazenda_cars
+  FOR ALL
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+  ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  WITH CHECK (fazenda_id IN (
+    SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+  ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE TABLE IF NOT EXISTS car_matriculas (
+  car_id        uuid NOT NULL REFERENCES fazenda_cars(id) ON DELETE CASCADE,
+  matricula_id  uuid NOT NULL REFERENCES matriculas_imoveis(id) ON DELETE CASCADE,
+  PRIMARY KEY (car_id, matricula_id)
+);
+
+ALTER TABLE car_matriculas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "car_matriculas_tenant" ON car_matriculas
+  FOR ALL USING (
+    car_id IN (
+      SELECT c.id FROM fazenda_cars c
+      JOIN fazendas f ON f.id = c.fazenda_id
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  )
+  WITH CHECK (
+    car_id IN (
+      SELECT c.id FROM fazenda_cars c
+      JOIN fazendas f ON f.id = c.fazenda_id
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 125: NF Entradas — Impostos Adicionados (ST, IPI, DIFAL, FCP)
+-- =============================================================================
+
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS valor_produtos   numeric(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_ipi        numeric(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_st         numeric(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_fcp_st     numeric(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_difal      numeric(15,2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS valor_desconto   numeric(15,2) DEFAULT 0;
+
+NOTIFY pgrst, 'reload schema';

@@ -235,7 +235,9 @@ function CadastrosInner() {
   const [expandFaz, setExpandFaz]     = useState<Set<string>>(new Set());
   const [modalFaz, setModalFaz]       = useState(false);
   const [editFaz, setEditFaz]         = useState<FazendaDB | null>(null);
-  const [tabFaz, setTabFaz]           = useState<"geral"|"matriculas"|"certidoes"|"arrendamentos">("geral");
+  const [tabFaz, setTabFaz]           = useState<"geral"|"matriculas"|"certidoes"|"cars"|"arrendamentos">("geral");
+  type FazCar = { _key: string; id?: string; numero: string; status: string; area_ha: string; vencimento: string; observacao: string; mats_vinculadas: string[] };
+  const [fazCars, setFazCars] = useState<FazCar[]>([]);
   const [buscandoCepFaz, setBuscandoCepFaz] = useState(false);
   const [cepAutoOk, setCepAutoOk]           = useState(false);
   const [fazArrendamentos, setFazArrendamentos] = useState<ArrFaz[]>([]);
@@ -844,9 +846,21 @@ function CadastrosInner() {
           mats: [],
         })));
       } catch { setFazArrendamentos([]); }
+      // Carrega CARs múltiplos
+      try {
+        const { data: carsData } = await supabase.from("fazenda_cars").select("*, car_matriculas(matricula_id)").eq("fazenda_id", f.id).order("created_at");
+        setFazCars((carsData ?? []).map((c: Record<string, unknown>) => ({
+          _key: String(c.id), id: String(c.id),
+          numero: String(c.numero ?? ""), status: String(c.status ?? "ativo"),
+          area_ha: String(c.area_ha ?? ""), vencimento: String(c.vencimento ?? ""),
+          observacao: String(c.observacao ?? ""),
+          mats_vinculadas: ((c.car_matriculas as Array<{ matricula_id: string }>) ?? []).map((m) => m.matricula_id),
+        })));
+      } catch { setFazCars([]); }
     } else {
       setFazMatsLocal([]);
       setFazArrendamentos([]);
+      setFazCars([]);
     }
     setModalFaz(true);
   };
@@ -958,6 +972,21 @@ function CadastrosInner() {
       produtor_id_2: a.produtor_id_2 || undefined,
       mats: a.mats.map(m => ({ id: m.id, numero: m.numero, area_ha: m.area_ha ? Number(m.area_ha) : undefined, cartorio: m.cartorio || undefined })),
     })));
+    // Salva CARs múltiplos
+    const { data: existingCars } = await supabase.from("fazenda_cars").select("id").eq("fazenda_id", fazId);
+    const existIds = new Set((existingCars ?? []).map((c: { id: string }) => c.id));
+    const keptIds  = new Set(fazCars.filter(c => c.id).map(c => c.id as string));
+    for (const eid of existIds) { if (!keptIds.has(eid)) await supabase.from("fazenda_cars").delete().eq("id", eid); }
+    for (const c of fazCars) {
+      const payload = { fazenda_id: fazId, numero: c.numero.trim(), status: c.status, area_ha: c.area_ha ? Number(c.area_ha) : null, vencimento: c.vencimento || null, observacao: c.observacao || null };
+      let carId = c.id;
+      if (c.id) { await supabase.from("fazenda_cars").update(payload).eq("id", c.id); }
+      else { const { data: nc } = await supabase.from("fazenda_cars").insert(payload).select("id").single(); carId = nc?.id; }
+      if (carId) {
+        await supabase.from("car_matriculas").delete().eq("car_id", carId);
+        for (const matId of c.mats_vinculadas) { await supabase.from("car_matriculas").insert({ car_id: carId, matricula_id: matId }); }
+      }
+    }
     setModalFaz(false);
   });
 
@@ -5200,7 +5229,7 @@ function CadastrosInner() {
           <Modal titulo={editFaz ? "Editar Fazenda" : "Nova Fazenda"} subtitulo="Uma fazenda pode pertencer a um Produtor (PF/parceria) ou a uma Empresa (PJ)" onClose={() => setModalFaz(false)} width={1100}>
             {/* ── Tab navigation ── */}
             <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8", marginBottom: 22, gap: 0 }}>
-              {([["geral","Dados Gerais"],["matriculas",`Matrículas${fazMatsLocal.length > 0 ? ` (${fazMatsLocal.length})` : ""}`],["certidoes","Certidões"],["arrendamentos",`Arrendamentos${fazArrendamentos.length > 0 ? ` (${fazArrendamentos.length})` : ""}`]] as [string,string][]).map(([k, l]) => (
+              {([["geral","Dados Gerais"],["matriculas",`Matrículas${fazMatsLocal.length > 0 ? ` (${fazMatsLocal.length})` : ""}`],["certidoes","Certidões"],["cars",`CARs${fazCars.length > 0 ? ` (${fazCars.length})` : ""}`],["arrendamentos",`Arrendamentos${fazArrendamentos.length > 0 ? ` (${fazArrendamentos.length})` : ""}`]] as [string,string][]).map(([k, l]) => (
                 <button key={k} onClick={() => setTabFaz(k as typeof tabFaz)} style={{ padding: "10px 18px", border: "none", borderBottom: tabFaz === k ? "2px solid #1A4870" : "2px solid transparent", background: "none", cursor: "pointer", fontSize: 13, color: tabFaz === k ? "#1A4870" : "#555", fontWeight: tabFaz === k ? 600 : 400 }}>{l}</button>
               ))}
             </div>
@@ -5362,6 +5391,86 @@ function CadastrosInner() {
                     <div><label style={lbl}>NIRF</label><input style={inp} value={fFaz.nirf} onChange={e => setFFaz(p => ({ ...p, nirf: e.target.value }))} placeholder="Nº do imóvel na Receita Federal" /></div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* ════ TAB: CARs MÚLTIPLOS ════ */}
+            {tabFaz === "cars" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Uma fazenda pode ter múltiplos CARs — por exemplo, quando há gleba destacada, desmembramento ou diferentes módulos fiscais. Cada CAR pode ser vinculado a uma ou mais Matrículas.</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    onClick={() => setFazCars(p => [...p, { _key: `new_${Date.now()}`, numero: "", status: "ativo", area_ha: "", vencimento: "", observacao: "", mats_vinculadas: [] }])}>
+                    + Adicionar CAR
+                  </button>
+                </div>
+                {fazCars.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 20px", color: "#888", fontSize: 13, border: "1.5px dashed #D4DCE8", borderRadius: 10 }}>
+                    Nenhum CAR cadastrado. Clique em "+ Adicionar CAR".
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {fazCars.map((c, ci) => (
+                      <div key={c._key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#F4F6FA", borderBottom: "0.5px solid #D4DCE8" }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                            {c.numero || "CAR sem número"}
+                          </span>
+                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: c.status === "ativo" ? "#DCFCE7" : "#FEE2E2", color: c.status === "ativo" ? "#166534" : "#991B1B" }}>
+                            {c.status === "ativo" ? "Ativo" : "Cancelado"}
+                          </span>
+                          <button style={{ padding: "3px 10px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, cursor: "pointer" }}
+                            onClick={() => setFazCars(p => p.filter((_,j) => j !== ci))}>Remover</button>
+                        </div>
+                        <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Número do CAR *</label>
+                            <input style={inp} value={c.numero} placeholder="MT-XXXXXXXX-XXXXXXXXXXXXXXXXXXXX" onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,numero:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Status</label>
+                            <select style={inp} value={c.status} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,status:e.target.value} : x))}>
+                              <option value="ativo">Ativo</option>
+                              <option value="cancelado">Cancelado</option>
+                              <option value="pendente">Pendente análise</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Área declarada (ha)</label>
+                            <input style={inp} type="number" step="0.01" value={c.area_ha} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,area_ha:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Vencimento</label>
+                            <input style={inp} type="date" value={c.vencimento} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,vencimento:e.target.value} : x))} />
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Matrículas vinculadas a este CAR</label>
+                            {fazMatsLocal.length === 0 ? (
+                              <div style={{ fontSize: 11, color: "#888" }}>Cadastre matrículas na aba Matrículas primeiro.</div>
+                            ) : (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                                {fazMatsLocal.map(m => {
+                                  const sel = c.mats_vinculadas.includes(m._key);
+                                  return (
+                                    <button key={m._key} type="button"
+                                      onClick={() => setFazCars(p => p.map((x,j) => j!==ci ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "#D4DCE8"}`, background: sel ? "#EFF4FA" : "#fff", fontSize: 11, color: sel ? "#1A4870" : "#555", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      {m.numero || "Matr. sem número"}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Observações</label>
+                            <input style={inp} value={c.observacao} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,observacao:e.target.value} : x))} placeholder="Ex: CAR da gleba destacada (loteamento 2019)" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

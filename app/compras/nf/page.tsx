@@ -183,6 +183,12 @@ export default function NfCompraPage() {
     // Contabilidade / LCDPR
     vinculo_atividade: "rural" as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
     entidade_contabil: "pf" as "pf" | "pj",
+    // Impostos adicionados ao total da NF
+    valor_ipi:     "",
+    valor_st:      "",
+    valor_fcp_st:  "",
+    valor_difal:   "",
+    valor_desconto:"",
   });
   // Estado para cadastro rápido de fornecedor
   const [savingForn, setSavingForn] = useState(false);
@@ -295,8 +301,9 @@ export default function NfCompraPage() {
       data_vencimento_cp: "",
       deposito_destino_id: "",
       observacao: "",
-      vinculo_atividade: "rural",
-      entidade_contabil: "pf",
+      vinculo_atividade: "rural" as const,
+      entidade_contabil: "pf" as const,
+      valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "",
     });
     setBulkCC(""); setBulkOpGer("");
     setItens([ITEM_VAZIO()]);
@@ -332,6 +339,11 @@ export default function NfCompraPage() {
       observacao: nf.observacao ?? "",
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
+      valor_ipi:      String((nf as Record<string,unknown>).valor_ipi      ?? ""),
+      valor_st:       String((nf as Record<string,unknown>).valor_st       ?? ""),
+      valor_fcp_st:   String((nf as Record<string,unknown>).valor_fcp_st   ?? ""),
+      valor_difal:    String((nf as Record<string,unknown>).valor_difal    ?? ""),
+      valor_desconto: String((nf as Record<string,unknown>).valor_desconto ?? ""),
     });
     // Carregar itens existentes
     try {
@@ -513,7 +525,7 @@ export default function NfCompraPage() {
       cfop:                  cab.cfop         || undefined,
       data_emissao:          cab.data_emissao,
       data_entrada:          cab.data_entrada || undefined,
-      valor_total:           parseFloat(cab.valor_total) || 0,
+      valor_total:           (parseFloat(cab.valor_total)||0) + (parseFloat(cab.valor_ipi)||0) + (parseFloat(cab.valor_st)||0) + (parseFloat(cab.valor_fcp_st)||0) + (parseFloat(cab.valor_difal)||0) - (parseFloat(cab.valor_desconto)||0),
       natureza:              cab.natureza     || undefined,
       status:                "pendente",
       origem:                orig,
@@ -526,6 +538,12 @@ export default function NfCompraPage() {
       observacao:            cab.observacao           || undefined,
       vinculo_atividade:     cab.vinculo_atividade,
       entidade_contabil:     cab.entidade_contabil,
+      valor_produtos:        parseFloat(cab.valor_total) || 0,
+      valor_ipi:             parseFloat(cab.valor_ipi)    || 0,
+      valor_st:              parseFloat(cab.valor_st)     || 0,
+      valor_fcp_st:          parseFloat(cab.valor_fcp_st) || 0,
+      valor_difal:           parseFloat(cab.valor_difal)  || 0,
+      valor_desconto:        parseFloat(cab.valor_desconto) || 0,
     };
     try {
       let nf: NfEntrada;
@@ -1192,13 +1210,61 @@ export default function NfCompraPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
-                      <label style={lbl}>Valor Total (R$)</label>
+                      <label style={lbl}>Valor Produtos (R$) *</label>
                       <input value={cab.valor_total} onChange={e => setCab(p=>({...p,valor_total:e.target.value}))} placeholder="0,00" style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Natureza da Operação</label>
                       <input value={cab.natureza} onChange={e => setCab(p=>({...p,natureza:e.target.value}))} style={inp} />
                     </div>
+                  </div>
+
+                  {/* ── Impostos adicionados ao total ── */}
+                  <div style={{ background: "#FFFBEB", border: "0.5px solid #FCD34D", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E", marginBottom: 10 }}>
+                      Impostos Adicionados ao Total
+                      <span style={{ fontWeight: 400, color: "#888", marginLeft: 8 }}>Deixe em branco se não houver</span>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+                      {([
+                        ["IPI",    "valor_ipi",     "Imp. Produtos Industrializados"],
+                        ["ST",     "valor_st",      "Substituição Tributária ICMS"],
+                        ["FCP-ST", "valor_fcp_st",  "Fundo de Combate à Pobreza"],
+                        ["DIFAL",  "valor_difal",   "Diferencial de Alíquota"],
+                        ["Desconto","valor_desconto","Desconto (−)"],
+                      ] as [string, keyof typeof cab, string][]).map(([label, field, tooltip]) => (
+                        <div key={field} title={tooltip}>
+                          <label style={{ ...lbl, color: "#92400E" }}>{label}</label>
+                          <input value={(cab as Record<string, string>)[field]} onChange={e => setCab(p=>({...p,[field]:e.target.value}))} placeholder="0,00" style={{ ...inp, borderColor: "#FCD34D" }} />
+                        </div>
+                      ))}
+                    </div>
+                    {(() => {
+                      const vProd   = parseFloat(cab.valor_total)   || 0;
+                      const vIpi    = parseFloat(cab.valor_ipi)      || 0;
+                      const vSt     = parseFloat(cab.valor_st)       || 0;
+                      const vFcp    = parseFloat(cab.valor_fcp_st)   || 0;
+                      const vDifal  = parseFloat(cab.valor_difal)    || 0;
+                      const vDesc   = parseFloat(cab.valor_desconto) || 0;
+                      const total   = vProd + vIpi + vSt + vFcp + vDifal - vDesc;
+                      const temExtra = vIpi + vSt + vFcp + vDifal + vDesc > 0;
+                      if (!temExtra) return null;
+                      return (
+                        <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px solid #FCD34D", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ fontSize: 12, color: "#92400E" }}>
+                            Produtos {vProd.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+                            {vIpi   > 0 && ` + IPI ${vIpi.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
+                            {vSt    > 0 && ` + ST ${vSt.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
+                            {vFcp   > 0 && ` + FCP-ST ${vFcp.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
+                            {vDifal > 0 && ` + DIFAL ${vDifal.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
+                            {vDesc  > 0 && ` − Desconto ${vDesc.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}`}
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "#92400E" }}>
+                            = Total {total.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 14, marginBottom: 14 }}>

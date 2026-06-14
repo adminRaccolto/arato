@@ -167,7 +167,7 @@ const NAV: NavItem[] = [
       { id: "lav-planejamento", label: "Planejamento de Safra", path: "/lavoura/planejamento"        },
       { type: "divider", label: "Monitoramento" },
       { id: "lav-recomendacoes",  label: "Recomendações Agronômicas", path: "/lavoura/recomendacoes"   },
-      { id: "lav-execucao",       label: "Execução de Campo (App)",   path: "/lavoura/execucao"        },
+      { id: "lav-execucao",       label: "📱 App de Campo (Mobile)",  path: "/campo"                   },
       { id: "lav-pragas",         label: "Pragas & Doenças",          path: "/lavoura/pragas"          },
       { id: "lav-pluviometria",   label: "Pluviometria",              path: "/lavoura/pluviometria"    },
       { type: "divider", label: "Relatórios" },
