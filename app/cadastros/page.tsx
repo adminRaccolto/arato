@@ -235,17 +235,21 @@ function CadastrosInner() {
   const [expandFaz, setExpandFaz]     = useState<Set<string>>(new Set());
   const [modalFaz, setModalFaz]       = useState(false);
   const [editFaz, setEditFaz]         = useState<FazendaDB | null>(null);
-  const [tabFaz, setTabFaz]           = useState<"geral"|"matriculas"|"certidoes"|"cars"|"arrendamentos">("geral");
-  type FazCar = { _key: string; id?: string; numero: string; status: string; area_ha: string; vencimento: string; observacao: string; mats_vinculadas: string[] };
-  const [fazCars, setFazCars] = useState<FazCar[]>([]);
+  const [tabFaz, setTabFaz]           = useState<"geral"|"matriculas"|"cars"|"nirfs"|"itrs"|"ccirs"|"arrendamentos">("geral");
+  type FazCar  = { _key: string; id?: string; numero: string; status: string; area_ha: string; vencimento: string; observacao: string; mats_vinculadas: string[] };
+  type FazNirf = { _key: string; id?: string; numero: string; situacao: string; area_ha: string; observacao: string; mats_vinculadas: string[] };
+  type FazItr  = { _key: string; id?: string; exercicio: string; numero_declaracao: string; nirf_numero: string; vencimento: string; area_tributavel_ha: string; valor_apurado: string; status_pagamento: string; observacao: string; mats_vinculadas: string[] };
+  type FazCcir = { _key: string; id?: string; numero: string; exercicio: string; vencimento: string; area_ha: string; modulo_fiscal: string; situacao: string; observacao: string; mats_vinculadas: string[] };
+  const [fazCars,  setFazCars]  = useState<FazCar[]>([]);
+  const [fazNirfs, setFazNirfs] = useState<FazNirf[]>([]);
+  const [fazItrs,  setFazItrs]  = useState<FazItr[]>([]);
+  const [fazCcirs, setFazCcirs] = useState<FazCcir[]>([]);
   const [buscandoCepFaz, setBuscandoCepFaz] = useState(false);
   const [cepAutoOk, setCepAutoOk]           = useState(false);
   const [fazArrendamentos, setFazArrendamentos] = useState<ArrFaz[]>([]);
   const [fazMatsLocal, setFazMatsLocal] = useState<FazMatLocal[]>([]);
   const [fFaz, setFFaz]               = useState({
     nome: "", municipio: "", estado: "MT", area: "", cnpj: "",
-    car: "", car_vencimento: "", itr: "", itr_vencimento: "",
-    ccir: "", ccir_vencimento: "", nirf: "",
     produtor_id: "", empresa_id: "",
     cep: "", logradouro: "", numero_end: "", complemento: "", bairro: "",
   });
@@ -791,8 +795,6 @@ function CadastrosInner() {
 
   const _fFazVazio = () => ({
     nome: "", municipio: "", estado: "MT", area: "", cnpj: "",
-    car: "", car_vencimento: "", itr: "", itr_vencimento: "",
-    ccir: "", ccir_vencimento: "", nirf: "",
     produtor_id: "", empresa_id: "",
     cep: "", logradouro: "", numero_end: "", complemento: "", bairro: "",
   });
@@ -804,10 +806,6 @@ function CadastrosInner() {
     setFFaz(f ? {
       nome: f.nome, municipio: f.municipio, estado: f.estado,
       area: String(f.area_total_ha), cnpj: f.cnpj ?? "",
-      car: f.car ?? "", car_vencimento: f.car_vencimento ?? "",
-      itr: f.itr ?? "", itr_vencimento: f.itr_vencimento ?? "",
-      ccir: f.ccir ?? "", ccir_vencimento: f.ccir_vencimento ?? "",
-      nirf: f.nirf ?? "",
       produtor_id: f.produtor_id ?? "", empresa_id: f.empresa_id ?? "",
       cep: f.cep ?? "", logradouro: f.logradouro ?? "",
       numero_end: f.numero_end ?? "", complemento: f.complemento ?? "",
@@ -857,10 +855,47 @@ function CadastrosInner() {
           mats_vinculadas: ((c.car_matriculas as Array<{ matricula_id: string }>) ?? []).map((m) => m.matricula_id),
         })));
       } catch { setFazCars([]); }
+      // Carrega NIRFs múltiplos
+      try {
+        const { data: nirfsData } = await supabase.from("fazenda_nirfs").select("*, nirf_matriculas(matricula_id)").eq("fazenda_id", f.id).order("created_at");
+        setFazNirfs((nirfsData ?? []).map((n: Record<string, unknown>) => ({
+          _key: String(n.id), id: String(n.id),
+          numero: String(n.numero ?? ""), situacao: String(n.situacao ?? "ativo"),
+          area_ha: String(n.area_ha ?? ""), observacao: String(n.observacao ?? ""),
+          mats_vinculadas: ((n.nirf_matriculas as Array<{ matricula_id: string }>) ?? []).map((m) => m.matricula_id),
+        })));
+      } catch { setFazNirfs([]); }
+      // Carrega ITRs múltiplos
+      try {
+        const { data: itrsData } = await supabase.from("fazenda_itrs").select("*, itr_matriculas(matricula_id)").eq("fazenda_id", f.id).order("exercicio", { ascending: false });
+        setFazItrs((itrsData ?? []).map((t: Record<string, unknown>) => ({
+          _key: String(t.id), id: String(t.id),
+          exercicio: String(t.exercicio ?? ""), numero_declaracao: String(t.numero_declaracao ?? ""),
+          nirf_numero: String(t.nirf_numero ?? ""), vencimento: String(t.vencimento ?? ""),
+          area_tributavel_ha: String(t.area_tributavel_ha ?? ""), valor_apurado: String(t.valor_apurado ?? ""),
+          status_pagamento: String(t.status_pagamento ?? "pendente"), observacao: String(t.observacao ?? ""),
+          mats_vinculadas: ((t.itr_matriculas as Array<{ matricula_id: string }>) ?? []).map((m) => m.matricula_id),
+        })));
+      } catch { setFazItrs([]); }
+      // Carrega CCIRs múltiplos
+      try {
+        const { data: ccirsData } = await supabase.from("fazenda_ccirs").select("*, ccir_matriculas(matricula_id)").eq("fazenda_id", f.id).order("exercicio", { ascending: false });
+        setFazCcirs((ccirsData ?? []).map((c: Record<string, unknown>) => ({
+          _key: String(c.id), id: String(c.id),
+          numero: String(c.numero ?? ""), exercicio: String(c.exercicio ?? ""),
+          vencimento: String(c.vencimento ?? ""), area_ha: String(c.area_ha ?? ""),
+          modulo_fiscal: String(c.modulo_fiscal ?? ""), situacao: String(c.situacao ?? "regular"),
+          observacao: String(c.observacao ?? ""),
+          mats_vinculadas: ((c.ccir_matriculas as Array<{ matricula_id: string }>) ?? []).map((m) => m.matricula_id),
+        })));
+      } catch { setFazCcirs([]); }
     } else {
       setFazMatsLocal([]);
       setFazArrendamentos([]);
       setFazCars([]);
+      setFazNirfs([]);
+      setFazItrs([]);
+      setFazCcirs([]);
     }
     setModalFaz(true);
   };
@@ -873,10 +908,6 @@ function CadastrosInner() {
     const camposForm = {
       nome: fFaz.nome.trim(), municipio: fFaz.municipio.trim(), estado: fFaz.estado,
       area_total_ha: Number(fFaz.area), cnpj: fFaz.cnpj || undefined,
-      car: fFaz.car || undefined, car_vencimento: fFaz.car_vencimento || undefined,
-      itr: fFaz.itr || undefined, itr_vencimento: fFaz.itr_vencimento || undefined,
-      ccir: fFaz.ccir || undefined, ccir_vencimento: fFaz.ccir_vencimento || undefined,
-      nirf: fFaz.nirf || undefined,
       produtor_id: fFaz.produtor_id || undefined, empresa_id: fFaz.empresa_id || undefined,
       cep: fFaz.cep || undefined, logradouro: fFaz.logradouro || undefined,
       numero_end: fFaz.numero_end || undefined, complemento: fFaz.complemento || undefined,
@@ -985,6 +1016,51 @@ function CadastrosInner() {
       if (carId) {
         await supabase.from("car_matriculas").delete().eq("car_id", carId);
         for (const matId of c.mats_vinculadas) { await supabase.from("car_matriculas").insert({ car_id: carId, matricula_id: matId }); }
+      }
+    }
+    // Salva NIRFs múltiplos
+    const { data: existingNirfs } = await supabase.from("fazenda_nirfs").select("id").eq("fazenda_id", fazId);
+    const existNirfIds = new Set((existingNirfs ?? []).map((n: { id: string }) => n.id));
+    const keptNirfIds  = new Set(fazNirfs.filter(n => n.id).map(n => n.id as string));
+    for (const eid of existNirfIds) { if (!keptNirfIds.has(eid)) await supabase.from("fazenda_nirfs").delete().eq("id", eid); }
+    for (const n of fazNirfs) {
+      const payload = { fazenda_id: fazId, numero: n.numero.trim(), situacao: n.situacao, area_ha: n.area_ha ? Number(n.area_ha) : null, observacao: n.observacao || null };
+      let nirfId = n.id;
+      if (n.id) { await supabase.from("fazenda_nirfs").update(payload).eq("id", n.id); }
+      else { const { data: nn } = await supabase.from("fazenda_nirfs").insert(payload).select("id").single(); nirfId = nn?.id; }
+      if (nirfId) {
+        await supabase.from("nirf_matriculas").delete().eq("nirf_id", nirfId);
+        for (const matId of n.mats_vinculadas) { await supabase.from("nirf_matriculas").insert({ nirf_id: nirfId, matricula_id: matId }); }
+      }
+    }
+    // Salva ITRs múltiplos
+    const { data: existingItrs } = await supabase.from("fazenda_itrs").select("id").eq("fazenda_id", fazId);
+    const existItrIds = new Set((existingItrs ?? []).map((t: { id: string }) => t.id));
+    const keptItrIds  = new Set(fazItrs.filter(t => t.id).map(t => t.id as string));
+    for (const eid of existItrIds) { if (!keptItrIds.has(eid)) await supabase.from("fazenda_itrs").delete().eq("id", eid); }
+    for (const t of fazItrs) {
+      const payload = { fazenda_id: fazId, exercicio: t.exercicio, numero_declaracao: t.numero_declaracao || null, nirf_numero: t.nirf_numero || null, vencimento: t.vencimento || null, area_tributavel_ha: t.area_tributavel_ha ? Number(t.area_tributavel_ha) : null, valor_apurado: t.valor_apurado ? Number(t.valor_apurado) : null, status_pagamento: t.status_pagamento, observacao: t.observacao || null };
+      let itrId = t.id;
+      if (t.id) { await supabase.from("fazenda_itrs").update(payload).eq("id", t.id); }
+      else { const { data: nt } = await supabase.from("fazenda_itrs").insert(payload).select("id").single(); itrId = nt?.id; }
+      if (itrId) {
+        await supabase.from("itr_matriculas").delete().eq("itr_id", itrId);
+        for (const matId of t.mats_vinculadas) { await supabase.from("itr_matriculas").insert({ itr_id: itrId, matricula_id: matId }); }
+      }
+    }
+    // Salva CCIRs múltiplos
+    const { data: existingCcirs } = await supabase.from("fazenda_ccirs").select("id").eq("fazenda_id", fazId);
+    const existCcirIds = new Set((existingCcirs ?? []).map((c: { id: string }) => c.id));
+    const keptCcirIds  = new Set(fazCcirs.filter(c => c.id).map(c => c.id as string));
+    for (const eid of existCcirIds) { if (!keptCcirIds.has(eid)) await supabase.from("fazenda_ccirs").delete().eq("id", eid); }
+    for (const c of fazCcirs) {
+      const payload = { fazenda_id: fazId, numero: c.numero.trim(), exercicio: c.exercicio || null, vencimento: c.vencimento || null, area_ha: c.area_ha ? Number(c.area_ha) : null, modulo_fiscal: c.modulo_fiscal ? Number(c.modulo_fiscal) : null, situacao: c.situacao, observacao: c.observacao || null };
+      let ccirId = c.id;
+      if (c.id) { await supabase.from("fazenda_ccirs").update(payload).eq("id", c.id); }
+      else { const { data: nc } = await supabase.from("fazenda_ccirs").insert(payload).select("id").single(); ccirId = nc?.id; }
+      if (ccirId) {
+        await supabase.from("ccir_matriculas").delete().eq("ccir_id", ccirId);
+        for (const matId of c.mats_vinculadas) { await supabase.from("ccir_matriculas").insert({ ccir_id: ccirId, matricula_id: matId }); }
       }
     }
     setModalFaz(false);
@@ -5229,7 +5305,7 @@ function CadastrosInner() {
           <Modal titulo={editFaz ? "Editar Fazenda" : "Nova Fazenda"} subtitulo="Uma fazenda pode pertencer a um Produtor (PF/parceria) ou a uma Empresa (PJ)" onClose={() => setModalFaz(false)} width={1100}>
             {/* ── Tab navigation ── */}
             <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8", marginBottom: 22, gap: 0 }}>
-              {([["geral","Dados Gerais"],["matriculas",`Matrículas${fazMatsLocal.length > 0 ? ` (${fazMatsLocal.length})` : ""}`],["certidoes","Certidões"],["cars",`CARs${fazCars.length > 0 ? ` (${fazCars.length})` : ""}`],["arrendamentos",`Arrendamentos${fazArrendamentos.length > 0 ? ` (${fazArrendamentos.length})` : ""}`]] as [string,string][]).map(([k, l]) => (
+              {([["geral","Dados Gerais"],["matriculas",`Matrículas${fazMatsLocal.length > 0 ? ` (${fazMatsLocal.length})` : ""}`],["cars",`CAR${fazCars.length > 0 ? ` (${fazCars.length})` : ""}`],["nirfs",`NIRF${fazNirfs.length > 0 ? ` (${fazNirfs.length})` : ""}`],["itrs",`ITR${fazItrs.length > 0 ? ` (${fazItrs.length})` : ""}`],["ccirs",`CCIR${fazCcirs.length > 0 ? ` (${fazCcirs.length})` : ""}`],["arrendamentos",`Arrendamentos${fazArrendamentos.length > 0 ? ` (${fazArrendamentos.length})` : ""}`]] as [string,string][]).map(([k, l]) => (
                 <button key={k} onClick={() => setTabFaz(k as typeof tabFaz)} style={{ padding: "10px 18px", border: "none", borderBottom: tabFaz === k ? "2px solid #1A4870" : "2px solid transparent", background: "none", cursor: "pointer", fontSize: 13, color: tabFaz === k ? "#1A4870" : "#555", fontWeight: tabFaz === k ? 600 : 400 }}>{l}</button>
               ))}
             </div>
@@ -5345,55 +5421,6 @@ function CadastrosInner() {
               </div>
             )}
 
-            {/* ════ TAB: CERTIDÕES ════ */}
-            {tabFaz === "certidoes" && (
-              <div>
-                <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>Controle de documentos rurais com alertas de vencimento. O sistema alerta com 30, 15, 7 e 1 dia antes do vencimento.</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                  {/* CAR */}
-                  <div style={{ padding: 16, borderRadius: 10, border: "0.5px solid #D4DCE8", background: "#FAFBFC" }}>
-                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>CAR — Cadastro Ambiental Rural</span>
-                      {certBadge(fFaz.car_vencimento)}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
-                      <div><label style={lbl}>Número</label><input style={inp} value={fFaz.car} onChange={e => setFFaz(p => ({ ...p, car: e.target.value }))} placeholder="MT-XXXXXXXX-XXXXXXXXXXXX" /></div>
-                      <div><label style={lbl}>Vencimento</label><input style={inp} type="date" value={fFaz.car_vencimento} onChange={e => setFFaz(p => ({ ...p, car_vencimento: e.target.value }))} /></div>
-                    </div>
-                  </div>
-                  {/* ITR */}
-                  <div style={{ padding: 16, borderRadius: 10, border: "0.5px solid #D4DCE8", background: "#FAFBFC" }}>
-                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>ITR — Imposto Territorial Rural</span>
-                      {certBadge(fFaz.itr_vencimento)}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
-                      <div><label style={lbl}>NIRF / Número</label><input style={inp} value={fFaz.itr} onChange={e => setFFaz(p => ({ ...p, itr: e.target.value }))} placeholder="Nº do lançamento ITR" /></div>
-                      <div><label style={lbl}>Vencimento</label><input style={inp} type="date" value={fFaz.itr_vencimento} onChange={e => setFFaz(p => ({ ...p, itr_vencimento: e.target.value }))} /></div>
-                    </div>
-                  </div>
-                  {/* CCIR */}
-                  <div style={{ padding: 16, borderRadius: 10, border: "0.5px solid #D4DCE8", background: "#FAFBFC" }}>
-                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>CCIR — Certidão de Cadastro de Imóvel Rural</span>
-                      {certBadge(fFaz.ccir_vencimento)}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10 }}>
-                      <div><label style={lbl}>Número</label><input style={inp} value={fFaz.ccir} onChange={e => setFFaz(p => ({ ...p, ccir: e.target.value }))} placeholder="Nº do CCIR" /></div>
-                      <div><label style={lbl}>Vencimento</label><input style={inp} type="date" value={fFaz.ccir_vencimento} onChange={e => setFFaz(p => ({ ...p, ccir_vencimento: e.target.value }))} /></div>
-                    </div>
-                  </div>
-                  {/* NIRF */}
-                  <div style={{ padding: 16, borderRadius: 10, border: "0.5px solid #D4DCE8", background: "#FAFBFC" }}>
-                    <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870" }}>NIRF — Número no Registro Federal</span>
-                    </div>
-                    <div><label style={lbl}>NIRF</label><input style={inp} value={fFaz.nirf} onChange={e => setFFaz(p => ({ ...p, nirf: e.target.value }))} placeholder="Nº do imóvel na Receita Federal" /></div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* ════ TAB: CARs MÚLTIPLOS ════ */}
             {tabFaz === "cars" && (
               <div>
@@ -5465,6 +5492,264 @@ function CadastrosInner() {
                           <div style={{ gridColumn: "1/-1" }}>
                             <label style={lbl}>Observações</label>
                             <input style={inp} value={c.observacao} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,observacao:e.target.value} : x))} placeholder="Ex: CAR da gleba destacada (loteamento 2019)" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ════ TAB: NIRFs MÚLTIPLOS ════ */}
+            {tabFaz === "nirfs" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>NIRF — Número do Imóvel na Receita Federal. Uma fazenda pode ter múltiplos NIRFs quando há glebas registradas separadamente. Cada NIRF pode ser vinculado a uma ou mais Matrículas.</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    onClick={() => setFazNirfs(p => [...p, { _key: `new_${Date.now()}`, numero: "", situacao: "ativo", area_ha: "", observacao: "", mats_vinculadas: [] }])}>
+                    + Adicionar NIRF
+                  </button>
+                </div>
+                {fazNirfs.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 20px", color: "#888", fontSize: 13, border: "1.5px dashed #D4DCE8", borderRadius: 10 }}>
+                    Nenhum NIRF cadastrado. Clique em "+ Adicionar NIRF".
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {fazNirfs.map((n, ni) => (
+                      <div key={n._key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#F4F6FA", borderBottom: "0.5px solid #D4DCE8" }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                            {n.numero || "NIRF sem número"}
+                          </span>
+                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: n.situacao === "ativo" ? "#DCFCE7" : n.situacao === "suspenso" ? "#FEF3CD" : "#FEE2E2", color: n.situacao === "ativo" ? "#166534" : n.situacao === "suspenso" ? "#7A5A12" : "#991B1B" }}>
+                            {n.situacao === "ativo" ? "Ativo" : n.situacao === "suspenso" ? "Suspenso" : "Cancelado"}
+                          </span>
+                          <button style={{ padding: "3px 10px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, cursor: "pointer" }}
+                            onClick={() => setFazNirfs(p => p.filter((_,j) => j !== ni))}>Remover</button>
+                        </div>
+                        <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Número do NIRF *</label>
+                            <input style={inp} value={n.numero} placeholder="Ex: 1234567" onChange={e => setFazNirfs(p => p.map((x,j) => j===ni ? {...x,numero:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Situação</label>
+                            <select style={inp} value={n.situacao} onChange={e => setFazNirfs(p => p.map((x,j) => j===ni ? {...x,situacao:e.target.value} : x))}>
+                              <option value="ativo">Ativo</option>
+                              <option value="suspenso">Suspenso</option>
+                              <option value="cancelado">Cancelado</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Área declarada (ha)</label>
+                            <input style={inp} type="number" step="0.0001" value={n.area_ha} placeholder="0,0000" onChange={e => setFazNirfs(p => p.map((x,j) => j===ni ? {...x,area_ha:e.target.value} : x))} />
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Matrículas vinculadas a este NIRF</label>
+                            {fazMatsLocal.length === 0 ? (
+                              <div style={{ fontSize: 11, color: "#888" }}>Cadastre matrículas na aba Matrículas primeiro.</div>
+                            ) : (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                                {fazMatsLocal.map(m => {
+                                  const sel = n.mats_vinculadas.includes(m._key);
+                                  return (
+                                    <button key={m._key} type="button"
+                                      onClick={() => setFazNirfs(p => p.map((x,j) => j!==ni ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "#D4DCE8"}`, background: sel ? "#EFF4FA" : "#fff", fontSize: 11, color: sel ? "#1A4870" : "#555", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      {m.numero || "Matr. sem número"}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Observações</label>
+                            <input style={inp} value={n.observacao} onChange={e => setFazNirfs(p => p.map((x,j) => j===ni ? {...x,observacao:e.target.value} : x))} placeholder="Ex: NIRF da gleba destacada" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ════ TAB: ITRs MÚLTIPLOS ════ */}
+            {tabFaz === "itrs" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>ITR — Imposto Territorial Rural (DITR). Registro por exercício. Cada DITR pode ser vinculado a um NIRF e a uma ou mais Matrículas.</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    onClick={() => setFazItrs(p => [...p, { _key: `new_${Date.now()}`, exercicio: String(new Date().getFullYear()), numero_declaracao: "", nirf_numero: "", vencimento: "", area_tributavel_ha: "", valor_apurado: "", status_pagamento: "pendente", observacao: "", mats_vinculadas: [] }])}>
+                    + Adicionar ITR
+                  </button>
+                </div>
+                {fazItrs.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 20px", color: "#888", fontSize: 13, border: "1.5px dashed #D4DCE8", borderRadius: 10 }}>
+                    Nenhum ITR cadastrado. Clique em "+ Adicionar ITR".
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {fazItrs.map((t, ti) => (
+                      <div key={t._key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#F4F6FA", borderBottom: "0.5px solid #D4DCE8" }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                            ITR {t.exercicio || "—"}{t.numero_declaracao ? ` · DITR ${t.numero_declaracao}` : ""}
+                          </span>
+                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: t.status_pagamento === "pago" ? "#DCFCE7" : t.status_pagamento === "parcelado" ? "#EFF4FA" : "#FEE2E2", color: t.status_pagamento === "pago" ? "#166534" : t.status_pagamento === "parcelado" ? "#0B2D50" : "#991B1B" }}>
+                            {t.status_pagamento === "pago" ? "Pago" : t.status_pagamento === "parcelado" ? "Parcelado" : "Pendente"}
+                          </span>
+                          {t.vencimento && certBadge(t.vencimento)}
+                          <button style={{ padding: "3px 10px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, cursor: "pointer" }}
+                            onClick={() => setFazItrs(p => p.filter((_,j) => j !== ti))}>Remover</button>
+                        </div>
+                        <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Exercício (ano) *</label>
+                            <input style={inp} value={t.exercicio} placeholder="2025" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,exercicio:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Nº Declaração (DITR)</label>
+                            <input style={inp} value={t.numero_declaracao} placeholder="Nº da DITR" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,numero_declaracao:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>NIRF vinculado</label>
+                            <input style={inp} value={t.nirf_numero} placeholder="Nº do NIRF" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,nirf_numero:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Vencimento</label>
+                            <input style={inp} type="date" value={t.vencimento} onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,vencimento:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Área tributável (ha)</label>
+                            <input style={inp} type="number" step="0.0001" value={t.area_tributavel_ha} placeholder="0,0000" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,area_tributavel_ha:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Valor apurado (R$)</label>
+                            <input style={inp} type="number" step="0.01" value={t.valor_apurado} placeholder="0,00" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,valor_apurado:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Status pagamento</label>
+                            <select style={inp} value={t.status_pagamento} onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,status_pagamento:e.target.value} : x))}>
+                              <option value="pendente">Pendente</option>
+                              <option value="pago">Pago</option>
+                              <option value="parcelado">Parcelado</option>
+                            </select>
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Matrículas vinculadas a este ITR</label>
+                            {fazMatsLocal.length === 0 ? (
+                              <div style={{ fontSize: 11, color: "#888" }}>Cadastre matrículas na aba Matrículas primeiro.</div>
+                            ) : (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                                {fazMatsLocal.map(m => {
+                                  const sel = t.mats_vinculadas.includes(m._key);
+                                  return (
+                                    <button key={m._key} type="button"
+                                      onClick={() => setFazItrs(p => p.map((x,j) => j!==ti ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "#D4DCE8"}`, background: sel ? "#EFF4FA" : "#fff", fontSize: 11, color: sel ? "#1A4870" : "#555", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      {m.numero || "Matr. sem número"}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Observações</label>
+                            <input style={inp} value={t.observacao} onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,observacao:e.target.value} : x))} placeholder="Ex: Pagamento parcelado em 2x" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ════ TAB: CCIRs MÚLTIPLOS ════ */}
+            {tabFaz === "ccirs" && (
+              <div>
+                <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>CCIR — Certidão de Cadastro de Imóvel Rural (INCRA). Renovada anualmente. Cada CCIR pode ser vinculado a uma ou mais Matrículas.</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+                  <button style={{ padding: "7px 16px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    onClick={() => setFazCcirs(p => [...p, { _key: `new_${Date.now()}`, numero: "", exercicio: String(new Date().getFullYear()), vencimento: "", area_ha: "", modulo_fiscal: "", situacao: "regular", observacao: "", mats_vinculadas: [] }])}>
+                    + Adicionar CCIR
+                  </button>
+                </div>
+                {fazCcirs.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 20px", color: "#888", fontSize: 13, border: "1.5px dashed #D4DCE8", borderRadius: 10 }}>
+                    Nenhum CCIR cadastrado. Clique em "+ Adicionar CCIR".
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {fazCcirs.map((c, ci) => (
+                      <div key={c._key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "#F4F6FA", borderBottom: "0.5px solid #D4DCE8" }}>
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1A4870", flex: 1 }}>
+                            {c.numero || "CCIR sem número"}{c.exercicio ? ` · ${c.exercicio}` : ""}
+                          </span>
+                          <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 8, fontWeight: 600, background: c.situacao === "regular" ? "#DCFCE7" : c.situacao === "pendente" ? "#FEF3CD" : "#FEE2E2", color: c.situacao === "regular" ? "#166534" : c.situacao === "pendente" ? "#7A5A12" : "#991B1B" }}>
+                            {c.situacao === "regular" ? "Regular" : c.situacao === "pendente" ? "Pendente" : "Irregular"}
+                          </span>
+                          {c.vencimento && certBadge(c.vencimento)}
+                          <button style={{ padding: "3px 10px", background: "#E24B4A", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, cursor: "pointer" }}
+                            onClick={() => setFazCcirs(p => p.filter((_,j) => j !== ci))}>Remover</button>
+                        </div>
+                        <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Número do CCIR *</label>
+                            <input style={inp} value={c.numero} placeholder="Nº do CCIR (INCRA)" onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,numero:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Exercício (ano)</label>
+                            <input style={inp} value={c.exercicio} placeholder="2025" onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,exercicio:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Vencimento</label>
+                            <input style={inp} type="date" value={c.vencimento} onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,vencimento:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Situação</label>
+                            <select style={inp} value={c.situacao} onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,situacao:e.target.value} : x))}>
+                              <option value="regular">Regular</option>
+                              <option value="pendente">Pendente</option>
+                              <option value="irregular">Irregular</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Área (ha)</label>
+                            <input style={inp} type="number" step="0.0001" value={c.area_ha} placeholder="0,0000" onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,area_ha:e.target.value} : x))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Módulo fiscal (ha)</label>
+                            <input style={inp} type="number" step="0.01" value={c.modulo_fiscal} placeholder="Ex: 55,00" onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,modulo_fiscal:e.target.value} : x))} />
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Matrículas vinculadas a este CCIR</label>
+                            {fazMatsLocal.length === 0 ? (
+                              <div style={{ fontSize: 11, color: "#888" }}>Cadastre matrículas na aba Matrículas primeiro.</div>
+                            ) : (
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                                {fazMatsLocal.map(m => {
+                                  const sel = c.mats_vinculadas.includes(m._key);
+                                  return (
+                                    <button key={m._key} type="button"
+                                      onClick={() => setFazCcirs(p => p.map((x,j) => j!==ci ? x : { ...x, mats_vinculadas: sel ? x.mats_vinculadas.filter(id => id !== m._key) : [...x.mats_vinculadas, m._key] }))}
+                                      style={{ padding: "4px 10px", borderRadius: 8, border: `0.5px solid ${sel ? "#1A4870" : "#D4DCE8"}`, background: sel ? "#EFF4FA" : "#fff", fontSize: 11, color: sel ? "#1A4870" : "#555", cursor: "pointer", fontWeight: sel ? 700 : 400 }}>
+                                      {m.numero || "Matr. sem número"}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ gridColumn: "1/-1" }}>
+                            <label style={lbl}>Observações</label>
+                            <input style={inp} value={c.observacao} onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,observacao:e.target.value} : x))} placeholder="Ex: CCIR referente à gleba norte" />
                           </div>
                         </div>
                       </div>

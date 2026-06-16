@@ -5800,3 +5800,76 @@ CREATE INDEX IF NOT EXISTS idx_lancamentos_talhao_id    ON lancamentos(talhao_id
 CREATE INDEX IF NOT EXISTS idx_lancamentos_funcionario   ON lancamentos(funcionario_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 127: Documentos rurais múltiplos por fazenda (NIRF, ITR, CCIR)
+--            Padrão idêntico ao fazenda_cars + car_matriculas
+-- =============================================================================
+
+-- NIRF — Número do Imóvel na Receita Federal
+CREATE TABLE IF NOT EXISTS fazenda_nirfs (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id  uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  numero      text NOT NULL,
+  situacao    text NOT NULL DEFAULT 'ativo',  -- ativo | suspenso | cancelado
+  area_ha     numeric(14,4),
+  observacao  text,
+  created_at  timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_fazenda_nirfs_fazenda ON fazenda_nirfs(fazenda_id);
+
+CREATE TABLE IF NOT EXISTS nirf_matriculas (
+  nirf_id       uuid NOT NULL REFERENCES fazenda_nirfs(id) ON DELETE CASCADE,
+  matricula_id  text NOT NULL,
+  PRIMARY KEY (nirf_id, matricula_id)
+);
+
+-- ITR — Imposto Territorial Rural (DITR por exercício)
+CREATE TABLE IF NOT EXISTS fazenda_itrs (
+  id                 uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id         uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  exercicio          text NOT NULL,           -- ano: "2025"
+  numero_declaracao  text,                    -- número da DITR
+  nirf_numero        text,                    -- NIRF vinculado (texto livre)
+  vencimento         date,
+  area_tributavel_ha numeric(14,4),
+  valor_apurado      numeric(15,2),
+  status_pagamento   text NOT NULL DEFAULT 'pendente',  -- pendente | pago | parcelado
+  observacao         text,
+  created_at         timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_fazenda_itrs_fazenda   ON fazenda_itrs(fazenda_id);
+CREATE INDEX IF NOT EXISTS idx_fazenda_itrs_exercicio ON fazenda_itrs(fazenda_id, exercicio);
+
+CREATE TABLE IF NOT EXISTS itr_matriculas (
+  itr_id        uuid NOT NULL REFERENCES fazenda_itrs(id) ON DELETE CASCADE,
+  matricula_id  text NOT NULL,
+  PRIMARY KEY (itr_id, matricula_id)
+);
+
+-- CCIR — Certidão de Cadastro de Imóvel Rural (INCRA, renovação anual)
+CREATE TABLE IF NOT EXISTS fazenda_ccirs (
+  id            uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id    uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  numero        text NOT NULL,
+  exercicio     text,                         -- ano de referência
+  vencimento    date,
+  area_ha       numeric(14,4),
+  modulo_fiscal numeric(10,4),               -- módulo fiscal em ha
+  situacao      text NOT NULL DEFAULT 'regular',  -- regular | pendente | irregular
+  observacao    text,
+  created_at    timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_fazenda_ccirs_fazenda ON fazenda_ccirs(fazenda_id);
+
+CREATE TABLE IF NOT EXISTS ccir_matriculas (
+  ccir_id       uuid NOT NULL REFERENCES fazenda_ccirs(id) ON DELETE CASCADE,
+  matricula_id  text NOT NULL,
+  PRIMARY KEY (ccir_id, matricula_id)
+);
+
+-- RLS: herdado via fazenda_id → mesma política da tabela fazendas
+-- (as tabelas filhas não precisam de política própria se os selects
+--  passam sempre por fazenda_id com a segurança garantida no servidor)
+
+NOTIFY pgrst, 'reload schema';
