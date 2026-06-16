@@ -151,9 +151,9 @@ function ContasPagarInner() {
     return f && valid.includes(f) ? f : "aberto";
   });
 
-  // ── Janela padrão: 1º do mês atual até 12 meses à frente ────
+  // ── Janela padrão: 2 anos atrás até 12 meses à frente (cobre vencidos antigos) ────
   const [periodoInicio, setPeriodoInicio] = useState(() => {
-    const d = new Date(); d.setDate(1);
+    const d = new Date(); d.setFullYear(d.getFullYear() - 2); d.setDate(1);
     return d.toISOString().split("T")[0];
   });
   const [periodoFim, setPeriodoFim] = useState(() => {
@@ -338,13 +338,23 @@ function ContasPagarInner() {
     await carregar();
   }
 
+  // ── Status efetivo: corrige registros em_aberto com data passada que nunca tiveram status atualizado ──
+  const statusEfetivo = (l: Lancamento): string => {
+    if (l.status === "baixado" || l.status === "parcial") return l.status;
+    if (l.natureza === "previsao") return l.status;
+    const venc = l.data_vencimento ?? "";
+    if (venc && venc < TODAY) return "vencido";
+    if (venc && venc === TODAY) return "vencendo";
+    return l.status;  // em_aberto futuro ou qualquer outro
+  };
+
   // ── Métricas ───────────────────────────────────────────────
 
   const lancOper     = lancamentos.filter(l => l.moeda !== "barter" && (l.natureza ?? "real") === "real");
-  const totalAberto  = lancOper.filter(l => l.status !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
-  const qAberto      = lancOper.filter(l => l.status !== "baixado").length;
-  const qVencido     = lancamentos.filter(l => l.status === "vencido").length;
-  const qVencendo    = lancamentos.filter(l => l.status === "vencendo").length;
+  const totalAberto  = lancOper.filter(l => statusEfetivo(l) !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
+  const qAberto      = lancOper.filter(l => statusEfetivo(l) !== "baixado").length;
+  const qVencido     = lancamentos.filter(l => statusEfetivo(l) === "vencido").length;
+  const qVencendo    = lancamentos.filter(l => statusEfetivo(l) === "vencendo").length;
   const mesAtual     = TODAY.slice(0, 7);
   const pagosNoMes   = lancamentos.filter(l => l.status === "baixado" && (l.data_baixa ?? "").startsWith(mesAtual))
                          .reduce((a, l) => a + (l.valor_pago ?? paraBRL(l)), 0);
@@ -354,10 +364,11 @@ function ContasPagarInner() {
   const filtradosBase = useMemo(() => {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
-      if (filtro === "aberto")   return isReal && (l.status === "em_aberto" || l.status === "vencido" || l.status === "vencendo" || l.status === "parcial") && l.moeda !== "barter";
-      if (filtro === "vencido")  return isReal && (l.status === "vencido" || l.status === "vencendo");
-      if (filtro === "vencendo") return isReal && l.status === "vencendo";
-      if (filtro === "baixado")  return isReal && l.status === "baixado";
+      const sEfet  = statusEfetivo(l);
+      if (filtro === "aberto")   return isReal && sEfet !== "baixado" && l.moeda !== "barter";
+      if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
+      if (filtro === "vencendo") return isReal && sEfet === "vencendo";
+      if (filtro === "baixado")  return isReal && sEfet === "baixado";
       if (filtro === "barter")   return isReal && l.moeda === "barter";
       if (filtro === "previsao") return l.natureza === "previsao";
       return true;
@@ -365,7 +376,8 @@ function ContasPagarInner() {
     // Ordenar por vencimento crescente
     arr = arr.sort((a, b) => (a.data_vencimento ?? "") < (b.data_vencimento ?? "") ? -1 : 1);
     return arr;
-  }, [lancamentos, filtro]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lancamentos, filtro, TODAY]);
 
   const filtrados = useMemo(() => {
     return filtradosBase.filter(l => {
@@ -713,8 +725,8 @@ function ContasPagarInner() {
               {/* Filtros de status */}
               <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 {([
-                  { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => l.status !== "baixado" && l.moeda !== "barter").length, cor: "#E24B4A" },
-                  { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                           cor: "#E24B4A" },
+                  { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => statusEfetivo(l) !== "baixado" && l.moeda !== "barter").length, cor: "#E24B4A" },
+                  { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                             cor: "#E24B4A" },
                   { key: "baixado",  label: "Pagos",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#E24B4A" },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#E24B4A" },
                   { key: "previsao", label: "Previsões",  count: lancamentos.filter(l => l.natureza === "previsao").length,                       cor: "#1A5CB8" },
@@ -829,12 +841,13 @@ function ContasPagarInner() {
                         </tr>
                       ) : filtrados.map((l, li) => {
                         const isPrevisao = l.natureza === "previsao";
-                        const dot       = dotStatus(l.status);
+                        const sEfet     = statusEfetivo(l);
+                        const dot       = dotStatus(sEfet);
                         const conv      = l.moeda === "USD" ? fmtBRL(l.valor * (l.cotacao_usd ?? COTACAO_USD)) : null;
                         const safra     = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? "—";
                         const cicloDesc = ciclos.find(c => c.id === l.ciclo_id)?.descricao ?? "—";
                         const prod      = produtores.find(p => p.id === l.produtor_id)?.nome ?? "—";
-                        const isVenc    = !isPrevisao && (l.status === "vencido" || l.status === "vencendo");
+                        const isVenc    = !isPrevisao && (sEfet === "vencido" || sEfet === "vencendo");
                         const pessoaNome = pessoas.find(p => p.id === l.pessoa_id)?.nome;
                         const fornRaw   = pessoaNome ?? exibirFornecedor(l.descricao);
                         // Remove " - OPERAÇÃO" duplicado do final do nome

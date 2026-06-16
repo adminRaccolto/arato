@@ -399,7 +399,7 @@ export async function criarParcelamento(
 
 export async function baixarLancamento(
   id: string,
-  valor_pago: number,
+  valor_pago_agora: number,   // valor DESTA operação (será acumulado ao que já foi pago)
   data_baixa: string,
   conta_bancaria: string,
   extras?: {
@@ -411,15 +411,29 @@ export async function baixarLancamento(
     multa_valor?: number;
     juros_valor?: number;
     desconto_valor?: number;
-    salvar_classificacao?: boolean; // flag para gravar regra automática
+    salvar_classificacao?: boolean;
   }
 ): Promise<void> {
-  const patch: Record<string, unknown> = { status: "baixado", valor_pago, data_baixa, conta_bancaria };
-  if (extras?.pessoa_id)               patch.pessoa_id = extras.pessoa_id;
-  if (extras?.operacao_gerencial_id)   patch.operacao_gerencial_id = extras.operacao_gerencial_id;
-  if (extras?.ano_safra_id)            patch.ano_safra_id = extras.ano_safra_id;
-  if (extras?.ciclo_id)                patch.ciclo_id = extras.ciclo_id;
-  if (extras?.observacao)              patch.observacao = extras.observacao;
+  // Lê valores atuais para calcular acumulado e decidir status
+  const { data: atual } = await supabase
+    .from("lancamentos")
+    .select("valor, cotacao_usd, moeda, valor_pago")
+    .eq("id", id)
+    .single();
+
+  const cotacao      = (atual?.cotacao_usd as number | null) ?? 5.12;
+  const valorTotal   = atual?.moeda === "USD" ? (atual.valor ?? 0) * cotacao : (atual?.valor ?? 0);
+  const jaRPago      = (atual?.valor_pago as number | null) ?? 0;
+  const novoTotal    = jaRPago + valor_pago_agora;
+  // Tolerância de R$0,01 para evitar problemas de arredondamento
+  const novoStatus   = novoTotal >= valorTotal - 0.01 ? "baixado" : "parcial";
+
+  const patch: Record<string, unknown> = { status: novoStatus, valor_pago: novoTotal, data_baixa, conta_bancaria };
+  if (extras?.pessoa_id)             patch.pessoa_id = extras.pessoa_id;
+  if (extras?.operacao_gerencial_id) patch.operacao_gerencial_id = extras.operacao_gerencial_id;
+  if (extras?.ano_safra_id)          patch.ano_safra_id = extras.ano_safra_id;
+  if (extras?.ciclo_id)              patch.ciclo_id = extras.ciclo_id;
+  if (extras?.observacao)            patch.observacao = extras.observacao;
   const { error } = await supabase.from("lancamentos").update(patch).eq("id", id);
   if (error) throw error;
 }
