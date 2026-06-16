@@ -1,0 +1,41 @@
+{
+  "name": "arato-campo",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build:android:preview": "eas build --platform android --profile preview",
+    "build:ios:preview": "eas build --platform ios --profile preview",
+    "build:android": "eas build --platform android --profile production",
+    "build:ios": "eas build --platform ios --profile production",
+    "submit:android": "eas submit --platform android",
+    "submit:ios": "eas submit --platform ios"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-community/netinfo": "11.4.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "expo": "~53.0.9",
+    "expo-constants": "~17.1.8",
+    "expo-file-system": "~18.1.11",
+    "expo-image-picker": "~16.1.4",
+    "expo-location": "~18.1.6",
+    "expo-notifications": "~0.31.5",
+    "expo-router": "~5.1.11",
+    "expo-secure-store": "~14.2.4",
+    "expo-splash-screen": "~0.30.10",
+    "expo-status-bar": "~2.2.3",
+    "react": "19.0.0",
+    "react-native": "0.79.6",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-url-polyfill": "^2.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/react": "~18.3.12",
+    "typescript": "^5.3.3"
+  }
+}

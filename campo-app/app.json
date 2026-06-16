@@ -1,0 +1,77 @@
+{
+  "expo": {
+    "name": "Arato Campo",
+    "slug": "arato-campo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "arato-campo",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A4870"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "br.agr.arato.campo",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para registrar o ponto exato das operações de campo.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Usamos sua localização para monitoramento contínuo no campo.",
+        "NSCameraUsageDescription": "Usamos a câmera para fotografar pragas, doenças e operações de campo.",
+        "NSPhotoLibraryUsageDescription": "Acessamos a galeria para anexar fotos às ocorrências.",
+        "NSPhotoLibraryAddUsageDescription": "Salvamos fotos de campo na sua galeria."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A4870"
+      },
+      "package": "br.agr.arato.campo",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Usamos sua localização para registrar o ponto exato das operações de campo."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Acessamos a galeria para anexar fotos às ocorrências.",
+          "cameraPermission": "Usamos a câmera para fotografar pragas, doenças e operações de campo."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1A4870",
+          "sounds": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "SUBSTITUIR_APOS_eas_init"
+      }
+    }
+  }
+}
