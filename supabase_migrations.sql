@@ -5784,3 +5784,19 @@ ALTER TABLE nf_entradas
   ADD COLUMN IF NOT EXISTS valor_desconto   numeric(15,2) DEFAULT 0;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 126: Lançamentos — Talhão (FK) + Mão de Obra
+-- =============================================================================
+
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS talhao_id          uuid REFERENCES talhoes(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS funcionario_id     uuid REFERENCES funcionarios(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS tipo_mao_obra      text,
+  ADD COLUMN IF NOT EXISTS unidade_mao_obra   text,
+  ADD COLUMN IF NOT EXISTS quantidade_mao_obra numeric(12,4);
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_talhao_id    ON lancamentos(talhao_id);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_funcionario   ON lancamentos(funcionario_id);
+
+NOTIFY pgrst, 'reload schema';

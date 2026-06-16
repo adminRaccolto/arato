@@ -5,8 +5,8 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto } from "../../../lib/supabase";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -136,6 +136,8 @@ function ContasPagarInner() {
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [ciclos,        setCiclos]        = useState<Ciclo[]>([]);
+  const [talhoes,       setTalhoes]       = useState<Talhao[]>([]);
+  const [funcionarios,  setFuncionarios]  = useState<Funcionario[]>([]);
   const [contas,        setContas]        = useState<ContaBancariaMin[]>([]);
   const [opGerenciais,  setOpGerenciais]  = useState<OperacaoGerencial[]>([]);
   const [centrosCusto,  setCentrosCusto]  = useState<CentroCusto[]>([]);
@@ -210,6 +212,7 @@ function ContasPagarInner() {
       ano_safra_id:          l.ano_safra_id          ?? "",
       produtor_id:           l.produtor_id           ?? "",
       ciclo_id:              l.ciclo_id              ?? "",
+      talhao_id:             l.talhao_id             ?? "",
       operacao_gerencial_id: l.operacao_gerencial_id ?? "",
       natureza:              (l.natureza as "real" | "previsao") ?? "real",
       forma_pagamento:       l.forma_pagamento       ?? "PIX",
@@ -217,6 +220,10 @@ function ContasPagarInner() {
       data_emissao:          l.data_lancamento       ?? TODAY,
       numero_documento:      "",
       serie:                 "",
+      funcionario_id:        l.funcionario_id        ?? "",
+      tipo_mao_obra:         l.tipo_mao_obra         ?? "",
+      unidade_mao_obra:      l.unidade_mao_obra      ?? "Dia",
+      quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
     });
     setFormFazendaId(l.fazenda_id ?? fazendaId ?? "");
     setModalNovo(true);
@@ -248,7 +255,7 @@ function ContasPagarInner() {
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
     juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0",
     chave_xml: "", centro_custo: "",
-    ano_safra_id: "", produtor_id: "", ciclo_id: "",
+    ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "",
     operacao_gerencial_id: "",
     natureza: "real" as "real" | "previsao",
     forma_pagamento: "PIX",
@@ -256,6 +263,8 @@ function ContasPagarInner() {
     data_emissao: TODAY,
     numero_documento: "",
     serie: "",
+    // Mão de Obra
+    funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "",
   });
 
   // grid editável de parcelas (prazo)
@@ -309,11 +318,18 @@ function ContasPagarInner() {
           return true;
         }))
       ).catch(() => {});
-      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
       listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
     }
   }, [fazendaId]);
+
+  // Recarrega ciclos e talhões quando a fazenda selecionada no form muda
+  useEffect(() => {
+    if (!fid) return;
+    supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, fazenda_id").eq("fazenda_id", fid).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
+    listarTalhoes(fid).then(setTalhoes).catch(() => {});
+    listarFuncionarios(fid).then(setFuncionarios).catch(() => {});
+  }, [fid]);
 
   async function carregar() {
     setLoading(true);
@@ -589,10 +605,15 @@ function ContasPagarInner() {
           observacao:            form.obs                   || null,
           ano_safra_id:          form.ano_safra_id          || null,
           ciclo_id:              form.ciclo_id              || null,
+          talhao_id:             form.talhao_id             || null,
           produtor_id:           form.produtor_id           || null,
           operacao_gerencial_id: form.operacao_gerencial_id || null,
           natureza:              form.natureza,
           forma_pagamento:       form.forma_pagamento       || null,
+          funcionario_id:        form.funcionario_id        || null,
+          tipo_mao_obra:         form.tipo_mao_obra         || null,
+          unidade_mao_obra:      form.unidade_mao_obra      || null,
+          quantidade_mao_obra:   form.quantidade_mao_obra   ? Number(form.quantidade_mao_obra) : null,
         };
         const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
@@ -636,9 +657,14 @@ function ContasPagarInner() {
       observacao:            form.obs                   || undefined,
       ano_safra_id:          form.ano_safra_id          || undefined,
       ciclo_id:              form.ciclo_id              || undefined,
+      talhao_id:             form.talhao_id             || undefined,
       produtor_id:           form.produtor_id           || undefined,
       operacao_gerencial_id: form.operacao_gerencial_id || undefined,
       natureza:              form.natureza,
+      funcionario_id:        form.funcionario_id        || undefined,
+      tipo_mao_obra:         form.tipo_mao_obra         || undefined,
+      unidade_mao_obra:      form.unidade_mao_obra      || undefined,
+      quantidade_mao_obra:   form.quantidade_mao_obra   ? Number(form.quantidade_mao_obra) : undefined,
     };
 
     try {
@@ -724,7 +750,7 @@ function ContasPagarInner() {
               onClick={() => {
               setFormFazendaId(fazendaId);
               setModalTab("principal");
-              setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "" });
+              setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "" });
               setParcelas([]);
               setOpGerBusca("");
               setArquivoNF(null);
@@ -1504,7 +1530,6 @@ function ContasPagarInner() {
                     </span>
                   )}
                 </div>
-                <FazendaSelector contaId={contaId} value={fid} onChange={setFormFazendaId} />
               </div>
 
               {/* Abas */}
@@ -1790,38 +1815,118 @@ function ContasPagarInner() {
 
               {/* ─── Aba Vínculos ─── */}
               {modalTab === "vinculos" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                  {/* Linha 1: hierarquia Produtor → Propriedade */}
                   <div>
-                    <label style={lbl}>Safra</label>
-                    <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
-                      <option value="">Sem vínculo</option>
-                      {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                    </select>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Responsabilidade</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Produtor</label>
+                        <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
+                          <option value="">— Sem vínculo —</option>
+                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Propriedade (Fazenda) *</label>
+                        <FazendaSelector
+                          contaId={contaId}
+                          value={fid}
+                          onChange={id => { setFormFazendaId(id); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }}
+                          style={{ width: "100%", boxSizing: "border-box", borderRadius: 8, background: "#F0F6FB" }}
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Linha 2: Safra → Ciclo → Talhão */}
                   <div>
-                    <label style={lbl}>Ciclo / Empreendimento</label>
-                    <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
-                      <option value="">— Sem ciclo —</option>
-                      {ciclos.filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
-                        .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
-                    </select>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vínculo Agrícola</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "180px 1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Ano Safra</label>
+                        <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                          <option value="">— Sem safra —</option>
+                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Ciclo / Empreendimento</label>
+                        <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
+                          <option value="">— Sem ciclo —</option>
+                          {ciclos
+                            .filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
+                            .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                        </select>
+                        {ciclos.length === 0 && fid && (
+                          <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 3 }}>Nenhum ciclo cadastrado para esta propriedade</div>
+                        )}
+                      </div>
+                      <div>
+                        <label style={lbl}>Talhão</label>
+                        <select style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))}>
+                          <option value="">— Sem talhão —</option>
+                          {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}{t.area_ha ? ` (${t.area_ha} ha)` : ""}</option>)}
+                        </select>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Linha 3: Centro de Custo */}
                   <div>
-                    <label style={lbl}>Centro de Custo</label>
-                    <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
-                      <option value="">— Sem vínculo —</option>
-                      {centrosCusto.filter(c => c.parent_id).map(c => (
-                        <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                      ))}
-                    </select>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Contabilidade</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Centro de Custo</label>
+                        <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
+                          <option value="">— Sem vínculo —</option>
+                          {centrosCusto.filter(c => c.parent_id).map(c => (
+                            <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={lbl}>Produtor</label>
-                    <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
-                      <option value="">Sem vínculo</option>
-                      {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                    </select>
-                  </div>
+
+                  {/* Seção Mão de Obra — aparece quando OG é Mão de Obra */}
+                  {form.operacao_gerencial_id && (() => {
+                    const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!og || !(og.classificacao ?? "").startsWith("2.01.01.10")) return null;
+                    return (
+                      <div style={{ background: "#F0F7FF", border: "0.5px solid #1A487040", borderRadius: 8, padding: 14 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>👷 Mão de Obra</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 140px 120px", gap: 12 }}>
+                          <div>
+                            <label style={lbl}>Funcionário / Prestador</label>
+                            <select style={inp} value={form.funcionario_id} onChange={e => setForm(p => ({ ...p, funcionario_id: e.target.value }))}>
+                              <option value="">— Sem vínculo —</option>
+                              {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Tipo</label>
+                            <select style={inp} value={form.tipo_mao_obra} onChange={e => setForm(p => ({ ...p, tipo_mao_obra: e.target.value }))}>
+                              <option value="">— Selecionar —</option>
+                              {["CLT","Temporário","Empreitada","Terceirizado"].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Unidade</label>
+                            <select style={inp} value={form.unidade_mao_obra} onChange={e => setForm(p => ({ ...p, unidade_mao_obra: e.target.value }))}>
+                              {["Hora","Dia","Ha","Sc","Tarefa","Empreitada"].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={lbl}>Quantidade</label>
+                            <input style={inp} type="number" min="0" step="0.5" placeholder="0"
+                              value={form.quantidade_mao_obra}
+                              onChange={e => setForm(p => ({ ...p, quantidade_mao_obra: e.target.value }))} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

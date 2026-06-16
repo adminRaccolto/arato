@@ -3,8 +3,8 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import FazendaSelector from "../../../components/FazendaSelector";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo } from "../../../lib/supabase";
+import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, listarTalhoes } from "../../../lib/db";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -118,6 +118,7 @@ export default function ContasReceber() {
   const [lancamentos,  setLancamentos]  = useState<Lancamento[]>([]);
   const [anosSafra,    setAnosSafra]    = useState<AnoSafra[]>([]);
   const [ciclos,       setCiclos]       = useState<Ciclo[]>([]);
+  const [talhoes,      setTalhoes]      = useState<Talhao[]>([]);
   const [produtores,   setProdutores]   = useState<Produtor[]>([]);
   const [pessoas,      setPessoas]      = useState<Pessoa[]>([]);
   const [contas,       setContas]       = useState<ContaBancariaMin[]>([]);
@@ -174,6 +175,8 @@ export default function ContasReceber() {
       centro_custo:          l.centro_custo          ?? "",
       ano_safra_id:          l.ano_safra_id          ?? "",
       produtor_id:           l.produtor_id           ?? "",
+      ciclo_id:              l.ciclo_id              ?? "",
+      talhao_id:             l.talhao_id             ?? "",
       operacao_gerencial_id: l.operacao_gerencial_id ?? "",
       natureza:              (l.natureza as "real" | "previsao") ?? "real",
       data_emissao:          l.data_lancamento       ?? TODAY,
@@ -211,6 +214,7 @@ export default function ContasReceber() {
     conta_recebimento: "",
     chave_xml: "", centro_custo: "",
     ano_safra_id: "", produtor_id: "",
+    ciclo_id: "", talhao_id: "",
     operacao_gerencial_id: "",
     natureza: "real" as "real" | "previsao",
     data_emissao: TODAY,
@@ -246,9 +250,15 @@ export default function ContasReceber() {
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
       listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "receita", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
       supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
-      supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
     }
   }, [fazendaId]);
+
+  // Reload ciclos e talhões sempre que a fazenda selecionada no formulário mudar
+  useEffect(() => {
+    if (!fid) return;
+    supabase.from("ciclos").select("id, descricao, cultura, ano_safra_id, fazenda_id").eq("fazenda_id", fid).order("created_at", { ascending: false }).then(({ data }) => setCiclos((data ?? []) as Ciclo[]));
+    listarTalhoes(fid).then(setTalhoes).catch(() => {});
+  }, [fid]);
 
   async function carregar() {
     setLoading(true);
@@ -487,7 +497,10 @@ export default function ContasReceber() {
           centro_custo:          form.centro_custo         || null,
           observacao:            form.obs                  || null,
           ano_safra_id:          form.ano_safra_id         || null,
+          ciclo_id:              form.ciclo_id             || null,
+          talhao_id:             form.talhao_id            || null,
           produtor_id:           form.produtor_id          || null,
+          fazenda_id:            fid                       || null,
           operacao_gerencial_id: form.operacao_gerencial_id || null,
           natureza:              form.natureza,
           forma_pagamento:       form.forma_recebimento    || null,
@@ -529,6 +542,8 @@ export default function ContasReceber() {
       centro_custo:          form.centro_custo          || undefined,
       observacao:            form.obs                   || undefined,
       ano_safra_id:          form.ano_safra_id          || undefined,
+      ciclo_id:              form.ciclo_id              || undefined,
+      talhao_id:             form.talhao_id             || undefined,
       produtor_id:           form.produtor_id           || undefined,
       operacao_gerencial_id: form.operacao_gerencial_id || undefined,
       natureza:              form.natureza,
@@ -1242,7 +1257,6 @@ export default function ContasReceber() {
                     ))}
                   </div>
                 </div>
-                <FazendaSelector contaId={contaId} value={fid} onChange={setFormFazendaId} />
               </div>
 
               {/* Abas */}
@@ -1469,25 +1483,73 @@ export default function ContasReceber() {
 
               {/* ─── Aba Vínculos ─── */}
               {modalTab === "vinculos" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-                  <div>
-                    <label style={lbl}>Safra</label>
-                    <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value }))}>
-                      <option value="">Sem vínculo</option>
-                      {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                    </select>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+                  {/* Responsabilidade */}
+                  <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Responsabilidade</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Produtor</label>
+                        <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
+                          <option value="">— Sem vínculo —</option>
+                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Propriedade</label>
+                        <FazendaSelector
+                          contaId={contaId}
+                          value={fid}
+                          onChange={v => {
+                            setFormFazendaId(v);
+                            setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" }));
+                          }}
+                          style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", boxSizing: "border-box", outline: "none" }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ gridColumn: "span 2" }}>
-                    <label style={lbl}>Centro de Custo / Talhão</label>
-                    <input style={inp} placeholder="Ex: Talhão 3 / Safra soja 26" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
+
+                  {/* Vínculo Agrícola */}
+                  <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Vínculo Agrícola</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Ano Safra</label>
+                        <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                          <option value="">— Sem vínculo —</option>
+                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Ciclo / Empreendimento</label>
+                        <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
+                          <option value="">— Sem ciclo —</option>
+                          {ciclos
+                            .filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
+                            .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Talhão</label>
+                        <select style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))}>
+                          <option value="">— Sem talhão —</option>
+                          {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.area_ha?.toLocaleString("pt-BR")} ha)</option>)}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label style={lbl}>Produtor</label>
-                    <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
-                      <option value="">Sem vínculo</option>
-                      {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                    </select>
+
+                  {/* Contabilidade */}
+                  <div style={{ border: "0.5px solid #E4E9F0", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Contabilidade</div>
+                    <div>
+                      <label style={lbl}>Centro de Custo</label>
+                      <input style={inp} placeholder="Ex: Custeio Soja 26 — Fazenda Boa Vista" value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))} />
+                    </div>
                   </div>
+
                 </div>
               )}
 

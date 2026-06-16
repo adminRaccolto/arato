@@ -250,6 +250,13 @@ export type Lancamento = {
   pedido_compra_id?: string;          // FK pedidos_compra.id — quando gerado por pedido de compra
   operacao_gerencial_id?: string;     // FK operacoes_gerenciais.id — vínculo contábil (débito/crédito)
   forma_pagamento?: string;
+  // Propriedade e talhão (análise por fazenda)
+  talhao_id?: string;                 // FK talhoes.id — talhão vinculado ao custo/receita
+  // Mão de obra
+  funcionario_id?: string;            // FK funcionarios.id — funcionário vinculado
+  tipo_mao_obra?: string;             // CLT | Temporário | Empreitada | Terceirizado
+  unidade_mao_obra?: string;          // Hora | Dia | Ha | Sc | Tarefa
+  quantidade_mao_obra?: number;       // qtd na unidade escolhida
   created_at?: string;
 };
 
