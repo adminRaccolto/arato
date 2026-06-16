@@ -106,6 +106,8 @@ export type Talhao = {
   lat?: number;
   lng?: number;
   kml_url?: string;
+  tipo_posse?: "proprio" | "arrendado";   // próprio ou arrendado
+  arrendamento_id?: string;               // FK arrendamentos.id (quando arrendado)
   created_at?: string;
 };
 

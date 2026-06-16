@@ -43,7 +43,7 @@ import { planoContasPadrao, labelConta, type ContaContabil } from "../../lib/pla
 import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
 import InputMonetario from "../../components/InputMonetario";
 import type {
-  Fazenda as FazendaDB, Talhao,
+  Fazenda as FazendaDB, Talhao, Arrendamento,
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
   AnoSafra, Ciclo, CicloTalhao, Maquina, BombaCombustivel,
   Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito,
@@ -255,7 +255,8 @@ function CadastrosInner() {
   });
   const [modalTalhao, setModalTalhao] = useState<string | null>(null); // fazenda_id
   const [editTalhao, setEditTalhao]   = useState<Talhao | null>(null);
-  const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", solo: "LVdf", lat: "", lng: "" });
+  const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio" as "proprio"|"arrendado", arrendamento_id: "" });
+  const [talhaoArrs, setTalhaoArrs]   = useState<Arrendamento[]>([]); // arrendamentos da fazenda no modal talhão
   const [modalMatricula, setModalMatricula] = useState<string | null>(null); // fazenda_id
   const [editMatricula, setEditMatricula]   = useState<MatriculaImovel | null>(null);
   const [fMat, setFMat]               = useState({ produtor_id: "", numero: "", cartorio: "", area_ha: "", descricao: "", em_garantia: false, garantia_banco: "", garantia_valor: "", garantia_vencimento: "" });
@@ -1066,9 +1067,15 @@ function CadastrosInner() {
     setModalFaz(false);
   });
 
-  const abrirModalTalhao = (fid: string, t?: Talhao) => {
+  const abrirModalTalhao = async (fid: string, t?: Talhao) => {
     setModalTalhao(fid); setEditTalhao(t ?? null);
-    setFTalhao(t ? { nome: t.nome, area: String(t.area_ha), solo: t.tipo_solo ?? "LVdf", lat: String(t.lat ?? ""), lng: String(t.lng ?? "") } : { nome: "", area: "", solo: "LVdf", lat: "", lng: "" });
+    setFTalhao(t ? {
+      nome: t.nome, area: String(t.area_ha), solo: t.tipo_solo ?? "LVdf",
+      lat: String(t.lat ?? ""), lng: String(t.lng ?? ""),
+      tipo_posse: t.tipo_posse ?? "proprio",
+      arrendamento_id: t.arrendamento_id ?? "",
+    } : { nome: "", area: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio", arrendamento_id: "" });
+    try { const arrs = await listarArrendamentos(fid); setTalhaoArrs(arrs); } catch { setTalhaoArrs([]); }
   };
   const salvarTalhao = () => salvar(async () => {
     if (!modalTalhao || !fTalhao.nome.trim() || !fTalhao.area) return;
@@ -1087,7 +1094,7 @@ function CadastrosInner() {
         `Reduza a área deste talhão para no máximo ${disponivel.toLocaleString("pt-BR")} ha.`
       );
     }
-    const payload = { fazenda_id: modalTalhao, nome: fTalhao.nome.trim(), area_ha: novaArea, tipo_solo: fTalhao.solo || undefined, lat: fTalhao.lat ? Number(fTalhao.lat) : undefined, lng: fTalhao.lng ? Number(fTalhao.lng) : undefined };
+    const payload = { fazenda_id: modalTalhao, nome: fTalhao.nome.trim(), area_ha: novaArea, tipo_solo: fTalhao.solo || undefined, lat: fTalhao.lat ? Number(fTalhao.lat) : undefined, lng: fTalhao.lng ? Number(fTalhao.lng) : undefined, tipo_posse: fTalhao.tipo_posse, arrendamento_id: fTalhao.tipo_posse === "arrendado" ? fTalhao.arrendamento_id || undefined : undefined };
     if (editTalhao) {
       await atualizarTalhao(editTalhao.id, payload);
       setTalhoes(prev => ({ ...prev, [modalTalhao]: (prev[modalTalhao] ?? []).map(x => x.id === editTalhao.id ? { ...x, ...payload } : x) }));
@@ -1865,12 +1872,18 @@ function CadastrosInner() {
                             })()}
                             {tals.length === 0 ? <div style={{ fontSize: 12, color: "#444", padding: "6px 0" }}>Nenhum talhão cadastrado</div> : (
                               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                                <TH cols={["Talhão", "Área (ha)", "Solo", "Latitude", "Longitude", ""]} />
+                                <TH cols={["Talhão", "Área (ha)", "Posse", "Solo", "Latitude", "Longitude", ""]} />
                                 <tbody>
                                   {tals.map((t, ti) => (
                                     <tr key={t.id} style={{ borderBottom: ti < tals.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
                                       <td style={{ padding: "8px 14px", color: "#1a1a1a", fontWeight: 600 }}>{t.nome}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "center" }}>{(t.area_ha ?? 0).toLocaleString("pt-BR")}</td>
+                                      <td style={{ padding: "8px 14px", textAlign: "center" }}>
+                                        {t.tipo_posse === "arrendado"
+                                          ? <span style={{ fontSize: 11, background: "#FBF3E0", color: "#7A4300", padding: "2px 7px", borderRadius: 5, fontWeight: 600 }}>🤝 Arrendado</span>
+                                          : <span style={{ fontSize: 11, background: "#DCF5E8", color: "#14532D", padding: "2px 7px", borderRadius: 5, fontWeight: 600 }}>🏡 Próprio</span>
+                                        }
+                                      </td>
                                       <td style={{ padding: "8px 14px", textAlign: "center" }}><span style={{ fontSize: 11, background: "#F1EFE8", color: "#555", padding: "2px 7px", borderRadius: 5 }}>{t.tipo_solo || "—"}</span></td>
                                       <td style={{ padding: "8px 14px", textAlign: "center", color: "#1a1a1a", fontSize: 12 }}>{t.lat ?? "—"}</td>
                                       <td style={{ padding: "8px 14px", textAlign: "center", color: "#1a1a1a", fontSize: 12 }}>{t.lng ?? "—"}</td>
@@ -5898,14 +5911,76 @@ function CadastrosInner() {
 
       {/* Modal Talhão */}
       {modalTalhao && (
-        <Modal titulo={editTalhao ? "Editar Talhão" : "Novo Talhão"} subtitulo={fazendas.find(f => f.id === modalTalhao)?.nome} onClose={() => setModalTalhao(null)} width={720}>
+        <Modal titulo={editTalhao ? "Editar Talhão" : "Novo Talhão"} subtitulo={fazendas.find(f => f.id === modalTalhao)?.nome} onClose={() => setModalTalhao(null)} width={760}>
+
+          {/* Linha 1: Nome + Área + Tipo de Posse */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 220px", gap: 14, marginBottom: 14 }}>
+            <div><label style={lbl}>Nome *</label><input style={inp} value={fTalhao.nome} onChange={e => setFTalhao(p => ({ ...p, nome: e.target.value }))} /></div>
+            <div><label style={lbl}>Área (ha) *</label><input style={inp} type="number" step="0.01" value={fTalhao.area} onChange={e => setFTalhao(p => ({ ...p, area: e.target.value }))} /></div>
+            <div>
+              <label style={lbl}>Tipo de Posse</label>
+              <div style={{ display: "flex", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+                {(["proprio", "arrendado"] as const).map(v => (
+                  <button key={v} type="button"
+                    onClick={() => setFTalhao(p => ({ ...p, tipo_posse: v, arrendamento_id: v === "proprio" ? "" : p.arrendamento_id }))}
+                    style={{ flex: 1, padding: "8px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: fTalhao.tipo_posse === v ? 700 : 400,
+                      background: fTalhao.tipo_posse === v ? (v === "arrendado" ? "#C9921B" : "#1A4870") : "#fff",
+                      color: fTalhao.tipo_posse === v ? "#fff" : "#555" }}>
+                    {v === "proprio" ? "🏡 Próprio" : "🤝 Arrendado"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Arrendamento vinculado — só quando arrendado */}
+          {fTalhao.tipo_posse === "arrendado" && (
+            <div style={{ marginBottom: 14, padding: "14px 16px", background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 10 }}>
+              <label style={{ ...lbl, color: "#7A4300" }}>Contrato de Arrendamento vinculado</label>
+              {talhaoArrs.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#7A4300", marginTop: 4 }}>
+                  Nenhum arrendamento cadastrado para esta fazenda. Cadastre em Fazendas › aba Arrendamentos primeiro.
+                </div>
+              ) : (
+                <select style={{ ...inp, borderColor: "#C9921B" }}
+                  value={fTalhao.arrendamento_id}
+                  onChange={e => setFTalhao(p => ({ ...p, arrendamento_id: e.target.value }))}>
+                  <option value="">— Selecionar arrendamento —</option>
+                  {talhaoArrs.map(a => {
+                    const props = pessoas.find(p => p.id === a.proprietario_id);
+                    const proprietario = props?.nome ?? a.proprietario_nome ?? "Proprietário não informado";
+                    const forma = { sc_soja: "sc soja/ha", sc_milho: "sc milho/ha", sc_soja_milho: "sc soja+milho/ha", brl: "R$/ha" }[a.forma_pagamento];
+                    const valor = a.sc_ha ?? a.valor_brl;
+                    return (
+                      <option key={a.id} value={a.id}>
+                        {proprietario} · {a.area_ha?.toLocaleString("pt-BR")} ha · {valor?.toLocaleString("pt-BR")} {forma}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+              {fTalhao.arrendamento_id && (() => {
+                const arr = talhaoArrs.find(a => a.id === fTalhao.arrendamento_id);
+                if (!arr) return null;
+                const props = pessoas.find(p => p.id === arr.proprietario_id);
+                return (
+                  <div style={{ marginTop: 8, display: "flex", gap: 16, fontSize: 11, color: "#7A4300" }}>
+                    {arr.inicio && <span>Início: <strong>{new Date(arr.inicio + "T12:00").toLocaleDateString("pt-BR")}</strong></span>}
+                    {arr.vencimento && <span>Vencimento: <strong>{new Date(arr.vencimento + "T12:00").toLocaleDateString("pt-BR")}</strong></span>}
+                    {props && <span>Proprietário: <strong>{props.nome}</strong></span>}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Linha 2: Solo + GPS */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div style={{ gridColumn: "1/3" }}><label style={lbl}>Nome *</label><input style={inp} value={fTalhao.nome} onChange={e => setFTalhao(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div><label style={lbl}>Área (ha) *</label><input style={inp} type="number" value={fTalhao.area} onChange={e => setFTalhao(p => ({ ...p, area: e.target.value }))} /></div>
             <div><label style={lbl}>Tipo de Solo</label><select style={inp} value={fTalhao.solo} onChange={e => setFTalhao(p => ({ ...p, solo: e.target.value }))}>{SOLOS.map(s => <option key={s}>{s}</option>)}</select></div>
             <div><label style={lbl}>Latitude GPS</label><input style={inp} type="number" step="0.0001" placeholder="-13.8283" value={fTalhao.lat} onChange={e => setFTalhao(p => ({ ...p, lat: e.target.value }))} /></div>
             <div><label style={lbl}>Longitude GPS</label><input style={inp} type="number" step="0.0001" placeholder="-56.0801" value={fTalhao.lng} onChange={e => setFTalhao(p => ({ ...p, lng: e.target.value }))} /></div>
           </div>
+
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalTalhao(null)}>Cancelar</button>
             <button style={{ ...btnV, background: "#C9921B", opacity: salvando || !fTalhao.nome.trim() || !fTalhao.area ? 0.5 : 1 }} disabled={salvando || !fTalhao.nome.trim() || !fTalhao.area} onClick={salvarTalhao}>{salvando ? "Salvando…" : "Salvar Talhão"}</button>

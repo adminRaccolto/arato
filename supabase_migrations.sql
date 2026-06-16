@@ -5873,3 +5873,19 @@ CREATE TABLE IF NOT EXISTS ccir_matriculas (
 --  passam sempre por fazenda_id com a segurança garantida no servidor)
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 128: Talhões — tipo de posse + vínculo com arrendamento
+-- =============================================================================
+
+ALTER TABLE talhoes
+  ADD COLUMN IF NOT EXISTS tipo_posse      text NOT NULL DEFAULT 'proprio'  -- proprio | arrendado
+    CHECK (tipo_posse IN ('proprio', 'arrendado')),
+  ADD COLUMN IF NOT EXISTS arrendamento_id uuid REFERENCES arrendamentos(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_talhoes_arrendamento ON talhoes(arrendamento_id);
+
+COMMENT ON COLUMN talhoes.tipo_posse IS 'próprio ou arrendado';
+COMMENT ON COLUMN talhoes.arrendamento_id IS 'FK para o contrato de arrendamento quando tipo_posse = arrendado';
+
+NOTIFY pgrst, 'reload schema';
