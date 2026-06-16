@@ -166,63 +166,60 @@ function ContasPagarInner() {
   const [modalTab,   setModalTab]   = useState<"principal"|"parcelas"|"vinculos"|"adicionais">("principal");
   const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
 
-  // ── Modal Editar ──────────────────────────────────────────────
-  const [modalEditar, setModalEditar] = useState<Lancamento | null>(null);
-  const [editForm, setEditForm] = useState({
-    descricao: "", categoria: "", data_vencimento: "",
-    valorMask: "", observacao: "", pessoa_id: "",
-    conta_bancaria: "", ano_safra_id: "", produtor_id: "", ciclo_id: "",
-    operacao_gerencial_id: "",
-  });
-  const [editSalvando, setEditSalvando] = useState(false);
+  // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
+  const [editandoId, setEditandoId] = useState<string | null>(null);
 
-  function abrirEditar(l: Lancamento) {
-    setEditForm({
-      descricao:        l.descricao ?? "",
-      categoria:        l.categoria ?? "",
-      data_vencimento:  l.data_vencimento ?? "",
-      valorMask:        l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
-      observacao:       l.observacao ?? "",
-      pessoa_id:        l.pessoa_id ?? "",
-      conta_bancaria:        l.conta_bancaria ?? "",
-      ano_safra_id:          l.ano_safra_id ?? "",
-      produtor_id:           l.produtor_id ?? "",
-      ciclo_id:              l.ciclo_id ?? "",
-      operacao_gerencial_id: l.operacao_gerencial_id ?? "",
-    });
-    setModalEditar(l);
+  function fecharModal() {
+    setModalNovo(false);
+    setEditandoId(null);
+    setParcelas([]);
+    setErrosForm([]);
+    setOpGerBusca("");
+    setArquivoNF(null);
   }
 
-  async function salvarEditar() {
-    if (!modalEditar) return;
-    setEditSalvando(true);
-    const valor = parseFloat(editForm.valorMask.replace(/\./g, "").replace(",", ".")) || 0;
-    const { error } = await supabase.from("lancamentos").update({
-      descricao:       editForm.descricao,
-      categoria:       editForm.categoria,
-      data_vencimento: editForm.data_vencimento,
-      valor,
-      observacao:      editForm.observacao || null,
-      pessoa_id:       editForm.pessoa_id  || null,
-      conta_bancaria:  editForm.conta_bancaria || null,
-      ano_safra_id:    editForm.ano_safra_id   || null,
-      produtor_id:           editForm.produtor_id           || null,
-      ciclo_id:              editForm.ciclo_id              || null,
-      operacao_gerencial_id: editForm.operacao_gerencial_id || null,
-    }).eq("id", modalEditar.id);
-    if (error) { alert("Erro ao salvar: " + error.message); setEditSalvando(false); return; }
-    setLancamentos(prev => prev.map(x => x.id === modalEditar.id
-      ? { ...x, descricao: editForm.descricao, categoria: editForm.categoria,
-          data_vencimento: editForm.data_vencimento, valor,
-          observacao: editForm.observacao || null,
-          pessoa_id: editForm.pessoa_id || null,
-          conta_bancaria: editForm.conta_bancaria || null,
-          ano_safra_id: editForm.ano_safra_id || null,
-          produtor_id: editForm.produtor_id || null,
-          ciclo_id: editForm.ciclo_id || null } as Lancamento : x
-    ));
-    setModalEditar(null);
-    setEditSalvando(false);
+  function abrirEditar(l: Lancamento) {
+    setEditandoId(l.id);
+    setModalTab("principal");
+    setErrosForm([]);
+    setOpGerBusca("");
+    setArquivoNF(null);
+    setParcelas([]);
+    setForm({
+      moeda:                 (l.moeda as Moeda) ?? "BRL",
+      pessoa_id:             l.pessoa_id             ?? "",
+      descricao:             l.descricao             ?? "",
+      categoria:             l.categoria             ?? CATS_CP[0],
+      vencimento:            l.data_vencimento       ?? "",
+      valorMask:             l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
+      cotacaoMask:           l.cotacao_usd?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "5,12",
+      sacasMask:             l.sacas?.toString()     ?? "",
+      culturaBarter:         l.cultura_barter        ?? "soja",
+      precoSacaMask:         l.preco_saca_barter?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "120,00",
+      obs:                   l.observacao            ?? "",
+      condicao:              "avista",
+      qtdParcelas:           "2",
+      frequencia:            "1",
+      tipo_documento_lcdpr:  (l.tipo_documento_lcdpr as typeof form.tipo_documento_lcdpr) ?? "RECIBO",
+      juros_pct:             l.juros_pct             ?? 0,
+      multa_pct:             l.multa_pct             ?? 0,
+      desconto_pct:          l.desconto_pontualidade_pct ?? 0,
+      meses_diferido:        "0",
+      chave_xml:             l.chave_xml             ?? "",
+      centro_custo:          l.centro_custo          ?? "",
+      ano_safra_id:          l.ano_safra_id          ?? "",
+      produtor_id:           l.produtor_id           ?? "",
+      ciclo_id:              l.ciclo_id              ?? "",
+      operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+      natureza:              (l.natureza as "real" | "previsao") ?? "real",
+      forma_pagamento:       l.forma_pagamento       ?? "PIX",
+      conta_pagamento:       l.conta_bancaria        ?? "",
+      data_emissao:          l.data_lancamento       ?? TODAY,
+      numero_documento:      "",
+      serie:                 "",
+    });
+    setFormFazendaId(l.fazenda_id ?? fazendaId ?? "");
+    setModalNovo(true);
   }
 
   // ── Seleção para borderô ──────────────────────────────────
@@ -545,7 +542,7 @@ function ContasPagarInner() {
     if (form.moeda !== "barter" && !form.valorMask) erros.push("Valor é obrigatório (aba Principal).");
     if (form.moeda === "barter" && !form.sacasMask) erros.push("Quantidade de sacas é obrigatória (aba Principal).");
     if (!form.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória (aba Principal).");
-    if (form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar (aba Parcelas).");
+    if (!editandoId && form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar (aba Parcelas).");
     if (erros.length > 0) { setErrosForm(erros); return; }
     setErrosForm([]);
 
@@ -567,6 +564,52 @@ function ContasPagarInner() {
       } catch (_e) { /* upload opcional — prossegue sem o arquivo */ }
     }
 
+    // ── MODO EDIÇÃO: UPDATE ─────────────────────────────────────
+    if (editandoId) {
+      try {
+        setSalvando(true);
+        const patch = {
+          moeda:                 form.moeda,
+          pessoa_id:             form.pessoa_id             || null,
+          descricao:             form.descricao || (pessoas.find(p => p.id === form.pessoa_id)?.nome ?? ""),
+          categoria:             form.categoria,
+          data_vencimento:       form.vencimento,
+          valor:                 valorFinal,
+          cotacao_usd:           form.moeda === "USD" ? desmascarar(form.cotacaoMask) : null,
+          sacas:                 form.moeda === "barter" ? sacas : null,
+          cultura_barter:        form.moeda === "barter" ? form.culturaBarter : null,
+          preco_saca_barter:     form.moeda === "barter" ? precoSaca : null,
+          tipo_documento_lcdpr:  form.tipo_documento_lcdpr || null,
+          conta_bancaria:        form.conta_pagamento      || null,
+          juros_pct:             form.juros_pct     ? Number(form.juros_pct)   : null,
+          multa_pct:             form.multa_pct     ? Number(form.multa_pct)   : null,
+          desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : null,
+          chave_xml:             chaveXmlFinal ?? null,
+          centro_custo:          form.centro_custo          || null,
+          observacao:            form.obs                   || null,
+          ano_safra_id:          form.ano_safra_id          || null,
+          ciclo_id:              form.ciclo_id              || null,
+          produtor_id:           form.produtor_id           || null,
+          operacao_gerencial_id: form.operacao_gerencial_id || null,
+          natureza:              form.natureza,
+          forma_pagamento:       form.forma_pagamento       || null,
+        };
+        const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
+        if (error) { alert("Erro ao salvar: " + error.message); return; }
+        setLancamentos(prev => prev.map(x =>
+          x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
+        ));
+        fecharModal();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
+        alert("Erro ao salvar: " + msg);
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
+
+    // ── MODO CRIAÇÃO: INSERT ────────────────────────────────────
     const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
       fazenda_id:    fid!,
       tipo:          "pagar",
@@ -625,9 +668,7 @@ function ContasPagarInner() {
         criados = [await criarLancamento(base)];
       }
       setLancamentos(prev => [...criados, ...prev]);
-      setParcelas([]);
-      setForm(f => ({ ...f, pessoa_id: "", descricao: "", vencimento: "", valorMask: "", sacasMask: "", obs: "", condicao: "avista", qtdParcelas: "2", conta_pagamento: "", forma_pagamento: "PIX" }));
-      setModalNovo(false);
+      fecharModal();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
       alert("Erro ao salvar: " + msg);
@@ -1092,114 +1133,6 @@ function ContasPagarInner() {
         </div>
       )}
 
-      {/* ── Modal Editar ─────────────────────────────────────── */}
-      {modalEditar && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => { if (e.target === e.currentTarget) setModalEditar(null); }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 560, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>✏ Editar Lançamento</div>
-            <div style={{ display: "grid", gap: 14 }}>
-              <div>
-                <label style={lbl}>Descrição</label>
-                <input value={editForm.descricao} onChange={e => setEditForm(f => ({ ...f, descricao: e.target.value }))} style={inp} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Valor (R$)</label>
-                  <input value={editForm.valorMask} onChange={e => setEditForm(f => ({ ...f, valorMask: e.target.value }))} style={inp} placeholder="0,00" />
-                </div>
-                <div>
-                  <label style={lbl}>Vencimento</label>
-                  <input type="date" value={editForm.data_vencimento} onChange={e => setEditForm(f => ({ ...f, data_vencimento: e.target.value }))} style={inp} />
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Conta Bancária</label>
-                  <select value={editForm.conta_bancaria} onChange={e => setEditForm(f => ({ ...f, conta_bancaria: e.target.value }))} style={inp}>
-                    <option value="">— Sem conta —</option>
-                    {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={lbl}>Fornecedor / Pessoa</label>
-                  <select value={editForm.pessoa_id} onChange={e => setEditForm(f => ({ ...f, pessoa_id: e.target.value }))} style={inp}>
-                    <option value="">— Não informado —</option>
-                    {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>Ano Safra</label>
-                  <select value={editForm.ano_safra_id} onChange={e => setEditForm(f => ({ ...f, ano_safra_id: e.target.value, ciclo_id: "" }))} style={inp}>
-                    <option value="">— Sem safra —</option>
-                    {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label style={lbl}>Ciclo / Empreendimento</label>
-                <select value={editForm.ciclo_id} onChange={e => setEditForm(f => ({ ...f, ciclo_id: e.target.value }))} style={inp}>
-                  <option value="">— Sem ciclo —</option>
-                  {ciclos
-                    .filter(c => !editForm.ano_safra_id || c.ano_safra_id === editForm.ano_safra_id)
-                    .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)
-                  }
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Operação Gerencial</label>
-                <select value={editForm.operacao_gerencial_id}
-                  onChange={e => {
-                    const id = e.target.value;
-                    const op = opGerenciais.find(o => o.id === id);
-                    setEditForm(f => ({
-                      ...f,
-                      operacao_gerencial_id: id,
-                      categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : f.categoria,
-                    }));
-                  }} style={inp}>
-                  <option value="">— Sem vínculo contábil —</option>
-                  {Object.entries(
-                    opGerenciais.reduce((acc, o) => {
-                      const parts = (o.classificacao ?? "").split(".");
-                      const grpKey = parts.slice(0, 3).join(".");
-                      (acc[grpKey] = acc[grpKey] ?? []).push(o);
-                      return acc;
-                    }, {} as Record<string, typeof opGerenciais>)
-                  ).map(([grpKey, ops]) => (
-                    <optgroup key={grpKey} label={grpKey}>
-                      {ops.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-                {editForm.operacao_gerencial_id && (() => {
-                  const op = opGerenciais.find(o => o.id === editForm.operacao_gerencial_id);
-                  if (!op) return null;
-                  return (
-                    <div style={{ marginTop: 4, padding: "5px 10px", background: "#F0F7FF", borderRadius: 6, border: "0.5px solid #C5DCF5", fontSize: 11, color: "#0B2D50", display: "flex", gap: 16 }}>
-                      <span>Débito: <strong>{op.conta_debito || "—"}</strong></span>
-                      <span>Crédito: <strong>{op.conta_credito || "—"}</strong></span>
-                    </div>
-                  );
-                })()}
-              </div>
-              <div>
-                <label style={lbl}>Observação</label>
-                <input value={editForm.observacao} onChange={e => setEditForm(f => ({ ...f, observacao: e.target.value }))} style={inp} placeholder="Opcional" />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalEditar(null)} style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button disabled={editSalvando} onClick={salvarEditar} style={{ padding: "8px 22px", borderRadius: 8, border: "none", background: editSalvando ? "#aaa" : "#1A4870", color: "#fff", cursor: editSalvando ? "wait" : "pointer", fontSize: 13, fontWeight: 700 }}>
-                {editSalvando ? "Salvando…" : "✓ Salvar"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Barra flutuante de seleção (borderô) ─────────────── */}
       {selecionados.size > 0 && (() => {
         const qtdBaixados = filtrados.filter(l => selecionados.has(l.id) && l.status === "baixado").length;
@@ -1545,14 +1478,16 @@ function ContasPagarInner() {
       {/* ── Modal Novo CP ──────────────────────────────────────── */}
       {modalNovo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
+          onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column" }}>
 
             {/* ── Cabeçalho ── */}
             <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid #DEE5EE" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Nova Conta a Pagar</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>
+                    {editandoId ? "✏ Editar Conta a Pagar" : "Nova Conta a Pagar"}
+                  </span>
                   <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
                     {(["real", "previsao"] as const).map(n => (
                       <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
@@ -1563,6 +1498,11 @@ function ContasPagarInner() {
                       </button>
                     ))}
                   </div>
+                  {editandoId && form.natureza === "previsao" && (
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, background: "#D5E8F5", color: "#0B2D50", border: "0.5px solid #1A4870" }}>
+                      Troque para "Real" para efetivar
+                    </span>
+                  )}
                 </div>
                 <FazendaSelector contaId={contaId} value={fid} onChange={setFormFazendaId} />
               </div>
@@ -1571,10 +1511,10 @@ function ContasPagarInner() {
               <div style={{ display: "flex", gap: 0 }}>
                 {([
                   { id: "principal",  label: "Principal"  },
-                  { id: "parcelas",   label: "Parcelas"   },
+                  { id: "parcelas",   label: "Parcelas", hidden: !!editandoId },
                   { id: "vinculos",   label: "Vínculos"   },
                   { id: "adicionais", label: "Adicionais" },
-                ] as const).map(t => (
+                ] as const).filter(t => !("hidden" in t && t.hidden)).map(t => (
                   <button key={t.id} onClick={() => setModalTab(t.id)}
                     style={{ padding: "7px 20px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                       fontWeight: modalTab === t.id ? 700 : 400,
@@ -1940,11 +1880,21 @@ function ContasPagarInner() {
                   {errosForm.map((e, i) => <div key={i}>• {e}</div>)}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
-                <button onClick={() => setModalNovo(false)} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
+                {/* Botão Efetivar — visível só ao editar uma previsão */}
+                {editandoId && form.natureza === "previsao" && (
+                  <button
+                    onClick={() => { setForm(p => ({ ...p, natureza: "real" })); }}
+                    style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+                    title="Muda para Real e abre para ajuste antes de salvar"
+                  >
+                    ⚡ Efetivar
+                  </button>
+                )}
+                <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button onClick={adicionarLancamento} disabled={disabled}
                   style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", fontSize: 13 }}>
-                  {salvando ? "Salvando…" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : "◈ Salvar"}
+                  {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : "◈ Salvar"}
                 </button>
               </div>
             </div>

@@ -141,6 +141,50 @@ export default function ContasReceber() {
   const [modalNovo,  setModalNovo]  = useState(false);
   const [modalTab,   setModalTab]   = useState<"principal"|"parcelas"|"vinculos"|"adicionais">("principal");
 
+  // ── Edição: reutiliza o modal de Nova CR com editandoId marcado ──
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+
+  function fecharModal() {
+    setModalNovo(false);
+    setEditandoId(null);
+  }
+
+  function abrirEditar(l: Lancamento) {
+    setEditandoId(l.id);
+    setModalTab("principal");
+    setForm({
+      moeda:                 (l.moeda as Moeda) ?? "BRL",
+      pessoa_id:             l.pessoa_id             ?? "",
+      descricao:             l.descricao             ?? "",
+      categoria:             l.categoria             ?? CATS_CR[0],
+      vencimento:            l.data_vencimento       ?? "",
+      valorMask:             l.valor?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "",
+      cotacaoMask:           l.cotacao_usd?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "5,12",
+      sacasMask:             l.sacas?.toString()     ?? "",
+      culturaBarter:         l.cultura_barter        ?? "soja",
+      precoSacaMask:         l.preco_saca_barter?.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) ?? "120,00",
+      obs:                   l.observacao            ?? "",
+      parcelar:              false,
+      totalParcelas:         "1",
+      intervaloMeses:        "1",
+      tipo_documento_lcdpr:  (l.tipo_documento_lcdpr as typeof form.tipo_documento_lcdpr) ?? "RECIBO",
+      forma_recebimento:     l.forma_pagamento       ?? "PIX",
+      conta_recebimento:     l.conta_bancaria        ?? "",
+      chave_xml:             l.chave_xml             ?? "",
+      centro_custo:          l.centro_custo          ?? "",
+      ano_safra_id:          l.ano_safra_id          ?? "",
+      produtor_id:           l.produtor_id           ?? "",
+      operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+      natureza:              (l.natureza as "real" | "previsao") ?? "real",
+      data_emissao:          l.data_lancamento       ?? TODAY,
+      numero_documento:      "",
+      serie:                 "",
+      meses_diferido:        "0",
+    });
+    setFormFazendaId(l.fazenda_id ?? fazendaId ?? "");
+    setModalNovo(true);
+  }
+
   // ── Seleção para borderô ──────────────────────────────────
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [modalLote,    setModalLote]    = useState(false);
@@ -422,6 +466,47 @@ export default function ContasReceber() {
     const precoSaca  = desmascarar(form.precoSacaMask);
     const valorFinal = form.moeda === "barter" ? sacas * precoSaca : desmascarar(form.valorMask);
 
+    // ── MODO EDIÇÃO: UPDATE ─────────────────────────────────────
+    if (editandoId) {
+      try {
+        setSalvando(true);
+        const patch = {
+          moeda:                 form.moeda,
+          pessoa_id:             form.pessoa_id             || null,
+          descricao:             form.descricao || (pessoas.find(p => p.id === form.pessoa_id)?.nome ?? ""),
+          categoria:             form.categoria,
+          data_vencimento:       form.vencimento,
+          valor:                 valorFinal,
+          cotacao_usd:           form.moeda === "USD" ? desmascarar(form.cotacaoMask) : null,
+          sacas:                 form.moeda === "barter" ? sacas : null,
+          cultura_barter:        form.moeda === "barter" ? form.culturaBarter : null,
+          preco_saca_barter:     form.moeda === "barter" ? precoSaca : null,
+          tipo_documento_lcdpr:  form.tipo_documento_lcdpr || null,
+          conta_bancaria:        form.conta_recebimento    || null,
+          chave_xml:             form.chave_xml            || null,
+          centro_custo:          form.centro_custo         || null,
+          observacao:            form.obs                  || null,
+          ano_safra_id:          form.ano_safra_id         || null,
+          produtor_id:           form.produtor_id          || null,
+          operacao_gerencial_id: form.operacao_gerencial_id || null,
+          natureza:              form.natureza,
+          forma_pagamento:       form.forma_recebimento    || null,
+        };
+        const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
+        if (error) { alert("Erro ao salvar: " + error.message); return; }
+        setLancamentos(prev => prev.map(x =>
+          x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
+        ));
+        fecharModal();
+      } catch (e: unknown) {
+        alert("Erro ao salvar: " + (e instanceof Error ? e.message : e));
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
+
+    // ── MODO CRIAÇÃO: INSERT ────────────────────────────────────
     const base: Omit<Lancamento, "id" | "created_at" | "num_parcela" | "total_parcelas" | "agrupador"> = {
       fazenda_id:    fid!,
       tipo:          "receber",
@@ -461,8 +546,7 @@ export default function ContasReceber() {
         criados = [await criarLancamento(base)];
       }
       setLancamentos(prev => [...criados, ...prev]);
-      setForm(f => ({ ...f, pessoa_id: "", descricao: "", vencimento: "", valorMask: "", sacasMask: "", obs: "", parcelar: false, totalParcelas: "1", conta_recebimento: "", forma_recebimento: "PIX" }));
-      setModalNovo(false);
+      fecharModal();
     } catch (e: unknown) {
       alert("Erro ao salvar: " + (e instanceof Error ? e.message : e));
     } finally {
@@ -790,6 +874,13 @@ export default function ContasReceber() {
                                     title="Reabrir — apaga dados de recebimento"
                                     style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}
                                   >↺</button>
+                                )}
+                                {!l.auto && (
+                                  <button
+                                    onClick={() => abrirEditar(l)}
+                                    title="Editar lançamento"
+                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "transparent", color: "#555", border: "0.5px solid #CCC", lineHeight: 1 }}
+                                  >✏</button>
                                 )}
                               </div>
                             </td>
@@ -1130,14 +1221,16 @@ export default function ContasReceber() {
       {/* ── Modal Nova CR ──────────────────────────────────────── */}
       {modalNovo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
-          onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
+          onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column" }}>
 
             {/* ── Cabeçalho ── */}
             <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid #DEE5EE" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Nova Conta a Receber</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>
+                    {editandoId ? "✏ Editar Conta a Receber" : "Nova Conta a Receber"}
+                  </span>
                   <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
                     {(["real", "previsao"] as const).map(n => (
                       <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
@@ -1156,10 +1249,10 @@ export default function ContasReceber() {
               <div style={{ display: "flex", gap: 0 }}>
                 {([
                   { id: "principal",  label: "Principal"  },
-                  { id: "parcelas",   label: "Parcelas"   },
+                  { id: "parcelas",   label: "Parcelas", hidden: !!editandoId },
                   { id: "vinculos",   label: "Vínculos"   },
                   { id: "adicionais", label: "Adicionais" },
-                ] as const).map(t => (
+                ] as const).filter(t => !("hidden" in t && t.hidden)).map(t => (
                   <button key={t.id} onClick={() => setModalTab(t.id)}
                     style={{ padding: "7px 20px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                       fontWeight: modalTab === t.id ? 700 : 400,
@@ -1422,11 +1515,21 @@ export default function ContasReceber() {
             </div>
 
             {/* ── Rodapé ── */}
-            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DEE5EE", display: "flex", gap: 8, justifyContent: "flex-end", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
-              <button onClick={() => setModalNovo(false)} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DEE5EE", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
+              {/* Botão Efetivar — visível só ao editar uma previsão */}
+              {editandoId && form.natureza === "previsao" && (
+                <button
+                  onClick={() => setForm(p => ({ ...p, natureza: "real" }))}
+                  style={{ padding: "8px 16px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+                  title="Muda para Real e abre para ajuste antes de salvar"
+                >
+                  ⚡ Efetivar
+                </button>
+              )}
+              <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={adicionarLancamento} disabled={disabled}
                 style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Salvando…" : form.parcelar && totalParcDisplay > 1 ? `Criar ${totalParcDisplay} parcelas` : "◈ Salvar"}
+                {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.parcelar && totalParcDisplay > 1 ? `Criar ${totalParcDisplay} parcelas` : "◈ Salvar"}
               </button>
             </div>
           </div>
