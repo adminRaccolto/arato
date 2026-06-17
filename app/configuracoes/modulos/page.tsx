@@ -427,19 +427,18 @@ function ParametrosSistemaContent() {
       .then(({ data }) => { if (data?.logo_url) setLogoUrl(data.logo_url); });
   }, [contaId]);
 
-  // ── Upload de logo do cliente
+  // ── Upload de logo via API route (usa service role key para bypass de RLS)
   const uploadLogo = async (file: File) => {
     if (!contaId) return;
     setLogoUploading(true);
     try {
-      const ext  = file.name.split(".").pop() ?? "png";
-      const path = `clientes/${contaId}/logo.${ext}`;
-      const { error: upErr } = await supabase.storage.from("logos").upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { data: urlData } = supabase.storage.from("logos").getPublicUrl(path);
-      // cache-busting para forçar recarga imediata
-      const url = `${urlData.publicUrl}?t=${Date.now()}`;
-      await supabase.from("contas").update({ logo_url: urlData.publicUrl }).eq("id", contaId);
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("conta_id", contaId);
+      const res = await fetch("/api/upload-logo", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Falha no upload");
+      const url = `${json.url}?t=${Date.now()}`;
       setLogoUrl(url);
       setLogoCliente(url);
       setLogoOk(true);
