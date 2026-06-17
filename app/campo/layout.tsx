@@ -17,10 +17,14 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
     <div style={{ fontFamily: "system-ui, sans-serif", background: "#F4F6FA", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
 
       {/* Faixa de topo */}
-      <div style={{ background: "#1A4870", color: "#fff", padding: "12px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>RacTech Campo</div>
-          <div style={{ fontSize: 11, color: "#B0C8E0", marginTop: 1 }}>App de operações rurais</div>
+      <div style={{ background: "#1A4870", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/Logo_Arato.png" alt="Arato" style={{ height: 32, width: "auto", objectFit: "contain" }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1 }}>arato</div>
+            <div style={{ fontSize: 10, color: "#B0C8E0", marginTop: 2 }}>operações rurais</div>
+          </div>
         </div>
         <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "rgba(255,255,255,0.1)", padding: "5px 10px", borderRadius: 6 }}>
           ← Desktop

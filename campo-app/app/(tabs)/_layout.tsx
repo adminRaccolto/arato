@@ -1,18 +1,18 @@
 import { Tabs } from 'expo-router';
-import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C } from '../../constants/colors';
+import { C } from '../../constants/theme';
 
-function TabIcon({ icon, label, focused }: { icon: string; label: string; focused: boolean }) {
-  return (
-    <View style={{ alignItems: 'center', paddingTop: 6 }}>
-      <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text style={{ fontSize: 10, marginTop: 2, color: focused ? C.primary : C.textWeak, fontWeight: focused ? '700' : '400' }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TABS: { name: string; label: string; icon: IoniconsName; iconOn: IoniconsName }[] = [
+  { name: 'index',        label: 'Início',  icon: 'home-outline',    iconOn: 'home'    },
+  { name: 'monitoramento',label: 'Monitor.',icon: 'leaf-outline',    iconOn: 'leaf'    },
+  { name: 'plantio',      label: 'Plantio', icon: 'layers-outline',  iconOn: 'layers'  },
+  { name: 'pulverizacao', label: 'Pulv.',   icon: 'water-outline',   iconOn: 'water'   },
+  { name: 'colheita',     label: 'Colheita',icon: 'basket-outline',  iconOn: 'basket'  },
+  { name: 'mapa',         label: 'Mapa',    icon: 'map-outline',     iconOn: 'map'     },
+];
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -22,36 +22,29 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          height: 60 + insets.bottom,
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom + 4,
+          backgroundColor: C.surface,
           borderTopWidth: 0.5,
           borderTopColor: C.border,
-          paddingBottom: insets.bottom,
-          backgroundColor: C.white,
         },
-        tabBarShowLabel: false,
         tabBarActiveTintColor: C.primary,
+        tabBarInactiveTintColor: C.textWeak,
+        tabBarLabelStyle: { fontSize: 9, fontWeight: '500', marginTop: 2 },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🏠" label="Início" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="monitoramento"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🐛" label="Monitor." focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="plantio"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🌱" label="Plantio" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="pulverizacao"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="💧" label="Pulverização" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="colheita"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="🌾" label="Colheita" focused={focused} /> }}
-      />
+      {TABS.map(tab => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            title: tab.label,
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons name={focused ? tab.iconOn : tab.icon} size={21} color={color} />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
