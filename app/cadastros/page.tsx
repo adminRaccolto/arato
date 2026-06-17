@@ -94,11 +94,12 @@ type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
 const TAB_GROUPS: TabGroup[] = [
   { group: "Cadastros Gerais", tabs: [
-    { key: "produtores",   label: "Produtores"   },
-    { key: "empresas",     label: "Empresas"     },
-    { key: "fazendas",     label: "Fazendas"     },
-    { key: "funcionarios", label: "Funcionários" },
-    { key: "pessoas",      label: "Pessoas"      },
+    { key: "produtores",      label: "Produtores"      },
+    { key: "empresas",        label: "Empresas"        },
+    { key: "fazendas",        label: "Fazendas"        },
+    { key: "funcionarios",    label: "Funcionários"    },
+    { key: "pessoas",         label: "Pessoas"         },
+    { key: "imoveis_urbanos", label: "Imóveis Urbanos" },
   ]},
   { group: "Cadastros Técnicos", tabs: [
     { key: "safras",                  label: "Safras"                    },
@@ -113,9 +114,6 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
     { key: "principios_ativos",       label: "Princípios Ativos (BOT)"   },
     { key: "unidades_medida",         label: "Unidades de Medida"        },
-  ]},
-  { group: "Patrimônio", tabs: [
-    { key: "imoveis_urbanos", label: "Imóveis Urbanos" },
   ]},
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
