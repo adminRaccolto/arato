@@ -4,21 +4,23 @@ import {
   StyleSheet, Alert, ActivityIndicator, FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../lib/auth';
 import { supabase, type Talhao, type Ciclo } from '../../lib/supabase';
-import { saveOrQueue } from '../../lib/offline';
+import { enqueue } from '../../lib/offline';
 import { C, T } from '../../constants/theme';
 import { ListPickerModal } from './monitoramento';
 import { todayBR, formatDateInput, toISO, toBR } from '../../lib/date';
 
 type Tela = 'lista' | 'form';
+type InsumoOpt   = { id: string; nome: string; categoria: string; unidade: string; estoque: number; custo_medio: number };
+type DepositoOpt = { id: string; nome: string; tipo: string; capacidade_sc?: number };
 
 function calcSacas(pesoLiqKg: number, umidPct: number, impPct: number): { sacas: number; descontoKg: number } {
   const fatorUmid = Math.max(0, umidPct - 14) / 100;
   const descontoKg = pesoLiqKg * (fatorUmid + impPct / 100);
-  const pesoCorrigido = pesoLiqKg - descontoKg;
-  return { sacas: pesoCorrigido / 60, descontoKg };
+  return { sacas: (pesoLiqKg - descontoKg) / 60, descontoKg };
 }
 
 export default function ColheitaScreen() {
@@ -29,35 +31,48 @@ export default function ColheitaScreen() {
   const [romaneios, setRomaneios]   = useState<Record<string, unknown>[]>([]);
   const [talhoes, setTalhoes]       = useState<Talhao[]>([]);
   const [ciclos, setCiclos]         = useState<Ciclo[]>([]);
+  const [insumos, setInsumos]       = useState<InsumoOpt[]>([]);
+  const [depositos, setDepositos]   = useState<DepositoOpt[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  const [talhaoId, setTalhaoId]   = useState('');
-  const [cicloId, setCicloId]     = useState('');
-  const [data, setData]           = useState(todayBR);
-  const [motorista, setMotorista] = useState('');
-  const [placa, setPlaca]         = useState('');
-  const [pesoBruto, setPesoBruto] = useState('');
-  const [tara, setTara]           = useState('');
-  const [umid, setUmid]           = useState('14');
-  const [imp, setImp]             = useState('1');
-  const [avariados, setAvariados] = useState('0');
-  const [obs, setObs]             = useState('');
-  const [salvando, setSalvando]   = useState(false);
+  const [talhaoId, setTalhaoId]       = useState('');
+  const [cicloId, setCicloId]         = useState('');
+  const [data, setData]               = useState(todayBR);
+  const [motorista, setMotorista]     = useState('');
+  const [placa, setPlaca]             = useState('');
+  const [pesoBruto, setPesoBruto]     = useState('');
+  const [tara, setTara]               = useState('');
+  const [umid, setUmid]               = useState('14');
+  const [imp, setImp]                 = useState('1');
+  const [avariados, setAvariados]     = useState('0');
+  const [obs, setObs]                 = useState('');
+  const [insumoGraoId, setInsumoGraoId] = useState('');
+  const [depositoId, setDepositoId]     = useState('');
+  const [salvando, setSalvando]       = useState(false);
 
-  const [pickerTalhao, setPickerTalhao] = useState(false);
-  const [pickerCiclo, setPickerCiclo]   = useState(false);
+  const [pickerTalhao, setPickerTalhao]     = useState(false);
+  const [pickerCiclo, setPickerCiclo]       = useState(false);
+  const [pickerInsumo, setPickerInsumo]     = useState(false);
+  const [pickerDeposito, setPickerDeposito] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setCarregando(true);
-    const [{ data: rom }, { data: tal }, { data: cic }] = await Promise.all([
-      supabase.from('romaneios').select('*, talhoes(nome), ciclos(descricao, cultura)').eq('fazenda_id', fazendaId).order('data_colheita', { ascending: false }).limit(30),
+    const [{ data: rom }, { data: tal }, { data: cic }, { data: ins }, { data: dep }] = await Promise.all([
+      supabase.from('romaneios')
+        .select('*, talhoes(nome), ciclos(descricao, cultura)')
+        .eq('fazenda_id', fazendaId)
+        .order('data_colheita', { ascending: false }).limit(30),
       supabase.from('talhoes').select('id, nome, area_ha').eq('fazenda_id', fazendaId).order('nome'),
       supabase.from('ciclos').select('id, cultura, descricao').eq('fazenda_id', fazendaId).order('created_at', { ascending: false }),
+      supabase.from('insumos').select('id, nome, categoria, unidade, estoque, custo_medio').eq('fazenda_id', fazendaId).order('nome'),
+      supabase.from('depositos').select('id, nome, tipo, capacidade_sc').eq('fazenda_id', fazendaId).order('nome'),
     ]);
     setRomaneios((rom ?? []) as Record<string, unknown>[]);
     setTalhoes((tal ?? []) as Talhao[]);
     setCiclos((cic ?? []) as Ciclo[]);
+    setInsumos((ins ?? []) as InsumoOpt[]);
+    setDepositos((dep ?? []) as DepositoOpt[]);
     setCarregando(false);
   }, [fazendaId]);
 
@@ -67,25 +82,31 @@ export default function ColheitaScreen() {
     setTalhaoId(''); setCicloId(''); setData(todayBR());
     setMotorista(''); setPlaca(''); setPesoBruto(''); setTara('');
     setUmid('14'); setImp('1'); setAvariados('0'); setObs('');
+    setInsumoGraoId(''); setDepositoId('');
   }
 
-  const pesoLiq = Number(pesoBruto) - Number(tara);
+  const pesoLiq   = Number(pesoBruto) - Number(tara);
   const { sacas, descontoKg } = pesoLiq > 0
     ? calcSacas(pesoLiq, Number(umid), Number(imp))
     : { sacas: 0, descontoKg: 0 };
-  const talhaoAtivo = talhoes.find(t => t.id === talhaoId);
-  const prodHa = talhaoAtivo && sacas > 0 ? sacas / Number(talhaoAtivo.area_ha) : 0;
+  const talhaoAtivo    = talhoes.find(t => t.id === talhaoId);
+  const prodHa         = talhaoAtivo && sacas > 0 ? sacas / Number(talhaoAtivo.area_ha) : 0;
+  const insumoGraoSel  = insumos.find(i => i.id === insumoGraoId);
+  const depositoSel    = depositos.find(d => d.id === depositoId);
 
   async function salvar() {
     if (!talhaoId) { Alert.alert('', 'Selecione o talhão.'); return; }
     if (!cicloId)  { Alert.alert('', 'Selecione o ciclo.'); return; }
     if (!pesoBruto || !tara) { Alert.alert('', 'Informe peso bruto e tara.'); return; }
-    if (pesoLiq <= 0) { Alert.alert('', 'Peso líquido inválido. Verifique tara e bruto.'); return; }
+    if (pesoLiq <= 0) { Alert.alert('', 'Peso líquido inválido.'); return; }
+    if (!insumoGraoId) { Alert.alert('', 'Selecione o produto colhido para registrar a entrada em estoque.'); return; }
     if (!fazendaId) return;
     setSalvando(true);
-    const { offline, error } = await saveOrQueue('romaneios', {
+
+    const dataISO = toISO(data);
+    const payload = {
       fazenda_id: fazendaId, talhao_id: talhaoId, ciclo_id: cicloId,
-      data_colheita: toISO(data), motorista: motorista || null, placa: placa || null,
+      data_colheita: dataISO, motorista: motorista || null, placa: placa || null,
       peso_bruto_kg: Number(pesoBruto), tara_kg: Number(tara),
       peso_liquido_kg: pesoLiq,
       umidade_pct: Number(umid), impureza_pct: Number(imp),
@@ -93,14 +114,47 @@ export default function ColheitaScreen() {
       desconto_kg: descontoKg,
       quantidade_sacas: sacas,
       obs: obs || null,
+      insumo_id: insumoGraoId || null,
+      deposito_id: depositoId || null,
+    };
+
+    const net = await NetInfo.fetch();
+    if (!net.isConnected) {
+      await enqueue('romaneios', payload);
+      setSalvando(false);
+      Alert.alert('Salvo offline',
+        'Será enviado quando houver conexão. Entrada em estoque será processada ao sincronizar.',
+        [{ text: 'OK', onPress: () => { reset(); setTela('lista'); carregar(); } }]);
+      return;
+    }
+
+    const { data: rom, error: errRom } = await supabase
+      .from('romaneios').insert(payload).select('id').single();
+    if (errRom) { setSalvando(false); Alert.alert('Erro', errRom.message); return; }
+
+    // Entrada em estoque: colheita aumenta o saldo do grão
+    await supabase.from('movimentacoes_estoque').insert({
+      fazenda_id: fazendaId,
+      insumo_id: insumoGraoId,
+      tipo: 'entrada',
+      motivo: 'colheita',
+      quantidade: sacas,
+      data: dataISO,
+      ciclo_id: cicloId,
+      deposito_id: depositoId || null,
+      observacao: `Colheita — ${insumoGraoSel?.nome ?? ''} · ${talhaoAtivo?.nome ?? ''}`,
+      auto: true,
+      valor_unitario: 0,
     });
+
     setSalvando(false);
-    if (error) { Alert.alert('Erro', error); return; }
     Alert.alert(
-      offline ? 'Salvo offline' : 'Romaneio registrado',
-      offline
-        ? 'Será enviado quando houver conexão.'
-        : `${sacas.toFixed(1)} sc${prodHa > 0 ? ` · ${prodHa.toFixed(1)} sc/ha` : ''}`,
+      'Romaneio registrado',
+      [
+        `${sacas.toFixed(1)} sc${prodHa > 0 ? ` · ${prodHa.toFixed(1)} sc/ha` : ''}`,
+        `Produto: ${insumoGraoSel?.nome ?? ''}`,
+        depositoSel ? `Destino: ${depositoSel.nome}` : null,
+      ].filter(Boolean).join('\n'),
       [{ text: 'OK', onPress: () => { reset(); setTela('lista'); carregar(); } }],
     );
   }
@@ -137,7 +191,9 @@ export default function ColheitaScreen() {
                         <Text style={s.scBadgeTxt}>{sc.toFixed(1)} sc</Text>
                       </View>
                     </View>
-                    <Text style={[T.bodySub, { marginTop: 4 }]}>{(item.ciclos as Record<string,string>|null)?.descricao ?? '—'}</Text>
+                    <Text style={[T.bodySub, { marginTop: 4 }]}>
+                      {(item.ciclos as Record<string,string>|null)?.descricao ?? '—'}
+                    </Text>
                     <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
                       <Text style={T.caption}>U: {String(item.umidade_pct ?? '—')}%</Text>
                       <Text style={T.caption}>Imp: {String(item.impureza_pct ?? '—')}%</Text>
@@ -171,28 +227,37 @@ export default function ColheitaScreen() {
 
         <Text style={T.secLabel}>Localização</Text>
         <TouchableOpacity style={T.picker} onPress={() => setPickerTalhao(true)}>
-          <Text style={{ color: talhaoId ? C.text : C.textWeak, fontSize: 14 }}>{talhoes.find(t => t.id === talhaoId)?.nome ?? 'Talhão…'}</Text>
+          <Text style={{ color: talhaoId ? C.text : C.textWeak, fontSize: 14 }}>
+            {talhoes.find(t => t.id === talhaoId)?.nome ?? 'Talhão…'}
+          </Text>
           <Ionicons name="chevron-down" size={16} color={C.textWeak} />
         </TouchableOpacity>
         <TouchableOpacity style={T.picker} onPress={() => setPickerCiclo(true)}>
-          <Text style={{ color: cicloId ? C.text : C.textWeak, fontSize: 14 }}>{ciclos.find(c => c.id === cicloId)?.descricao ?? 'Ciclo…'}</Text>
+          <Text style={{ color: cicloId ? C.text : C.textWeak, fontSize: 14 }}>
+            {ciclos.find(c => c.id === cicloId)?.descricao ?? 'Ciclo…'}
+          </Text>
           <Ionicons name="chevron-down" size={16} color={C.textWeak} />
         </TouchableOpacity>
-        <TextInput style={T.input} value={data} onChangeText={v => setData(formatDateInput(v))} placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
+        <TextInput style={T.input} value={data} onChangeText={v => setData(formatDateInput(v))}
+          placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
 
         <Text style={T.secLabel}>Caminhão</Text>
-        <TextInput style={T.input} value={motorista} onChangeText={setMotorista} placeholder="Motorista" placeholderTextColor={C.textWeak} />
-        <TextInput style={T.input} value={placa} onChangeText={setPlaca} placeholder="Placa" placeholderTextColor={C.textWeak} autoCapitalize="characters" />
+        <TextInput style={T.input} value={motorista} onChangeText={setMotorista}
+          placeholder="Motorista" placeholderTextColor={C.textWeak} />
+        <TextInput style={T.input} value={placa} onChangeText={setPlaca}
+          placeholder="Placa" placeholderTextColor={C.textWeak} autoCapitalize="characters" />
 
         <Text style={T.secLabel}>Pesagem (kg)</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
             <Text style={s.fieldLabel}>Peso bruto</Text>
-            <TextInput style={T.input} value={pesoBruto} onChangeText={setPesoBruto} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={pesoBruto} onChangeText={setPesoBruto}
+              keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.textWeak} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.fieldLabel}>Tara</Text>
-            <TextInput style={T.input} value={tara} onChangeText={setTara} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={tara} onChangeText={setTara}
+              keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.textWeak} />
           </View>
         </View>
 
@@ -200,15 +265,18 @@ export default function ColheitaScreen() {
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
             <Text style={s.fieldLabel}>Umidade %</Text>
-            <TextInput style={T.input} value={umid} onChangeText={setUmid} keyboardType="decimal-pad" placeholder="14" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={umid} onChangeText={setUmid}
+              keyboardType="decimal-pad" placeholder="14" placeholderTextColor={C.textWeak} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.fieldLabel}>Impureza %</Text>
-            <TextInput style={T.input} value={imp} onChangeText={setImp} keyboardType="decimal-pad" placeholder="1" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={imp} onChangeText={setImp}
+              keyboardType="decimal-pad" placeholder="1" placeholderTextColor={C.textWeak} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.fieldLabel}>Avariados %</Text>
-            <TextInput style={T.input} value={avariados} onChangeText={setAvariados} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={avariados} onChangeText={setAvariados}
+              keyboardType="decimal-pad" placeholder="0" placeholderTextColor={C.textWeak} />
           </View>
         </View>
 
@@ -235,7 +303,49 @@ export default function ColheitaScreen() {
           </View>
         )}
 
-        <TextInput style={[T.input, { minHeight: 60 }]} value={obs} onChangeText={setObs} multiline placeholder="Observações…" placeholderTextColor={C.textWeak} />
+        <Text style={T.secLabel}>Destino — Entrada em Estoque</Text>
+        <TouchableOpacity style={T.picker} onPress={() => setPickerInsumo(true)}>
+          <Text style={{ color: insumoGraoId ? C.text : C.textWeak, fontSize: 14 }} numberOfLines={1}>
+            {insumoGraoSel
+              ? `${insumoGraoSel.nome} · Estoque atual: ${insumoGraoSel.estoque.toFixed(1)} ${insumoGraoSel.unidade}`
+              : 'Produto colhido (soja, milho…) *'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={C.textWeak} />
+        </TouchableOpacity>
+        <TouchableOpacity style={T.picker} onPress={() => setPickerDeposito(true)}>
+          <Text style={{ color: depositoId ? C.text : C.textWeak, fontSize: 14 }} numberOfLines={1}>
+            {depositoSel
+              ? `${depositoSel.nome} · ${depositoSel.tipo}${depositoSel.capacidade_sc ? ` · ${depositoSel.capacidade_sc} sc` : ''}`
+              : 'Depósito / Armazém destino (opcional)…'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={C.textWeak} />
+        </TouchableOpacity>
+
+        {insumoGraoId && sacas > 0 && (
+          <View style={[s.calc, { backgroundColor: '#F0FDF4', borderColor: '#16A34A30' }]}>
+            <View style={s.calcRow}>
+              <Text style={s.calcLabel}>Entrada em estoque</Text>
+              <Text style={[s.calcVal, { color: '#16A34A', fontWeight: '700' }]}>+{sacas.toFixed(1)} sc</Text>
+            </View>
+            {insumoGraoSel && (
+              <View style={s.calcRow}>
+                <Text style={s.calcLabel}>Saldo após entrada</Text>
+                <Text style={[s.calcVal, { color: '#16A34A' }]}>
+                  {(insumoGraoSel.estoque + sacas).toFixed(1)} sc
+                </Text>
+              </View>
+            )}
+            {depositoSel && (
+              <View style={s.calcRow}>
+                <Text style={s.calcLabel}>Destino</Text>
+                <Text style={s.calcVal}>{depositoSel.nome}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        <TextInput style={[T.input, { minHeight: 60 }]} value={obs} onChangeText={setObs}
+          multiline placeholder="Observações…" placeholderTextColor={C.textWeak} />
 
         <TouchableOpacity style={[T.btn, salvando && { opacity: 0.6 }]} onPress={salvar} disabled={salvando}>
           {salvando ? <ActivityIndicator color="#fff" /> : <Text style={T.btnTxt}>Registrar romaneio</Text>}
@@ -243,10 +353,27 @@ export default function ColheitaScreen() {
 
       </ScrollView>
 
-      <ListPickerModal visible={pickerTalhao} titulo="Talhão" itens={talhoes.map(t => `${t.nome} · ${t.area_ha} ha`)}
-        onSelect={(_, i) => { setTalhaoId(talhoes[i].id); setPickerTalhao(false); }} onClose={() => setPickerTalhao(false)} />
-      <ListPickerModal visible={pickerCiclo} titulo="Ciclo" itens={ciclos.map(c => c.descricao)}
-        onSelect={(_, i) => { setCicloId(ciclos[i].id); setPickerCiclo(false); }} onClose={() => setPickerCiclo(false)} />
+      <ListPickerModal visible={pickerTalhao} titulo="Talhão"
+        itens={talhoes.map(t => `${t.nome} · ${t.area_ha} ha`)}
+        onSelect={(_, i) => { setTalhaoId(talhoes[i].id); setPickerTalhao(false); }}
+        onClose={() => setPickerTalhao(false)} />
+      <ListPickerModal visible={pickerCiclo} titulo="Ciclo"
+        itens={ciclos.map(c => c.descricao)}
+        onSelect={(_, i) => { setCicloId(ciclos[i].id); setPickerCiclo(false); }}
+        onClose={() => setPickerCiclo(false)} />
+      <ListPickerModal
+        visible={pickerInsumo} titulo="Produto colhido"
+        itens={insumos.map(i => `${i.nome} · ${i.estoque.toFixed(1)} ${i.unidade} em estoque`)}
+        onSelect={(_, i) => { setInsumoGraoId(insumos[i].id); setPickerInsumo(false); }}
+        onClose={() => setPickerInsumo(false)}
+      />
+      <ListPickerModal
+        visible={pickerDeposito} titulo="Depósito destino"
+        itens={['Nenhum', ...depositos.map(d =>
+          `${d.nome} · ${d.tipo}${d.capacidade_sc ? ` · ${d.capacidade_sc} sc` : ''}`)]}
+        onSelect={(_, i) => { setDepositoId(i === 0 ? '' : depositos[i - 1].id); setPickerDeposito(false); }}
+        onClose={() => setPickerDeposito(false)}
+      />
     </View>
   );
 }

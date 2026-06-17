@@ -5922,3 +5922,36 @@ ALTER TABLE abastecimentos
   ADD COLUMN IF NOT EXISTS operador         text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 131: Campo App — Plantio com baixa de estoque de semente
+-- =============================================================================
+
+ALTER TABLE plantios
+  ADD COLUMN IF NOT EXISTS insumo_id             uuid REFERENCES insumos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS quantidade_semente_kg numeric(12,3),
+  ADD COLUMN IF NOT EXISTS custo_semente_total   numeric(15,2) DEFAULT 0;
+
+COMMENT ON COLUMN plantios.insumo_id             IS 'Semente utilizada — baixa em movimentacoes_estoque';
+COMMENT ON COLUMN plantios.quantidade_semente_kg IS 'Quantidade de semente consumida (unidade conforme insumo)';
+COMMENT ON COLUMN plantios.custo_semente_total   IS 'Custo total da semente = quantidade × custo_medio na data do plantio';
+
+-- =============================================================================
+-- Seção 132: Campo App — Romaneio com entrada em estoque e depósito destino
+-- =============================================================================
+
+ALTER TABLE romaneios
+  ADD COLUMN IF NOT EXISTS insumo_id   uuid REFERENCES insumos(id)   ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS deposito_id uuid REFERENCES depositos(id) ON DELETE SET NULL;
+
+COMMENT ON COLUMN romaneios.insumo_id   IS 'Produto colhido (soja, milho…) — gera entrada em movimentacoes_estoque';
+COMMENT ON COLUMN romaneios.deposito_id IS 'Armazém / silo destino da colheita';
+
+-- =============================================================================
+-- Seção 133: Pulverização — produtos enriquecidos com insumo_id e custo
+-- (coluna produtos já existe como JSONB; agora guarda insumo_id, custo_unitario e custo_total por item)
+-- Nenhuma alteração de schema necessária — JSONB é flexível por natureza.
+-- Baixas de estoque são criadas em movimentacoes_estoque pelo app nativo.
+-- =============================================================================
+
+NOTIFY pgrst, 'reload schema';
