@@ -1782,10 +1782,30 @@ export async function atualizarContratoFinanceiro(id: string, c: Partial<Contrat
 }
 
 export async function excluirContratoFinanceiro(id: string): Promise<void> {
-  await supabase.from("parcelas_liberacao").delete().eq("contrato_id", id);
-  await supabase.from("parcelas_pagamento").delete().eq("contrato_id", id);
-  await supabase.from("garantias_contrato").delete().eq("contrato_id", id);
-  await supabase.from("centros_custo_contrato").delete().eq("contrato_id", id);
+  // Exclui lancamentos CP gerados pelas parcelas (criados via baixarParcelaPagamento)
+  const { data: lancsVinculados } = await supabase
+    .from("lancamentos")
+    .select("id")
+    .eq("contrato_financeiro_id", id);
+  if (lancsVinculados && lancsVinculados.length > 0) {
+    await supabase.from("lancamentos").delete().in("id", lancsVinculados.map(l => l.id));
+  }
+
+  const r1 = await supabase.from("parcelas_liberacao").delete().eq("contrato_id", id);
+  if (r1.error) throw new Error(`Erro ao excluir parcelas de liberação: ${r1.error.message}`);
+
+  const r2 = await supabase.from("parcelas_pagamento").delete().eq("contrato_id", id);
+  if (r2.error) throw new Error(`Erro ao excluir parcelas de pagamento: ${r2.error.message}`);
+
+  const r3 = await supabase.from("garantias_contrato").delete().eq("contrato_id", id);
+  if (r3.error) throw new Error(`Erro ao excluir garantias: ${r3.error.message}`);
+
+  const r4 = await supabase.from("centros_custo_contrato").delete().eq("contrato_id", id);
+  if (r4.error) throw new Error(`Erro ao excluir centros de custo: ${r4.error.message}`);
+
+  const r5 = await supabase.from("aditivos_contrato").delete().eq("contrato_id", id);
+  if (r5.error) throw new Error(`Erro ao excluir aditivos: ${r5.error.message}`);
+
   const { error } = await supabase.from("contratos_financeiros").delete().eq("id", id);
   if (error) throw error;
 }
@@ -1887,45 +1907,40 @@ export async function baixarParcelaPagamento(
   const contaId = contrato.conta_pagamento_id;
   const descBase = `${contrato.descricao} — Parcela ${parcela.num_parcela}`;
 
+  const baseFields = {
+    fazenda_id, moeda, tipo: "pagar" as const,
+    data_lancamento: hoje, data_vencimento: parcela.data_vencimento,
+    conta_bancaria: contaId ?? null, status: "em_aberto" as const, auto: true,
+    contrato_financeiro_id: contrato.id,
+  };
+
   // Lançamento de amortização (principal)
   if (parcela.amortizacao > 0) {
     await supabase.from("lancamentos").insert({
-      fazenda_id, tipo: "pagar", moeda,
+      ...baseFields,
       descricao: `${descBase} — Amortização`,
       categoria: CAT_AMORT[contrato.tipo],
-      data_lancamento: hoje,
-      data_vencimento: parcela.data_vencimento,
       valor: parcela.amortizacao,
-      conta_bancaria: contaId ?? null,
-      status: "em_aberto", auto: true,
     });
   }
 
   // Lançamento de juros
   if (parcela.juros > 0) {
     await supabase.from("lancamentos").insert({
-      fazenda_id, tipo: "pagar", moeda,
+      ...baseFields,
       descricao: `${descBase} — Juros`,
       categoria: CAT_JUROS[contrato.tipo],
-      data_lancamento: hoje,
-      data_vencimento: parcela.data_vencimento,
       valor: parcela.juros,
-      conta_bancaria: contaId ?? null,
-      status: "em_aberto", auto: true,
     });
   }
 
   // Lançamento de despesas acessórias (IOF, TAC, etc.)
   if (parcela.despesas_acessorios > 0) {
     await supabase.from("lancamentos").insert({
-      fazenda_id, tipo: "pagar", moeda,
+      ...baseFields,
       descricao: `${descBase} — Encargos (IOF/TAC)`,
       categoria: "Encargos Bancários",
-      data_lancamento: hoje,
-      data_vencimento: parcela.data_vencimento,
       valor: parcela.despesas_acessorios,
-      conta_bancaria: contaId ?? null,
-      status: "em_aberto", auto: true,
     });
   }
 

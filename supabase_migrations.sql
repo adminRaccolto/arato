@@ -6122,4 +6122,21 @@ END $$;
 ALTER TABLE garantias_contrato
   ADD COLUMN IF NOT EXISTS imovel_urbano_id uuid REFERENCES imoveis_urbanos(id) ON DELETE SET NULL;
 
+-- ── Migration 140: contrato_financeiro_id em lancamentos ─────────────────────
+-- Permite rastrear quais lancamentos CP foram gerados a partir de contratos
+-- financeiros, garantindo exclusão em cascata quando o contrato é deletado.
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS contrato_financeiro_id uuid REFERENCES contratos_financeiros(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_contrato_financeiro ON lancamentos(contrato_financeiro_id)
+  WHERE contrato_financeiro_id IS NOT NULL;
+
+-- Limpeza de lancamentos órfãos criados pelo botão "Baixar" (removido em jun/2026)
+-- Estes não têm contrato_financeiro_id pois foram criados antes da migration.
+-- Para identificá-los: auto = true AND tipo = 'pagar' AND contrato não existe mais.
+-- Execute manualmente apenas se necessário:
+-- DELETE FROM lancamentos
+--   WHERE auto = true AND tipo = 'pagar'
+--   AND NOT EXISTS (SELECT 1 FROM contratos_financeiros WHERE id = lancamentos.contrato_financeiro_id);
+
 NOTIFY pgrst, 'reload schema';
