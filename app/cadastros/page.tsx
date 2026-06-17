@@ -1012,11 +1012,20 @@ function CadastrosInner() {
     for (const c of fazCars) {
       const payload = { fazenda_id: fazId, numero: c.numero.trim(), status: c.status, area_ha: c.area_ha ? Number(c.area_ha) : null, vencimento: c.vencimento || null, observacao: c.observacao || null };
       let carId = c.id;
-      if (c.id) { await supabase.from("fazenda_cars").update(payload).eq("id", c.id); }
-      else { const { data: nc } = await supabase.from("fazenda_cars").insert(payload).select("id").single(); carId = nc?.id; }
+      if (c.id) {
+        const { error: upErr } = await supabase.from("fazenda_cars").update(payload).eq("id", c.id);
+        if (upErr) throw new Error("Erro ao salvar CAR: " + upErr.message);
+      } else {
+        const { data: nc, error: insErr } = await supabase.from("fazenda_cars").insert(payload).select("id").single();
+        if (insErr) throw new Error("Erro ao inserir CAR: " + insErr.message);
+        carId = nc?.id;
+      }
       if (carId) {
         await supabase.from("car_matriculas").delete().eq("car_id", carId);
-        for (const matId of c.mats_vinculadas) { await supabase.from("car_matriculas").insert({ car_id: carId, matricula_id: matId }); }
+        for (const matId of c.mats_vinculadas) {
+          const { error: mErr } = await supabase.from("car_matriculas").insert({ car_id: carId, matricula_id: matId });
+          if (mErr) throw new Error("Erro ao vincular matrícula ao CAR: " + mErr.message);
+        }
       }
     }
     // Salva NIRFs múltiplos
@@ -1027,11 +1036,20 @@ function CadastrosInner() {
     for (const n of fazNirfs) {
       const payload = { fazenda_id: fazId, numero: n.numero.trim(), situacao: n.situacao, area_ha: n.area_ha ? Number(n.area_ha) : null, observacao: n.observacao || null };
       let nirfId = n.id;
-      if (n.id) { await supabase.from("fazenda_nirfs").update(payload).eq("id", n.id); }
-      else { const { data: nn } = await supabase.from("fazenda_nirfs").insert(payload).select("id").single(); nirfId = nn?.id; }
+      if (n.id) {
+        const { error: upErr } = await supabase.from("fazenda_nirfs").update(payload).eq("id", n.id);
+        if (upErr) throw new Error("Erro ao salvar NIRF: " + upErr.message);
+      } else {
+        const { data: nn, error: insErr } = await supabase.from("fazenda_nirfs").insert(payload).select("id").single();
+        if (insErr) throw new Error("Erro ao inserir NIRF: " + insErr.message);
+        nirfId = nn?.id;
+      }
       if (nirfId) {
         await supabase.from("nirf_matriculas").delete().eq("nirf_id", nirfId);
-        for (const matId of n.mats_vinculadas) { await supabase.from("nirf_matriculas").insert({ nirf_id: nirfId, matricula_id: matId }); }
+        for (const matId of n.mats_vinculadas) {
+          const { error: mErr } = await supabase.from("nirf_matriculas").insert({ nirf_id: nirfId, matricula_id: matId });
+          if (mErr) throw new Error("Erro ao vincular matrícula ao NIRF: " + mErr.message);
+        }
       }
     }
     // Salva ITRs múltiplos
@@ -1042,11 +1060,20 @@ function CadastrosInner() {
     for (const t of fazItrs) {
       const payload = { fazenda_id: fazId, exercicio: t.exercicio, numero_declaracao: t.numero_declaracao || null, nirf_numero: t.nirf_numero || null, vencimento: t.vencimento || null, area_tributavel_ha: t.area_tributavel_ha ? Number(t.area_tributavel_ha) : null, valor_apurado: t.valor_apurado ? Number(t.valor_apurado) : null, status_pagamento: t.status_pagamento, observacao: t.observacao || null };
       let itrId = t.id;
-      if (t.id) { await supabase.from("fazenda_itrs").update(payload).eq("id", t.id); }
-      else { const { data: nt } = await supabase.from("fazenda_itrs").insert(payload).select("id").single(); itrId = nt?.id; }
+      if (t.id) {
+        const { error: upErr } = await supabase.from("fazenda_itrs").update(payload).eq("id", t.id);
+        if (upErr) throw new Error("Erro ao salvar ITR: " + upErr.message);
+      } else {
+        const { data: nt, error: insErr } = await supabase.from("fazenda_itrs").insert(payload).select("id").single();
+        if (insErr) throw new Error("Erro ao inserir ITR: " + insErr.message);
+        itrId = nt?.id;
+      }
       if (itrId) {
         await supabase.from("itr_matriculas").delete().eq("itr_id", itrId);
-        for (const matId of t.mats_vinculadas) { await supabase.from("itr_matriculas").insert({ itr_id: itrId, matricula_id: matId }); }
+        for (const matId of t.mats_vinculadas) {
+          const { error: mErr } = await supabase.from("itr_matriculas").insert({ itr_id: itrId, matricula_id: matId });
+          if (mErr) throw new Error("Erro ao vincular matrícula ao ITR: " + mErr.message);
+        }
       }
     }
     // Salva CCIRs múltiplos
@@ -1057,11 +1084,20 @@ function CadastrosInner() {
     for (const c of fazCcirs) {
       const payload = { fazenda_id: fazId, numero: c.numero.trim(), exercicio: c.exercicio || null, vencimento: c.vencimento || null, area_ha: c.area_ha ? Number(c.area_ha) : null, modulo_fiscal: c.modulo_fiscal ? Number(c.modulo_fiscal) : null, situacao: c.situacao, observacao: c.observacao || null };
       let ccirId = c.id;
-      if (c.id) { await supabase.from("fazenda_ccirs").update(payload).eq("id", c.id); }
-      else { const { data: nc } = await supabase.from("fazenda_ccirs").insert(payload).select("id").single(); ccirId = nc?.id; }
+      if (c.id) {
+        const { error: upErr } = await supabase.from("fazenda_ccirs").update(payload).eq("id", c.id);
+        if (upErr) throw new Error("Erro ao salvar CCIR: " + upErr.message);
+      } else {
+        const { data: nc, error: insErr } = await supabase.from("fazenda_ccirs").insert(payload).select("id").single();
+        if (insErr) throw new Error("Erro ao inserir CCIR: " + insErr.message);
+        ccirId = nc?.id;
+      }
       if (ccirId) {
         await supabase.from("ccir_matriculas").delete().eq("ccir_id", ccirId);
-        for (const matId of c.mats_vinculadas) { await supabase.from("ccir_matriculas").insert({ ccir_id: ccirId, matricula_id: matId }); }
+        for (const matId of c.mats_vinculadas) {
+          const { error: mErr } = await supabase.from("ccir_matriculas").insert({ ccir_id: ccirId, matricula_id: matId });
+          if (mErr) throw new Error("Erro ao vincular matrícula ao CCIR: " + mErr.message);
+        }
       }
     }
     setModalFaz(false);

@@ -5955,3 +5955,125 @@ COMMENT ON COLUMN romaneios.deposito_id IS 'Armazém / silo destino da colheita'
 -- =============================================================================
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 134: Correção de schema — fazenda_cars + RLS para NIRF/ITR/CCIR
+-- Problema: fazenda_cars não tinha coluna vencimento (código usa) nem
+--           default para estado (NOT NULL sem default bloqueia INSERT).
+--           Tabelas NIRF/ITR/CCIR não tinham RLS → writes bloqueados.
+-- =============================================================================
+
+-- Ajusta fazenda_cars para bater com o que o código salva
+ALTER TABLE fazenda_cars
+  ADD COLUMN IF NOT EXISTS vencimento date,
+  ALTER COLUMN estado SET DEFAULT '';
+
+-- RLS: fazenda_nirfs
+ALTER TABLE fazenda_nirfs ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'fazenda_nirfs' AND policyname = 'fazenda_nirfs_tenant') THEN
+    CREATE POLICY "fazenda_nirfs_tenant" ON fazenda_nirfs
+      FOR ALL
+      USING (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+-- RLS: nirf_matriculas
+ALTER TABLE nirf_matriculas ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'nirf_matriculas' AND policyname = 'nirf_matriculas_tenant') THEN
+    CREATE POLICY "nirf_matriculas_tenant" ON nirf_matriculas
+      FOR ALL
+      USING (nirf_id IN (
+        SELECT n.id FROM fazenda_nirfs n
+        JOIN fazendas f ON f.id = n.fazenda_id
+        JOIN perfis p ON p.conta_id = f.conta_id
+        WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (nirf_id IN (
+        SELECT n.id FROM fazenda_nirfs n
+        JOIN fazendas f ON f.id = n.fazenda_id
+        JOIN perfis p ON p.conta_id = f.conta_id
+        WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+-- RLS: fazenda_itrs
+ALTER TABLE fazenda_itrs ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'fazenda_itrs' AND policyname = 'fazenda_itrs_tenant') THEN
+    CREATE POLICY "fazenda_itrs_tenant" ON fazenda_itrs
+      FOR ALL
+      USING (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+-- RLS: itr_matriculas
+ALTER TABLE itr_matriculas ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'itr_matriculas' AND policyname = 'itr_matriculas_tenant') THEN
+    CREATE POLICY "itr_matriculas_tenant" ON itr_matriculas
+      FOR ALL
+      USING (itr_id IN (
+        SELECT t.id FROM fazenda_itrs t
+        JOIN fazendas f ON f.id = t.fazenda_id
+        JOIN perfis p ON p.conta_id = f.conta_id
+        WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (itr_id IN (
+        SELECT t.id FROM fazenda_itrs t
+        JOIN fazendas f ON f.id = t.fazenda_id
+        JOIN perfis p ON p.conta_id = f.conta_id
+        WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+-- RLS: fazenda_ccirs
+ALTER TABLE fazenda_ccirs ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'fazenda_ccirs' AND policyname = 'fazenda_ccirs_tenant') THEN
+    CREATE POLICY "fazenda_ccirs_tenant" ON fazenda_ccirs
+      FOR ALL
+      USING (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+-- RLS: ccir_matriculas
+ALTER TABLE ccir_matriculas ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ccir_matriculas' AND policyname = 'ccir_matriculas_tenant') THEN
+    CREATE POLICY "ccir_matriculas_tenant" ON ccir_matriculas
+      FOR ALL
+      USING (ccir_id IN (
+        SELECT c.id FROM fazenda_ccirs c
+        JOIN fazendas f ON f.id = c.fazenda_id
+        JOIN perfis p ON p.conta_id = f.conta_id
+        WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (ccir_id IN (
+        SELECT c.id FROM fazenda_ccirs c
+        JOIN fazendas f ON f.id = c.fazenda_id
+        JOIN perfis p ON p.conta_id = f.conta_id
+        WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
