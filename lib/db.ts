@@ -3986,6 +3986,34 @@ export async function aplicarAdiantamento(
   return apl;
 }
 
+import type { ImovelUrbano } from "./supabase";
+
+// ————————————————————————————————————————
+// IMÓVEIS URBANOS
+// ————————————————————————————————————————
+
+export async function listarImoveisUrbanos(fazenda_id: string): Promise<ImovelUrbano[]> {
+  const { data, error } = await supabase.from("imoveis_urbanos").select("*").eq("fazenda_id", fazenda_id).order("descricao");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarImovelUrbano(i: Omit<ImovelUrbano, "id" | "created_at">): Promise<ImovelUrbano> {
+  const { data, error } = await supabase.from("imoveis_urbanos").insert(i).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarImovelUrbano(id: string, i: Partial<ImovelUrbano>): Promise<void> {
+  const { error } = await supabase.from("imoveis_urbanos").update(i).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirImovelUrbano(id: string): Promise<void> {
+  const { error } = await supabase.from("imoveis_urbanos").delete().eq("id", id);
+  if (error) throw error;
+}
+
 // ————————————————————————————————————————
 // UTILITÁRIOS
 // ————————————————————————————————————————

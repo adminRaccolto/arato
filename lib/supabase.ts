@@ -1120,9 +1120,10 @@ export type GarantiaContrato = {
   // Grau (relevante para hipoteca e alienação)
   grau?: "1_grau" | "2_grau" | "3_grau";
   // Tipo de bem oferecido como garantia
-  tipo_bem?: "imovel" | "maquina" | "semovente" | "produto_agricola" | "outro";
-  // Bem vinculado (imóvel ou máquina — mutuamente exclusivos)
+  tipo_bem?: "imovel" | "imovel_urbano" | "maquina" | "semovente" | "produto_agricola" | "outro";
+  // Bem vinculado (rural, urbano ou máquina — mutuamente exclusivos)
   matricula_id?: string;
+  imovel_urbano_id?: string;
   maquina_id?: string;
   descricao: string;
   valor_avaliacao?: number;
@@ -1858,6 +1859,25 @@ export type AdiantamentoAplicacao = {
 };
 
 // ── Pendências Operacionais (bot) ─────────────────────────────
+export type ImovelUrbano = {
+  id: string;
+  fazenda_id: string;
+  matricula?: string;
+  tipo: "apartamento" | "casa" | "comercial" | "terreno" | "outro";
+  descricao: string;
+  logradouro?: string;
+  numero_end?: string;
+  complemento?: string;
+  bairro?: string;
+  cep?: string;
+  municipio?: string;
+  estado: string;
+  area_m2?: number;
+  valor_avaliacao?: number;
+  observacao?: string;
+  created_at?: string;
+};
+
 export type PendenciaOperacional = {
   id: string;
   fazenda_id: string;

@@ -6077,3 +6077,49 @@ DO $$ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 135: Imóveis Urbanos como garantia em operações financeiras
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS imoveis_urbanos (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id      uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  matricula       text,
+  tipo            text NOT NULL DEFAULT 'outro'
+                    CHECK (tipo IN ('apartamento','casa','comercial','terreno','outro')),
+  descricao       text NOT NULL,
+  logradouro      text,
+  numero_end      text,
+  complemento     text,
+  bairro          text,
+  cep             text,
+  municipio       text,
+  estado          text NOT NULL DEFAULT 'MT',
+  area_m2         numeric(14,2),
+  valor_avaliacao numeric(15,2),
+  observacao      text,
+  created_at      timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_imoveis_urbanos_fazenda ON imoveis_urbanos(fazenda_id);
+
+ALTER TABLE imoveis_urbanos ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'imoveis_urbanos' AND policyname = 'imoveis_urbanos_tenant') THEN
+    CREATE POLICY "imoveis_urbanos_tenant" ON imoveis_urbanos
+      FOR ALL
+      USING (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+      WITH CHECK (fazenda_id IN (
+        SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+      ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+  END IF;
+END $$;
+
+-- Adiciona imovel_urbano_id em garantias_contrato
+ALTER TABLE garantias_contrato
+  ADD COLUMN IF NOT EXISTS imovel_urbano_id uuid REFERENCES imoveis_urbanos(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';

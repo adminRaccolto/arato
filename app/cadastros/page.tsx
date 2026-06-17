@@ -36,6 +36,7 @@ import {
   listarPrincipiosAtivos, criarPrincipioAtivo, atualizarPrincipioAtivo, excluirPrincipioAtivo,
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
   listarIEsDoProdutor, salvarIEsDoProdutor,
+  listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -50,6 +51,7 @@ import type {
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria, Banco,
   PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida, Cultura as CulturaItem,
+  ImovelUrbano,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -86,7 +88,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -111,6 +113,9 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
     { key: "principios_ativos",       label: "Princípios Ativos (BOT)"   },
     { key: "unidades_medida",         label: "Unidades de Medida"        },
+  ]},
+  { group: "Patrimônio", tabs: [
+    { key: "imoveis_urbanos", label: "Imóveis Urbanos" },
   ]},
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
@@ -329,6 +334,12 @@ function CadastrosInner() {
   const [fGozo, setFGozo]                   = useState({ data_inicio_gozo: "", data_fim_gozo: "", dias_gozados: "30", abono_pecuniario: false, dias_abono: "10" });
   const [mesProcessar, setMesProcessar]     = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; });
   const [processando, setProcessando]       = useState(false);
+
+  // ── Imóveis Urbanos ──
+  const [imoveisUrbanos, setImoveisUrbanos]   = useState<ImovelUrbano[]>([]);
+  const [modalIU, setModalIU]                 = useState(false);
+  const [editIU, setEditIU]                   = useState<ImovelUrbano | null>(null);
+  const [fIU, setFIU]                         = useState({ matricula: "", tipo: "outro" as ImovelUrbano["tipo"], descricao: "", logradouro: "", numero_end: "", complemento: "", bairro: "", cep: "", municipio: "", estado: "MT", area_m2: "", valor_avaliacao: "", observacao: "" });
 
   // ── Depósitos ──
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
@@ -553,6 +564,7 @@ function CadastrosInner() {
       listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
     }
     if (aba === "depositos")       listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
+    if (aba === "imoveis_urbanos") listarImoveisUrbanos(fazendaId).then(setImoveisUrbanos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
       listarContas(fazendaId).then(setContas).catch(e => setErro(e.message));
       if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {});
@@ -772,6 +784,16 @@ function CadastrosInner() {
   });
 
   // ─────────────── FAZENDAS ───────────────
+  const buscarCepIU = async (cep: string) => {
+    const limpo = cep.replace(/\D/g, "");
+    if (limpo.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+      const d = await res.json();
+      if (!d.erro) setFIU(p => ({ ...p, logradouro: d.logradouro ?? p.logradouro, bairro: d.bairro ?? p.bairro, municipio: d.localidade ?? p.municipio, estado: d.uf ?? p.estado }));
+    } catch { /* silencioso */ }
+  };
+
   const buscarCepFaz = async (cep: string) => {
     const limpo = cep.replace(/\D/g, "");
     if (limpo.length !== 8) return;
@@ -4386,6 +4408,134 @@ function CadastrosInner() {
                     </tbody>
                   </table>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════
+              ABA — IMÓVEIS URBANOS
+          ══════════════════════════════════════════════════════════════════ */}
+          {aba === "imoveis_urbanos" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15 }}>Imóveis Urbanos</div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>Apartamentos, casas, salas comerciais e terrenos usados como garantia em operações financeiras.</div>
+                </div>
+                <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setEditIU(null); setFIU({ matricula: "", tipo: "outro", descricao: "", logradouro: "", numero_end: "", complemento: "", bairro: "", cep: "", municipio: "", estado: "MT", area_m2: "", valor_avaliacao: "", observacao: "" }); setModalIU(true); }}>+ Cadastrar Imóvel</button>
+              </div>
+
+              {imoveisUrbanos.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px 0", color: "#888", fontSize: 13 }}>Nenhum imóvel urbano cadastrado.</div>
+              ) : (
+                <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <TH cols={["Descrição", "Tipo", "Matrícula", "Município / UF", "Área (m²)", "Valor Avaliação", ""]} />
+                    <tbody>
+                      {imoveisUrbanos.map((u, i) => {
+                        const TIPO_IU: Record<ImovelUrbano["tipo"], string> = { apartamento: "Apto.", casa: "Casa", comercial: "Comercial", terreno: "Terreno", outro: "Outro" };
+                        return (
+                          <tr key={u.id} style={{ borderBottom: i < imoveisUrbanos.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                            <td style={{ padding: "10px 14px", fontWeight: 600 }}>{u.descricao}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}><span style={{ fontSize: 11, background: "#EFF4FA", color: "#1A4870", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{TIPO_IU[u.tipo]}</span></td>
+                            <td style={{ padding: "10px 14px", color: "#555" }}>{u.matricula || "—"}</td>
+                            <td style={{ padding: "10px 14px", color: "#555" }}>{u.municipio ? `${u.municipio} — ${u.estado}` : u.estado}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>{u.area_m2 ? `${Number(u.area_m2).toLocaleString("pt-BR")} m²` : "—"}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: u.valor_avaliacao ? "#1a1a1a" : "#aaa" }}>{u.valor_avaliacao ? `R$ ${Number(u.valor_avaliacao).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "right", display: "flex", gap: 6 }}>
+                              <button style={btnE} onClick={() => { setEditIU(u); setFIU({ matricula: u.matricula ?? "", tipo: u.tipo, descricao: u.descricao, logradouro: u.logradouro ?? "", numero_end: u.numero_end ?? "", complemento: u.complemento ?? "", bairro: u.bairro ?? "", cep: u.cep ?? "", municipio: u.municipio ?? "", estado: u.estado, area_m2: String(u.area_m2 ?? ""), valor_avaliacao: String(u.valor_avaliacao ?? ""), observacao: u.observacao ?? "" }); setModalIU(true); }}>Editar</button>
+                              <button style={btnX} onClick={() => { if (confirm("Excluir este imóvel?")) excluirImovelUrbano(u.id).then(() => setImoveisUrbanos(p => p.filter(x => x.id !== u.id))); }}>✕</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {modalIU && (
+                <Modal titulo={editIU ? "Editar Imóvel Urbano" : "Novo Imóvel Urbano"} subtitulo="Imóvel usado como garantia em operações financeiras" onClose={() => setModalIU(false)} width={760}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Descrição *</label>
+                      <input style={inp} placeholder="Ex: Apto 302 — Ed. Vida Nova" value={fIU.descricao} onChange={e => setFIU(p => ({ ...p, descricao: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Tipo</label>
+                      <select style={inp} value={fIU.tipo} onChange={e => setFIU(p => ({ ...p, tipo: e.target.value as ImovelUrbano["tipo"] }))}>
+                        <option value="apartamento">Apartamento</option>
+                        <option value="casa">Casa</option>
+                        <option value="comercial">Sala / Loja Comercial</option>
+                        <option value="terreno">Terreno</option>
+                        <option value="outro">Outro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Matrícula (CRI)</label>
+                      <input style={inp} placeholder="Ex: 12.345" value={fIU.matricula} onChange={e => setFIU(p => ({ ...p, matricula: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Área (m²)</label>
+                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={fIU.area_m2} onChange={e => setFIU(p => ({ ...p, area_m2: e.target.value }))} />
+                    </div>
+                    <div style={{ gridColumn: "1/-1" }}><hr style={{ border: "none", borderTop: "0.5px solid #DDE2EE", margin: "4px 0 6px" }} /></div>
+                    <div>
+                      <label style={lbl}>CEP</label>
+                      <input style={inp} placeholder="00000-000" value={fIU.cep} onChange={e => { const v = maskCep(e.target.value); setFIU(p => ({ ...p, cep: v })); buscarCepIU(v); }} />
+                    </div>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label style={lbl}>Logradouro</label>
+                      <input style={inp} placeholder="Rua, Av., Alameda…" value={fIU.logradouro} onChange={e => setFIU(p => ({ ...p, logradouro: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Número</label>
+                      <input style={inp} placeholder="Nº" value={fIU.numero_end} onChange={e => setFIU(p => ({ ...p, numero_end: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Complemento</label>
+                      <input style={inp} placeholder="Apto, Sala…" value={fIU.complemento} onChange={e => setFIU(p => ({ ...p, complemento: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Bairro</label>
+                      <input style={inp} value={fIU.bairro} onChange={e => setFIU(p => ({ ...p, bairro: e.target.value }))} />
+                    </div>
+                    <div style={{ gridColumn: "span 2" }}>
+                      <label style={lbl}>Município</label>
+                      <input style={inp} value={fIU.municipio} onChange={e => setFIU(p => ({ ...p, municipio: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={lbl}>UF</label>
+                      <select style={inp} value={fIU.estado} onChange={e => setFIU(p => ({ ...p, estado: e.target.value }))}>
+                        {["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"].map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ gridColumn: "1/-1" }}><hr style={{ border: "none", borderTop: "0.5px solid #DDE2EE", margin: "4px 0 6px" }} /></div>
+                    <div style={{ gridColumn: "span 3" }}>
+                      <label style={lbl}>Valor de Avaliação (R$)</label>
+                      <InputMonetario style={inp} value={fIU.valor_avaliacao} onChange={v => setFIU(p => ({ ...p, valor_avaliacao: String(v) }))} />
+                    </div>
+                    <div style={{ gridColumn: "1/-1" }}>
+                      <label style={lbl}>Observações</label>
+                      <textarea style={{ ...inp, height: 60, resize: "vertical" }} value={fIU.observacao} onChange={e => setFIU(p => ({ ...p, observacao: e.target.value }))} placeholder="Laudo de avaliação, matrícula com ônus, etc." />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+                    <button style={btnR} onClick={() => setModalIU(false)}>Cancelar</button>
+                    <button style={btnV} onClick={async () => {
+                      if (!fIU.descricao.trim()) { alert("Informe a descrição do imóvel."); return; }
+                      const payload = { fazenda_id: fazendaId!, matricula: fIU.matricula || undefined, tipo: fIU.tipo, descricao: fIU.descricao.trim(), logradouro: fIU.logradouro || undefined, numero_end: fIU.numero_end || undefined, complemento: fIU.complemento || undefined, bairro: fIU.bairro || undefined, cep: fIU.cep || undefined, municipio: fIU.municipio || undefined, estado: fIU.estado, area_m2: fIU.area_m2 ? Number(fIU.area_m2) : undefined, valor_avaliacao: fIU.valor_avaliacao ? Number(fIU.valor_avaliacao) : undefined, observacao: fIU.observacao || undefined };
+                      if (editIU) {
+                        await atualizarImovelUrbano(editIU.id, payload);
+                        setImoveisUrbanos(p => p.map(x => x.id === editIU.id ? { ...x, ...payload } : x));
+                      } else {
+                        const n = await criarImovelUrbano(payload);
+                        setImoveisUrbanos(p => [...p, n]);
+                      }
+                      setModalIU(false);
+                    }}>Salvar</button>
+                  </div>
+                </Modal>
               )}
             </div>
           )}
