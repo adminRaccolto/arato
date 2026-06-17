@@ -5,7 +5,7 @@ import InputMonetario from "../../../components/InputMonetario";
 import {
   listarContratosFinanceiros, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
   listarParcelasLiberacao, criarParcelaLiberacao, excluirParcelaLiberacao,
-  listarParcelasPagamento, salvarParcelasPagamento, baixarParcelaPagamento,
+  listarParcelasPagamento, salvarParcelasPagamento,
   listarGarantias, criarGarantia, excluirGarantia,
   listarCentrosCusto, salvarCentrosCusto,
   listarAditivos, criarAditivo, excluirAditivo,
@@ -1501,9 +1501,6 @@ export default function ContratosFinanceiros() {
               {/* ── Pagamento ── */}
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
-                  <div style={{ background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
-                    ✦ Ao baixar cada parcela, lançamentos CP são criados automaticamente{contratoModal.conta_pagamento_id ? ` · Conta: ${nomeConta(contratoModal.conta_pagamento_id)}` : ""}.
-                  </div>
                   <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
@@ -1537,7 +1534,6 @@ export default function ContratosFinanceiros() {
                                 <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.saldo_devedor)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "center" }}>
                                   <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
-                                  {p.status !== "pago" && <button style={{ ...btnE, marginLeft: 6, fontSize: 10 }} onClick={() => baixarParcelaPagamento(p.id, fazendaId!, p, contratoModal!).then(() => setParcelasPagamento(x => x.map(r => r.id === p.id ? { ...r, status: "pago" as const } : r)))}>Baixar</button>}
                                 </td>
                               </tr>
                             );
