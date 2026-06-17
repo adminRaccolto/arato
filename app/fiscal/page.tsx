@@ -1672,7 +1672,7 @@ function FiscalInner() {
 
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-            <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,0.28)" }}>
+            <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
               {/* Barra de título */}
               <div style={{ background: modoContingencia ? "#92400E" : "#1A4870", color: "#fff", padding: "7px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
@@ -2053,7 +2053,7 @@ function FiscalInner() {
 
       {/* ── MODAL: Editar Item ── */}
       {editItemModal && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:110 }}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:110 }}>
           <div style={{ background:"#fff", borderRadius:10, padding:22, width:640, maxWidth:"96vw" }}>
             <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Editar Item</div>
             {[

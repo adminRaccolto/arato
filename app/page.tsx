@@ -624,7 +624,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
 
       <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
@@ -710,9 +710,8 @@ export default function Dashboard() {
                 <div style={{ padding: "20px 16px", textAlign: "center", fontSize: 12, color: "#aaa" }}>Verificando pendências...</div>
               ) : alertas.length === 0 ? (
                 <div style={{ padding: "20px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 22, marginBottom: 6 }}>✓</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#16A34A" }}>Tudo em dia</div>
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Nenhuma pendência nos próximos 7 dias</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#16A34A", marginBottom: 2 }}>Tudo em dia</div>
+                  <div style={{ fontSize: 12, color: "#888" }}>Nenhuma pendência nos próximos 7 dias</div>
                 </div>
               ) : (
                 <div>
@@ -725,24 +724,21 @@ export default function Dashboard() {
                           display: "flex", alignItems: "center",
                           flexDirection: "row",
                           gap: 12,
-                          padding: "13px 16px",
-                          borderBottom: "0.5px solid #F3F5F9",
-                          background: cor.bg,
-                          borderLeft: `3px solid ${cor.badge}`,
+                          padding: "11px 16px",
+                          borderBottom: "0.5px solid #EEF1F6",
+                          background: "#fff",
+                          borderLeft: `2px solid ${cor.badge}`,
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-                          {/* Badge tipo */}
                           <span style={{
-                            fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 10, flexShrink: 0,
-                            background: cor.badge, color: "#fff",
+                            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, flexShrink: 0,
+                            background: cor.badge + "18", color: cor.badge, border: `0.5px solid ${cor.badge}40`,
                           }}>
                             {TIPO_LABEL[a.tipo] ?? a.tipo}
                           </span>
-                          {/* Descrição */}
-                          <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: cor.text, lineHeight: 1.4 }}>{a.desc}</span>
-                          {/* Ação */}
-                          <a href={a.link} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 6, background: "#fff", border: `0.5px solid ${cor.badge}`, color: cor.badge, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>{a.desc}</span>
+                          <a href={a.link} style={{ fontSize: 12, padding: "5px 12px", borderRadius: 6, background: "#F4F6FA", border: "0.5px solid #DDE2EE", color: "#1A4870", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {a.linkLabel}
                           </a>
                         </div>
@@ -755,20 +751,21 @@ export default function Dashboard() {
 
             {/* Inconsistências de Conciliação */}
             {conciliPend.length > 0 && (
-              <div style={{ background: "#fff", border: "0.5px solid #EF9F27", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #FDE9BB", background: "#FBF3E0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#7A4300" }}>
-                    ⚠ Inconsistências de Conciliação
+              <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
+                    Inconsistências de Conciliação
                   </span>
-                  <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600 }}>
-                    {conciliPend.length} item{conciliPend.length > 1 ? "s" : ""} no extrato bancário sem lançamento
+                  <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600, background: "#FBF3E0", padding: "2px 8px", borderRadius: 8, border: "0.5px solid #C9921B40" }}>
+                    {conciliPend.length} sem lançamento
                   </span>
                 </div>
                 {conciliPend.slice(0, 5).map(p => (
-                  <div key={p.id} style={{ padding: "10px 16px", borderBottom: "0.5px solid #FDE9BB", display: "flex", alignItems: "center", gap: 12, background: "#FFFDF7" }}>
+                  <div key={p.id} style={{ padding: "10px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", gap: 12, background: "#fff" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8,
-                      background: p.tipo === "debito" ? "#FCEBEB" : "#DCFCE7",
-                      color: p.tipo === "debito" ? "#E24B4A" : "#16A34A" }}>
+                      background: p.tipo === "debito" ? "#E24B4A18" : "#16A34A18",
+                      color: p.tipo === "debito" ? "#E24B4A" : "#16A34A",
+                      border: `0.5px solid ${p.tipo === "debito" ? "#E24B4A40" : "#16A34A40"}` }}>
                       {p.tipo === "debito" ? "DÉBITO" : "CRÉDITO"}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -794,8 +791,8 @@ export default function Dashboard() {
                   </div>
                 ))}
                 {conciliPend.length > 5 && (
-                  <div style={{ padding: "8px 16px", background: "#FBF3E0", textAlign: "center" }}>
-                    <a href="/financeiro/conciliacao" style={{ fontSize: 12, color: "#C9921B", fontWeight: 600, textDecoration: "none" }}>
+                  <div style={{ padding: "8px 16px", textAlign: "center", borderTop: "0.5px solid #EEF1F6" }}>
+                    <a href="/financeiro/conciliacao" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>
                       Ver todas ({conciliPend.length}) na Conciliação →
                     </a>
                   </div>
@@ -822,15 +819,16 @@ export default function Dashboard() {
 
             {/* Saldo da semana */}
             <div style={{
-              background: saldoSemana >= 0 ? "#F0FDF4" : "#FEF2F2",
-              border: `0.5px solid ${saldoSemana >= 0 ? "#86EFAC" : "#FECACA"}`,
+              background: "#fff",
+              border: "0.5px solid #DDE2EE",
               borderRadius: 10, padding: "14px 18px",
               display: "flex", alignItems: "center",
               justifyContent: "space-between",
               flexDirection: "row",
+              borderLeft: `3px solid ${saldoSemana >= 0 ? "#16A34A" : "#E24B4A"}`,
             }}>
               <div>
-                <div style={{ fontSize: 12, color: saldoSemana >= 0 ? "#166534" : "#991B1B", marginBottom: 2 }}>
+                <div style={{ fontSize: 11, color: "#888", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                   Saldo projetado — próximos 7 dias
                 </div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: saldoSemana >= 0 ? "#16A34A" : "#E24B4A" }}>

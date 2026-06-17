@@ -412,7 +412,7 @@ export default function PendenciasFiscaisPage() {
       {/* Modal de Anexar NF */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 12px 40px rgba(0,0,0,0.20)" }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             {/* Header modal */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #EEF1F6" }}>
               <div>

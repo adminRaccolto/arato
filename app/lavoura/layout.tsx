@@ -87,7 +87,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           onClick={() => setSheet(null)}
           style={{
             position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.4)",
+            background: "rgba(11,45,80,0.28)",
             zIndex: 940,
           }}
         />

@@ -274,7 +274,7 @@ export default function MapaPage() {
         {selecionado && (
           <div style={{
             position: "absolute", top: 16, right: 16, zIndex: 1000,
-            background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+            background: "#fff", borderRadius: 12, boxShadow: "0 4px 12px rgba(11,45,80,0.08)",
             border: "0.5px solid #DDE2EE", padding: "16px 20px", minWidth: 240, maxWidth: 300,
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>

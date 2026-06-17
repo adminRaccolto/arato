@@ -56,7 +56,7 @@ export default function NovaSenha() {
       <div style={{
         width: "100%", maxWidth: 400, margin: "24px",
         background: "#fff", borderRadius: 20,
-        boxShadow: "0 24px 64px rgba(0,0,0,0.35)",
+        boxShadow: "0 4px 20px rgba(11,45,80,0.10)",
         overflow: "hidden",
       }}>
         {/* Topo */}

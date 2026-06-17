@@ -320,7 +320,7 @@ export default function BackupPage() {
       {/* ── Modal Restauração ─────────────────────────────────────── */}
       {modalRestaura && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 500, padding: "28px 28px 24px", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 500, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#791F1F", marginBottom: 6 }}>Restaurar Backup</div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 18, lineHeight: 1.6 }}>
               Esta operação vai sobrescrever os dados atuais com os dados do backup selecionado.

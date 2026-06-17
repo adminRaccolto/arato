@@ -440,8 +440,8 @@ export default function LCDPR() {
 
       {/* Modal lançamento manual */}
       {modalManual && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 28, width: 460, boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "#fff", borderRadius: 14, padding: 28, width: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: 20 }}>Lançamento Manual LCDPR</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>

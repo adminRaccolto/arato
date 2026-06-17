@@ -182,7 +182,7 @@ export default function OperacoesTesourariaPage() {
       {/* Modal */}
       {modalOp && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 16px 48px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{opEdit ? "Editar Operação" : "Nova Operação de Tesouraria"}</div>
               <button onClick={() => setModalOp(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>

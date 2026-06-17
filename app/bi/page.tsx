@@ -3741,9 +3741,9 @@ export default function BI() {
         const tipoCor = isCaptacao(l) ? "#166534"  : isJurosPgto(l) ? "#633806"         : "#0C447C";
         const tipoBg  = isCaptacao(l) ? "#DCFCE7"  : isJurosPgto(l) ? "#FEF3C7"         : "#EBF3FC";
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
             onClick={e => { if (e.target === e.currentTarget) setRtLancModal(null); }}>
-            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", overflow: "hidden" }}>
+            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
               <div style={{ padding: "14px 20px", background: "#1A4870", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Lançamento RT — contrato não localizado</div>
@@ -3776,7 +3776,7 @@ export default function BI() {
 
       {/* ── Loading contrato ── */}
       {loadingContrato && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: "28px 40px", fontSize: 13, color: "#555", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" }}>
             Carregando contrato…
           </div>
@@ -3923,7 +3923,7 @@ export default function BI() {
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 20 }}
             onClick={e => { if (e.target === e.currentTarget) setRtContratoModal(null); }}>
-            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.28)", overflow: "hidden" }}>
+            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 920, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 4px 20px rgba(11,45,80,0.10)", overflow: "hidden" }}>
 
               {/* Cabeçalho */}
               <div style={{ padding: "16px 24px", background: "#1A4870", flexShrink: 0 }}>

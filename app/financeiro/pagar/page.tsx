@@ -1105,7 +1105,7 @@ function ContasPagarInner() {
       {/* ── Alerta: CP sem NF ───────────────────────────────────── */}
       {alertaNF && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
               <span style={{ fontSize: 22 }}>⚠️</span>
               <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Conta a Pagar sem Nota Fiscal</span>
@@ -1167,7 +1167,7 @@ function ContasPagarInner() {
           position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
           background: "#1A4870", color: "#fff", borderRadius: 14,
           padding: "12px 22px", display: "flex", alignItems: "center", gap: 18,
-          boxShadow: "0 6px 24px rgba(0,0,0,0.25)", zIndex: 90, whiteSpace: "nowrap",
+          boxShadow: "0 2px 8px rgba(11,45,80,0.07)", zIndex: 90, whiteSpace: "nowrap",
           maxWidth: "calc(100vw - 32px)",
         }}>
           <span style={{ fontSize: 13 }}>
@@ -1228,7 +1228,7 @@ function ContasPagarInner() {
         return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 24 }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>
                 {modalBaixa.moeda === "barter" ? "Confirmar entrega (barter)" : modalBaixa.status === "parcial" ? "Registrar pagamento parcial" : "Registrar pagamento"}
@@ -1423,7 +1423,7 @@ function ContasPagarInner() {
       {modalLote && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Pagamento em Lote (Borderô)</div>
@@ -1505,7 +1505,7 @@ function ContasPagarInner() {
       {modalNovo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
           onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column" }}>
+          <div style={{ background: "#fff", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", display: "flex", flexDirection: "column" }}>
 
             {/* ── Cabeçalho ── */}
             <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid #DEE5EE" }}>

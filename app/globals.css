@@ -2,17 +2,133 @@
   box-sizing: border-box;
 }
 
+/* ── Tokens ──────────────────────────────────────────────────── */
+:root {
+  --c-primary:       #1A4870;
+  --c-primary-light: #D5E8F5;
+  --c-accent:        #C9921B;
+  --c-bg:            #F4F6FA;
+  --c-surface:       #ffffff;
+  --c-border:        #DDE2EE;
+  --c-border-light:  #EEF1F6;
+  --c-text:          #1a1a1a;
+  --c-text-sub:      #555555;
+  --c-text-weak:     #888888;
+  --shadow-card:     0 1px 4px rgba(11,45,80,0.05);
+  --shadow-modal:    0 4px 20px rgba(11,45,80,0.10);
+  --r-card:          10px;
+  --r-modal:         12px;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background: #F4F6FA;
-  color: #1a1a1a;
+  background: var(--c-bg);
+  color: var(--c-text);
   font-family: system-ui, -apple-system, Arial, sans-serif;
   font-size: 13px;
 }
 
 input, select, textarea, button {
   font-family: inherit;
+}
+
+/* ── Utilitários ─────────────────────────────────────────────── */
+.card {
+  background: var(--c-surface);
+  border: 0.5px solid var(--c-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+}
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(11,45,80,0.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: var(--c-surface);
+  border: 0.5px solid var(--c-border);
+  border-radius: var(--r-modal);
+  box-shadow: var(--shadow-modal);
+}
+
+.sec-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-weak);
+  padding-bottom: 6px;
+  border-bottom: 0.5px solid var(--c-border);
+  margin-bottom: 10px;
+}
+
+/* Dropdown sobrio */
+.dropdown-menu {
+  background: var(--c-surface);
+  border: 0.5px solid var(--c-border);
+  border-radius: var(--r-card);
+  box-shadow: 0 4px 12px rgba(11,45,80,0.08);
+}
+
+/* ── Tabelas ─────────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  background: #F4F6FA;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-sub);
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 0.5px solid var(--c-border);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 9px 12px;
+  border-bottom: 0.5px solid var(--c-border-light);
+  color: var(--c-text);
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: #F9FAFC;
+}
+
+/* ── Inputs e formulários ────────────────────────────────────── */
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-sub);
+  margin-bottom: 5px;
+}
+
+/* ── Badges ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 /* ── Impressão ───────────────────────────────────────────────── */

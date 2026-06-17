@@ -320,7 +320,7 @@ export default function ManifestacaoPage() {
       {justModal && (() => {
         const m = MAN_CFG.find(x => x.tipo === justModal.tipo)!;
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+          <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
             onClick={e => { if (e.target === e.currentTarget) setJustModal(null); }}>
             <div style={{ background: "white", borderRadius: 12, padding: 28, width: 480, maxWidth: "96vw" }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: m.cor, marginBottom: 4 }}>{m.label}</div>

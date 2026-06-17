@@ -878,7 +878,7 @@ export default function Faturamento() {
 
           {/* ── PASSO 1: Origem ── */}
           {passo === "origem" && (
-            <div style={{ background:"#fff", borderRadius:14, padding:32, width:560, boxShadow:"0 16px 48px rgba(0,0,0,0.22)" }}>
+            <div style={{ background:"#fff", borderRadius:14, padding:32, width:560, boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
               <div style={{ fontSize:17, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
               <div style={{ fontSize:13, color:"#666", marginBottom:24 }}>Como deseja iniciar a emissão?</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
@@ -925,7 +925,7 @@ export default function Faturamento() {
 
           {/* ── PASSO 2: Selecionar Contrato ── */}
           {passo === "contrato" && (
-            <div style={{ background:"#fff", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 16px 48px rgba(0,0,0,0.22)", overflow:"hidden" }}>
+            <div style={{ background:"#fff", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</button>
                 <div>
@@ -982,7 +982,7 @@ export default function Faturamento() {
 
           {/* ── PASSO 2b: Selecionar Romaneio ── */}
           {passo === "romaneio" && contratoSelecionado && (
-            <div style={{ background:"#fff", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 16px 48px rgba(0,0,0,0.22)", overflow:"hidden" }}>
+            <div style={{ background:"#fff", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
                 <div style={{ flex:1 }}>
@@ -1080,7 +1080,7 @@ export default function Faturamento() {
 
           {/* ── PASSO 3: Formulário 8 abas ── */}
           {passo === "form" && (
-            <div style={{ background:"#fff", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 16px 48px rgba(0,0,0,0.22)", overflow:"hidden" }}>
+            <div style={{ background:"#fff", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
 
               {/* Barra de título */}
               <div style={{ background:"#1A4870", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
