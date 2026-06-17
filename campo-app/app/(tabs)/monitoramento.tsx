@@ -12,6 +12,7 @@ import { supabase, type Talhao, type Ciclo, type MonitoramentoPraga } from '../.
 import { saveOrQueue } from '../../lib/offline';
 import { uploadFoto } from '../../lib/storage';
 import { C, T } from '../../constants/theme';
+import { todayBR, formatDateInput, toISO, toBR } from '../../lib/date';
 
 const CATALOGO: Record<string, string[]> = {
   praga: [
@@ -61,7 +62,7 @@ export default function MonitoramentoScreen() {
   const [nivel, setNivel]     = useState(1);
   const [talhaoId, setTalhaoId] = useState('');
   const [cicloId, setCicloId]   = useState('');
-  const [data, setData]       = useState(() => new Date().toISOString().split('T')[0]);
+  const [data, setData]       = useState(todayBR);
   const [pct, setPct]         = useState('');
   const [estagio, setEstagio] = useState('');
   const [acao, setAcao]       = useState('');
@@ -96,7 +97,7 @@ export default function MonitoramentoScreen() {
   function resetForm() {
     setTipo('praga'); setNome(''); setNivel(1);
     setTalhaoId(''); setCicloId('');
-    setData(new Date().toISOString().split('T')[0]);
+    setData(todayBR());
     setPct(''); setEstagio(''); setAcao(''); setObs('');
     setLat(null); setLng(null); setGpsAcc(null); setFotos([]);
   }
@@ -128,7 +129,7 @@ export default function MonitoramentoScreen() {
     for (const uri of fotos) { const url = await uploadFoto(uri, 'monitoramento'); if (url) urlsFotos.push(url); }
     const { offline, error } = await saveOrQueue('monitoramento_pragas', {
       fazenda_id: fazendaId, talhao_id: talhaoId, ciclo_id: cicloId || null,
-      data_monitoramento: data, tipo, nome, nivel,
+      data_monitoramento: toISO(data), tipo, nome, nivel,
       percentual_infestacao: pct ? Number(pct) : null,
       estagio: estagio || null, acao_recomendada: acao || null, obs: obs || null,
       lat, lng, fotos: urlsFotos.length ? urlsFotos : null,
@@ -168,7 +169,7 @@ export default function MonitoramentoScreen() {
                         <Text style={[s.badgeTxt, { color: nv.cor }]}>{nv.label}</Text>
                       </View>
                     </View>
-                    <Text style={[T.caption, { marginTop: 5 }]}>{tal?.nome ?? '—'} · {item.data_monitoramento}</Text>
+                    <Text style={[T.caption, { marginTop: 5 }]}>{tal?.nome ?? '—'} · {toBR(item.data_monitoramento)}</Text>
                     {item.acao_recomendada
                       ? <Text style={[T.bodySub, { marginTop: 6, fontSize: 12 }]}>Ação: {item.acao_recomendada}</Text>
                       : null}
@@ -250,7 +251,7 @@ export default function MonitoramentoScreen() {
         <Text style={T.secLabel}>Detalhes</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
-            <TextInput style={T.input} value={data} onChangeText={setData} placeholder="Data" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={data} onChangeText={v => setData(formatDateInput(v))} placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
           </View>
           <View style={{ flex: 1 }}>
             <TextInput style={T.input} value={pct} onChangeText={setPct} keyboardType="decimal-pad" placeholder="% infest." placeholderTextColor={C.textWeak} />

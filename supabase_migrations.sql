@@ -5893,6 +5893,21 @@ NOTIFY pgrst, 'reload schema';
 -- =============================================================================
 -- Seção 129: Campo App — Pluviometria + Abastecimento (colunas adicionais)
 -- =============================================================================
+-- Seção 130: Abastecimento — vínculo com insumo e ciclo
+-- =============================================================================
+
+ALTER TABLE abastecimentos
+  ALTER COLUMN valor_unitario SET DEFAULT 0,
+  ALTER COLUMN valor_total    SET DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS insumo_id uuid REFERENCES insumos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS ciclo_id  uuid REFERENCES ciclos(id)  ON DELETE SET NULL;
+
+COMMENT ON COLUMN abastecimentos.insumo_id IS 'Item de estoque consumido (combustível/ARLA) — baixa movimentacoes_estoque';
+COMMENT ON COLUMN abastecimentos.ciclo_id  IS 'Ciclo agrícola ao qual o custo é imputado';
+
+NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
 
 -- leituras_pluviometricas: adiciona ponto_nome e operador para uso no campo app
 ALTER TABLE leituras_pluviometricas

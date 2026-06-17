@@ -97,19 +97,39 @@ export type LeituraPluviometrica = {
   created_at: string;
 };
 
+export type AnoSafra = {
+  id: string;
+  descricao: string;
+};
+
+export type InsumoEstoque = {
+  id: string;
+  nome: string;
+  categoria: string;
+  unidade: string;
+  estoque: number;
+  custo_medio: number;
+};
+
 export type Abastecimento = {
   id: string;
   fazenda_id: string;
   maquina_id: string | null;
   maquina_descricao: string;
-  data_abastecimento: string;
-  tipo_combustivel: 'diesel' | 'gasolina' | 'etanol' | 'arla32';
-  litros: number;
+  data: string;
+  insumo_id: string | null;
+  tipo_combustivel: string | null;
+  quantidade_l: number;
+  valor_unitario: number;
+  valor_total: number;
+  ciclo_id: string | null;
   horimetro: number | null;
   km: number | null;
   operador: string | null;
-  obs: string | null;
+  observacao: string | null;
   created_at: string;
+  insumos?: { nome: string } | null;
+  ciclos?: { descricao: string } | null;
 };
 
 export type Romaneio = {

@@ -10,6 +10,7 @@ import { supabase, type Talhao, type Ciclo } from '../../lib/supabase';
 import { saveOrQueue } from '../../lib/offline';
 import { C, T } from '../../constants/theme';
 import { ListPickerModal } from './monitoramento';
+import { todayBR, formatDateInput, toISO, toBR } from '../../lib/date';
 
 const VARIEDADES: Record<string, string[]> = {
   soja:    ['TMG 7062 IPRO','M 6410 IPRO','NS 7709 IPRO','DM 65i62 RSF IPRO','SYN 1365i','Outra'],
@@ -31,7 +32,7 @@ export default function PlantioScreen() {
 
   const [talhaoId, setTalhaoId]     = useState('');
   const [cicloId, setCicloId]       = useState('');
-  const [data, setData]             = useState(() => new Date().toISOString().split('T')[0]);
+  const [data, setData]             = useState(todayBR);
   const [variedade, setVariedade]   = useState('');
   const [densidade, setDensidade]   = useState('');
   const [espacamento, setEspacamento] = useState('');
@@ -62,7 +63,7 @@ export default function PlantioScreen() {
   useEffect(() => { carregar(); }, [carregar]);
 
   function reset() {
-    setTalhaoId(''); setCicloId(''); setData(new Date().toISOString().split('T')[0]);
+    setTalhaoId(''); setCicloId(''); setData(todayBR());
     setVariedade(''); setDensidade(''); setEspacamento('');
     setAreaHa(''); setOperador(''); setMaquina(''); setObs('');
   }
@@ -74,7 +75,7 @@ export default function PlantioScreen() {
     setSalvando(true);
     const { offline, error } = await saveOrQueue('plantios', {
       fazenda_id: fazendaId, talhao_id: talhaoId, ciclo_id: cicloId,
-      data_plantio: data, variedade: variedade || null,
+      data_plantio: toISO(data), variedade: variedade || null,
       densidade_sementes_ha: densidade ? Number(densidade) : null,
       espacamento_cm: espacamento ? Number(espacamento) : null,
       area_plantada_ha: areaHa ? Number(areaHa) : null,
@@ -110,7 +111,7 @@ export default function PlantioScreen() {
                 <View style={T.card}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Text style={T.h3}>{(item.talhoes as Record<string,string>|null)?.nome ?? '—'}</Text>
-                    <Text style={T.caption}>{String(item.data_plantio)}</Text>
+                    <Text style={T.caption}>{toBR(String(item.data_plantio))}</Text>
                   </View>
                   <Text style={[T.bodySub, { marginTop: 4 }]}>{(item.ciclos as Record<string,string>|null)?.descricao ?? '—'}</Text>
                   {item.variedade ? <Text style={[T.caption, { marginTop: 4 }]}>Variedade: {String(item.variedade)}</Text> : null}
@@ -150,7 +151,7 @@ export default function PlantioScreen() {
         </TouchableOpacity>
 
         <Text style={T.secLabel}>Operação</Text>
-        <TextInput style={T.input} value={data} onChangeText={setData} placeholder="Data (AAAA-MM-DD)" placeholderTextColor={C.textWeak} />
+        <TextInput style={T.input} value={data} onChangeText={v => setData(formatDateInput(v))} placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
         <TouchableOpacity style={T.picker} onPress={() => variedadesLista.length ? setPickerVariedade(true) : Alert.alert('', 'Selecione o ciclo primeiro.')}>
           <Text style={{ color: variedade ? C.text : C.textWeak, fontSize: 14 }}>{variedade || 'Variedade…'}</Text>
           <Ionicons name="chevron-down" size={16} color={C.textWeak} />

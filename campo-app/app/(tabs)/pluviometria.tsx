@@ -10,6 +10,7 @@ import { supabase, type Talhao } from '../../lib/supabase';
 import { saveOrQueue } from '../../lib/offline';
 import { C, T } from '../../constants/theme';
 import { ListPickerModal } from './monitoramento';
+import { todayBR, formatDateInput, toISO, toBR } from '../../lib/date';
 
 type Tela = 'lista' | 'form';
 // Nomes de colunas espelham a tabela leituras_pluviometricas do Supabase
@@ -45,7 +46,7 @@ export default function PluviometriaScreen() {
 
   const [talhaoId, setTalhaoId] = useState('');
   const [ponto, setPonto]       = useState('');
-  const [dataStr, setDataStr]   = useState(() => new Date().toISOString().split('T')[0]);
+  const [dataStr, setDataStr]   = useState(todayBR);
   const [horaStr, setHoraStr]   = useState(horaAtual);
   const [mm, setMm]             = useState('');
   const [operador, setOperador] = useState('');
@@ -74,7 +75,7 @@ export default function PluviometriaScreen() {
 
   function reset() {
     setTalhaoId(''); setPonto('');
-    setDataStr(new Date().toISOString().split('T')[0]);
+    setDataStr(todayBR());
     setHoraStr(horaAtual()); setMm(''); setOperador(''); setObs('');
   }
 
@@ -88,7 +89,7 @@ export default function PluviometriaScreen() {
       fazenda_id: fazendaId,
       talhao_id: talhaoId || null,
       ponto_nome: nomePonto,
-      data: dataStr,
+      data: toISO(dataStr),
       hora: horaStr || null,
       chuva_mm: Number(mm),
       operador: operador || null,
@@ -179,7 +180,7 @@ export default function PluviometriaScreen() {
                     </View>
                   </View>
                   <Text style={[T.caption, { marginTop: 4 }]}>
-                    {item.data}{item.hora ? ` às ${String(item.hora).slice(0, 5)}` : ''}
+                    {toBR(item.data)}{item.hora ? ` às ${String(item.hora).slice(0, 5)}` : ''}
                     {(item.talhoes as unknown as { nome: string } | null)?.nome
                       ? ` · ${(item.talhoes as unknown as { nome: string }).nome}`
                       : ''}
@@ -225,7 +226,7 @@ export default function PluviometriaScreen() {
         <Text style={T.secLabel}>Leitura</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 2 }}>
-            <TextInput style={T.input} value={dataStr} onChangeText={setDataStr} placeholder="Data (AAAA-MM-DD)" placeholderTextColor={C.textWeak} />
+            <TextInput style={T.input} value={dataStr} onChangeText={v => setDataStr(formatDateInput(v))} placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
           </View>
           <View style={{ flex: 1 }}>
             <TextInput style={T.input} value={horaStr} onChangeText={setHoraStr} placeholder="HH:MM" placeholderTextColor={C.textWeak} />

@@ -10,6 +10,7 @@ import { supabase, type Talhao, type Ciclo } from '../../lib/supabase';
 import { saveOrQueue } from '../../lib/offline';
 import { C, T } from '../../constants/theme';
 import { ListPickerModal } from './monitoramento';
+import { todayBR, formatDateInput, toISO, toBR } from '../../lib/date';
 
 type Tela = 'lista' | 'form';
 
@@ -32,7 +33,7 @@ export default function ColheitaScreen() {
 
   const [talhaoId, setTalhaoId]   = useState('');
   const [cicloId, setCicloId]     = useState('');
-  const [data, setData]           = useState(() => new Date().toISOString().split('T')[0]);
+  const [data, setData]           = useState(todayBR);
   const [motorista, setMotorista] = useState('');
   const [placa, setPlaca]         = useState('');
   const [pesoBruto, setPesoBruto] = useState('');
@@ -63,7 +64,7 @@ export default function ColheitaScreen() {
   useEffect(() => { carregar(); }, [carregar]);
 
   function reset() {
-    setTalhaoId(''); setCicloId(''); setData(new Date().toISOString().split('T')[0]);
+    setTalhaoId(''); setCicloId(''); setData(todayBR());
     setMotorista(''); setPlaca(''); setPesoBruto(''); setTara('');
     setUmid('14'); setImp('1'); setAvariados('0'); setObs('');
   }
@@ -84,7 +85,7 @@ export default function ColheitaScreen() {
     setSalvando(true);
     const { offline, error } = await saveOrQueue('romaneios', {
       fazenda_id: fazendaId, talhao_id: talhaoId, ciclo_id: cicloId,
-      data_colheita: data, motorista: motorista || null, placa: placa || null,
+      data_colheita: toISO(data), motorista: motorista || null, placa: placa || null,
       peso_bruto_kg: Number(pesoBruto), tara_kg: Number(tara),
       peso_liquido_kg: pesoLiq,
       umidade_pct: Number(umid), impureza_pct: Number(imp),
@@ -141,7 +142,7 @@ export default function ColheitaScreen() {
                       <Text style={T.caption}>U: {String(item.umidade_pct ?? '—')}%</Text>
                       <Text style={T.caption}>Imp: {String(item.impureza_pct ?? '—')}%</Text>
                       <Text style={T.caption}>Liq: {(Number(item.peso_liquido_kg ?? 0) / 1000).toFixed(2)} t</Text>
-                      <Text style={T.caption}>{String(item.data_colheita)}</Text>
+                      <Text style={T.caption}>{toBR(String(item.data_colheita))}</Text>
                     </View>
                   </View>
                 );
@@ -177,7 +178,7 @@ export default function ColheitaScreen() {
           <Text style={{ color: cicloId ? C.text : C.textWeak, fontSize: 14 }}>{ciclos.find(c => c.id === cicloId)?.descricao ?? 'Ciclo…'}</Text>
           <Ionicons name="chevron-down" size={16} color={C.textWeak} />
         </TouchableOpacity>
-        <TextInput style={T.input} value={data} onChangeText={setData} placeholder="Data (AAAA-MM-DD)" placeholderTextColor={C.textWeak} />
+        <TextInput style={T.input} value={data} onChangeText={v => setData(formatDateInput(v))} placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
 
         <Text style={T.secLabel}>Caminhão</Text>
         <TextInput style={T.input} value={motorista} onChangeText={setMotorista} placeholder="Motorista" placeholderTextColor={C.textWeak} />

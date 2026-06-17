@@ -10,6 +10,7 @@ import { supabase, type Talhao, type Ciclo } from '../../lib/supabase';
 import { saveOrQueue } from '../../lib/offline';
 import { C, T } from '../../constants/theme';
 import { ListPickerModal } from './monitoramento';
+import { todayBR, formatDateInput, toISO, toBR } from '../../lib/date';
 
 type Produto = { nome: string; dose: string; unidade: string };
 type Tela = 'lista' | 'form';
@@ -107,7 +108,7 @@ export default function PulverizacaoScreen() {
 
   const [talhaoId, setTalhaoId]       = useState('');
   const [cicloId, setCicloId]         = useState('');
-  const [data, setData]               = useState(() => new Date().toISOString().split('T')[0]);
+  const [data, setData]               = useState(todayBR);
   const [areaHa, setAreaHa]           = useState('');
   const [volume, setVolume]           = useState('');
   const [operador, setOperador]       = useState('');
@@ -140,7 +141,7 @@ export default function PulverizacaoScreen() {
   useEffect(() => { carregar(); }, [carregar]);
 
   function reset() {
-    setTalhaoId(''); setCicloId(''); setData(new Date().toISOString().split('T')[0]);
+    setTalhaoId(''); setCicloId(''); setData(todayBR());
     setAreaHa(''); setVolume(''); setOperador(''); setMaquina('');
     setTemp(''); setUmid(''); setVento(''); setObs('');
     setProdutos([{ nome: '', dose: '', unidade: 'L/ha' }]);
@@ -159,7 +160,7 @@ export default function PulverizacaoScreen() {
     setSalvando(true);
     const { offline, error } = await saveOrQueue('pulverizacoes', {
       fazenda_id: fazendaId, talhao_id: talhaoId, ciclo_id: cicloId,
-      data_pulverizacao: data,
+      data_pulverizacao: toISO(data),
       area_ha: areaHa ? Number(areaHa) : null,
       volume_calda_ha: volume ? Number(volume) : null,
       operador: operador || null, maquina: maquina || null,
@@ -195,7 +196,7 @@ export default function PulverizacaoScreen() {
                 <View style={T.card}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={T.h3}>{(item.talhoes as Record<string,string>|null)?.nome ?? '—'}</Text>
-                    <Text style={T.caption}>{String(item.data_pulverizacao)}</Text>
+                    <Text style={T.caption}>{toBR(String(item.data_pulverizacao))}</Text>
                   </View>
                   <Text style={[T.bodySub, { marginTop: 4 }]}>{(item.ciclos as Record<string,string>|null)?.descricao ?? '—'}</Text>
                   {Array.isArray(item.produtos) && item.produtos.length > 0
@@ -235,6 +236,9 @@ export default function PulverizacaoScreen() {
           <Text style={{ color: cicloId ? C.text : C.textWeak, fontSize: 14 }}>{ciclos.find(c => c.id === cicloId)?.descricao ?? 'Ciclo…'}</Text>
           <Ionicons name="chevron-down" size={16} color={C.textWeak} />
         </TouchableOpacity>
+
+        <Text style={T.secLabel}>Data</Text>
+        <TextInput style={T.input} value={data} onChangeText={v => setData(formatDateInput(v))} placeholder="DD/MM/AAAA" placeholderTextColor={C.textWeak} keyboardType="numeric" maxLength={10} />
 
         <Text style={T.secLabel}>Produtos</Text>
         {produtos.map((pr, i) => (
