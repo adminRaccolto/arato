@@ -6139,4 +6139,40 @@ CREATE INDEX IF NOT EXISTS idx_lancamentos_contrato_financeiro ON lancamentos(co
 --   WHERE auto = true AND tipo = 'pagar'
 --   AND NOT EXISTS (SELECT 1 FROM contratos_financeiros WHERE id = lancamentos.contrato_financeiro_id);
 
+-- ── Migration 141: alinhamento completo do schema de contratos financeiros ───
+-- Corrige discrepâncias entre o schema do banco e os tipos TypeScript.
+
+-- 1) parcelas_liberacao: adiciona valor_liberado e valor_liberado_brl
+--    (o banco tinha apenas 'valor'; o código usa valor_liberado + valor_liberado_brl)
+ALTER TABLE parcelas_liberacao
+  ADD COLUMN IF NOT EXISTS valor_liberado     NUMERIC(14,2),
+  ADD COLUMN IF NOT EXISTS valor_liberado_brl NUMERIC(14,2);
+
+-- Backfill: copia valor existente para valor_liberado
+UPDATE parcelas_liberacao
+  SET valor_liberado = valor, valor_liberado_brl = valor
+  WHERE valor_liberado IS NULL AND valor IS NOT NULL;
+
+-- 2) contratos_financeiros: colunas calculadas e de configuração ausentes
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS periodicidade_meses    INTEGER   DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS carencia_tipo          TEXT      DEFAULT 'so_juros'
+    CHECK (carencia_tipo IN ('so_juros','total')),
+  ADD COLUMN IF NOT EXISTS crescimento_pct        NUMERIC(8,4),
+  ADD COLUMN IF NOT EXISTS rateio_por_vencimento  BOOLEAN   DEFAULT false,
+  ADD COLUMN IF NOT EXISTS fiscal                 BOOLEAN   DEFAULT true,
+  ADD COLUMN IF NOT EXISTS valor_financiado_brl   NUMERIC(16,2),
+  ADD COLUMN IF NOT EXISTS codigo                 TEXT,
+  ADD COLUMN IF NOT EXISTS ano_safra_id           UUID REFERENCES anos_safra(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS forma_pagamento        TEXT,
+  ADD COLUMN IF NOT EXISTS local_pagamento        TEXT;
+
+-- Backfill valor_financiado_brl a partir do valor_total existente
+UPDATE contratos_financeiros
+  SET valor_financiado_brl = CASE
+    WHEN moeda = 'USD' AND cotacao_usd IS NOT NULL THEN valor_total * cotacao_usd
+    ELSE valor_total
+  END
+  WHERE valor_financiado_brl IS NULL AND valor_total IS NOT NULL;
+
 NOTIFY pgrst, 'reload schema';
