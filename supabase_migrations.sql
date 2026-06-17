@@ -5889,3 +5889,21 @@ COMMENT ON COLUMN talhoes.tipo_posse IS 'próprio ou arrendado';
 COMMENT ON COLUMN talhoes.arrendamento_id IS 'FK para o contrato de arrendamento quando tipo_posse = arrendado';
 
 NOTIFY pgrst, 'reload schema';
+
+-- =============================================================================
+-- Seção 129: Campo App — Pluviometria + Abastecimento (colunas adicionais)
+-- =============================================================================
+
+-- leituras_pluviometricas: adiciona ponto_nome e operador para uso no campo app
+ALTER TABLE leituras_pluviometricas
+  ADD COLUMN IF NOT EXISTS ponto_nome text,
+  ADD COLUMN IF NOT EXISTS operador   text;
+
+-- abastecimentos: adiciona colunas do campo app (tipo_combustivel, maquina_descricao, km, operador)
+ALTER TABLE abastecimentos
+  ADD COLUMN IF NOT EXISTS tipo_combustivel  text CHECK (tipo_combustivel IN ('diesel','gasolina','etanol','arla32')),
+  ADD COLUMN IF NOT EXISTS maquina_descricao text,
+  ADD COLUMN IF NOT EXISTS km               numeric(12,1),
+  ADD COLUMN IF NOT EXISTS operador         text;
+
+NOTIFY pgrst, 'reload schema';

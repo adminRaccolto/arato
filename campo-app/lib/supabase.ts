@@ -84,6 +84,34 @@ export type Pulverizacao = {
   obs?: string;
 };
 
+export type LeituraPluviometrica = {
+  id: string;
+  fazenda_id: string;
+  talhao_id: string | null;
+  ponto_nome: string;
+  data_leitura: string;
+  hora_leitura: string | null;
+  mm_chuva: number;
+  operador: string | null;
+  obs: string | null;
+  created_at: string;
+};
+
+export type Abastecimento = {
+  id: string;
+  fazenda_id: string;
+  maquina_id: string | null;
+  maquina_descricao: string;
+  data_abastecimento: string;
+  tipo_combustivel: 'diesel' | 'gasolina' | 'etanol' | 'arla32';
+  litros: number;
+  horimetro: number | null;
+  km: number | null;
+  operador: string | null;
+  obs: string | null;
+  created_at: string;
+};
+
 export type Romaneio = {
   id: string;
   fazenda_id: string;

@@ -14,6 +14,9 @@ const TABS: { name: string; label: string; icon: IoniconsName; iconOn: IoniconsN
   { name: 'mapa',         label: 'Mapa',    icon: 'map-outline',     iconOn: 'map'     },
 ];
 
+// Telas acessíveis mas não exibidas na barra de tabs
+const HIDDEN = ['pluviometria', 'abastecimento'];
+
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
 
@@ -44,6 +47,9 @@ export default function TabsLayout() {
             ),
           }}
         />
+      ))}
+      {HIDDEN.map(name => (
+        <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}
     </Tabs>
   );

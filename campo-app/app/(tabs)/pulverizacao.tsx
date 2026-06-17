@@ -15,6 +15,86 @@ type Produto = { nome: string; dose: string; unidade: string };
 type Tela = 'lista' | 'form';
 const UNIDADES = ['L/ha', 'mL/ha', 'kg/ha', 'g/ha'];
 
+// ── Semáforo de condições ideais de pulverização ───────────────────────────
+
+type Status = 'ok' | 'atencao' | 'ruim' | 'vazio';
+
+function avaliarClima(tempStr: string, umidStr: string, ventoStr: string): {
+  status: Status; mensagem: string;
+  itens: { label: string; valor: string; status: Status; dica: string }[];
+} {
+  const t = Number(tempStr);
+  const u = Number(umidStr);
+  const v = Number(ventoStr);
+  const itens = [];
+  let pontos = 0;
+  let total  = 0;
+
+  if (tempStr) {
+    total++;
+    const st: Status = t >= 15 && t <= 30 ? 'ok' : t > 30 && t <= 35 ? 'atencao' : 'ruim';
+    if (st === 'ok') pontos += 2; else if (st === 'atencao') pontos += 1;
+    itens.push({ label: 'Temperatura', valor: `${t}°C`, status: st, dica: st === 'ok' ? 'Ideal (15–30°C)' : t > 30 ? 'Alta — risco de volatilização' : 'Baixa — eficiência reduzida' });
+  }
+  if (umidStr) {
+    total++;
+    const st: Status = u >= 55 ? 'ok' : u >= 40 ? 'atencao' : 'ruim';
+    if (st === 'ok') pontos += 2; else if (st === 'atencao') pontos += 1;
+    itens.push({ label: 'Umidade', valor: `${u}%`, status: st, dica: st === 'ok' ? 'Boa — baixo risco de deriva' : u < 40 ? 'Muito baixa — deriva e evaporação' : 'Atenção — monitorar deriva' });
+  }
+  if (ventoStr) {
+    total++;
+    const st: Status = v <= 10 ? 'ok' : v <= 15 ? 'atencao' : 'ruim';
+    if (st === 'ok') pontos += 2; else if (st === 'atencao') pontos += 1;
+    itens.push({ label: 'Vento', valor: `${v} km/h`, status: st, dica: st === 'ok' ? 'Ideal (≤ 10 km/h)' : v <= 15 ? 'Atenção — pode haver deriva' : 'Suspender — risco alto de deriva' });
+  }
+
+  if (total === 0) return { status: 'vazio', mensagem: '', itens: [] };
+  const ratio = pontos / (total * 2);
+  const status: Status = ratio >= 0.8 ? 'ok' : ratio >= 0.5 ? 'atencao' : 'ruim';
+  const mensagem = status === 'ok' ? 'Condições favoráveis para aplicação' : status === 'atencao' ? 'Condições aceitáveis — atenção redobrada' : 'Condições desfavoráveis — não recomendado';
+  return { status, mensagem, itens };
+}
+
+const STATUS_COR: Record<Status, string> = { ok: '#16A34A', atencao: '#D97706', ruim: '#DC2626', vazio: '#9CA3AF' };
+const STATUS_BG:  Record<Status, string> = { ok: '#F0FDF4', atencao: '#FFFBEB', ruim: '#FEF2F2', vazio: '#F9FAFB' };
+const STATUS_ICON: Record<Status, React.ComponentProps<typeof Ionicons>['name']> = {
+  ok: 'checkmark-circle', atencao: 'warning', ruim: 'close-circle', vazio: 'ellipse-outline',
+};
+
+function ClimaCheck({ temp, umid, vento }: { temp: string; umid: string; vento: string }) {
+  const { status, mensagem, itens } = avaliarClima(temp, umid, vento);
+  if (status === 'vazio') return null;
+  const cor = STATUS_COR[status];
+  const bg  = STATUS_BG[status];
+  return (
+    <View style={[cc.card, { backgroundColor: bg, borderColor: cor + '40' }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Ionicons name={STATUS_ICON[status]} size={18} color={cor} />
+        <Text style={[cc.titulo, { color: cor }]}>{mensagem}</Text>
+      </View>
+      {itens.map(item => (
+        <View key={item.label} style={cc.itemRow}>
+          <View style={[cc.dot, { backgroundColor: STATUS_COR[item.status] }]} />
+          <Text style={cc.itemLabel}>{item.label}</Text>
+          <Text style={[cc.itemValor, { color: STATUS_COR[item.status] }]}>{item.valor}</Text>
+          <Text style={cc.itemDica} numberOfLines={1}>{item.dica}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const cc = StyleSheet.create({
+  card:      { borderRadius: 10, borderWidth: 0.5, padding: 14, marginBottom: 14 },
+  titulo:    { fontSize: 13, fontWeight: '700', flex: 1 },
+  itemRow:   { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 8 },
+  dot:       { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
+  itemLabel: { fontSize: 12, color: '#374151', width: 84, fontWeight: '500' },
+  itemValor: { fontSize: 12, fontWeight: '700', width: 60 },
+  itemDica:  { flex: 1, fontSize: 11, color: '#6B7280' },
+});
+
 export default function PulverizacaoScreen() {
   const { fazendaId } = useAuth();
   const insets = useSafeAreaInsets();
@@ -200,6 +280,8 @@ export default function PulverizacaoScreen() {
           <TextInput style={[T.input, { flex: 1 }]} value={umid} onChangeText={setUmid} keyboardType="decimal-pad" placeholder="Umid (%)" placeholderTextColor={C.textWeak} />
           <TextInput style={[T.input, { flex: 1 }]} value={vento} onChangeText={setVento} keyboardType="decimal-pad" placeholder="Vento (km/h)" placeholderTextColor={C.textWeak} />
         </View>
+
+        <ClimaCheck temp={temp} umid={umid} vento={vento} />
 
         <TextInput style={[T.input, { minHeight: 72 }]} value={obs} onChangeText={setObs} multiline placeholder="Observações…" placeholderTextColor={C.textWeak} />
 

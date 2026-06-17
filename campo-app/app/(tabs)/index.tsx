@@ -12,6 +12,7 @@ import { syncQueue, queueCount } from '../../lib/offline';
 import { C, T } from '../../constants/theme';
 
 type Resumo = { talhoes: number; cicloAtivo: string; criticos: number };
+type WidgetChuva = { mm24h: number; mm7d: number; ultimoMm: number; ultimoPonto: string; ultimaData: string };
 
 function saudacao() {
   const h = new Date().getHours();
@@ -20,12 +21,24 @@ function saudacao() {
   return 'Boa noite';
 }
 
-const ACOES = [
-  { route: '/(tabs)/monitoramento', label: 'Monitoramento',  desc: 'Pragas, doenças e invasoras', icon: 'leaf-outline'    as const },
-  { route: '/(tabs)/plantio',       label: 'Plantio',        desc: 'Registrar operação',          icon: 'layers-outline'  as const },
-  { route: '/(tabs)/pulverizacao',  label: 'Pulverização',   desc: 'Defensivos e foliares',       icon: 'water-outline'   as const },
-  { route: '/(tabs)/colheita',      label: 'Colheita',       desc: 'Romaneio e produtividade',    icon: 'basket-outline'  as const },
-  { route: '/(tabs)/mapa',          label: 'Mapa de Talhões', desc: 'KML e localização',          icon: 'map-outline'     as const },
+const GRUPOS_ACOES = [
+  {
+    titulo: 'Lavoura',
+    itens: [
+      { route: '/(tabs)/monitoramento', label: 'Monitoramento',   desc: 'Pragas, doenças e invasoras', icon: 'leaf-outline'       as const },
+      { route: '/(tabs)/plantio',       label: 'Plantio',         desc: 'Registrar operação de plantio', icon: 'layers-outline'   as const },
+      { route: '/(tabs)/pulverizacao',  label: 'Pulverização',    desc: 'Defensivos e foliares',       icon: 'water-outline'      as const },
+      { route: '/(tabs)/colheita',      label: 'Colheita',        desc: 'Romaneio e produtividade',    icon: 'basket-outline'     as const },
+    ],
+  },
+  {
+    titulo: 'Clima e Campo',
+    itens: [
+      { route: '/(tabs)/pluviometria',  label: 'Pluviometria',    desc: 'Registro de chuvas por ponto', icon: 'rainy-outline'    as const },
+      { route: '/(tabs)/abastecimento', label: 'Abastecimento',   desc: 'Combustível e horímetro',     icon: 'speedometer-outline' as const },
+      { route: '/(tabs)/mapa',          label: 'Mapa de Talhões', desc: 'KML e localização GPS',       icon: 'map-outline'        as const },
+    ],
+  },
 ];
 
 export default function HomeScreen() {
@@ -33,10 +46,11 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [resumo, setResumo]       = useState<Resumo>({ talhoes: 0, cicloAtivo: '—', criticos: 0 });
-  const [hora, setHora]           = useState('');
-  const [pendentes, setPendentes] = useState(0);
-  const [syncing, setSyncing]     = useState(false);
+  const [resumo, setResumo]           = useState<Resumo>({ talhoes: 0, cicloAtivo: '—', criticos: 0 });
+  const [widgetChuva, setWidgetChuva] = useState<WidgetChuva | null>(null);
+  const [hora, setHora]               = useState('');
+  const [pendentes, setPendentes]     = useState(0);
+  const [syncing, setSyncing]         = useState(false);
 
   useEffect(() => {
     const tick = () => setHora(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
@@ -49,10 +63,15 @@ export default function HomeScreen() {
     queueCount().then(setPendentes);
     if (!fazendaId) return;
     async function load() {
-      const [{ count: tal }, { data: ciclos }, { data: pragas }] = await Promise.all([
+      const corte7d  = new Date(); corte7d.setDate(corte7d.getDate() - 7);
+      const cutoff7d = corte7d.toISOString().split('T')[0];
+      const hoje     = new Date().toISOString().split('T')[0];
+
+      const [{ count: tal }, { data: ciclos }, { data: pragas }, { data: chuvas }] = await Promise.all([
         supabase.from('talhoes').select('id', { count: 'exact', head: true }).eq('fazenda_id', fazendaId!),
         supabase.from('ciclos').select('cultura, anos_safra(ano)').eq('fazenda_id', fazendaId!).order('created_at', { ascending: false }).limit(1),
         supabase.from('monitoramento_pragas').select('id').eq('fazenda_id', fazendaId!).eq('nivel', 4),
+        supabase.from('leituras_pluviometricas').select('chuva_mm, data, ponto_nome').eq('fazenda_id', fazendaId!).gte('data', cutoff7d).order('data', { ascending: false }).order('hora', { ascending: false }),
       ]);
       const ciclo = ciclos?.[0];
       setResumo({
@@ -60,6 +79,12 @@ export default function HomeScreen() {
         cicloAtivo: ciclo ? `${ciclo.cultura} ${(ciclo.anos_safra as unknown as { ano: string } | null)?.ano ?? ''}` : '—',
         criticos: pragas?.length ?? 0,
       });
+      if (chuvas && chuvas.length > 0) {
+        const mm7d  = chuvas.reduce((s: number, r: Record<string, unknown>) => s + Number(r.chuva_mm), 0);
+        const mm24h = chuvas.filter((r: Record<string, unknown>) => String(r.data) >= hoje).reduce((s: number, r: Record<string, unknown>) => s + Number(r.chuva_mm), 0);
+        const ultimo = chuvas[0] as Record<string, unknown>;
+        setWidgetChuva({ mm24h, mm7d, ultimoMm: Number(ultimo.chuva_mm), ultimoPonto: String(ultimo.ponto_nome ?? '—'), ultimaData: String(ultimo.data) });
+      }
     }
     load();
   }, [fazendaId]);
@@ -147,27 +172,70 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Ações */}
-        <Text style={T.label}>Lançamentos</Text>
-        <View style={{ marginTop: 10, gap: 1 }}>
-          {ACOES.map((a, i) => (
-            <TouchableOpacity
-              key={a.route}
-              style={[s.acaoRow, i === 0 && s.acaoRowFirst, i === ACOES.length - 1 && s.acaoRowLast]}
-              onPress={() => router.push(a.route as Parameters<typeof router.push>[0])}
-              activeOpacity={0.75}
-            >
-              <View style={s.acaoIconBox}>
-                <Ionicons name={a.icon} size={18} color={C.primary} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={s.acaoLabel}>{a.label}</Text>
-                <Text style={s.acaoDesc}>{a.desc}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={15} color={C.textWeak} />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Widget pluviometria */}
+        <TouchableOpacity
+          style={s.chuvaCard}
+          onPress={() => router.push('/(tabs)/pluviometria')}
+          activeOpacity={0.85}
+        >
+          <View style={s.chuvaIconBox}>
+            <Ionicons name="rainy-outline" size={22} color={C.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.chuvaTitulo}>Pluviometria</Text>
+            {widgetChuva ? (
+              <>
+                <View style={{ flexDirection: 'row', gap: 16, marginTop: 4 }}>
+                  <View>
+                    <Text style={s.chuvaVal}>{widgetChuva.mm24h.toFixed(1)}</Text>
+                    <Text style={s.chuvaLbl}>mm hoje</Text>
+                  </View>
+                  <View style={s.chuvaDivider} />
+                  <View>
+                    <Text style={s.chuvaVal}>{widgetChuva.mm7d.toFixed(1)}</Text>
+                    <Text style={s.chuvaLbl}>mm / 7 dias</Text>
+                  </View>
+                </View>
+                <Text style={s.chuvaUltimo} numberOfLines={1}>
+                  Última: {widgetChuva.ultimoMm} mm em {widgetChuva.ultimoPonto} · {widgetChuva.ultimaData}
+                </Text>
+              </>
+            ) : (
+              <Text style={s.chuvaSemDados}>Nenhuma leitura registrada</Text>
+            )}
+          </View>
+          <Ionicons name="chevron-forward" size={15} color={C.textWeak} />
+        </TouchableOpacity>
+
+        {/* Ações agrupadas */}
+        {GRUPOS_ACOES.map(grupo => (
+          <View key={grupo.titulo} style={{ marginBottom: 8 }}>
+            <Text style={[T.label, { marginBottom: 10 }]}>{grupo.titulo}</Text>
+            <View style={{ gap: 1 }}>
+              {grupo.itens.map((a, i) => (
+                <TouchableOpacity
+                  key={a.route}
+                  style={[
+                    s.acaoRow,
+                    i === 0 && s.acaoRowFirst,
+                    i === grupo.itens.length - 1 && s.acaoRowLast,
+                  ]}
+                  onPress={() => router.push(a.route as Parameters<typeof router.push>[0])}
+                  activeOpacity={0.75}
+                >
+                  <View style={s.acaoIconBox}>
+                    <Ionicons name={a.icon} size={18} color={C.primary} />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={s.acaoLabel}>{a.label}</Text>
+                    <Text style={s.acaoDesc}>{a.desc}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={15} color={C.textWeak} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
 
       </ScrollView>
     </View>
@@ -229,4 +297,23 @@ const s = StyleSheet.create({
   },
   acaoLabel: { fontSize: 14, fontWeight: '600', color: C.text },
   acaoDesc:  { fontSize: 12, color: C.textWeak, marginTop: 1 },
+
+  chuvaCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.surface, borderRadius: 10, padding: 14,
+    marginBottom: 20, gap: 12,
+    shadowColor: '#0B2D50', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    borderWidth: 0.5, borderColor: C.border,
+  },
+  chuvaIconBox: {
+    width: 40, height: 40, borderRadius: 10,
+    backgroundColor: C.primaryLight,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  chuvaTitulo:  { fontSize: 11, fontWeight: '700', color: C.textWeak, textTransform: 'uppercase', letterSpacing: 0.6 },
+  chuvaVal:     { fontSize: 20, fontWeight: '800', color: C.primary, letterSpacing: -0.5 },
+  chuvaLbl:     { fontSize: 9, color: C.textWeak, fontWeight: '500', marginTop: 1 },
+  chuvaDivider: { width: 0.5, backgroundColor: C.border, alignSelf: 'stretch', marginVertical: 2 },
+  chuvaUltimo:  { fontSize: 10, color: C.textWeak, marginTop: 6 },
+  chuvaSemDados:{ fontSize: 12, color: C.textWeak, marginTop: 4 },
 });
