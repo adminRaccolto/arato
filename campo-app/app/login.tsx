@@ -35,7 +35,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={s.card}>
-          <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
+          <Image source={require('../assets/logo_raccolto.png')} style={s.logo} resizeMode="contain" />
           <Text style={s.sub}>Operações rurais em campo</Text>
 
           <TextInput
@@ -69,10 +69,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={s.rodapeRow}>
-          <Text style={s.rodapeTxt}>Um produto</Text>
-          <Image source={require('../assets/logo_raccolto.png')} style={s.logoRaccolto} resizeMode="contain" />
-        </View>
+        <Text style={s.rodapeTxt}>arato.agr.br · RacTech</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -86,7 +83,7 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 20, shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
-  logo:    { width: 110, height: 110, marginBottom: 12 },
+  logo:    { width: 210, height: 56, marginBottom: 16 },
   sub:     { fontSize: 13, color: C.textTert, marginTop: 0, marginBottom: 28 },
   input: {
     width: '100%', borderWidth: 0.5, borderColor: C.border, borderRadius: 10,
@@ -97,7 +94,5 @@ const s = StyleSheet.create({
     width: '100%', alignItems: 'center', marginTop: 4,
   },
   btnTxt:       { color: C.white, fontSize: 16, fontWeight: '700' },
-  rodapeRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 28, gap: 8 },
-  rodapeTxt:    { color: 'rgba(255,255,255,0.5)', fontSize: 11 },
-  logoRaccolto: { width: 72, height: 22, opacity: 0.7 },
+  rodapeTxt: { color: 'rgba(255,255,255,0.5)', fontSize: 11, textAlign: 'center', marginTop: 28 },
 });
