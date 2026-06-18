@@ -161,3 +161,28 @@ export async function executarBackup(fazendaId: string): Promise<{
 
   return { sucesso: true, arquivo, tabelas: contagens };
 }
+
+// ── Remove backups com mais de 5 dias para uma fazenda ───────────
+export async function limparBackupsAntigos(fazendaId: string): Promise<{ removidos: number }> {
+  const admin = adminClient();
+  const { data: arquivos, error } = await admin.storage
+    .from("backups")
+    .list(fazendaId, { limit: 200, sortBy: { column: "created_at", order: "desc" } });
+
+  if (error || !arquivos?.length) return { removidos: 0 };
+
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 5);
+
+  const antigos = arquivos.filter((f) => {
+    const criado = new Date(f.created_at ?? 0);
+    return criado < limite;
+  });
+
+  if (!antigos.length) return { removidos: 0 };
+
+  const caminhos = antigos.map((f) => `${fazendaId}/${f.name}`);
+  await admin.storage.from("backups").remove(caminhos);
+
+  return { removidos: antigos.length };
+}

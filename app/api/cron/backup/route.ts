@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { executarBackup } from "../../backup/route";
+import { executarBackup, limparBackupsAntigos } from "../../backup/route";
 import { createClient } from "@supabase/supabase-js";
 
 function autorizado(req: Request): boolean {
@@ -33,12 +33,14 @@ export async function GET(req: Request) {
   for (const fazenda of fazendas) {
     const res = await executarBackup(fazenda.id);
     const totalReg = Object.values(res.tabelas ?? {}).reduce((s, v) => s + v, 0);
+    const { removidos } = await limparBackupsAntigos(fazenda.id);
     resultados.push({
       fazenda_id: fazenda.id,
       nome: fazenda.nome,
       sucesso: res.sucesso,
       arquivo: res.arquivo,
       total_registros: totalReg,
+      backups_removidos: removidos,
       erro: res.erro,
     });
   }
