@@ -566,8 +566,32 @@ function ModalConfigurar({
   const [saving,  setSaving]  = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [qrBase64, setQrBase64]   = useState<string | null>(null);
+  const [qrStatus, setQrStatus]   = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   function setField(k: string, v: unknown) { setConfig(prev => ({ ...prev, [k]: v })); }
+
+  async function reconectarWhatsApp() {
+    setQrLoading(true);
+    setQrBase64(null);
+    setQrStatus(null);
+    try {
+      const r = await fetch("/api/whatsapp/reconectar", { method: "POST" });
+      const json = await r.json() as Record<string, unknown>;
+      if (json.base64) {
+        setQrBase64(json.base64 as string);
+        setQrStatus("Escaneie o QR code no WhatsApp → Aparelhos Conectados → Conectar um aparelho. Expira em ~60s.");
+      } else if (json.error) {
+        setQrStatus("Erro: " + String(json.error));
+      } else {
+        setQrStatus("Resposta inesperada: " + JSON.stringify(json).slice(0, 120));
+      }
+    } catch (e) {
+      setQrStatus("Falha ao chamar API: " + String(e));
+    }
+    setQrLoading(false);
+  }
 
   async function testarBalanca() {
     setTesting(true);
@@ -692,6 +716,44 @@ function ModalConfigurar({
                            border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }} />
               </div>
             ))}
+
+            {/* Reconectar WhatsApp */}
+            <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 16, marginTop: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
+                Conexão WhatsApp
+              </div>
+              <button onClick={reconectarWhatsApp} disabled={qrLoading}
+                style={{ padding: "9px 20px", background: qrLoading ? "#DDE2EE" : "#25D366",
+                         color: "#fff", border: "none", borderRadius: 8,
+                         fontSize: 13, fontWeight: 600, cursor: qrLoading ? "default" : "pointer" }}>
+                {qrLoading ? "Gerando QR Code…" : "Gerar QR Code para Conectar"}
+              </button>
+
+              {qrStatus && (
+                <div style={{ marginTop: 10, fontSize: 12, padding: "8px 12px", borderRadius: 8,
+                              background: qrStatus.startsWith("Erro") || qrStatus.startsWith("Falha") ? "#FEE2E2" : "#F0FFF4",
+                              color: qrStatus.startsWith("Erro") || qrStatus.startsWith("Falha") ? "#991B1B" : "#166534",
+                              border: `0.5px solid ${qrStatus.startsWith("Erro") || qrStatus.startsWith("Falha") ? "#FECACA" : "#BBF7D0"}` }}>
+                  {qrStatus}
+                </div>
+              )}
+
+              {qrBase64 && (
+                <div style={{ marginTop: 14, textAlign: "center" }}>
+                  <img src={qrBase64} alt="QR Code WhatsApp"
+                    style={{ width: 240, height: 240, border: "4px solid #25D366", borderRadius: 12, display: "block", margin: "0 auto" }} />
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 8 }}>
+                    Se expirar, clique em "Gerar QR Code" novamente
+                  </div>
+                  <button onClick={reconectarWhatsApp} disabled={qrLoading}
+                    style={{ marginTop: 8, padding: "6px 14px", background: "#F4F6FA",
+                             border: "0.5px solid #DDE2EE", borderRadius: 6,
+                             fontSize: 12, cursor: "pointer", color: "#1A4870" }}>
+                    Renovar QR Code
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

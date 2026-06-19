@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ erro: "Nenhuma fazenda encontrada", detalhe: error?.message });
   }
 
-  const resultados: Array<{ fazenda_id: string; nome: string; sucesso: boolean; arquivo: string; total_registros: number; erro?: string }> = [];
+  const resultados: Array<{ fazenda_id: string; nome: string; sucesso: boolean; arquivo: string; total_registros: number; backups_removidos: number; erro?: string }> = [];
 
   for (const fazenda of fazendas) {
     const res = await executarBackup(fazenda.id);
