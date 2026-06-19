@@ -5,7 +5,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -299,30 +299,29 @@ function ContasPagarInner() {
   // ── Carga ──────────────────────────────────────────────────
 
   useEffect(() => {
-    if (fazendaId) {
+    if (contaId || fazendaId) {
       carregar();
     }
-  }, [fazendaId, periodoInicio, periodoFim]);
+  }, [contaId, fazendaId, periodoInicio, periodoFim]);
 
   useEffect(() => {
+    if (!contaId && !fazendaId) return;
+    listarPessoasDaConta().then(setPessoas).catch(() => {});
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }).then(ops =>
+      setOpGerenciais(ops.filter(o => {
+        const cls = o.classificacao ?? "";
+        if (cls.startsWith("3.") || cls.startsWith("4.")) return false;
+        if (o.gerar_financeiro === false) return false;
+        return true;
+      }))
+    ).catch(() => {});
+    listarContasBancariasDaConta().then(setContas).catch(() => {});
+    if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-      listarProdutores(fazendaId).then(setProdutores).catch(() => {});
-      listarPessoas(fazendaId).then(setPessoas).catch(() => {});
-      listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "despesa", permite: "cp_cr" }).then(ops =>
-        setOpGerenciais(ops.filter(o => {
-          const cls = o.classificacao ?? "";
-          // Grupos 3/4: movimentos econômicos (armazenagem, remessa — não são CP)
-          if (cls.startsWith("3.") || cls.startsWith("4.")) return false;
-          // Baixas de estoque e lançamentos automáticos de custo: não são CP manuais
-          if (o.gerar_financeiro === false) return false;
-          return true;
-        }))
-      ).catch(() => {});
-      supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
       listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
     }
-  }, [fazendaId]);
+  }, [contaId, fazendaId]);
 
   // Recarrega ciclos e talhões quando a fazenda selecionada no form muda
   useEffect(() => {
@@ -336,7 +335,7 @@ function ContasPagarInner() {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim, "pagar");
+      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar");
       setLancamentos(dados);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");

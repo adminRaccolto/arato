@@ -6206,3 +6206,30 @@ ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS produtor_id UUID REFERENCES produt
 CREATE INDEX IF NOT EXISTS idx_fazendas_produtor_id ON fazendas(produtor_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration 145 — RLS lancamentos baseado em conta_id (multi-fazenda) ──
+-- A política antiga "allow_all_lancamentos" usava USING(true) — liberava tudo.
+-- A nova política restringe ao conjunto de fazendas da conta do usuário logado,
+-- permitindo que a listagem de CP/CR mostre TODAS as fazendas sem filtrar por fazenda_id ativo.
+
+DROP POLICY IF EXISTS "allow_all_lancamentos" ON lancamentos;
+
+CREATE POLICY "lancamentos_tenant" ON lancamentos FOR ALL
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  )
+  WITH CHECK (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';

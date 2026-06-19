@@ -344,6 +344,48 @@ export async function listarLancamentosPeriodo(
   return all;
 }
 
+// Lança por conta inteira (todas as fazendas da conta) — nova arquitetura sem fazenda ativa
+export async function listarLancamentosContaPeriodo(
+  conta_id: string | null,
+  dataInicio: string,
+  dataFim: string,
+  tipo?: "pagar" | "receber",
+): Promise<Lancamento[]> {
+  // 1. Busca todas as fazendas da conta
+  let fazendaIds: string[] = [];
+  if (conta_id) {
+    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
+    fazendaIds = (fzs ?? []).map(f => f.id);
+  } else {
+    // Fallback: conta ainda sem conta_id — usa owner_user_id via listarFazendas
+    const fzs = await listarFazendas();
+    fazendaIds = fzs.map(f => f.id);
+  }
+  if (!fazendaIds.length) return [];
+
+  // 2. Busca lancamentos filtrando pelas fazendas da conta
+  const PAGE = 1000;
+  let all: Lancamento[] = [];
+  let from = 0;
+  while (true) {
+    let q = supabase
+      .from("lancamentos")
+      .select("*")
+      .in("fazenda_id", fazendaIds)
+      .gte("data_vencimento", dataInicio)
+      .lte("data_vencimento", dataFim)
+      .order("data_vencimento")
+      .range(from, from + PAGE - 1);
+    if (tipo) q = q.eq("tipo", tipo);
+    const { data, error } = await q;
+    if (error) throw error;
+    all = all.concat(data ?? []);
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 // Soma líquida de todos os lançamentos baixados ANTES de dataInicio (saldo anterior ao período)
 export async function calcularSaldoAnterior(fazenda_id: string, dataInicio: string): Promise<number> {
   const { data, error } = await supabase
@@ -756,6 +798,26 @@ export async function excluirMatricula(id: string): Promise<void> {
 
 export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
   const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Carrega pessoas de TODAS as fazendas da conta (nova arquitetura multi-fazenda)
+export async function listarPessoasDaConta(): Promise<Pessoa[]> {
+  const fzs = await listarFazendas();
+  const ids = fzs.map(f => f.id);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Carrega contas bancárias de TODAS as fazendas da conta
+export async function listarContasBancariasDaConta(): Promise<{ id: string; nome: string; banco: string; agencia: string; conta: string; fazenda_id: string }[]> {
+  const fzs = await listarFazendas();
+  const ids = fzs.map(f => f.id);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, fazenda_id").in("fazenda_id", ids).eq("ativa", true).order("nome");
   if (error) throw error;
   return data ?? [];
 }
@@ -3224,6 +3286,30 @@ export async function listarOperacoesGerenciaisAtivas(
   const { data, error } = await q;
   if (error) throw error;
   // Exclui nós de grupo (não têm gerar_financeiro E não têm permite_cp_cr/nf)
+  return (data ?? []).filter(op =>
+    op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
+    op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
+  );
+}
+
+// Carrega operações gerenciais ativas de TODAS as fazendas da conta
+export async function listarOperacoesGerenciaisAtivasDaConta(
+  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" }
+): Promise<OperacaoGerencial[]> {
+  const fzs = await listarFazendas();
+  const ids = fzs.map(f => f.id);
+  if (!ids.length) return [];
+  let q = supabase.from("operacoes_gerenciais").select("*")
+    .in("fazenda_id", ids)
+    .eq("inativo", false)
+    .order("classificacao");
+  if (filtro?.tipo) q = q.eq("tipo", filtro.tipo);
+  if (filtro?.permite === "notas_fiscais") q = q.eq("permite_notas_fiscais", true);
+  if (filtro?.permite === "cp_cr")         q = q.eq("permite_cp_cr", true);
+  if (filtro?.permite === "tesouraria")    q = q.eq("permite_tesouraria", true);
+  if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
+  const { data, error } = await q;
+  if (error) throw error;
   return (data ?? []).filter(op =>
     op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
     op.permite_adiantamentos || op.permite_baixas || op.permite_estoque

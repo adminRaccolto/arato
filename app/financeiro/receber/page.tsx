@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, listarTalhoes } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -239,20 +239,21 @@ export default function ContasReceber() {
   // ── Carga ──────────────────────────────────────────────────
 
   useEffect(() => {
-    if (fazendaId) {
+    if (contaId || fazendaId) {
       carregar();
     }
-  }, [fazendaId, periodoInicio, periodoFim]);
+  }, [contaId, fazendaId, periodoInicio, periodoFim]);
 
   useEffect(() => {
+    if (!contaId && !fazendaId) return;
+    listarPessoasDaConta().then(setPessoas).catch(() => {});
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
+    listarContasBancariasDaConta().then(setContas).catch(() => {});
+    if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-      listarProdutores(fazendaId).then(setProdutores).catch(() => {});
-      listarPessoas(fazendaId).then(setPessoas).catch(() => {});
-      listarOperacoesGerenciaisAtivas(fazendaId, { tipo: "receita", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
-      supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta").eq("fazenda_id", fazendaId).eq("ativa", true).then(({ data }) => setContas(data ?? []));
     }
-  }, [fazendaId]);
+  }, [contaId, fazendaId]);
 
   // Reload ciclos e talhões sempre que a fazenda selecionada no formulário mudar
   useEffect(() => {
@@ -265,7 +266,7 @@ export default function ContasReceber() {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim, "receber");
+      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "receber");
       setLancamentos(dados);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
