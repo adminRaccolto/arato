@@ -6241,3 +6241,86 @@ ALTER TABLE lancamentos
   ADD COLUMN IF NOT EXISTS conta_pagamento  TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 147 — Backfill completo de contas + fix RLS produtores
+-- Problema: clientes criados antes da Sessão 19 (28/04/2026) não têm registro
+--   em `contas`, portanto perfis.conta_id = NULL e fazendas.conta_id = NULL.
+--   Sem conta, o insert de qualquer entidade com conta_id falha no RLS.
+-- Solução: criar uma conta para cada owner_user_id distinto que não tem conta;
+--   vincular fazendas, produtores e perfis a essa conta;
+--   garantir policy permissiva de INSERT em produtores.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+DO $$
+DECLARE
+  r       RECORD;
+  new_cid UUID;
+  nome_c  TEXT;
+BEGIN
+  -- Itera cada owner_user_id que ainda tem fazendas sem conta_id
+  FOR r IN
+    SELECT DISTINCT f.owner_user_id
+    FROM   fazendas f
+    WHERE  f.owner_user_id IS NOT NULL
+      AND  f.conta_id IS NULL
+      AND  NOT EXISTS (
+             SELECT 1 FROM perfis p
+             WHERE  p.user_id = f.owner_user_id
+               AND  p.conta_id IS NOT NULL
+           )
+  LOOP
+    -- Tenta encontrar conta já existente vinculada a alguma outra fazenda do mesmo owner
+    SELECT MIN(f2.conta_id) INTO new_cid
+    FROM   fazendas f2
+    WHERE  f2.owner_user_id = r.owner_user_id
+      AND  f2.conta_id IS NOT NULL;
+
+    IF new_cid IS NULL THEN
+      -- Cria nova conta usando o nome do perfil do owner
+      SELECT COALESCE(p.nome, 'Conta') INTO nome_c
+      FROM   perfis p WHERE p.user_id = r.owner_user_id LIMIT 1;
+
+      INSERT INTO contas (nome, tipo) VALUES (COALESCE(nome_c, 'Conta'), 'pf')
+      RETURNING id INTO new_cid;
+    END IF;
+
+    -- Vincula todas as fazendas desse owner à conta
+    UPDATE fazendas SET conta_id = new_cid
+    WHERE  owner_user_id = r.owner_user_id AND conta_id IS NULL;
+
+    -- Vincula todos os perfis desse owner
+    UPDATE perfis SET conta_id = new_cid
+    WHERE  user_id = r.owner_user_id AND conta_id IS NULL;
+
+    -- Vincula produtores via fazenda_id
+    UPDATE produtores pr SET conta_id = new_cid
+    FROM   fazendas f
+    WHERE  pr.fazenda_id = f.id
+      AND  f.owner_user_id = r.owner_user_id
+      AND  pr.conta_id IS NULL;
+  END LOOP;
+
+  -- Cobre produtores que ainda têm conta_id NULL (fazenda já tem conta)
+  UPDATE produtores pr SET conta_id = f.conta_id
+  FROM   fazendas f
+  WHERE  pr.fazenda_id = f.id
+    AND  f.conta_id IS NOT NULL
+    AND  pr.conta_id IS NULL;
+END $$;
+
+-- Garante policy permissiva de INSERT em produtores
+-- (qualquer usuário autenticado pode inserir; acesso é controlado no SELECT/UPDATE)
+DO $$ DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'produtores' AND policyname LIKE '%insert%' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON produtores';
+  END LOOP;
+END $$;
+
+ALTER TABLE produtores ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "produtores_insert" ON produtores FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+NOTIFY pgrst, 'reload schema';
