@@ -224,13 +224,18 @@ export default function CorrecaoSoloPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
           onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ marginBottom: 4 }}>
               <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>Registrar Correção de Solo</div>
-              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} />
             </div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>Calcário, gesso, micronutrientes e corretivos orgânicos</div>
+            <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Calcário, gesso, micronutrientes e corretivos orgânicos</div>
 
-            <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "#0B2D50" }}>
+            {/* Fazenda */}
+            <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: 1, whiteSpace: "nowrap" }}>Fazenda *</span>
+              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} style={{ flex: 1 }} />
+            </div>
+
+            <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
               ⟳ Ao salvar: baixa automática do estoque dos corretivos + lançamento CP "Insumos / Corretivos" no financeiro.
             </div>
 

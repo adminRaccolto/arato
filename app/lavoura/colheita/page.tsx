@@ -668,12 +668,15 @@ export default function ColheitaPage() {
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Nova Colheita</h2>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazendaColheita} />
-                <button onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
-              </div>
+              <button onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
             </div>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
+
+              {/* Fazenda */}
+              <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", display: "flex", alignItems: "center", gap: 16 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: 1, whiteSpace: "nowrap" }}>Fazenda *</span>
+                <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazendaColheita} style={{ flex: 1 }} />
+              </div>
 
               {/* Ano Safra, Safra e Talhão */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
