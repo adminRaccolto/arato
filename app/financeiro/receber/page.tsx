@@ -1285,6 +1285,45 @@ export default function ContasReceber() {
               {modalTab === "principal" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
+                  {/* Faixa de vínculo — Fazenda / Produtor / Safra / Ciclo */}
+                  <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+                      Este lançamento pertence a
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Fazenda <span style={{ color: "#E24B4A" }}>*</span></label>
+                        <FazendaSelector
+                          contaId={contaId}
+                          value={fid}
+                          onChange={id => { setFormFazendaId(id); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }}
+                          style={{ width: "100%", boxSizing: "border-box" as const, borderRadius: 6, background: "#fff", fontSize: 13 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Produtor</label>
+                        <select style={{ ...inp, background: "#fff" }} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
+                          <option value="">— Selecionar —</option>
+                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Safra</label>
+                        <select style={{ ...inp, background: "#fff" }} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
+                          <option value="">— Selecionar —</option>
+                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Ciclo / Cultura</label>
+                        <select style={{ ...inp, background: "#fff" }} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
+                          <option value="">— Selecionar —</option>
+                          {ciclos.filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id).map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Linha 1: Moeda | OG (2) | Data Emissão */}
                   <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 140px", gap: 12 }}>
                     <div>
