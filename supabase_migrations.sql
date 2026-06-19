@@ -6176,3 +6176,14 @@ UPDATE contratos_financeiros
   WHERE valor_financiado_brl IS NULL AND valor_total IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration 142 — Limpeza de provisões de folha lançadas automaticamente ──
+-- Remove FGTS, INSS/Funrural, SAT/RAT, Sistema S/SENAR, Provisão 13º e Provisão Férias
+-- gerados automaticamente pelo sistema. Apenas Salário permanece.
+-- As guias de FGTS, INSS e Sistema S são lançadas manualmente pelo usuário.
+DELETE FROM lancamentos
+WHERE auto = true
+  AND tipo = 'pagar'
+  AND categoria IN ('FGTS', 'INSS/FUNRURAL', 'SAT/RAT', 'SISTEMA S', 'PROVISÃO 13º', 'PROVISÃO FÉRIAS');
+
+NOTIFY pgrst, 'reload schema';

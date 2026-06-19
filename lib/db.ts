@@ -994,29 +994,14 @@ export async function processarFolhaMensal(fazenda_id: string, mes_referencia: s
   for (const f of funcs) {
     if (!f.salario_base) continue;
     const sal = Number(f.salario_base);
-    const fgts     = sal * (Number(f.fgts_pct ?? 8) / 100);
-    const inss     = sal * (Number(f.inss_empregador_pct ?? (f.usar_funrural ? 1.5 : 20)) / 100);
-    const sat      = sal * (Number(f.sat_rat_pct ?? 1) / 100);
-    const sistS    = sal * (Number(f.sistema_s_pct ?? (f.usar_funrural ? 0.2 : 5.8)) / 100);
-    const prov13   = sal * (Number(f.provisao_13_pct ?? 8.33) / 100);
-    const provFer  = sal * (Number(f.provisao_ferias_pct ?? 11.11) / 100);
 
     // FAZ = funcionários da fazenda, ADM = administrativos
     const prefixo = f.tipo_contrato === "clt_adm" ? "2.02.01.03" : "2.01.01.10";
     const dataComp = `${anoMes}-01`;
 
+    // Apenas salário — FGTS, INSS, Sistema S, SAT/RAT e provisões são lançados manualmente via guias
     const lancamentos = [
-      { descricao: `Salário — ${f.nome}`, valor: sal,    class: `${prefixo}.001`, label: "SALÁRIOS" },
-      { descricao: `FGTS — ${f.nome}`, valor: fgts,      class: `${prefixo}.013`, label: "FGTS" },
-      { descricao: f.usar_funrural ? `Funrural — ${f.nome}` : `INSS Empregador — ${f.nome}`,
-        valor: inss,
-        class: f.usar_funrural ? `${prefixo}.019` : `${prefixo}.014`, label: "INSS/FUNRURAL" },
-      { descricao: `SAT/RAT — ${f.nome}`, valor: sat,    class: `${prefixo}.015`, label: "SAT/RAT" },
-      { descricao: f.usar_funrural ? `SENAR — ${f.nome}` : `Sistema S — ${f.nome}`,
-        valor: sistS,
-        class: `${prefixo}.016`, label: "SISTEMA S" },
-      { descricao: `Provisão 13º — ${f.nome}`, valor: prov13, class: `${prefixo}.017`, label: "PROVISÃO 13º" },
-      { descricao: `Provisão Férias — ${f.nome}`, valor: provFer, class: `${prefixo}.018`, label: "PROVISÃO FÉRIAS" },
+      { descricao: `Salário — ${f.nome}`, valor: sal, class: `${prefixo}.001`, label: "SALÁRIOS" },
     ];
 
     for (const l of lancamentos) {
