@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
-import FazendaSelector from "../../../components/FazendaSelector";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import {
   listarColheitas,
   criarColheita,
@@ -141,8 +141,8 @@ const ROMANEIO_VAZIO = {
 
 export default function ColheitaPage() {
   const { fazendaId, contaId } = useAuth();
-  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
-  const fid = formFazendaId ?? fazendaId;
+  const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   const [colheitas,   setColheitas]   = useState<ColheitaComRomaneios[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
@@ -215,18 +215,10 @@ export default function ColheitaPage() {
   // ── Criar colheita ────────────────────────────────────────
 
   const abrirModalColheita = () => {
-    const id = fazendaId ?? "";
-    setFormFazendaId(fazendaId);
-    setFormColheita({ ...COLHEITA_VAZIO, fazenda_id: id });
+    setCascade({});
+    setFormColheita({ ...COLHEITA_VAZIO, fazenda_id: "" });
     setModalColheita(true);
   };
-
-  async function mudarFazendaColheita(novaId: string) {
-    setFormFazendaId(novaId);
-    setFormColheita(p => ({ ...p, fazenda_id: novaId, ciclo_id: "", talhao_id: "" }));
-    listarTalhoes(novaId).then(setTalhoes).catch(() => {});
-    listarTodosCiclos(novaId).then(setTodosCiclos).catch(() => {});
-  }
 
   const salvarColheita = async () => {
     if (!fid || !formColheita.ciclo_id) { setErro("Selecione a safra"); return; }
@@ -672,39 +664,16 @@ export default function ColheitaPage() {
             </div>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
 
-              {/* Fazenda */}
-              <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", display: "flex", alignItems: "center", gap: 16 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: 1, whiteSpace: "nowrap" }}>Fazenda *</span>
-                <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazendaColheita} style={{ flex: 1 }} />
-              </div>
-
-              {/* Ano Safra, Safra e Talhão */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                <label>
-                  <div style={lbStyle}>Ano Safra</div>
-                  <select value={anoSafraSel} onChange={e => { setAnoSafraSel(e.target.value); setFormColheita(f => ({ ...f, ciclo_id: "" })); }} style={inpStyle}>
-                    <option value="">— Todos —</option>
-                    {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <div style={lbStyle}>Safra / Cultura *</div>
-                  <select value={formColheita.ciclo_id ?? ""} onChange={e => setFormColheita(f => ({ ...f, ciclo_id: e.target.value }))} style={inpStyle}>
-                    <option value="">Selecione...</option>
-                    {ciclosDisponiveis.map(c => {
-                      const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
-                      return <option key={c.id} value={c.id}>{CULTURAS[c.cultura] ?? c.cultura}{ano ? ` · ${ano}` : ""}{c.descricao ? ` — ${c.descricao}` : ""}</option>;
-                    })}
-                  </select>
-                </label>
-                <label>
-                  <div style={lbStyle}>Talhão</div>
-                  <select value={formColheita.talhao_id ?? ""} onChange={e => setFormColheita(f => ({ ...f, talhao_id: e.target.value }))} style={inpStyle}>
-                    <option value="">Todos os talhões</option>
-                    {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome} ({fmt(t.area_ha, 1)} ha)</option>)}
-                  </select>
-                </label>
-              </div>
+              {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+              <CascadeSelector
+                contaId={contaId}
+                values={cascade}
+                onChange={next => {
+                  setCascade(next);
+                  setAnoSafraSel(next.anoSafraId ?? "");
+                  setFormColheita(p => ({ ...p, fazenda_id: next.fazendaId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                }}
+              />
 
               {/* Produto e Variedade */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>

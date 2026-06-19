@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantios, excluirPlantio, atualizarPlantio } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import FazendaSelector from "../../../components/FazendaSelector";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -23,8 +23,8 @@ const CULTURA_SEMENTE: Record<string, string> = {
 
 export default function PlantioPage() {
   const { fazendaId, contaId } = useAuth();
-  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
-  const fid = formFazendaId ?? fazendaId;
+  const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   const [plantios, setPlantios]       = useState<Plantio[]>([]);
   const [talhoes, setTalhoes]         = useState<Talhao[]>([]);
@@ -60,14 +60,9 @@ export default function PlantioPage() {
     listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
   }, [fid]);
 
-  function mudarFazenda(novaId: string) {
-    setFormFazendaId(novaId);
-    setF(p => ({ ...p, ciclo_id: "", talhao_id: "", ano_safra_sel: "" }));
-  }
-
-  // Ciclos filtrados pelo Ano Safra selecionado
-  const ciclosDisponiveis = f.ano_safra_sel
-    ? todosCiclos.filter(c => c.ano_safra_id === f.ano_safra_sel)
+  // Ciclos filtrados pelo Ano Safra selecionado (via cascade)
+  const ciclosDisponiveis = cascade.anoSafraId
+    ? todosCiclos.filter(c => c.ano_safra_id === cascade.anoSafraId)
     : todosCiclos;
 
   // calcula quantidade_kg automaticamente
@@ -106,6 +101,7 @@ export default function PlantioPage() {
       }
       setPlantios(p => [novo, ...p]);
       setModal(false);
+      setCascade({});
       setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", insumo_id: "", variedade: "", area_ha: "", dose_kg_ha: 0, data_plantio: "", data_colheita_prevista: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: 0, moeda: "BRL", observacao: "" });
     } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
   }
@@ -139,7 +135,7 @@ export default function PlantioPage() {
             <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Plantio</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
           </div>
-          <button style={btnV} onClick={() => { setFormFazendaId(fazendaId); setModal(true); }}>+ Registrar Plantio</button>
+          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
         </header>
 
         {/* Stats */}
@@ -251,10 +247,16 @@ export default function PlantioPage() {
               <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15 }}>Registrar Plantio</div>
             </div>
 
-            {/* Fazenda */}
-            <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: 1, whiteSpace: "nowrap" }}>Fazenda *</span>
-              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} style={{ flex: 1 }} />
+            {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+            <div style={{ marginBottom: 14 }}>
+              <CascadeSelector
+                contaId={contaId}
+                values={cascade}
+                onChange={next => {
+                  setCascade(next);
+                  setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                }}
+              />
             </div>
 
             {/* Automação info */}
@@ -268,36 +270,6 @@ export default function PlantioPage() {
               </div>
             )}
 
-            {/* Identificação */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid #D4DCE8", paddingBottom: 4 }}>Identificação</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Ano Safra</label>
-                <select style={inp} value={f.ano_safra_sel} onChange={e => setF(p => ({ ...p, ano_safra_sel: e.target.value, ciclo_id: "" }))}>
-                  <option value="">— Todos os anos —</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Ciclo / Cultura *</label>
-                <select style={inp} value={f.ciclo_id} onChange={e => setF(p => ({ ...p, ciclo_id: e.target.value }))}>
-                  <option value="">— Selecionar —</option>
-                  {ciclosDisponiveis.map(c => {
-                    const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
-                    return <option key={c.id} value={c.id}>{CULTURA_SEMENTE[c.cultura] ?? c.cultura}{ano ? ` · ${ano}` : ""}</option>;
-                  })}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Talhão *</label>
-                <select style={inp} value={f.talhao_id} onChange={e => setF(p => ({ ...p, talhao_id: e.target.value }))}>
-                  <option value="">— Selecionar —</option>
-                  {talhoesFiltrados.map(t => (
-                    <option key={t.id} value={t.id}>{t.nome} · {t.area_ha} ha</option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
             {/* Semente */}
             <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid #D4DCE8", paddingBottom: 4 }}>Semente / Cultivar</div>

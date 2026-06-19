@@ -6197,3 +6197,12 @@ WHERE auto = true
   AND descricao ILIKE 'FGTS%';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration 144 — Garantir coluna produtor_id em fazendas ──
+-- Vincula uma fazenda ao seu produtor titular (PF ou PJ).
+-- Necessário para a hierarquia de seleção: Produtor → Fazenda → Safra → Ciclo → Talhão.
+ALTER TABLE fazendas ADD COLUMN IF NOT EXISTS produtor_id UUID REFERENCES produtores(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_fazendas_produtor_id ON fazendas(produtor_id);
+
+NOTIFY pgrst, 'reload schema';

@@ -7,7 +7,7 @@ import {
   listarCorrecoes, criarCorrecao, criarCorrecaoItem, processarCorrecao, excluirCorrecao,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import FazendaSelector from "../../../components/FazendaSelector";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Ciclo, Talhao, Insumo, CorrecaoSolo, CorrecaoSoloItem, AnoSafra } from "../../../lib/supabase";
 
 // ── estilos ───────────────────────────────────────────────
@@ -36,8 +36,8 @@ type ItemForm = { insumo_id: string; produto_nome: string; dose_ton_ha: string; 
 
 export default function CorrecaoSoloPage() {
   const { fazendaId, contaId } = useAuth();
-  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
-  const fid = formFazendaId ?? fazendaId;
+  const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   const [registros, setRegistros]   = useState<CorrecaoSolo[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
@@ -71,13 +71,8 @@ export default function CorrecaoSoloPage() {
     listarTalhoes(fid).then(setTalhoes).catch(() => {});
   }, [fid]);
 
-  function mudarFazenda(novaId: string) {
-    setFormFazendaId(novaId);
-    setF(p => ({ ...p, ciclo_id: "", talhao_id: "", ano_safra_sel: "" }));
-  }
-
-  const ciclosDisponiveis = f.ano_safra_sel
-    ? todosCiclos.filter(c => c.ano_safra_id === f.ano_safra_sel)
+  const ciclosDisponiveis = cascade.anoSafraId
+    ? todosCiclos.filter(c => c.ano_safra_id === cascade.anoSafraId)
     : todosCiclos;
 
   const areaHa = parseFloat(f.area_ha) || 0;
@@ -134,6 +129,7 @@ export default function CorrecaoSoloPage() {
       await processarCorrecao({ ...reg, custo_total: custoTotal }, itensSalvos, nomes);
       setRegistros(p => [{ ...reg, custo_total: custoTotal }, ...p]);
       setModal(false);
+      setCascade({});
       setItens([{ insumo_id: "", produto_nome: "", dose_ton_ha: "" }]);
       setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", finalidade: "calcario", area_ha: "", data_aplicacao: "", observacao: "" });
     } catch (e) { alert((e as { message?: string })?.message || JSON.stringify(e)); }
@@ -157,7 +153,7 @@ export default function CorrecaoSoloPage() {
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Correção de Solo</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Calcário, gesso agrícola, micronutrientes e corretivos orgânicos</p>
           </div>
-          <button style={btnV} onClick={() => { setFormFazendaId(fazendaId); setModal(true); }}>+ Registrar Aplicação</button>
+          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
         </header>
 
         <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>
@@ -229,10 +225,16 @@ export default function CorrecaoSoloPage() {
             </div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>Calcário, gesso, micronutrientes e corretivos orgânicos</div>
 
-            {/* Fazenda */}
-            <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: 1, whiteSpace: "nowrap" }}>Fazenda *</span>
-              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} style={{ flex: 1 }} />
+            {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+            <div style={{ marginBottom: 14 }}>
+              <CascadeSelector
+                contaId={contaId}
+                values={cascade}
+                onChange={next => {
+                  setCascade(next);
+                  setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                }}
+              />
             </div>
 
             <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
@@ -244,30 +246,6 @@ export default function CorrecaoSoloPage() {
             {/* Identificação */}
             <div style={secTit}>Identificação</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 4 }}>
-              <div>
-                <label style={lbl}>Ano Safra</label>
-                <select style={inp} value={f.ano_safra_sel} onChange={e => setF(p => ({ ...p, ano_safra_sel: e.target.value, ciclo_id: "" }))}>
-                  <option value="">— Todos os anos —</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Ciclo / Cultura *</label>
-                <select style={inp} value={f.ciclo_id} onChange={e => setF(p => ({ ...p, ciclo_id: e.target.value }))}>
-                  <option value="">— Selecionar —</option>
-                  {ciclosDisponiveis.map(c => {
-                    const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
-                    return <option key={c.id} value={c.id}>{CULTURAS[c.cultura] ?? c.cultura}{ano ? ` · ${ano}` : ""}</option>;
-                  })}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Talhão</label>
-                <select style={inp} value={f.talhao_id} onChange={e => setF(p => ({ ...p, talhao_id: e.target.value }))}>
-                  <option value="">Todos os talhões</option>
-                  {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome} · {t.area_ha} ha</option>)}
-                </select>
-              </div>
               <div>
                 <label style={lbl}>Finalidade *</label>
                 <select style={inp} value={f.finalidade} onChange={e => setF(p => ({ ...p, finalidade: e.target.value as CorrecaoSolo["finalidade"] }))}>

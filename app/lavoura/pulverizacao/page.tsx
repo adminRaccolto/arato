@@ -8,7 +8,7 @@ import {
   listarPulverizacoes, listarPulverizacaoItens, excluirPulverizacao,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import FazendaSelector from "../../../components/FazendaSelector";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -41,8 +41,8 @@ type ItemForm = { insumo_id: string; dose_ha: string; unidade: string };
 
 export default function PulverizacaoPage() {
   const { fazendaId, contaId } = useAuth();
-  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
-  const fid = formFazendaId ?? fazendaId;
+  const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   const [pulverizacoes, setPulverizacoes] = useState<PulverizacaoOp[]>([]);
   const [talhoes, setTalhoes]     = useState<Talhao[]>([]);
@@ -79,14 +79,8 @@ export default function PulverizacaoPage() {
     listarTodosCiclos(fid).then(setTodosCiclos).catch(() => {});
   }, [fid]);
 
-  function mudarFazenda(novaId: string) {
-    setFormFazendaId(novaId);
-    setF(p => ({ ...p, ciclo_id: "", talhao_id: "", ano_safra_sel: "" }));
-  }
-
-  // Ciclos filtrados pelo Ano Safra selecionado
-  const ciclosDisponiveis = f.ano_safra_sel
-    ? todosCiclos.filter(c => c.ano_safra_id === f.ano_safra_sel)
+  const ciclosDisponiveis = cascade.anoSafraId
+    ? todosCiclos.filter(c => c.ano_safra_id === cascade.anoSafraId)
     : todosCiclos;
 
   const areaHa = parseFloat(f.area_ha) || 0;
@@ -137,6 +131,7 @@ export default function PulverizacaoPage() {
       await processarPulverizacao(pulv, itensSalvos, nomes);
       setPulverizacoes(p => [{ ...pulv, custo_total: custoTotal }, ...p]);
       setModal(false);
+      setCascade({});
       setItens([{ insumo_id: "", dose_ha: "", unidade: "L" }]);
       setF({ ano_safra_sel: "", ciclo_id: "", talhao_id: "", tipo: "herbicida", pre_pos: "", estadio_fenologico: "", data_inicio: "", data_fim: "", area_ha: "", cap_tanque_l: "", vazao_l_ha: "", num_tanques: "", fiscal: false, observacao: "" });
     } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); } finally { setSalvando(false); }
@@ -159,7 +154,7 @@ export default function PulverizacaoPage() {
             <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Pulverização</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
-          <button style={btnV} onClick={() => { setFormFazendaId(fazendaId); setModal(true); }}>+ Registrar Aplicação</button>
+          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
         </header>
 
         {/* Stats */}
@@ -305,10 +300,16 @@ export default function PulverizacaoPage() {
               <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
             </div>
 
-            {/* Fazenda */}
-            <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 16 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: 1, whiteSpace: "nowrap" }}>Fazenda *</span>
-              <FazendaSelector contaId={contaId} value={fid} onChange={mudarFazenda} style={{ flex: 1 }} />
+            {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+            <div style={{ marginBottom: 14 }}>
+              <CascadeSelector
+                contaId={contaId}
+                values={cascade}
+                onChange={next => {
+                  setCascade(next);
+                  setF(p => ({ ...p, ano_safra_sel: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                }}
+              />
             </div>
 
             <div style={{ background: "#D5E8F5", border: "0.5px solid #1A487040", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#0B2D50" }}>
@@ -324,30 +325,6 @@ export default function PulverizacaoPage() {
             {/* Identificação */}
             <div style={secTit}>Identificação</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={lbl}>Ano Safra</label>
-                <select style={inp} value={f.ano_safra_sel} onChange={e => setF(p => ({ ...p, ano_safra_sel: e.target.value, ciclo_id: "" }))}>
-                  <option value="">— Todos os anos —</option>
-                  {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Safra / Cultura *</label>
-                <select style={inp} value={f.ciclo_id} onChange={e => setF(p => ({ ...p, ciclo_id: e.target.value }))}>
-                  <option value="">— Selecionar —</option>
-                  {ciclosDisponiveis.map(c => {
-                    const ano = anosSafra.find(a => a.id === c.ano_safra_id)?.descricao ?? "";
-                    return <option key={c.id} value={c.id}>{CULT_LABEL[c.cultura] ?? c.cultura}{ano ? ` · ${ano}` : ""}{c.descricao ? ` — ${c.descricao}` : ""}</option>;
-                  })}
-                </select>
-              </div>
-              <div>
-                <label style={lbl}>Talhão</label>
-                <select style={inp} value={f.talhao_id} onChange={e => setF(p => ({ ...p, talhao_id: e.target.value }))}>
-                  <option value="">— Todos os talhões —</option>
-                  {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome} · {t.area_ha} ha</option>)}
-                </select>
-              </div>
               <div>
                 <label style={lbl}>Tipo de Aplicação *</label>
                 <select style={inp} value={f.tipo} onChange={e => setF(p => ({ ...p, tipo: e.target.value as PulverizacaoOp["tipo"] }))}>

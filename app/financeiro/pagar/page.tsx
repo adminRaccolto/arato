@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
-import FazendaSelector from "../../../components/FazendaSelector";
+import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarProdutores, listarPessoas, listarOperacoesGerenciaisAtivas, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -128,8 +128,8 @@ function ContasPagarInner() {
   const { fazendaId, contaId } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [formFazendaId, setFormFazendaId] = useState<string | null>(null);
-  const fid = formFazendaId ?? fazendaId;
+  const [cascade, setCascade] = useState<Partial<CascadeValues>>({});
+  const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
   const [anosSafra,     setAnosSafra]     = useState<AnoSafra[]>([]);
@@ -177,6 +177,7 @@ function ContasPagarInner() {
     setParcelas([]);
     setErrosForm([]);
     setOpGerBusca("");
+    setCascade({});
     setArquivoNF(null);
   }
 
@@ -225,7 +226,7 @@ function ContasPagarInner() {
       unidade_mao_obra:      l.unidade_mao_obra      ?? "Dia",
       quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
     });
-    setFormFazendaId(l.fazenda_id ?? fazendaId ?? "");
+    setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
     setModalNovo(true);
   }
 
@@ -748,7 +749,7 @@ function ContasPagarInner() {
               style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
             <button
               onClick={() => {
-              setFormFazendaId(fazendaId);
+              setCascade({});
               setModalTab("principal");
               setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "" });
               setParcelas([]);
@@ -1558,44 +1559,15 @@ function ContasPagarInner() {
               {modalTab === "principal" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-                  {/* Faixa de vínculo — Fazenda / Produtor / Safra / Ciclo */}
-                  <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "12px 16px" }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
-                      Este lançamento pertence a
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Fazenda <span style={{ color: "#E24B4A" }}>*</span></label>
-                        <FazendaSelector
-                          contaId={contaId}
-                          value={fid}
-                          onChange={id => { setFormFazendaId(id); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }}
-                          style={{ width: "100%", boxSizing: "border-box" as const, borderRadius: 6, background: "#fff", fontSize: 13 }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Produtor</label>
-                        <select style={{ ...inp, background: "#fff" }} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
-                          <option value="">— Selecionar —</option>
-                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Safra</label>
-                        <select style={{ ...inp, background: "#fff" }} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
-                          <option value="">— Selecionar —</option>
-                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Ciclo / Cultura</label>
-                        <select style={{ ...inp, background: "#fff" }} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
-                          <option value="">— Selecionar —</option>
-                          {ciclos.filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id).map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
+                  <CascadeSelector
+                    contaId={contaId}
+                    values={cascade}
+                    onChange={next => {
+                      setCascade(next);
+                      setForm(p => ({ ...p, produtor_id: next.produtorId ?? "", ano_safra_id: next.anoSafraId ?? "", ciclo_id: next.cicloId ?? "", talhao_id: next.talhaoId ?? "" }));
+                    }}
+                  />
 
                   {/* Linha 1: Moeda | OG (3) | Data Emissão */}
                   <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 140px", gap: 12 }}>
@@ -1856,59 +1828,22 @@ function ContasPagarInner() {
               {modalTab === "vinculos" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-                  {/* Linha 1: hierarquia Produtor → Propriedade */}
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Responsabilidade</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div>
-                        <label style={lbl}>Produtor</label>
-                        <select style={inp} value={form.produtor_id} onChange={e => setForm(p => ({ ...p, produtor_id: e.target.value }))}>
-                          <option value="">— Sem vínculo —</option>
-                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={lbl}>Propriedade (Fazenda) *</label>
-                        <FazendaSelector
-                          contaId={contaId}
-                          value={fid}
-                          onChange={id => { setFormFazendaId(id); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }}
-                          style={{ width: "100%", boxSizing: "border-box", borderRadius: 8, background: "#F0F6FB" }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Linha 2: Safra → Ciclo → Talhão */}
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vínculo Agrícola</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "180px 1fr 1fr", gap: 12 }}>
-                      <div>
-                        <label style={lbl}>Ano Safra</label>
-                        <select style={inp} value={form.ano_safra_id} onChange={e => setForm(p => ({ ...p, ano_safra_id: e.target.value, ciclo_id: "" }))}>
-                          <option value="">— Sem safra —</option>
-                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label style={lbl}>Ciclo / Empreendimento</label>
-                        <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))}>
-                          <option value="">— Sem ciclo —</option>
-                          {ciclos
-                            .filter(c => !form.ano_safra_id || c.ano_safra_id === form.ano_safra_id)
-                            .map(c => <option key={c.id} value={c.id}>{c.descricao || c.cultura}</option>)}
-                        </select>
-                        {ciclos.length === 0 && fid && (
-                          <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 3 }}>Nenhum ciclo cadastrado para esta propriedade</div>
-                        )}
-                      </div>
-                      <div>
-                        <label style={lbl}>Talhão</label>
-                        <select style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))}>
-                          <option value="">— Sem talhão —</option>
-                          {talhoes.map(t => <option key={t.id} value={t.id}>{t.nome}{t.area_ha ? ` (${t.area_ha} ha)` : ""}</option>)}
-                        </select>
-                      </div>
+                  {/* Resumo da hierarquia definida na aba Principal */}
+                  <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 16px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Apropriação (definida na aba Principal)</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
+                      {[
+                        { label: "Produtor",  val: produtores.find(p => p.id === cascade.produtorId)?.nome },
+                        { label: "Fazenda",   val: cascade.fazendaId ? "Selecionada" : undefined },
+                        { label: "Ano Safra", val: anosSafra.find(a => a.id === cascade.anoSafraId)?.descricao },
+                        { label: "Ciclo",     val: cascade.cicloId ? "Selecionado" : undefined },
+                        { label: "Talhão",    val: cascade.talhaoId ? "Selecionado" : undefined },
+                      ].map(({ label, val }) => (
+                        <div key={label}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: "#888", marginBottom: 3 }}>{label}</div>
+                          <div style={{ fontSize: 13, color: val ? "#1A4870" : "#aaa", fontWeight: val ? 600 : 400 }}>{val ?? "—"}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
