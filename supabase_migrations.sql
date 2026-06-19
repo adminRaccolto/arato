@@ -6271,10 +6271,11 @@ BEGIN
            )
   LOOP
     -- Tenta encontrar conta já existente vinculada a alguma outra fazenda do mesmo owner
-    SELECT MIN(f2.conta_id) INTO new_cid
+    SELECT f2.conta_id INTO new_cid
     FROM   fazendas f2
     WHERE  f2.owner_user_id = r.owner_user_id
-      AND  f2.conta_id IS NOT NULL;
+      AND  f2.conta_id IS NOT NULL
+    LIMIT  1;
 
     IF new_cid IS NULL THEN
       -- Cria nova conta usando o nome do perfil do owner
