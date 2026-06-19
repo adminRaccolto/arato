@@ -6187,3 +6187,13 @@ WHERE auto = true
   AND categoria IN ('FGTS', 'INSS/FUNRURAL', 'SAT/RAT', 'SISTEMA S', 'PROVISÃO 13º', 'PROVISÃO FÉRIAS');
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration 143 — Limpeza complementar: FGTS FAZENDA e variações de descrição ──
+-- Apaga qualquer lançamento automático cuja descrição contenha "FGTS",
+-- cobrindo tanto CLT quanto variações de nomenclatura.
+DELETE FROM lancamentos
+WHERE auto = true
+  AND tipo = 'pagar'
+  AND descricao ILIKE 'FGTS%';
+
+NOTIFY pgrst, 'reload schema';
