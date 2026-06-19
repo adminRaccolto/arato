@@ -6233,3 +6233,11 @@ CREATE POLICY "lancamentos_tenant" ON lancamentos FOR ALL
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Migration 146 — Adicionar forma_pagamento e conta_pagamento em lancamentos ──
+-- Campos usados no formulário de CP/CR para registrar meio de pagamento e conta bancária.
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS forma_pagamento  TEXT,
+  ADD COLUMN IF NOT EXISTS conta_pagamento  TEXT;
+
+NOTIFY pgrst, 'reload schema';

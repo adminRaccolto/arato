@@ -55,14 +55,27 @@ export default function CascadeSelector({ contaId, values, onChange, levels }: P
       .then(({ data }) => setProdutores(data ?? []));
   }, [contaId]);
 
-  // 2. Carrega fazendas quando Produtor muda
+  // 2. Carrega fazendas quando Produtor muda (sem produtor = todas da conta)
   useEffect(() => {
-    if (!values.produtorId) { setFazendas([]); return; }
-    supabase.from("fazendas").select("id, nome")
-      .eq("conta_id", contaId ?? "")
-      .eq("produtor_id", values.produtorId)
-      .order("nome")
-      .then(({ data }) => setFazendas(data ?? []));
+    if (!contaId) { setFazendas([]); return; }
+    let q = supabase.from("fazendas").select("id, nome").eq("conta_id", contaId).order("nome");
+    if (values.produtorId) {
+      // Tenta filtrar por produtor_id; se a coluna não existir, o fallback abaixo cobre
+      supabase.from("fazendas").select("id, nome")
+        .eq("conta_id", contaId)
+        .eq("produtor_id", values.produtorId)
+        .order("nome")
+        .then(({ data, error }) => {
+          if (error || !data || data.length === 0) {
+            // Coluna pode não existir ainda (Migration 144 pendente) — mostra tudo
+            q.then(({ data: all }) => setFazendas(all ?? []));
+          } else {
+            setFazendas(data);
+          }
+        });
+    } else {
+      q.then(({ data }) => setFazendas(data ?? []));
+    }
   }, [values.produtorId, contaId]);
 
   // 3. Carrega Anos Safra quando Fazenda muda
@@ -118,9 +131,8 @@ export default function CascadeSelector({ contaId, values, onChange, levels }: P
             <div>
               <label style={lbl}>Fazenda <span style={{ color: "#E24B4A" }}>*</span></label>
               <select style={inp} value={values.fazendaId ?? ""}
-                onChange={e => sel("fazendaId", e.target.value)}
-                disabled={!values.produtorId}>
-                <option value="">{values.produtorId ? "— Selecionar —" : "← Selecione o produtor"}</option>
+                onChange={e => sel("fazendaId", e.target.value)}>
+                <option value="">— Selecionar —</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             </div>
