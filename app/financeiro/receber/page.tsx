@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -249,7 +249,8 @@ export default function ContasReceber() {
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }, fazendaId).then(setOpGerenciais).catch(() => {});
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
-    if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
+    if (contaId) listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(() => {});
+    else if (fazendaId) listarProdutoresViaFazenda(fazendaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
     }
@@ -1290,6 +1291,7 @@ export default function ContasReceber() {
                   {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
                   <CascadeSelector
                     contaId={contaId}
+                    fazendaIdFallback={fazendaId}
                     values={cascade}
                     onChange={next => {
                       setCascade(next);

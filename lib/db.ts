@@ -748,6 +748,21 @@ export async function excluirProdutor(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Busca produtores via owner_user_id da fazenda (admin raccotlo sem conta real do cliente)
+export async function listarProdutoresViaFazenda(fazenda_id: string): Promise<Produtor[]> {
+  const { data: fz } = await supabase.from("fazendas").select("owner_user_id, conta_id").eq("id", fazenda_id).maybeSingle();
+  if (!fz) return [];
+  if (fz.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
+    const { data, error } = await supabase.from("produtores").select("*").eq("conta_id", fz.conta_id).order("nome");
+    if (!error && data?.length) return data;
+  }
+  if (fz.owner_user_id) {
+    const { data, error } = await supabase.from("produtores").select("*").eq("owner_user_id", fz.owner_user_id).order("nome");
+    if (!error) return data ?? [];
+  }
+  return [];
+}
+
 export async function listarProdutoresDaConta(conta_id: string, fazenda_id?: string): Promise<Produtor[]> {
   // Inclui produtores vinculados à conta OU à fazenda ativa (para registros legados sem conta_id)
   let q = supabase.from("produtores").select("*").order("nome");
@@ -823,22 +838,24 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
 
 // Resolve IDs de fazendas dado contaId + fallback de fazenda individual
 async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): Promise<string[]> {
-  const fzs = await listarFazendas();
-  let ids = fzs.map(f => f.id);
-  // listarFazendas() falha para admin raccotlo (sem conta própria) — usa fazenda selecionada
-  if (!ids.length && fazenda_id_fallback) {
+  if (fazenda_id_fallback) {
+    // Estratégia primária: expande a partir da fazenda conhecida (funciona p/ admin e clientes)
     const { data: fz } = await supabase.from("fazendas").select("id, owner_user_id, conta_id").eq("id", fazenda_id_fallback).maybeSingle();
     if (fz?.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
       const { data: allFzs } = await supabase.from("fazendas").select("id").eq("conta_id", fz.conta_id);
-      ids = (allFzs ?? []).map(f => f.id);
-    } else if (fz?.owner_user_id) {
-      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("owner_user_id", fz.owner_user_id);
-      ids = (allFzs ?? []).map(f => f.id);
-    } else {
-      ids = [fazenda_id_fallback];
+      const ids = (allFzs ?? []).map(f => f.id);
+      if (ids.length) return ids;
     }
+    if (fz?.owner_user_id) {
+      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("owner_user_id", fz.owner_user_id);
+      const ids = (allFzs ?? []).map(f => f.id);
+      if (ids.length) return ids;
+    }
+    return [fazenda_id_fallback];
   }
-  return ids;
+  // Sem fazendaId: usa as fazendas do usuário logado (clientes normais)
+  const fzs = await listarFazendas();
+  return fzs.map(f => f.id);
 }
 
 // Carrega pessoas de TODAS as fazendas da conta (nova arquitetura multi-fazenda)

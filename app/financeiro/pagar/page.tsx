@@ -5,7 +5,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -316,7 +316,8 @@ function ContasPagarInner() {
       }))
     ).catch(() => {});
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
-    if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
+    if (contaId) listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(() => {});
+    else if (fazendaId) listarProdutoresViaFazenda(fazendaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
@@ -1561,6 +1562,7 @@ function ContasPagarInner() {
                   {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
                   <CascadeSelector
                     contaId={contaId}
+                    fazendaIdFallback={fazendaId}
                     values={cascade}
                     onChange={next => {
                       setCascade(next);

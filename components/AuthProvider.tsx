@@ -181,7 +181,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           setNomeFazendaSelecionada(savedNome);
           setNomeProdutor(savedProdutorNome);
           if (savedLogoUrl)       setLogoCliente(savedLogoUrl);
-          if (savedClienteContaId) setContaId(savedClienteContaId);
+          // Ignora IDs sintéticos "sem_conta_<fazenda_id>" — deixa contaId=null nesses casos
+          if (savedClienteContaId && !savedClienteContaId.startsWith("sem_conta_")) setContaId(savedClienteContaId);
         } else {
           // Sem farm: hub (/raccotlo), seletor e admin são rotas livres
           const pathname = typeof window !== "undefined" ? window.location.pathname : "";

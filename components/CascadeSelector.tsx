@@ -16,7 +16,10 @@ interface Row { id: string; nome: string }
 interface CicloRow extends Row { ano_safra_id: string; cultura?: string; descricao?: string }
 
 interface Props {
-  contaId:    string | null;
+  contaId:           string | null;
+  /** Fazenda ativa do admin raccotlo (contexto do cliente selecionado).
+   *  Usado quando contaId é null (cliente sem conta real no banco ainda). */
+  fazendaIdFallback?: string | null;
   values:     Partial<CascadeValues>;
   onChange:   (next: Partial<CascadeValues>) => void;
   /** Quais níveis exibir. Padrão: todos os 5 */
@@ -39,7 +42,7 @@ const CULTURAS: Record<string, string> = {
   algodao: "Algodão", sorgo: "Sorgo", trigo: "Trigo", outro: "Outro",
 };
 
-export default function CascadeSelector({ contaId, values, onChange, levels }: Props) {
+export default function CascadeSelector({ contaId, fazendaIdFallback, values, onChange, levels }: Props) {
   const show = levels ?? ["produtor", "fazenda", "anoSafra", "ciclo", "talhao"];
 
   const [produtores, setProdutores] = useState<Row[]>([]);
@@ -48,35 +51,61 @@ export default function CascadeSelector({ contaId, values, onChange, levels }: P
   const [ciclos,     setCiclos]     = useState<CicloRow[]>([]);
   const [talhoes,    setTalhoes]    = useState<Row[]>([]);
 
-  // 1. Carrega produtores da conta
+  // 1. Carrega produtores da conta (ou pelo owner da fazenda quando contaId é null)
   useEffect(() => {
-    if (!contaId) return;
-    supabase.from("produtores").select("id, nome").eq("conta_id", contaId).order("nome")
-      .then(({ data }) => setProdutores(data ?? []));
-  }, [contaId]);
+    if (contaId) {
+      supabase.from("produtores").select("id, nome").eq("conta_id", contaId).order("nome")
+        .then(({ data }) => setProdutores(data ?? []));
+    } else if (fazendaIdFallback) {
+      // Admin raccotlo sem conta real — busca produtores pelo owner_user_id da fazenda
+      supabase.from("fazendas").select("owner_user_id").eq("id", fazendaIdFallback).maybeSingle()
+        .then(({ data: fz }) => {
+          if (!fz?.owner_user_id) return;
+          supabase.from("produtores").select("id, nome").eq("owner_user_id", fz.owner_user_id).order("nome")
+            .then(({ data }) => setProdutores(data ?? []));
+        });
+    }
+  }, [contaId, fazendaIdFallback]);
 
   // 2. Carrega fazendas quando Produtor muda (sem produtor = todas da conta)
   useEffect(() => {
-    if (!contaId) { setFazendas([]); return; }
-    let q = supabase.from("fazendas").select("id, nome").eq("conta_id", contaId).order("nome");
-    if (values.produtorId) {
-      // Tenta filtrar por produtor_id; se a coluna não existir, o fallback abaixo cobre
-      supabase.from("fazendas").select("id, nome")
-        .eq("conta_id", contaId)
-        .eq("produtor_id", values.produtorId)
-        .order("nome")
-        .then(({ data, error }) => {
-          if (error || !data || data.length === 0) {
-            // Coluna pode não existir ainda (Migration 144 pendente) — mostra tudo
-            q.then(({ data: all }) => setFazendas(all ?? []));
+    if (contaId) {
+      // Tem conta real — filtra fazendas por conta (e por produtor se selecionado)
+      const qAll = supabase.from("fazendas").select("id, nome").eq("conta_id", contaId).order("nome");
+      if (values.produtorId) {
+        supabase.from("fazendas").select("id, nome")
+          .eq("conta_id", contaId).eq("produtor_id", values.produtorId).order("nome")
+          .then(({ data, error }) => {
+            if (error || !data || data.length === 0) {
+              qAll.then(({ data: all }) => setFazendas(all ?? []));
+            } else {
+              setFazendas(data);
+            }
+          });
+      } else {
+        qAll.then(({ data }) => setFazendas(data ?? []));
+      }
+    } else if (fazendaIdFallback) {
+      // Sem conta real (admin raccotlo vendo cliente sem backfill) — expande via owner_user_id
+      supabase.from("fazendas").select("id, nome, owner_user_id, conta_id").eq("id", fazendaIdFallback).maybeSingle()
+        .then(({ data: fz }) => {
+          if (!fz) { setFazendas([]); return; }
+          // Tenta expandir para toda a conta ou todo o owner
+          const expandQ = fz.conta_id && !fz.conta_id.startsWith("sem_conta_")
+            ? supabase.from("fazendas").select("id, nome").eq("conta_id", fz.conta_id).order("nome")
+            : fz.owner_user_id
+              ? supabase.from("fazendas").select("id, nome").eq("owner_user_id", fz.owner_user_id).order("nome")
+              : null;
+          if (expandQ) {
+            expandQ.then(({ data }) => setFazendas(data ?? [{ id: fz.id, nome: (fz as { nome?: string }).nome ?? "" }]));
           } else {
-            setFazendas(data);
+            setFazendas([{ id: fz.id, nome: (fz as { nome?: string }).nome ?? "" }]);
           }
         });
     } else {
-      q.then(({ data }) => setFazendas(data ?? []));
+      setFazendas([]);
     }
-  }, [values.produtorId, contaId]);
+  }, [values.produtorId, contaId, fazendaIdFallback]);
 
   // 3. Carrega Anos Safra quando Fazenda muda
   useEffect(() => {
