@@ -350,14 +350,33 @@ export async function listarLancamentosContaPeriodo(
   dataInicio: string,
   dataFim: string,
   tipo?: "pagar" | "receber",
+  fazenda_id_fallback?: string | null,
 ): Promise<Lancamento[]> {
+  // conta_id "sem_conta_<id>" é sintético (seletor-cliente sem backfill) — trata como null
+  const cidReal = (conta_id && !conta_id.startsWith("sem_conta_")) ? conta_id : null;
+
   // 1. Busca todas as fazendas da conta
   let fazendaIds: string[] = [];
-  if (conta_id) {
-    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", conta_id);
+  if (cidReal) {
+    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", cidReal);
     fazendaIds = (fzs ?? []).map(f => f.id);
-  } else {
-    // Fallback: conta ainda sem conta_id — usa owner_user_id via listarFazendas
+  }
+  // Fallback: sem conta real — tenta via fazenda selecionada (admin "Trocar cliente" ou conta sem backfill)
+  if (!fazendaIds.length && fazenda_id_fallback) {
+    // Tenta expandir para toda a conta a partir da fazenda
+    const { data: fz } = await supabase.from("fazendas").select("id, conta_id, owner_user_id").eq("id", fazenda_id_fallback).maybeSingle();
+    if (fz?.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
+      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("conta_id", fz.conta_id);
+      fazendaIds = (allFzs ?? []).map(f => f.id);
+    } else if (fz?.owner_user_id) {
+      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("owner_user_id", fz.owner_user_id);
+      fazendaIds = (allFzs ?? []).map(f => f.id);
+    } else {
+      fazendaIds = [fazenda_id_fallback];
+    }
+  }
+  // Último fallback: usa fazendas do usuário logado (compatibilidade com clientes normais)
+  if (!fazendaIds.length) {
     const fzs = await listarFazendas();
     fazendaIds = fzs.map(f => f.id);
   }
@@ -802,10 +821,29 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
   return data ?? [];
 }
 
-// Carrega pessoas de TODAS as fazendas da conta (nova arquitetura multi-fazenda)
-export async function listarPessoasDaConta(): Promise<Pessoa[]> {
+// Resolve IDs de fazendas dado contaId + fallback de fazenda individual
+async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): Promise<string[]> {
   const fzs = await listarFazendas();
-  const ids = fzs.map(f => f.id);
+  let ids = fzs.map(f => f.id);
+  // listarFazendas() falha para admin raccotlo (sem conta própria) — usa fazenda selecionada
+  if (!ids.length && fazenda_id_fallback) {
+    const { data: fz } = await supabase.from("fazendas").select("id, owner_user_id, conta_id").eq("id", fazenda_id_fallback).maybeSingle();
+    if (fz?.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
+      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("conta_id", fz.conta_id);
+      ids = (allFzs ?? []).map(f => f.id);
+    } else if (fz?.owner_user_id) {
+      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("owner_user_id", fz.owner_user_id);
+      ids = (allFzs ?? []).map(f => f.id);
+    } else {
+      ids = [fazenda_id_fallback];
+    }
+  }
+  return ids;
+}
+
+// Carrega pessoas de TODAS as fazendas da conta (nova arquitetura multi-fazenda)
+export async function listarPessoasDaConta(fazenda_id_fallback?: string | null): Promise<Pessoa[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
   if (!ids.length) return [];
   const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome");
   if (error) throw error;
@@ -813,9 +851,8 @@ export async function listarPessoasDaConta(): Promise<Pessoa[]> {
 }
 
 // Carrega contas bancárias de TODAS as fazendas da conta
-export async function listarContasBancariasDaConta(): Promise<{ id: string; nome: string; banco: string; agencia: string; conta: string; fazenda_id: string }[]> {
-  const fzs = await listarFazendas();
-  const ids = fzs.map(f => f.id);
+export async function listarContasBancariasDaConta(fazenda_id_fallback?: string | null): Promise<{ id: string; nome: string; banco: string; agencia: string; conta: string; fazenda_id: string }[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
   if (!ids.length) return [];
   const { data, error } = await supabase.from("contas_bancarias").select("id, nome, banco, agencia, conta, fazenda_id").in("fazenda_id", ids).eq("ativa", true).order("nome");
   if (error) throw error;
@@ -3294,10 +3331,10 @@ export async function listarOperacoesGerenciaisAtivas(
 
 // Carrega operações gerenciais ativas de TODAS as fazendas da conta
 export async function listarOperacoesGerenciaisAtivasDaConta(
-  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" }
+  filtro?: { tipo?: "receita" | "despesa"; permite?: "notas_fiscais" | "cp_cr" | "tesouraria" | "estoque" },
+  fazenda_id_fallback?: string | null,
 ): Promise<OperacaoGerencial[]> {
-  const fzs = await listarFazendas();
-  const ids = fzs.map(f => f.id);
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
   if (!ids.length) return [];
   let q = supabase.from("operacoes_gerenciais").select("*")
     .in("fazenda_id", ids)

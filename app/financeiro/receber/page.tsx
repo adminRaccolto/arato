@@ -246,9 +246,9 @@ export default function ContasReceber() {
 
   useEffect(() => {
     if (!contaId && !fazendaId) return;
-    listarPessoasDaConta().then(setPessoas).catch(() => {});
-    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }).then(setOpGerenciais).catch(() => {});
-    listarContasBancariasDaConta().then(setContas).catch(() => {});
+    listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }, fazendaId).then(setOpGerenciais).catch(() => {});
+    listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
@@ -266,7 +266,7 @@ export default function ContasReceber() {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "receber");
+      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "receber", fazendaId);
       setLancamentos(dados);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");

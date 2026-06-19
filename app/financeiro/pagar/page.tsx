@@ -306,8 +306,8 @@ function ContasPagarInner() {
 
   useEffect(() => {
     if (!contaId && !fazendaId) return;
-    listarPessoasDaConta().then(setPessoas).catch(() => {});
-    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }).then(ops =>
+    listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).then(ops =>
       setOpGerenciais(ops.filter(o => {
         const cls = o.classificacao ?? "";
         if (cls.startsWith("3.") || cls.startsWith("4.")) return false;
@@ -315,7 +315,7 @@ function ContasPagarInner() {
         return true;
       }))
     ).catch(() => {});
-    listarContasBancariasDaConta().then(setContas).catch(() => {});
+    listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     if (contaId) listarProdutoresDaConta(contaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
@@ -335,7 +335,7 @@ function ContasPagarInner() {
     setLoading(true);
     setErro(null);
     try {
-      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar");
+      const dados = await listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, "pagar", fazendaId);
       setLancamentos(dados);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
