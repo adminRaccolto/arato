@@ -48,6 +48,7 @@ type ContratoFinRow = {
   tipo: string; linha_credito: string; tipo_calculo: string;
   moeda: string; valor_financiado: string; valor_liberado: string; cotacao_usd: string;
   data_contrato: string; data_liberacao: string; data_vencimento: string;
+  data_entrega_produto: string;
   prazo_meses: string; carencia_meses: string;
   periodicidade_pagamento: string;
   taxa_juros_aa: string; taxa_juros_am: string;
@@ -135,12 +136,12 @@ const TEMPLATE_MAQUINAS = [
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
-  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "valor_liberado", "cotacao_usd", "data_contrato*", "data_liberacao", "data_vencimento", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
-  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "1649927.09", "", "2025-06-01", "2025-06-01", "", "12", "0", "mensal", "11.16", "0.89", "", "6250.00", "", "sim", "012.345.678-90", "TAC R$6.250 retida na liberação"],
-  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "477600.00", "", "2024-03-15", "2024-03-15", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "TAC R$1.200 + IOF retidos"],
-  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "184261.25", "5.85", "2025-12-28", "2025-12-28", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
-  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "", "bullet", "USD", "28144.00", "", "5.98", "2025-01-10", "2025-01-10", "2026-01-10", "12", "0", "bullet", "", "", "", "", "", "nao", "", ""],
-  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "1992400.00", "", "2024-05-01", "2024-05-01", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "valor_liberado", "cotacao_usd", "data_contrato*", "data_liberacao", "data_entrega_produto", "data_vencimento", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "1649927.09", "", "2025-06-01", "2025-06-01", "", "", "12", "0", "mensal", "11.16", "0.89", "", "6250.00", "", "sim", "012.345.678-90", "TAC R$6.250 retida na liberação"],
+  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "477600.00", "", "2024-03-15", "2024-03-15", "", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "TAC R$1.200 + IOF retidos"],
+  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "184261.25", "5.85", "2025-12-28", "2025-12-28", "", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
+  ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "", "bullet", "USD", "28144.00", "", "5.98", "2025-01-10", "2025-01-10", "2026-01-10", "2026-01-10", "12", "0", "bullet", "", "", "", "", "", "nao", "", ""],
+  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "1992400.00", "", "2024-05-01", "2024-05-01", "", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
 ];
 
 const TEMPLATE_ARRENDAMENTOS = [
@@ -311,7 +312,11 @@ const INSTRUCOES_CONTRATOS_FIN = [
   ["DATAS E PRAZO"],
   ["• data_contrato*: data de assinatura no formato AAAA-MM-DD"],
   ["• data_liberacao: data em que o recurso foi liberado (padrão: data_contrato)"],
-  ["• data_vencimento: data de vencimento final (opcional, calculada pelo prazo)"],
+  ["• data_entrega_produto: data limite para entrega física do produto (grão)"],
+  ["  Usado em CPR e barter — quando o produtor deve entregar os grãos ao credor."],
+  ["  Diferente de data_vencimento: uma é logística (entrega física), a outra é financeira."],
+  ["• data_vencimento: data de vencimento FINANCEIRO — último pagamento em dinheiro."],
+  ["  Para CPR puro (pago 100% em grão): deixe em branco ou igual a data_entrega_produto."],
   ["• prazo_meses: duração total em meses (ex: 12, 60) — necessário para gerar parcelas"],
   ["• carencia_meses: meses de carência antes de iniciar pagamentos (ex: 6) — padrão: 0"],
   [""],
@@ -646,6 +651,8 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
     return { ...row, _status: "erro", _msg: "data_contrato deve ser AAAA-MM-DD" };
   if (row.data_liberacao?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_liberacao.trim()))
     return { ...row, _status: "erro", _msg: "data_liberacao deve ser AAAA-MM-DD" };
+  if (row.data_entrega_produto?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_entrega_produto.trim()))
+    return { ...row, _status: "erro", _msg: "data_entrega_produto deve ser AAAA-MM-DD" };
   if (row.data_vencimento?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_vencimento.trim()))
     return { ...row, _status: "erro", _msg: "data_vencimento deve ser AAAA-MM-DD" };
   if (row.prazo_meses?.trim() && (isNaN(parseInt(row.prazo_meses)) || parseInt(row.prazo_meses) < 1))
@@ -1382,6 +1389,7 @@ function ImportacaoInner() {
         cotacao_usd:             cotacaoV,
         data_contrato:           r.data_contrato.trim(),
         data_liberacao:          r.data_liberacao?.trim() || null,
+        data_entrega_produto:    r.data_entrega_produto?.trim() || null,
         data_vencimento:         r.data_vencimento?.trim() || null,
         prazo_meses:             r.prazo_meses?.trim() ? parseInt(r.prazo_meses) : null,
         taxa_juros_aa:           r.taxa_juros_aa?.trim() ? parseFloat(r.taxa_juros_aa.replace(",", ".")) : null,
@@ -2074,7 +2082,7 @@ function ImportacaoInner() {
     contratos_fin: {
       label: "Contratos Financeiros", icon: "🏦",
       desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). Suporta periodicidade mensal, semestral, anual e estrutura de juros semestrais + amortização anual.",
-      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "prazo_meses", "periodicidade_pagamento", "estrutura_pagamento", "tipo_amortizacao", "produtor_cpf_cnpj"],
+      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "data_entrega_produto", "data_vencimento", "prazo_meses", "periodicidade_pagamento", "tipo_amortizacao", "produtor_cpf_cnpj"],
       rows: contratoFinRows as Record<string, unknown>[],
       loading: loadingContratoFin,
       result: resultContratoFin,

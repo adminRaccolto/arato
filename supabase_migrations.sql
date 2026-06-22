@@ -6325,3 +6325,15 @@ CREATE POLICY "produtores_insert" ON produtores FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration 148 — data_entrega_produto em contratos_financeiros ───────────
+-- Separa data de entrega física do produto (grão) da data de vencimento financeiro.
+-- Relevante para CPR e barter, onde a entrega do grão ≠ liquidação financeira.
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS data_entrega_produto DATE;
+
+COMMENT ON COLUMN contratos_financeiros.data_entrega_produto IS
+  'Data limite para entrega física do produto (grão). Usado em CPR/barter. '
+  'Diferente de data_vencimento: uma é logística (entrega no armazém), a outra é financeira.';
+
+NOTIFY pgrst, 'reload schema';
