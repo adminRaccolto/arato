@@ -98,6 +98,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     setFazendaId(id);
     setNomeFazendaSelecionada(fazendaNome);
     setNomeProdutor(produtorNome ?? null);
+    // Sincroniza logo e contaId com o que acessarCliente() escreveu no localStorage
+    // O AuthProvider não remonta entre navegações no App Router, então é necessário atualizar explicitamente
+    const logoUrl         = localStorage.getItem("raccotlo_cliente_logo");
+    const clienteContaId  = localStorage.getItem("raccotlo_cliente_conta_id");
+    setLogoCliente(logoUrl ?? null);
+    setContaId(clienteContaId && !clienteContaId.startsWith("sem_conta_") ? clienteContaId : null);
     router.push("/");
   }, [router]);
 
