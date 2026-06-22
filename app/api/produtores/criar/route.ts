@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
-// Usa service role key para bypass de RLS — necessário quando o JWT do browser expira
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 export async function POST(req: NextRequest) {
@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
     if (!body.fazenda_id || !body.nome) {
       return NextResponse.json({ error: "fazenda_id e nome são obrigatórios" }, { status: 400 });
     }
+
+    const auth = await validateFazendaAccess(body.fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
     const { data, error } = await admin
       .from("produtores")

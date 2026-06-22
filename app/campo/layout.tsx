@@ -3,11 +3,11 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { href: "/campo",              label: "Início",         icon: "🏠" },
-  { href: "/campo/monitoramento", label: "Monitoramento",  icon: "🐛" },
-  { href: "/campo/plantio",      label: "Plantio",        icon: "🌱" },
-  { href: "/campo/pulverizacao", label: "Pulverização",   icon: "💧" },
-  { href: "/campo/colheita",     label: "Colheita",       icon: "🌾" },
+  { href: "/campo",               label: "Início",        icon: "🏠" },
+  { href: "/campo/monitoramento", label: "Monitoramento", icon: "🐛" },
+  { href: "/lavoura/plantio",     label: "Plantio",       icon: "🌱" },
+  { href: "/lavoura/pulverizacao",label: "Pulverização",  icon: "💧" },
+  { href: "/lavoura/colheita",    label: "Colheita",      icon: "🌾" },
 ];
 
 export default function CampoLayout({ children }: { children: React.ReactNode }) {

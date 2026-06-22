@@ -347,9 +347,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)
   const setFazendaAtiva = useCallback(async (id: string, nome: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("perfis").update({ fazenda_id: id }).eq("user_id", user.id);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      // Usa API route com service_role_key para garantir UPDATE mesmo com JWT próximo do vencimento
+      fetch("/api/perfil/fazenda-ativa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ fazenda_id: id }),
+      }).catch(() => {}); // fire-and-forget — localStorage já atualiza a UI imediatamente
     }
     localStorage.setItem("raccotlo_fazenda_id", id);
     localStorage.setItem("raccotlo_fazenda_nome", nome);

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { emitirNFe } from "../../../../lib/nfe/index";
 import type { NFeInput } from "../../../../lib/nfe/builder";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 export const runtime = "nodejs"; // xml-crypto e node-forge precisam de Node
 
@@ -47,6 +48,9 @@ export async function POST(req: NextRequest) {
     if (!body.fazenda_id || !body.modulo_key || !body.itens?.length) {
       return NextResponse.json({ erro: "Campos obrigatórios ausentes" }, { status: 400 });
     }
+
+    const auth = await validateFazendaAccess(body.fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!auth.ok) return NextResponse.json({ erro: auth.error }, { status: auth.status });
 
     const input: Omit<NFeInput, "emitente"> = {
       destinatario: body.destinatario,

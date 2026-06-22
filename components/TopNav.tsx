@@ -134,6 +134,13 @@ const NAV: NavItem[] = [
       { id: "fin-adiantamentos",label: "Adiantamentos a Fornecedores", path: "/financeiro/adiantamentos", moduleId: "fin_pagar" },
       { id: "fin-contratos",    label: "Contratos Financeiros",     path: "/financeiro/contratos",     moduleId: "fin_contratos" },
       {
+        type: "subgroup", id: "sg-seguros", label: "Seguros & Consórcios", moduleId: "fin_seguros",
+        children: [
+          { id: "fin-seguros",    label: "Apólices e Sinistros",   path: "/financeiro/seguros",    moduleId: "fin_seguros" },
+          { id: "fin-consorcios", label: "Consórcios",             path: "/financeiro/consorcios", moduleId: "fin_seguros" },
+        ],
+      },
+      {
         type: "subgroup", id: "sg-tesouraria", label: "Tesouraria", moduleId: "fin_tesouraria",
         children: [
           { id: "fin-lanc-tesouraria", label: "Lançamento de Tesouraria", path: "/financeiro/tesouraria",           moduleId: "fin_tesouraria" },

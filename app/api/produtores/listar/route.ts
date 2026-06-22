@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +13,13 @@ export async function GET(req: NextRequest) {
 
   if (!conta_id && !fazenda_id) {
     return NextResponse.json({ error: "conta_id ou fazenda_id obrigatório" }, { status: 400 });
+  }
+
+  // Valida acesso usando a fazenda como referência (ou a primeira fazenda da conta)
+  const faz_ref = fazenda_id ?? "";
+  if (faz_ref) {
+    const auth = await validateFazendaAccess(faz_ref, req.headers.get("authorization") ?? undefined);
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   let q = admin.from("produtores").select("*").order("nome");
