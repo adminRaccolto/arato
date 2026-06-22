@@ -232,6 +232,7 @@ const NAV: NavItem[] = [
       { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade", moduleId: "conf_contabilidade" },
 
       { type: "divider", label: "Sistema" },
+      { id: "conf-whatsapp",    label: "WhatsApp Bot",         path: "/configuracoes/whatsapp",    moduleId: "conf_sistema" },
       { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_sistema" },
       { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_sistema" },
       { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_sistema" },
