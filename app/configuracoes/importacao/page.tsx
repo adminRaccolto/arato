@@ -1801,6 +1801,14 @@ function ImportacaoInner() {
       if (r._status === "erro")      { erros++;      continue; }
 
       if (r._status === "atualizar") {
+        // Busca o contrato atual para pegar lancamento_cr_id antes de atualizar
+        const { data: contratoAtual } = await supabase
+          .from("contratos")
+          .select("id, lancamento_cr_id")
+          .eq("fazenda_id", fazendaId)
+          .eq("numero", r.numero.trim())
+          .maybeSingle();
+
         const { error } = await supabase
           .from("contratos")
           .update({
@@ -1809,8 +1817,18 @@ function ImportacaoInner() {
           })
           .eq("fazenda_id", fazendaId)
           .eq("numero", r.numero.trim());
-        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
-        else atualizados++;
+
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
+
+        // Propaga data_pagamento → data_vencimento no lancamento de CR vinculado
+        if (contratoAtual?.lancamento_cr_id && r.data_pagamento?.trim()) {
+          await supabase
+            .from("lancamentos")
+            .update({ data_vencimento: r.data_pagamento.trim() })
+            .eq("id", contratoAtual.lancamento_cr_id);
+        }
+
+        atualizados++;
         continue;
       }
 
