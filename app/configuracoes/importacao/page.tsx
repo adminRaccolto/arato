@@ -2324,7 +2324,20 @@ function ImportacaoInner() {
                 {aba === "contratos_fin" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
-                      <input type="checkbox" checked={modoAtualizacaoContratoFin} onChange={e => { setModoAtualizacaoContratoFin(e.target.checked); setContratoFinRows([]); setResultContratoFin(null); }} style={{ width: 16, height: 16, accentColor: "#7C3AED", cursor: "pointer" }} />
+                      <input type="checkbox" checked={modoAtualizacaoContratoFin} onChange={e => {
+                          const novoModo = e.target.checked;
+                          setModoAtualizacaoContratoFin(novoModo);
+                          setResultContratoFin(null);
+                          setContratoFinRows(prev => prev.map(r => {
+                            if (novoModo && r._status === "duplicado" && r._msg === "contrato já existe") {
+                              return { ...r, _status: "atualizar" as const, _msg: "contrato existente — datas serão atualizadas" };
+                            }
+                            if (!novoModo && r._status === "atualizar") {
+                              return { ...r, _status: "duplicado" as const, _msg: "contrato já existe" };
+                            }
+                            return r;
+                          }));
+                        }} style={{ width: 16, height: 16, accentColor: "#7C3AED", cursor: "pointer" }} />
                       <span>
                         <strong style={{ color: "#4C1D95" }}>Atualizar datas nos contratos existentes</strong>
                         {" — "}atualiza <code>data_entrega_produto</code> e <code>data_vencimento</code> nos {dupRows} contrato{dupRows !== 1 ? "s" : ""} já importado{dupRows !== 1 ? "s" : ""}. Novos contratos são inseridos normalmente.
@@ -2336,7 +2349,20 @@ function ImportacaoInner() {
                 {aba === "contratos_venda" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
-                      <input type="checkbox" checked={modoAtualizacaoContratoVenda} onChange={e => { setModoAtualizacaoContratoVenda(e.target.checked); setContratoVendaRows([]); setResultContratoVenda(null); }} style={{ width: 16, height: 16, accentColor: "#7C3AED", cursor: "pointer" }} />
+                      <input type="checkbox" checked={modoAtualizacaoContratoVenda} onChange={e => {
+                          const novoModo = e.target.checked;
+                          setModoAtualizacaoContratoVenda(novoModo);
+                          setResultContratoVenda(null);
+                          setContratoVendaRows(prev => prev.map(r => {
+                            if (novoModo && r._status === "duplicado" && r._msg === "contrato já existe") {
+                              return { ...r, _status: "atualizar" as const, _msg: "contrato existente — datas serão atualizadas" };
+                            }
+                            if (!novoModo && r._status === "atualizar") {
+                              return { ...r, _status: "duplicado" as const, _msg: "contrato já existe" };
+                            }
+                            return r;
+                          }));
+                        }} style={{ width: 16, height: 16, accentColor: "#7C3AED", cursor: "pointer" }} />
                       <span>
                         <strong style={{ color: "#4C1D95" }}>Atualizar datas nos contratos existentes</strong>
                         {" — "}atualiza <code>data_entrega</code> e <code>data_pagamento</code> nos {dupRows} contrato{dupRows !== 1 ? "s" : ""} já importado{dupRows !== 1 ? "s" : ""}. Novos contratos são inseridos normalmente.
