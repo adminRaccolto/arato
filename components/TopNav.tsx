@@ -235,7 +235,6 @@ const NAV: NavItem[] = [
       { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/configuracoes/usuarios", moduleId: "usuarios" },
 
       { type: "divider", label: "Raccolto" },
-      { id: "conf-whatsapp",    label: "WhatsApp Bot",         path: "/configuracoes/whatsapp",    moduleId: "conf_raccotlo" },
       { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_raccotlo" },
       { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_raccotlo" },
       { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_raccotlo" },
