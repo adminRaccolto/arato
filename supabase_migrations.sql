@@ -6394,3 +6394,52 @@ DROP POLICY IF EXISTS "prod_ies_insert" ON produtor_inscricoes_estaduais;
 CREATE POLICY "prod_ies_insert" ON produtor_inscricoes_estaduais FOR INSERT WITH CHECK (true);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 151 — Correção global de perfis órfãos (conta_id = NULL)
+-- Para cada perfil de cliente sem conta vinculada:
+--   1. Busca conta existente pelo nome do perfil (case-insensitive)
+--   2. Se não existe, cria conta nova do tipo 'pf'
+--   3. Vincula perfil, fazenda ativa e produtores dessa fazenda à conta correta
+-- Idempotente: só age em perfis com conta_id IS NULL, ignora raccotlo.
+-- ═══════════════════════════════════════════════════════════════════════════════
+DO $$
+DECLARE
+  r          RECORD;
+  v_conta_id uuid;
+  v_total    int := 0;
+BEGIN
+  FOR r IN
+    SELECT p.id AS perfil_id, p.nome, p.fazenda_id
+    FROM   perfis p
+    WHERE  p.conta_id IS NULL
+      AND  p.fazenda_id IS NOT NULL
+      AND  (p.role IS NULL OR p.role NOT LIKE 'raccotlo%')
+    ORDER  BY p.nome
+  LOOP
+    -- Reutiliza conta existente com mesmo nome (evita duplicatas)
+    SELECT id INTO v_conta_id
+    FROM   contas
+    WHERE  LOWER(TRIM(nome)) = LOWER(TRIM(r.nome))
+    LIMIT  1;
+
+    IF v_conta_id IS NULL THEN
+      v_conta_id := gen_random_uuid();
+      INSERT INTO contas (id, nome, tipo, created_at)
+      VALUES (v_conta_id, r.nome, 'pf', now());
+    END IF;
+
+    UPDATE perfis    SET conta_id = v_conta_id WHERE id           = r.perfil_id;
+    UPDATE fazendas  SET conta_id = v_conta_id WHERE id           = r.fazenda_id
+                                                AND (conta_id IS NULL OR conta_id != v_conta_id);
+    UPDATE produtores SET conta_id = v_conta_id WHERE fazenda_id  = r.fazenda_id
+                                                AND (conta_id IS NULL OR conta_id != v_conta_id);
+
+    v_total := v_total + 1;
+    RAISE NOTICE 'Corrigido: % → conta %', r.nome, v_conta_id;
+  END LOOP;
+
+  RAISE NOTICE 'Migration 151 concluída — % perfis corrigidos', v_total;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
