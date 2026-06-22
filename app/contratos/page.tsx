@@ -744,7 +744,7 @@ export default function Contratos() {
   const descUmid  = plCalc > 0 ? calcDescUmidade (plCalc, romUmidade,  clsComm.umidade_padrao)  : 0;
   const descImpur = plCalc > 0 ? calcDescImpureza(plCalc, romImpureza, clsComm.impureza_padrao) : 0;
   const descAvar  = plCalc > 0 ? calcDescAvariados(plCalc, romAvariados, clsComm.avariados_padrao) : 0;
-  const pesoClass = plCalc > 0 ? +(plCalc - descUmid - descImpur - descAvar).toFixed(2) : 0;
+  const pesoClass = plCalc > 0 ? Math.max(0, +(plCalc - descUmid - descImpur - descAvar).toFixed(2)) : 0;
   const sacasCalc = pesoClass > 0 ? +(pesoClass / clsComm.kg_saca).toFixed(3) : 0;
   const temClassif = romUmidade > 0 || romImpureza > 0 || romAvariados > 0;
 
