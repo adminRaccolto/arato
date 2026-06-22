@@ -244,8 +244,15 @@ type LerXLSXResult = {
 
 async function lerXLSX(file: File): Promise<LerXLSXResult> {
   const XLSXLib = await import("xlsx");
-  const buf = await file.arrayBuffer();
-  const wb = XLSXLib.read(buf, { type: "array", cellDates: true });
+  // Leitura via FileReader binary — compatível com .xlsx, .xls e exportações de ERPs
+  // (ArrayBuffer direto causa "Unsupported ZIP Compression method NaN" em alguns arquivos)
+  const binary = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = (e) => resolve(e.target?.result as string);
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+    reader.readAsBinaryString(file);
+  });
+  const wb = XLSXLib.read(binary, { type: "binary", cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rawRows = XLSXLib.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 

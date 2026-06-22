@@ -539,7 +539,7 @@ function parseXlsx(file: File): Promise<Record<string, string>[]> {
     reader.onload = (e) => {
       import("xlsx").then(({ read, utils }) => {
         try {
-          const wb = read(e.target!.result, { type: "array" });
+          const wb = read(e.target!.result, { type: "binary" });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const raw = utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
           // Strip asterisks from header keys (templates use nome*, categoria* etc. to mark required fields)
@@ -557,7 +557,7 @@ function parseXlsx(file: File): Promise<Record<string, string>[]> {
       });
     };
     reader.onerror = reject;
-    reader.readAsArrayBuffer(file);
+    reader.readAsBinaryString(file);
   });
 }
 
