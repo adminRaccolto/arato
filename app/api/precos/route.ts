@@ -10,7 +10,7 @@ export interface PrecosData {
   usdBrl:       number;          // Dólar Spot (taxa comercial)
   usdPtax:      number | null;   // Dólar PTAX (Banco Central — publicado ~13h em dias úteis)
   soja:         { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
-  milho:        { cbot: number; brl: number; variacao: number; fonte: "B3" | "CBOT" };
+  milho:        { cbot: number; brl: number; variacao: number; fonte: "B3" | "CBOT_EST" };
   algodao:      { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
   atualizadoEm: string;
   erro?:        string;
@@ -24,23 +24,30 @@ function cbotParaBRL(cbot_cents: number, fator: number, usd: number): number {
   return Math.round((cbot_cents / 100) * fator * usd * 100) / 100;
 }
 
-// Ticker B3 milho — contrato ativo mais próximo
-// Meses ativos: Março (H), Maio (K), Julho (N), Setembro (U), Novembro (X)
-function milhoB3Ticker(): string {
-  const now   = new Date();
-  const year  = now.getFullYear();
-  const month = now.getMonth() + 1; // 1-12
-  const contratos = [
-    { mes: 3,  cod: "H" },
-    { mes: 5,  cod: "K" },
-    { mes: 7,  cod: "N" },
-    { mes: 9,  cod: "U" },
-    { mes: 11, cod: "X" },
+// Tickers B3 milho — tenta os 3 próximos contratos ativos
+// Meses ativos B3 milho: Jan (F), Mar (H), Mai (K), Jul (N), Set (U), Nov (X)
+function milhoB3Tickers(): string[] {
+  const now    = new Date();
+  const year   = now.getFullYear();
+  const month  = now.getMonth() + 1;
+  const meses  = [
+    { mes: 1,  cod: "F" }, { mes: 3,  cod: "H" }, { mes: 5,  cod: "K" },
+    { mes: 7,  cod: "N" }, { mes: 9,  cod: "U" }, { mes: 11, cod: "X" },
   ];
-  const ativo = contratos.find(c => c.mes >= month);
-  if (ativo) return `CCM${ativo.cod}${String(year).slice(-2)}.SA`;
-  // Depois de novembro → março do próximo ano
-  return `CCMH${String(year + 1).slice(-2)}.SA`;
+  // Monta lista de próximos contratos (ano corrente + próximo)
+  const candidatos: string[] = [];
+  for (const ano of [year, year + 1]) {
+    for (const { mes, cod } of meses) {
+      if (ano === year && mes < month) continue; // já vencido
+      const y2 = String(ano).slice(-2);
+      // Tenta formato CCM (Milho Futuro B3) e MILHO (mini)
+      candidatos.push(`CCM${cod}${y2}.SA`);
+      candidatos.push(`WCO${cod}${y2}.SA`); // mini milho
+      if (candidatos.length >= 6) break;
+    }
+    if (candidatos.length >= 6) break;
+  }
+  return candidatos;
 }
 
 async function fetchJSON(url: string, timeout = 8000): Promise<unknown> {
@@ -88,7 +95,7 @@ export async function GET() {
     usdBrl:       usdFallback,
     usdPtax:      null,
     soja:         { cbot: 1030, brl: cbotParaBRL(1030, FATOR_SOJA,    usdFallback), variacao: 0, fonte: "CBOT" },
-    milho:        { cbot: 435,  brl: cbotParaBRL(435,  FATOR_MILHO,   usdFallback), variacao: 0, fonte: "CBOT" },
+    milho:        { cbot: 435,  brl: cbotParaBRL(435,  FATOR_MILHO,   usdFallback), variacao: 0, fonte: "CBOT_EST" },
     algodao:      { cbot: 72,   brl: cbotParaBRL(72,   FATOR_ALGODAO, usdFallback), variacao: 0, fonte: "CBOT" },
     atualizadoEm: new Date().toISOString(),
     erro:         "Usando valores de fallback",
@@ -113,15 +120,18 @@ export async function GET() {
   }
 
   try {
-    const b3MilhoTicker = milhoB3Ticker();
+    const b3MilhoTickers = milhoB3Tickers();
 
-    const [cambioRes, sojaRes, milhoCbotRes, algodaoRes, milhoB3Res, ptaxRes] = await Promise.allSettled([
+    const [cambioRes, sojaRes, milhoCbotRes, algodaoRes, ptaxRes, ...milhoB3Results] = await Promise.allSettled([
       fetchJSON("https://economia.awesomeapi.com.br/json/last/USD-BRL"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZS=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZC=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/CT=F?interval=1d&range=5d"),
-      fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${b3MilhoTicker}?interval=1d&range=5d`),
       fetchPtax(),
+      // Tenta os primeiros 3 tickers B3 em paralelo
+      ...b3MilhoTickers.slice(0, 3).map(t =>
+        fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=5d`)
+      ),
     ]);
 
     // Dólar PTAX (Banco Central)
@@ -140,14 +150,22 @@ export async function GET() {
     }
 
     // Commodities
-    const sojaPrices      = sojaRes.status      === "fulfilled" ? yahooPrice(sojaRes.value)      : { last: 0, prev: 0 };
-    const milhoCbotPrices = milhoCbotRes.status  === "fulfilled" ? yahooPrice(milhoCbotRes.value) : { last: 0, prev: 0 };
-    const milhoB3Prices   = milhoB3Res.status    === "fulfilled" ? yahooPrice(milhoB3Res.value)   : { last: 0, prev: 0 };
-    const algodaoPrices   = algodaoRes.status    === "fulfilled" ? yahooPrice(algodaoRes.value)   : { last: 0, prev: 0 };
+    const sojaPrices      = sojaRes.status     === "fulfilled" ? yahooPrice(sojaRes.value)     : { last: 0, prev: 0 };
+    const milhoCbotPrices = milhoCbotRes.status === "fulfilled" ? yahooPrice(milhoCbotRes.value): { last: 0, prev: 0 };
+    const algodaoPrices   = algodaoRes.status   === "fulfilled" ? yahooPrice(algodaoRes.value)  : { last: 0, prev: 0 };
 
-    // Milho: usa B3 se disponível e válido; senão cai no CBOT convertido
-    const milhoB3Valido = milhoB3Prices.last > 10;
-    const milhoFonte: "B3" | "CBOT" = milhoB3Valido ? "B3" : "CBOT";
+    // Milho B3: usa o primeiro ticker que retornar preço válido (> R$30/sc)
+    let milhoB3Prices = { last: 0, prev: 0 };
+    for (const res of milhoB3Results) {
+      if (res.status === "fulfilled") {
+        const p = yahooPrice(res.value);
+        if (p.last > 30) { milhoB3Prices = p; break; }
+      }
+    }
+
+    // Milho: sempre exibe em R$/sc — B3 direto ou CBOT convertido (estimativa)
+    const milhoB3Valido = milhoB3Prices.last > 30;
+    const milhoFonte: "B3" | "CBOT_EST" = milhoB3Valido ? "B3" : "CBOT_EST";
     const milhoBrl = milhoB3Valido
       ? Math.round(milhoB3Prices.last * 100) / 100
       : cbotParaBRL(milhoCbotPrices.last, FATOR_MILHO, usdBrl);

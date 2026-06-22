@@ -906,9 +906,9 @@ export default function Dashboard() {
                 {
                   key: "milho",
                   nome: "Milho",
-                  fonte: precos.milho.fonte === "B3" ? "B3 · R$/sc" : "CBOT · ¢/bu",
-                  valor: precos.milho.fonte === "B3" ? `R$ ${fmtBrl(precos.milho.brl)}` : `${fmtUsd(precos.milho.cbot)}¢`,
-                  brl: precos.milho.fonte === "B3" ? "" : `R$ ${fmtBrl(precos.milho.brl)}/sc`,
+                  fonte: precos.milho.fonte === "B3" ? "B3 · R$/sc" : "CBOT est. · R$/sc",
+                  valor: `R$ ${fmtBrl(precos.milho.brl)}/sc`,
+                  brl: "",
                   var: precos.milho.variacao,
                 },
                 {
