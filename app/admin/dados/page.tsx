@@ -141,19 +141,31 @@ export default function DadosAdminPage() {
     );
   }
 
-  // ─── Carregar contas ──────────────────────────────────────────────────
+  // ─── Carregar contas via API route (service_role_key — bypassa RLS) ──
   const carregarContas = useCallback(async () => {
     setCarregandoContas(true);
-    const { data: contasDB } = await supabase.from("contas").select("id, nome, tipo").order("nome");
-    const { data: fazendasDB } = await supabase.from("fazendas").select("id, nome, municipio, estado, conta_id");
-    const fazPorConta: Record<string, ContaInfo["fazendas"]> = {};
-    for (const f of (fazendasDB ?? [])) {
-      if (!f.conta_id) continue;
-      if (!fazPorConta[f.conta_id]) fazPorConta[f.conta_id] = [];
-      fazPorConta[f.conta_id].push({ id: f.id, nome: f.nome, municipio: f.municipio, estado: f.estado });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const res = await fetch("/api/admin/listar-contas", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      const contasDB: { id: string; nome: string; tipo: string }[] = json.contas ?? [];
+      const fazendasDB: { id: string; nome: string; municipio: string; estado: string; conta_id: string }[] = json.fazendas ?? [];
+      const fazPorConta: Record<string, ContaInfo["fazendas"]> = {};
+      for (const f of fazendasDB) {
+        if (!f.conta_id) continue;
+        if (!fazPorConta[f.conta_id]) fazPorConta[f.conta_id] = [];
+        fazPorConta[f.conta_id].push({ id: f.id, nome: f.nome, municipio: f.municipio, estado: f.estado });
+      }
+      setContas(contasDB.map(c => ({ id: c.id, nome: c.nome, tipo: c.tipo, fazendas: fazPorConta[c.id] ?? [] })));
+    } catch (e) {
+      console.error("Erro ao carregar contas:", e);
+    } finally {
+      setCarregandoContas(false);
     }
-    setContas((contasDB ?? []).map(c => ({ id: c.id, nome: c.nome, tipo: c.tipo, fazendas: fazPorConta[c.id] ?? [] })));
-    setCarregandoContas(false);
   }, []);
 
   useEffect(() => { carregarContas(); }, [carregarContas]);
