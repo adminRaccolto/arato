@@ -68,10 +68,10 @@ type ContratoVendaRow = {
   numero: string; produto: string; safra: string; ciclo: string;
   modalidade: string; moeda: string; preco_por_kg: string;
   quantidade_kg: string; entregue_kg: string;
-  data_contrato: string; data_entrega: string;
+  data_contrato: string; data_entrega: string; data_pagamento: string;
   comprador: string; comprador_cpf_cnpj: string; produtor_cpf_cnpj: string;
   frete: string; observacao: string;
-  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+  _status?: "ok" | "erro" | "duplicado" | "atualizar"; _msg?: string;
 };
 type ProdutorImpRow = {
   nome: string; tipo: string; cpf_cnpj: string; inscricao_est: string;
@@ -153,10 +153,10 @@ const TEMPLATE_ARRENDAMENTOS = [
 ];
 
 const TEMPLATE_CONTRATOS_VENDA = [
-  ["numero*", "produto*", "safra*", "ciclo", "modalidade*", "moeda*", "preco_por_kg*", "quantidade_kg*", "entregue_kg", "data_contrato*", "data_entrega*", "comprador*", "comprador_cpf_cnpj", "produtor_cpf_cnpj*", "frete", "observacao"],
-  ["C-001/2026", "Soja", "2025/2026", "Ciclo Soja/Milho 2025/2026", "fixo", "BRL", "0.8833", "3000000", "0", "2026-01-15", "2026-03-31", "BUNGE BRASIL", "08.821.250/0001-60", "012.345.678-90", "destinatario", ""],
-  ["C-002/2026", "Milho", "2025/2026", "Ciclo Soja/Milho 2025/2026", "a_fixar", "BRL", "0.4167", "1200000", "0", "2026-02-01", "2026-07-31", "AMAGGI EXPORTAÇÃO", "42.664.021/0001-59", "012.345.678-90", "fob", "Preço a fixar"],
-  ["C-003/2026", "Soja", "2025/2026", "", "fixo", "USD", "0.1026", "900000", "412860", "2026-01-10", "2026-04-30", "BTG PACTUAL", "30.306.294/0001-45", "987.654.321-00", "destinatario", "CPR USD"],
+  ["numero*", "produto*", "safra*", "ciclo", "modalidade*", "moeda*", "preco_por_kg*", "quantidade_kg*", "entregue_kg", "data_contrato*", "data_entrega*", "data_pagamento", "comprador*", "comprador_cpf_cnpj", "produtor_cpf_cnpj*", "frete", "observacao"],
+  ["C-001/2026", "Soja", "2025/2026", "Ciclo Soja/Milho 2025/2026", "fixo", "BRL", "0.8833", "3000000", "0", "2026-01-15", "2026-03-31", "2026-04-15", "BUNGE BRASIL", "08.821.250/0001-60", "012.345.678-90", "destinatario", "Pagto 15 dias após entrega"],
+  ["C-002/2026", "Milho", "2025/2026", "Ciclo Soja/Milho 2025/2026", "a_fixar", "BRL", "0.4167", "1200000", "0", "2026-02-01", "2026-07-31", "", "AMAGGI EXPORTAÇÃO", "42.664.021/0001-59", "012.345.678-90", "fob", "Preço a fixar"],
+  ["C-003/2026", "Soja", "2025/2026", "", "fixo", "USD", "0.1026", "900000", "412860", "2026-01-10", "2026-04-30", "2026-05-05", "BTG PACTUAL", "30.306.294/0001-45", "987.654.321-00", "destinatario", "CPR USD"],
 ];
 
 const TEMPLATE_PRODUTORES_IMP = [
@@ -201,7 +201,10 @@ const INSTRUCOES_CONTRATOS_VENDA = [
   ["  Conversão: sacas × 60 = kg. Ex: 50.000 sc × 60 = 3.000.000 kg"],
   ["• entregue_kg: quantidade já entregue em kg (0 se nenhuma entrega ainda)"],
   ["• data_contrato: data de assinatura no formato AAAA-MM-DD"],
-  ["• data_entrega: data limite de entrega no formato AAAA-MM-DD"],
+  ["• data_entrega*: data limite de entrega FÍSICA do grão (logística) no formato AAAA-MM-DD"],
+  ["• data_pagamento: data em que o pagamento (dinheiro) será recebido — pode ser diferente da"],
+  ["  data_entrega. Ex: grão entregue em 31/03, pagamento em 15/04 (15 dias corridos)."],
+  ["  Deixe em branco se pagamento ocorre no ato da entrega."],
   ["• comprador: nome do comprador (livre)"],
   ["• comprador_cpf_cnpj: CNPJ/CPF do comprador para vincular ao cadastro de Pessoas"],
   ["• produtor_cpf_cnpj: CPF/CNPJ do produtor responsável — deve existir em Produtores"],
@@ -705,6 +708,8 @@ function validarContratoVenda(r: Record<string, string>): ContratoVendaRow {
     return { ...row, _status: "erro", _msg: "data_contrato deve ser AAAA-MM-DD" };
   if (!row.data_entrega?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(row.data_entrega.trim()))
     return { ...row, _status: "erro", _msg: "data_entrega deve ser AAAA-MM-DD" };
+  if (row.data_pagamento?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_pagamento.trim()))
+    return { ...row, _status: "erro", _msg: "data_pagamento deve ser AAAA-MM-DD" };
   const frete = (row.frete || "sem_frete").trim().toLowerCase();
   if (row.frete?.trim() && !FRETES_CONTRATO.includes(frete))
     return { ...row, _status: "erro", _msg: `frete deve ser: ${FRETES_CONTRATO.join(", ")}` };
@@ -964,6 +969,7 @@ function ImportacaoInner() {
   const [loadingMaquinas,    setLoadingMaquinas]    = useState(false);
   const [loadingContratoFin, setLoadingContratoFin] = useState(false);
   const [modoAtualizacaoContratoFin, setModoAtualizacaoContratoFin] = useState(false);
+  const [modoAtualizacaoContratoVenda, setModoAtualizacaoContratoVenda] = useState(false);
   const [loadingArrendamentos,  setLoadingArrendamentos]  = useState(false);
   const [loadingContratoVenda,  setLoadingContratoVenda]  = useState(false);
   const [loadingProdutoresImp,  setLoadingProdutoresImp]  = useState(false);
@@ -1741,8 +1747,13 @@ function ImportacaoInner() {
       const { data: exist } = await supabase.from("contratos").select("numero").eq("fazenda_id", fazendaId);
       const existSet = new Set((exist ?? []).map((c: { numero: string }) => c.numero?.trim().toLowerCase()));
       rows.forEach(r => {
-        if (r._status === "ok" && r.numero && existSet.has(r.numero.trim().toLowerCase()))
-          { r._status = "duplicado"; r._msg = "contrato já existe"; }
+        if (r._status === "ok" && r.numero && existSet.has(r.numero.trim().toLowerCase())) {
+          if (modoAtualizacaoContratoVenda) {
+            r._status = "atualizar"; r._msg = "contrato existente — datas serão atualizadas";
+          } else {
+            r._status = "duplicado"; r._msg = "contrato já existe";
+          }
+        }
       });
     }
     setContratoVendaRows(rows); setResultContratoVenda(null);
@@ -1751,7 +1762,7 @@ function ImportacaoInner() {
   async function importarContratosVenda() {
     if (!fazendaId || !contratoVendaRows.length) return;
     setLoadingContratoVenda(true);
-    let ok = 0, erros = 0, duplicados = 0;
+    let ok = 0, erros = 0, duplicados = 0, atualizados = 0;
 
     const [pessoasRes, produtoresRes, safrasRes, ciclosRes] = await Promise.all([
       supabase.from("pessoas").select("id, cpf_cnpj").eq("fazenda_id", fazendaId),
@@ -1771,6 +1782,20 @@ function ImportacaoInner() {
     for (const r of contratoVendaRows) {
       if (r._status === "duplicado") { duplicados++; continue; }
       if (r._status === "erro")      { erros++;      continue; }
+
+      if (r._status === "atualizar") {
+        const { error } = await supabase
+          .from("contratos")
+          .update({
+            data_entrega:   r.data_entrega.trim(),
+            data_pagamento: r.data_pagamento?.trim() || null,
+          })
+          .eq("fazenda_id", fazendaId)
+          .eq("numero", r.numero.trim());
+        if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+        else atualizados++;
+        continue;
+      }
 
       const precoPorKg = parseFloat(String(r.preco_por_kg).replace(",", "."));
       const precoPorSaca = Math.round(precoPorKg * 60 * 100) / 100;
@@ -1793,9 +1818,10 @@ function ImportacaoInner() {
         preco:         precoPorSaca,
         quantidade_sc: qtdKg,
         entregue_sc:   entregueKg,
-        data_contrato: r.data_contrato.trim(),
-        data_entrega:  r.data_entrega.trim(),
-        comprador:     r.comprador.trim(),
+        data_contrato:  r.data_contrato.trim(),
+        data_entrega:   r.data_entrega.trim(),
+        data_pagamento: r.data_pagamento?.trim() || null,
+        comprador:      r.comprador.trim(),
         pessoa_id:     pessoaId,
         produtor_id:   produtorId,
         frete:         (r.frete || "sem_frete") as "destinatario"|"remetente"|"cif"|"fob"|"sem_frete",
@@ -1809,7 +1835,7 @@ function ImportacaoInner() {
       else ok++;
     }
     setContratoVendaRows([...contratoVendaRows]);
-    setResultContratoVenda({ ok, erros, duplicados });
+    setResultContratoVenda({ ok, erros, duplicados, atualizados });
     setLoadingContratoVenda(false);
   }
 
@@ -2118,7 +2144,7 @@ function ImportacaoInner() {
     contratos_venda: {
       label: "Contratos de Venda", icon: "📋",
       desc: "Importe contratos de venda de grãos (soja, milho, algodão). Preço em R$/kg ou US$/kg — convertido automaticamente para /sc.",
-      cols: ["numero", "produto", "safra", "modalidade", "moeda", "preco_por_kg", "quantidade_kg", "entregue_kg", "data_entrega", "comprador"],
+      cols: ["numero", "produto", "safra", "modalidade", "moeda", "preco_por_kg", "quantidade_kg", "entregue_kg", "data_entrega", "data_pagamento", "comprador"],
       rows: contratoVendaRows as Record<string, unknown>[],
       loading: loadingContratoVenda,
       result: resultContratoVenda,
@@ -2162,7 +2188,8 @@ function ImportacaoInner() {
   const dupRows   = cfg.rows.filter(r => ["duplicado","atualizar"].includes((r as Record<string, unknown>)._status as string)).length;
   const okRows    = cfg.rows.filter(r => ["ok","aviso"].includes((r as Record<string, unknown>)._status as string)).length
     + (aba === "insumos" && modoAtualizacaoInsumos ? dupRows : 0)
-    + (aba === "contratos_fin" && modoAtualizacaoContratoFin ? cfg.rows.filter(r => (r as Record<string, unknown>)._status === "atualizar").length : 0);
+    + (aba === "contratos_fin"   && modoAtualizacaoContratoFin   ? cfg.rows.filter(r => (r as Record<string, unknown>)._status === "atualizar").length : 0)
+    + (aba === "contratos_venda" && modoAtualizacaoContratoVenda ? cfg.rows.filter(r => (r as Record<string, unknown>)._status === "atualizar").length : 0);
   const erroRows  = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "erro").length;
 
   function limpar() {
@@ -2284,6 +2311,18 @@ function ImportacaoInner() {
                       <span>
                         <strong style={{ color: "#4C1D95" }}>Atualizar datas nos contratos existentes</strong>
                         {" — "}atualiza <code>data_entrega_produto</code> e <code>data_vencimento</code> nos {dupRows} contrato{dupRows !== 1 ? "s" : ""} já importado{dupRows !== 1 ? "s" : ""}. Novos contratos são inseridos normalmente.
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {aba === "contratos_venda" && dupRows > 0 && (
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
+                      <input type="checkbox" checked={modoAtualizacaoContratoVenda} onChange={e => { setModoAtualizacaoContratoVenda(e.target.checked); setContratoVendaRows([]); setResultContratoVenda(null); }} style={{ width: 16, height: 16, accentColor: "#7C3AED", cursor: "pointer" }} />
+                      <span>
+                        <strong style={{ color: "#4C1D95" }}>Atualizar datas nos contratos existentes</strong>
+                        {" — "}atualiza <code>data_entrega</code> e <code>data_pagamento</code> nos {dupRows} contrato{dupRows !== 1 ? "s" : ""} já importado{dupRows !== 1 ? "s" : ""}. Novos contratos são inseridos normalmente.
                       </span>
                     </label>
                   </div>
