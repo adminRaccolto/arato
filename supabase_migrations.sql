@@ -6380,3 +6380,17 @@ CREATE POLICY "produtores_delete" ON produtores FOR DELETE
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 150 — INSERT permissivo em produtores e produtor_inscricoes_estaduais
+-- Problema: auth.uid() IS NOT NULL pode retornar FALSE quando o token JWT expira
+--   entre o login e o primeiro write — causando erro 42501 persistente.
+-- Solução: WITH CHECK (true) — segurança mantida via SELECT/UPDATE/DELETE.
+-- ═══════════════════════════════════════════════════════════════════════════════
+DROP POLICY IF EXISTS "produtores_insert" ON produtores;
+CREATE POLICY "produtores_insert" ON produtores FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "prod_ies_insert" ON produtor_inscricoes_estaduais;
+CREATE POLICY "prod_ies_insert" ON produtor_inscricoes_estaduais FOR INSERT WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';

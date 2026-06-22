@@ -1,10 +1,11 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Rotas públicas — passa direto
+  // Rotas públicas — passa direto sem verificar sessão
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/") ||
@@ -18,17 +19,34 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Verifica presença do cookie de sessão do Supabase
-  // (validação real acontece dentro de cada página via useAuth)
-  const temSessao = request.cookies.getAll().some(
-    c => c.name.includes("sb-") && c.name.includes("-auth-token")
+  let response = NextResponse.next({ request });
+
+  // Renova o token Supabase a cada request para manter auth.uid() válido
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
   );
 
-  if (!temSessao) {
+  // getUser() renova o token se próximo do vencimento e atualiza os cookies
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
