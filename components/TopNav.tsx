@@ -231,17 +231,17 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Contabilidade" },
       { id: "conf-contabilidade", label: "Configuração Contábil", path: "/configuracoes/contabilidade", moduleId: "conf_contabilidade" },
 
-      { type: "divider", label: "Sistema" },
-      { id: "conf-whatsapp",    label: "WhatsApp Bot",         path: "/configuracoes/whatsapp",    moduleId: "conf_sistema" },
-      { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_sistema" },
-      { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_sistema" },
-      { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_sistema" },
-      { id: "conf-importacao",  label: "Importações",          path: "/configuracoes/importacao",  moduleId: "conf_importacao" },
-
       { type: "divider", label: "Usuários" },
       { id: "conf-usuarios", label: "Usuários & Permissões",  path: "/configuracoes/usuarios", moduleId: "usuarios" },
-      { id: "conf-logs",     label: "Log do Sistema",         path: "/admin/logs",     moduleId: "logs"     },
-      { id: "conf-manual",   label: "Manual do Proprietário", path: "/admin/manual"                        },
+
+      { type: "divider", label: "Raccolto" },
+      { id: "conf-whatsapp",    label: "WhatsApp Bot",         path: "/configuracoes/whatsapp",    moduleId: "conf_raccotlo" },
+      { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_raccotlo" },
+      { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_raccotlo" },
+      { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_raccotlo" },
+      { id: "conf-importacao",  label: "Importações",          path: "/configuracoes/importacao",  moduleId: "conf_raccotlo" },
+      { id: "conf-logs",        label: "Log do Sistema",       path: "/admin/logs",                moduleId: "conf_raccotlo" },
+      { id: "conf-manual",      label: "Manual do Proprietário", path: "/admin/manual",            moduleId: "conf_raccotlo" },
     ],
   },
 

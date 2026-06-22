@@ -317,11 +317,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   }, [fazendaId, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const podeAcessar = useCallback((modulo: string) => {
+    // Módulos exclusivos da Raccolto — bloqueados para todos os usuários clientes
+    if (modulo === "conf_raccotlo" && userRole !== "raccotlo") return false;
     const p = permissoes[modulo] as unknown;
     if (p === undefined) return true;                            // sem restrição configurada
     if (Array.isArray(p)) return (p as string[]).includes("visualizar"); // novo formato
     return (p as string) !== "nenhum";                         // formato legado
-  }, [permissoes]);
+  }, [permissoes, userRole]);
 
   const podeEscrever = useCallback((modulo: string) => {
     const p = permissoes[modulo] as unknown;

@@ -48,18 +48,23 @@ const MODULOS_PERM: ModuloPermissao[] = [
   { id: "conf_importacao",     label: "Importação de Dados",            grupo: "Configurações", acoes: ["visualizar","criar"] },
   { id: "usuarios",            label: "Usuários & Permissões",          grupo: "Configurações", acoes: ["visualizar","criar","editar","excluir"] },
   { id: "logs",                label: "Log do Sistema",                 grupo: "Configurações", acoes: ["visualizar","exportar"] },
+  { id: "conf_raccotlo",      label: "🔒 Gestão Raccolto (WhatsApp Bot / Integrações / Backup / Importação)", grupo: "Configurações", acoes: ["visualizar","editar"] },
 ];
 
 const PERFIS_PRESET: Record<string, { label: string; cor: string; descricao: string; permissoes: Record<string, Acao[]> }> = {
   admin: {
     label: "Administrador", cor: "#E24B4A",
-    descricao: "Acesso total a todos os módulos e configurações do sistema.",
-    permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id, [...m.acoes]])),
+    descricao: "Acesso total a todos os módulos e configurações do sistema. Itens exclusivos da Raccolto permanecem ocultos.",
+    permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
+      m.id === "conf_raccotlo" ? [] as Acao[] :
+      [...m.acoes]
+    ])),
   },
   gerente: {
     label: "Gerente Geral", cor: "#1A4870",
     descricao: "Acesso completo às operações. Gerencia usuários e permissões. Sem acesso a parâmetros fiscais e integrações.",
     permissoes: Object.fromEntries(MODULOS_PERM.map(m => [m.id,
+      m.id === "conf_raccotlo"      ? [] as Acao[] :
       m.id === "usuarios"           ? ["visualizar","criar","editar","excluir"] as Acao[] :
       m.id === "conf_empresa"       ? ["visualizar","editar"] as Acao[] :
       m.id === "conf_financeiro"    ? ["visualizar"] as Acao[] :
