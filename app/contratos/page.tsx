@@ -796,10 +796,16 @@ export default function Contratos() {
         diferenca_kg:         pesoDest > 0 && pesoClass > 0 ? difKg : undefined,
         obs_divergencia:      fRom.obs_divergencia || undefined,
       });
+      // Busca saldo real do banco após o trigger atualizar entregue_sc e status
+      const { data: cAtual } = await supabase
+        .from("contratos")
+        .select("entregue_sc, status")
+        .eq("id", contratoSel.id)
+        .single();
       setContratos(prev => prev.map(c => {
         if (c.id !== contratoSel.id) return c;
-        const novoEnt = (c.entregue_sc??0) + sacasCalc;
-        const novoSt  = novoEnt >= (c.quantidade_sc??0) ? "encerrado" : "parcial";
+        const novoEnt = cAtual?.entregue_sc ?? ((c.entregue_sc ?? 0) + sacasCalc);
+        const novoSt  = cAtual?.status ?? (novoEnt >= (c.quantidade_sc ?? 0) ? "encerrado" : "parcial");
         return { ...c, entregue_sc: novoEnt, status: novoSt, romaneios: [...c.romaneios, criado] };
       }));
       // ── aplicar adiantamento se selecionado ──────────────────

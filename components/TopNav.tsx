@@ -246,6 +246,7 @@ const NAV: NavItem[] = [
       { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_raccotlo" },
       { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_raccotlo" },
       { id: "conf-importacao",  label: "Importações",          path: "/configuracoes/importacao",  moduleId: "conf_raccotlo" },
+      { id: "conf-alertas",    label: "Alertas do Sistema",   path: "/controller",                moduleId: "conf_raccotlo" },
       { id: "conf-logs",        label: "Log do Sistema",       path: "/admin/logs",                moduleId: "conf_raccotlo" },
       { id: "conf-manual",      label: "Manual do Proprietário", path: "/admin/manual",            moduleId: "conf_raccotlo" },
     ],

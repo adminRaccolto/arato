@@ -783,20 +783,23 @@ export async function listarProdutoresDaConta(conta_id: string, fazenda_id?: str
 // INSCRIÇÕES ESTADUAIS DO PRODUTOR
 // ————————————————————————————————————————
 
-export async function listarIEsDoProdutor(produtor_id: string): Promise<ProdutorIE[]> {
-  const { data } = await supabase
+export async function listarIEsDoProdutor(produtor_id: string, fazenda_id?: string): Promise<ProdutorIE[]> {
+  let q = supabase
     .from("produtor_inscricoes_estaduais")
     .select("*")
-    .eq("produtor_id", produtor_id)
-    .order("estado");
+    .eq("produtor_id", produtor_id);
+  if (fazenda_id) q = q.eq("fazenda_id", fazenda_id);
+  const { data } = await q.order("estado");
   return data ?? [];
 }
 
-export async function salvarIEsDoProdutor(produtor_id: string, ies: Omit<ProdutorIE, "id" | "created_at">[]): Promise<void> {
-  await supabase.from("produtor_inscricoes_estaduais").delete().eq("produtor_id", produtor_id);
+export async function salvarIEsDoProdutor(produtor_id: string, ies: Omit<ProdutorIE, "id" | "created_at">[], fazenda_id?: string): Promise<void> {
+  let del = supabase.from("produtor_inscricoes_estaduais").delete().eq("produtor_id", produtor_id);
+  if (fazenda_id) del = del.eq("fazenda_id", fazenda_id);
+  await del;
   if (ies.length > 0) {
     await supabase.from("produtor_inscricoes_estaduais").insert(
-      ies.map(ie => ({ ...ie, produtor_id }))
+      ies.map(ie => ({ ...ie, produtor_id, ...(fazenda_id ? { fazenda_id } : {}) }))
     );
   }
 }

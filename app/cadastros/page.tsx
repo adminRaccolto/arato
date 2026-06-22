@@ -708,7 +708,7 @@ function CadastrosInner() {
     });
     setTabProd("dados");
     setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
-    setProdIEs(p ? await listarIEsDoProdutor(p.id) : []);
+    setProdIEs(p ? await listarIEsDoProdutor(p.id, fazendaId ?? undefined) : []);
     setModalProd(true);
   };
 
@@ -772,12 +772,12 @@ function CadastrosInner() {
     }
     await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
       produtor_id: prodId,
-      fazenda_id: ie.fazenda_id ?? null,
+      fazenda_id: fazendaId ?? null,
       inscricao_estadual: ie.inscricao_estadual,
       municipio: ie.municipio ?? null,
       estado: ie.estado,
       ativa: ie.ativa,
-    })));
+    })), fazendaId ?? undefined);
     setModalProd(false);
   });
 

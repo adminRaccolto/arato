@@ -6442,4 +6442,19 @@ BEGIN
   RAISE NOTICE 'Migration 151 concluída — % perfis corrigidos', v_total;
 END $$;
 
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 152 — Adiciona fazenda_id em produtor_inscricoes_estaduais
+-- Garante isolamento de tenant nas inscrições estaduais dos produtores.
+-- ═══════════════════════════════════════════════════════════════════════════════
+ALTER TABLE produtor_inscricoes_estaduais
+  ADD COLUMN IF NOT EXISTS fazenda_id UUID REFERENCES fazendas(id) ON DELETE CASCADE;
+
+-- Backfill: preenche fazenda_id nas IEs existentes usando a fazenda do produtor
+UPDATE produtor_inscricoes_estaduais pie
+SET fazenda_id = p.fazenda_id
+FROM produtores p
+WHERE pie.produtor_id = p.id
+  AND pie.fazenda_id IS NULL
+  AND p.fazenda_id IS NOT NULL;
+
 NOTIFY pgrst, 'reload schema';
