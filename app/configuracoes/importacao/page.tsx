@@ -799,44 +799,61 @@ function validarMaquina(r: Record<string, string>): MaquinaRow {
 }
 
 // ─── Componente UploadZone ────────────────────────────────────
-function UploadZone({ onFile }: { onFile: (f: File) => void }) {
+function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
   const ref = useRef<HTMLInputElement>(null);
-  const [drag, setDrag] = useState(false);
+  const [drag, setDrag]     = useState(false);
+  const [busy, setBusy]     = useState(false);
+  const [erro, setErro]     = useState<string | null>(null);
+
+  const handle = useCallback(async (f: File) => {
+    setErro(null);
+    setBusy(true);
+    try { await onFile(f); }
+    catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }, [onFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setDrag(false);
     const f = e.dataTransfer.files[0];
-    if (f) onFile(f);
-  }, [onFile]);
+    if (f) handle(f);
+  }, [handle]);
 
   return (
-    <div
-      onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={handleDrop}
-      onClick={() => ref.current?.click()}
-      style={{
-        border: `2px dashed ${drag ? "#1A4870" : "#DDE2EE"}`,
-        borderRadius: 10,
-        padding: "40px 24px",
-        textAlign: "center",
-        cursor: "pointer",
-        background: drag ? "#D5E8F5" : "#F4F6FA",
-        transition: "all 0.15s",
-      }}
-    >
-      <input
-        ref={ref}
-        type="file"
-        accept=".xlsx,.xls"
-        style={{ display: "none" }}
-        onChange={(e) => { if (e.target.files?.[0]) onFile(e.target.files[0]); }}
-      />
-      <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>
-        Arraste o arquivo XLSX aqui
+    <div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={handleDrop}
+        onClick={() => !busy && ref.current?.click()}
+        style={{
+          border: `2px dashed ${drag ? "#1A4870" : erro ? "#E24B4A" : "#DDE2EE"}`,
+          borderRadius: 10,
+          padding: "40px 24px",
+          textAlign: "center",
+          cursor: busy ? "wait" : "pointer",
+          background: drag ? "#D5E8F5" : erro ? "#FFF5F5" : "#F4F6FA",
+          transition: "all 0.15s",
+        }}
+      >
+        <input
+          ref={ref}
+          type="file"
+          accept=".xlsx,.xls"
+          style={{ display: "none" }}
+          onChange={(e) => { if (e.target.files?.[0]) handle(e.target.files[0]); }}
+        />
+        <div style={{ fontSize: 32, marginBottom: 8 }}>{busy ? "⏳" : "📂"}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: busy ? "#888" : "#1A4870", marginBottom: 4 }}>
+          {busy ? "Lendo arquivo..." : "Arraste o arquivo XLSX aqui"}
+        </div>
+        <div style={{ fontSize: 12, color: "#888" }}>{busy ? "aguarde" : "ou clique para selecionar"}</div>
       </div>
-      <div style={{ fontSize: 12, color: "#888" }}>ou clique para selecionar</div>
+      {erro && (
+        <div style={{ marginTop: 10, padding: "10px 14px", background: "#FFF5F5", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 13, color: "#B91C1C", whiteSpace: "pre-wrap" }}>
+          <strong>Erro ao ler o arquivo:</strong> {erro}
+        </div>
+      )}
     </div>
   );
 }
