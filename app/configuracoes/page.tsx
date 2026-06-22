@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -9,6 +10,7 @@ import type { Produtor } from "../../lib/supabase";
 
 // ── Tipos ─────────────────────────────────────────────────────
 type Aba = "hub" | "plano_contas" | "certificado";
+// "hub" = Acesso Raccolto + Cotação/Basis (conteúdo único desta página)
 
 interface CertInfo {
   modulo: string;
@@ -47,55 +49,24 @@ const calcDias = (d?: string | null): number | null => {
   return Math.ceil((new Date(d).getTime() - Date.now()) / 86400000);
 };
 
-// ── Links das seções de configuração ─────────────────────────
-const SECOES = [
-  {
-    grupo: "Financeiro & Contábil",
-    itens: [
-      { label: "Plano de Contas",        desc: "Estrutura contábil, LCDPR, contas transitórias",       path: "/configuracoes?tab=plano_contas", icone: "▤" },
-      { label: "Configuração Contábil",  desc: "Método de escrituração, livro caixa, responsável",      path: "/configuracoes/contabilidade",    icone: "◈" },
-      { label: "Regras de Rateio",       desc: "Proporcionalidade de custos por ciclo e talhão",        path: "/configuracoes/rateio",           icone: "◉" },
-    ],
-  },
-  {
-    grupo: "Fiscal & NF-e",
-    itens: [
-      { label: "Certificado A1",         desc: "Certificado digital .pfx / .p12 para assinar NF-e",    path: "/configuracoes?tab=certificado",  icone: "🔒" },
-      { label: "Parâmetros NF-e / MDF-e",desc: "Ambiente, série, CNPJ, transportadoras, veículos",     path: "/configuracoes/modulos",          icone: "◉" },
-      { label: "Operações Fiscais",      desc: "CFOPs, CSTs, NCMs e operações gerenciais",              path: "/configuracoes/modulos?aba=operacoes", icone: "▦" },
-      { label: "Classificação Auto",     desc: "Regras para classificar lançamentos por palavra-chave", path: "/configuracoes/classificacao",    icone: "◈" },
-    ],
-  },
-  {
-    grupo: "Sistema & Integrações",
-    itens: [
-      { label: "Automações",             desc: "Crons, alertas, NF-e automática, relatório semanal",   path: "/configuracoes/automacoes",       icone: "⟳" },
-      { label: "Integrações",            desc: "Resend, WhatsApp, APIs de mercado",                     path: "/configuracoes/integracoes",      icone: "▣" },
-      { label: "Backup & Restauração",   desc: "Exportação de dados e histórico de backups",            path: "/configuracoes/backup",           icone: "▤" },
-      { label: "Importações",            desc: "Importar dados via planilha (pessoas, contratos, etc)", path: "/configuracoes/importacao",       icone: "◈" },
-    ],
-  },
-  {
-    grupo: "Usuários & Acesso",
-    itens: [
-      { label: "Usuários & Permissões",  desc: "Convidar usuários, definir perfis, revogar acesso",    path: "/configuracoes/usuarios",         icone: "◉" },
-      { label: "Empresas & Produtores",  desc: "CNPJ, IE, Regime Tributário, CAR, NIRF, contatos",     path: "/cadastros?tab=empresas",         icone: "▦" },
-    ],
-  },
-];
-
 // ── Componente principal ──────────────────────────────────────
 export default function Configuracoes() {
   const { fazendaId } = useAuth();
+  const searchParams = useSearchParams();
 
-  const abaInicial = (): Aba => {
-    if (typeof window === "undefined") return "hub";
-    const t = new URLSearchParams(window.location.search).get("tab");
+  const tabParaAba = (t: string | null): Aba => {
     if (t === "plano_contas") return "plano_contas";
     if (t === "certificado")  return "certificado";
     return "hub";
   };
-  const [aba, setAba] = useState<Aba>(abaInicial);
+  const [aba, setAba] = useState<Aba>(() => tabParaAba(
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null
+  ));
+
+  // Sincroniza aba com URL ao navegar client-side (ex: TopNav → Configurações → Certificado A1)
+  useEffect(() => {
+    setAba(tabParaAba(searchParams.get("tab")));
+  }, [searchParams]);
 
   // Raccolto LGPD
   const [raccoltoAcesso,   setRaccoltoAcesso]   = useState(false);
@@ -234,19 +205,11 @@ export default function Configuracoes() {
         {/* Cabeçalho */}
         <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            {aba !== "hub" && (
-              <button
-                onClick={() => { setAba("hub"); window.history.replaceState({}, "", "/configuracoes"); }}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#1A4870", fontWeight: 600, fontSize: 13, padding: "4px 8px 4px 0", display: "flex", alignItems: "center", gap: 4 }}
-              >
-                ← Configurações
-              </button>
-            )}
             <div>
               <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>
                 {aba === "plano_contas" ? "Plano de Contas" : aba === "certificado" ? "Certificado A1" : "Configurações"}
               </h1>
-              {aba === "hub" && <p style={{ margin: 0, fontSize: 11, color: "#666" }}>Parâmetros do sistema, acesso e módulos</p>}
+              {aba === "hub" && <p style={{ margin: 0, fontSize: 11, color: "#666" }}>Acesso de suporte e cotações</p>}
             </div>
           </div>
           {diasCertMin !== null && diasCertMin <= 30 && (
@@ -261,7 +224,7 @@ export default function Configuracoes() {
 
         <div style={{ padding: "20px 22px", flex: 1, overflowY: "auto" }}>
 
-          {/* ── HUB ── */}
+          {/* ── HUB: Acesso Raccolto + Cotação/Basis ── */}
           {aba === "hub" && (
             <>
               {/* Acesso Raccolto */}
@@ -288,43 +251,6 @@ export default function Configuracoes() {
                   {salvandoRaccolto ? "Salvando…" : raccoltoAcesso ? "Desativar" : "Ativar Acesso Raccolto"}
                 </button>
               </div>
-
-              {/* Grid de seções */}
-              {SECOES.map(grupo => (
-                <div key={grupo.grupo} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#888", paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE", marginBottom: 10 }}>
-                    {grupo.grupo}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 8 }}>
-                    {grupo.itens.map(item => (
-                      <a
-                        key={item.path}
-                        href={item.path}
-                        onClick={e => {
-                          if (item.path.startsWith("/configuracoes?tab=")) {
-                            e.preventDefault();
-                            const t = new URLSearchParams(item.path.split("?")[1]).get("tab") as Aba;
-                            setAba(t);
-                            window.history.replaceState({}, "", item.path);
-                          }
-                        }}
-                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, textDecoration: "none", transition: "border-color 0.15s" }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = "#DDE2EE")}
-                      >
-                        <div style={{ width: 36, height: 36, borderRadius: 8, background: "#F4F6FA", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, color: "#1A4870" }}>
-                          {item.icone}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{item.label}</div>
-                          <div style={{ fontSize: 11, color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.desc}</div>
-                        </div>
-                        <span style={{ color: "#ccc", fontSize: 14, flexShrink: 0 }}>›</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ))}
 
               {/* Cotação e Basis */}
               <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px", marginBottom: 4 }}>
