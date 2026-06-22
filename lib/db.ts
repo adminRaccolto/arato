@@ -735,9 +735,15 @@ export async function listarProdutores(fazenda_id: string): Promise<Produtor[]> 
   return data ?? [];
 }
 export async function criarProdutor(p: Omit<Produtor, "id" | "created_at">): Promise<Produtor> {
-  const { data, error } = await supabase.from("produtores").insert(p).select().single();
-  if (error) throw error;
-  return data;
+  // Usa API route com service_role_key para evitar falha de RLS quando o JWT do browser expira
+  const res = await fetch("/api/produtores/criar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(p),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? "Erro ao criar produtor");
+  return json.produtor as Produtor;
 }
 export async function atualizarProdutor(id: string, p: Partial<Produtor>): Promise<void> {
   const { error } = await supabase.from("produtores").update(p).eq("id", id);
