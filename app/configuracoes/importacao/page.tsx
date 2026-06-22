@@ -54,7 +54,7 @@ type ContratoFinRow = {
   taxa_juros_aa: string; taxa_juros_am: string;
   iof_pct: string; tac_valor: string; outros_custos: string;
   auto_parcelas: string; produtor_cpf_cnpj: string; observacao: string;
-  _status?: "ok" | "erro" | "duplicado" | "aviso"; _msg?: string; _cp_encontrados?: number;
+  _status?: "ok" | "erro" | "duplicado" | "atualizar" | "aviso"; _msg?: string; _cp_encontrados?: number;
 };
 
 type ArrendamentoRow = {
@@ -879,15 +879,17 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
 }
 
 // ─── Resultado resumo ─────────────────────────────────────────
-function Resultado({ ok, erros, duplicados, total, labelDuplicados = "Duplicadas" }: { ok: number; erros: number; duplicados: number; total: number; labelDuplicados?: string }) {
+function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados = "Duplicadas" }: { ok: number; erros: number; duplicados: number; atualizados?: number; total: number; labelDuplicados?: string }) {
+  const itens = [
+    { label: "Total lidas",   valor: total,       cor: "#1A4870", bg: "#D5E8F5" },
+    { label: "Importadas",    valor: ok,           cor: "#16A34A", bg: "#DCFCE7" },
+    ...(atualizados ? [{ label: "Atualizadas",  valor: atualizados, cor: "#7C3AED", bg: "#EDE9FE" }] : []),
+    { label: labelDuplicados, valor: duplicados,   cor: "#C9921B", bg: "#FBF3E0" },
+    { label: "Com erro",      valor: erros,        cor: "#E24B4A", bg: "#FFF0F0" },
+  ];
   return (
     <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
-      {[
-        { label: "Total lidas",      valor: total,      cor: "#1A4870", bg: "#D5E8F5" },
-        { label: "Importadas",       valor: ok,          cor: "#16A34A", bg: "#DCFCE7" },
-        { label: labelDuplicados,    valor: duplicados,  cor: "#C9921B", bg: "#FBF3E0" },
-        { label: "Com erro",         valor: erros,       cor: "#E24B4A", bg: "#FFF0F0" },
-      ].map(({ label, valor, cor, bg }) => (
+      {itens.map(({ label, valor, cor, bg }) => (
         <div key={label} style={{ padding: "10px 20px", borderRadius: 8, background: bg, border: `0.5px solid ${cor}40` }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: cor }}>{valor}</div>
           <div style={{ fontSize: 12, color: cor }}>{label}</div>
@@ -961,13 +963,14 @@ function ImportacaoInner() {
   const [loadingProdutos,    setLoadingProdutos]    = useState(false);
   const [loadingMaquinas,    setLoadingMaquinas]    = useState(false);
   const [loadingContratoFin, setLoadingContratoFin] = useState(false);
+  const [modoAtualizacaoContratoFin, setModoAtualizacaoContratoFin] = useState(false);
   const [loadingArrendamentos,  setLoadingArrendamentos]  = useState(false);
   const [loadingContratoVenda,  setLoadingContratoVenda]  = useState(false);
   const [loadingProdutoresImp,  setLoadingProdutoresImp]  = useState(false);
   const [loadingFazendasImp,    setLoadingFazendasImp]    = useState(false);
   const [loadingTalhoesImp,     setLoadingTalhoesImp]     = useState(false);
 
-  type Resultado = { ok: number; erros: number; duplicados: number };
+  type Resultado = { ok: number; erros: number; duplicados: number; atualizados?: number };
   const [resultPessoas,      setResultPessoas]      = useState<Resultado | null>(null);
   const [resultCp,           setResultCp]           = useState<Resultado | null>(null);
   const [resultCr,           setResultCr]           = useState<Resultado | null>(null);
@@ -1317,7 +1320,12 @@ function ImportacaoInner() {
       for (const r of rows) {
         if (r._status !== "ok") continue;
         if (nrsExistentes.has(r.numero_contrato.trim().toLowerCase())) {
-          r._status = "duplicado"; r._msg = "contrato já existe no módulo";
+          if (modoAtualizacaoContratoFin) {
+            r._status = "atualizar";
+            r._msg = "contrato existente — datas serão atualizadas";
+          } else {
+            r._status = "duplicado"; r._msg = "contrato já existe no módulo";
+          }
           continue;
         }
         const { count } = await supabase.from("lancamentos")
@@ -1337,10 +1345,25 @@ function ImportacaoInner() {
   async function importarContratosFin() {
     if (!fazendaId || !contratoFinRows.length) return;
     setLoadingContratoFin(true);
-    let ok = 0, erros = 0, duplicados = 0;
+    let ok = 0, erros = 0, duplicados = 0, atualizados = 0;
     for (const r of contratoFinRows) {
       if (r._status === "duplicado") { duplicados++; continue; }
       if (r._status === "erro")      { erros++;      continue; }
+
+      // Modo atualização: corrige datas em contratos já existentes
+      if (r._status === "atualizar") {
+        const { error } = await supabase
+          .from("contratos_financeiros")
+          .update({
+            data_entrega_produto: r.data_entrega_produto?.trim() || null,
+            data_vencimento:      r.data_vencimento?.trim()      || null,
+            data_liberacao:       r.data_liberacao?.trim()       || null,
+          })
+          .eq("fazenda_id", fazendaId)
+          .eq("numero_contrato", r.numero_contrato.trim());
+        if (error) { erros++; } else { atualizados++; }
+        continue;
+      }
       // Resolve pessoa pelo CPF/CNPJ
       let pessoaId: string | null = null;
       if (r.credor_cpf_cnpj?.trim()) {
@@ -1571,7 +1594,7 @@ function ImportacaoInner() {
       }
     }
     setContratoFinRows([...contratoFinRows]);
-    setResultContratoFin({ ok, erros, duplicados });
+    setResultContratoFin({ ok, erros, duplicados, atualizados });
     setLoadingContratoFin(false);
   }
 
@@ -2136,9 +2159,10 @@ function ImportacaoInner() {
 
   const cfg      = ABA_CONFIG[aba];
   const totalRows = cfg.rows.length;
-  const dupRows   = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "duplicado").length;
+  const dupRows   = cfg.rows.filter(r => ["duplicado","atualizar"].includes((r as Record<string, unknown>)._status as string)).length;
   const okRows    = cfg.rows.filter(r => ["ok","aviso"].includes((r as Record<string, unknown>)._status as string)).length
-    + (aba === "insumos" && modoAtualizacaoInsumos ? dupRows : 0);
+    + (aba === "insumos" && modoAtualizacaoInsumos ? dupRows : 0)
+    + (aba === "contratos_fin" && modoAtualizacaoContratoFin ? cfg.rows.filter(r => (r as Record<string, unknown>)._status === "atualizar").length : 0);
   const erroRows  = cfg.rows.filter(r => (r as Record<string, unknown>)._status === "erro").length;
 
   function limpar() {
@@ -2244,15 +2268,22 @@ function ImportacaoInner() {
                 {aba === "insumos" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#FFFBE0", border: "0.5px solid #C9921B", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
-                      <input
-                        type="checkbox"
-                        checked={modoAtualizacaoInsumos}
-                        onChange={e => setModoAtualizacaoInsumos(e.target.checked)}
-                        style={{ width: 16, height: 16, accentColor: "#C9921B", cursor: "pointer" }}
-                      />
+                      <input type="checkbox" checked={modoAtualizacaoInsumos} onChange={e => setModoAtualizacaoInsumos(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#C9921B", cursor: "pointer" }} />
                       <span>
                         <strong style={{ color: "#7A5C00" }}>Modo Atualização</strong>
                         {" — "}{dupRows} registro{dupRows !== 1 ? "s" : ""} duplicado{dupRows !== 1 ? "s" : ""} {modoAtualizacaoInsumos ? "serão atualizados no banco" : "serão pulados (marque para atualizar)"}
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {aba === "contratos_fin" && dupRows > 0 && (
+                  <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
+                      <input type="checkbox" checked={modoAtualizacaoContratoFin} onChange={e => { setModoAtualizacaoContratoFin(e.target.checked); setContratoFinRows([]); setResultContratoFin(null); }} style={{ width: 16, height: 16, accentColor: "#7C3AED", cursor: "pointer" }} />
+                      <span>
+                        <strong style={{ color: "#4C1D95" }}>Atualizar datas nos contratos existentes</strong>
+                        {" — "}atualiza <code>data_entrega_produto</code> e <code>data_vencimento</code> nos {dupRows} contrato{dupRows !== 1 ? "s" : ""} já importado{dupRows !== 1 ? "s" : ""}. Novos contratos são inseridos normalmente.
                       </span>
                     </label>
                   </div>
