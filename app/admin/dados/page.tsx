@@ -319,29 +319,18 @@ export default function DadosAdminPage() {
 
       {/* ─── ABA: EXCLUIR CLIENTE ───────────────────────────────────────────── */}
       {aba === "excluir_cliente" && (
-        <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 20, alignItems: "flex-start" }}>
-          <div style={{ ...card, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>Contas ({contas.length})</span>
-              <button onClick={carregarContas} style={{ padding: "3px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "#555" }}>
-                {carregandoContas ? "⏳" : "↺"}
-              </button>
-            </div>
-            {carregandoContas
-              ? <div style={{ padding: 20, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando...</div>
-              : contas.length === 0
-              ? <div style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 13 }}>Nenhuma conta.</div>
-              : contas.map(c => (
-                <button key={c.id} onClick={() => { setContaSelecionada(c.id); setConfirmaTexto(""); setResultadoCliente(null); }}
-                  style={{ display: "block", width: "100%", padding: "11px 16px", borderBottom: "0.5px solid #DDE2EE", border: "none", background: contaSelecionada === c.id ? "#FFF0F0" : "transparent", textAlign: "left", cursor: "pointer" }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: contaSelecionada === c.id ? "#E24B4A" : "#1a1a1a" }}>{c.nome}</div>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
-                    {c.fazendas.length} fazenda{c.fazendas.length !== 1 ? "s" : ""}
-                    {c.fazendas.length > 0 && ` · ${c.fazendas.map(f => f.nome).slice(0, 2).join(", ")}${c.fazendas.length > 2 ? "..." : ""}`}
-                  </div>
-                </button>
-              ))
-            }
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ ...card, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontWeight: 600, fontSize: 12, color: "#555", whiteSpace: "nowrap" }}>1. Cliente</span>
+            <select value={contaSelecionada}
+              onChange={e => { setContaSelecionada(e.target.value); setConfirmaTexto(""); setResultadoCliente(null); }}
+              style={{ flex: 1, padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
+              <option value="">— selecione —</option>
+              {contas.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.fazendas.length} faz.)</option>)}
+            </select>
+            <button onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "#555" }}>
+              {carregandoContas ? "⏳" : "↺"}
+            </button>
           </div>
 
           <div>
