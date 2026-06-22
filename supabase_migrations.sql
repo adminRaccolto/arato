@@ -6402,6 +6402,8 @@ NOTIFY pgrst, 'reload schema';
 --   2. Se não existe, cria conta nova do tipo 'pf'
 --   3. Vincula perfil, fazenda ativa e produtores dessa fazenda à conta correta
 -- Idempotente: só age em perfis com conta_id IS NULL, ignora raccotlo.
+-- ATENÇÃO: exclui emails @raccolto.com.br (equipe interna) para não criar
+-- contas de staff como se fossem clientes.
 -- ═══════════════════════════════════════════════════════════════════════════════
 DO $$
 DECLARE
@@ -6412,9 +6414,12 @@ BEGIN
   FOR r IN
     SELECT p.id AS perfil_id, p.nome, p.fazenda_id
     FROM   perfis p
+    JOIN   auth.users u ON u.id = p.user_id
     WHERE  p.conta_id IS NULL
       AND  p.fazenda_id IS NOT NULL
       AND  (p.role IS NULL OR p.role NOT LIKE 'raccotlo%')
+      AND  u.email NOT LIKE '%@raccolto.com.br'   -- exclui equipe interna
+      AND  p.nome NOT LIKE '%@%'                   -- exclui perfis com email como nome
     ORDER  BY p.nome
   LOOP
     -- Reutiliza conta existente com mesmo nome (evita duplicatas)
@@ -6456,5 +6461,38 @@ FROM produtores p
 WHERE pie.produtor_id = p.id
   AND pie.fazenda_id IS NULL
   AND p.fazenda_id IS NOT NULL;
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 153 — Desfaz contas criadas erroneamente pela migration 151
+-- A migration 151 criou contas para perfis de equipe interna da Raccolto que
+-- tinham role='client' (Gino, Fabiane, Habio/J7). Esse script remove essas
+-- contas e mescla Habio/J7 na conta correta "Habio Pereira Marciano".
+-- ATENÇÃO: Rodar MANUALMENTE no Supabase SQL Editor.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Gino (interno — fazenda Raccolto, conta criada hoje erroneamente)
+UPDATE perfis  SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
+UPDATE fazendas SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
+DELETE FROM contas WHERE id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
+
+-- Habio / Fazenda J7 — mescla com conta existente "Habio Pereira Marciano"
+UPDATE perfis   SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
+  WHERE conta_id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
+UPDATE fazendas SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
+  WHERE conta_id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
+DELETE FROM contas WHERE id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
+
+-- Fabiane / Fazenda Perdigão — reseta para NULL (aguardar confirmação se é cliente real)
+UPDATE perfis   SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
+UPDATE fazendas SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
+DELETE FROM contas WHERE id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
+
+-- Contas órfãs antigas sem fazenda nem perfil
+DELETE FROM contas WHERE id IN (
+  '30b42c3d-4c51-460d-b942-1046e4d13ff3',  -- gino@raccolto.com.br (vazia)
+  'ad48f4a6-957d-41a5-85a8-b6be0714d7e7'   -- Fazenda Negrinho do Pastoreio (vazia)
+);
+
+NOTIFY pgrst, 'reload schema';
 
 NOTIFY pgrst, 'reload schema';
