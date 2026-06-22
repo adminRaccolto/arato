@@ -532,32 +532,25 @@ function downloadTemplate(aba: Aba) {
   });
 }
 
-// ─── Parse XLSX ───────────────────────────────────────────────
-function parseXlsx(file: File): Promise<Record<string, string>[]> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      import("xlsx").then(({ read, utils }) => {
-        try {
-          const wb = read(e.target!.result, { type: "binary" });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const raw = utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
-          // Strip asterisks from header keys (templates use nome*, categoria* etc. to mark required fields)
-          const rows = raw.map(row => {
-            const cleaned: Record<string, string> = {};
-            for (const [k, v] of Object.entries(row)) {
-              cleaned[k.replace(/\*/g, "").trim()] = String(v);
-            }
-            return cleaned;
-          });
-          resolve(rows);
-        } catch (err) {
-          reject(err);
-        }
-      });
-    };
-    reader.onerror = reject;
-    reader.readAsBinaryString(file);
+// ─── Parse XLSX via servidor ──────────────────────────────────
+// Node.js Buffer mode no servidor evita "Unsupported ZIP Compression method NaN"
+// que ocorre no browser com arquivos XLSX exportados por ERPs como AgroSoft/Agrobase.
+// (XLSX é um ZIP internamente — alguns ERPs usam compressão não-padrão.)
+async function parseXlsx(file: File): Promise<Record<string, string>[]> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/parse-xlsx", { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Erro no servidor ao ler o arquivo" }));
+    throw new Error(err.error ?? "Erro ao processar arquivo");
+  }
+  const { rows: rawRows } = await res.json() as { rows: Record<string, unknown>[] };
+  return rawRows.map(row => {
+    const cleaned: Record<string, string> = {};
+    for (const [k, v] of Object.entries(row)) {
+      cleaned[k.replace(/\*/g, "").trim()] = String(v ?? "");
+    }
+    return cleaned;
   });
 }
 

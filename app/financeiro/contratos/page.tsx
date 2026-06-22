@@ -243,18 +243,16 @@ type LerXLSXResult = {
 };
 
 async function lerXLSX(file: File): Promise<LerXLSXResult> {
-  const XLSXLib = await import("xlsx");
-  // Leitura via FileReader binary — compatível com .xlsx, .xls e exportações de ERPs
-  // (ArrayBuffer direto causa "Unsupported ZIP Compression method NaN" em alguns arquivos)
-  const binary = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = (e) => resolve(e.target?.result as string);
-    reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
-    reader.readAsBinaryString(file);
-  });
-  const wb = XLSXLib.read(binary, { type: "binary", cellDates: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rawRows = XLSXLib.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+  // Parsing no servidor (Node.js Buffer) — evita "Unsupported ZIP Compression method NaN"
+  // que ocorre com exportações de ERPs como AgroSoft/Agrobase no browser
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/parse-xlsx", { method: "POST", body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Erro ao processar arquivo no servidor" }));
+    throw new Error(err.error ?? "Erro ao processar arquivo");
+  }
+  const { rows: rawRows } = await res.json() as { rows: Record<string, unknown>[]; sheetName: string };
 
   // Normaliza chaves: remove acentos, substitui não-alfanumérico por _, colapsa múltiplos _
   const normKey = (k: string) =>
