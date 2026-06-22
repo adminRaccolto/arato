@@ -6337,3 +6337,46 @@ COMMENT ON COLUMN contratos_financeiros.data_entrega_produto IS
   'Diferente de data_vencimento: uma é logística (entrega no armazém), a outra é financeira.';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Migration 149 — Recria todas as policies da tabela produtores
+-- Problema: clientes recebem erro 42501 ao salvar produtor — policy de INSERT
+--   pode estar ausente ou conflitante em produção.
+-- Solução: dropar tudo e recriar do zero de forma idempotente.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+DO $$ DECLARE pol RECORD;
+BEGIN
+  FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'produtores' LOOP
+    EXECUTE 'DROP POLICY IF EXISTS "' || pol.policyname || '" ON produtores';
+  END LOOP;
+END $$;
+
+ALTER TABLE produtores ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "produtores_select" ON produtores FOR SELECT
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR conta_id IS NULL
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+CREATE POLICY "produtores_insert" ON produtores FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "produtores_update" ON produtores FOR UPDATE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR conta_id IS NULL
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  )
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "produtores_delete" ON produtores FOR DELETE
+  USING (
+    conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid() AND conta_id IS NOT NULL)
+    OR conta_id IS NULL
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role LIKE 'raccotlo%')
+  );
+
+NOTIFY pgrst, 'reload schema';
