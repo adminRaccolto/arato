@@ -6471,20 +6471,24 @@ WHERE pie.produtor_id = p.id
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- Gino (interno — fazenda Raccolto, conta criada hoje erroneamente)
-UPDATE perfis  SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
-UPDATE fazendas SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
+UPDATE produtores SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
+UPDATE perfis    SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
+UPDATE fazendas  SET conta_id = NULL WHERE conta_id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
 DELETE FROM contas WHERE id = 'f96c51fc-72e0-441d-8826-e5dabd7cd652';
 
 -- Habio / Fazenda J7 — mescla com conta existente "Habio Pereira Marciano"
-UPDATE perfis   SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
+UPDATE produtores SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
   WHERE conta_id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
-UPDATE fazendas SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
+UPDATE perfis    SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
+  WHERE conta_id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
+UPDATE fazendas  SET conta_id = 'e5106c5f-cdf2-40c8-8f87-ee0d2d5b3feb'
   WHERE conta_id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
 DELETE FROM contas WHERE id = 'f6ec90df-1b36-4526-bfe6-f12176313267';
 
 -- Fabiane / Fazenda Perdigão — reseta para NULL (aguardar confirmação se é cliente real)
-UPDATE perfis   SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
-UPDATE fazendas SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
+UPDATE produtores SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
+UPDATE perfis    SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
+UPDATE fazendas  SET conta_id = NULL WHERE conta_id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
 DELETE FROM contas WHERE id = '1320f1bf-8b77-4530-b0fb-816bca492fac';
 
 -- Contas órfãs antigas sem fazenda nem perfil
