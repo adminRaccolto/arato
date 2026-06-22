@@ -1762,7 +1762,7 @@ function ImportacaoInner() {
     });
     if (fazendaId) {
       const { data: exist } = await supabase.from("contratos").select("numero").eq("fazenda_id", fazendaId);
-      const existSet = new Set((exist ?? []).map((c: { numero: string }) => c.numero?.trim().toLowerCase()));
+      const existSet = new Set((exist ?? []).map((c: { numero: string | null }) => (c.numero ?? "").trim().toLowerCase()).filter(Boolean));
       rows.forEach(r => {
         if (r._status === "ok" && r.numero && existSet.has(r.numero.trim().toLowerCase())) {
           if (modoAtualizacaoContratoVenda) {
