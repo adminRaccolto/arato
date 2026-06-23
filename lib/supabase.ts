@@ -893,6 +893,11 @@ export type NfEntrada = {
   centro_custo_id?: string;       // para consumo direto
   data_vencimento_cp?: string;    // vencimento da CP gerada
   deposito_destino_id?: string;   // para remessa: depósito operacional destino
+  // Safra e ciclo (classificação na entrada)
+  ano_safra_id?: string;
+  ciclo_id?: string;
+  // Destinatário (CPF/CNPJ que recebeu a NF — para Manifestação multi-CPF)
+  cnpj_destino?: string;
   // Contabilidade — LCDPR + SPED ECD
   vinculo_atividade?: "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel";
   entidade_contabil?: "pf" | "pj";

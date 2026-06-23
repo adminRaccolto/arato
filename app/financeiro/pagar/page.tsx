@@ -1031,21 +1031,7 @@ function ContasPagarInner() {
                                     style={{ width: 28, height: 26, borderRadius: 6, cursor: "pointer", fontWeight: 700, background: "#FBF3E0", color: "#7A5C00", border: "0.5px solid #C9921B", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}
                                   >↺</button>
                                 )}
-                                {/* Excluir lançamento automático gerado por pedido barter incorretamente em R$ */}
-                                {l.auto && l.pedido_compra_id && l.moeda !== "barter" && l.status === "em_aberto" && (
-                                  <button
-                                    title="Excluir lançamento gerado erroneamente (pedido barter)"
-                                    onClick={async () => {
-                                      if (!confirm("Excluir este lançamento automático?")) return;
-                                      await excluirLancamento(l.id);
-                                      setLancamentos(prev => prev.filter(x => x.id !== l.id));
-                                    }}
-                                    style={{ fontSize: 11, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "transparent", color: "#E24B4A", border: "0.5px solid #E24B4A", lineHeight: 1 }}
-                                  >
-                                    ×
-                                  </button>
-                                )}
-                                {!l.auto && (
+                                {l.status !== "baixado" && (
                                   <button
                                     onClick={() => abrirEditar(l)}
                                     title="Editar lançamento"
@@ -1059,7 +1045,7 @@ function ContasPagarInner() {
                                     📎 {l.nfe_numero}
                                   </span>
                                 )}
-                                {!l.auto && (
+                                {l.status !== "baixado" && (
                                   <button
                                     onClick={async () => {
                                       if (!confirm(`Excluir "${l.descricao}"?\nEsta ação não pode ser desfeita.`)) return;
@@ -1193,8 +1179,8 @@ function ContasPagarInner() {
           )}
           <button
             onClick={async () => {
-              const manuais = filtrados.filter(l => selecionados.has(l.id) && !l.auto);
-              if (manuais.length === 0) { alert("Nenhum lançamento manual selecionado para excluir."); return; }
+              const manuais = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado");
+              if (manuais.length === 0) { alert("Nenhum lançamento em aberto selecionado para excluir."); return; }
               if (!confirm(`Excluir ${manuais.length} lançamento${manuais.length !== 1 ? "s" : ""}?\nEsta ação não pode ser desfeita.`)) return;
               const ids = manuais.map(l => l.id);
               const { error } = await supabase.from("lancamentos").delete().in("id", ids);

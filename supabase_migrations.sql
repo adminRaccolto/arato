@@ -6499,4 +6499,21 @@ DELETE FROM contas WHERE id IN (
 
 NOTIFY pgrst, 'reload schema';
 
+-- ============================================================
+-- Seção 120 — Novas colunas em nf_entradas (jun/2026)
+-- Bug fixes: ano_safra_id, ciclo_id, cnpj_destino
+-- ============================================================
+
+-- Classificação de safra e ciclo na entrada da NF
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS ano_safra_id UUID REFERENCES anos_safra(id),
+  ADD COLUMN IF NOT EXISTS ciclo_id     UUID REFERENCES ciclos(id),
+  -- CPF/CNPJ do destinatário (qual doc recebeu a NF — para Manifestação multi-CPF)
+  ADD COLUMN IF NOT EXISTS cnpj_destino TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_nf_entradas_ano_safra ON nf_entradas(ano_safra_id);
+CREATE INDEX IF NOT EXISTS idx_nf_entradas_ciclo ON nf_entradas(ciclo_id);
+CREATE INDEX IF NOT EXISTS idx_nf_entradas_cnpj_destino ON nf_entradas(fazenda_id, cnpj_destino);
+
 NOTIFY pgrst, 'reload schema';
+

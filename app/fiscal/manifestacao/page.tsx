@@ -57,15 +57,18 @@ export default function ManifestacaoPage() {
   const [justModal,    setJustModal]    = useState<{ nf: NfRow; tipo: number } | null>(null);
   const [justText,     setJustText]     = useState("");
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (cnpjFiltro?: string) => {
     if (!fazendaId) return;
     setLoading(true);
-    const { data } = await supabase
+    let query = supabase
       .from("nf_entradas")
       .select("id,numero,serie,chave_acesso,data_emissao,emitente_nome,emitente_cnpj,valor_total,natureza,status,origem,manifestacao_tipo,manifestacao_data,manifestacao_msg")
       .eq("fazenda_id", fazendaId)
       .order("data_emissao", { ascending: false })
       .limit(500);
+    // Filtra por destinatário quando especificado explicitamente
+    if (cnpjFiltro) query = query.eq("cnpj_destino", cnpjFiltro);
+    const { data } = await query;
     setNfs((data ?? []) as NfRow[]);
 
     // CNPJs do destinatário — lidos do módulo SIEG (cnpjs_destino = array)
@@ -91,11 +94,48 @@ export default function ManifestacaoPage() {
       if (single && !todosDocumentos.includes(single)) todosDocumentos.push(single);
     }
     setCnpjsDisponiveis(todosDocumentos);
-    if (todosDocumentos.length > 0) setCnpjDest(todosDocumentos[0]);
+    // Define o CPF inicial sem sobrescrever a seleção atual do usuário
+    if (todosDocumentos.length > 0 && !cnpjDest) setCnpjDest(todosDocumentos[0]);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Quando o CPF selecionado muda, recarrega as NFs e sincroniza o SIEG para esse CPF
+  async function trocarCnpj(novo: string) {
+    setCnpjDest(novo);
+    // Recarrega do banco com o novo filtro
+    if (!fazendaId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("nf_entradas")
+      .select("id,numero,serie,chave_acesso,data_emissao,emitente_nome,emitente_cnpj,valor_total,natureza,status,origem,manifestacao_tipo,manifestacao_data,manifestacao_msg")
+      .eq("fazenda_id", fazendaId)
+      .eq("cnpj_destino", novo)
+      .order("data_emissao", { ascending: false })
+      .limit(500);
+    setNfs((data ?? []) as NfRow[]);
+    setLoading(false);
+    // Sincroniza SIEG para este CPF específico em background
+    setSyncing(true); setSyncMsg("Sincronizando para este destinatário...");
+    fetch("/api/integracoes/sieg-sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fazenda_id: fazendaId }) })
+      .then(r => r.json()).then(async (d: Record<string, unknown>) => {
+        if (d.erro) { setSyncMsg(`✗ ${d.erro}`); }
+        else {
+          const imp = Number(d.importados_nfe ?? 0);
+          setSyncMsg(`✓ ${imp} NF-e importada${imp !== 1 ? "s" : ""} para este destinatário`);
+          // Recarrega novamente após sync
+          const { data: d2 } = await supabase
+            .from("nf_entradas")
+            .select("id,numero,serie,chave_acesso,data_emissao,emitente_nome,emitente_cnpj,valor_total,natureza,status,origem,manifestacao_tipo,manifestacao_data,manifestacao_msg")
+            .eq("fazenda_id", fazendaId).eq("cnpj_destino", novo)
+            .order("data_emissao", { ascending: false }).limit(500);
+          setNfs((d2 ?? []) as NfRow[]);
+        }
+      }).catch(e => setSyncMsg(`✗ ${e}`))
+      .finally(() => setSyncing(false));
+  }
 
   async function sincronizar() {
     if (!fazendaId) return;
@@ -166,7 +206,7 @@ export default function ManifestacaoPage() {
                 <span style={{ fontSize: 11, color: "#555" }}>Destinatário:</span>
                 <select
                   value={cnpjDest}
-                  onChange={e => setCnpjDest(e.target.value)}
+                  onChange={e => trocarCnpj(e.target.value)}
                   style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "#1a1a1a" }}
                 >
                   {cnpjsDisponiveis.map(d => (

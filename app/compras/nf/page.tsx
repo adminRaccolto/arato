@@ -19,10 +19,12 @@ import {
   excluirNfEntrada,
   listarMaquinas,
   resolverNomeComercial,
+  listarAnosSafra,
+  listarCiclos,
 } from "../../../lib/db";
 import type { ItemDevolucao } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
-import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina } from "../../../lib/supabase";
+import type { NfEntrada, NfEntradaItem, Insumo, Deposito, Pessoa, CentroCusto, RegraClassificacao, OperacaoGerencial, Maquina, AnoSafra, Ciclo } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
@@ -180,6 +182,9 @@ export default function NfCompraPage() {
     data_vencimento_cp: "",
     deposito_destino_id: "",    // remessa
     observacao: "",
+    // Safra e ciclo
+    ano_safra_id: "",
+    ciclo_id: "",
     // Contabilidade / LCDPR
     vinculo_atividade: "rural" as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
     entidade_contabil: "pf" as "pf" | "pj",
@@ -190,6 +195,9 @@ export default function NfCompraPage() {
     valor_difal:   "",
     valor_desconto:"",
   });
+  // Listas de ano safra e ciclo para o formulário
+  const [anosSafra,   setAnosSafra]   = useState<AnoSafra[]>([]);
+  const [ciclosNF,    setCiclosNF]    = useState<Ciclo[]>([]);
   // Estado para cadastro rápido de fornecedor
   const [savingForn, setSavingForn] = useState(false);
   // Estado para "Aplicar a todos" no passo de itens
@@ -261,6 +269,12 @@ export default function NfCompraPage() {
       setReclassOps(ops);
     } catch {}
 
+    // Anos safra (para classificação de entrada)
+    try {
+      const as = await listarAnosSafra(fazendaId);
+      setAnosSafra(as);
+    } catch {}
+
     // Pedidos de compra (rascunho/aprovado)
     try {
       const { data } = await supabase
@@ -275,6 +289,12 @@ export default function NfCompraPage() {
   }, [fazendaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // Carrega ciclos quando o ano safra muda no formulário
+  useEffect(() => {
+    if (!cab.ano_safra_id) { setCiclosNF([]); return; }
+    listarCiclos(cab.ano_safra_id).then(setCiclosNF).catch(() => setCiclosNF([]));
+  }, [cab.ano_safra_id]);
 
   // ── Helpers ─────────────────────────────────────────────────
   const nomeDeposito   = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
@@ -301,6 +321,8 @@ export default function NfCompraPage() {
       data_vencimento_cp: "",
       deposito_destino_id: "",
       observacao: "",
+      ano_safra_id: "",
+      ciclo_id: "",
       vinculo_atividade: "rural" as const,
       entidade_contabil: "pf" as const,
       valor_ipi: "", valor_st: "", valor_fcp_st: "", valor_difal: "", valor_desconto: "",
@@ -337,6 +359,8 @@ export default function NfCompraPage() {
       data_vencimento_cp: nf.data_vencimento_cp ?? "",
       deposito_destino_id: nf.deposito_destino_id ?? "",
       observacao: nf.observacao ?? "",
+      ano_safra_id: nf.ano_safra_id ?? "",
+      ciclo_id: nf.ciclo_id ?? "",
       vinculo_atividade: (nf.vinculo_atividade ?? "rural") as "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel",
       entidade_contabil: (nf.entidade_contabil ?? "pf") as "pf" | "pj",
       valor_ipi:      String((nf as Record<string,unknown>).valor_ipi      ?? ""),
@@ -536,6 +560,8 @@ export default function NfCompraPage() {
       data_vencimento_cp:    cab.data_vencimento_cp  || undefined,
       deposito_destino_id:   cab.deposito_destino_id || undefined,
       observacao:            cab.observacao           || undefined,
+      ano_safra_id:          cab.ano_safra_id         || undefined,
+      ciclo_id:              cab.ciclo_id             || undefined,
       vinculo_atividade:     cab.vinculo_atividade,
       entidade_contabil:     cab.entidade_contabil,
       valor_produtos:        parseFloat(cab.valor_total) || 0,
@@ -1022,8 +1048,8 @@ export default function NfCompraPage() {
               <button onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888", lineHeight: 1 }}>×</button>
             </div>
 
-            <div style={{ padding: "24px" }}>
-              {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 16 }}>{err}</div>}
+            <div style={{ padding: "16px 20px" }}>
+              {err && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#791F1F", marginBottom: 12 }}>{err}</div>}
 
               {/* ─── ETAPA 1: ORIGEM ─────────────────────────── */}
               {etapa === "origem" && (
@@ -1112,7 +1138,7 @@ export default function NfCompraPage() {
               {/* ─── ETAPA 2: CABEÇALHO ──────────────────────── */}
               {etapa === "cabecalho" && (
                 <div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                     <div>
                       <label style={lbl}>Número da NF *</label>
                       <input value={cab.numero} onChange={e => setCab(p=>({...p,numero:e.target.value}))} style={inp} />
@@ -1267,11 +1293,11 @@ export default function NfCompraPage() {
                     })()}
                   </div>
 
-                  <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Vinculações, Vencimento e Operação Gerencial</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div style={{ background: "#F4F6FA", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "#1a1a1a", marginBottom: 8 }}>Vinculações, Vencimento e Classificação</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                       <div>
-                        <label style={lbl}>Pedido de Compra vinculado</label>
+                        <label style={lbl}>Pedido de Compra</label>
                         <select value={cab.pedido_compra_id} onChange={e => setCab(p=>({...p,pedido_compra_id:e.target.value}))} style={inp}>
                           <option value="">Sem pedido vinculado</option>
                           {pedidos
@@ -1296,9 +1322,16 @@ export default function NfCompraPage() {
                         <input type="date" value={cab.data_vencimento_cp} onChange={e => setCab(p=>({...p,data_vencimento_cp:e.target.value}))} style={inp} />
                       </div>
                       <div>
+                        <label style={lbl}>Ano Safra</label>
+                        <select value={cab.ano_safra_id} onChange={e => setCab(p=>({...p, ano_safra_id: e.target.value, ciclo_id: ""}))} style={inp}>
+                          <option value="">— nenhum —</option>
+                          {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
+                        </select>
+                      </div>
+                      <div>
                         <label style={lbl}>Operação Gerencial</label>
                         <select value={cab.operacao_gerencial_id} onChange={e => setCab(p=>({...p,operacao_gerencial_id:e.target.value}))} style={inp}>
-                          <option value="">Sem operação gerencial</option>
+                          <option value="">— nenhuma —</option>
                           {reclassOps.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
                         </select>
                       </div>
@@ -1307,13 +1340,20 @@ export default function NfCompraPage() {
                           <label style={{ ...lbl, marginBottom: 0 }}>Centro de Custo (NF)</label>
                           {sugestaoNome && (
                             <span style={{ fontSize: 10, background: "#DCFCE7", color: "#166534", padding: "1px 7px", borderRadius: 10, fontWeight: 600 }}>
-                              ✦ Regra: {sugestaoNome}
+                              ✦ {sugestaoNome}
                             </span>
                           )}
                         </div>
                         <select value={cab.centro_custo_id} onChange={e => { setSugestaoNome(null); setCab(p=>({...p,centro_custo_id:e.target.value})); }} style={inp}>
-                          <option value="">Sem centro de custo</option>
+                          <option value="">— nenhum —</option>
                           {centros.filter(c => c.parent_id).map(c => <option key={c.id} value={c.id}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={lbl}>Ciclo</label>
+                        <select value={cab.ciclo_id} onChange={e => setCab(p=>({...p, ciclo_id: e.target.value}))} style={inp} disabled={!cab.ano_safra_id}>
+                          <option value="">— selecione o ano safra —</option>
+                          {ciclosNF.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ? `— ${c.descricao}` : ""}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1355,17 +1395,17 @@ export default function NfCompraPage() {
                     </div>
                   )}
 
-                  <div style={{ marginBottom: 14 }}>
+                  <div style={{ marginBottom: 8 }}>
                     <label style={lbl}>Chave de Acesso NF-e (44 dígitos)</label>
                     <input value={cab.chave_acesso} onChange={e => setCab(p=>({...p,chave_acesso:e.target.value.replace(/\D/g,"")}))} maxLength={44} placeholder="Opcional — para rastreabilidade" style={{ ...inp, fontFamily: "monospace", fontSize: 12 }} />
                   </div>
 
                   {/* ── Classificação Contábil / LCDPR ── */}
-                  <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
+                  <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 7, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                       Classificação Contábil / LCDPR
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 12px" }}>
                       <div>
                         <label style={lbl}>Vínculo de Atividade</label>
                         <select style={inp} value={cab.vinculo_atividade} onChange={e => setCab(p => ({ ...p, vinculo_atividade: e.target.value as typeof cab.vinculo_atividade }))}>
@@ -1385,7 +1425,7 @@ export default function NfCompraPage() {
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: 14 }}>
+                  <div style={{ marginBottom: 8 }}>
                     <label style={lbl}>Observações</label>
                     <textarea value={cab.observacao} onChange={e => setCab(p=>({...p,observacao:e.target.value}))} rows={2} style={{ ...inp, resize: "vertical" }} />
                   </div>
@@ -1435,21 +1475,14 @@ export default function NfCompraPage() {
                     </button>
                   </div>
 
-                  {/* Painel "Aplicar a todos" — custo_direto e itens direto em insumos */}
+                  {/* Painel "Aplicar Centro de Custo a todos" — custo_direto e insumos */}
                   {(tipo === "custo_direto" || tipo === "insumos") && (
                     <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
-                        {tipo === "custo_direto" ? "Aplicar a todos os itens" : "Aplicar a todos os itens C. Custo"}
+                        Aplicar Centro de Custo a todos os itens
                       </div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" as const }}>
-                        <div style={{ flex: "1 1 200px" }}>
-                          <label style={lbl}>Operação Gerencial</label>
-                          <select value={bulkOpGer} onChange={e => setBulkOpGer(e.target.value)} style={{ ...inp, fontSize: 12 }}>
-                            <option value="">— não alterar —</option>
-                            {reclassOps.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
-                          </select>
-                        </div>
-                        <div style={{ flex: "1 1 200px" }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+                        <div style={{ flex: "1 1 260px" }}>
                           <label style={lbl}>Centro de Custo</label>
                           <select value={bulkCC} onChange={e => setBulkCC(e.target.value)} style={{ ...inp, fontSize: 12 }}>
                             <option value="">— não alterar —</option>
@@ -1458,16 +1491,12 @@ export default function NfCompraPage() {
                         </div>
                         <button
                           onClick={() => {
-                            if (!bulkCC && !bulkOpGer) return;
+                            if (!bulkCC) return;
                             setItens(prev => prev.map(it => {
                               const ehDireto = tipo === "custo_direto" || it.tipo_apropiacao === "direto";
                               if (!ehDireto) return it;
-                              return {
-                                ...it,
-                                ...(bulkCC    ? { centro_custo_id: bulkCC }    : {}),
-                              };
+                              return { ...it, centro_custo_id: bulkCC };
                             }));
-                            if (bulkOpGer) setCab(p => ({ ...p, operacao_gerencial_id: bulkOpGer }));
                           }}
                           style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
                         >

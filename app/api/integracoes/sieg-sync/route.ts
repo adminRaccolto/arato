@@ -34,8 +34,8 @@ function sb() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { fazenda_id: string };
-    const { fazenda_id } = body;
+    const body = await req.json() as { fazenda_id: string; data_inicio?: string };
+    const { fazenda_id, data_inicio: dataInicioParam } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
 
     const db = sb();
@@ -87,16 +87,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Data inicial: última sync ou 30 dias atrás (sempre datetime completo — API Sieg exige)
+    // Data inicial: última sync ou 365 dias atrás (sempre datetime completo — API Sieg exige)
+    // Pode ser sobrescrita pelo parâmetro data_inicio enviado no body da requisição
     const toISO = (d: string) => d.length === 10 ? d + "T00:00:00.000Z" : d;
-    const trintaDiasAtras = new Date(Date.now() - 30 * 86_400_000).toISOString();
-    const uploadInicio = cfg.ultima_sync_ts ?? cfg.ultima_sync_data
-      ? toISO(cfg.ultima_sync_ts ?? cfg.ultima_sync_data!)
-      : trintaDiasAtras;
+    const dataInicioOverride = dataInicioParam ? toISO(dataInicioParam) : null;
+    const umAnoAtras = new Date(Date.now() - 365 * 86_400_000).toISOString();
+    const uploadInicio = dataInicioOverride ?? (
+      (cfg.ultima_sync_ts ?? cfg.ultima_sync_data)
+        ? toISO(cfg.ultima_sync_ts ?? cfg.ultima_sync_data!)
+        : umAnoAtras
+    );
     const uploadFim = new Date().toISOString();
 
     // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
-    const xmlsNFe: string[] = [];
+    const xmlsNFe: { xml: string; cnpj_destino: string }[] = [];
     for (const cnpj of cnpjs) {
       try {
         const docs = await baixarXmlsSieg(siegCreds, {
@@ -105,7 +109,7 @@ export async function POST(req: NextRequest) {
           DataUploadFim:    uploadFim,
           CnpjDest:         cnpj,
         });
-        xmlsNFe.push(...docs);
+        for (const xml of docs) xmlsNFe.push({ xml, cnpj_destino: cnpj });
       } catch (e) {
         return NextResponse.json({ erro: `Falha na comunicação com Sieg (${cnpj}): ${e}` }, { status: 502 });
       }
@@ -116,7 +120,7 @@ export async function POST(req: NextRequest) {
     let duplicados_nfe = 0;
     const erros: string[] = [];
 
-    for (const xml of xmlsNFe) {
+    for (const { xml, cnpj_destino } of xmlsNFe) {
       const nfe = parseNFeXml(xml);
       if (!nfe) { erros.push("XML sem Id NFe válido"); continue; }
       if (!nfe.numero || !nfe.data_emissao) { erros.push(`NF ${nfe.chave}: campos obrigatórios ausentes`); continue; }
@@ -145,6 +149,7 @@ export async function POST(req: NextRequest) {
           valor_total:   nfe.valor_total,
           natureza:      nfe.natureza,
           cfop:          nfe.cfop,
+          cnpj_destino,
           status:        "pendente",
           origem:        "sieg",
           observacao:    `Importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
