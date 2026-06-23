@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "@/components/TopNav";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { FASES, porcentagemConcluida, totalLicoes, type Licao, type Modulo, type Fase } from "@/lib/learning-content";
+import { FLUXOS_BPMN, type FluxoBPMN } from "@/lib/bpmn-flows";
 import { listarProgressoLearning, marcarLicaoConcluida, desmarcarLicao } from "@/lib/db";
 
 export default function LearningPage() {
@@ -14,6 +15,14 @@ export default function LearningPage() {
   const [licaoAtiva, setLicaoAtiva] = useState<{ licao: Licao; modulo: Modulo; fase: Fase } | null>(null);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  // ── Fluxogramas BPMN ───────────────────────────────────────
+  type Vista = "licoes" | "fluxogramas";
+  const [vista, setVista] = useState<Vista>("licoes");
+  const [fluxoAtivo, setFluxoAtivo] = useState<FluxoBPMN | null>(null);
+  const [svgFluxo, setSvgFluxo] = useState<string>("");
+  const [carregandoFluxo, setCarregandoFluxo] = useState(false);
+  const mermaidInitialized = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => { if (data.user) setUserId(data.user.id); });
@@ -30,6 +39,47 @@ export default function LearningPage() {
   }, [fazendaId, userId]);
 
   useEffect(() => { carregarProgresso(); }, [carregarProgresso]);
+
+  // Renderiza Mermaid — importação dinâmica (bundle-conditional: só carrega ao entrar na aba)
+  useEffect(() => {
+    if (!fluxoAtivo) return;
+    let cancelled = false;
+    setCarregandoFluxo(true);
+    setSvgFluxo("");
+    const render = async () => {
+      try {
+        const mermaid = (await import("mermaid")).default;
+        if (!mermaidInitialized.current) {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: {
+              primaryColor: "#D5E8F5",
+              primaryBorderColor: "#1A4870",
+              primaryTextColor: "#1a1a1a",
+              lineColor: "#555555",
+              background: "#ffffff",
+              mainBkg: "#D5E8F5",
+              nodeBorder: "#1A4870",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontSize: "13px",
+            },
+          });
+          mermaidInitialized.current = true;
+        }
+        const uid = `bpmn-${fluxoAtivo.id}-${Date.now()}`;
+        const { svg } = await mermaid.render(uid, fluxoAtivo.diagram);
+        if (!cancelled) setSvgFluxo(svg);
+      } catch (err) {
+        console.error("Mermaid render error:", err);
+        if (!cancelled) setSvgFluxo(`<p style="color:#E24B4A;padding:16px">Erro ao renderizar diagrama. Tente recarregar a página.</p>`);
+      } finally {
+        if (!cancelled) setCarregandoFluxo(false);
+      }
+    };
+    render();
+    return () => { cancelled = true; };
+  }, [fluxoAtivo]);
 
   // Abrir primeira lição da fase aberta automaticamente
   useEffect(() => {
@@ -101,8 +151,185 @@ export default function LearningPage() {
               transition: "width 0.4s ease",
             }} />
           </div>
+
+          {/* Tabs de navegação */}
+          <div style={{ marginTop: 20, display: "flex", gap: 4 }}>
+            {(["licoes", "fluxogramas"] as Vista[]).map(v => (
+              <button
+                key={v}
+                onClick={() => setVista(v)}
+                style={{
+                  background: vista === v ? "#1A4870" : "transparent",
+                  color: vista === v ? "#fff" : "#555",
+                  border: "0.5px solid",
+                  borderColor: vista === v ? "#1A4870" : "#DDE2EE",
+                  borderRadius: 8,
+                  padding: "6px 16px",
+                  fontSize: 13,
+                  fontWeight: vista === v ? 600 : 400,
+                  cursor: "pointer",
+                }}
+              >
+                {v === "licoes" ? "📚 Lições do Curso" : "🔄 Fluxogramas BPMN"}
+              </button>
+            ))}
+            {vista === "fluxogramas" && (
+              <span style={{ marginLeft: 12, fontSize: 12, color: "#888", alignSelf: "center" }}>
+                Azul = sistema automático · Mostarda = ação do usuário · Vermelho = alerta preditivo
+              </span>
+            )}
+          </div>
         </div>
 
+        {/* ── VISTA FLUXOGRAMAS ─────────────────────────────────── */}
+        {vista === "fluxogramas" && (
+          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20, alignItems: "start" }}>
+
+            {/* Lista de fluxos */}
+            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Processos do Sistema</div>
+                <div style={{ fontSize: 11, opacity: 0.75 }}>{FLUXOS_BPMN.length} fluxos mapeados</div>
+              </div>
+              {FLUXOS_BPMN.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFluxoAtivo(f)}
+                  style={{
+                    width: "100%", textAlign: "left", border: "none", background: fluxoAtivo?.id === f.id ? "#D5E8F5" : "transparent",
+                    borderLeft: fluxoAtivo?.id === f.id ? "3px solid #1A4870" : "3px solid transparent",
+                    borderBottom: "0.5px solid #DDE2EE", padding: "12px 14px", cursor: "pointer",
+                    display: "flex", alignItems: "flex-start", gap: 10,
+                  }}
+                >
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icone}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: fluxoAtivo?.id === f.id ? 600 : 400, color: "#1a1a1a", marginBottom: 2 }}>
+                      {f.titulo}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#888", lineHeight: 1.4 }}>{f.descricao}</div>
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 99,
+                        background: f.corModulo + "20", color: f.corModulo,
+                      }}>{f.modulo}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Área do diagrama */}
+            <div>
+              {fluxoAtivo ? (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                  {/* Cabeçalho */}
+                  <div style={{ padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 22 }}>{fluxoAtivo.icone}</span>
+                        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>{fluxoAtivo.titulo}</h2>
+                        <span style={{
+                          fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600,
+                          background: fluxoAtivo.corModulo + "20", color: fluxoAtivo.corModulo,
+                        }}>{fluxoAtivo.modulo}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13, color: "#666" }}>{fluxoAtivo.descricao}</p>
+                    </div>
+                    <button
+                      onClick={() => window.print()}
+                      style={{
+                        background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                        padding: "7px 14px", fontSize: 12, color: "#555", cursor: "pointer", flexShrink: 0,
+                      }}
+                    >
+                      🖨️ Imprimir
+                    </button>
+                  </div>
+
+                  {/* Diagrama Mermaid */}
+                  <div style={{ padding: "24px", overflowX: "auto", minHeight: 200 }}>
+                    {carregandoFluxo ? (
+                      <div style={{ textAlign: "center", padding: 48, color: "#888", fontSize: 13 }}>
+                        Renderizando diagrama...
+                      </div>
+                    ) : (
+                      <div
+                        style={{ display: "flex", justifyContent: "center" }}
+                        dangerouslySetInnerHTML={{ __html: svgFluxo }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Alertas preditivos */}
+                  {fluxoAtivo.alertas.length > 0 && (
+                    <div style={{ padding: "0 24px 24px" }}>
+                      <div style={{ background: "#FBF3E0", border: "0.5px solid #FDE9BB", borderRadius: 8, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#C9921B", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                          ⏰ TAREFAS PREDITIVAS — o sistema executa automaticamente sem ação do usuário
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {fluxoAtivo.alertas.map((a, i) => (
+                            <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, color: "#5C3A00" }}>
+                              <span style={{ color: "#C9921B", flexShrink: 0 }}>•</span>
+                              {a}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legenda */}
+                  <div style={{ padding: "12px 24px 20px", borderTop: "0.5px solid #DDE2EE" }}>
+                    <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Legenda</div>
+                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                      {[
+                        { cor: "#C9921B", bg: "#FBF3E0", label: "Ação do Usuário" },
+                        { cor: "#1A4870", bg: "#D5E8F5", label: "Sistema Automático" },
+                        { cor: "#E24B4A", bg: "#FCEBEB", label: "Alerta Preditivo" },
+                        { cor: "#16A34A", bg: "#EAF3DE", label: "Estado Final" },
+                        { cor: "#999",    bg: "#F4F6FA", label: "Decisão (Gateway)" },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#555" }}>
+                          <div style={{ width: 14, height: 14, borderRadius: 3, background: item.bg, border: `1.5px solid ${item.cor}` }} />
+                          {item.label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 56, textAlign: "center" }}>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Fluxogramas BPMN</div>
+                  <div style={{ fontSize: 14, color: "#666", maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>
+                    Selecione um processo à esquerda para visualizar o fluxograma completo com todas as etapas automáticas e manuais.
+                  </div>
+                  <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+                    {FLUXOS_BPMN.map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setFluxoAtivo(f)}
+                        style={{
+                          background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                          padding: "14px", cursor: "pointer", textAlign: "left",
+                        }}
+                      >
+                        <div style={{ fontSize: 22, marginBottom: 6 }}>{f.icone}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{f.titulo}</div>
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{f.modulo}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── VISTA LIÇÕES (original) ──────────────────────────── */}
+        {vista === "licoes" && (
         <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 20, alignItems: "start" }}>
 
           {/* Sidebar — índice de fases e módulos */}
@@ -318,6 +545,7 @@ export default function LearningPage() {
             )}
           </div>
         </div>
+        )} {/* fim vista licoes */}
       </div>
 
       <style>{`
@@ -330,6 +558,11 @@ export default function LearningPage() {
         .learning-content tr:nth-child(even) td { background: #F4F6FA; }
         .learning-content code { background: #F4F6FA; border: 0.5px solid #DDE2EE; border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: monospace; }
         .learning-content pre { background: #1a1a2e; color: #e2e8f0; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; overflow-x: auto; line-height: 1.6; }
+        @media print {
+          nav, header, button, .no-print { display: none !important; }
+          body { background: #fff; }
+          .bpmn-diagram svg { width: 100% !important; max-width: 100% !important; }
+        }
         .learning-content ul, .learning-content ol { margin: 8px 0 12px 20px; }
         .learning-content li { margin: 4px 0; }
         .learning-content blockquote { border-left: 3px solid #C9921B; background: #FBF3E0; margin: 12px 0; padding: 10px 16px; border-radius: 0 8px 8px 0; }
