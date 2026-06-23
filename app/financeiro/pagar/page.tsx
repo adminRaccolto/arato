@@ -611,10 +611,12 @@ function ContasPagarInner() {
           operacao_gerencial_id: form.operacao_gerencial_id || null,
           natureza:              form.natureza,
           forma_pagamento:       form.forma_pagamento       || null,
-          funcionario_id:        form.funcionario_id        || null,
-          tipo_mao_obra:         form.tipo_mao_obra         || null,
-          unidade_mao_obra:      form.unidade_mao_obra      || null,
-          quantidade_mao_obra:   form.quantidade_mao_obra   ? Number(form.quantidade_mao_obra) : null,
+          ...(form.funcionario_id ? {
+            funcionario_id:      form.funcionario_id,
+            tipo_mao_obra:       form.tipo_mao_obra       || null,
+            unidade_mao_obra:    form.unidade_mao_obra    || null,
+            quantidade_mao_obra: form.quantidade_mao_obra ? Number(form.quantidade_mao_obra) : null,
+          } : {}),
         };
         const { error } = await supabase.from("lancamentos").update(patch).eq("id", editandoId);
         if (error) { alert("Erro ao salvar: " + error.message); return; }
@@ -662,10 +664,12 @@ function ContasPagarInner() {
       produtor_id:           form.produtor_id           || undefined,
       operacao_gerencial_id: form.operacao_gerencial_id || undefined,
       natureza:              form.natureza,
-      funcionario_id:        form.funcionario_id        || undefined,
-      tipo_mao_obra:         form.tipo_mao_obra         || undefined,
-      unidade_mao_obra:      form.unidade_mao_obra      || undefined,
-      quantidade_mao_obra:   form.quantidade_mao_obra   ? Number(form.quantidade_mao_obra) : undefined,
+      ...(form.funcionario_id ? {
+        funcionario_id:      form.funcionario_id,
+        tipo_mao_obra:       form.tipo_mao_obra       || undefined,
+        unidade_mao_obra:    form.unidade_mao_obra    || undefined,
+        quantidade_mao_obra: form.quantidade_mao_obra ? Number(form.quantidade_mao_obra) : undefined,
+      } : {}),
     };
 
     try {
