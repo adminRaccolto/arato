@@ -127,7 +127,7 @@ const TAB_GROUPS: TabGroup[] = [
 
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const SOLOS   = ["LVdf","LAd","LVd","NVef","CXbd","PVAd","RQo"];
-const CULTURAS = ["Soja","Milho 1ª","Milho 2ª (Safrinha)","Algodão","Trigo","Sorgo","Feijão","Arroz"];
+const CULTURAS = ["Soja","Milho","Algodão","Trigo","Sorgo","Feijão","Arroz"];
 const MODULOS  = ["dashboard","propriedades","lavoura","financeiro","estoque","fiscal","relatorios","cadastros","automacoes","configuracoes"];
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
