@@ -131,10 +131,16 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
   async function salvar() {
     setSalvando(true); setErro("");
     try {
+      const campos = {
+        ...form,
+        data_inicio:      form.data_inicio      || null,
+        data_vencimento:  form.data_vencimento  || null,
+        valor_mensalidade: form.valor_mensalidade ?? null,
+      };
       const res = await fetch("/api/admin/atualizar-conta", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: conta.id, campos: form }),
+        body: JSON.stringify({ id: conta.id, campos }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Erro ao salvar");
