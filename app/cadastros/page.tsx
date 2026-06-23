@@ -25,6 +25,7 @@ import {
   listarGruposInsumo, criarGrupoInsumo, atualizarGrupoInsumo, excluirGrupoInsumo,
   listarSubgruposInsumo, criarSubgrupoInsumo, atualizarSubgrupoInsumo, excluirSubgrupoInsumo,
   seederGruposInsumo,
+  seederProdutosAgricolas,
   listarTiposPessoa, criarTipoPessoa, atualizarTipoPessoa, excluirTipoPessoa,
   listarCentrosCustoGeral, criarCentroCusto, atualizarCentroCusto, excluirCentroCusto,
   listarCategoriasLancamento, criarCategoriaLancamento, atualizarCategoriaLancamento, excluirCategoriaLancamento,
@@ -375,8 +376,9 @@ function CadastrosInner() {
   const [subAbaAux, setSubAbaAux]             = useState<SubAbaAux>("grupos_insumo");
   const [gruposInsumo, setGruposInsumo]       = useState<GrupoInsumo[]>([]);
   const [subgruposInsumo, setSubgruposInsumo] = useState<SubgrupoInsumo[]>([]);
-  const [seedingGrupos, setSeedingGrupos]     = useState(false);
-  const [seedingSafras, setSeedingSafras]     = useState(false);
+  const [seedingGrupos, setSeedingGrupos]       = useState(false);
+  const [seedingSafras, setSeedingSafras]       = useState(false);
+  const [seedingProdutos, setSeedingProdutos]   = useState(false);
   const [tiposPessoa, setTiposPessoa]         = useState<TipoPessoa[]>([]);
   const [centrosCusto, setCentrosCusto]       = useState<CentroCusto[]>([]);
   const [categoriasLanc, setCategoriasLanc]   = useState<CategoriaLancamento[]>([]);
@@ -554,7 +556,16 @@ function CadastrosInner() {
     }
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
-      listarInsumos(fazendaId).then(setInsumos).catch(e => setErro(e.message));
+      listarInsumos(fazendaId).then(async lista => {
+        setInsumos(lista);
+        // Auto-seed na primeira abertura da aba Produtos se não há nenhum produto agrícola
+        if (aba === "produtos" && lista.filter(i => i.categoria === "produto_agricola").length === 0) {
+          try {
+            await seederProdutosAgricolas(fazendaId);
+            listarInsumos(fazendaId).then(setInsumos).catch(() => {});
+          } catch {}
+        }
+      }).catch(e => setErro(e.message));
       listarGruposInsumo(fazendaId).then(setGruposInsumo).catch(() => {});
       listarSubgruposInsumo(fazendaId).then(setSubgruposInsumo).catch(() => {});
       listarDepositos(fazendaId).then(setDepositos).catch(() => {});
@@ -3428,9 +3439,12 @@ function CadastrosInner() {
               { key: "milho",         label: "Milho",         bg: "#FEF3C7", cl: "#78350F" },
               { key: "algodao",       label: "Algodão",       bg: "#F1F0FB", cl: "#4B3B9B" },
               { key: "milho_pipoca",  label: "Milho Pipoca",  bg: "#FEF9C3", cl: "#713F12" },
-              { key: "milheto",       label: "Milheto",       bg: "#DCFCE7", cl: "#14532D" },
-              { key: "sorgo",         label: "Sorgo",         bg: "#FDE8D8", cl: "#7C3D12" },
               { key: "trigo",         label: "Trigo",         bg: "#FEF3E2", cl: "#7A4300" },
+              { key: "sorgo",         label: "Sorgo",         bg: "#FDE8D8", cl: "#7C3D12" },
+              { key: "milheto",       label: "Milheto",       bg: "#DCFCE7", cl: "#14532D" },
+              { key: "gergelim",      label: "Gergelim",      bg: "#FFF7ED", cl: "#7C2D12" },
+              { key: "girassol",      label: "Girassol",      bg: "#FEFCE8", cl: "#713F12" },
+              { key: "brachiaria",    label: "Brachiaria",    bg: "#ECFDF5", cl: "#065F46" },
               { key: "eucalipto",     label: "Eucalipto",     bg: "#E8F5EB", cl: "#1A5C35" },
               { key: "outros",        label: "Outros",        bg: "#F1EFE8", cl: "#555"    },
             ];
@@ -3517,13 +3531,35 @@ function CadastrosInner() {
                       );
                     })}
                   </div>
+                  <button
+                    style={{ ...btnE, padding: "6px 12px", fontSize: 12, opacity: seedingProdutos ? 0.6 : 1 }}
+                    disabled={seedingProdutos}
+                    title="Insere os 11 produtos agrícolas padrão do sistema (soja, milho, algodão, etc.) que ainda não existem"
+                    onClick={async () => {
+                      if (!fazIdEff) return;
+                      setSeedingProdutos(true);
+                      try {
+                        const n = await seederProdutosAgricolas(fazIdEff);
+                        const lista = await listarInsumos(fazIdEff);
+                        setInsumos(lista);
+                        if (n === 0) alert("Todos os produtos padrão já estão cadastrados.");
+                        else alert(`${n} produto${n > 1 ? "s" : ""} adicionado${n > 1 ? "s" : ""} com sucesso.`);
+                      } catch (e: unknown) {
+                        alert("Erro: " + ((e as {message?:string})?.message ?? String(e)));
+                      } finally {
+                        setSeedingProdutos(false);
+                      }
+                    }}
+                  >
+                    {seedingProdutos ? "Carregando…" : "↺ Carregar Padrões"}
+                  </button>
                   <button style={btnV} onClick={() => abrirModalProd()}>+ Novo Produto</button>
                 </div>
 
                 <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                   {prodFiltr.length === 0 ? (
                     <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
-                      {buscaProd ? `Nenhum produto encontrado para "${buscaProd}"` : "Nenhum produto agrícola cadastrado. Use '+ Novo Produto' para registrar soja, milho, algodão, etc."}
+                      {buscaProd ? `Nenhum produto encontrado para "${buscaProd}"` : "Nenhum produto agrícola cadastrado. Clique em '↺ Carregar Padrões' ou use '+ Novo Produto'."}
                     </div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>

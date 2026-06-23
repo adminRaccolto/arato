@@ -4176,6 +4176,62 @@ export async function excluirImovelUrbano(id: string): Promise<void> {
 }
 
 // ————————————————————————————————————————
+// SEEDER — Produtos Agrícolas Padrão
+// ————————————————————————————————————————
+
+const PRODUTOS_AGRICOLAS_PADRAO: {
+  nome: string;
+  subgrupo: string;
+  unidade: string;
+}[] = [
+  { nome: "Soja Convencional",  subgrupo: "soja",        unidade: "sc" },
+  { nome: "Soja Transgênica",   subgrupo: "soja",        unidade: "sc" },
+  { nome: "Milho",              subgrupo: "milho",       unidade: "sc" },
+  { nome: "Milho Pipoca",       subgrupo: "milho_pipoca",unidade: "sc" },
+  { nome: "Algodão",            subgrupo: "algodao",     unidade: "@"  },
+  { nome: "Gergelim",           subgrupo: "gergelim",    unidade: "kg" },
+  { nome: "Trigo",              subgrupo: "trigo",       unidade: "sc" },
+  { nome: "Girassol",           subgrupo: "girassol",    unidade: "kg" },
+  { nome: "Brachiaria",         subgrupo: "brachiaria",  unidade: "sc" },
+  { nome: "Sorgo",              subgrupo: "sorgo",       unidade: "sc" },
+  { nome: "Milheto",            subgrupo: "milheto",     unidade: "sc" },
+];
+
+export async function seederProdutosAgricolas(fazenda_id: string): Promise<number> {
+  // Busca nomes já existentes para evitar duplicatas
+  const { data: existentes } = await supabase
+    .from("insumos")
+    .select("nome")
+    .eq("fazenda_id", fazenda_id)
+    .eq("categoria", "produto_agricola");
+
+  const nomesExistentes = new Set((existentes ?? []).map((r: { nome: string }) => r.nome.toLowerCase()));
+
+  const novos = PRODUTOS_AGRICOLAS_PADRAO.filter(
+    p => !nomesExistentes.has(p.nome.toLowerCase())
+  );
+
+  if (novos.length === 0) return 0;
+
+  const { error } = await supabase.from("insumos").insert(
+    novos.map(p => ({
+      fazenda_id,
+      nome:           p.nome,
+      categoria:      "produto_agricola",
+      subgrupo:       p.subgrupo,
+      unidade:        p.unidade,
+      tipo:           "produto",
+      estoque:        0,
+      estoque_minimo: 0,
+      valor_unitario: 0,
+    }))
+  );
+
+  if (error) throw error;
+  return novos.length;
+}
+
+// ————————————————————————————————————————
 // UTILITÁRIOS
 // ————————————————————————————————————————
 
