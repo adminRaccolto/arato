@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
@@ -50,7 +50,7 @@ const calcDias = (d?: string | null): number | null => {
 };
 
 // ── Componente principal ──────────────────────────────────────
-export default function Configuracoes() {
+function ConfiguracoesInner() {
   const { fazendaId } = useAuth();
   const searchParams = useSearchParams();
 
@@ -623,5 +623,13 @@ export default function Configuracoes() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Configuracoes() {
+  return (
+    <Suspense>
+      <ConfiguracoesInner />
+    </Suspense>
   );
 }

@@ -2,10 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-const admin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+function adminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 /**
  * Retorna o user autenticado via cookies da sessão do browser.
@@ -43,7 +45,7 @@ export async function validateFazendaAccess(
   if (authHeader) {
     const token = authHeader.replace("Bearer ", "").trim();
     if (token) {
-      const { data: { user } } = await admin.auth.getUser(token);
+      const { data: { user } } = await adminClient().auth.getUser(token);
       if (user) { userId = user.id; userEmail = user.email ?? null; }
     }
   }
@@ -60,7 +62,7 @@ export async function validateFazendaAccess(
     return { ok: true, userId };
   }
 
-  const { data: perfil } = await admin
+  const { data: perfil } = await adminClient()
     .from("perfis")
     .select("conta_id, role")
     .eq("user_id", userId)
@@ -70,7 +72,7 @@ export async function validateFazendaAccess(
 
   if (!perfil?.conta_id) return { ok: false, status: 403, error: "Perfil sem conta vinculada" };
 
-  const { data: fazenda } = await admin
+  const { data: fazenda } = await adminClient()
     .from("fazendas")
     .select("conta_id")
     .eq("id", fazenda_id)
