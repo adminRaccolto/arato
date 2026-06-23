@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       fazenda_estado,
       enviar_email = true,
       whatsapp = null,
+      hub_acesso = null,  // "raccotlo_gestor" | "raccotlo_seletor" | "client" — só para usuários Raccotlo
     } = await req.json();
 
     if (!fazenda_id || !user_nome || !user_email || !user_senha) {
@@ -62,11 +63,17 @@ export async function POST(req: Request) {
       authUserId = authData.user.id;
     }
 
-    // ── 2. Criar perfil (upsert — nunca sobrescreve role raccotlo) ──
+    // ── 2. Criar perfil (upsert) ──
+    // Regra: apenas gino@raccolto.com.br recebe raccotlo automaticamente.
+    // Para outros usuários Raccotlo, o role é definido explicitamente via hub_acesso.
     const { data: perfilExistente } = await supabase.from("perfis").select("role").eq("user_id", authUserId).maybeSingle();
     const emailLower = (user_email ?? "").toLowerCase();
-    const roleFinal = (perfilExistente?.role === "raccotlo" || emailLower.endsWith("@raccolto.com.br"))
-      ? "raccotlo" : "client";
+    const isGino = emailLower === "gino@raccolto.com.br";
+    const roleFinal = isGino
+      ? "raccotlo"
+      : perfilExistente?.role === "raccotlo"
+        ? "raccotlo"                                  // preserva superadmin existente
+        : (hub_acesso ?? "client");                   // usa role explícito ou padrão client
     const { error: perfErr } = await supabase.from("perfis").upsert({
       user_id:    authUserId,
       fazenda_id: fazenda_id,

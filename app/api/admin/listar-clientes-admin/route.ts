@@ -28,8 +28,8 @@ export async function GET() {
 
   // maybeSingle() evita 406 quando perfil não existe
   const { data: perfil } = await admin.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-  const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
-  if (perfil?.role !== "raccotlo" && !isRaccoltoEmail) {
+  const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
+  if (!isGino && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
     return NextResponse.json({ error: "Acesso restrito" }, { status: 403 });
   }
 

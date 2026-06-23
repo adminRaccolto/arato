@@ -471,7 +471,12 @@ CREATE INDEX IF NOT EXISTS idx_nf_entradas_cnpj_destino   ON nf_entradas(fazenda
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- BLOCO 21: RLS grupos_usuarios — isolamento por fazenda (jun/2026)
+-- BLOCO 21: hub_acesso em usuarios — nível de acesso HUB para equipe Raccotlo
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS hub_acesso text;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCO 23: RLS grupos_usuarios — isolamento por fazenda (jun/2026)
 -- Antes: policy "allow_all" com using(true) expunha grupos de todos os clientes
 -- Agora: cada fazenda só enxerga seus próprios grupos
 -- ─────────────────────────────────────────────────────────────────────────────

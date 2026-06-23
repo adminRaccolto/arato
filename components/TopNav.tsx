@@ -813,7 +813,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           </Link>
         )}
 
-        {userRole === "raccotlo" && (
+        {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
             {raccotloGestor && (
               <Link
@@ -845,19 +845,21 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 BI Raccotlo
               </Link>
             )}
-            <Link
-              href="/raccotlo"
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-                background: pathname === "/raccotlo" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.55)", fontWeight: 400,
-                fontSize: 12, whiteSpace: "nowrap",
-                border: "0.5px solid rgba(255,255,255,0.12)",
-              }}
-            >
-              Hub
-            </Link>
+            {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (
+              <Link
+                href="/raccotlo"
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "5px 12px", borderRadius: 6, textDecoration: "none",
+                  background: pathname === "/raccotlo" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.55)", fontWeight: 400,
+                  fontSize: 12, whiteSpace: "nowrap",
+                  border: "0.5px solid rgba(255,255,255,0.12)",
+                }}
+              >
+                Hub
+              </Link>
+            )}
           </div>
         )}
       </nav>

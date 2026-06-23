@@ -19,10 +19,12 @@ export async function GET(req: Request) {
   const { data: { user }, error: authErr } = await db.auth.getUser(token);
   if (authErr || !user) return NextResponse.json({ error: "Token inválido" }, { status: 401 });
 
-  const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
-  if (!isRaccoltoEmail) {
+  const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
+  if (!isGino) {
     const { data: perfil } = await db.from("perfis").select("role").eq("user_id", user.id).maybeSingle();
-    if (perfil?.role !== "raccotlo") return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    if (perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
   }
 
   const [contasRes, fazendasRes] = await Promise.all([

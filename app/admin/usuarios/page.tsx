@@ -347,7 +347,7 @@ export default function AdminUsuarios() {
 
   const [modalUser, setModalUser]   = useState(false);
   const [editUser, setEditUser]     = useState<Usuario | null>(null);
-  const [fUser, setFUser]           = useState({ nome: "", email: "", senha: "Arato@123", grupo_id: "", ativo: true, enviarEmail: true, whatsapp: "" });
+  const [fUser, setFUser]           = useState({ nome: "", email: "", senha: "Arato@123", grupo_id: "", ativo: true, enviarEmail: true, whatsapp: "", hub_acesso: "raccotlo_gestor" });
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [resultadoCriacao, setResultadoCriacao] = useState<{ ok: boolean; emailEnviado?: boolean; erro?: string } | null>(null);
 
@@ -440,7 +440,7 @@ export default function AdminUsuarios() {
   // ── Usuário — abrir modal ──
   const abrirModalUser = (u?: Usuario) => {
     setEditUser(u ?? null);
-    setFUser({ nome: u?.nome ?? "", email: u?.email ?? "", senha: "Arato@123", grupo_id: u?.grupo_id ?? "", ativo: u?.ativo !== false, enviarEmail: true, whatsapp: (u as any)?.whatsapp ?? "" });
+    setFUser({ nome: u?.nome ?? "", email: u?.email ?? "", senha: "Arato@123", grupo_id: u?.grupo_id ?? "", ativo: u?.ativo !== false, enviarEmail: true, whatsapp: (u as any)?.whatsapp ?? "", hub_acesso: (u as any)?.hub_acesso ?? "raccotlo_gestor" });
     setSenhaVisivel(false);
     setResultadoCriacao(null);
     setModalUser(true);
@@ -454,9 +454,14 @@ export default function AdminUsuarios() {
 
     if (editUser) {
       // Edição: só atualiza dados básicos (sem mexer na senha/Auth)
-      const payload = { fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null };
+      const payload = { fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null, hub_acesso: fUser.hub_acesso || null };
       const { error } = await supabase.from("usuarios").update(payload).eq("id", editUser.id);
       if (error) { setErro(error.message); setSalvando(false); return; }
+      // Atualiza role no perfil via API
+      await fetch("/api/admin/atualizar-hub-acesso", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: fUser.email.trim(), hub_acesso: fUser.hub_acesso || "client" }),
+      });
     } else {
       // Novo usuário: chama API que cria Auth + perfil + envia email
       if (!fUser.senha.trim() || fUser.senha.trim().length < 6) {
@@ -479,6 +484,7 @@ export default function AdminUsuarios() {
           fazenda_estado:    fazendaInfo?.estado,
           enviar_email:      fUser.enviarEmail,
           whatsapp:          fUser.whatsapp.trim() || null,
+          hub_acesso:        fUser.hub_acesso || "client",
         }),
       });
       const json = await res.json();
@@ -865,9 +871,23 @@ export default function AdminUsuarios() {
                 )}
 
                 <div>
-                  <label style={lbl}>Grupo de acesso</label>
+                  <label style={lbl}>Acesso HUB Raccotlo *</label>
+                  <select style={inp} value={fUser.hub_acesso} onChange={e => setFUser(p => ({ ...p, hub_acesso: e.target.value }))}>
+                    <option value="raccotlo_gestor">Hub Completo (Gestão Arato + Seletor de Clientes)</option>
+                    <option value="raccotlo_seletor">Seletor de Clientes apenas</option>
+                    <option value="client">Sem Acesso Interno</option>
+                  </select>
+                  <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
+                    {fUser.hub_acesso === "raccotlo_gestor" && "Acessa o painel admin (Gestão Arato) e pode visualizar ambientes de clientes."}
+                    {fUser.hub_acesso === "raccotlo_seletor" && "Pode acessar ambientes de clientes via Seletor, mas não acessa o painel admin."}
+                    {fUser.hub_acesso === "client" && "Nenhum acesso especial Raccotlo. Usuário comum sem painel administrativo."}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={lbl}>Grupo de acesso (opcional)</label>
                   <select style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
-                    <option value="">Sem grupo (sem acesso)</option>
+                    <option value="">Sem grupo</option>
                     {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
                   </select>
                   {fUser.grupo_id && (

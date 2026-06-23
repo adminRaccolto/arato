@@ -28,8 +28,8 @@ export async function POST(req: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
-    if (perfil?.role !== "raccotlo" && !isRaccoltoEmail) {
+    const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
+    if (!isGino && perfil?.role !== "raccotlo" && perfil?.role !== "raccotlo_gestor") {
       return NextResponse.json({ ok: false, error: "Acesso restrito" }, { status: 403 });
     }
 

@@ -160,21 +160,23 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const nome = perfil?.nome || user.email || null;
       setNomeUsuario(nome);
 
-      const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
       const dbRole = (perfil as { role?: string } | null)?.role ?? "client";
-      const role = isRaccoltoEmail ? "raccotlo" : dbRole;
-      setUserRole(role);
-
-      // Garante que o banco reflete o role correto para @raccolto.com.br
-      // Preserva raccotlo_operacional intencionalmente — não sobrescreve
-      if (isRaccoltoEmail && dbRole !== "raccotlo" && dbRole !== "raccotlo_operacional") {
+      // Apenas gino@raccolto.com.br mantém elevação automática para raccotlo.
+      // Todos os outros usuários @raccolto.com.br usam o role definido no banco.
+      const isGino = (user.email ?? "").toLowerCase() === "gino@raccolto.com.br";
+      const role = isGino && dbRole !== "raccotlo" ? "raccotlo" : dbRole;
+      if (isGino && dbRole !== "raccotlo") {
         supabase.from("perfis").update({ role: "raccotlo" }).eq("user_id", user.id).then(() => {});
       }
+      setUserRole(role);
 
-      if (role === "raccotlo") {
-        // Todos os usuários raccotlo têm acesso total (gestor)
-        // raccotlo_operacional existe como sub-role futuro mas não restringe nada por ora
-        setRaccotloGestor(true);
+      // raccotlo / raccotlo_gestor = acesso ao admin panel + seletor
+      // raccotlo_seletor = apenas seletor de clientes
+      const isRaccotloAny = role === "raccotlo" || role === "raccotlo_gestor" || role === "raccotlo_seletor";
+      const isGestor = role === "raccotlo" || role === "raccotlo_gestor";
+      setRaccotloGestor(isGestor);
+
+      if (isRaccotloAny) {
 
         // Usuário interno — usa fazenda salva no localStorage (persiste entre sessões)
         const savedId           = localStorage.getItem("raccotlo_fazenda_id");
