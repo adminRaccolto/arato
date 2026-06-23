@@ -526,8 +526,8 @@ export default function AdminUsuarios() {
         {/* Cabeçalho */}
         <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Usuários & Permissões</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#555" }}>Grupos de acesso com permissões granulares por módulo e ação</p>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Equipe Raccotlo</h1>
+            <p style={{ margin: 0, fontSize: 11, color: "#555" }}>Usuários internos da Raccotlo e seus níveis de acesso ao HUB</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {userRole === "raccotlo" && (
@@ -537,10 +537,8 @@ export default function AdminUsuarios() {
                 + Novo Cliente
               </button>
             )}
-            <button
-              onClick={() => aba === "grupos" ? abrirModalGrupo() : abrirModalUser()}
-              style={{ ...btnV, fontSize: 12 }}>
-              + {aba === "grupos" ? "Novo Grupo" : "Novo Usuário"}
+            <button onClick={() => abrirModalUser()} style={{ ...btnV, fontSize: 12 }}>
+              + Novo Usuário
             </button>
           </div>
         </header>
@@ -553,147 +551,46 @@ export default function AdminUsuarios() {
             </div>
           )}
 
-          {/* Abas */}
-          <div style={{ display: "flex", background: "#fff", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
-            {([
-              { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
-              { key: "usuarios", label: `Usuários (${usuarios.length})`        },
-            ] as { key: typeof aba; label: string }[]).map(a => (
-              <button key={a.key} onClick={() => setAba(a.key)} style={{
-                padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
-                fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
-                color: aba === a.key ? "#1a1a1a" : "#555",
-                borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
-              }}>
-                {a.label}
-              </button>
+          {/* LEGENDA DOS NÍVEIS */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            {[
+              { role: "raccotlo", label: "Superadmin", cor: "#7A5A12", bg: "#FBF3E0", desc: "Acesso total ao sistema" },
+              { role: "raccotlo_gestor", label: "Hub Completo", cor: "#1A4870", bg: "#D5E8F5", desc: "Gestão Arato + Seletor" },
+              { role: "raccotlo_seletor", label: "Seletor", cor: "#378ADD", bg: "#EFF6FF", desc: "Apenas Seletor de Clientes" },
+              { role: "client", label: "Sem Acesso", cor: "#888", bg: "#F3F4F6", desc: "Sem acesso interno" },
+            ].map(n => (
+              <div key={n.role} style={{ padding: "7px 12px", background: n.bg, border: `0.5px solid ${n.cor}40`, borderRadius: 8, fontSize: 11 }}>
+                <span style={{ fontWeight: 700, color: n.cor }}>{n.label}</span>
+                <span style={{ color: "#666", marginLeft: 6 }}>{n.desc}</span>
+              </div>
             ))}
           </div>
 
-          {/* ── ABA: GRUPOS ── */}
-          {aba === "grupos" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 20 }}>
-              {carregando ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando…</div>
-              ) : grupos.length === 0 ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#888" }}>
-                  Nenhum grupo criado. <button onClick={() => abrirModalGrupo()} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14 }}>
-                  {grupos.map(g => {
-                    const res = resumoPerms(g);
-                    const pct = res.total > 0 ? Math.round(res.comAcesso / res.total * 100) : 0;
-                    return (
-                      <div key={g.id} style={{ border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "16px 18px", background: "#fff", display: "flex", flexDirection: "column", gap: 10 }}>
-                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{g.nome}</div>
-                            {g.descricao && <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{g.descricao}</div>}
-                          </div>
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => abrirModalGrupo(g)}
-                              style={{ padding: "4px 10px", background: "#EFF3FA", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
-                              Editar
-                            </button>
-                            <button onClick={() => excluirGrupo(g.id)}
-                              style={{ padding: "4px 10px", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, fontSize: 11, color: "#E24B4A", cursor: "pointer" }}>
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Barra de acesso */}
-                        <div>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", marginBottom: 4 }}>
-                            <span>{res.comAcesso} de {res.total} módulos com acesso</span>
-                            <span style={{ fontWeight: 600 }}>{pct}%</span>
-                          </div>
-                          <div style={{ height: 5, background: "#EFF3FA", borderRadius: 10, overflow: "hidden" }}>
-                            <div style={{ width: pct + "%", height: "100%", background: pct > 80 ? "#1A4870" : pct > 40 ? "#C9921B" : "#378ADD", borderRadius: 10, transition: "width 0.3s" }} />
-                          </div>
-                        </div>
-
-                        {/* Chips de ações */}
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                          {(Object.keys(ACAO_META) as Acao[]).map(acao => {
-                            const qt = MODULOS_PERM.filter(m => (permFromGrupo(g)[m.id] ?? []).includes(acao)).length;
-                            if (qt === 0) return null;
-                            return (
-                              <span key={acao} style={{ fontSize: 10, background: ACAO_META[acao].bg, color: ACAO_META[acao].cor, padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>
-                                {ACAO_META[acao].label} ({qt})
-                              </span>
-                            );
-                          })}
-                        </div>
-
-                        {/* Usuários vinculados */}
-                        <div style={{ fontSize: 11, color: "#555" }}>
-                          {(() => {
-                            const membros = usuarios.filter(u => u.grupo_id === g.id);
-                            return membros.length > 0
-                              ? `${membros.length} usuário${membros.length > 1 ? "s" : ""}: ${membros.map(u => u.nome).join(", ")}`
-                              : <span style={{ color: "#aaa" }}>Nenhum usuário vinculado</span>;
-                          })()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── ABA: USUÁRIOS ── */}
-          {aba === "usuarios" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
-
-              {/* ── Acesso Raccolto (LGPD) ── */}
-              <div style={{
-                margin: "16px 16px 0",
-                borderRadius: 10,
-                border: `1.5px solid ${raccoltoAcesso ? "#1A4870" : "#D4DCE8"}`,
-                background: raccoltoAcesso ? "#EBF3FC" : "#F8FAFD",
-                padding: "14px 18px",
-                display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16,
-              }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: raccoltoAcesso ? "#0B2D50" : "#1a1a1a" }}>
-                      Acesso Raccolto
-                    </span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8,
-                      background: raccoltoAcesso ? "#1A4870" : "#DEE5EE",
-                      color: raccoltoAcesso ? "#fff" : "#666",
-                    }}>
-                      {raccoltoAcesso ? "ATIVO" : "INATIVO"}
-                    </span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
-                    {raccoltoAcesso
-                      ? "A Raccolto possui acesso de visualização aos dados desta fazenda para fins de consultoria e suporte. Você pode revogar este acesso a qualquer momento."
-                      : "Ative para permitir que a equipe Raccolto visualize os dados desta fazenda no painel de gestão exclusivo. Acesso apenas de leitura, conforme LGPD."}
-                  </p>
-                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#888" }}>
-                    Base legal LGPD: Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação a qualquer tempo
-                  </p>
-                </div>
-                <button
-                  onClick={toggleRaccolto}
-                  disabled={salvandoRaccolto}
-                  style={{
-                    flexShrink: 0, padding: "9px 20px", borderRadius: 8,
-                    border: `1.5px solid ${raccoltoAcesso ? "#E24B4A" : "#1A4870"}`,
-                    background: raccoltoAcesso ? "#FCEBEB" : "#1A4870",
-                    color: raccoltoAcesso ? "#791F1F" : "#fff",
-                    fontWeight: 700, fontSize: 13, cursor: salvandoRaccolto ? "wait" : "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {salvandoRaccolto ? "Salvando…" : raccoltoAcesso ? "Desativar Acesso" : "Ativar Usuário Raccolto"}
-                </button>
+          {/* TABELA DE USUÁRIOS (sem abas — só equipe Raccotlo) */}
+          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            {/* placeholder falso para manter compatibilidade de estrutura */}
+            {false && (
+              <div style={{ display: "flex", background: "#fff", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
+                {([
+                  { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
+                  { key: "usuarios", label: `Usuários (${usuarios.length})`        },
+                ] as { key: typeof aba; label: string }[]).map(a => (
+                  <button key={a.key} onClick={() => setAba(a.key)} style={{
+                    padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
+                    fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
+                    color: aba === a.key ? "#1a1a1a" : "#555",
+                    borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
+                  }}>
+                    {a.label}
+                  </button>
+                ))}
               </div>
+            )}
+
+          {/* ── USUÁRIOS ── */}
+          {true && (
+            <div style={{ background: "#fff", border: "none", borderRadius: 12, overflow: "hidden" }}>
+              {/* bloco removido: Acesso Raccolto — pertence ao ambiente do cliente, não ao admin */}
 
               {carregando ? (
                 <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando…</div>
@@ -701,7 +598,7 @@ export default function AdminUsuarios() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#F4F6FA" }}>
-                      {["Nome", "E-mail", "Grupo de Acesso", "Status", ""].map(h => (
+                      {["Nome", "E-mail", "Acesso HUB", "Status", ""].map(h => (
                         <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
                       ))}
                     </tr>
@@ -713,7 +610,11 @@ export default function AdminUsuarios() {
                       </td></tr>
                     )}
                     {usuarios.map((u, i) => {
-                      const grupo = grupos.find(g => g.id === u.grupo_id);
+                      const hub = (u as any).hub_acesso as string | null;
+                      const hubCfg = hub === "raccotlo_gestor"  ? { label: "Hub Completo",   cor: "#1A4870", bg: "#D5E8F5" }
+                                   : hub === "raccotlo_seletor" ? { label: "Seletor",         cor: "#378ADD", bg: "#EFF6FF" }
+                                   : hub === "raccotlo"         ? { label: "Superadmin",      cor: "#7A5A12", bg: "#FBF3E0" }
+                                   :                             { label: "Sem Acesso",        cor: "#888",    bg: "#F3F4F6" };
                       return (
                         <tr key={u.id} style={{ borderBottom: i < usuarios.length - 1 ? "0.5px solid #F0F3F8" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                           <td style={{ padding: "11px 16px", fontWeight: 500, color: "#1a1a1a" }}>
@@ -726,9 +627,7 @@ export default function AdminUsuarios() {
                           </td>
                           <td style={{ padding: "11px 16px", color: "#555" }}>{u.email}</td>
                           <td style={{ padding: "11px 16px" }}>
-                            {grupo
-                              ? <span style={{ fontSize: 11, background: "#EFF3FA", color: "#1A4870", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{grupo.nome}</span>
-                              : <span style={{ fontSize: 11, color: "#aaa" }}>Sem grupo</span>}
+                            <span style={{ fontSize: 11, background: hubCfg.bg, color: hubCfg.cor, padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{hubCfg.label}</span>
                           </td>
                           <td style={{ padding: "11px 16px" }}>
                             <span style={{ fontSize: 11, background: u.ativo !== false ? "#DCFCE7" : "#F1F5F9", color: u.ativo !== false ? "#16A34A" : "#888", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>
@@ -755,59 +654,10 @@ export default function AdminUsuarios() {
               )}
             </div>
           )}
+
+          </div>
         </div>
       </main>
-
-      {/* ── Modal Grupo ── */}
-      {modalGrupo && (
-        <Modal titulo={editGrupo ? `Editar Grupo — ${editGrupo.nome}` : "Novo Grupo de Acesso"} onClose={() => setModalGrupo(false)} width={960}>
-          <div style={{ display: "grid", gap: 18 }}>
-
-            {/* Dados básicos */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div><label style={lbl}>Nome do grupo *</label><input style={inp} value={fGrupo.nome} onChange={e => setFGrupo(p => ({ ...p, nome: e.target.value }))} placeholder="Ex: Equipe de Campo" /></div>
-              <div><label style={lbl}>Descrição</label><input style={inp} value={fGrupo.descricao} onChange={e => setFGrupo(p => ({ ...p, descricao: e.target.value }))} placeholder="Opcional" /></div>
-            </div>
-
-            {/* Perfis predefinidos */}
-            <div>
-              <label style={lbl}>Perfil predefinido — clique para aplicar na matriz abaixo</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                {Object.entries(PERFIS_PRESET).map(([id, p]) => (
-                  <button key={id} onClick={() => aplicarPreset(id)}
-                    style={{ padding: "6px 14px", border: `1.5px solid ${presetAtivo === id ? p.cor : p.cor + "40"}`, borderRadius: 8, background: presetAtivo === id ? p.cor + "18" : p.cor + "08", color: p.cor, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    {presetAtivo === id ? "✓ " : ""}{p.label}
-                  </button>
-                ))}
-                <button onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
-                  style={{ padding: "6px 14px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#F4F6FA", color: "#555", fontSize: 12, cursor: "pointer" }}>
-                  Limpar tudo
-                </button>
-              </div>
-              {presetAtivo && PERFIS_PRESET[presetAtivo] && (
-                <div style={{ padding: "8px 12px", background: PERFIS_PRESET[presetAtivo].cor + "08", border: `0.5px solid ${PERFIS_PRESET[presetAtivo].cor}30`, borderRadius: 8, fontSize: 11, color: "#444" }}>
-                  <strong style={{ color: PERFIS_PRESET[presetAtivo].cor }}>{PERFIS_PRESET[presetAtivo].label}:</strong> {PERFIS_PRESET[presetAtivo].descricao}
-                </div>
-              )}
-            </div>
-
-            {/* Matriz de permissões */}
-            <div>
-              <label style={{ ...lbl, fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>Matriz de Permissões</label>
-              <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden" }}>
-                <MatrizPermissoes perms={permGrupo} onChange={setPermGrupo} />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, paddingTop: 16, borderTop: "0.5px solid #DEE5EE" }}>
-            <button style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>
-              {salvando ? "Salvando…" : "Salvar Grupo"}
-            </button>
-          </div>
-        </Modal>
-      )}
 
       {/* ── Modal Usuário ── */}
       {modalUser && (
@@ -882,24 +732,6 @@ export default function AdminUsuarios() {
                     {fUser.hub_acesso === "raccotlo_seletor" && "Pode acessar ambientes de clientes via Seletor, mas não acessa o painel admin."}
                     {fUser.hub_acesso === "client" && "Nenhum acesso especial Raccotlo. Usuário comum sem painel administrativo."}
                   </div>
-                </div>
-
-                <div>
-                  <label style={lbl}>Grupo de acesso (opcional)</label>
-                  <select style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
-                    <option value="">Sem grupo</option>
-                    {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
-                  </select>
-                  {fUser.grupo_id && (
-                    <div style={{ marginTop: 6, padding: "8px 12px", background: "#EFF3FA", borderRadius: 8, fontSize: 11, color: "#555" }}>
-                      {(() => {
-                        const g = grupos.find(x => x.id === fUser.grupo_id)!;
-                        if (!g) return null;
-                        const res = resumoPerms(g);
-                        return `${g.nome}: acesso a ${res.comAcesso} de ${res.total} módulos`;
-                      })()}
-                    </div>
-                  )}
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
