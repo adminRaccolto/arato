@@ -384,20 +384,22 @@ export default function ClientesPage() {
     const statusInicial = pacote === "pro_bono" ? "pro_bono" : "ativo";
     const valor = pacote === "pro_bono" ? 0 : (PACOTE_CFG[pacote as keyof typeof PACOTE_CFG]?.valor ?? 0);
     try {
-      const { data: novaConta, error } = await supabase.from("contas").insert({
-        nome: c.nome,
-        tipo: c.tipo ?? "pf",
-        status: statusInicial,
-        pacote: pacote === "pro_bono" ? "essencial" : pacote,
-        valor_mensalidade: valor,
-        data_inicio: new Date().toISOString().split("T")[0],
-      }).select().single();
-      if (error || !novaConta) { alert("Erro ao criar conta: " + error?.message); return; }
-      // Vincular as fazendas à nova conta
-      for (const faz of c._fazendas_prod) {
-        await supabase.from("fazendas").update({ conta_id: novaConta.id }).eq("id", faz.id);
-      }
-      alert(`Conta criada com sucesso para "${c.nome}"! ID: ${novaConta.id}\n\nAjuste os detalhes clicando em ✎ Editar.`);
+      const res = await fetch("/api/admin/criar-conta-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: c.nome,
+          tipo: c.tipo ?? "pf",
+          status: statusInicial,
+          pacote: pacote === "pro_bono" ? "essencial" : pacote,
+          valor_mensalidade: valor,
+          data_inicio: new Date().toISOString().split("T")[0],
+          fazenda_ids: c._fazendas_prod.map(f => f.id),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) { alert("Erro ao criar conta: " + (data.error ?? "Erro desconhecido")); return; }
+      alert(`Conta criada com sucesso para "${c.nome}"! ID: ${data.conta.id}\n\nAjuste os detalhes clicando em ✎ Editar.`);
       await carregar();
     } catch (e) {
       alert("Erro: " + String(e));
