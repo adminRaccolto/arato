@@ -1258,7 +1258,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   }),
 ];
 
-// ── Seeder principal ──────────────────────────────────────────────────────────
+// ── Seeder para fazenda específica ───────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function seedOperacoesGerenciais(fazenda_id: string, client?: any): Promise<{ inseridos: number }> {
@@ -1279,6 +1279,35 @@ export async function seedOperacoesGerenciais(fazenda_id: string, client?: any):
   }
 
   return { inseridos: rows.length };
+}
+
+// ── Seeder para templates do sistema (fazenda_id = NULL) ──────────────────────
+// Usado pelo painel admin Raccolto — Padrões do Sistema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function seedOperacoesGerenciaisTemplate(client?: any): Promise<{ inseridos: number }> {
+  const db = client ?? supabase;
+
+  // Limpa templates existentes (fazenda_id IS NULL)
+  const { error: delErr } = await db
+    .from("operacoes_gerenciais")
+    .delete()
+    .is("fazenda_id", null);
+  if (delErr) throw new Error(`Erro ao limpar templates: ${delErr.message}`);
+
+  const rows = OPERACOES_GERENCIAIS_PADRAO.map((op: SeedOp) => ({ ...op, fazenda_id: null }));
+
+  for (let i = 0; i < rows.length; i += 30) {
+    const lote = rows.slice(i, i + 30);
+    const { error } = await db.from("operacoes_gerenciais").insert(lote);
+    if (error) throw new Error(`Erro ao inserir lote ${i}: ${error.message}`);
+  }
+
+  return { inseridos: rows.length };
+}
+
+/** Retorna as operações padrão (sem banco) — para uso em memória */
+export function getOperacoesPadrao() {
+  return OPERACOES_GERENCIAIS_PADRAO;
 }
 
 // ── Mapeamento classificação → categoria DRE ─────────────────────────────────

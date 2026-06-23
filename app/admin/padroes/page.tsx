@@ -59,12 +59,16 @@ export default function PadroesPage() {
   const [formErr, setFormErr] = useState("");
   const [deletandoId, setDeletandoId] = useState<string | null>(null);
 
+  // Seed padrões
+  const [seeding, setSeeding] = useState(false);
+
   // Painel de sincronização
   const [syncOpen,    setSyncOpen]    = useState(false);
   const [syncSelect,  setSyncSelect]  = useState<Set<string>>(new Set());
   const [syncing,     setSyncing]     = useState(false);
   const [syncResult,  setSyncResult]  = useState<ResultadoSync[] | null>(null);
   const [syncErr,     setSyncErr]     = useState("");
+  const [syncBanner,  setSyncBanner]  = useState<string | null>(null);
 
   // ── Carregar ────────────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
@@ -77,6 +81,28 @@ export default function PadroesPage() {
     setFazendas(faz ?? []);
     setLoading(false);
   }, []);
+
+  // ── Carregar padrões do sistema ─────────────────────────────────────────────
+  async function carregarPadroes() {
+    if (!confirm(`Isso vai substituir TODOS os templates atuais (${templates.length} operações) pelo plano padrão do sistema. Continuar?`)) return;
+    setSeeding(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const res = await fetch("/api/admin/seed-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Erro desconhecido");
+      await carregar();
+      setSyncBanner(`✓ ${data.inseridos} operações padrão carregadas. Clique em "Sincronizar" para propagar aos clientes.`);
+    } catch (e) {
+      alert("Erro ao carregar padrões: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -111,6 +137,7 @@ export default function PadroesPage() {
       }
       await carregar();
       setModal(null);
+      setSyncBanner(`✓ Operação ${modal === "novo" ? "criada" : "atualizada"}. Lembre-se de clicar em "Sincronizar" para propagar aos clientes.`);
     } catch (e) {
       setFormErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -125,6 +152,7 @@ export default function PadroesPage() {
     await supabase.from("operacoes_gerenciais").delete().eq("id", id);
     setDeletandoId(null);
     await carregar();
+    setSyncBanner("✓ Operação excluída do template. Lembre-se de clicar em \"Sincronizar\" para propagar a alteração.");
   }
 
   // ── Sincronizar ─────────────────────────────────────────────────────────────
@@ -166,11 +194,38 @@ export default function PadroesPage() {
 
       {/* Cabeçalho */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Padrões do Sistema</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Padrões do Sistema</div>
+          <button
+            onClick={carregarPadroes}
+            disabled={seeding}
+            style={{ padding: "8px 18px", background: "#FBF3E0", color: "#7A5A10", border: "0.5px solid #C9921B", borderRadius: 8, fontWeight: 600, cursor: seeding ? "not-allowed" : "pointer", fontSize: 13, opacity: seeding ? 0.6 : 1 }}
+          >
+            {seeding ? "Carregando…" : "↺ Carregar Plano Padrão"}
+          </button>
+        </div>
         <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
           Cadastros de base que podem ser sincronizados com os clientes. Alterações aqui não afetam clientes automaticamente — use "Sincronizar" para propagar.
         </div>
       </div>
+
+      {/* Banner de aviso de sincronização */}
+      {syncBanner && (
+        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ fontSize: 13, color: "#7A5A10", fontWeight: 500 }}>{syncBanner}</span>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => { setSyncBanner(null); setSyncSelect(new Set(fazendas.map(f => f.id))); sincronizar(); }}
+              style={{ padding: "5px 14px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 6, fontWeight: 600, cursor: "pointer", fontSize: 12 }}
+            >
+              Sincronizar agora →
+            </button>
+            <button onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#666" }}>
+              Depois
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Abas de módulo (por enquanto só Operações Gerenciais) */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
