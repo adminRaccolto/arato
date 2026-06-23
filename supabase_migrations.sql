@@ -2,6 +2,16 @@
 -- RacTech — Migrations pendentes
 -- Execute no Supabase SQL Editor (em ordem)
 -- ============================================================
+--
+-- NOVA INSTALAÇÃO — execute a Seção 121 PRIMEIRO, antes de qualquer
+-- outra coisa. Ela remove constraints rígidos de "IN (lista)" que
+-- causam erros ao inserir valores válidos que não estavam na lista.
+-- Depois execute as demais seções em ordem crescente.
+--
+-- INSTALAÇÃO EXISTENTE — execute apenas as seções novas (> última
+-- seção já executada). A Seção 121 é segura para re-executar
+-- (DROP CONSTRAINT IF EXISTS não falha se já foi removido).
+-- ============================================================
 
 -- ────────────────────────────────────────────────────────────
 -- 1. TABELAS AUXILIARES (dados mestres)
@@ -6514,6 +6524,17 @@ ALTER TABLE nf_entradas
 CREATE INDEX IF NOT EXISTS idx_nf_entradas_ano_safra ON nf_entradas(ano_safra_id);
 CREATE INDEX IF NOT EXISTS idx_nf_entradas_ciclo ON nf_entradas(ciclo_id);
 CREATE INDEX IF NOT EXISTS idx_nf_entradas_cnpj_destino ON nf_entradas(fazenda_id, cnpj_destino);
+
+-- ============================================================
+-- Seção 121 — Remove check constraints rígidos de lista de valores
+-- Motivo: constraints de IN (lista fixa) exigem migration a cada vez
+-- que o código adiciona um novo valor válido. A validação fica no
+-- TypeScript (types em lib/supabase.ts) e na UI (selects).
+-- ============================================================
+ALTER TABLE insumos              DROP CONSTRAINT IF EXISTS insumos_unidade_check;
+ALTER TABLE insumos              DROP CONSTRAINT IF EXISTS insumos_categoria_check;
+ALTER TABLE nf_entrada_itens     DROP CONSTRAINT IF EXISTS nf_entrada_itens_unidade_check;
+ALTER TABLE movimentacoes_estoque DROP CONSTRAINT IF EXISTS movimentacoes_estoque_unidade_check;
 
 NOTIFY pgrst, 'reload schema';
 
