@@ -335,7 +335,7 @@ export default function UsuariosPermissoes() {
     if (!fazendaId) return;
     setCarregando(true);
     Promise.all([
-      supabase.from("grupos_usuarios").select("*").order("nome"),
+      supabase.from("grupos_usuarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
     ]).then(([{ data: gs }, { data: us }]) => {
       setGrupos((gs ?? []) as GrupoUsuario[]);
@@ -354,12 +354,12 @@ export default function UsuariosPermissoes() {
   const salvarGrupo = async () => {
     if (!fGrupo.nome.trim()) return;
     setSalvando(true);
-    const payload = { nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: permGrupo };
+    const payload = { fazenda_id: fazendaId, nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: permGrupo };
     const { error } = editGrupo
       ? await supabase.from("grupos_usuarios").update(payload).eq("id", editGrupo.id)
       : await supabase.from("grupos_usuarios").insert(payload);
     if (error) { setErro(error.message); setSalvando(false); return; }
-    const { data } = await supabase.from("grupos_usuarios").select("*").order("nome");
+    const { data } = await supabase.from("grupos_usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
     setGrupos((data ?? []) as GrupoUsuario[]);
     setModalGrupo(false);
     setSalvando(false);

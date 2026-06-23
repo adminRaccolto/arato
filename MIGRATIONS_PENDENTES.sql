@@ -471,6 +471,55 @@ CREATE INDEX IF NOT EXISTS idx_nf_entradas_cnpj_destino   ON nf_entradas(fazenda
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- BLOCO 21: RLS grupos_usuarios — isolamento por fazenda (jun/2026)
+-- Antes: policy "allow_all" com using(true) expunha grupos de todos os clientes
+-- Agora: cada fazenda só enxerga seus próprios grupos
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE grupos_usuarios ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "allow_all_grupos_usuarios" ON grupos_usuarios;
+
+CREATE POLICY "grupos_usuarios_select" ON grupos_usuarios
+  FOR SELECT USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      INNER JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "grupos_usuarios_insert" ON grupos_usuarios
+  FOR INSERT WITH CHECK (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      INNER JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "grupos_usuarios_update" ON grupos_usuarios
+  FOR UPDATE USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      INNER JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+CREATE POLICY "grupos_usuarios_delete" ON grupos_usuarios
+  FOR DELETE USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      INNER JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+-- ─────────────────────────────────────────────────────────────────────────────
 NOTIFY pgrst, 'reload schema';
 -- =============================================================================
 -- FIM — execute este arquivo no Supabase SQL Editor
