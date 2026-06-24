@@ -331,17 +331,22 @@ export default function UsuariosPermissoes() {
     setSalvandoRaccolto(false);
   };
 
+  // Carrega grupos via API route (service_role_key) para evitar bloqueio por JWT expirado
+  const carregarGrupos = async (fid: string) => {
+    const res = await fetch(`/api/grupos-usuarios?fazenda_id=${fid}`);
+    const json = await res.json();
+    setGrupos((json.data ?? []) as GrupoUsuario[]);
+  };
+
   useEffect(() => {
     if (!fazendaId) return;
     setCarregando(true);
     Promise.all([
-      supabase.from("grupos_usuarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
-    ]).then(([{ data: gs }, { data: us }]) => {
-      setGrupos((gs ?? []) as GrupoUsuario[]);
-      setUsuarios((us ?? []) as Usuario[]);
-    }).finally(() => setCarregando(false));
-  }, [fazendaId]);
+      carregarGrupos(fazendaId),
+      supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome")
+        .then(({ data: us }) => setUsuarios((us ?? []) as Usuario[])),
+    ]).finally(() => setCarregando(false));
+  }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const abrirModalGrupo = (g?: GrupoUsuario) => {
     setEditGrupo(g ?? null);
@@ -352,22 +357,25 @@ export default function UsuariosPermissoes() {
   };
 
   const salvarGrupo = async () => {
-    if (!fGrupo.nome.trim()) return;
+    if (!fGrupo.nome.trim() || !fazendaId) return;
     setSalvando(true);
     const payload = { fazenda_id: fazendaId, nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: permGrupo };
-    const { error } = editGrupo
-      ? await supabase.from("grupos_usuarios").update(payload).eq("id", editGrupo.id)
-      : await supabase.from("grupos_usuarios").insert(payload);
-    if (error) { setErro(error.message); setSalvando(false); return; }
-    const { data } = await supabase.from("grupos_usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
-    setGrupos((data ?? []) as GrupoUsuario[]);
+
+    const res = editGrupo
+      ? await fetch("/api/grupos-usuarios", { method: "PUT",    headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: editGrupo.id, ...payload }) })
+      : await fetch("/api/grupos-usuarios", { method: "POST",   headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+
+    const json = await res.json();
+    if (!res.ok || json.error) { setErro(json.error ?? "Erro ao salvar grupo."); setSalvando(false); return; }
+
+    await carregarGrupos(fazendaId);
     setModalGrupo(false);
     setSalvando(false);
   };
 
   const excluirGrupo = async (id: string) => {
     if (!confirm("Excluir este grupo? Os usuários vinculados perderão o grupo.")) return;
-    await supabase.from("grupos_usuarios").delete().eq("id", id);
+    await fetch(`/api/grupos-usuarios?id=${id}`, { method: "DELETE" });
     setGrupos(prev => prev.filter(g => g.id !== id));
   };
 
