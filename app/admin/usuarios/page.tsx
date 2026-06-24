@@ -382,17 +382,17 @@ export default function AdminUsuarios() {
     setCriandoCliente(false);
   }
 
-  useEffect(() => {
-    if (!fazendaId) return;
+  // Carrega equipe Raccotlo de perfis (via API route com service_role_key)
+  const carregarEquipe = () => {
     setCarregando(true);
-    Promise.all([
-      supabase.from("grupos_usuarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome"),
-    ]).then(([{ data: gs }, { data: us }]) => {
-      setGrupos((gs ?? []) as GrupoUsuario[]);
-      setUsuarios((us ?? []) as Usuario[]);
-    }).finally(() => setCarregando(false));
-  }, [fazendaId]);
+    fetch("/api/admin/equipe-raccotlo")
+      .then(r => r.json())
+      .then(json => setUsuarios((json.data ?? []) as Usuario[]))
+      .catch(() => setUsuarios([]))
+      .finally(() => setCarregando(false));
+  };
+
+  useEffect(() => { carregarEquipe(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Grupo — abrir modal ──
   const abrirModalGrupo = (g?: GrupoUsuario) => {
@@ -493,19 +493,15 @@ export default function AdminUsuarios() {
       setResultadoCriacao({ ok: true, emailEnviado: json.email_enviado });
     }
 
-    // Recarrega lista usando a fazenda do admin (pode ser null — lista vazia é ok)
-    if (fazendaId) {
-      const { data } = await supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
-      setUsuarios((data ?? []) as Usuario[]);
-    }
+    carregarEquipe();
     if (editUser) setModalUser(false);
     setSalvando(false);
   };
 
-  // ── Usuário — excluir ──
+  // ── Usuário — revogar acesso raccotlo (muda role para 'client') ──
   const excluirUser = async (id: string) => {
-    if (!confirm("Excluir este usuário?")) return;
-    await supabase.from("usuarios").delete().eq("id", id);
+    if (!confirm("Revogar acesso raccotlo deste usuário?")) return;
+    await fetch(`/api/admin/equipe-raccotlo?user_id=${id}`, { method: "DELETE" });
     setUsuarios(prev => prev.filter(u => u.id !== id));
   };
 
