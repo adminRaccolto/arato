@@ -289,12 +289,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [produtorNome,     setProdutorNome]     = useState<string | null>(null);
   const [logoArato,        setLogoArato]        = useState<string | null>(null);
   const [nomeArato,        setNomeArato]        = useState("Arato");
-  const [fazendas,         setFazendas]         = useState<Fazenda[]>([]);
-  const [farmSwitcherOpen, setFarmSwitcherOpen] = useState(false);
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
 
   const pathname = usePathname();
-  const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, setFazendaAtiva, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
+  const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -324,11 +322,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       .then(({ count }) => setQtdPendencias(count ?? 0));
   }, [fazendaId, pathname]);
 
-  useEffect(() => {
-    if (!contaId) return;
-    supabase.from("fazendas").select("*").eq("conta_id", contaId).order("nome")
-      .then(({ data }) => { if (data) setFazendas(data); });
-  }, [contaId]);
 
   useEffect(() => {
     // Logo do sistema: lida do Supabase Storage (bucket "logos", arquivo "arato.png")
@@ -342,7 +335,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setDropdown(null);
         setOpenSub(null);
-        setFarmSwitcherOpen(false);
       }
     }
     document.addEventListener("mousedown", onClickOutside);
@@ -530,10 +522,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {fazenda && (
             <div style={{ position: "relative" }}>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: 10, cursor: fazendas.length > 1 ? "pointer" : "default", borderRadius: 8, padding: "4px 8px", background: farmSwitcherOpen ? "#F3F6F9" : "transparent" }}
-                onClick={() => fazendas.length > 1 && setFarmSwitcherOpen(o => !o)}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderRadius: 8, padding: "4px 8px" }}>
                 {logoCliente ? (
                   <img src={logoCliente} alt="Logo fazenda" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", border: "0.5px solid #D4DCE8" }} />
                 ) : (
@@ -551,33 +540,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                     {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
                   </div>
                 </div>
-                {fazendas.length > 1 && (
-                  <span style={{ fontSize: 10, color: "#888", transform: farmSwitcherOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.15s" }}>▼</span>
-                )}
               </div>
-              {farmSwitcherOpen && fazendas.length > 1 && (
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 220, zIndex: 1100, overflow: "hidden" }}>
-                  <div style={{ padding: "6px 12px 4px", fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Trocar fazenda</div>
-                  {fazendas.map(f => (
-                    <div
-                      key={f.id}
-                      onClick={() => { setFazendaAtiva(f.id, f.nome); setFarmSwitcherOpen(false); }}
-                      style={{ padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: f.id === fazendaId ? "#EAF3FB" : "transparent" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = f.id === fazendaId ? "#EAF3FB" : "#F3F6F9")}
-                      onMouseLeave={e => (e.currentTarget.style.background = f.id === fazendaId ? "#EAF3FB" : "transparent")}
-                    >
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#F3F6F9", border: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1A4870", flexShrink: 0 }}>
-                        {f.nome.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: f.id === fazendaId ? 700 : 500, color: "#1a1a1a" }}>{f.nome}</div>
-                        <div style={{ fontSize: 10, color: "#666" }}>{f.municipio} · {f.estado}</div>
-                      </div>
-                      {f.id === fazendaId && <span style={{ marginLeft: "auto", fontSize: 10, color: "#1A4870" }}>✓</span>}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
