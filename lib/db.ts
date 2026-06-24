@@ -113,18 +113,24 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
 }
 
 export async function criarFazenda(f: Omit<Fazenda, "id" | "created_at">): Promise<Fazenda> {
-  const { data, error } = await supabase.from("fazendas").insert(f).select().single();
-  if (error) throw error;
-  if (!data) throw new Error("Fazenda não foi criada — verifique as permissões (RLS) no Supabase.");
-  return data;
+  const res = await fetch("/api/fazenda/salvar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(f),
+  });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error ?? "Erro ao criar fazenda.");
+  return json.data as Fazenda;
 }
 
 export async function atualizarFazenda(id: string, f: Partial<Fazenda>): Promise<void> {
-  const { data, error } = await supabase.from("fazendas").update(f).eq("id", id).select();
-  if (error) throw error;
-  if (!data || data.length === 0) {
-    throw new Error("Fazenda não foi salva — sem permissão para editar este registro (RLS). Execute a Seção 113 no Supabase SQL Editor.");
-  }
+  const res = await fetch("/api/fazenda/salvar", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, ...f }),
+  });
+  const json = await res.json();
+  if (!res.ok || json.error) throw new Error(json.error ?? "Erro ao salvar fazenda.");
 }
 
 export async function excluirFazenda(id: string): Promise<void> {
