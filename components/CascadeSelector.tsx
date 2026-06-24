@@ -51,60 +51,50 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   const [ciclos,     setCiclos]     = useState<CicloRow[]>([]);
   const [talhoes,    setTalhoes]    = useState<Row[]>([]);
 
-  // 1. Carrega produtores da conta (ou pelo owner da fazenda quando contaId é null)
+  // 1. Carrega produtores via API route (service_role_key — imune a JWT expirado)
   useEffect(() => {
-    if (contaId) {
-      supabase.from("produtores").select("id, nome").eq("conta_id", contaId).order("nome")
-        .then(({ data }) => setProdutores(data ?? []));
+    const params = new URLSearchParams();
+    if (contaId && !contaId.startsWith("sem_conta_")) {
+      params.set("conta_id", contaId);
     } else if (fazendaIdFallback) {
-      // Admin raccotlo sem conta real — busca produtores pelo owner_user_id da fazenda
-      supabase.from("fazendas").select("owner_user_id").eq("id", fazendaIdFallback).maybeSingle()
-        .then(({ data: fz }) => {
-          if (!fz?.owner_user_id) return;
-          supabase.from("produtores").select("id, nome").eq("owner_user_id", fz.owner_user_id).order("nome")
-            .then(({ data }) => setProdutores(data ?? []));
-        });
+      params.set("fazenda_id", fazendaIdFallback);
+    } else {
+      setProdutores([]);
+      return;
     }
+    fetch(`/api/produtores/listar?${params}`)
+      .then(r => r.ok ? r.json() : { produtores: [] })
+      .then(json => setProdutores((json.produtores ?? []).map((p: { id: string; nome: string }) => ({ id: p.id, nome: p.nome }))))
+      .catch(() => setProdutores([]));
   }, [contaId, fazendaIdFallback]);
 
-  // 2. Carrega fazendas quando Produtor muda (sem produtor = todas da conta)
+  // 2. Carrega fazendas via API route (service_role_key)
   useEffect(() => {
-    if (contaId) {
-      // Tem conta real — filtra fazendas por conta (e por produtor se selecionado)
-      const qAll = supabase.from("fazendas").select("id, nome").eq("conta_id", contaId).order("nome");
-      if (values.produtorId) {
-        supabase.from("fazendas").select("id, nome")
-          .eq("conta_id", contaId).eq("produtor_id", values.produtorId).order("nome")
-          .then(({ data, error }) => {
-            if (error || !data || data.length === 0) {
-              qAll.then(({ data: all }) => setFazendas(all ?? []));
-            } else {
-              setFazendas(data);
-            }
-          });
-      } else {
-        qAll.then(({ data }) => setFazendas(data ?? []));
-      }
-    } else if (fazendaIdFallback) {
-      // Sem conta real (admin raccotlo vendo cliente sem backfill) — expande via owner_user_id
-      supabase.from("fazendas").select("id, nome, owner_user_id, conta_id").eq("id", fazendaIdFallback).maybeSingle()
-        .then(({ data: fz }) => {
-          if (!fz) { setFazendas([]); return; }
-          // Tenta expandir para toda a conta ou todo o owner
-          const expandQ = fz.conta_id && !fz.conta_id.startsWith("sem_conta_")
-            ? supabase.from("fazendas").select("id, nome").eq("conta_id", fz.conta_id).order("nome")
-            : fz.owner_user_id
-              ? supabase.from("fazendas").select("id, nome").eq("owner_user_id", fz.owner_user_id).order("nome")
-              : null;
-          if (expandQ) {
-            expandQ.then(({ data }) => setFazendas(data ?? [{ id: fz.id, nome: (fz as { nome?: string }).nome ?? "" }]));
-          } else {
-            setFazendas([{ id: fz.id, nome: (fz as { nome?: string }).nome ?? "" }]);
+    const cidReal = contaId && !contaId.startsWith("sem_conta_") ? contaId : null;
+    if (!cidReal && !fazendaIdFallback) { setFazendas([]); return; }
+
+    fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conta_id: cidReal, fazenda_id: fazendaIdFallback }),
+    })
+      .then(r => r.ok ? r.json() : { fazendas: [] })
+      .then(json => {
+        let fzs: Row[] = (json.fazendas ?? []).map((f: { id: string; nome: string }) => ({ id: f.id, nome: f.nome }));
+
+        // Filtrar por produtor selecionado se houver
+        // (fazendas sem produtor_id vinculado aparecem para todos os produtores)
+        if (values.produtorId) {
+          const comProdutor = (json.fazendas ?? []).filter((f: { produtor_id?: string }) => f.produtor_id === values.produtorId);
+          if (comProdutor.length > 0) {
+            fzs = comProdutor.map((f: { id: string; nome: string }) => ({ id: f.id, nome: f.nome }));
           }
-        });
-    } else {
-      setFazendas([]);
-    }
+        }
+
+        fzs.sort((a, b) => a.nome.localeCompare(b.nome));
+        setFazendas(fzs);
+      })
+      .catch(() => setFazendas([]));
   }, [values.produtorId, contaId, fazendaIdFallback]);
 
   // 3. Carrega Anos Safra quando Fazenda muda
@@ -125,7 +115,6 @@ export default function CascadeSelector({ contaId, fazendaIdFallback, values, on
   }, [values.fazendaId, values.anoSafraId]);
 
   function sel(field: keyof CascadeValues, id: string) {
-    // Ao mudar um nível, limpa os níveis abaixo
     const reset: Partial<CascadeValues> = {};
     if (field === "produtorId") { reset.fazendaId = ""; reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
     if (field === "fazendaId")  { reset.anoSafraId = ""; reset.cicloId = ""; reset.talhaoId = ""; }
