@@ -26,8 +26,8 @@ export default function AlterarSenha() {
     // 2. Limpar a flag de troca obrigatória
     await supabase.auth.updateUser({ data: { must_change_password: false } });
 
-    router.push("/");
-    router.refresh();
+    // Força reload completo para o AuthProvider reiniciar o init() do zero
+    window.location.href = "/";
   }
 
   return (
