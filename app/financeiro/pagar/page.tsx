@@ -227,6 +227,7 @@ function ContasPagarInner() {
       quantidade_mao_obra:   l.quantidade_mao_obra?.toString() ?? "",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
+    carregarOps();
     setModalNovo(true);
   }
 
@@ -304,9 +305,8 @@ function ContasPagarInner() {
     }
   }, [contaId, fazendaId, periodoInicio, periodoFim]);
 
-  useEffect(() => {
+  const carregarOps = () => {
     if (!contaId && !fazendaId) return;
-    listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     listarOperacoesGerenciaisAtivasDaConta({ tipo: "despesa", permite: "cp_cr" }, fazendaId).then(ops =>
       setOpGerenciais(ops.filter(o => {
         const cls = o.classificacao ?? "";
@@ -315,6 +315,12 @@ function ContasPagarInner() {
         return true;
       }))
     ).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!contaId && !fazendaId) return;
+    listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
+    carregarOps();
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     if (contaId) listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(() => {});
     else if (fazendaId) listarProdutoresViaFazenda(fazendaId).then(setProdutores).catch(() => {});
@@ -760,6 +766,7 @@ function ContasPagarInner() {
               setOpGerBusca("");
               setArquivoNF(null);
               setErrosForm([]);
+              carregarOps();
               setModalNovo(true);
             }}
               style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginLeft: 4 }}

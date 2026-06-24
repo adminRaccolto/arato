@@ -3376,10 +3376,21 @@ export async function listarOperacoesGerenciaisAtivasDaConta(
   if (filtro?.permite === "estoque")       q = q.eq("permite_estoque", true);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []).filter(op =>
+
+  const comPermissao = (data ?? []).filter(op =>
     op.permite_cp_cr || op.permite_notas_fiscais || op.permite_tesouraria ||
     op.permite_adiantamentos || op.permite_baixas || op.permite_estoque
   );
+
+  // Deduplica por classificação: mesma operação pode existir em múltiplas fazendas da conta
+  // (resultado de seed de templates). Mantém a primeira ocorrência por código.
+  const seen = new Set<string>();
+  return comPermissao.filter(op => {
+    const key = op.classificacao ?? op.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ── CFOP Fiscal ──────────────────────────────────────────────────────────────

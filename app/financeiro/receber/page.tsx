@@ -186,6 +186,7 @@ export default function ContasReceber() {
       meses_diferido:        "0",
     });
     setCascade({ produtorId: l.produtor_id ?? "", fazendaId: l.fazenda_id ?? fazendaId ?? "", anoSafraId: l.ano_safra_id ?? "", cicloId: l.ciclo_id ?? "", talhaoId: l.talhao_id ?? "" });
+    carregarOps();
     setModalNovo(true);
   }
 
@@ -244,10 +245,15 @@ export default function ContasReceber() {
     }
   }, [contaId, fazendaId, periodoInicio, periodoFim]);
 
+  const carregarOps = () => {
+    if (!contaId && !fazendaId) return;
+    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }, fazendaId).then(setOpGerenciais).catch(() => {});
+  };
+
   useEffect(() => {
     if (!contaId && !fazendaId) return;
     listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
-    listarOperacoesGerenciaisAtivasDaConta({ tipo: "receita", permite: "cp_cr" }, fazendaId).then(setOpGerenciais).catch(() => {});
+    carregarOps();
     listarContasBancariasDaConta(fazendaId).then(setContas).catch(() => {});
     if (contaId) listarProdutoresDaConta(contaId, fazendaId ?? undefined).then(setProdutores).catch(() => {});
     else if (fazendaId) listarProdutoresViaFazenda(fazendaId).then(setProdutores).catch(() => {});
@@ -609,7 +615,7 @@ export default function ContasReceber() {
                 onChange={e => setPeriodoFim(e.target.value)}
                 style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
               <button
-                onClick={() => { setCascade({}); setModalTab("principal"); setModalNovo(true); }}
+                onClick={() => { setCascade({}); setModalTab("principal"); carregarOps(); setModalNovo(true); }}
                 style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginLeft: 4 }}
               >
                 ↓ Nova Conta a Receber
