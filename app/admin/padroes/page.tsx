@@ -73,12 +73,16 @@ export default function PadroesPage() {
   // ── Carregar ────────────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     setLoading(true);
-    const [{ data: tmpl }, { data: faz }] = await Promise.all([
+    const [{ data: tmpl }, contasRes] = await Promise.all([
       supabase.from("operacoes_gerenciais").select("*").is("fazenda_id", null).order("classificacao"),
-      supabase.from("fazendas").select("id, nome, municipio").order("nome"),
+      // Usa API route com service_role_key para ver fazendas de todos os clientes
+      fetch("/api/admin/listar-contas").then(r => r.json()).catch(() => ({ fazendas: [] })),
     ]);
     setTemplates((tmpl ?? []) as OpTemplate[]);
-    setFazendas(faz ?? []);
+    const todasFazendas = (contasRes?.fazendas ?? []) as Fazenda[];
+    // Ordena por nome
+    todasFazendas.sort((a, b) => a.nome.localeCompare(b.nome));
+    setFazendas(todasFazendas);
     setLoading(false);
   }, []);
 
