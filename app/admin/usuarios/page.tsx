@@ -422,11 +422,8 @@ export default function AdminUsuarios() {
     setResultadoCriacao(null);
 
     if (editUser) {
-      // Edição: atualiza nome/ativo/whatsapp na tabela usuarios (se existir)
-      if (editUser.id) {
-        const payload = { nome: fUser.nome.trim(), ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null, hub_acesso: fUser.hub_acesso || null };
-        await supabase.from("usuarios").update(payload).eq("id", editUser.id);
-      }
+      // Edição: atualiza nome/whatsapp no perfil raccotlo (rol é atualizado via atualizar-hub-acesso)
+      // Nota: raccotlo team NÃO tem registro em usuarios — atualizar apenas perfis (via API abaixo)
       // Sempre atualiza o role no perfil
       const res = await fetch("/api/admin/atualizar-hub-acesso", {
         method: "POST", headers: { "Content-Type": "application/json" },
