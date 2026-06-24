@@ -361,27 +361,30 @@ export async function listarLancamentosContaPeriodo(
   // conta_id "sem_conta_<id>" é sintético (seletor-cliente sem backfill) — trata como null
   const cidReal = (conta_id && !conta_id.startsWith("sem_conta_")) ? conta_id : null;
 
-  // 1. Busca todas as fazendas da conta
+  // 1. Resolve todas as fazendas da conta via API route (service_role_key — imune a JWT expirado)
   let fazendaIds: string[] = [];
-  if (cidReal) {
-    const { data: fzs } = await supabase.from("fazendas").select("id").eq("conta_id", cidReal);
-    fazendaIds = (fzs ?? []).map(f => f.id);
-  }
-  // Fallback: sem conta real — tenta via fazenda selecionada (admin "Trocar cliente" ou conta sem backfill)
-  if (!fazendaIds.length && fazenda_id_fallback) {
-    // Tenta expandir para toda a conta a partir da fazenda
-    const { data: fz } = await supabase.from("fazendas").select("id, conta_id, owner_user_id").eq("id", fazenda_id_fallback).maybeSingle();
-    if (fz?.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
-      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("conta_id", fz.conta_id);
-      fazendaIds = (allFzs ?? []).map(f => f.id);
-    } else if (fz?.owner_user_id) {
-      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("owner_user_id", fz.owner_user_id);
-      fazendaIds = (allFzs ?? []).map(f => f.id);
-    } else {
-      fazendaIds = [fazenda_id_fallback];
+  try {
+    const res = await fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conta_id: cidReal, fazenda_id: fazenda_id_fallback }),
+    });
+    if (res.ok) {
+      const json = await res.json() as { ok: boolean; fazendas?: { id: string }[] };
+      if (json.ok && json.fazendas?.length) {
+        fazendaIds = json.fazendas.map((f: { id: string }) => f.id);
+      }
     }
+  } catch {
+    // API inacessível (ex: SSR) — cai nos fallbacks abaixo
   }
-  // Último fallback: usa fazendas do usuário logado (compatibilidade com clientes normais)
+
+  // Garante que a fazenda âncora está sempre incluída (segurança extra)
+  if (fazenda_id_fallback && !fazendaIds.includes(fazenda_id_fallback)) {
+    fazendaIds.push(fazenda_id_fallback);
+  }
+
+  // Último fallback: usa fazendas do usuário logado (clientes normais sem contaId)
   if (!fazendaIds.length) {
     const fzs = await listarFazendas();
     fazendaIds = fzs.map(f => f.id);
@@ -851,21 +854,17 @@ export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
 // Resolve IDs de fazendas dado contaId + fallback de fazenda individual
 async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): Promise<string[]> {
   if (fazenda_id_fallback) {
-    // Estratégia primária: expande a partir da fazenda conhecida (funciona p/ admin e clientes)
     const { data: fz } = await supabase.from("fazendas").select("id, owner_user_id, conta_id").eq("id", fazenda_id_fallback).maybeSingle();
+
     if (fz?.conta_id && !fz.conta_id.startsWith("sem_conta_")) {
       const { data: allFzs } = await supabase.from("fazendas").select("id").eq("conta_id", fz.conta_id);
-      const ids = (allFzs ?? []).map(f => f.id);
+      const ids = [...new Set([...(allFzs ?? []).map(f => f.id), fazenda_id_fallback])];
       if (ids.length) return ids;
     }
-    if (fz?.owner_user_id) {
-      const { data: allFzs } = await supabase.from("fazendas").select("id").eq("owner_user_id", fz.owner_user_id);
-      const ids = (allFzs ?? []).map(f => f.id);
-      if (ids.length) return ids;
-    }
+
+    // Fallback: inclui sempre a fazenda âncora para garantir visibilidade
     return [fazenda_id_fallback];
   }
-  // Sem fazendaId: usa as fazendas do usuário logado (clientes normais)
   const fzs = await listarFazendas();
   return fzs.map(f => f.id);
 }

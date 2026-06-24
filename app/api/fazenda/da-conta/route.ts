@@ -60,7 +60,17 @@ export async function POST(req: Request) {
       .order("nome");
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, fazendas: data ?? [], conta_id: contaId });
+
+    let fazendas = data ?? [];
+
+    // Garante que a fazenda âncora (passada no body) está na lista,
+    // mesmo que ainda não tenha conta_id atualizado no banco
+    if (body.fazenda_id && !fazendas.find(f => f.id === body.fazenda_id)) {
+      const { data: fzExtra } = await admin.from("fazendas").select("*").eq("id", body.fazenda_id).maybeSingle();
+      if (fzExtra) fazendas = [...fazendas, fzExtra];
+    }
+
+    return NextResponse.json({ ok: true, fazendas, conta_id: contaId });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
