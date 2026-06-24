@@ -394,37 +394,6 @@ export default function AdminUsuarios() {
 
   useEffect(() => { carregarEquipe(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Grupo — abrir modal ──
-  const abrirModalGrupo = (g?: GrupoUsuario) => {
-    setEditGrupo(g ?? null);
-    setFGrupo({ nome: g?.nome ?? "", descricao: g?.descricao ?? "" });
-    setPermGrupo(g ? permFromGrupo(g) : permEmpty());
-    setPresetAtivo(null);
-    setModalGrupo(true);
-  };
-
-  // ── Grupo — salvar ──
-  const salvarGrupo = async () => {
-    if (!fGrupo.nome.trim()) return;
-    setSalvando(true);
-    const payload = { fazenda_id: fazendaId, nome: fGrupo.nome.trim(), descricao: fGrupo.descricao, permissoes: permGrupo };
-    const { error } = editGrupo
-      ? await supabase.from("grupos_usuarios").update(payload).eq("id", editGrupo.id)
-      : await supabase.from("grupos_usuarios").insert(payload);
-    if (error) { setErro(error.message); setSalvando(false); return; }
-    const { data } = await supabase.from("grupos_usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
-    setGrupos((data ?? []) as GrupoUsuario[]);
-    setModalGrupo(false);
-    setSalvando(false);
-  };
-
-  // ── Grupo — excluir ──
-  const excluirGrupo = async (id: string) => {
-    if (!confirm("Excluir este grupo? Os usuários vinculados perderão o grupo.")) return;
-    await supabase.from("grupos_usuarios").delete().eq("id", id);
-    setGrupos(prev => prev.filter(g => g.id !== id));
-  };
-
   // ── Grupo — aplicar preset ──
   const [presetAtivo, setPresetAtivo] = useState<string | null>(null);
   const aplicarPreset = (presetId: string) => {

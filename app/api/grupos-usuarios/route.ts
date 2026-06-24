@@ -38,14 +38,46 @@ export async function GET(req: Request) {
   if (!fazenda_id) return NextResponse.json({ error: "fazenda_id obrigatório" }, { status: 400 });
 
   const db = adminClient();
-  const { data, error: dbErr } = await db
+
+  // Busca grupos da fazenda
+  let { data, error: dbErr } = await db
     .from("grupos_usuarios")
     .select("*")
     .eq("fazenda_id", fazenda_id)
     .order("nome");
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
-  return NextResponse.json({ data });
+
+  // Auto-backfill: se não há grupos com fazenda_id preenchido, procura grupos
+  // com fazenda_id = NULL cujos membros pertencem a esta fazenda (migração pós-Bloco 24)
+  if ((data ?? []).length === 0) {
+    const { data: usersWithGroup } = await db
+      .from("usuarios")
+      .select("grupo_id")
+      .eq("fazenda_id", fazenda_id)
+      .not("grupo_id", "is", null);
+
+    const grupoIds = [...new Set(
+      (usersWithGroup ?? []).map((u: { grupo_id: string }) => u.grupo_id).filter(Boolean)
+    )];
+
+    if (grupoIds.length > 0) {
+      await db.from("grupos_usuarios")
+        .update({ fazenda_id })
+        .in("id", grupoIds)
+        .is("fazenda_id", null);
+
+      const { data: refreshed } = await db
+        .from("grupos_usuarios")
+        .select("*")
+        .eq("fazenda_id", fazenda_id)
+        .order("nome");
+
+      data = refreshed;
+    }
+  }
+
+  return NextResponse.json({ data: data ?? [] });
 }
 
 export async function POST(req: Request) {

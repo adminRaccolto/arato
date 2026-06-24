@@ -402,9 +402,13 @@ export default function UsuariosPermissoes() {
     setResultadoCriacao(null);
 
     if (editUser) {
-      const payload = { fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null };
-      const { error } = await supabase.from("usuarios").update(payload).eq("id", editUser.id);
-      if (error) { setErro(error.message); setSalvando(false); return; }
+      const res = await fetch("/api/usuarios-cliente", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editUser.id, fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) { setErro(json.error ?? "Erro ao atualizar usuário."); setSalvando(false); return; }
     } else {
       if (!fUser.senha.trim() || fUser.senha.trim().length < 6) {
         setErro("Senha deve ter pelo menos 6 caracteres.");
@@ -445,7 +449,7 @@ export default function UsuariosPermissoes() {
 
   const excluirUser = async (id: string) => {
     if (!confirm("Excluir este usuário?")) return;
-    await supabase.from("usuarios").delete().eq("id", id);
+    await fetch(`/api/usuarios-cliente?id=${id}&fazenda_id=${fazendaId}`, { method: "DELETE" });
     setUsuarios(prev => prev.filter(u => u.id !== id));
   };
 
