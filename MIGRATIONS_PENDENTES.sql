@@ -527,37 +527,40 @@ CREATE POLICY "grupos_usuarios_delete" ON grupos_usuarios
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- =============================================================================
--- BLOCO 24: fix grupos_usuarios — backfill fazenda_id + RLS com match direto
--- Problema: grupos criados em contexto raccotlo tinham fazenda_id errado;
+-- BLOCO 24: fix grupos_usuarios — adiciona fazenda_id + backfill + RLS corrigida
+-- Problema: coluna fazenda_id não existia na tabela grupos_usuarios;
 --           RLS do Bloco 23 usava conta_id chain que falha quando conta_id é NULL.
--- Execute após o Bloco 23.
+-- Execute no Supabase SQL Editor (pode rodar mesmo se Bloco 23 já rodou).
 -- =============================================================================
 
--- 1. Backfill: grupos cujo fazenda_id não bate com os usuários do grupo
---    → reassina para a fazenda dos usuários membros
-UPDATE grupos_usuarios g
+-- 1. Adicionar coluna fazenda_id (se ainda não existe)
+ALTER TABLE grupos_usuarios
+  ADD COLUMN IF NOT EXISTS fazenda_id uuid REFERENCES fazendas(id) ON DELETE CASCADE;
+
+-- 2. Backfill: preenche fazenda_id vazio usando os usuários do grupo
+UPDATE grupos_usuarios
 SET fazenda_id = (
   SELECT u.fazenda_id
   FROM usuarios u
-  WHERE u.grupo_id = g.id
+  WHERE u.grupo_id = grupos_usuarios.id
     AND u.fazenda_id IS NOT NULL
   LIMIT 1
 )
-WHERE EXISTS (
-  SELECT 1 FROM usuarios u
-  WHERE u.grupo_id = g.id AND u.fazenda_id IS NOT NULL
-)
-  AND (
-    g.fazenda_id IS NULL
-    OR g.fazenda_id NOT IN (SELECT id FROM fazendas)
-    OR g.fazenda_id != (
-      SELECT u.fazenda_id FROM usuarios u WHERE u.grupo_id = g.id AND u.fazenda_id IS NOT NULL LIMIT 1
-    )
+WHERE fazenda_id IS NULL
+  AND EXISTS (
+    SELECT 1 FROM usuarios u
+    WHERE u.grupo_id = grupos_usuarios.id AND u.fazenda_id IS NOT NULL
   );
 
--- 2. Substitui a policy select do Bloco 23 por uma versão mais robusta
---    que funciona mesmo quando perfis.conta_id é NULL
-DROP POLICY IF EXISTS "grupos_usuarios_select" ON grupos_usuarios;
+-- 3. Garantir RLS ativo
+ALTER TABLE grupos_usuarios ENABLE ROW LEVEL SECURITY;
+
+-- 4. Recriar todas as policies (drop + create para garantir estado limpo)
+DROP POLICY IF EXISTS "allow_all_grupos_usuarios"  ON grupos_usuarios;
+DROP POLICY IF EXISTS "grupos_usuarios_select"     ON grupos_usuarios;
+DROP POLICY IF EXISTS "grupos_usuarios_insert"     ON grupos_usuarios;
+DROP POLICY IF EXISTS "grupos_usuarios_update"     ON grupos_usuarios;
+DROP POLICY IF EXISTS "grupos_usuarios_delete"     ON grupos_usuarios;
 
 CREATE POLICY "grupos_usuarios_select" ON grupos_usuarios
   FOR SELECT USING (
@@ -572,7 +575,7 @@ CREATE POLICY "grupos_usuarios_select" ON grupos_usuarios
         AND p.conta_id IS NOT NULL
     )
     OR
-    -- Bypass raccotlo (todos os roles internos)
+    -- Bypass raccotlo
     EXISTS (
       SELECT 1 FROM perfis
       WHERE user_id = auth.uid()
@@ -580,22 +583,18 @@ CREATE POLICY "grupos_usuarios_select" ON grupos_usuarios
     )
   );
 
--- Mesmo padrão para insert/update/delete
-DROP POLICY IF EXISTS "grupos_usuarios_insert" ON grupos_usuarios;
 CREATE POLICY "grupos_usuarios_insert" ON grupos_usuarios
   FOR INSERT WITH CHECK (
     fazenda_id = (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
     OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo', 'raccotlo_gestor'))
   );
 
-DROP POLICY IF EXISTS "grupos_usuarios_update" ON grupos_usuarios;
 CREATE POLICY "grupos_usuarios_update" ON grupos_usuarios
   FOR UPDATE USING (
     fazenda_id = (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
     OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo', 'raccotlo_gestor'))
   );
 
-DROP POLICY IF EXISTS "grupos_usuarios_delete" ON grupos_usuarios;
 CREATE POLICY "grupos_usuarios_delete" ON grupos_usuarios
   FOR DELETE USING (
     fazenda_id = (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
