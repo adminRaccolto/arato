@@ -446,45 +446,42 @@ export default function AdminUsuarios() {
     setModalUser(true);
   };
 
-  // ── Usuário — salvar ──
+  // ── Usuário — salvar (equipe Raccotlo — sem fazenda_id obrigatório) ──
   const salvarUser = async () => {
-    if (!fazendaId || !fUser.nome.trim() || !fUser.email.trim()) return;
+    if (!fUser.nome.trim() || !fUser.email.trim()) return;
     setSalvando(true);
     setResultadoCriacao(null);
 
     if (editUser) {
-      // Edição: só atualiza dados básicos (sem mexer na senha/Auth)
-      const payload = { fazenda_id: fazendaId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || null, ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null, hub_acesso: fUser.hub_acesso || null };
-      const { error } = await supabase.from("usuarios").update(payload).eq("id", editUser.id);
-      if (error) { setErro(error.message); setSalvando(false); return; }
-      // Atualiza role no perfil via API
-      await fetch("/api/admin/atualizar-hub-acesso", {
+      // Edição: atualiza nome/ativo/whatsapp na tabela usuarios (se existir)
+      if (editUser.id) {
+        const payload = { nome: fUser.nome.trim(), ativo: fUser.ativo, whatsapp: fUser.whatsapp.trim() || null, hub_acesso: fUser.hub_acesso || null };
+        await supabase.from("usuarios").update(payload).eq("id", editUser.id);
+      }
+      // Sempre atualiza o role no perfil
+      const res = await fetch("/api/admin/atualizar-hub-acesso", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: fUser.email.trim(), hub_acesso: fUser.hub_acesso || "client" }),
       });
+      const json = await res.json();
+      if (!res.ok || !json.ok) { setErro(json.error ?? "Erro ao atualizar acesso."); setSalvando(false); return; }
     } else {
-      // Novo usuário: chama API que cria Auth + perfil + envia email
+      // Novo usuário raccotlo: cria Auth + perfil (sem fazenda_id, sem usuarios table)
       if (!fUser.senha.trim() || fUser.senha.trim().length < 6) {
         setErro("Senha deve ter pelo menos 6 caracteres.");
         setSalvando(false);
         return;
       }
-      const res = await fetch("/api/admin/criar-usuario", {
+      const res = await fetch("/api/admin/criar-usuario-raccotlo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fazenda_id:        fazendaId,
-          conta_id:          contaId,
-          user_nome:         fUser.nome.trim(),
-          user_email:        fUser.email.trim(),
-          user_senha:        fUser.senha.trim(),
-          grupo_id:          fUser.grupo_id || null,
-          fazenda_nome:      fazendaInfo?.nome,
-          fazenda_municipio: fazendaInfo?.municipio,
-          fazenda_estado:    fazendaInfo?.estado,
-          enviar_email:      fUser.enviarEmail,
-          whatsapp:          fUser.whatsapp.trim() || null,
-          hub_acesso:        fUser.hub_acesso || "client",
+          user_nome:    fUser.nome.trim(),
+          user_email:   fUser.email.trim(),
+          user_senha:   fUser.senha.trim(),
+          hub_acesso:   fUser.hub_acesso || "client",
+          whatsapp:     fUser.whatsapp.trim() || null,
+          enviar_email: fUser.enviarEmail,
         }),
       });
       const json = await res.json();
@@ -496,8 +493,11 @@ export default function AdminUsuarios() {
       setResultadoCriacao({ ok: true, emailEnviado: json.email_enviado });
     }
 
-    const { data } = await supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
-    setUsuarios((data ?? []) as Usuario[]);
+    // Recarrega lista usando a fazenda do admin (pode ser null — lista vazia é ok)
+    if (fazendaId) {
+      const { data } = await supabase.from("usuarios").select("*").eq("fazenda_id", fazendaId).order("nome");
+      setUsuarios((data ?? []) as Usuario[]);
+    }
     if (editUser) setModalUser(false);
     setSalvando(false);
   };
