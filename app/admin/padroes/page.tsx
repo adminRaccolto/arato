@@ -76,7 +76,11 @@ export default function PadroesPage() {
     const [{ data: tmpl }, contasRes] = await Promise.all([
       supabase.from("operacoes_gerenciais").select("*").is("fazenda_id", null).order("classificacao"),
       // Usa API route com service_role_key para ver fazendas de todos os clientes
-      fetch("/api/admin/listar-contas").then(r => r.json()).catch(() => ({ fazendas: [] })),
+      supabase.auth.getSession().then(({ data: { session } }) =>
+        fetch("/api/admin/listar-contas", {
+          headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+        }).then(r => r.json()).catch(() => ({ fazendas: [] }))
+      ).catch(() => ({ fazendas: [] })),
     ]);
     setTemplates((tmpl ?? []) as OpTemplate[]);
     const todasFazendas = (contasRes?.fazendas ?? []) as Fazenda[];
