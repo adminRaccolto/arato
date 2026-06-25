@@ -2886,12 +2886,15 @@ export async function salvarArrendamentos(
     area_ha: number;
     forma_pagamento: "sc_soja" | "sc_milho" | "sc_soja_milho" | "brl";
     sc_ha?: number;
+    sc_milho_ha?: number;
     valor_brl?: number;
     ano_safra_id?: string;
     inicio?: string;
     vencimento?: string;
     renovacao_auto?: boolean;
     observacao?: string;
+    produtor_id?: string;
+    produtor_id_2?: string;
     mats: Array<{ id?: string; numero: string; area_ha?: number; cartorio?: string }>;
   }>
 ): Promise<void> {
@@ -2911,12 +2914,15 @@ export async function salvarArrendamentos(
       area_ha: a.area_ha,
       forma_pagamento: a.forma_pagamento,
       sc_ha: a.sc_ha ?? undefined,
+      sc_milho_ha: a.sc_milho_ha ?? undefined,
       valor_brl: a.valor_brl ?? undefined,
       ano_safra_id: a.ano_safra_id || undefined,
       inicio: a.inicio || undefined,
       vencimento: a.vencimento || undefined,
       renovacao_auto: a.renovacao_auto ?? false,
       observacao: a.observacao || undefined,
+      produtor_id: a.produtor_id || undefined,
+      produtor_id_2: a.produtor_id_2 || undefined,
     };
     let arrId = a.id;
     if (arrId) {

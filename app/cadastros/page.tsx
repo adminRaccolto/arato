@@ -1146,7 +1146,11 @@ function CadastrosInner() {
       tipo_posse: t.tipo_posse ?? "proprio",
       arrendamento_id: t.arrendamento_id ?? "",
     } : { nome: "", area: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio", arrendamento_id: "" });
-    try { const arrs = await listarArrendamentos(fid); setTalhaoArrs(arrs); } catch { setTalhaoArrs([]); }
+    try {
+      const res = await fetch(`/api/fazenda/arrendamentos?fazenda_id=${fid}`);
+      const json = res.ok ? await res.json() : { arrendamentos: [] };
+      setTalhaoArrs(json.arrendamentos ?? []);
+    } catch { setTalhaoArrs([]); }
   };
   const salvarTalhao = () => salvar(async () => {
     if (!modalTalhao || !fTalhao.nome.trim() || !fTalhao.area) return;
@@ -6203,7 +6207,7 @@ function CadastrosInner() {
                     const proprietario = props?.nome ?? a.proprietario_nome ?? "Proprietário não informado";
                     const forma = { sc_soja: "sc soja/ha", sc_milho: "sc milho/ha", sc_soja_milho: "sc soja+milho/ha", brl: "R$/ha" }[a.forma_pagamento];
                     const valorLabel = a.forma_pagamento === "sc_soja_milho"
-                      ? `${a.sc_ha ?? 0} sc soja + ${(a as unknown as { sc_milho_ha?: number }).sc_milho_ha ?? 0} sc milho`
+                      ? `${a.sc_ha ?? 0} sc soja + ${a.sc_milho_ha ?? 0} sc milho`
                       : `${(a.sc_ha ?? a.valor_brl ?? 0).toLocaleString("pt-BR")} ${forma}`;
                     return (
                       <option key={a.id} value={a.id}>
