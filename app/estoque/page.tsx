@@ -58,7 +58,7 @@ function TH({ cols }: { cols: string[] }) {
 
 function Modal({ titulo, subtitulo, width, onClose, children }: { titulo: string; subtitulo?: string; width?: number; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} >
       <div style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: width ?? 600, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
         <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a", marginBottom: subtitulo ? 4 : 20 }}>{titulo}</div>
         {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}

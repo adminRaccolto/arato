@@ -82,7 +82,7 @@ const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D
 function Modal({ titulo, subtitulo, onClose, width = 520, children }: { titulo: string; subtitulo?: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      >
       <div style={{ background: "#fff", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
         <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
         {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
