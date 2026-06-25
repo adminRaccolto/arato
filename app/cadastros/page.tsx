@@ -38,6 +38,7 @@ import {
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
   listarIEsDoProdutor, salvarIEsDoProdutor,
   listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
+  excluirTalhao,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -1960,6 +1961,14 @@ function CadastrosInner() {
                                       <td style={{ padding: "8px 14px", textAlign: "right" }}>
                                         <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
                                           <button style={btnE} onClick={() => abrirModalTalhao(f.id, t)}>Editar</button>
+                                          <button
+                                            style={{ ...btnE, color: "#E24B4A", border: "0.5px solid #E24B4A" }}
+                                            onClick={async () => {
+                                              if (!confirm(`Excluir talhão "${t.nome}"? Esta ação não pode ser desfeita.`)) return;
+                                              await excluirTalhao(t.id);
+                                              setTalhoes(prev => ({ ...prev, [f.id]: (prev[f.id] ?? []).filter(x => x.id !== t.id) }));
+                                            }}
+                                          >Excluir</button>
                                         </div>
                                       </td>
                                     </tr>
