@@ -74,7 +74,8 @@ export type Arrendamento = {
   proprietario_nome?: string;   // fallback textual
   area_ha: number;
   forma_pagamento: "sc_soja" | "sc_milho" | "sc_soja_milho" | "brl";
-  sc_ha?: number;               // sacas/ha/ano — formas em sacas
+  sc_ha?: number;               // sacas soja/ha/ano (sc_soja e sc_soja_milho)
+  sc_milho_ha?: number;         // sacas milho/ha/ano (sc_milho e sc_soja_milho)
   valor_brl?: number;           // R$/ha/ano — forma BRL
   ano_safra_id?: string;        // FK anos_safra (referência para cálculo)
   inicio?: string;

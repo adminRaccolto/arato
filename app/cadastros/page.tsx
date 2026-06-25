@@ -63,7 +63,8 @@ type ArrFaz = {
   proprietario_nome: string;
   area_ha: string;
   forma_pagamento: "sc_soja" | "sc_milho" | "sc_soja_milho" | "brl";
-  sc_ha: string;
+  sc_ha: string;         // sacas soja/ha (sc_soja e sc_soja_milho)
+  sc_milho_ha: string;   // sacas milho/ha (sc_milho e sc_soja_milho)
   valor_brl: string;
   ano_safra_id: string;
   inicio: string;
@@ -864,6 +865,7 @@ function CadastrosInner() {
           area_ha: String(a.area_ha),
           forma_pagamento: a.forma_pagamento,
           sc_ha: String(a.sc_ha ?? ""),
+          sc_milho_ha: String((a as { sc_milho_ha?: number | null }).sc_milho_ha ?? ""),
           valor_brl: String(a.valor_brl ?? ""),
           ano_safra_id: a.ano_safra_id ?? "",
           inicio: a.inicio ?? "",
@@ -1025,6 +1027,7 @@ function CadastrosInner() {
       area_ha: Number(a.area_ha) || 0,
       forma_pagamento: a.forma_pagamento,
       sc_ha: a.sc_ha ? Number(a.sc_ha) : undefined,
+      sc_milho_ha: a.sc_milho_ha ? Number(a.sc_milho_ha) : undefined,
       valor_brl: a.valor_brl ? Number(a.valor_brl) : undefined,
       ano_safra_id: a.ano_safra_id || undefined,
       inicio: a.inicio || undefined,
@@ -6003,8 +6006,11 @@ function CadastrosInner() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {fazArrendamentos.map((a, ai) => {
                     const ehSacas = a.forma_pagamento !== "brl";
+                    const ehMisto = a.forma_pagamento === "sc_soja_milho";
                     const label = { sc_soja: "Sacas de soja", sc_milho: "Sacas de milho", sc_soja_milho: "Sc soja + milho", brl: "Valor em R$" }[a.forma_pagamento];
-                    const totalScs = ehSacas ? ((Number(a.area_ha)||0) * (Number(a.sc_ha)||0)).toFixed(1) : null;
+                    const totalScsSoja = ((Number(a.area_ha)||0) * (Number(a.sc_ha)||0)).toFixed(1);
+                    const totalScsMilho = ((Number(a.area_ha)||0) * (Number(a.sc_milho_ha)||0)).toFixed(1);
+                    const totalScs = ehSacas && !ehMisto ? ((Number(a.area_ha)||0) * (Number(a.sc_ha)||0)).toFixed(1) : null;
                     const totalBrl = !ehSacas ? ((Number(a.area_ha)||0) * (Number(a.valor_brl)||0)).toFixed(2) : null;
                     return (
                       <div key={a._key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, background: "#FAFBFC", overflow: "hidden" }}>
@@ -6020,7 +6026,8 @@ function CadastrosInner() {
                             })()}
                           </span>
                           {a.area_ha && <span style={{ fontSize: 12, color: "#555" }}>{Number(a.area_ha).toFixed(2)} ha</span>}
-                          {ehSacas && <span style={{ fontSize: 10, background: "#DCF5E8", color: "#14532D", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Gera contrato grãos</span>}
+                          {ehMisto && Number(a.sc_ha) > 0 && <span style={{ fontSize: 10, background: "#DCF5E8", color: "#14532D", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Sc soja + milho</span>}
+                          {!ehMisto && ehSacas && <span style={{ fontSize: 10, background: "#DCF5E8", color: "#14532D", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Gera contrato grãos</span>}
                           {!ehSacas && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Impacta fluxo de caixa</span>}
                           <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{label}</span>
                           <button style={{ ...btnX, marginLeft: 4 }} onClick={() => setFazArrendamentos(p => p.filter((_,j) => j!==ai))}>Remover</button>
@@ -6052,12 +6059,28 @@ function CadastrosInner() {
                                 <option value="brl">Valor em R$ / ha / ano</option>
                               </select>
                             </div>
-                            {ehSacas && (
+                            {/* Sc soja (único ou parte do misto) */}
+                            {ehSacas && !ehMisto && (
                               <div>
                                 <label style={lbl}>Sacas / ha / ano</label>
                                 <input style={inp} type="number" step="0.1" placeholder="ex: 12" value={a.sc_ha} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_ha:e.target.value} : x))} />
                                 {totalScs && <div style={{ fontSize: 10, color: "#14532D", marginTop: 3 }}>Total: {totalScs} sc comprometidas</div>}
                               </div>
+                            )}
+                            {/* Misto: dois campos separados */}
+                            {ehMisto && (
+                              <>
+                                <div>
+                                  <label style={lbl}>Soja (sc/ha/ano) <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600 }}>SOJA</span></label>
+                                  <input style={inp} type="number" step="0.1" placeholder="ex: 8" value={a.sc_ha} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_ha:e.target.value} : x))} />
+                                  {Number(a.sc_ha) > 0 && <div style={{ fontSize: 10, color: "#14532D", marginTop: 3 }}>Total: {totalScsSoja} sc soja comprometidas</div>}
+                                </div>
+                                <div>
+                                  <label style={lbl}>Milho (sc/ha/ano) <span style={{ fontSize: 9, color: "#C9921B", fontWeight: 600 }}>MILHO</span></label>
+                                  <input style={inp} type="number" step="0.1" placeholder="ex: 20" value={a.sc_milho_ha} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_milho_ha:e.target.value} : x))} />
+                                  {Number(a.sc_milho_ha) > 0 && <div style={{ fontSize: 10, color: "#7A5200", marginTop: 3 }}>Total: {totalScsMilho} sc milho comprometidas</div>}
+                                </div>
+                              </>
                             )}
                             {!ehSacas && (
                               <div>
@@ -6116,7 +6139,7 @@ function CadastrosInner() {
                     </div>
                   )}
                 </div>
-                <button style={{ ...btnV, background: "#C9921B", marginTop: 14 }} onClick={() => setFazArrendamentos(p => [...p, { _key: `arr_${Date.now()}`, proprietario_id: "", proprietario_nome: "", area_ha: "", forma_pagamento: "sc_soja", sc_ha: "", valor_brl: "", ano_safra_id: "", inicio: "", vencimento: "", renovacao_auto: false, observacao: "", produtor_id: "", produtor_id_2: "", aberto: true, mats: [] }])}>+ Novo Arrendamento</button>
+                <button style={{ ...btnV, background: "#C9921B", marginTop: 14 }} onClick={() => setFazArrendamentos(p => [...p, { _key: `arr_${Date.now()}`, proprietario_id: "", proprietario_nome: "", area_ha: "", forma_pagamento: "sc_soja", sc_ha: "", sc_milho_ha: "", valor_brl: "", ano_safra_id: "", inicio: "", vencimento: "", renovacao_auto: false, observacao: "", produtor_id: "", produtor_id_2: "", aberto: true, mats: [] }])}>+ Novo Arrendamento</button>
                 {!fFaz.area && <div style={{ fontSize: 11, color: "#888", marginTop: 8 }}>Dica: preencha a Área total na aba Dados Gerais para calcular percentuais.</div>}
               </div>
             )}
@@ -6170,10 +6193,12 @@ function CadastrosInner() {
                     const props = pessoas.find(p => p.id === a.proprietario_id);
                     const proprietario = props?.nome ?? a.proprietario_nome ?? "Proprietário não informado";
                     const forma = { sc_soja: "sc soja/ha", sc_milho: "sc milho/ha", sc_soja_milho: "sc soja+milho/ha", brl: "R$/ha" }[a.forma_pagamento];
-                    const valor = a.sc_ha ?? a.valor_brl;
+                    const valorLabel = a.forma_pagamento === "sc_soja_milho"
+                      ? `${a.sc_ha ?? 0} sc soja + ${(a as unknown as { sc_milho_ha?: number }).sc_milho_ha ?? 0} sc milho`
+                      : `${(a.sc_ha ?? a.valor_brl ?? 0).toLocaleString("pt-BR")} ${forma}`;
                     return (
                       <option key={a.id} value={a.id}>
-                        {proprietario} · {a.area_ha?.toLocaleString("pt-BR")} ha · {valor?.toLocaleString("pt-BR")} {forma}
+                        {proprietario} · {a.area_ha?.toLocaleString("pt-BR")} ha · {valorLabel}
                       </option>
                     );
                   })}
