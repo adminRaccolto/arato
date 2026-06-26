@@ -760,7 +760,8 @@ function ParametrosSistemaContent() {
               <div key={emitter.moduloKey} style={{ border: `0.5px solid ${isOpen ? "#1A4870" : "#DDE2EE"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
 
                 {/* Header */}
-                <div onClick={() => setExpandedEmitter(isOpen ? null : emitter.moduloKey)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", background: isOpen ? "#F0F5FF" : "#fff", cursor: "pointer", userSelect: "none" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: isOpen ? "#F0F5FF" : "#fff", cursor: "pointer", userSelect: "none" }}
+                  onClick={() => setExpandedEmitter(isOpen ? null : emitter.moduloKey)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 10, background: emitter.type === "empresa" ? "#EFF6FF" : "#F0FDF4", color: emitter.type === "empresa" ? "#1A5CB8" : "#16A34A", border: `0.5px solid ${emitter.type === "empresa" ? "#BFDBFE" : "#BBF7D0"}` }}>
                       {emitter.type === "empresa" ? "PJ — e-CNPJ" : "PF — e-CPF"}
@@ -776,7 +777,34 @@ function ParametrosSistemaContent() {
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: 13, color: "#888" }}>{isOpen ? "▲" : "▼"}</span>
+
+                  {/* Ambiente SEFAZ — toggle rápido no header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 20, padding: "3px 4px" }}>
+                      {(["homologacao", "producao"] as const).map(v => {
+                        const atual = (c.ambiente as string) || "homologacao";
+                        const ativo = atual === v;
+                        return (
+                          <button
+                            key={v}
+                            onClick={async () => {
+                              setCfg(emitter.moduloKey, "ambiente", v);
+                              await salvar(emitter.moduloKey);
+                            }}
+                            style={{
+                              padding: "3px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontSize: 11, fontWeight: ativo ? 700 : 400,
+                              background: ativo ? (v === "producao" ? "#16A34A" : "#C9921B") : "transparent",
+                              color: ativo ? "#fff" : "#888",
+                              transition: "all 0.15s",
+                            }}
+                          >
+                            {v === "producao" ? "Produção" : "Homologação"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span style={{ fontSize: 13, color: "#888" }}>{isOpen ? "▲" : "▼"}</span>
+                  </div>
                 </div>
 
                 {/* Body */}
