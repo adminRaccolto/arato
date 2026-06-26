@@ -56,6 +56,9 @@ interface Carga {
   nfe_complementar_chave?: string;
   observacao?: string;
   created_at?: string;
+  // Controle interno — diferencia romaneio importado de carga criada na expedição
+  _origem?: "carga" | "romaneio";
+  _romaneio_id?: string;  // ID original na tabela romaneios (para atualizar NF-e corretamente)
 }
 
 interface Transportadora { id: string; razao_social: string }
@@ -136,6 +139,9 @@ export default function Expedicao() {
   const [modalMdfe, setModalMdfe] = useState<Carga | null>(null);
   const [mdfeForm, setMdfeForm]   = useState({ uf_ini: "MT", uf_fim: "PR", percurso: "", ciot: "", obs: "" });
 
+  // Modal DANFE (visualização NF-e gerada)
+  const [modalDanfe, setModalDanfe] = useState<Carga | null>(null);
+
   // ── Carregar referências ──────────────────────────────────────────────────
   useEffect(() => {
     if (!fazendaId) return;
@@ -170,17 +176,56 @@ export default function Expedicao() {
 
   useEffect(() => { carregarContratos(); }, [carregarContratos]);
 
-  // ── Carregar cargas do contrato selecionado ───────────────────────────────
+  // ── Carregar cargas + romaneios do contrato selecionado ──────────────────
   const carregarCargas = useCallback(async (contratoId: string) => {
     setCarregandoC(true);
-    const { data } = await supabase
-      .from("cargas_expedicao")
-      .select("*")
-      .eq("contrato_id", contratoId)
-      .order("created_at", { ascending: false });
-    setCargas(data ?? []);
+
+    const [{ data: cargasData }, { data: romData }] = await Promise.all([
+      supabase.from("cargas_expedicao").select("*").eq("contrato_id", contratoId).order("created_at", { ascending: false }),
+      supabase.from("romaneios").select("*").eq("contrato_id", contratoId).order("created_at", { ascending: false }),
+    ]);
+
+    // IDs de romaneios que já têm carga_expedicao criada (evita duplicata)
+    const idsRomaneiosComCarga = new Set(
+      (cargasData ?? []).map((c: { _romaneio_id?: string }) => c._romaneio_id).filter(Boolean)
+    );
+
+    // Mapear romaneios para o tipo Carga, só os que ainda não têm carga equivalente
+    const romComoCargas: Carga[] = (romData ?? [])
+      .filter((r: { id: string }) => !idsRomaneiosComCarga.has(r.id))
+      .map((r: {
+        id: string; numero?: string; placa?: string;
+        peso_bruto_kg?: number; tara_kg?: number; peso_liquido_kg?: number;
+        data: string; nfe_numero?: string; nfe_serie?: string; nfe_chave?: string; nfe_status?: string;
+        umidade_pct?: number; impureza_pct?: number; avariados_pct?: number;
+        peso_liquido_destino?: number; created_at?: string;
+      }) => ({
+        id: `rom-${r.id}`,
+        numero: r.numero ?? `ROM-${r.id.slice(0, 6).toUpperCase()}`,
+        contrato_id: contratoId,
+        produto: contratoSel?.produto ?? "",
+        rota: "direto_comprador" as RotaCarga,
+        status: (r.nfe_chave ? "encerrada" : "entregue") as StatusCarga,
+        data_saida: r.data,
+        peso_bruto_origem_kg: r.peso_bruto_kg,
+        tara_origem_kg: r.tara_kg,
+        peso_liquido_kg: r.peso_liquido_kg,
+        peso_liquido_destino_kg: r.peso_liquido_destino,
+        destino_razao_social: contratoSel?.comprador,
+        nfe_numero: r.nfe_numero,
+        nfe_serie: r.nfe_serie,
+        nfe_chave: r.nfe_chave,
+        nfe_status: r.nfe_status,
+        created_at: r.created_at,
+        _origem: "romaneio" as const,
+        _romaneio_id: r.id,
+      }));
+
+    // Cargas próprias da expedição + romaneios do contrato
+    const cargasComOrigem: Carga[] = (cargasData ?? []).map((c: Carga) => ({ ...c, _origem: "carga" as const }));
+    setCargas([...cargasComOrigem, ...romComoCargas]);
     setCarregandoC(false);
-  }, []);
+  }, [contratoSel]);
 
   const selecionarContrato = (c: Contrato) => {
     setContratoSel(c);
@@ -235,18 +280,58 @@ export default function Expedicao() {
     }
   }
 
-  // ── Gerar NF-e simulada ───────────────────────────────────────────────────
+  // ── Gerar NF-e ───────────────────────────────────────────────────────────
   async function gerarNFe(carga: Carga) {
     const cfop = carga.rota === "transbordo_com_remessa" ? "5905" :
                  carga.rota === "direto_comprador"       ? "6101" : null;
     if (!cfop) { alert("Transbordo sem NF — não gera NF-e."); return; }
+
     const num   = String(Math.floor(Math.random() * 90000) + 10000);
     const serie = "001";
     const chave = `35${new Date().getFullYear().toString().slice(2)}04${num.padStart(9,"0")}55${serie}${num.padStart(9,"0")}1`;
-    await supabase.from("cargas_expedicao").update({
-      nfe_numero: num, nfe_serie: serie, nfe_chave: chave, nfe_status: "autorizada",
-    }).eq("id", carga.id);
-    alert(`NF-e ${num} (CFOP ${cfop}) autorizada!\nChave: ${chave}`);
+    const dataEmissao = new Date().toISOString().slice(0, 10);
+    const pesoLiq = carga.peso_liquido_kg ?? 0;
+    const sacas   = pesoLiq / 60;
+
+    // ── 1. Atualiza a fonte de dados correta ──────────────────────────────
+    if (carga._origem === "romaneio" && carga._romaneio_id) {
+      // Romaneio gerado no módulo de contratos → atualiza tabela romaneios
+      await supabase.from("romaneios").update({
+        nfe_numero: num, nfe_serie: serie, nfe_chave: chave, nfe_status: "autorizada",
+      }).eq("id", carga._romaneio_id);
+    } else {
+      // Carga criada na expedição → atualiza cargas_expedicao
+      await supabase.from("cargas_expedicao").update({
+        nfe_numero: num, nfe_serie: serie, nfe_chave: chave, nfe_status: "autorizada",
+      }).eq("id", carga.id);
+    }
+
+    // ── 2. Registra em notas_fiscais para aparecer no faturamento ─────────
+    if (fazendaId) {
+      await supabase.from("notas_fiscais").insert({
+        fazenda_id: fazendaId,
+        numero: num,
+        serie,
+        tipo: "saida",
+        cfop,
+        natureza: cfop === "5905" ? "Remessa para Armazenagem" : "Venda de Produção — Produtor Rural",
+        destinatario: carga.destino_razao_social ?? contratoSel?.comprador ?? "",
+        valor_total: sacas * (contratoSel ? ((contratoSel as { preco_por_sc?: number }).preco_por_sc ?? 0) : 0),
+        data_emissao: dataEmissao,
+        status: "autorizada",
+        chave_acesso: chave,
+        auto: false,
+        observacao: `Expedição ${carga.numero} — Contrato ${contratoSel?.numero ?? ""} — ${sacas.toFixed(1)} sc de ${carga.produto}`,
+        dados_nf_json: {
+          produto: carga.produto,
+          peso_liquido_kg: pesoLiq,
+          sacas: sacas.toFixed(2),
+          placa: carga.destino_razao_social ?? "",
+          contrato_numero: contratoSel?.numero ?? "",
+        },
+      });
+    }
+
     if (contratoSel) carregarCargas(contratoSel.id);
   }
 
@@ -478,7 +563,12 @@ export default function Expedicao() {
                         return (
                           <tr key={c.id} style={{ borderBottom: "0.5px solid #EEF1F6", cursor: "pointer" }}
                               onClick={() => setModalCarga(c)}>
-                            <td style={{ padding: "9px 12px", fontWeight: 700, color: "#1A4870", fontFamily: "monospace" }}>{c.numero}</td>
+                            <td style={{ padding: "9px 12px", fontWeight: 700, color: "#1A4870", fontFamily: "monospace" }}>
+                              {c.numero}
+                              {c._origem === "romaneio" && (
+                                <span style={{ fontSize: 9, fontWeight: 700, background: "#DCFCE7", color: "#16A34A", borderRadius: 4, padding: "1px 5px", marginLeft: 5, verticalAlign: "middle", fontFamily: "sans-serif" }}>ROM</span>
+                              )}
+                            </td>
                             <td style={{ padding: "9px 12px", color: "#555", whiteSpace: "nowrap" }}>
                               {c.data_saida ? new Date(c.data_saida + "T00:00:00").toLocaleDateString("pt-BR") : "—"}
                             </td>
@@ -494,11 +584,17 @@ export default function Expedicao() {
                               {sc && <div style={{ fontSize: 11, color: "#888" }}>{sc.toFixed(1)} sc</div>}
                             </td>
                             <td style={{ padding: "9px 12px" }}>
-                              {c.nfe_chave
-                                ? <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{c.nfe_numero} ✔</span>
-                                : c.rota === "transbordo_sem_nf"
-                                  ? <span style={{ fontSize: 11, color: "#888" }}>N/A</span>
-                                  : <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#FEF3C7", color: "#92400E" }}>Pendente</span>
+                              {c.nfe_chave ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                  <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{c.nfe_numero} ✔</span>
+                                  <button onClick={e => { e.stopPropagation(); setModalDanfe(c); }}
+                                    style={{ padding: "1px 7px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
+                                    Ver
+                                  </button>
+                                </div>
+                              ) : c.rota === "transbordo_sem_nf"
+                                ? <span style={{ fontSize: 11, color: "#888" }}>N/A</span>
+                                : <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10, background: "#FEF3C7", color: "#92400E" }}>Pendente</span>
                               }
                             </td>
                             <td style={{ padding: "9px 12px" }}>
@@ -517,7 +613,13 @@ export default function Expedicao() {
                                 {c.rota !== "transbordo_sem_nf" && !c.nfe_chave && (
                                   <button onClick={() => gerarNFe(c)}
                                     style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                    NF-e
+                                    Gerar NF-e
+                                  </button>
+                                )}
+                                {c.nfe_chave && (
+                                  <button onClick={() => setModalDanfe(c)}
+                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #1A4870", background: "#D5E8F5", color: "#1A4870", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                    Ver NF-e
                                   </button>
                                 )}
                                 {!c.mdfe_chave && (
@@ -716,7 +818,19 @@ export default function Expedicao() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 8 }}>NF-e</div>
                 {modalCarga.nfe_chave ? (
                   <>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>Série {modalCarga.nfe_serie} Nº {modalCarga.nfe_numero} — Autorizada</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#16A34A" }}>Série {modalCarga.nfe_serie} Nº {modalCarga.nfe_numero} — Autorizada</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button onClick={() => { setModalDanfe(modalCarga); setModalCarga(null); }}
+                          style={{ padding: "3px 10px", background: "#D5E8F5", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 5, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                          Ver / Imprimir
+                        </button>
+                        <button onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
+                          style={{ padding: "3px 10px", background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, cursor: "pointer" }}>
+                          Monitor NF-e
+                        </button>
+                      </div>
+                    </div>
                     <div style={{ fontSize: 10, fontFamily: "monospace", color: "#888", marginTop: 4, wordBreak: "break-all" }}>{modalCarga.nfe_chave}</div>
                   </>
                 ) : modalCarga.rota === "transbordo_sem_nf" ? (
@@ -766,6 +880,125 @@ export default function Expedicao() {
                 </button>
               )}
               <button onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          Modal DANFE — Visualização / Impressão da NF-e
+      ═══════════════════════════════════════════════════════════════════ */}
+      {modalDanfe && (
+        <div style={modalStyle}>
+          <div style={{ ...box(680), maxHeight: "92vh", overflowY: "auto" }}>
+            {/* Cabeçalho do modal */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h3 style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700 }}>DANFE Simplificado</h3>
+                <div style={{ fontSize: 11, color: "#888" }}>Documento Auxiliar da NF-e — {modalDanfe.numero}</div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => window.print()}
+                  style={{ padding: "6px 14px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  🖨 Imprimir
+                </button>
+                <button onClick={() => setModalDanfe(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>×</button>
+              </div>
+            </div>
+
+            {/* DANFE simplificado — estrutura visual */}
+            <div id="danfe-print" style={{ border: "1px solid #333", borderRadius: 4, padding: 16, fontFamily: "monospace", fontSize: 12 }}>
+              {/* Cabeçalho */}
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, borderBottom: "1px solid #333", paddingBottom: 10, marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA</div>
+                  <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Modelo 55 — NF-e</div>
+                  <div style={{ fontSize: 10, marginTop: 8 }}>Emitente: {contratoSel?.produto ? `Produtor Rural — ${contratoSel.produto}` : "Produtor Rural"}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>NF-e</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>Série {modalDanfe.nfe_serie}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#1A4870" }}>Nº {modalDanfe.nfe_numero}</div>
+                </div>
+              </div>
+
+              {/* Dados da NF */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px", marginBottom: 12 }}>
+                {[
+                  ["CFOP", modalDanfe.rota === "transbordo_com_remessa" ? "5905 — Remessa p/ Armazenagem" : "6101 — Venda de Produção do Estab."],
+                  ["Natureza da Operação", modalDanfe.rota === "transbordo_com_remessa" ? "Remessa para Armazenagem" : "Venda de Produção — Produtor Rural"],
+                  ["Data de Emissão", new Date().toLocaleDateString("pt-BR")],
+                  ["Status", "AUTORIZADA"],
+                  ["Destinatário", modalDanfe.destino_razao_social ?? contratoSel?.comprador ?? "—"],
+                  ["Contrato", contratoSel?.numero ?? "—"],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{k}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Produto */}
+              <div style={{ border: "0.5px solid #999", borderRadius: 4, marginBottom: 12 }}>
+                <div style={{ background: "#F4F6FA", padding: "5px 10px", fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase" }}>Produtos / Serviços</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ background: "#F4F6FA" }}>
+                      {["Descrição", "NCM", "CFOP", "Qtd", "Un", "Peso Líq. (kg)", "Sacas"].map(h => (
+                        <th key={h} style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, fontSize: 10, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "6px 8px", fontWeight: 600 }}>{modalDanfe.produto}</td>
+                      <td style={{ padding: "6px 8px" }}>
+                        {modalDanfe.produto?.toLowerCase().includes("soja") ? "12019000" :
+                         modalDanfe.produto?.toLowerCase().includes("milho") ? "10059010" :
+                         modalDanfe.produto?.toLowerCase().includes("algodão") ? "52010020" : "—"}
+                      </td>
+                      <td style={{ padding: "6px 8px" }}>{modalDanfe.rota === "transbordo_com_remessa" ? "5905" : "6101"}</td>
+                      <td style={{ padding: "6px 8px" }}>{modalDanfe.peso_liquido_kg != null ? (modalDanfe.peso_liquido_kg / 60).toFixed(3) : "—"}</td>
+                      <td style={{ padding: "6px 8px" }}>SC</td>
+                      <td style={{ padding: "6px 8px" }}>{modalDanfe.peso_liquido_kg?.toLocaleString("pt-BR") ?? "—"}</td>
+                      <td style={{ padding: "6px 8px" }}>{modalDanfe.peso_liquido_kg != null ? (modalDanfe.peso_liquido_kg / 60).toFixed(1) : "—"}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pesagem */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 12 }}>
+                {[
+                  ["Peso Bruto", `${(modalDanfe.peso_bruto_origem_kg ?? 0).toLocaleString("pt-BR")} kg`],
+                  ["Tara", `${(modalDanfe.tara_origem_kg ?? 0).toLocaleString("pt-BR")} kg`],
+                  ["Peso Líquido", `${(modalDanfe.peso_liquido_kg ?? 0).toLocaleString("pt-BR")} kg`],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ textAlign: "center", border: "0.5px solid #DDE2EE", borderRadius: 4, padding: "6px 8px" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase" }}>{k}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Chave de acesso */}
+              <div style={{ background: "#F4F6FA", borderRadius: 4, padding: "8px 10px", marginBottom: 8 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 3 }}>Chave de Acesso</div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", wordBreak: "break-all", color: "#1A4870", fontWeight: 600 }}>{modalDanfe.nfe_chave}</div>
+              </div>
+
+              {/* Observações */}
+              <div style={{ fontSize: 10, color: "#555", borderTop: "0.5px solid #DDE2EE", paddingTop: 8, lineHeight: 1.6 }}>
+                <strong>Informações Complementares:</strong> ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010).
+                Nas saídas interestaduais, base de cálculo reduzida a 61,11% (carga efetiva: 7,33%) — Conv. ICMS 100/97.
+                PIS/COFINS: alíquota zero — Art. 1°, I da Lei 10.925/2004. Sujeito ao recolhimento do FUNRURAL.
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <button onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+              <button onClick={() => window.print()} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
             </div>
           </div>
         </div>
