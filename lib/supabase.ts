@@ -1884,6 +1884,134 @@ export type ImovelUrbano = {
   created_at?: string;
 };
 
+// ─── Parceria Agrícola & Grupo Econômico ─────────────────────────────────────
+
+export type ParceriaTipo =
+  | "parceria_agricola"   // Lei 4.504/1964 — contrato em que ambos arriscam na produção
+  | "meacao"              // 50/50 clássico
+  | "condominio_rural"    // múltiplos registros no mesmo NIRF
+  | "grupo_economico"     // PJs sob mesmo controle (não é parceria em sentido estrito)
+  | "barter";             // troca de produção por insumos (triangulação)
+
+export type Parceria = {
+  id: string;
+  conta_id: string;
+  nome: string;
+  tipo: ParceriaTipo;
+  descricao?: string;
+  data_inicio?: string;
+  data_fim?: string;
+  ativa: boolean;
+  produtor_responsavel_id?: string;
+  modelo_nfe: "centralizado" | "fracionado";
+  observacao?: string;
+  created_at?: string;
+};
+
+export type PapelParceiro =
+  | "parceiro"
+  | "parceiro_terra"       // entra com a terra
+  | "parceiro_maquinas"    // entra com implementos e mão de obra
+  | "parceiro_capital"     // entra com insumos / financiamento
+  | "administrador";       // gestão e operação sem ativo próprio
+
+export type ParceriaParticipante = {
+  id: string;
+  parceria_id: string;
+  produtor_id?: string;
+  nome_override?: string;
+  cpf_cnpj_override?: string;
+  percentual: number;        // 0 < x ≤ 100
+  papel: PapelParceiro;
+  responsavel_nfe: boolean;
+  conta_bancaria_id?: string;
+  observacao?: string;
+  created_at?: string;
+  // joins
+  produtor?: { nome: string; cpf_cnpj: string };
+};
+
+export type ParceriaArea = {
+  id: string;
+  parceria_id: string;
+  talhao_id?: string;
+  ciclo_id?: string;
+  area_ha_override?: number;
+  percentual_override?: number;
+  created_at?: string;
+  // joins
+  talhao?: { nome: string; area_ha: number };
+  ciclo?: { descricao: string };
+};
+
+export type TipoCusto =
+  | "semente" | "fertilizante" | "defensivo" | "correcao_solo"
+  | "operacao_mecanizada" | "arrendamento" | "mao_obra"
+  | "combustivel" | "manutencao" | "administrativo" | "todos";
+
+export type ParceriaDistribuicao = {
+  id: string;
+  parceria_id: string;
+  participante_id: string;
+  tipo_custo: TipoCusto;
+  percentual: number;
+  observacao?: string;
+};
+
+export type ParceriaApuracao = {
+  id: string;
+  parceria_id: string;
+  ciclo_id?: string;
+  ano_safra_id?: string;
+  receita_total: number;
+  custo_total: number;
+  resultado_liquido: number;
+  status: "rascunho" | "aprovada" | "lancada_sped";
+  data_apuracao?: string;
+  observacao?: string;
+  created_at?: string;
+};
+
+export type ParceriaApuracaoCota = {
+  id: string;
+  apuracao_id: string;
+  participante_id: string;
+  receita_cota: number;
+  custo_cota: number;
+  resultado_cota: number;
+  conta_debito?: string;
+  conta_credito?: string;
+  lancado_sped: boolean;
+};
+
+export type GrupoEconomicoTipo = "familiar" | "empresarial" | "cooperativa" | "condominio";
+
+export type GrupoEconomico = {
+  id: string;
+  conta_id: string;
+  nome: string;
+  cnpj_controlador?: string;
+  tipo: GrupoEconomicoTipo;
+  created_at?: string;
+};
+
+export type PapelGrupo = "controladora" | "subsidiaria" | "coligada" | "equiparada";
+
+export type GrupoEconomicoMembro = {
+  id: string;
+  grupo_id: string;
+  fazenda_id?: string;
+  produtor_id?: string;
+  nome_entidade?: string;
+  cpf_cnpj?: string;
+  papel: PapelGrupo;
+  percentual_participacao?: number;
+  created_at?: string;
+  // joins
+  fazenda?: { nome: string };
+  produtor?: { nome: string; cpf_cnpj: string };
+};
+
 export type PendenciaOperacional = {
   id: string;
   fazenda_id: string;

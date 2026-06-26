@@ -4253,6 +4253,254 @@ export async function seederProdutosAgricolas(fazenda_id: string): Promise<numbe
   return novos.length;
 }
 
+// ═══════════════════════════════════════════
+// PARCERIAS AGRÍCOLAS & GRUPOS ECONÔMICOS
+// ═══════════════════════════════════════════
+
+import type {
+  Parceria, ParceriaParticipante, ParceriaArea,
+  ParceriaDistribuicao, ParceriaApuracao, ParceriaApuracaoCota,
+  GrupoEconomico, GrupoEconomicoMembro,
+} from "./supabase";
+
+// ── Parcerias ──────────────────────────────
+
+export async function listarParcerias(conta_id: string): Promise<Parceria[]> {
+  const { data, error } = await supabase
+    .from("parcerias")
+    .select("*")
+    .eq("conta_id", conta_id)
+    .order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarParceria(
+  p: Omit<Parceria, "id" | "created_at"> & { id?: string }
+): Promise<Parceria> {
+  const { id, ...campos } = p;
+  if (id) {
+    const { data, error } = await supabase.from("parcerias").update(campos).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase.from("parcerias").insert(campos).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function excluirParceria(id: string): Promise<void> {
+  const { error } = await supabase.from("parcerias").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ── Participantes ──────────────────────────
+
+export async function listarParticipantes(parceria_id: string): Promise<ParceriaParticipante[]> {
+  const { data, error } = await supabase
+    .from("parceria_participantes")
+    .select("*, produtor:produtores(nome, cpf_cnpj)")
+    .eq("parceria_id", parceria_id)
+    .order("percentual", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarParticipantes(
+  parceria_id: string,
+  participantes: Array<Omit<ParceriaParticipante, "id" | "created_at" | "produtor"> & { id?: string }>
+): Promise<void> {
+  const { data: existentes } = await supabase
+    .from("parceria_participantes").select("id").eq("parceria_id", parceria_id);
+
+  const idsEnviados = participantes.filter(p => p.id).map(p => p.id!);
+  const idsRemover = (existentes ?? []).map((e: { id: string }) => e.id).filter((id: string) => !idsEnviados.includes(id));
+
+  if (idsRemover.length > 0) {
+    await supabase.from("parceria_participantes").delete().in("id", idsRemover);
+  }
+  for (const pt of participantes) {
+    const { id, ...campos } = { ...pt, parceria_id };
+    if (id) {
+      await supabase.from("parceria_participantes").update(campos).eq("id", id);
+    } else {
+      await supabase.from("parceria_participantes").insert(campos);
+    }
+  }
+}
+
+// ── Áreas vinculadas ───────────────────────
+
+export async function listarAreasParcerias(parceria_id: string): Promise<ParceriaArea[]> {
+  const { data, error } = await supabase
+    .from("parceria_areas")
+    .select("*, talhao:talhoes(nome, area_ha), ciclo:ciclos(descricao)")
+    .eq("parceria_id", parceria_id);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarAreasParcerias(
+  parceria_id: string,
+  areas: Array<Omit<ParceriaArea, "id" | "created_at" | "talhao" | "ciclo"> & { id?: string }>
+): Promise<void> {
+  await supabase.from("parceria_areas").delete().eq("parceria_id", parceria_id);
+  if (areas.length > 0) {
+    await supabase.from("parceria_areas").insert(areas.map(a => ({ ...a, parceria_id })));
+  }
+}
+
+// ── Distribuição de custos ─────────────────
+
+export async function listarDistribuicao(parceria_id: string): Promise<ParceriaDistribuicao[]> {
+  const { data, error } = await supabase
+    .from("parceria_distribuicao")
+    .select("*")
+    .eq("parceria_id", parceria_id);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarDistribuicao(
+  parceria_id: string,
+  regras: Array<Omit<ParceriaDistribuicao, "id"> & { id?: string }>
+): Promise<void> {
+  await supabase.from("parceria_distribuicao").delete().eq("parceria_id", parceria_id);
+  if (regras.length > 0) {
+    await supabase.from("parceria_distribuicao").insert(
+      regras.map(({ id: _id, ...r }) => ({ ...r, parceria_id }))
+    );
+  }
+}
+
+// ── Apuração de resultado ──────────────────
+
+export async function listarApuracoes(parceria_id: string): Promise<ParceriaApuracao[]> {
+  const { data, error } = await supabase
+    .from("parceria_apuracoes")
+    .select("*")
+    .eq("parceria_id", parceria_id)
+    .order("data_apuracao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarApuracao(
+  apuracao: Omit<ParceriaApuracao, "id" | "created_at"> & { id?: string },
+  cotas: Array<Omit<ParceriaApuracaoCota, "id">>
+): Promise<string> {
+  const { id, ...campos } = apuracao;
+  let apuracaoId = id;
+  if (apuracaoId) {
+    await supabase.from("parceria_apuracoes").update(campos).eq("id", apuracaoId);
+    await supabase.from("parceria_apuracao_cotas").delete().eq("apuracao_id", apuracaoId);
+  } else {
+    const { data, error } = await supabase.from("parceria_apuracoes").insert(campos).select("id").single();
+    if (error) throw error;
+    apuracaoId = data.id;
+  }
+  if (cotas.length > 0) {
+    await supabase.from("parceria_apuracao_cotas").insert(
+      cotas.map(c => ({ ...c, apuracao_id: apuracaoId }))
+    );
+  }
+  return apuracaoId!;
+}
+
+export async function listarCotasApuracao(apuracao_id: string): Promise<ParceriaApuracaoCota[]> {
+  const { data, error } = await supabase
+    .from("parceria_apuracao_cotas").select("*").eq("apuracao_id", apuracao_id);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ── Grupos Econômicos ──────────────────────
+
+export async function listarGruposEconomicos(conta_id: string): Promise<GrupoEconomico[]> {
+  const { data, error } = await supabase
+    .from("grupos_economicos").select("*").eq("conta_id", conta_id).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarGrupoEconomico(
+  g: Omit<GrupoEconomico, "id" | "created_at"> & { id?: string }
+): Promise<GrupoEconomico> {
+  const { id, ...campos } = g;
+  if (id) {
+    const { data, error } = await supabase.from("grupos_economicos").update(campos).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase.from("grupos_economicos").insert(campos).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function excluirGrupoEconomico(id: string): Promise<void> {
+  const { error } = await supabase.from("grupos_economicos").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarMembrosGrupo(grupo_id: string): Promise<GrupoEconomicoMembro[]> {
+  const { data, error } = await supabase
+    .from("grupo_economico_membros")
+    .select("*, fazenda:fazendas(nome), produtor:produtores(nome, cpf_cnpj)")
+    .eq("grupo_id", grupo_id);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarMembrosGrupo(
+  grupo_id: string,
+  membros: Array<Omit<GrupoEconomicoMembro, "id" | "created_at" | "fazenda" | "produtor"> & { id?: string }>
+): Promise<void> {
+  await supabase.from("grupo_economico_membros").delete().eq("grupo_id", grupo_id);
+  if (membros.length > 0) {
+    await supabase.from("grupo_economico_membros").insert(
+      membros.map(({ id: _id, ...m }) => ({ ...m, grupo_id }))
+    );
+  }
+}
+
+// Calcula rateio de uma apuração conforme regras de distribuição
+export function calcularCotas(
+  participantes: ParceriaParticipante[],
+  distribuicao: ParceriaDistribuicao[],
+  receita: number,
+  custos: Record<string, number>,
+): ParceriaApuracaoCota[] {
+  const cotas: ParceriaApuracaoCota[] = participantes.map(pt => ({
+    id: "",
+    apuracao_id: "",
+    participante_id: pt.id,
+    receita_cota: 0,
+    custo_cota: 0,
+    resultado_cota: 0,
+    lancado_sped: false,
+  }));
+
+  for (const cota of cotas) {
+    const pt = participantes.find(p => p.id === cota.participante_id)!;
+    cota.receita_cota = receita * (pt.percentual / 100);
+  }
+
+  for (const [tipoCusto, valorCusto] of Object.entries(custos)) {
+    for (const cota of cotas) {
+      const pt = participantes.find(p => p.id === cota.participante_id)!;
+      const regra = distribuicao.find(d => d.participante_id === pt.id && d.tipo_custo === tipoCusto)
+                 ?? distribuicao.find(d => d.participante_id === pt.id && d.tipo_custo === "todos");
+      const pct = regra ? regra.percentual : pt.percentual;
+      cota.custo_cota += valorCusto * (pct / 100);
+    }
+  }
+
+  for (const cota of cotas) {
+    cota.resultado_cota = cota.receita_cota - cota.custo_cota;
+  }
+  return cotas;
+}
+
 // ————————————————————————————————————————
 // UTILITÁRIOS
 // ————————————————————————————————————————

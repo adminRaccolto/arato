@@ -6538,3 +6538,191 @@ ALTER TABLE movimentacoes_estoque DROP CONSTRAINT IF EXISTS movimentacoes_estoqu
 
 NOTIFY pgrst, 'reload schema';
 
+
+-- ============================================================
+-- Seção 130 — Parcerias Agrícolas & Grupos Econômicos
+-- Fundamento legal: Lei 4.504/1964 (Estatuto da Terra), Arts. 96-96-A
+-- Parceria rural: contrato pelo qual proprietário entrega imóvel e
+-- outro parceiro coloca trabalho/insumos, dividindo colheita/receita.
+-- ============================================================
+
+-- Parcerias (cadastro da parceria / grupo)
+CREATE TABLE IF NOT EXISTS parcerias (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id          UUID REFERENCES contas(id) ON DELETE CASCADE,
+  nome              TEXT NOT NULL,
+  tipo              TEXT NOT NULL DEFAULT 'parceria_agricola',
+  -- parceria_agricola | meacao | condominio_rural | grupo_economico | barter
+  descricao         TEXT,
+  data_inicio       DATE,
+  data_fim          DATE,
+  ativa             BOOLEAN NOT NULL DEFAULT true,
+  -- Parceiro principal / administrador (emite NF-e pelo todo quando modelo centralizador)
+  produtor_responsavel_id UUID REFERENCES produtores(id),
+  -- Modelo fiscal de emissão
+  modelo_nfe        TEXT NOT NULL DEFAULT 'centralizado',
+  -- centralizado: um parceiro emite 100% e reparte internamente
+  -- fracionado: cada parceiro emite % da NF individualmente
+  observacao        TEXT,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Participantes de cada parceria
+CREATE TABLE IF NOT EXISTS parceria_participantes (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parceria_id       UUID NOT NULL REFERENCES parcerias(id) ON DELETE CASCADE,
+  -- Participante pode ser produtor cadastrado OU terceiro (apenas nome/CPF)
+  produtor_id       UUID REFERENCES produtores(id),
+  nome_override     TEXT,
+  cpf_cnpj_override TEXT,
+  percentual        NUMERIC(6,3) NOT NULL CHECK (percentual > 0 AND percentual <= 100),
+  papel             TEXT NOT NULL DEFAULT 'parceiro',
+  -- parceiro | parceiro_terra | parceiro_maquinas | parceiro_capital | administrador
+  responsavel_nfe   BOOLEAN NOT NULL DEFAULT false,
+  conta_bancaria_id UUID,
+  observacao        TEXT,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Talhões / Ciclos vinculados à parceria (subconjunto dos talhões da fazenda)
+CREATE TABLE IF NOT EXISTS parceria_areas (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parceria_id       UUID NOT NULL REFERENCES parcerias(id) ON DELETE CASCADE,
+  talhao_id         UUID REFERENCES talhoes(id),
+  ciclo_id          UUID REFERENCES ciclos(id),
+  area_ha_override  NUMERIC(10,4),   -- área específica desta parcela (se != talhão total)
+  percentual_override NUMERIC(6,3),  -- % diferente do padrão da parceria neste talhão
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Regras de distribuição de custos por tipo (override do % padrão)
+CREATE TABLE IF NOT EXISTS parceria_distribuicao (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parceria_id       UUID NOT NULL REFERENCES parcerias(id) ON DELETE CASCADE,
+  participante_id   UUID NOT NULL REFERENCES parceria_participantes(id) ON DELETE CASCADE,
+  tipo_custo        TEXT NOT NULL,
+  -- semente | fertilizante | defensivo | correcao_solo | operacao_mecanizada
+  -- arrendamento | mao_obra | combustivel | manutencao | administrativo | todos
+  percentual        NUMERIC(6,3) NOT NULL,
+  observacao        TEXT,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (parceria_id, participante_id, tipo_custo)
+);
+
+-- Apurações de resultado por safra (resultado calculado da parceria)
+CREATE TABLE IF NOT EXISTS parceria_apuracoes (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parceria_id       UUID NOT NULL REFERENCES parcerias(id) ON DELETE CASCADE,
+  ciclo_id          UUID REFERENCES ciclos(id),
+  ano_safra_id      UUID REFERENCES anos_safra(id),
+  receita_total     NUMERIC(14,2) DEFAULT 0,
+  custo_total       NUMERIC(14,2) DEFAULT 0,
+  resultado_liquido NUMERIC(14,2) DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'rascunho',
+  -- rascunho | aprovada | lancada_sped
+  data_apuracao     DATE,
+  observacao        TEXT,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Cotas apuradas por participante
+CREATE TABLE IF NOT EXISTS parceria_apuracao_cotas (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  apuracao_id       UUID NOT NULL REFERENCES parceria_apuracoes(id) ON DELETE CASCADE,
+  participante_id   UUID NOT NULL REFERENCES parceria_participantes(id),
+  receita_cota      NUMERIC(14,2) DEFAULT 0,
+  custo_cota        NUMERIC(14,2) DEFAULT 0,
+  resultado_cota    NUMERIC(14,2) DEFAULT 0,
+  -- Para SPED ECD: partidas dobradas do rateio
+  conta_debito      TEXT,  -- conta devedora do resultado
+  conta_credito     TEXT,  -- conta credora do parceiro
+  lancado_sped      BOOLEAN DEFAULT false,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Grupos Econômicos (entidades sob mesmo controle — para consolidação)
+CREATE TABLE IF NOT EXISTS grupos_economicos (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id          UUID REFERENCES contas(id) ON DELETE CASCADE,
+  nome              TEXT NOT NULL,
+  cnpj_controlador  TEXT,
+  tipo              TEXT NOT NULL DEFAULT 'familiar',
+  -- familiar | empresarial | cooperativa | condominio
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Membros do grupo econômico
+CREATE TABLE IF NOT EXISTS grupo_economico_membros (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  grupo_id          UUID NOT NULL REFERENCES grupos_economicos(id) ON DELETE CASCADE,
+  fazenda_id        UUID REFERENCES fazendas(id),
+  produtor_id       UUID REFERENCES produtores(id),
+  nome_entidade     TEXT,     -- fallback se não vinculado
+  cpf_cnpj          TEXT,
+  papel             TEXT NOT NULL DEFAULT 'subsidiaria',
+  -- controladora | subsidiaria | coligada | equiparada
+  percentual_participacao NUMERIC(6,3),
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_parcerias_conta     ON parcerias(conta_id);
+CREATE INDEX IF NOT EXISTS idx_parceria_part_prc   ON parceria_participantes(parceria_id);
+CREATE INDEX IF NOT EXISTS idx_parceria_areas_prc  ON parceria_areas(parceria_id);
+CREATE INDEX IF NOT EXISTS idx_parceria_dist_prc   ON parceria_distribuicao(parceria_id);
+CREATE INDEX IF NOT EXISTS idx_grupo_membros_grp   ON grupo_economico_membros(grupo_id);
+
+-- RLS
+ALTER TABLE parcerias                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parceria_participantes   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parceria_areas           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parceria_distribuicao    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parceria_apuracoes       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parceria_apuracao_cotas  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grupos_economicos        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grupo_economico_membros  ENABLE ROW LEVEL SECURITY;
+
+-- Políticas (mesmo padrão das demais tabelas da conta)
+CREATE POLICY parceria_conta ON parcerias FOR ALL TO authenticated
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+         OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo')
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+              OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo');
+
+CREATE POLICY parcpart_via_parceria ON parceria_participantes FOR ALL TO authenticated
+  USING (parceria_id IN (SELECT id FROM parcerias WHERE conta_id IN
+    (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
+
+CREATE POLICY parcareas_via_parceria ON parceria_areas FOR ALL TO authenticated
+  USING (parceria_id IN (SELECT id FROM parcerias WHERE conta_id IN
+    (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
+
+CREATE POLICY parcdist_via_parceria ON parceria_distribuicao FOR ALL TO authenticated
+  USING (parceria_id IN (SELECT id FROM parcerias WHERE conta_id IN
+    (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
+
+CREATE POLICY parcapur_via_parceria ON parceria_apuracoes FOR ALL TO authenticated
+  USING (parceria_id IN (SELECT id FROM parcerias WHERE conta_id IN
+    (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
+
+CREATE POLICY parccotas_via_apur ON parceria_apuracao_cotas FOR ALL TO authenticated
+  USING (apuracao_id IN (SELECT a.id FROM parceria_apuracoes a JOIN parcerias p ON p.id = a.parceria_id
+    WHERE p.conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
+
+CREATE POLICY grupo_conta ON grupos_economicos FOR ALL TO authenticated
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+         OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo')
+  WITH CHECK (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+              OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo');
+
+CREATE POLICY grupomembro_via_grupo ON grupo_economico_membros FOR ALL TO authenticated
+  USING (grupo_id IN (SELECT id FROM grupos_economicos WHERE conta_id IN
+    (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+    OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';

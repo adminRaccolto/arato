@@ -191,6 +191,7 @@ const NAV: NavItem[] = [
       { id: "fiscal-pendencias",    label: "Pendências Fiscais",      path: "/fiscal/pendencias",          moduleId: "fiscal_nfe"  },
       { id: "fiscal-gnre",          label: "GNRE",                    path: "/fiscal/gnre",                moduleId: "fiscal_nfe"  },
       { id: "fiscal-esocial",    label: "eSocial Rural",         path: "/fiscal/esocial",    moduleId: "fiscal_sped" },
+      { id: "fiscal-parcerias",  label: "Parcerias & Grupos",    path: "/parcerias",           moduleId: "fiscal_sped" },
       {
         type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais", moduleId: "fiscal_sped",
         children: [
@@ -362,7 +363,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "estoque")  return pathname === "/estoque" || pathname.startsWith("/estoque");
     if (item.id === "financeiro")      return pathname.startsWith("/financeiro");
     if (item.id === "lavoura")         return pathname.startsWith("/lavoura");
-    if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname.startsWith("/fiscal");
+    if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias" || pathname.startsWith("/fiscal");
     if (item.id === "custos")          return pathname.startsWith("/custos") || pathname.startsWith("/relatorios/dre");
     if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
     if (item.id === "ajuda")           return pathname === "/learning" || pathname === "/suporte";
