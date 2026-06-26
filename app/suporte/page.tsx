@@ -97,13 +97,15 @@ export default function SuportePage() {
     setEnviando(true);
 
     try {
-      // Salva mensagem do usuário
-      const msgUser = await salvarMensagemSuporte({
-        conversa_id: conversaAtiva.id,
-        fazenda_id: fazendaId,
-        role: "user",
-        content: texto,
+      // Salva mensagem do usuário via API route (service_role_key — imune a JWT expirado)
+      const userRes = await fetch("/api/suporte/mensagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversa_id: conversaAtiva.id, fazenda_id: fazendaId, role: "user", content: texto }),
       });
+      const userJson = await userRes.json() as { ok: boolean; mensagem?: { id: string; conversa_id: string; fazenda_id: string; role: "user"|"assistant"; content: string } };
+      if (!userJson.ok || !userJson.mensagem) throw new Error("Erro ao salvar mensagem");
+      const msgUser = userJson.mensagem;
       setMensagens(prev => [...prev, msgUser]);
 
       // Atualiza título da conversa se for a primeira mensagem
@@ -129,13 +131,14 @@ export default function SuportePage() {
       }
       const { resposta } = await res.json() as { resposta: string };
 
-      // Salva resposta da IA
-      const msgAI = await salvarMensagemSuporte({
-        conversa_id: conversaAtiva.id,
-        fazenda_id: fazendaId,
-        role: "assistant",
-        content: resposta,
+      // Salva resposta da IA via API route
+      const aiRes = await fetch("/api/suporte/mensagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversa_id: conversaAtiva.id, fazenda_id: fazendaId, role: "assistant", content: resposta }),
       });
+      const aiJson = await aiRes.json() as { ok: boolean; mensagem?: { id: string; conversa_id: string; fazenda_id: string; role: "user"|"assistant"; content: string } };
+      const msgAI = aiJson.mensagem ?? { id: "ai-" + Date.now(), conversa_id: conversaAtiva.id, fazenda_id: fazendaId ?? "", role: "assistant" as const, content: resposta };
       setMensagens(prev => [...prev, msgAI]);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
