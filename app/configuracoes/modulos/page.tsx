@@ -215,25 +215,27 @@ const NCM_PRESETS_MT: NcmPreset[] = [
   },
   {
     ncm: "10019900", descricao: "Trigo em grão",
-    icms_cst_interno: "041", icms_cst_externo: "041",
-    icms_aliq: 0, icms_base_reduzida_pct: 100,
+    // Interno: diferido no MT (RICMS/MT). Externo: base reduzida Conv. ICMS 100/97 — trigo listado explicitamente na Cláusula 1ª §2°
+    icms_cst_interno: "051", icms_cst_externo: "020",
+    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
-    inf_cpl: "Operação não tributada pelo ICMS. PIS/COFINS: alíquota zero.",
+    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97 (trigo em grão incluído na Cláusula 1ª, §2°). PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
   {
     ncm: "10011900", descricao: "Trigo para semeadura",
-    icms_cst_interno: "041", icms_cst_externo: "041",
-    icms_aliq: 0, icms_base_reduzida_pct: 100,
+    // Interno: diferido no MT. Externo: base reduzida Conv. ICMS 100/97 (trigo em grão)
+    icms_cst_interno: "051", icms_cst_externo: "020",
+    icms_aliq: 12, icms_base_reduzida_pct: 61.11,
     pis_cst: "06", pis_aliq: 0,
     cofins_cst: "06", cofins_aliq: 0,
     cfop_dentro: "5101", cfop_fora: "6101",
     ibs_estadual_aliq: 9.0, ibs_municipal_aliq: 1.0, cbs_aliq: 9.1,
     ibs_cbs_reducao_pct: 60,
-    inf_cpl: "Operação não tributada pelo ICMS. PIS/COFINS: alíquota zero.",
+    inf_cpl: "ICMS diferido nas operações internas — RICMS/MT. Nas saídas interestaduais, base de cálculo reduzida a 61,11% (alíquota efetiva: 7,33%) — Conv. ICMS 100/97. PIS/COFINS: alíquota zero — Lei 10.925/2004.",
   },
 ];
 
