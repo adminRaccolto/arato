@@ -722,6 +722,8 @@ function ParametrosSistemaContent() {
       ...produtores.map(p => ({ type: "produtor" as const, id: p.id, nome: p.nome, cpf_cnpj: p.cpf_cnpj, moduloKey: `fiscal_pf_${p.id}` })),
     ];
 
+    const ambienteGlobal = (cfgs["fiscal_global"]?.ambiente as string) || "homologacao";
+
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
@@ -730,6 +732,48 @@ function ParametrosSistemaContent() {
             Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço e certificado próprios.
             A tributação por produto é configurada na aba <strong>Tributação NCM</strong>.
           </p>
+        </div>
+
+        {/* ── Ambiente SEFAZ Global ─────────────────────────────────── */}
+        <div style={{ background: "#fff", border: `2px solid ${ambienteGlobal === "producao" ? "#16A34A" : "#C9921B"}`, borderRadius: 12, padding: "18px 22px", marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Ambiente SEFAZ</div>
+              <div style={{ fontSize: 12, color: "#888" }}>
+                {ambienteGlobal === "producao"
+                  ? "Produção — NF-e com validade fiscal real. Transmite à SEFAZ."
+                  : "Homologação — ambiente de testes. NF-e sem validade fiscal."}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 0, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 30, padding: "4px" }}>
+              {(["homologacao", "producao"] as const).map(v => {
+                const ativo = ambienteGlobal === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={async () => {
+                      setCfg("fiscal_global", "ambiente", v);
+                      await salvar("fiscal_global");
+                    }}
+                    style={{
+                      padding: "8px 24px", borderRadius: 26, border: "none", cursor: "pointer",
+                      fontSize: 13, fontWeight: ativo ? 700 : 400,
+                      background: ativo ? (v === "producao" ? "#16A34A" : "#C9921B") : "transparent",
+                      color: ativo ? "#fff" : "#888",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {v === "producao" ? "🟢 Produção" : "🟡 Homologação"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {ambienteGlobal === "producao" && (
+            <div style={{ marginTop: 12, padding: "8px 12px", background: "#FEF2F2", border: "0.5px solid #FCA5A5", borderRadius: 8, fontSize: 12, color: "#B91C1C" }}>
+              ⚠️ <strong>Atenção:</strong> em Produção, toda NF-e transmitida tem validade fiscal real e gera obrigação tributária. Certifique-se de ter o certificado digital A1 configurado.
+            </div>
+          )}
         </div>
 
         <div style={{ background: "#EFF6FF", border: "0.5px solid #378ADD", borderRadius: 8, padding: "10px 16px", marginBottom: 20, fontSize: 12, color: "#1A4870", lineHeight: 1.6 }}>
