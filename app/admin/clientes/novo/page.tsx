@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -79,11 +80,22 @@ const btnSecondary: React.CSSProperties = {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function NovoClientePage() {
-  const [adminKey, setAdminKey]       = useState("");
-  const [salvando, setSalvando]       = useState(false);
-  const [erro, setErro]               = useState("");
-  const [resultado, setResultado]     = useState<ResultadoCriacao | null>(null);
+  const [sessionToken, setSessionToken] = useState("");
+  const [salvando, setSalvando]         = useState(false);
+  const [erro, setErro]                 = useState("");
+  const [resultado, setResultado]       = useState<ResultadoCriacao | null>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
+
+  // Captura o token da sessão atual automaticamente
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) setSessionToken(session.access_token);
+    });
+  }, []);
 
   const [form, setForm] = useState<FormData>({
     tipo:            "pf",
@@ -119,7 +131,7 @@ export default function NovoClientePage() {
     if (!form.user_senha.trim())    { setErro("Senha é obrigatória."); return; }
     if (form.user_senha !== form.user_senha_conf) { setErro("As senhas não coincidem."); return; }
     if (form.user_senha.length < 8) { setErro("A senha deve ter pelo menos 8 caracteres."); return; }
-    if (!adminKey.trim())           { setErro("Informe a chave de admin no topo da página."); return; }
+    if (!sessionToken)              { setErro("Sessão não carregada. Recarregue a página e tente novamente."); return; }
 
     setSalvando(true);
 
@@ -148,7 +160,7 @@ export default function NovoClientePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-key": adminKey,
+          "Authorization": `Bearer ${sessionToken}`,
         },
         body: JSON.stringify(payload),
       });
@@ -257,30 +269,6 @@ export default function NovoClientePage() {
         <a href="/admin/clientes" style={{ ...btnSecondary, textDecoration: "none", display: "inline-block" }}>
           ← Voltar
         </a>
-      </div>
-
-      {/* Chave admin */}
-      <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B50", borderRadius: 10, padding: "14px 18px", marginBottom: 20 }}>
-        <label style={{ ...lbl, color: "#7A5A12" }}>Chave de Admin (x-admin-key)</label>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <input
-            style={{ ...inp, background: "#fff7e6", border: "0.5px solid #C9921B70", maxWidth: 380 }}
-            type={mostrarSenha ? "text" : "password"}
-            placeholder="Cole aqui a chave RACCOTLO_ADMIN_KEY"
-            value={adminKey}
-            onChange={e => setAdminKey(e.target.value)}
-          />
-          <button
-            style={{ ...btnSecondary, padding: "8px 14px", fontSize: 12 }}
-            onClick={() => setMostrarSenha(v => !v)}
-          >
-            {mostrarSenha ? "Ocultar" : "Mostrar"}
-          </button>
-        </div>
-        <div style={{ fontSize: 11, color: "#9A7A3A", marginTop: 6 }}>
-          Esta chave é necessária para autenticar a criação de novos clientes via API.
-          Armazene-a em um local seguro ou consulte o painel de variáveis de ambiente na Vercel.
-        </div>
       </div>
 
       {/* Formulário principal */}
