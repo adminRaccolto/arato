@@ -98,7 +98,6 @@ type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 const TAB_GROUPS: TabGroup[] = [
   { group: "Cadastros Gerais", tabs: [
     { key: "produtores",      label: "Produtores"      },
-    { key: "empresas",        label: "Empresas"        },
     { key: "fazendas",        label: "Fazendas"        },
     { key: "funcionarios",    label: "Funcionários"    },
     { key: "pessoas",         label: "Pessoas"         },
@@ -227,7 +226,9 @@ function CadastrosInner() {
   const [produtores, setProdutores]   = useState<Produtor[]>([]);
   const [modalProd, setModalProd]     = useState(false);
   const [editProd, setEditProd]       = useState<Produtor | null>(null);
-  const [fProd, setFProd]             = useState({ nome: "", tipo: "pf" as "pf"|"pj", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT" });
+  const [fProd, setFProd]             = useState({ nome: "", tipo: "pf" as "pf"|"pj", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "", cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT", razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "" });
+  // Mapa produtor_id → empresa_id para Produtores PJ (preenchido ao salvar/carregar)
+  const [prodEmpresaMap, setProdEmpresaMap] = useState<Record<string, string>>({});
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [tabProd, setTabProd]         = useState<"dados"|"ies">("dados");
   const [prodIEs, setProdIEs]         = useState<ProdutorIE[]>([]);
@@ -524,10 +525,6 @@ function CadastrosInner() {
       : listarProdutores(fazendaId).then(setProdutores).catch(() => {});
 
     if (aba === "produtores")  carregarProdutores();
-    if (aba === "empresas") {
-      listarEmpresas(fazendaId).then(setEmpresas).catch(e => setErro(e.message));
-      carregarProdutoresSilencioso();
-    }
     if (aba === "fazendas") {
       if (userRole === "raccotlo" && (contaId || fazendaId)) {
         // Raccotlo admin: usa endpoint server-side (service role) para listar todas as fazendas da conta do cliente
@@ -546,7 +543,13 @@ function CadastrosInner() {
         listarFazendas().then(setFazendas).catch(e => setErro(e.message));
       }
       carregarProdutoresSilencioso();
-      listarEmpresas(fazendaId).then(setEmpresas).catch(() => {});
+      listarEmpresas(fazendaId).then(emps => {
+        setEmpresas(emps);
+        // Rebuild mapa produtor → empresa para Produtores PJ
+        const map: Record<string, string> = {};
+        emps.forEach(e => { if (e.produtor_id) map[e.produtor_id] = e.id; });
+        setProdEmpresaMap(map);
+      }).catch(() => {});
       listarPessoas(fazendaId).then(setPessoas).catch(() => {});
     }
     if (aba === "pessoas")     listarPessoas(fazendaId).then(setPessoas).catch(e => setErro(e.message));
@@ -709,15 +712,27 @@ function CadastrosInner() {
   // ─────────────── PRODUTORES ───────────────
   const abrirModalProd = async (p?: Produtor) => {
     setEditProd(p ?? null);
+    // Para Produtor PJ em edição, carrega dados da empresa vinculada
+    let empVinculada: Empresa | null = null;
+    if (p?.tipo === "pj") {
+      const empList = await listarEmpresas(p.fazenda_id);
+      empVinculada = empList.find(e => e.produtor_id === p.id) ?? null;
+    }
     setFProd(p ? {
       nome: p.nome, tipo: p.tipo, incra: p.incra ?? "", cpf_cnpj: p.cpf_cnpj ?? "",
       inscricao_est: p.inscricao_est ?? "", email: p.email ?? "", telefone: p.telefone ?? "",
       cep: p.cep ?? "", logradouro: p.logradouro ?? "", numero: p.numero ?? "",
       complemento: p.complemento ?? "", bairro: p.bairro ?? "",
       municipio: p.municipio ?? "", estado: p.estado ?? "MT",
+      razao_social: empVinculada?.razao_social ?? "",
+      regime_tributario: empVinculada?.regime_tributario ?? "",
+      car: empVinculada?.car ?? "", nirf: empVinculada?.nirf ?? "", itr: empVinculada?.itr ?? "",
+      email_relatorios: empVinculada?.email_relatorios ?? "",
+      _empresaId: empVinculada?.id ?? "",
     } : {
       nome: "", tipo: "pf", incra: "", cpf_cnpj: "", inscricao_est: "", email: "", telefone: "",
       cep: "", logradouro: "", numero: "", complemento: "", bairro: "", municipio: "", estado: "MT",
+      razao_social: "", regime_tributario: "", car: "", nirf: "", itr: "", email_relatorios: "", _empresaId: "",
     });
     setTabProd("dados");
     setNewIE({ inscricao_estadual: "", municipio: "", estado: "MT", fazenda_id: "" });
@@ -782,6 +797,37 @@ function CadastrosInner() {
       const n = await criarProdutor(pp);
       setProdutores(p => [...p, n]);
       prodId = n.id;
+    }
+    // Se PJ → sincronizar/criar Empresa vinculada automaticamente
+    if (fProd.tipo === "pj") {
+      const empPayload: Omit<Empresa, "id" | "created_at"> = {
+        fazenda_id: fazIdProd,
+        produtor_id: prodId,
+        nome: fProd.nome.trim(),
+        razao_social: fProd.razao_social || fProd.nome.trim(),
+        tipo: "pj",
+        cpf_cnpj: fProd.cpf_cnpj || undefined,
+        inscricao_est: fProd.inscricao_est || undefined,
+        regime_tributario: fProd.regime_tributario || undefined,
+        municipio: fProd.municipio || undefined,
+        estado: fProd.estado || undefined,
+        car: fProd.car || undefined,
+        nirf: fProd.nirf || undefined,
+        itr: fProd.itr || undefined,
+        email: fProd.email || undefined,
+        email_relatorios: fProd.email_relatorios || undefined,
+        telefone: fProd.telefone || undefined,
+      };
+      let empId = fProd._empresaId;
+      if (empId) {
+        await atualizarEmpresa(empId, empPayload);
+        setEmpresas(prev => prev.map(x => x.id === empId ? { ...x, ...empPayload } : x));
+      } else {
+        const nova = await criarEmpresa(empPayload);
+        empId = nova.id;
+        setEmpresas(prev => [...prev, nova]);
+      }
+      setProdEmpresaMap(prev => ({ ...prev, [prodId]: empId }));
     }
     await salvarIEsDoProdutor(prodId, prodIEs.map(ie => ({
       produtor_id: prodId,
@@ -1760,56 +1806,6 @@ function CadastrosInner() {
           )}
 
           {/* ══ EMPRESAS ══ */}
-          {aba === "empresas" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Empresas <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({empresas.length})</span></div>
-                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Entidades jurídicas vinculadas a um Produtor. Uma Fazenda pode pertencer à Empresa ou diretamente ao Produtor (PF).</div>
-                </div>
-                <button style={btnV} onClick={() => abrirModalEmp()}>+ Nova Empresa</button>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Empresa / Razão Social", "Tipo / Regime", "CNPJ / CPF", "Produtor", "Registros rurais", "Município", ""]} />
-                <tbody>
-                  {empresas.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma empresa cadastrada</td></tr>}
-                  {empresas.map((e, i) => {
-                    const prod = produtores.find(p => p.id === e.produtor_id);
-                    return (
-                      <tr key={e.id} style={{ borderBottom: i < empresas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>
-                          {e.nome}
-                          {e.razao_social && e.razao_social !== e.nome && <div style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>{e.razao_social}</div>}
-                        </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          {badge(e.tipo.toUpperCase(), e.tipo === "pj" ? "#E6F1FB" : "#FBF0D8", e.tipo === "pj" ? "#0C447C" : "#7A5A12")}
-                          {e.regime_tributario && <div style={{ fontSize: 10, color: "#555", marginTop: 3 }}>{e.regime_tributario}</div>}
-                        </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{e.cpf_cnpj || "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{prod ? prod.nome : "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          <div style={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
-                            {e.car  && badge("CAR",  "#EAF3DE", "#1A5C38")}
-                            {e.nirf && badge("NIRF", "#D5E8F5", "#0B2D50")}
-                            {e.itr  && badge("ITR",  "#FBF3E0", "#7A5A12")}
-                            {!e.car && !e.nirf && !e.itr && <span style={{ color: "#888", fontSize: 11 }}>—</span>}
-                          </div>
-                        </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{e.municipio ? `${e.municipio} · ${e.estado}` : "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => abrirModalEmp(e)}>Editar</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir empresa?")) excluirEmpresa(e.id).then(() => setEmpresas(x => x.filter(r => r.id !== e.id))); }}>✕</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
           {/* ══ FAZENDAS ══ */}
           {aba === "fazendas" && (
             <div>
@@ -5345,6 +5341,44 @@ function CadastrosInner() {
               <div><label style={lbl}>Telefone</label><input style={inp} value={fProd.telefone} onChange={e => setFProd(p => ({ ...p, telefone: e.target.value }))} /></div>
             </div>
 
+            {/* Dados PJ — exibidos somente quando tipo = pj */}
+            {fProd.tipo === "pj" && (<>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Dados da Empresa (PJ)</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 16 }}>
+                <div style={{ gridColumn: "1/3" }}>
+                  <label style={lbl}>Razão Social</label>
+                  <input style={inp} value={fProd.razao_social} onChange={e => setFProd(p => ({ ...p, razao_social: e.target.value }))} placeholder="Razão social registrada" />
+                </div>
+                <div>
+                  <label style={lbl}>Regime Tributário</label>
+                  <select style={inp} value={fProd.regime_tributario} onChange={e => setFProd(p => ({ ...p, regime_tributario: e.target.value }))}>
+                    <option value="">Selecione…</option>
+                    <option value="Produtor Rural PJ">Produtor Rural PJ</option>
+                    <option value="Simples Nacional">Simples Nacional</option>
+                    <option value="Lucro Presumido">Lucro Presumido</option>
+                    <option value="Lucro Real">Lucro Real</option>
+                    <option value="MEI">MEI</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl}>CAR — Cadastro Ambiental Rural</label>
+                  <input style={inp} value={fProd.car} onChange={e => setFProd(p => ({ ...p, car: e.target.value }))} placeholder="MT-XXXXXXXX-XXXXXXXXXXXXX" />
+                </div>
+                <div>
+                  <label style={lbl}>NIRF</label>
+                  <input style={inp} value={fProd.nirf} onChange={e => setFProd(p => ({ ...p, nirf: e.target.value }))} />
+                </div>
+                <div>
+                  <label style={lbl}>ITR</label>
+                  <input style={inp} value={fProd.itr} onChange={e => setFProd(p => ({ ...p, itr: e.target.value }))} />
+                </div>
+                <div style={{ gridColumn: "1/-1" }}>
+                  <label style={lbl}>E-mail para relatórios automáticos</label>
+                  <input style={inp} type="email" value={fProd.email_relatorios} onChange={e => setFProd(p => ({ ...p, email_relatorios: e.target.value }))} placeholder="Receberá DRE semanal, alertas de vencimento, etc." />
+                </div>
+              </div>
+            </>)}
+
             {/* Endereço */}
             <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" }}>Endereço</div>
             <div style={{ display: "grid", gridTemplateColumns: "140px 1fr 1fr", gap: 14, marginBottom: 12 }}>
@@ -5469,70 +5503,7 @@ function CadastrosInner() {
         </Modal>
       )}
 
-      {/* Modal Empresa */}
-      {modalEmp && (
-        <Modal titulo={editEmp ? "Editar Empresa" : "Nova Empresa"} subtitulo="Entidade jurídica ou pessoa física empresária que opera as fazendas" onClose={() => setModalEmp(false)} width={920}>
 
-          {/* ─ Dados cadastrais ─ */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Dados cadastrais</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
-            <div style={{ gridColumn: "1/3" }}><label style={lbl}>Nome Fantasia *</label><input style={inp} value={fEmp.nome} onChange={e => setFEmp(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div>
-              <label style={lbl}>Tipo *</label>
-              <select style={inp} value={fEmp.tipo} onChange={e => setFEmp(p => ({ ...p, tipo: e.target.value as "pf"|"pj", cpf_cnpj: "" }))}>
-                <option value="pj">Pessoa Jurídica (CNPJ)</option>
-                <option value="pf">Pessoa Física (CPF)</option>
-              </select>
-            </div>
-            <div style={{ gridColumn: "1/3" }}><label style={lbl}>Razão Social</label><input style={inp} value={fEmp.razao_social} onChange={e => setFEmp(p => ({ ...p, razao_social: e.target.value }))} /></div>
-            <div><label style={lbl}>{fEmp.tipo === "pf" ? "CPF" : "CNPJ"}</label><input style={inp} value={fEmp.cpf_cnpj} onChange={e => setFEmp(p => ({ ...p, cpf_cnpj: maskCpfCnpj(e.target.value, p.tipo) }))} placeholder={fEmp.tipo === "pf" ? "000.000.000-00" : "00.000.000/0001-00"} /></div>
-            <div><label style={lbl}>Inscrição Estadual</label><input style={inp} value={fEmp.inscricao_est} onChange={e => setFEmp(p => ({ ...p, inscricao_est: e.target.value }))} /></div>
-            <div>
-              <label style={lbl}>Regime Tributário</label>
-              <select style={inp} value={fEmp.regime_tributario} onChange={e => setFEmp(p => ({ ...p, regime_tributario: e.target.value }))}>
-                <option value="">Selecione…</option>
-                <option>Produtor Rural — Pessoa Física</option>
-                <option>Produtor Rural — Pessoa Jurídica</option>
-                <option>Simples Nacional</option>
-                <option>Lucro Presumido</option>
-                <option>Lucro Real</option>
-                <option>MEI</option>
-              </select>
-            </div>
-            <div><label style={lbl}>Município</label><input style={inp} value={fEmp.municipio} onChange={e => setFEmp(p => ({ ...p, municipio: e.target.value }))} /></div>
-            <div><label style={lbl}>Estado</label><select style={inp} value={fEmp.estado} onChange={e => setFEmp(p => ({ ...p, estado: e.target.value }))}>{ESTADOS.map(s => <option key={s}>{s}</option>)}</select></div>
-            <div style={{ gridColumn: "1/-1" }}>
-              <label style={lbl}>Produtor / Sócio principal</label>
-              <select style={inp} value={fEmp.produtor_id} onChange={e => setFEmp(p => ({ ...p, produtor_id: e.target.value }))}>
-                <option value="">Não vinculado</option>
-                {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.tipo.toUpperCase()})</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* ─ Registros rurais ─ */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingTop: 16, borderTop: "0.5px solid #D4DCE8" }}>Registros rurais</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
-            <div><label style={lbl}>NIRF</label><input style={inp} value={fEmp.nirf} onChange={e => setFEmp(p => ({ ...p, nirf: e.target.value }))} /></div>
-            <div><label style={lbl}>ITR</label><input style={inp} value={fEmp.itr} onChange={e => setFEmp(p => ({ ...p, itr: e.target.value }))} /></div>
-            <div />
-            <div style={{ gridColumn: "1/-1" }}><label style={lbl}>CAR — Cadastro Ambiental Rural</label><input style={inp} value={fEmp.car} onChange={e => setFEmp(p => ({ ...p, car: e.target.value }))} placeholder="MT-XXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" /></div>
-          </div>
-
-          {/* ─ Contato e notificações ─ */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, paddingTop: 16, borderTop: "0.5px solid #D4DCE8" }}>Contato e notificações</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            <div><label style={lbl}>E-mail principal</label><input style={inp} type="email" value={fEmp.email} onChange={e => setFEmp(p => ({ ...p, email: e.target.value }))} /></div>
-            <div><label style={lbl}>E-mail para relatórios automáticos</label><input style={inp} type="email" value={fEmp.email_relatorios} onChange={e => setFEmp(p => ({ ...p, email_relatorios: e.target.value }))} /></div>
-            <div><label style={lbl}>Telefone</label><input style={inp} value={fEmp.telefone} onChange={e => setFEmp(p => ({ ...p, telefone: e.target.value }))} /></div>
-          </div>
-
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24 }}>
-            <button style={btnR} onClick={() => setModalEmp(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fEmp.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fEmp.nome.trim()} onClick={salvarEmp}>{salvando ? "Salvando…" : "Salvar"}</button>
-          </div>
-        </Modal>
-      )}
 
       {/* Modal Fazenda */}
       {modalFaz && (() => {
@@ -5565,36 +5536,34 @@ function CadastrosInner() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Identificação</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
                   <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome da fazenda *</label><input style={inp} value={fFaz.nome} onChange={e => setFFaz(p => ({ ...p, nome: e.target.value }))} /></div>
-                  <div style={{ gridColumn: "1/3" }}>
-                    <label style={lbl}>Produtor responsável <span style={{ color: "#888", fontWeight: 400 }}>(PF ou parceria)</span></label>
+                  <div style={{ gridColumn: "1/-1" }}>
+                    <label style={lbl}>Produtor / Empresa responsável *</label>
                     <select style={inp} value={fFaz.produtor_id} onChange={e => {
                       const pid = e.target.value;
                       const prod = produtores.find(x => x.id === pid);
+                      const empId = prod?.tipo === "pj" ? (prodEmpresaMap[pid] ?? "") : "";
                       setFFaz(p => ({
                         ...p,
                         produtor_id: pid,
-                        empresa_id: "",
+                        empresa_id: empId,
                         ...(prod?.cpf_cnpj ? { cnpj: prod.cpf_cnpj } : {}),
                       }));
                     }}>
-                      <option value="">Nenhum (vínculo via empresa)</option>
-                      {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.tipo.toUpperCase()})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={lbl}>Empresa responsável <span style={{ color: "#888", fontWeight: 400 }}>(PJ)</span></label>
-                    <select style={inp} value={fFaz.empresa_id} onChange={e => {
-                      const eid = e.target.value;
-                      const emp = empresas.find(x => x.id === eid);
-                      setFFaz(p => ({
-                        ...p,
-                        empresa_id: eid,
-                        produtor_id: "",
-                        ...(emp?.cpf_cnpj ? { cnpj: emp.cpf_cnpj } : {}),
-                      }));
-                    }}>
-                      <option value="">Nenhuma</option>
-                      {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                      <option value="">Selecione…</option>
+                      {produtores.filter(p => p.tipo === "pf").length > 0 && (
+                        <optgroup label="Produtor Rural PF">
+                          {produtores.filter(p => p.tipo === "pf").map(p => (
+                            <option key={p.id} value={p.id}>{p.nome} — CPF {p.cpf_cnpj ?? "—"}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {produtores.filter(p => p.tipo === "pj").length > 0 && (
+                        <optgroup label="Produtor Rural PJ">
+                          {produtores.filter(p => p.tipo === "pj").map(p => (
+                            <option key={p.id} value={p.id}>{p.nome} — CNPJ {p.cpf_cnpj ?? "—"}</option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </div>
                   <div><label style={lbl}>Área total (ha) *</label><InputMonetario style={inp} value={fFaz.area} onChange={v => setFFaz(p => ({ ...p, area: String(v) }))} /></div>
