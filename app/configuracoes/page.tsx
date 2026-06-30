@@ -319,9 +319,39 @@ function ConfiguracoesInner() {
                     <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>{contas.filter(c => c.lcdpr).length}</span>
                     vinculadas ao LCDPR
                   </span>
-                  <button onClick={() => window.print()} className="no-print" style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}>
-                    Imprimir
-                  </button>
+                  <button
+                    onClick={() => {
+                      const linhas = contasFiltradas.map(c => {
+                        const ct = corTipoConta(c.tipo);
+                        const depth = c.codigo ? c.codigo.split('.').length - 1 : 0;
+                        const isGrupo = depth === 0;
+                        const pad = "&nbsp;".repeat(depth * 4);
+                        return `<tr style="border-bottom:0.5px solid #EEF1F6;background:${isGrupo?"#F8FAFD":"#fff"}">
+                          <td style="padding:6px 12px;font-family:monospace;font-size:11px;color:#1a1a1a">${c.codigo}</td>
+                          <td style="padding:6px 12px;font-size:${isGrupo?12:11}px;font-weight:${isGrupo?700:400}">${pad}${c.nome}${c.transitoria?' <span style="font-size:9px;background:#FBF3E0;color:#8B5E14;padding:1px 4px;border-radius:3px">TRANS.</span>':""}</td>
+                          <td style="padding:6px 12px;text-align:center"><span style="font-size:10px;background:${ct.bg};color:${ct.color};padding:2px 7px;border-radius:6px;font-weight:700">${ct.label}</span></td>
+                          <td style="padding:6px 12px;text-align:center;font-size:11px;color:#555">${c.natureza ?? "—"}</td>
+                          <td style="padding:6px 12px;text-align:center;font-size:11px;color:${c.operacional?"#1A5C38":"#999"}">${c.operacional?"Sim":"Não"}</td>
+                          <td style="padding:6px 12px;text-align:center;font-size:10px;color:${c.lcdpr?"#1A5C38":"#ccc"}">${c.lcdpr||"—"}</td>
+                        </tr>`;
+                      }).join("");
+                      const w = window.open("", "_blank", "width=900,height=700");
+                      if (!w) return;
+                      w.document.write(`<!DOCTYPE html><html><head><title>Plano de Contas</title>
+                        <style>body{font-family:Arial,sans-serif;margin:20px}h2{color:#1A4870;margin-bottom:4px}
+                        p{color:#888;font-size:11px;margin:0 0 14px}table{width:100%;border-collapse:collapse}
+                        th{background:#1A4870;color:#fff;padding:7px 12px;text-align:left;font-size:11px}
+                        @media print{@page{size:A4;margin:15mm}}</style></head>
+                        <body><h2>Plano de Contas Contábil</h2>
+                        <p>Emitido em ${new Date().toLocaleDateString("pt-BR")} · ${contasFiltradas.length} contas</p>
+                        <table><thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Natureza</th><th>Operac.</th><th>LCDPR</th></tr></thead>
+                        <tbody>${linhas}</tbody></table>
+                        <script>window.onload=function(){window.print();}<\/script></body></html>`);
+                      w.document.close();
+                    }}
+                    className="no-print"
+                    style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}
+                  >Imprimir</button>
                   <button onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
                     + Nova conta
                   </button>

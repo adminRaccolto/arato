@@ -2723,9 +2723,68 @@ function CadastrosInner() {
                       }
                     }}
                   >{seedingCfop ? "Importando CFOPs…" : "↓ Importar CFOPs Padrão"}</button>
-                  <button onClick={() => window.print()} className="no-print" style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600 }}>
-                    🖨 Imprimir
-                  </button>
+                  <button
+                    onClick={() => {
+                      const sorted = [...opGers].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: false }));
+                      const linhas = sorted.map(o => {
+                        const nivel = (o.classificacao.match(/\./g) || []).length;
+                        const telas = [o.permite_notas_fiscais && "NF", o.permite_cp_cr && "CP/CR", o.permite_tesouraria && "Tesouraria", o.permite_baixas && "Baixas", o.permite_adiantamentos && "Adiant.", o.permite_pedidos_venda && "Ped.Venda", o.permite_estoque && "Estoque"].filter(Boolean).join(" · ");
+                        const pad = "&nbsp;".repeat(nivel * 4);
+                        return `<tr style="background:${nivel===0?"#F0F4FA":"#fff"};border-bottom:0.5px solid #DDE2EE">
+                          <td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#555;white-space:nowrap">${o.classificacao}</td>
+                          <td style="padding:6px 10px;font-size:12px">${pad}${nivel>0?"└ ":""}${o.descricao}</td>
+                          <td style="padding:6px 10px;text-align:center;font-size:11px;color:${o.tipo==="receita"?"#1A5C1A":"#791F1F"};font-weight:600">${o.tipo==="receita"?"Receita":"Despesa"}</td>
+                          <td style="padding:6px 10px;font-size:10px;color:#555">${telas}</td>
+                          <td style="padding:6px 10px;font-size:11px;color:#555">${o.historico_tesouraria_nome||"—"}</td>
+                        </tr>`;
+                      }).join("");
+                      const w = window.open("", "_blank", "width=900,height=700");
+                      if (!w) return;
+                      w.document.write(`<!DOCTYPE html><html><head><title>Plano de Contas Gerencial</title>
+                        <style>body{font-family:Arial,sans-serif;margin:20px;font-size:12px}
+                        h2{color:#1A4870;margin-bottom:4px}p{color:#888;font-size:11px;margin:0 0 14px}
+                        table{width:100%;border-collapse:collapse}th{background:#1A4870;color:#fff;padding:7px 10px;text-align:left;font-size:11px}
+                        @media print{@page{size:A4 landscape;margin:15mm}}</style></head>
+                        <body><h2>Plano de Contas Gerencial</h2>
+                        <p>Emitido em ${new Date().toLocaleDateString("pt-BR")} — ${sorted.length} operações</p>
+                        <table><thead><tr><th>Código</th><th>Descrição</th><th>Tipo</th><th>Telas</th><th>Tesouraria</th></tr></thead>
+                        <tbody>${linhas}</tbody></table>
+                        <script>window.onload=function(){window.print();}<\/script></body></html>`);
+                      w.document.close();
+                    }}
+                    style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer", fontWeight: 600 }}
+                  >🖨 Imprimir</button>
+                  <button
+                    onClick={async () => {
+                      const XLSX = await import("xlsx");
+                      const sorted = [...opGers].sort((a, b) => a.classificacao.localeCompare(b.classificacao, "pt-BR", { numeric: false }));
+                      const dados = sorted.map(o => ({
+                        "Código":          o.classificacao,
+                        "Descrição":       o.descricao,
+                        "Tipo":            o.tipo === "receita" ? "Receita" : "Despesa",
+                        "NF":              o.permite_notas_fiscais ? "Sim" : "",
+                        "CP/CR":           o.permite_cp_cr ? "Sim" : "",
+                        "Tesouraria":      o.permite_tesouraria ? "Sim" : "",
+                        "Baixas":          o.permite_baixas ? "Sim" : "",
+                        "Pedido Venda":    o.permite_pedidos_venda ? "Sim" : "",
+                        "Estoque":         o.permite_estoque ? "Sim" : "",
+                        "Conta Débito":    o.conta_debito || "",
+                        "Conta Crédito":   o.conta_credito || "",
+                        "Tesouraria Hist.":o.historico_tesouraria_nome || "",
+                        "Inativo":         o.inativo ? "Sim" : "Não",
+                      }));
+                      const ws = XLSX.utils.json_to_sheet(dados);
+                      // Larguras das colunas
+                      ws["!cols"] = [
+                        { wch: 18 }, { wch: 45 }, { wch: 10 }, { wch: 6 }, { wch: 7 }, { wch: 10 },
+                        { wch: 8 }, { wch: 12 }, { wch: 8 }, { wch: 16 }, { wch: 16 }, { wch: 20 }, { wch: 8 },
+                      ];
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "Plano de Contas");
+                      XLSX.writeFile(wb, `plano_gerencial_${new Date().toISOString().split("T")[0]}.xlsx`);
+                    }}
+                    style={{ fontSize: 13, padding: "8px 14px", border: "0.5px solid #16A34A", borderRadius: 8, background: "#F0FDF4", color: "#16A34A", cursor: "pointer", fontWeight: 600 }}
+                  >⬇ XLSX</button>
                   <button style={btnV} onClick={() => { setEditOpGer(null); setFOG({ ...OG_VAZIO }); setAbaOpGer("principal"); setModalOpGer(true); }}>+ Nova Operação</button>
                 </div>
               </div>
