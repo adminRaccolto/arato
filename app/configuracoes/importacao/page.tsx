@@ -1954,6 +1954,24 @@ function ImportacaoInner() {
       if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
       ok++;
       if (novo?.id && r.cpf_cnpj) criados[r.cpf_cnpj.replace(/\D/g, "")] = novo.id;
+
+      // PJ → criar Empresa vinculada automaticamente (mesmo padrão do cadastro manual)
+      if (novo?.id && r.tipo === "pj") {
+        await supabase.from("empresas").insert({
+          fazenda_id:        fazendaId,
+          produtor_id:       novo.id,
+          nome:              r.nome.trim(),
+          razao_social:      r.nome.trim(),
+          tipo:              "pj",
+          cpf_cnpj:          r.cpf_cnpj?.trim() || null,
+          inscricao_est:     r.inscricao_est?.trim() || null,
+          municipio:         r.municipio?.trim() || null,
+          estado:            r.estado?.trim() || null,
+          email:             r.email?.trim() || null,
+          telefone:          r.telefone?.trim() || null,
+        });
+      }
+
       // Registra também a IE principal na tabela auxiliar
       if (novo?.id && r.inscricao_est?.trim()) {
         await supabase.from("produtor_inscricoes_estaduais").insert({
