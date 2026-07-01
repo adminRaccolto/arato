@@ -833,20 +833,37 @@ function ContasPagarInner() {
                     ✕ Limpar filtros de coluna
                   </button>
                 )}
-                <span style={{ marginLeft: hasColFilter ? 0 : "auto", fontSize: 11, color: "#888" }}>
+                {selecionados.size > 0 && (
+                  <button
+                    onClick={async () => {
+                      const manuais = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado");
+                      if (manuais.length === 0) { alert("Nenhum lançamento em aberto selecionado para excluir."); return; }
+                      if (!confirm(`Excluir ${manuais.length} lançamento${manuais.length !== 1 ? "s" : ""}?\nEsta ação não pode ser desfeita.`)) return;
+                      const ids = manuais.map(l => l.id);
+                      const { error } = await supabase.from("lancamentos").delete().in("id", ids);
+                      if (error) { alert("Erro ao excluir: " + error.message); return; }
+                      setLancamentos(prev => prev.filter(x => !ids.includes(x.id)));
+                      setSelecionados(new Set());
+                    }}
+                    style={{ marginLeft: hasColFilter ? 0 : "auto", padding: "4px 12px", borderRadius: 8, border: "0.5px solid #E24B4A", background: "#FDECEA", color: "#C0392B", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                  >
+                    🗑 Excluir ({selecionados.size})
+                  </button>
+                )}
+                <span style={{ marginLeft: (hasColFilter || selecionados.size > 0) ? 0 : "auto", fontSize: 11, color: "#888" }}>
                   {filtrados.length} / {filtradosBase.length} registros
                 </span>
               </div>
 
               {/* Tabela wide */}
-              <div style={{ overflowX: "auto" }}>
+              <div style={{ overflow: "auto", maxHeight: "calc(100vh - 300px)" }}>
                 {filtradosBase.length === 0 ? (
                   <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
                     Nenhuma conta encontrada para este filtro.
                   </div>
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
+                    <thead style={{ position: "sticky", top: 0, zIndex: 3 }}>
                       {/* Cabeçalhos */}
                       <tr style={{ background: "#F3F6F9" }}>
                         <th style={thS(32)}>
@@ -1056,20 +1073,6 @@ function ContasPagarInner() {
                                     📎 {l.nfe_numero}
                                   </span>
                                 )}
-                                {l.status !== "baixado" && (
-                                  <button
-                                    onClick={async () => {
-                                      if (!confirm(`Excluir "${l.descricao}"?\nEsta ação não pode ser desfeita.`)) return;
-                                      const { error } = await supabase.from("lancamentos").delete().eq("id", l.id);
-                                      if (error) { alert("Erro ao excluir: " + error.message); return; }
-                                      setLancamentos(prev => prev.filter(x => x.id !== l.id));
-                                    }}
-                                    title="Excluir lançamento"
-                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "transparent", color: "#E24B4A", border: "0.5px solid #E24B4A", lineHeight: 1 }}
-                                  >
-                                    🗑
-                                  </button>
-                                )}
                               </div>
                             </td>
                           </tr>
@@ -1188,21 +1191,6 @@ function ContasPagarInner() {
               ↺ Reabrir {qtdBaixados} pago{qtdBaixados !== 1 ? "s" : ""}
             </button>
           )}
-          <button
-            onClick={async () => {
-              const manuais = filtrados.filter(l => selecionados.has(l.id) && l.status !== "baixado");
-              if (manuais.length === 0) { alert("Nenhum lançamento em aberto selecionado para excluir."); return; }
-              if (!confirm(`Excluir ${manuais.length} lançamento${manuais.length !== 1 ? "s" : ""}?\nEsta ação não pode ser desfeita.`)) return;
-              const ids = manuais.map(l => l.id);
-              const { error } = await supabase.from("lancamentos").delete().in("id", ids);
-              if (error) { alert("Erro ao excluir: " + error.message); return; }
-              setLancamentos(prev => prev.filter(x => !ids.includes(x.id)));
-              setSelecionados(new Set());
-            }}
-            style={{ background: "#E24B4A", color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
-          >
-            🗑 Excluir
-          </button>
           <button
             onClick={() => setSelecionados(new Set())}
             style={{ background: "none", border: "0.5px solid rgba(255,255,255,0.4)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
