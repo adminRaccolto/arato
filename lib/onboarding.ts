@@ -158,13 +158,14 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
     pathLabel: "Ir para Parâmetros Fiscais",
     minStep: 7,
     check: async (fazendaId) => {
-      const { data } = await supabase
+      // Parâmetros fiscais são salvos como 'fiscal_global', 'fiscal_emp_<id>' ou 'fiscal_pf_<id>'
+      // Nunca como 'fiscal' puro — verificar qualquer chave que comece com 'fiscal_'
+      const { count } = await supabase
         .from("configuracoes_modulo")
-        .select("id")
+        .select("id", { count: "exact", head: true })
         .eq("fazenda_id", fazendaId)
-        .eq("modulo", "fiscal")
-        .maybeSingle();
-      return !!data;
+        .like("modulo", "fiscal_%");
+      return (count ?? 0) > 0;
     },
   },
 ];
