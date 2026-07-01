@@ -520,8 +520,8 @@ export default function ContratosFinanceiros() {
     try { setSalvando(true); await fn(); } catch (e) { alert((e as { message?: string })?.message || JSON.stringify(e)); } finally { setSalvando(false); }
   }
 
-  const onChangeAa = (v: string) => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_aa: v, taxa_juros_am: isNaN(aa) ? "" : fmtNum(aaParaAm(aa), 4) })); };
-  const onChangeAm = (v: string) => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_am: v, taxa_juros_aa: isNaN(am) ? "" : fmtNum(amParaAa(am), 4) })); };
+  const onChangeAa = (v: string) => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_aa: v, taxa_juros_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); };
+  const onChangeAm = (v: string) => { const am = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_am: v, taxa_juros_aa: isNaN(am) ? "" : String(parseFloat(amParaAa(am).toFixed(4))) })); };
   const onPessoaChange = (id: string) => { const p = pessoas.find(x => x.id === id); setFC(prev => ({ ...prev, pessoa_id: id, credor: p ? p.nome : prev.credor })); };
 
   // ── Abrir modal ──
@@ -533,8 +533,8 @@ export default function ContratosFinanceiros() {
       tipo: c.tipo, tipo_calculo: c.tipo_calculo, linha_credito: c.linha_credito ?? "",
       moeda: c.moeda, valor_financiado: String(c.valor_financiado), valor_cotacao: String(c.valor_cotacao ?? ""),
       data_contrato: c.data_contrato, numero_documento: c.numero_documento ?? "",
-      taxa_juros_aa: c.taxa_juros_aa ? fmtNum(c.taxa_juros_aa, 4) : "",
-      taxa_juros_am: c.taxa_juros_am ? fmtNum(c.taxa_juros_am, 4) : "",
+      taxa_juros_aa: c.taxa_juros_aa != null ? String(c.taxa_juros_aa) : "",
+      taxa_juros_am: c.taxa_juros_am != null ? String(c.taxa_juros_am) : "",
       iof_pct: c.iof_pct ? String(c.iof_pct) : "", tac_valor: c.tac_valor ? String(c.tac_valor) : "",
       outros_custos: c.outros_custos ? String(c.outros_custos) : "",
       conta_liberacao_id: c.conta_liberacao_id ?? "", conta_pagamento_id: c.conta_pagamento_id ?? "",
@@ -545,7 +545,7 @@ export default function ContratosFinanceiros() {
       crescimento_pct: c.crescimento_pct ? String(c.crescimento_pct) : "",
       rateio_por_vencimento: c.rateio_por_vencimento, fiscal: c.fiscal,
     } : { ...FC_VAZIO });
-    if (c) setFCalc({ nParcelas: "12", taxaMensal: c.taxa_juros_am ? fmtNum(c.taxa_juros_am, 4) : "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
+    if (c) setFCalc({ nParcelas: "12", taxaMensal: c.taxa_juros_am != null ? String(c.taxa_juros_am) : "1.5", dataPrimeiro: "", periodicidade: String(c.periodicidade_meses ?? 1), acessorios: "0" });
     setFLib({ data_liberacao: "", valor_liberado: "", parcelas_liberacao: "1" });
     setFGar({ tipo_garantia: "alienacao_fiduciaria", grau: "", tipo_bem: "imovel", matricula_id: "", imovel_urbano_id: "", maquina_id: "", descricao: "", valor_avaliacao: "", percentual_bem: "100" });
     setFAdit({ ...FA_VAZIO });
@@ -587,12 +587,12 @@ export default function ContratosFinanceiros() {
       const atualizado = { ...contratoModal, ...payload };
       setContratos(p => p.map(x => x.id === contratoModal.id ? atualizado : x));
       setContratoModal(atualizado);
-      setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am ? fmtNum(payload.taxa_juros_am, 4) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
+      setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am != null ? String(payload.taxa_juros_am) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
     } else {
       const novo = await criarContratoFinanceiro(payload);
       setContratos(p => [novo, ...p]);
       setContratoModal(novo);
-      setFCalc({ nParcelas: "12", taxaMensal: novo.taxa_juros_am ? fmtNum(novo.taxa_juros_am, 4) : "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
+      setFCalc({ nParcelas: "12", taxaMensal: novo.taxa_juros_am != null ? String(novo.taxa_juros_am) : "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
       setAbaModal("liberacao");
     }
   });
