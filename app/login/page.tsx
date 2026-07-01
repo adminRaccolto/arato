@@ -8,19 +8,21 @@ const BG_FALLBACK = "https://images.unsplash.com/photo-1500382017468-9049fed747e
 type Modo = "login" | "recuperar";
 
 export default function Login() {
-  const [modo,       setModo]       = useState<Modo>("login");
-  const [email,      setEmail]      = useState("");
-  const [senha,      setSenha]      = useState("");
-  const [erro,       setErro]       = useState<string | null>(null);
-  const [sucesso,    setSucesso]    = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  const [logoUrl,    setLogoUrl]    = useState("/Logo_Arato.png");
-  const [bgUrl,      setBgUrl]      = useState(BG_FALLBACK);
-  const [senhaVis,   setSenhaVis]   = useState(false);
+  const [modo,         setModo]         = useState<Modo>("login");
+  const [email,        setEmail]        = useState("");
+  const [senha,        setSenha]        = useState("");
+  const [erro,         setErro]         = useState<string | null>(null);
+  const [sucesso,      setSucesso]      = useState<string | null>(null);
+  const [carregando,   setCarregando]   = useState(false);
+  const [logoUrl,      setLogoUrl]      = useState("/Logo_Arato.png");
+  const [bgUrl,        setBgUrl]        = useState(BG_FALLBACK);
+  const [logoAratoErr, setLogoAratoErr] = useState(false);
+  const [logoRacErr,   setLogoRacErr]   = useState(false);
+  const [senhaVis,     setSenhaVis]     = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Só sobrescreve se o arquivo realmente existir no storage
+    // Só substitui URL se a imagem do storage realmente carregar
     const { data: dLogo } = supabase.storage.from("logos").getPublicUrl("arato.png");
     if (dLogo?.publicUrl) {
       const img = new Image();
@@ -57,15 +59,15 @@ export default function Login() {
     setSucesso("Link enviado! Verifique sua caixa de entrada.");
   }
 
-  const inpStyle: React.CSSProperties = {
+  const inp: React.CSSProperties = {
     width: "100%", padding: "13px 16px",
-    border: "1.5px solid rgba(255,255,255,0.35)",
+    border: "1.5px solid rgba(255,255,255,0.50)",
     borderRadius: 12, fontSize: 14,
     outline: "none", boxSizing: "border-box",
-    color: "#0B1E35", background: "rgba(255,255,255,0.82)",
+    color: "#0B1E35",
+    background: "rgba(255,255,255,0.90)",
     fontFamily: "system-ui, sans-serif",
     transition: "border-color 0.15s, box-shadow 0.15s",
-    backdropFilter: "blur(4px)",
   };
 
   return (
@@ -86,92 +88,86 @@ export default function Login() {
         backgroundSize: "cover",
         backgroundPosition: "center 40%",
       }} />
-
-      {/* Camada de cor sobre a foto */}
+      {/* Overlay escuro sutil */}
       <div style={{
         position: "fixed", inset: 0, zIndex: 1,
-        background: [
-          "linear-gradient(160deg, rgba(5,14,26,0.55) 0%, rgba(8,24,44,0.30) 50%, rgba(5,14,26,0.60) 100%)",
-        ].join(", "),
+        background: "linear-gradient(160deg, rgba(4,12,24,0.50) 0%, rgba(6,18,36,0.35) 50%, rgba(4,12,24,0.55) 100%)",
       }} />
 
-      {/* ── CARD GLASS CENTRALIZADO ── */}
+      {/* ── CARD GLASSMORPHISM ── */}
       <div style={{
         position: "relative", zIndex: 2,
-        width: "100%", maxWidth: 460,
+        width: "100%", maxWidth: 440,
         margin: "32px 16px",
-        background: "rgba(255,255,255,0.88)",
-        backdropFilter: "blur(28px) saturate(180%)",
-        WebkitBackdropFilter: "blur(28px) saturate(180%)",
+        /* Efeito vidro: fundo muito transparente + blur forte */
+        background: "rgba(255,255,255,0.16)",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
         borderRadius: 28,
-        border: "1px solid rgba(255,255,255,0.60)",
-        boxShadow: "0 32px 80px rgba(0,0,0,0.30), 0 2px 0 rgba(255,255,255,0.50) inset",
+        border: "1px solid rgba(255,255,255,0.40)",
+        boxShadow: [
+          "0 32px 80px rgba(0,0,0,0.35)",
+          "0 1px 0 rgba(255,255,255,0.55) inset",
+          "0 -1px 0 rgba(0,0,0,0.10) inset",
+        ].join(", "),
         padding: "44px 44px 36px",
       }}>
 
-        {/* ── IDENTIDADE ── */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-
-          {/* Logo Arato — 112px */}
-          <img
-            src={logoUrl}
-            alt="Arato"
-            style={{
-              height: 112, width: "auto",
-              objectFit: "contain",
-              display: "block",
-              margin: "0 auto 16px",
-            }}
-            onError={e => {
-              const el = e.target as HTMLImageElement;
-              el.style.display = "none";
-              const fb = el.nextElementSibling as HTMLElement;
-              if (fb) fb.style.display = "flex";
-            }}
-          />
-          {/* Fallback texto */}
-          <div style={{
-            display: "none", alignItems: "center", justifyContent: "center",
-            height: 112, fontSize: 42, fontWeight: 900, color: "#1A4870", letterSpacing: "-2px",
-            marginBottom: 16,
-          }}>
-            Arato
-          </div>
-
-          {/* Um produto Raccolto */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: 12, color: "#8A9AB0", fontWeight: 400 }}>um produto</span>
+        {/* ── LOGO ARATO ── */}
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          {!logoAratoErr ? (
             <img
-              src="/Logo_Raccolto.png"
-              alt="Raccolto"
-              style={{
-                height: 22, width: "auto",
-                objectFit: "contain",
-                display: "inline-block",
-                verticalAlign: "middle",
-              }}
-              onError={e => {
-                const el = e.target as HTMLImageElement;
-                el.style.display = "none";
-                const fb = el.nextElementSibling as HTMLElement;
-                if (fb) fb.style.display = "inline";
-              }}
+              src={logoUrl}
+              alt="Arato"
+              style={{ height: 112, width: "auto", objectFit: "contain", display: "block", margin: "0 auto 14px" }}
+              onError={() => setLogoAratoErr(true)}
             />
-            <span style={{ display: "none", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>Raccolto</span>
+          ) : (
+            <div style={{
+              height: 112, display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 46, fontWeight: 900, color: "#fff", letterSpacing: "-2px", marginBottom: 14,
+              textShadow: "0 2px 12px rgba(0,0,0,0.3)",
+            }}>
+              Arato
+            </div>
+          )}
+
+          {/* ── UM PRODUTO RACCOLTO ── */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 400 }}>um produto</span>
+            {!logoRacErr ? (
+              <img
+                src="/Logo_Raccolto.png"
+                alt="Raccolto"
+                style={{
+                  height: 20, width: "auto",
+                  objectFit: "contain",
+                  filter: "brightness(0) invert(1)",
+                  opacity: 0.90,
+                }}
+                onError={() => setLogoRacErr(true)}
+              />
+            ) : (
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>
+                Raccolto
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Divisor */}
-        <div style={{ height: 1, background: "rgba(0,0,0,0.08)", marginBottom: 28 }} />
+        {/* Divisor translúcido */}
+        <div style={{ height: 1, background: "rgba(255,255,255,0.18)", marginBottom: 28 }} />
 
         {/* ── TÍTULO ── */}
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ margin: "0 0 5px", fontSize: 21, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
+        <div style={{ marginBottom: 22 }}>
+          <h2 style={{
+            margin: "0 0 5px", fontSize: 21, fontWeight: 800,
+            color: "#fff", letterSpacing: "-0.3px",
+            textShadow: "0 1px 8px rgba(0,0,0,0.25)",
+          }}>
             {modo === "login" ? "Bem-vindo de volta" : "Recuperar senha"}
           </h2>
-          <p style={{ margin: 0, fontSize: 13, color: "#7A8A9A", lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.68)", lineHeight: 1.5 }}>
             {modo === "login"
               ? "Entre com suas credenciais para acessar o painel."
               : "Informe seu e-mail e enviaremos um link de redefinição."}
@@ -181,8 +177,8 @@ export default function Login() {
         {/* ── ALERTAS ── */}
         {erro && (
           <div style={{
-            background: "#FEF2F2", border: "1px solid #FECACA",
-            borderRadius: 10, padding: "11px 14px", marginBottom: 18,
+            background: "rgba(254,242,242,0.92)", border: "1px solid #FECACA",
+            borderRadius: 10, padding: "11px 14px", marginBottom: 16,
             fontSize: 13, color: "#B91C1C", display: "flex", gap: 8, alignItems: "flex-start",
           }}>
             <span style={{ flexShrink: 0, marginTop: 1 }}>⚠</span>{erro}
@@ -190,8 +186,8 @@ export default function Login() {
         )}
         {sucesso && (
           <div style={{
-            background: "#F0FDF4", border: "1px solid #BBF7D0",
-            borderRadius: 10, padding: "11px 14px", marginBottom: 18,
+            background: "rgba(240,253,244,0.92)", border: "1px solid #BBF7D0",
+            borderRadius: 10, padding: "11px 14px", marginBottom: 16,
             fontSize: 13, color: "#15803D", display: "flex", gap: 8, alignItems: "flex-start",
           }}>
             <span style={{ flexShrink: 0, marginTop: 1 }}>✓</span>{sucesso}
@@ -205,8 +201,8 @@ export default function Login() {
           <div style={{ marginBottom: 14 }}>
             <label style={{
               display: "block", fontSize: 11, fontWeight: 700,
-              color: "#4A5568", marginBottom: 6,
-              letterSpacing: "0.06em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.80)", marginBottom: 6,
+              letterSpacing: "0.07em", textTransform: "uppercase",
             }}>
               E-mail
             </label>
@@ -216,9 +212,9 @@ export default function Login() {
               onChange={e => setEmail(e.target.value)}
               required
               placeholder="seu@email.com.br"
-              style={inpStyle}
-              onFocus={e => { e.target.style.borderColor = "#1A4870"; e.target.style.boxShadow = "0 0 0 3px rgba(26,72,112,0.12)"; }}
-              onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.35)"; e.target.style.boxShadow = "none"; }}
+              style={inp}
+              onFocus={e => { e.target.style.borderColor = "#fff"; e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.20)"; }}
+              onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.50)"; e.target.style.boxShadow = "none"; }}
             />
           </div>
 
@@ -227,8 +223,8 @@ export default function Login() {
             <div style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <label style={{
-                  fontSize: 11, fontWeight: 700, color: "#4A5568",
-                  letterSpacing: "0.06em", textTransform: "uppercase",
+                  fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)",
+                  letterSpacing: "0.07em", textTransform: "uppercase",
                 }}>
                   Senha
                 </label>
@@ -237,7 +233,8 @@ export default function Login() {
                   onClick={() => { setModo("recuperar"); setErro(null); setSucesso(null); }}
                   style={{
                     background: "none", border: "none", padding: 0,
-                    fontSize: 12, color: "#1A4870", cursor: "pointer", fontWeight: 600,
+                    fontSize: 12, color: "rgba(255,255,255,0.85)", cursor: "pointer", fontWeight: 600,
+                    textDecoration: "underline", textUnderlineOffset: 3,
                   }}
                 >
                   Esqueceu a senha?
@@ -250,9 +247,9 @@ export default function Login() {
                   onChange={e => setSenha(e.target.value)}
                   required
                   placeholder="••••••••"
-                  style={{ ...inpStyle, paddingRight: 48 }}
-                  onFocus={e => { e.target.style.borderColor = "#1A4870"; e.target.style.boxShadow = "0 0 0 3px rgba(26,72,112,0.12)"; }}
-                  onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.35)"; e.target.style.boxShadow = "none"; }}
+                  style={{ ...inp, paddingRight: 48 }}
+                  onFocus={e => { e.target.style.borderColor = "#fff"; e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.20)"; }}
+                  onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.50)"; e.target.style.boxShadow = "none"; }}
                 />
                 <button
                   type="button"
@@ -262,7 +259,6 @@ export default function Login() {
                     background: "none", border: "none", cursor: "pointer",
                     color: "#9AA5B4", lineHeight: 1, padding: 2,
                   }}
-                  title={senhaVis ? "Ocultar" : "Mostrar"}
                 >
                   {senhaVis
                     ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -279,12 +275,13 @@ export default function Login() {
             disabled={carregando || (modo === "recuperar" && !!sucesso)}
             style={{
               width: "100%", marginTop: 22,
-              background: carregando ? "#8BA8C4" : "linear-gradient(135deg, #1A4870 0%, #0B2D50 100%)",
-              color: "#fff", border: "none", borderRadius: 12,
-              padding: "15px", fontSize: 15, fontWeight: 700,
+              background: carregando ? "rgba(26,72,112,0.60)" : "linear-gradient(135deg, #1A4870 0%, #0B2D50 100%)",
+              color: "#fff", border: "1px solid rgba(255,255,255,0.20)",
+              borderRadius: 12, padding: "15px",
+              fontSize: 15, fontWeight: 700,
               cursor: carregando ? "not-allowed" : "pointer",
               transition: "opacity 0.15s, transform 0.1s",
-              boxShadow: carregando ? "none" : "0 6px 20px rgba(26,72,112,0.40)",
+              boxShadow: carregando ? "none" : "0 6px 20px rgba(0,0,0,0.30)",
               letterSpacing: "0.01em",
             }}
             onMouseEnter={e => { if (!carregando) { const b = e.currentTarget; b.style.opacity = "0.88"; b.style.transform = "translateY(-1px)"; } }}
@@ -301,13 +298,13 @@ export default function Login() {
               onClick={() => { setModo("login"); setErro(null); setSucesso(null); }}
               style={{
                 width: "100%", marginTop: 10,
-                background: "rgba(255,255,255,0.50)", border: "1.5px solid rgba(0,0,0,0.12)",
+                background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.30)",
                 borderRadius: 12, padding: "13px",
-                fontSize: 14, color: "#4A5568", cursor: "pointer", fontWeight: 500,
-                transition: "border-color 0.15s",
+                fontSize: 14, color: "rgba(255,255,255,0.85)", cursor: "pointer", fontWeight: 500,
+                transition: "background 0.15s",
               }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)")}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.20)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
             >
               ← Voltar ao login
             </button>
@@ -317,8 +314,8 @@ export default function Login() {
         {/* Não tem conta */}
         {modo === "login" && (
           <div style={{ marginTop: 22, textAlign: "center" }}>
-            <span style={{ fontSize: 13, color: "#9AA5B4" }}>Ainda não tem conta? </span>
-            <a href="/planos" style={{ fontSize: 13, color: "#1A4870", fontWeight: 700, textDecoration: "none" }}>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.60)" }}>Ainda não tem conta? </span>
+            <a href="/planos" style={{ fontSize: 13, color: "#fff", fontWeight: 700, textDecoration: "none" }}>
               Conheça os planos →
             </a>
           </div>
@@ -326,21 +323,8 @@ export default function Login() {
 
         {/* Rodapé */}
         <div style={{ marginTop: 28, textAlign: "center" }}>
-          <span style={{ fontSize: 11, color: "#B0BEC5" }}>© 2026 Raccolto Consultoria · v1.0</span>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>© 2026 Raccolto Consultoria · v1.0</span>
         </div>
-      </div>
-
-      {/* Tagline discreta no rodapé da tela */}
-      <div style={{
-        position: "fixed", bottom: 24, left: 0, right: 0, zIndex: 3,
-        textAlign: "center", pointerEvents: "none",
-      }}>
-        <span style={{
-          fontSize: 12, color: "rgba(255,255,255,0.45)",
-          fontWeight: 500, letterSpacing: "0.05em",
-        }}>
-          Gestão Agrícola Inteligente · Menos cliques, mais campo.
-        </span>
       </div>
     </div>
   );
