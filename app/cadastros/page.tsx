@@ -616,9 +616,21 @@ function CadastrosInner() {
         .then(({ data, error }) => { if (error) setErro(error.message); else setUnidades((data ?? []) as UnidadeMedida[]); });
     }
     if (aba === "culturas" || aba === "safras") {
-      // Carrega insumos produto_agricola para o select de vínculo
+      // Carrega insumos produto_agricola — auto-seed se vazio
       supabase.from("insumos").select("id,nome,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome")
-        .then(({ data }) => setInsumosPA((data ?? []) as Insumo[]));
+        .then(async ({ data }) => {
+          if (data && data.length > 0) { setInsumosPA(data as Insumo[]); return; }
+          await supabase.from("insumos").insert([
+            { fazenda_id: fazendaId, tipo: "produto", nome: "Soja",             categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
+            { fazenda_id: fazendaId, tipo: "produto", nome: "Milho",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
+            { fazenda_id: fazendaId, tipo: "produto", nome: "Algodão em Pluma", categoria: "produto_agricola", unidade: "outros", estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
+            { fazenda_id: fazendaId, tipo: "produto", nome: "Arroz",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
+            { fazenda_id: fazendaId, tipo: "produto", nome: "Trigo",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
+            { fazenda_id: fazendaId, tipo: "produto", nome: "Sorgo",            categoria: "produto_agricola", unidade: "sc",     estoque: 0, estoque_minimo: 0, valor_unitario: 0 },
+          ]);
+          const { data: seeded } = await supabase.from("insumos").select("id,nome,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome");
+          setInsumosPA((seeded ?? []) as Insumo[]);
+        });
       supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome")
         .then(async ({ data, error }) => {
           if (error) return;
@@ -1455,6 +1467,18 @@ function CadastrosInner() {
     }
     const inicio = c?.data_inicio ?? "";
     const fim    = c?.data_fim    ?? "";
+    // Garante que insumosPA esteja carregado (pode chegar vazio se modal abrir antes do fetch async)
+    let paList = insumosPA;
+    if (paList.length === 0) {
+      const { data: paData } = await supabase.from("insumos").select("id,nome,unidade")
+        .eq("fazenda_id", fazIdEff!).eq("categoria", "produto_agricola").order("nome");
+      paList = (paData ?? []) as Insumo[];
+      if (paList.length > 0) setInsumosPA(paList);
+    }
+    const autoPA = (cultura: string) => {
+      const base = cultura.split(/[\s,]+/)[0].toLowerCase();
+      return paList.find(i => i.nome.toLowerCase().startsWith(base))?.id ?? "";
+    };
     setFCiclo(c ? {
       descricao: c.descricao, cultura: c.cultura,
       data_inicio: inicio, data_fim: fim,
@@ -1464,8 +1488,8 @@ function CadastrosInner() {
       ciclo_pai_id: c.ciclo_pai_id ?? "",
       absorcao_pct: c.absorcao_pct != null ? String(c.absorcao_pct) : "100",
       motivo_auxiliar: c.motivo_auxiliar ?? "",
-      produto_agricola_id: c.produto_agricola_id ?? "",
-    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: "" });
+      produto_agricola_id: c.produto_agricola_id ?? autoPA(c.cultura),
+    } : { descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: autoPA("Soja") });
     // carrega talhões vinculados se editando
     if (c) {
       const { data: ct } = await supabase.from("ciclo_talhoes").select("talhao_id,area_plantada_ha").eq("ciclo_id", c.id);
@@ -6576,7 +6600,9 @@ function CadastrosInner() {
               <label style={lbl}>Cultura *</label>
               <select style={inp} value={fCiclo.cultura} onChange={e => {
                 const nome = e.target.value;
-                setFCiclo(p => ({ ...p, cultura: nome }));
+                const base = nome.split(/[\s,]+/)[0].toLowerCase();
+                const match = insumosPA.find(i => i.nome.toLowerCase().startsWith(base));
+                setFCiclo(p => ({ ...p, cultura: nome, produto_agricola_id: match?.id ?? p.produto_agricola_id }));
               }}>
                 {(culturasList.filter(c => c.ativa).length > 0
                   ? culturasList.filter(c => c.ativa).map(c => c.nome)
