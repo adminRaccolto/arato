@@ -132,27 +132,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── UM PRODUTO RACCOLTO ── */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 400 }}>um produto</span>
-            {!logoRacErr ? (
-              <img
-                src="/Logo_Raccolto.png"
-                alt="Raccolto"
-                style={{
-                  height: 20, width: "auto",
-                  objectFit: "contain",
-                  filter: "brightness(0) invert(1)",
-                  opacity: 0.90,
-                }}
-                onError={() => setLogoRacErr(true)}
-              />
-            ) : (
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>
-                Raccolto
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Divisor translúcido */}
@@ -323,7 +302,20 @@ export default function Login() {
 
         {/* Rodapé */}
         <div style={{ marginTop: 28, textAlign: "center" }}>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>© 2026 Raccolto Consultoria · v1.0</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>um produto</span>
+            {!logoRacErr ? (
+              <img
+                src="/Logo_Raccolto.png"
+                alt="Raccolto"
+                style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55 }}
+                onError={() => setLogoRacErr(true)}
+              />
+            ) : (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>Raccolto</span>
+            )}
+          </div>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>© 2026 Raccolto Consultoria · v1.0</span>
         </div>
       </div>
     </div>
