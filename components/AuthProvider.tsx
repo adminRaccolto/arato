@@ -88,7 +88,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [planoAtual,             setPlanoAtual]             = useState<PlanoId | null>(null);
   const [contaStatus,            setContaStatus]            = useState<string | null>(null);
   const router = useRouter();
-  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inactivityTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const realtimeChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const selectFazenda = useCallback((id: string, fazendaNome: string, produtorNome?: string | null) => {
     localStorage.setItem("raccotlo_fazenda_id",       id);
@@ -256,6 +257,35 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setPermissoes({});
       }
+
+      // Assina mudanças em usuarios para recarregar permissões em tempo real
+      // quando o admin altera o grupo_id sem precisar de re-login
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+      realtimeChannelRef.current = supabase
+        .channel(`perms-${user.id}`)
+        .on("postgres_changes", {
+          event: "UPDATE",
+          schema: "public",
+          table: "usuarios",
+          filter: `auth_user_id=eq.${user.id}`,
+        }, async () => {
+          try {
+            const { data } = await supabase
+              .from("usuarios")
+              .select("grupo_id, grupos_usuarios(permissoes)")
+              .eq("auth_user_id", user.id)
+              .maybeSingle();
+            const perms = (
+              (Array.isArray(data?.grupos_usuarios)
+                ? data?.grupos_usuarios[0]
+                : data?.grupos_usuarios) as { permissoes?: Record<string, string> } | null
+            )?.permissoes ?? {};
+            setPermissoes(perms as Record<string, ModuloPermissao>);
+          } catch { /* silent */ }
+        })
+        .subscribe();
     }
 
     init();
@@ -273,7 +303,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_IN") init();
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+    };
   }, []);
 
   // Re-executa só os steps (chamar após o usuário completar um passo do onboarding)
