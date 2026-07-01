@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
+import InputNumerico from "../../components/InputNumerico";
 import type {
   Parceria, ParceriaParticipante, ParceriaArea, ParceriaDistribuicao,
   ParceriaApuracao, ParceriaApuracaoCota,
@@ -1057,8 +1058,8 @@ export default function ParceriasPage() {
                         onChange={e => setParticipants(p => p.map((x, j) => j === i ? { ...x, cpf_cnpj: e.target.value } : x))} />
                     </Campo>
                     <Campo label="% de Participação *">
-                      <input type="number" min={0} max={100} step={0.01} style={inp()} value={pt.percentual} placeholder="50.00"
-                        onChange={e => setParticipants(p => p.map((x, j) => j === i ? { ...x, percentual: e.target.value } : x))} />
+                      <InputNumerico min={0} max={100} style={inp()} value={pt.percentual} placeholder="50.00"
+                        onChange={v => setParticipants(p => p.map((x, j) => j === i ? { ...x, percentual: v } : x))} />
                     </Campo>
                   </Grid>
                   <Grid cols={2}>
@@ -1134,8 +1135,8 @@ export default function ParceriasPage() {
                     </select>
                   </Campo>
                   <Campo label="% Deste Participante">
-                    <input type="number" min={0} max={100} step={0.01} style={inp()} value={d.percentual} placeholder="50.00"
-                      onChange={e => setDistribs(ds => ds.map((x, j) => j === i ? { ...x, percentual: e.target.value } : x))} />
+                    <InputNumerico min={0} max={100} style={inp()} value={d.percentual} placeholder="50.00"
+                      onChange={v => setDistribs(ds => ds.map((x, j) => j === i ? { ...x, percentual: v } : x))} />
                   </Campo>
                   <button onClick={() => setDistribs(ds => ds.filter((_, j) => j !== i))}
                     style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", fontSize: 13, marginTop: 18 }}>✕</button>
@@ -1203,8 +1204,8 @@ export default function ParceriasPage() {
                     </select>
                   </Campo>
                   <Campo label="% Part.">
-                    <input type="number" min={0} max={100} step={0.01} style={inp()} value={m.percentual_participacao}
-                      onChange={e => setMembros(ms => ms.map((x, j) => j === i ? { ...x, percentual_participacao: e.target.value } : x))} />
+                    <InputNumerico min={0} max={100} style={inp()} value={m.percentual_participacao}
+                      onChange={v => setMembros(ms => ms.map((x, j) => j === i ? { ...x, percentual_participacao: v } : x))} />
                   </Campo>
                   <button onClick={() => setMembros(ms => ms.filter((_, j) => j !== i))}
                     style={{ background: C.vermClr, color: C.verm, border: "none", borderRadius: 6, padding: "7px 10px", cursor: "pointer", marginTop: 18 }}>✕</button>
@@ -1238,8 +1239,8 @@ export default function ParceriasPage() {
             </Grid>
 
             <Campo label="Receita Total (R$) *">
-              <input type="number" min={0} step={0.01} style={inp()} value={apurForm.receita_total} placeholder="0.00"
-                onChange={e => { setApurForm(f => ({ ...f, receita_total: e.target.value })); setCalculado(false); }} />
+              <InputNumerico min={0} style={inp()} value={apurForm.receita_total} placeholder="0.00"
+                onChange={v => { setApurForm(f => ({ ...f, receita_total: v })); setCalculado(false); }} />
             </Campo>
 
             <div>
@@ -1248,8 +1249,8 @@ export default function ParceriasPage() {
                 {["semente", "fertilizante", "defensivo", "correcao_solo", "operacao_mecanizada", "arrendamento", "mao_obra", "administrativo"].map(tc => (
                   <div key={tc}>
                     <div style={{ fontSize: 11, color: C.ter, marginBottom: 3 }}>{CUSTO_LABEL[tc]}</div>
-                    <input type="number" min={0} step={0.01} style={inp()} value={apurForm.custos[tc] ?? ""} placeholder="0.00"
-                      onChange={e => { setApurForm(f => ({ ...f, custos: { ...f.custos, [tc]: e.target.value } })); setCalculado(false); }} />
+                    <InputNumerico min={0} style={inp()} value={apurForm.custos[tc] ?? ""} placeholder="0.00"
+                      onChange={v => { setApurForm(f => ({ ...f, custos: { ...f.custos, [tc]: v } })); setCalculado(false); }} />
                   </div>
                 ))}
               </div>

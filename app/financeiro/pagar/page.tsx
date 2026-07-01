@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
@@ -1744,7 +1745,7 @@ function ContasPagarInner() {
                       <div style={{ display: "grid", gridTemplateColumns: "160px 200px auto", gap: 12, alignItems: "end", marginBottom: 16 }}>
                         <div>
                           <label style={lbl}>Nº de parcelas</label>
-                          <input style={inp} type="number" min="2" max="120" value={form.qtdParcelas} onChange={e => setForm(p => ({ ...p, qtdParcelas: e.target.value }))} />
+                          <InputNumerico style={inp} decimais={0} min="2" max="120" value={form.qtdParcelas} onChange={v => setForm(p => ({ ...p, qtdParcelas: v }))} />
                         </div>
                         <div>
                           <label style={lbl}>Frequência</label>
@@ -1879,9 +1880,9 @@ function ContasPagarInner() {
                           </div>
                           <div>
                             <label style={lbl}>Quantidade</label>
-                            <input style={inp} type="number" min="0" step="0.5" placeholder="0"
+                            <InputNumerico style={inp} min="0" placeholder="0"
                               value={form.quantidade_mao_obra}
-                              onChange={e => setForm(p => ({ ...p, quantidade_mao_obra: e.target.value }))} />
+                              onChange={v => setForm(p => ({ ...p, quantidade_mao_obra: v }))} />
                           </div>
                         </div>
                       </div>
@@ -1908,7 +1909,7 @@ function ContasPagarInner() {
                     </div>
                     <div>
                       <label style={lbl}>Meses Diferido</label>
-                      <input style={inp} type="number" min="0" placeholder="0" value={form.meses_diferido} onChange={e => setForm(p => ({ ...p, meses_diferido: e.target.value }))} />
+                      <InputNumerico style={inp} decimais={0} min="0" placeholder="0" value={form.meses_diferido} onChange={v => setForm(p => ({ ...p, meses_diferido: v }))} />
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ── Todos os módulos disponíveis (fonte de verdade visual) ───────────────────
 const TODOS_MODULOS: { id: string; label: string; grupo: string }[] = [
@@ -121,10 +122,10 @@ export default function PlanosPage() {
                 {editando ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 13, color: "#555" }}>R$</span>
-                    <input
-                      type="number"
+                    <InputNumerico
+                      decimais={0}
                       value={precos[pid]}
-                      onChange={e => setPrecos(prev => ({ ...prev, [pid]: +e.target.value }))}
+                      onChange={v => setPrecos(prev => ({ ...prev, [pid]: +v }))}
                       style={{
                         width: 100, fontSize: 22, fontWeight: 800,
                         border: `1.5px solid ${cor.border}`,

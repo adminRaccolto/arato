@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import {
@@ -798,11 +799,11 @@ export default function ColheitaPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                     <label>
                       <div style={lbStyle}>Peso Bruto (kg) *</div>
-                      <input type="number" value={formRomaneio.peso_bruto_kg || ""} onChange={e => setFormRomaneio(f => ({ ...f, peso_bruto_kg: parseFloat(e.target.value) || 0 }))} style={inpStyle} min={0} step={10} placeholder="Ex: 45000" />
+                      <InputNumerico decimais={0} value={formRomaneio.peso_bruto_kg || ""} onChange={v => setFormRomaneio(f => ({ ...f, peso_bruto_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} placeholder="Ex: 45000" />
                     </label>
                     <label>
                       <div style={lbStyle}>Tara (kg) *</div>
-                      <input type="number" value={formRomaneio.tara_kg || ""} onChange={e => setFormRomaneio(f => ({ ...f, tara_kg: parseFloat(e.target.value) || 0 }))} style={inpStyle} min={0} step={10} placeholder="Ex: 14000" />
+                      <InputNumerico decimais={0} value={formRomaneio.tara_kg || ""} onChange={v => setFormRomaneio(f => ({ ...f, tara_kg: parseFloat(v) || 0 }))} style={inpStyle} min={0} placeholder="Ex: 14000" />
                     </label>
                     <div>
                       <div style={lbStyle}>Peso Líquido (calculado)</div>
@@ -829,30 +830,30 @@ export default function ColheitaPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                       <div>
                         <label style={lbStyle}>Umidade (%)</label>
-                        <input style={{ ...inpStyle, color: formRomaneio.umidade_pct > cls.umidade_padrao ? "#E24B4A" : "#1a1a1a" }}
-                          type="number" step="0.1" min="0" max="40"
+                        <InputNumerico style={{ ...inpStyle, color: formRomaneio.umidade_pct > cls.umidade_padrao ? "#E24B4A" : "#1a1a1a" }}
+                          min="0" max="40"
                           placeholder={String(cls.umidade_padrao)}
                           value={formRomaneio.umidade_pct || ""}
-                          onChange={e => setFormRomaneio(f => ({ ...f, umidade_pct: parseFloat(e.target.value) || 0 }))} />
+                          onChange={v => setFormRomaneio(f => ({ ...f, umidade_pct: parseFloat(v) || 0 }))} />
                         {d_umid > 0 && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 2 }}>Desc: −{fmt(d_umid, 1)} kg</div>}
                         {formRomaneio.umidade_pct > 0 && formRomaneio.umidade_pct <= cls.umidade_padrao && <div style={{ fontSize: 10, color: "#16A34A", marginTop: 2 }}>Dentro do padrão ✓</div>}
                       </div>
                       <div>
                         <label style={lbStyle}>Impureza / Mat. Estranhas (%)</label>
-                        <input style={{ ...inpStyle, color: formRomaneio.impureza_pct > cls.impureza_padrao ? "#EF9F27" : "#1a1a1a" }}
-                          type="number" step="0.1" min="0" max="20"
+                        <InputNumerico style={{ ...inpStyle, color: formRomaneio.impureza_pct > cls.impureza_padrao ? "#EF9F27" : "#1a1a1a" }}
+                          min="0" max="20"
                           placeholder={String(cls.impureza_padrao)}
                           value={formRomaneio.impureza_pct || ""}
-                          onChange={e => setFormRomaneio(f => ({ ...f, impureza_pct: parseFloat(e.target.value) || 0 }))} />
+                          onChange={v => setFormRomaneio(f => ({ ...f, impureza_pct: parseFloat(v) || 0 }))} />
                         {d_imp > 0 && <div style={{ fontSize: 10, color: "#EF9F27", marginTop: 2 }}>Desc: −{fmt(d_imp, 1)} kg</div>}
                         {formRomaneio.impureza_pct > 0 && formRomaneio.impureza_pct <= cls.impureza_padrao && <div style={{ fontSize: 10, color: "#16A34A", marginTop: 2 }}>Dentro do padrão ✓</div>}
                       </div>
                       <div>
                         <label style={lbStyle}>PH — Peso Hectolítrico (kg/hl)</label>
-                        <input style={inpStyle} type="number" step="0.1" min="50" max="100"
+                        <InputNumerico style={inpStyle} min="50" max="100"
                           placeholder={isSoja ? "78" : isMilho ? "74" : "—"}
                           value={formRomaneio.ph}
-                          onChange={e => setFormRomaneio(f => ({ ...f, ph: e.target.value }))} />
+                          onChange={v => setFormRomaneio(f => ({ ...f, ph: v }))} />
                         {formRomaneio.ph && (
                           <div style={{ fontSize: 10, color: parseFloat(formRomaneio.ph) >= (isSoja ? 78 : 74) ? "#16A34A" : "#EF9F27", marginTop: 2 }}>
                             {parseFloat(formRomaneio.ph) >= (isSoja ? 78 : 74) ? "Dentro do padrão ✓" : "Abaixo do mínimo ↓"}
@@ -885,18 +886,18 @@ export default function ColheitaPage() {
                           ] as { key: keyof typeof formRomaneio; label: string }[]).map(({ key, label }) => (
                             <div key={String(key)}>
                               <label style={{ fontSize: 10, color: "#555", marginBottom: 3, display: "block" }}>{label}</label>
-                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                              <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio[key] as string}
-                                onChange={e => setFormRomaneio(f => ({ ...f, [key]: e.target.value }))} />
+                                onChange={v => setFormRomaneio(f => ({ ...f, [key]: v }))} />
                             </div>
                           ))}
                           {/* Avariados direto (sem sub-parâmetros) */}
                           {!temSub && (
                             <div>
                               <label style={{ fontSize: 10, color: "#888", marginBottom: 3, display: "block" }}>Total direto (%)</label>
-                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                              <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio.avariados_pct || ""}
-                                onChange={e => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(e.target.value) || 0 }))} />
+                                onChange={v => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(v) || 0 }))} />
                               <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>somente se não detalhar acima</div>
                             </div>
                           )}
@@ -913,17 +914,17 @@ export default function ColheitaPage() {
                           ] as { key: keyof typeof formRomaneio; label: string }[]).map(({ key, label }) => (
                             <div key={String(key)}>
                               <label style={{ fontSize: 10, color: "#555", marginBottom: 3, display: "block" }}>{label}</label>
-                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                              <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio[key] as string}
-                                onChange={e => setFormRomaneio(f => ({ ...f, [key]: e.target.value }))} />
+                                onChange={v => setFormRomaneio(f => ({ ...f, [key]: v }))} />
                             </div>
                           ))}
                           {!temSub && (
                             <div>
                               <label style={{ fontSize: 10, color: "#888", marginBottom: 3, display: "block" }}>Total direto (%)</label>
-                              <input style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} type="number" step="0.1" min="0" max="100"
+                              <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio.avariados_pct || ""}
-                                onChange={e => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(e.target.value) || 0 }))} />
+                                onChange={v => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(v) || 0 }))} />
                               <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>somente se não detalhar acima</div>
                             </div>
                           )}

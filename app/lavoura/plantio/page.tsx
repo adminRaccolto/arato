@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantios, excluirPlantio, atualizarPlantio } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
@@ -299,7 +300,7 @@ export default function PlantioPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Área (ha) *</label>
-                <input style={inp} type="number" step="0.1" placeholder="Ex: 150" value={f.area_ha} onChange={e => setF(p => ({ ...p, area_ha: e.target.value }))} />
+                <InputNumerico style={inp} placeholder="Ex: 150" value={f.area_ha} onChange={v => setF(p => ({ ...p, area_ha: v }))} />
               </div>
               <div>
                 <label style={lbl}>Data de Plantio *</label>
@@ -317,7 +318,7 @@ export default function PlantioPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Produtividade Esperada (sc/ha)</label>
-                <input style={inp} type="number" step="0.1" placeholder="Ex: 65,0" value={f.produtividade_esperada_sc_ha} onChange={e => setF(p => ({ ...p, produtividade_esperada_sc_ha: e.target.value }))} />
+                <InputNumerico style={inp} placeholder="Ex: 65,0" value={f.produtividade_esperada_sc_ha} onChange={v => setF(p => ({ ...p, produtividade_esperada_sc_ha: v }))} />
               </div>
               <div>
                 <label style={lbl}>Moeda</label>

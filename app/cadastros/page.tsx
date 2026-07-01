@@ -45,6 +45,7 @@ import { supabase } from "../../lib/supabase";
 import { planoContasPadrao, labelConta, type ContaContabil } from "../../lib/planoContas";
 import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
 import InputMonetario from "../../components/InputMonetario";
+import InputNumerico from "../../components/InputNumerico";
 import type {
   Fazenda as FazendaDB, Talhao, Arrendamento,
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
@@ -3711,7 +3712,7 @@ function CadastrosInner() {
                       </div>
                       <div>
                         <label style={lbl}>Estoque atual</label>
-                        <input style={inp} type="number" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
+                        <InputNumerico style={inp} decimais={3} value={fIns.estoque} onChange={v => setFIns(p => ({ ...p, estoque: v }))} />
                       </div>
                       <div>
                         <label style={lbl}>Valor unitário (R$/{fIns.unidade})</label>
@@ -3939,11 +3940,11 @@ function CadastrosInner() {
                       </div>
                       <div>
                         <label style={lbl}>Estoque atual</label>
-                        <input style={inp} type="number" value={fIns.estoque} onChange={e => setFIns(p => ({ ...p, estoque: e.target.value }))} />
+                        <InputNumerico style={inp} decimais={3} value={fIns.estoque} onChange={v => setFIns(p => ({ ...p, estoque: v }))} />
                       </div>
                       <div>
                         <label style={lbl}>Estoque mínimo</label>
-                        <input style={inp} type="number" value={fIns.estoque_minimo} onChange={e => setFIns(p => ({ ...p, estoque_minimo: e.target.value }))} />
+                        <InputNumerico style={inp} decimais={3} value={fIns.estoque_minimo} onChange={v => setFIns(p => ({ ...p, estoque_minimo: v }))} />
                       </div>
                       <div>
                         <label style={lbl}>Valor unitário (R$)</label>
@@ -4582,7 +4583,7 @@ function CadastrosInner() {
                     </div>
                     <div>
                       <label style={lbl}>Área (m²)</label>
-                      <input style={inp} type="number" step="0.01" placeholder="0,00" value={fIU.area_m2} onChange={e => setFIU(p => ({ ...p, area_m2: e.target.value }))} />
+                      <InputNumerico style={inp} placeholder="0,00" value={fIU.area_m2} onChange={v => setFIU(p => ({ ...p, area_m2: v }))} />
                     </div>
                     <div style={{ gridColumn: "1/-1" }}><hr style={{ border: "none", borderTop: "0.5px solid #DDE2EE", margin: "4px 0 6px" }} /></div>
                     <div>
@@ -5178,12 +5179,12 @@ function CadastrosInner() {
                         </div>
                         <div>
                           <label style={lbl}>Ordem de exibição</label>
-                          <input style={inp} type="number" value={fCultura.ordem} onChange={e => setFCultura(p => ({ ...p, ordem: e.target.value }))} placeholder="1, 2, 3…" />
+                          <InputNumerico style={inp} decimais={0} value={fCultura.ordem} onChange={v => setFCultura(p => ({ ...p, ordem: v }))} placeholder="1, 2, 3…" />
                         </div>
                         <div style={{ gridColumn: "1/-1" }}>
                           <label style={lbl}>Fator de conversão (kg ÷ fator = unidade comercial)</label>
-                          <input style={inp} type="number" step="0.001" value={fCultura.fator_conversao_kg}
-                            onChange={e => setFCultura(p => ({ ...p, fator_conversao_kg: e.target.value }))}
+                          <InputNumerico style={inp} decimais={3} value={fCultura.fator_conversao_kg}
+                            onChange={v => setFCultura(p => ({ ...p, fator_conversao_kg: v }))}
                             placeholder="60 = sc, 15 = @, 1 = kg" />
                           <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>Soja/Milho = 60 · Algodão = 15 · kg puro = 1</div>
                         </div>
@@ -5678,7 +5679,7 @@ function CadastrosInner() {
                       <tr key={m._key} style={{ borderBottom: "0.5px solid #F0F2F8" }}>
                         <td style={{ padding: "6px 10px" }}><input style={{ ...inp, padding: "5px 8px", fontSize: 12 }} value={m.numero} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,numero:e.target.value} : x))} placeholder="Nº" /></td>
                         <td style={{ padding: "6px 10px" }}><input style={{ ...inp, padding: "5px 8px", fontSize: 12 }} value={m.cartorio} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,cartorio:e.target.value} : x))} placeholder="Cartório" /></td>
-                        <td style={{ padding: "6px 10px", width: 100 }}><input style={{ ...inp, padding: "5px 8px", fontSize: 12 }} type="number" step="0.0001" value={m.area_ha} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,area_ha:e.target.value} : x))} placeholder="0,0000" /></td>
+                        <td style={{ padding: "6px 10px", width: 100 }}><InputNumerico style={{ ...inp, padding: "5px 8px", fontSize: 12 }} decimais={4} value={m.area_ha} onChange={v => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,area_ha:v} : x))} placeholder="0,0000" /></td>
                         <td style={{ padding: "6px 10px" }}>
                           <select style={{ ...inp, padding: "5px 8px", fontSize: 12 }} value={m.produtor_id} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,produtor_id:e.target.value} : x))}>
                             <option value="">—</option>
@@ -5741,7 +5742,7 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Área declarada (ha)</label>
-                            <input style={inp} type="number" step="0.01" value={c.area_ha} onChange={e => setFazCars(p => p.map((x,j) => j===ci ? {...x,area_ha:e.target.value} : x))} />
+                            <InputNumerico style={inp} value={c.area_ha} onChange={v => setFazCars(p => p.map((x,j) => j===ci ? {...x,area_ha:v} : x))} />
                           </div>
                           <div>
                             <label style={lbl}>Vencimento</label>
@@ -5821,7 +5822,7 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Área declarada (ha)</label>
-                            <input style={inp} type="number" step="0.0001" value={n.area_ha} placeholder="0,0000" onChange={e => setFazNirfs(p => p.map((x,j) => j===ni ? {...x,area_ha:e.target.value} : x))} />
+                            <InputNumerico style={inp} decimais={4} value={n.area_ha} placeholder="0,0000" onChange={v => setFazNirfs(p => p.map((x,j) => j===ni ? {...x,area_ha:v} : x))} />
                           </div>
                           <div style={{ gridColumn: "1/-1" }}>
                             <label style={lbl}>Matrículas vinculadas a este NIRF</label>
@@ -5902,11 +5903,11 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Área tributável (ha)</label>
-                            <input style={inp} type="number" step="0.0001" value={t.area_tributavel_ha} placeholder="0,0000" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,area_tributavel_ha:e.target.value} : x))} />
+                            <InputNumerico style={inp} decimais={4} value={t.area_tributavel_ha} placeholder="0,0000" onChange={v => setFazItrs(p => p.map((x,j) => j===ti ? {...x,area_tributavel_ha:v} : x))} />
                           </div>
                           <div>
                             <label style={lbl}>Valor apurado (R$)</label>
-                            <input style={inp} type="number" step="0.01" value={t.valor_apurado} placeholder="0,00" onChange={e => setFazItrs(p => p.map((x,j) => j===ti ? {...x,valor_apurado:e.target.value} : x))} />
+                            <InputNumerico style={inp} value={t.valor_apurado} placeholder="0,00" onChange={v => setFazItrs(p => p.map((x,j) => j===ti ? {...x,valor_apurado:v} : x))} />
                           </div>
                           <div>
                             <label style={lbl}>Status pagamento</label>
@@ -5999,11 +6000,11 @@ function CadastrosInner() {
                           </div>
                           <div>
                             <label style={lbl}>Área (ha)</label>
-                            <input style={inp} type="number" step="0.0001" value={c.area_ha} placeholder="0,0000" onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,area_ha:e.target.value} : x))} />
+                            <InputNumerico style={inp} decimais={4} value={c.area_ha} placeholder="0,0000" onChange={v => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,area_ha:v} : x))} />
                           </div>
                           <div>
                             <label style={lbl}>Módulo fiscal (ha)</label>
-                            <input style={inp} type="number" step="0.01" value={c.modulo_fiscal} placeholder="Ex: 55,00" onChange={e => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,modulo_fiscal:e.target.value} : x))} />
+                            <InputNumerico style={inp} value={c.modulo_fiscal} placeholder="Ex: 55,00" onChange={v => setFazCcirs(p => p.map((x,j) => j===ci ? {...x,modulo_fiscal:v} : x))} />
                           </div>
                           <div style={{ gridColumn: "1/-1" }}>
                             <label style={lbl}>Matrículas vinculadas a este CCIR</label>
@@ -6105,7 +6106,7 @@ function CadastrosInner() {
                             {ehSacas && !ehMisto && (
                               <div>
                                 <label style={lbl}>Sacas / ha / ano</label>
-                                <input style={inp} type="number" step="0.1" placeholder="ex: 12" value={a.sc_ha} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_ha:e.target.value} : x))} />
+                                <InputNumerico style={inp} placeholder="ex: 12" value={a.sc_ha} onChange={v => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_ha:v} : x))} />
                                 {totalScs && <div style={{ fontSize: 10, color: "#14532D", marginTop: 3 }}>Total: {totalScs} sc comprometidas</div>}
                               </div>
                             )}
@@ -6114,12 +6115,12 @@ function CadastrosInner() {
                               <>
                                 <div>
                                   <label style={lbl}>Soja (sc/ha/ano) <span style={{ fontSize: 9, color: "#16A34A", fontWeight: 600 }}>SOJA</span></label>
-                                  <input style={inp} type="number" step="0.1" placeholder="ex: 8" value={a.sc_ha} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_ha:e.target.value} : x))} />
+                                  <InputNumerico style={inp} placeholder="ex: 8" value={a.sc_ha} onChange={v => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_ha:v} : x))} />
                                   {Number(a.sc_ha) > 0 && <div style={{ fontSize: 10, color: "#14532D", marginTop: 3 }}>Total: {totalScsSoja} sc soja comprometidas</div>}
                                 </div>
                                 <div>
                                   <label style={lbl}>Milho (sc/ha/ano) <span style={{ fontSize: 9, color: "#C9921B", fontWeight: 600 }}>MILHO</span></label>
-                                  <input style={inp} type="number" step="0.1" placeholder="ex: 20" value={a.sc_milho_ha} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_milho_ha:e.target.value} : x))} />
+                                  <InputNumerico style={inp} placeholder="ex: 20" value={a.sc_milho_ha} onChange={v => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,sc_milho_ha:v} : x))} />
                                   {Number(a.sc_milho_ha) > 0 && <div style={{ fontSize: 10, color: "#7A5200", marginTop: 3 }}>Total: {totalScsMilho} sc milho comprometidas</div>}
                                 </div>
                               </>
@@ -6201,7 +6202,7 @@ function CadastrosInner() {
           {/* Linha 1: Nome + Área + Tipo de Posse */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 140px 220px", gap: 14, marginBottom: 14 }}>
             <div><label style={lbl}>Nome *</label><input style={inp} value={fTalhao.nome} onChange={e => setFTalhao(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div><label style={lbl}>Área (ha) *</label><input style={inp} type="number" step="0.01" value={fTalhao.area} onChange={e => setFTalhao(p => ({ ...p, area: e.target.value }))} /></div>
+            <div><label style={lbl}>Área (ha) *</label><InputNumerico style={inp} value={fTalhao.area} onChange={v => setFTalhao(p => ({ ...p, area: v }))} /></div>
             <div>
               <label style={lbl}>Tipo de Posse</label>
               <div style={{ display: "flex", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
@@ -6265,8 +6266,8 @@ function CadastrosInner() {
           {/* Linha 2: Solo + GPS */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div><label style={lbl}>Tipo de Solo</label><select style={inp} value={fTalhao.solo} onChange={e => setFTalhao(p => ({ ...p, solo: e.target.value }))}>{SOLOS.map(s => <option key={s}>{s}</option>)}</select></div>
-            <div><label style={lbl}>Latitude GPS</label><input style={inp} type="number" step="0.0001" placeholder="-13.8283" value={fTalhao.lat} onChange={e => setFTalhao(p => ({ ...p, lat: e.target.value }))} /></div>
-            <div><label style={lbl}>Longitude GPS</label><input style={inp} type="number" step="0.0001" placeholder="-56.0801" value={fTalhao.lng} onChange={e => setFTalhao(p => ({ ...p, lng: e.target.value }))} /></div>
+            <div><label style={lbl}>Latitude GPS</label><InputNumerico style={inp} decimais={4} placeholder="-13.8283" value={fTalhao.lat} onChange={v => setFTalhao(p => ({ ...p, lat: v }))} /></div>
+            <div><label style={lbl}>Longitude GPS</label><InputNumerico style={inp} decimais={4} placeholder="-56.0801" value={fTalhao.lng} onChange={v => setFTalhao(p => ({ ...p, lng: v }))} /></div>
           </div>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
@@ -6282,7 +6283,7 @@ function CadastrosInner() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
             <div><label style={lbl}>Nº Matrícula *</label><input style={inp} value={fMat.numero} onChange={e => setFMat(p => ({ ...p, numero: e.target.value }))} /></div>
             <div><label style={lbl}>Cartório</label><input style={inp} value={fMat.cartorio} onChange={e => setFMat(p => ({ ...p, cartorio: e.target.value }))} /></div>
-            <div><label style={lbl}>Área registrada (ha)</label><input style={inp} type="number" step="0.0001" value={fMat.area_ha} onChange={e => setFMat(p => ({ ...p, area_ha: e.target.value }))} /></div>
+            <div><label style={lbl}>Área registrada (ha)</label><InputNumerico style={inp} decimais={4} value={fMat.area_ha} onChange={v => setFMat(p => ({ ...p, area_ha: v }))} /></div>
             <div style={{ gridColumn: "1/3" }}>
               <label style={lbl}>Produtor vinculado</label>
               <select style={inp} value={fMat.produtor_id} onChange={e => setFMat(p => ({ ...p, produtor_id: e.target.value }))}>
@@ -6540,9 +6541,9 @@ function CadastrosInner() {
               </div>
               <div>
                 <label style={lbl}>% de Absorção dos Custos</label>
-                <input style={inp} type="number" min="1" max="100" step="1" placeholder="100"
+                <InputNumerico style={inp} decimais={0} min="1" max="100" placeholder="100"
                   value={fCiclo.absorcao_pct}
-                  onChange={e => setFCiclo(p => ({ ...p, absorcao_pct: e.target.value }))} />
+                  onChange={v => setFCiclo(p => ({ ...p, absorcao_pct: v }))} />
               </div>
               <div>
                 <label style={lbl}>Tipo / Motivo</label>
@@ -6755,7 +6756,7 @@ function CadastrosInner() {
               </div>
               <div><label style={lbl}>Marca</label><input style={inp} value={fMaq.marca} onChange={e => setFMaq(p => ({ ...p, marca: e.target.value }))} /></div>
               <div><label style={lbl}>Modelo</label><input style={inp} value={fMaq.modelo} onChange={e => setFMaq(p => ({ ...p, modelo: e.target.value }))} /></div>
-              <div><label style={lbl}>Ano de fabricação</label><input style={inp} type="number" placeholder="2020" value={fMaq.ano} onChange={e => setFMaq(p => ({ ...p, ano: e.target.value }))} /></div>
+              <div><label style={lbl}>Ano de fabricação</label><InputNumerico style={inp} decimais={0} placeholder="2020" value={fMaq.ano} onChange={v => setFMaq(p => ({ ...p, ano: v }))} /></div>
               <div><label style={lbl}>Patrimônio / Placa</label><input style={inp} placeholder="Ex: FAZ-0001 ou ABC-1234" value={fMaq.patrimonio} onChange={e => setFMaq(p => ({ ...p, patrimonio: e.target.value }))} /></div>
               <div>
                 <label style={lbl}>Chassi / Nº de Série</label>
@@ -6763,7 +6764,7 @@ function CadastrosInner() {
               </div>
               <div>
                 <label style={lbl}>{isVeiculo(fMaq.tipo) ? "Odômetro atual (km)" : "Horímetro atual (h)"}</label>
-                <input style={inp} type="number" min="0" step="0.1" placeholder={isVeiculo(fMaq.tipo) ? "Ex: 125000" : "Ex: 4320"} value={fMaq.horimetro_atual} onChange={e => setFMaq(p => ({ ...p, horimetro_atual: e.target.value }))} />
+                <InputNumerico style={inp} min="0" placeholder={isVeiculo(fMaq.tipo) ? "Ex: 125000" : "Ex: 4320"} value={fMaq.horimetro_atual} onChange={v => setFMaq(p => ({ ...p, horimetro_atual: v }))} />
               </div>
             </div>
           )}
@@ -6867,7 +6868,7 @@ function CadastrosInner() {
                 <option value="arla">Arla 32</option>
               </select>
             </div>
-            <div><label style={lbl}>Capacidade do tanque (L)</label><input style={inp} type="number" value={fBomba.capacidade_l} onChange={e => setFBomba(p => ({ ...p, capacidade_l: e.target.value }))} /></div>
+            <div><label style={lbl}>Capacidade do tanque (L)</label><InputNumerico style={inp} decimais={0} value={fBomba.capacidade_l} onChange={v => setFBomba(p => ({ ...p, capacidade_l: v }))} /></div>
             <div>
               <label style={lbl}>Estoque atual (L)</label>
               {editBomba ? (
@@ -6876,7 +6877,7 @@ function CadastrosInner() {
                   <span style={{ fontSize: 11, color: "#C9921B" }}>Altere via Ajuste de Estoque</span>
                 </div>
               ) : (
-                <input style={inp} type="number" value={fBomba.estoque_atual_l} onChange={e => setFBomba(p => ({ ...p, estoque_atual_l: e.target.value }))} />
+                <InputNumerico style={inp} value={fBomba.estoque_atual_l} onChange={v => setFBomba(p => ({ ...p, estoque_atual_l: v }))} />
               )}
             </div>
             <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
@@ -7656,7 +7657,7 @@ function CadastrosInner() {
             </div>
             <div>
               <label style={lbl}>Nº de Parcelas</label>
-              <input style={inp} type="number" min="1" placeholder="Ex: 3" value={fFP.parcelas} onChange={e => setFFP(p => ({ ...p, parcelas: e.target.value }))} />
+              <InputNumerico style={inp} decimais={0} min="1" placeholder="Ex: 3" value={fFP.parcelas} onChange={v => setFFP(p => ({ ...p, parcelas: v }))} />
             </div>
             <div>
               <label style={lbl}>Intervalo (dias)</label>
@@ -7703,7 +7704,7 @@ function CadastrosInner() {
                 <option value="armazem_terceiro">Armazém / Silo Terceiros</option>
               </select>
             </div>
-            <div><label style={lbl}>Capacidade (sacas)</label><input style={inp} type="number" placeholder="Ex: 50000" value={fDep.capacidade_sc} onChange={e => setFDep(p => ({ ...p, capacidade_sc: e.target.value }))} /></div>
+            <div><label style={lbl}>Capacidade (sacas)</label><InputNumerico style={inp} decimais={0} placeholder="Ex: 50000" value={fDep.capacidade_sc} onChange={v => setFDep(p => ({ ...p, capacidade_sc: v }))} /></div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalDep(false)}>Cancelar</button>
@@ -7977,13 +7978,13 @@ function CadastrosInner() {
               <div><label style={lbl}>Início do gozo</label><input style={inp} type="date" value={fGozo.data_inicio_gozo} onChange={e => { const v = e.target.value; setFGozo(p => ({ ...p, data_inicio_gozo: v })); }} /></div>
               <div><label style={lbl}>Fim do gozo</label><input style={inp} type="date" value={fGozo.data_fim_gozo} onChange={e => setFGozo(p => ({ ...p, data_fim_gozo: e.target.value }))} /></div>
             </div>
-            <div><label style={lbl}>Dias de gozo</label><input style={inp} type="number" value={fGozo.dias_gozados} onChange={e => setFGozo(p => ({ ...p, dias_gozados: e.target.value }))} /></div>
+            <div><label style={lbl}>Dias de gozo</label><InputNumerico style={inp} decimais={0} value={fGozo.dias_gozados} onChange={v => setFGozo(p => ({ ...p, dias_gozados: v }))} /></div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" id="abonoPec" checked={fGozo.abono_pecuniario} onChange={e => setFGozo(p => ({ ...p, abono_pecuniario: e.target.checked }))} />
               <label htmlFor="abonoPec" style={{ fontSize: 12, color: "#555" }}>Abono pecuniário (venda de 1/3 dos dias)</label>
             </div>
             {fGozo.abono_pecuniario && (
-              <div><label style={lbl}>Dias de abono</label><input style={inp} type="number" value={fGozo.dias_abono} onChange={e => setFGozo(p => ({ ...p, dias_abono: e.target.value }))} /></div>
+              <div><label style={lbl}>Dias de abono</label><InputNumerico style={inp} decimais={0} value={fGozo.dias_abono} onChange={v => setFGozo(p => ({ ...p, dias_abono: v }))} /></div>
             )}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
@@ -8175,9 +8176,9 @@ function CadastrosInner() {
             </div>
             <div>
               <label style={lbl}>Fator de conversão</label>
-              <input style={inp} type="number" step="any" placeholder="Ex: 60"
+              <InputNumerico style={inp} decimais={4} placeholder="Ex: 60"
                 value={fUM.fator_base}
-                onChange={e => setFUM(p => ({ ...p, fator_base: e.target.value }))} />
+                onChange={v => setFUM(p => ({ ...p, fator_base: v }))} />
             </div>
             <div>
               <label style={lbl}>Para unidade base</label>

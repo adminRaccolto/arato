@@ -9,6 +9,7 @@ import {
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
+import InputNumerico from "../../../components/InputNumerico";
 import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -349,7 +350,7 @@ export default function PulverizacaoPage() {
               </div>
               <div>
                 <label style={lbl}>Área (ha) *</label>
-                <input style={inp} type="number" step="0.1" placeholder="Ex: 500" value={f.area_ha} onChange={e => setF(p => ({ ...p, area_ha: e.target.value }))} />
+                <InputNumerico style={inp} placeholder="Ex: 500" value={f.area_ha} onChange={v => setF(p => ({ ...p, area_ha: v }))} />
               </div>
               <div>
                 <label style={lbl}>Data Início *</label>
@@ -366,15 +367,15 @@ export default function PulverizacaoPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Cap. Tanque (L)</label>
-                <input style={inp} type="number" step="1" placeholder="Ex: 2000" value={f.cap_tanque_l} onChange={e => setF(p => ({ ...p, cap_tanque_l: e.target.value }))} />
+                <InputNumerico style={inp} decimais={0} placeholder="Ex: 2000" value={f.cap_tanque_l} onChange={v => setF(p => ({ ...p, cap_tanque_l: v }))} />
               </div>
               <div>
                 <label style={lbl}>Vazão (L/ha)</label>
-                <input style={inp} type="number" step="0.1" placeholder="Ex: 100" value={f.vazao_l_ha} onChange={e => setF(p => ({ ...p, vazao_l_ha: e.target.value }))} />
+                <InputNumerico style={inp} placeholder="Ex: 100" value={f.vazao_l_ha} onChange={v => setF(p => ({ ...p, vazao_l_ha: v }))} />
               </div>
               <div>
                 <label style={lbl}>Nº de Tanques</label>
-                <input style={inp} type="number" step="1" placeholder="Ex: 25" value={f.num_tanques} onChange={e => setF(p => ({ ...p, num_tanques: e.target.value }))} />
+                <InputNumerico style={inp} decimais={0} placeholder="Ex: 25" value={f.num_tanques} onChange={v => setF(p => ({ ...p, num_tanques: v }))} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 {caldaTotal !== null && (
@@ -424,7 +425,7 @@ export default function PulverizacaoPage() {
                           )}
                         </td>
                         <td style={{ padding: "6px 8px", width: 90 }}>
-                          <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" placeholder="0,000" value={it.dose_ha} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: e.target.value } : x))} />
+                          <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} placeholder="0,000" value={it.dose_ha} onChange={v => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: v } : x))} />
                         </td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{total > 0 ? `${fmtN(total, 2)} ${it.unidade}` : "—"}</td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ─────────────────────────────────────────────────────────────
 // Tipos
@@ -176,8 +177,8 @@ function NumInput({ value, onChange, label, hint: h, suffix, min = 0, max = 100,
     <div>
       <label style={{ ...lbl, opacity: disabled ? 0.5 : 1 }}>{label}</label>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <input type="number" min={min} max={max} step={step} value={value}
-          onChange={e => onChange(parseFloat(e.target.value) || 0)}
+        <InputNumerico min={min} max={max} value={value}
+          onChange={v => onChange(parseFloat(v) || 0)}
           disabled={disabled}
           style={{ ...inp, maxWidth: 120, opacity: disabled ? 0.5 : 1 }}
         />
@@ -419,8 +420,8 @@ export default function ConfigNfePage() {
                 </div>
                 <div>
                   <label style={lbl}>Próximo número</label>
-                  <input type="number" min={1} value={cfg.proximo_numero}
-                    onChange={e => set("proximo_numero", parseInt(e.target.value)||1)} style={inp} />
+                  <InputNumerico decimais={0} min={1} value={cfg.proximo_numero}
+                    onChange={v => set("proximo_numero", parseInt(v)||1)} style={inp} />
                   <p style={hint}>A próxima NF emitida receberá este número.</p>
                 </div>
               </div>

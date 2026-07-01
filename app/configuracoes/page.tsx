@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
+import InputNumerico from "../../components/InputNumerico";
 import { supabase } from "../../lib/supabase";
 import { type ContaContabil, planoContasPadrao, LCDPR_OPCOES } from "../../lib/planoContas";
 import { listarProdutores, listarPlanoContas, salvarContaContabil, excluirContaContabil } from "../../lib/db";
@@ -267,15 +268,15 @@ function ConfiguracoesInner() {
                   </div>
                   <div>
                     <label style={lbl}>Basis Soja (R$/sc)</label>
-                    <input type="number" step="0.50" value={basis.soja} onChange={e => setBasis(b => ({ ...b, soja: parseFloat(e.target.value) || 0 }))} style={inp} />
+                    <InputNumerico value={basis.soja} onChange={v => setBasis(b => ({ ...b, soja: parseFloat(v) || 0 }))} style={inp} />
                   </div>
                   <div>
                     <label style={lbl}>Basis Milho (R$/sc)</label>
-                    <input type="number" step="0.50" value={basis.milho} onChange={e => setBasis(b => ({ ...b, milho: parseFloat(e.target.value) || 0 }))} style={inp} />
+                    <InputNumerico value={basis.milho} onChange={v => setBasis(b => ({ ...b, milho: parseFloat(v) || 0 }))} style={inp} />
                   </div>
                   <div>
                     <label style={lbl}>Basis Algodão (R$/@)</label>
-                    <input type="number" step="0.50" value={basis.algodao} onChange={e => setBasis(b => ({ ...b, algodao: parseFloat(e.target.value) || 0 }))} style={inp} />
+                    <InputNumerico value={basis.algodao} onChange={v => setBasis(b => ({ ...b, algodao: parseFloat(v) || 0 }))} style={inp} />
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Supabase client ─────────────────────────────────────────────────────────
 
@@ -170,8 +171,8 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={lbl}>Valor (R$) *</label>
-              <input style={inp} type="number" step="0.01" min="0" placeholder="0,00"
-                value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} />
+              <InputNumerico style={inp} min="0"
+                value={form.valor} onChange={v => setForm(f => ({ ...f, valor: v }))} />
             </div>
             <div>
               <label style={lbl}>Data do pagamento</label>

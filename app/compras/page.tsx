@@ -11,6 +11,7 @@ import {
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
+import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
 
 // ── Estilos base ─────────────────────────────────────────────
@@ -826,7 +827,7 @@ export default function ComprasPage() {
                   </div>
                   <div>
                     <label style={lbl}>Variação Cambial</label>
-                    <input style={inp} type="number" step="0.0001" value={f.variacao_cambial} onChange={e => setF(p => ({ ...p, variacao_cambial: e.target.value }))} placeholder="0,0000" />
+                    <InputNumerico style={inp} decimais={4} value={f.variacao_cambial} onChange={v => setF(p => ({ ...p, variacao_cambial: v }))} placeholder="0,0000" />
                   </div>
                 </div>
 
@@ -996,7 +997,7 @@ export default function ComprasPage() {
                                   </select>
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 90 }}>
-                                  <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" value={it.quantidade} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: e.target.value } : x))} placeholder="0" />
+                                  <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.quantidade} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: v } : x))} placeholder="0" />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
                                   <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right" }} value={it.valor_unitario} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(v) } : x))} placeholder="0,00" />
@@ -1005,7 +1006,7 @@ export default function ComprasPage() {
                                   {calcItem(it) > 0 ? fmtMoeda(calcItem(it), f.cotacao_moeda) : "—"}
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 80 }}>
-                                  <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="number" step="0.001" value={it.qtd_cancelada} onChange={e => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: e.target.value } : x))} />
+                                  <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.qtd_cancelada} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: v } : x))} />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 36 }}>
                                   <button style={btnX} onClick={() => setItens(prev => prev.filter((_, j) => j !== it._idx))}>✕</button>
@@ -1224,7 +1225,7 @@ export default function ComprasPage() {
                 </div>
                 <div>
                   <label style={lbl}>Qtd. Entregue</label>
-                  <input style={inp} type="number" step="0.001" value={formEntrega.quantidade_entregue} onChange={e => setFormEntrega(p => ({ ...p, quantidade_entregue: e.target.value }))} placeholder="0,000" />
+                  <InputNumerico style={inp} decimais={3} value={formEntrega.quantidade_entregue} onChange={v => setFormEntrega(p => ({ ...p, quantidade_entregue: v }))} placeholder="0,000" />
                 </div>
                 <div>
                   <label style={lbl}>Obs.</label>

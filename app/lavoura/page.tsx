@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
+import InputNumerico from "../../components/InputNumerico";
 import {
   listarSafras, criarSafra, atualizarSafra,
   listarOperacoes, criarOperacao, atualizarOperacao,
@@ -631,7 +632,7 @@ export default function PlanoAgricola() {
             </div>
             <div>
               <label style={lbl}>Área (ha) *</label>
-              <input style={inp} type="number" step="0.1" placeholder="Ex: 650" value={fNP.area_ha} onChange={e => setFNP(p => ({ ...p, area_ha: e.target.value }))} />
+              <InputNumerico style={inp} placeholder="Ex: 650" value={fNP.area_ha} onChange={v => setFNP(p => ({ ...p, area_ha: v }))} />
             </div>
             <div>
               <label style={lbl}>Data de Início *</label>
@@ -722,7 +723,7 @@ export default function PlanoAgricola() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div>
               <label style={lbl}>Produtividade real (sc/ha) *</label>
-              <input style={inp} type="number" step="0.1" placeholder="Ex: 63,5" value={fColh.produtividade_sc_ha} onChange={e => setFColh(p => ({ ...p, produtividade_sc_ha: e.target.value }))} />
+              <InputNumerico style={inp} placeholder="Ex: 63,5" value={fColh.produtividade_sc_ha} onChange={v => setFColh(p => ({ ...p, produtividade_sc_ha: v }))} />
             </div>
             <div>
               <label style={lbl}>Data da colheita</label>

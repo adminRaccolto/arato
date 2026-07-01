@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarAnosSafra } from "../../../lib/db";
@@ -982,7 +983,7 @@ export default function Planejamento() {
             </div>
             <div>
               <label style={lbl}>Produtividade Esperada (sc/ha)</label>
-              <input style={inp} type="number" step="0.1" placeholder="Ex: 60" value={fOH.produtividade_esperada} onChange={e => setFOH(p => ({ ...p, produtividade_esperada: e.target.value }))} />
+              <InputNumerico style={inp} placeholder="Ex: 60" value={fOH.produtividade_esperada} onChange={v => setFOH(p => ({ ...p, produtividade_esperada: v }))} />
             </div>
             <div>
               <label style={lbl}>Preço de Referência (R$/sc)</label>
@@ -1027,7 +1028,7 @@ export default function Planejamento() {
             </div>
             <div>
               <label style={lbl}>Quantidade</label>
-              <input style={inp} type="number" step="0.001" placeholder="0" value={fOI.quantidade} onChange={e => setFOI(p => ({ ...p, quantidade: e.target.value }))} />
+              <InputNumerico style={inp} decimais={3} placeholder="0" value={fOI.quantidade} onChange={v => setFOI(p => ({ ...p, quantidade: v }))} />
             </div>
             <div>
               <label style={lbl}>Unidade</label>

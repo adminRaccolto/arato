@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
+import InputNumerico from "../../components/InputNumerico";
 import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao } from "../../lib/supabase";
@@ -1758,7 +1759,7 @@ export default function Financeiro() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
                       <label style={labelStyle}>Nº de parcelas</label>
-                      <input style={inputStyle} type="number" min="2" max="60" value={novoLanc.totalParcelas} onChange={e => setNovoLanc(p => ({ ...p, totalParcelas: e.target.value }))} />
+                      <InputNumerico style={inputStyle} decimais={0} min="2" max="60" value={novoLanc.totalParcelas} onChange={v => setNovoLanc(p => ({ ...p, totalParcelas: v }))} />
                     </div>
                     <div>
                       <label style={labelStyle}>Intervalo</label>

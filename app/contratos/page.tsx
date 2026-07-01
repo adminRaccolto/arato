@@ -11,6 +11,7 @@ import {
   encerrarAnoSafra, reabrirAnoSafra,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
+import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
 import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato, Insumo } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -1698,17 +1699,17 @@ export default function Contratos() {
                             </td>
                             {/* Peso em kg — campo primário */}
                             <td style={{ padding:"6px 8px", width:120 }}>
-                              <input style={{ ...inp, textAlign:"right", fontSize:12 }} type="number" min="0" step="100"
+                              <InputNumerico style={{ ...inp, textAlign:"right", fontSize:12 }} decimais={0} min="0"
                                 value={it._qKg > 0 ? it._qKg : ""}
-                                onChange={e => atualizarItem(idx,"quantidade_kg",e.target.value)}
+                                onChange={v => atualizarItem(idx,"quantidade_kg",v)}
                                 placeholder="0 kg" />
                               <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>kg</span>
                             </td>
                             {/* Sacas equivalentes — campo secundário */}
                             <td style={{ padding:"6px 8px", width:110 }}>
-                              <input style={{ ...inp, textAlign:"right", fontSize:12, background:"#F8FAFF", borderColor:"#C4D0E8" }} type="number" min="0" step="0.1"
+                              <InputNumerico style={{ ...inp, textAlign:"right", fontSize:12, background:"#F8FAFF", borderColor:"#C4D0E8" }} decimais={3} min="0"
                                 value={it._qSc > 0 ? +it._qSc.toFixed(3) : ""}
-                                onChange={e => atualizarItem(idx,"quantidade_sc",e.target.value)}
+                                onChange={v => atualizarItem(idx,"quantidade_sc",v)}
                                 placeholder="0 sc" />
                               <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodityDin(it.produto).kg_saca} kg/sc)</span>
                             </td>
@@ -1952,11 +1953,11 @@ export default function Contratos() {
               </div>
               <div>
                 <label style={lbl}>Peso bruto (kg) *</label>
-                <input style={inp} type="number" placeholder="43800" value={fRom.pesoBruto} onChange={e => setFRom(p=>({...p,pesoBruto:e.target.value}))} />
+                <InputNumerico style={inp} decimais={0} placeholder="43800" value={fRom.pesoBruto} onChange={v => setFRom(p=>({...p,pesoBruto:v}))} />
               </div>
               <div>
                 <label style={lbl}>Tara — caminhão vazio (kg) *</label>
-                <input style={inp} type="number" placeholder="17200" value={fRom.tara} onChange={e => setFRom(p=>({...p,tara:e.target.value}))} />
+                <InputNumerico style={inp} decimais={0} placeholder="17200" value={fRom.tara} onChange={v => setFRom(p=>({...p,tara:v}))} />
               </div>
             </div>
 
@@ -1996,22 +1997,22 @@ export default function Contratos() {
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:12 }}>
                   <div>
                     <label style={lbl}>Umidade (%)</label>
-                    <input style={inp} type="number" step="0.1" min="0" max="40" placeholder={String(clsComm.umidade_padrao)}
-                      value={fRom.umidade} onChange={e => setFRom(p=>({...p,umidade:e.target.value}))} />
+                    <InputNumerico style={inp} min="0" max="40" placeholder={String(clsComm.umidade_padrao)}
+                      value={fRom.umidade} onChange={v => setFRom(p=>({...p,umidade:v}))} />
                     {descUmid > 0 && <div style={{ fontSize:10, color:"#E24B4A", marginTop:2 }}>Desconto: {fmtPeso(descUmid)}</div>}
                     {romUmidade > 0 && romUmidade <= clsComm.umidade_padrao && <div style={{ fontSize:10, color:"#16A34A", marginTop:2 }}>Dentro do padrão ✓</div>}
                   </div>
                   <div>
                     <label style={lbl}>Impureza / Matérias Estranhas (%)</label>
-                    <input style={inp} type="number" step="0.1" min="0" max="20" placeholder={String(clsComm.impureza_padrao)}
-                      value={fRom.impureza} onChange={e => setFRom(p=>({...p,impureza:e.target.value}))} />
+                    <InputNumerico style={inp} min="0" max="20" placeholder={String(clsComm.impureza_padrao)}
+                      value={fRom.impureza} onChange={v => setFRom(p=>({...p,impureza:v}))} />
                     {descImpur > 0 && <div style={{ fontSize:10, color:"#E24B4A", marginTop:2 }}>Desconto: {fmtPeso(descImpur)}</div>}
                     {romImpureza > 0 && romImpureza <= clsComm.impureza_padrao && <div style={{ fontSize:10, color:"#16A34A", marginTop:2 }}>Dentro do padrão ✓</div>}
                   </div>
                   <div>
                     <label style={lbl}>PH — Peso Hectolítrico (kg/hl)</label>
-                    <input style={inp} type="number" step="0.1" min="50" max="100" placeholder={isSoja ? "78" : isMilho ? "74" : "—"}
-                      value={fRom.ph} onChange={e => setFRom(p=>({...p,ph:e.target.value}))} />
+                    <InputNumerico style={inp} min="50" max="100" placeholder={isSoja ? "78" : isMilho ? "74" : "—"}
+                      value={fRom.ph} onChange={v => setFRom(p=>({...p,ph:v}))} />
                     {fRom.ph && <div style={{ fontSize:10, color: parseFloat(fRom.ph) >= (isSoja?78:74) ? "#16A34A" : "#E24B4A", marginTop:2 }}>
                       {parseFloat(fRom.ph) >= (isSoja?78:74) ? "Dentro do padrão ✓" : "Abaixo do mínimo ↓"}
                     </div>}
@@ -2043,8 +2044,8 @@ export default function Contratos() {
                       ] as {key: keyof typeof fRom; label: string}[]).map(({ key, label }) => (
                         <div key={key}>
                           <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>{label}</label>
-                          <input style={{ ...inp, fontSize:12, padding:"5px 8px" }} type="number" step="0.1" min="0" max="100"
-                            value={fRom[key] as string} onChange={e => setFRom(p=>({...p,[key]:e.target.value}))} />
+                          <InputNumerico style={{ ...inp, fontSize:12, padding:"5px 8px" }} min="0" max="100"
+                            value={fRom[key] as string} onChange={v => setFRom(p=>({...p,[key]:v}))} />
                         </div>
                       ))}
                     </div>
@@ -2061,8 +2062,8 @@ export default function Contratos() {
                       ] as {key: keyof typeof fRom; label: string}[]).map(({ key, label }) => (
                         <div key={key}>
                           <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>{label}</label>
-                          <input style={{ ...inp, fontSize:12, padding:"5px 8px" }} type="number" step="0.1" min="0" max="100"
-                            value={fRom[key] as string} onChange={e => setFRom(p=>({...p,[key]:e.target.value}))} />
+                          <InputNumerico style={{ ...inp, fontSize:12, padding:"5px 8px" }} min="0" max="100"
+                            value={fRom[key] as string} onChange={v => setFRom(p=>({...p,[key]:v}))} />
                         </div>
                       ))}
                     </div>
@@ -2108,8 +2109,8 @@ export default function Contratos() {
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
                     <div>
                       <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>Peso Classificado Destino (kg)</label>
-                      <input style={{ ...inp, fontSize:12 }} type="number" step="1" placeholder="Ex: 26480"
-                        value={fRom.peso_destino} onChange={e => setFRom(p=>({...p,peso_destino:e.target.value}))} />
+                      <InputNumerico style={{ ...inp, fontSize:12 }} decimais={0} placeholder="Ex: 26480"
+                        value={fRom.peso_destino} onChange={v => setFRom(p=>({...p,peso_destino:v}))} />
                       {pesoDest > 0 && pesoClass > 0 && (
                         <div style={{ fontSize:10, marginTop:2, color: Math.abs(difKg)/pesoClass > 0.005 ? "#E24B4A" : "#16A34A" }}>
                           {difKg > 0 ? `Diferença: −${fmtPeso(difKg)} (${Math.abs(difKg/pesoClass*100).toFixed(2)}%)` :
@@ -2119,8 +2120,8 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>Sacas Faturadas na NF Comprador</label>
-                      <input style={{ ...inp, fontSize:12 }} type="number" step="0.001" placeholder={String(sacasCalc)}
-                        value={fRom.sacas_faturadas} onChange={e => setFRom(p=>({...p,sacas_faturadas:e.target.value}))} />
+                      <InputNumerico style={{ ...inp, fontSize:12 }} decimais={3} placeholder={String(sacasCalc)}
+                        value={fRom.sacas_faturadas} onChange={v => setFRom(p=>({...p,sacas_faturadas:v}))} />
                     </div>
                     <div>
                       <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>Obs. Divergência</label>
@@ -2152,10 +2153,10 @@ export default function Contratos() {
                 {fRom.aplicarAdiant && (
                   <div>
                     <label style={{ ...lbl, color:"#0B2D50" }}>Valor a abater (R$) — máx. {fmtR$(Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0)))}</label>
-                    <input style={{ ...inp, borderColor:"#1A4870" }} type="number" step="0.01" min="0"
+                    <InputNumerico style={{ ...inp, borderColor:"#1A4870" }} min="0"
                       max={Math.min(adiantSaldo(contratoSel.id), sacasCalc*(contratoSel.preco??0))}
                       value={fRom.adiantValor}
-                      onChange={e => setFRom(p => ({ ...p, adiantValor: e.target.value }))} />
+                      onChange={v => setFRom(p => ({ ...p, adiantValor: v }))} />
                     {fRom.adiantValor && (() => {
                       const vBruto = sacasCalc * (contratoSel.preco ?? 0);
                       const vAbate = Math.min(parseFloat(fRom.adiantValor||"0"), vBruto, adiantSaldo(contratoSel.id));
@@ -2405,8 +2406,8 @@ export default function Contratos() {
               </div>
               <div>
                 <label style={lbl}>Valor recebido (R$) *</label>
-                <input style={inp} type="number" step="0.01" min="0.01" placeholder="0,00"
-                  value={fAdiant.valor} onChange={e => setFAdiant(p=>({...p,valor:e.target.value}))} />
+                <InputNumerico style={inp} min="0" placeholder="0,00"
+                  value={fAdiant.valor} onChange={v => setFAdiant(p=>({...p,valor:v}))} />
               </div>
             </div>
 

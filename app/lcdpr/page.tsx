@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
+import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
 import { listarLancamentos } from "../../lib/db";
 import type { Lancamento } from "../../lib/supabase";
@@ -205,10 +206,9 @@ export default function LCDPR() {
           {/* Saldo inicial editável */}
           <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "8px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, fontSize: 12 }}>
             <span style={{ color: "#7A5A12" }}>⚠ Saldo inicial do ano:</span>
-            <input
-              type="number"
+            <InputNumerico
               value={saldoInicial}
-              onChange={e => setSaldoInicial(Number(e.target.value))}
+              onChange={v => setSaldoInicial(Number(v))}
               style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, width: 140, color: "#1a1a1a" }}
             />
             <span style={{ color: "#7A5A12" }}>Informe o saldo em caixa em 1º de janeiro de {anoSel}</span>

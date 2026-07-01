@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 import PlanoGate from "../../../components/PlanoGate";
 
 // ─────────────────────────────────────────────────────────────
@@ -608,7 +609,7 @@ export default function ConsorciosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Total de Parcelas</label>
-                  <input type="number" min="1" value={cForm.total_parcelas} onChange={e => setCForm(f => ({ ...f, total_parcelas: e.target.value }))} style={inp} />
+                  <InputNumerico decimais={0} min="1" value={cForm.total_parcelas} onChange={v => setCForm(f => ({ ...f, total_parcelas: v }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Data de Início</label>
@@ -616,7 +617,7 @@ export default function ConsorciosPage() {
                 </div>
                 <div>
                   <label style={lbl}>Parcelas Pagas</label>
-                  <input type="number" min="0" value={cForm.parcelas_pagas} onChange={e => setCForm(f => ({ ...f, parcelas_pagas: e.target.value }))} style={inp} />
+                  <InputNumerico decimais={0} min="0" value={cForm.parcelas_pagas} onChange={v => setCForm(f => ({ ...f, parcelas_pagas: v }))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Status</label>

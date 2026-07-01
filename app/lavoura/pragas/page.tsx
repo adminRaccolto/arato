@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Monitoramento = {
@@ -701,7 +702,7 @@ export default function PragasPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={lbl}>% de Plantas Afetadas</label>
-                  <input type="number" min="0" max="100" step="1" placeholder="Ex: 15" value={fPct} onChange={e => setFPct(e.target.value)} style={inp} />
+                  <InputNumerico decimais={0} min="0" max="100" placeholder="Ex: 15" value={fPct} onChange={v => setFPct(v)} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Estágio da Cultura</label>

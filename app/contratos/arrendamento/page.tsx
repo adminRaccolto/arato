@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarAnosSafra, criarLancamento, listarProdutores } from "../../../lib/db";
+import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import PlanoGate from "../../../components/PlanoGate";
@@ -1254,8 +1255,8 @@ export default function Arrendamentos() {
               <>
                 <div>
                   <label style={lbl}>Soja — sc/ha/ano (referência de cálculo)</label>
-                  <input style={inp} type="number" step="0.0001" value={fC.sc_soja_ha}
-                    onChange={e => setFC(f => ({ ...f, sc_soja_ha: e.target.value }))}
+                  <InputNumerico style={inp} decimais={4} value={fC.sc_soja_ha}
+                    onChange={v => setFC(f => ({ ...f, sc_soja_ha: v }))}
                     placeholder="Ex: 18,0000" />
                 </div>
                 <div>
@@ -1412,7 +1413,7 @@ export default function Arrendamentos() {
                   </div>
                   <div>
                     <label style={lbl}>Sacas Previstas</label>
-                    <input style={inp} type="number" step="0.001" value={fP.sacas_previstas} onChange={e => setFP(p => ({ ...p, sacas_previstas: e.target.value }))}
+                    <InputNumerico style={inp} decimais={3} value={fP.sacas_previstas} onChange={v => setFP(p => ({ ...p, sacas_previstas: v }))}
                       placeholder={selArr.sc_ha ? `${fmtN(selArr.area_ha * selArr.sc_ha)} sc` : "0"} />
                   </div>
                   <div>
@@ -1421,7 +1422,7 @@ export default function Arrendamentos() {
                   </div>
                   <div>
                     <label style={lbl}>Sacas Efetivamente Entregues</label>
-                    <input style={inp} type="number" step="0.001" value={fP.sacas_pagas} onChange={e => setFP(p => ({ ...p, sacas_pagas: e.target.value }))} />
+                    <InputNumerico style={inp} decimais={3} value={fP.sacas_pagas} onChange={v => setFP(p => ({ ...p, sacas_pagas: v }))} />
                   </div>
                 </>}
                 {!ehSc && <>
@@ -1594,8 +1595,8 @@ export default function Arrendamentos() {
                         </td>
                         {/* Bloco Milho */}
                         <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
-                          <input style={inpSm} type="number" step="0.0001" placeholder="0" value={cfg.sc_milho_ha}
-                            onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_milho_ha: e.target.value } : c))} />
+                          <InputNumerico style={inpSm} decimais={4} placeholder="0" value={cfg.sc_milho_ha}
+                            onChange={v => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, sc_milho_ha: v } : c))} />
                         </td>
                         <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
                           <InputMonetario style={inpSm} placeholder="R$/sc" value={cfg.preco_milho}

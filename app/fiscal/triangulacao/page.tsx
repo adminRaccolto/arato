@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, Produtor } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -681,16 +682,16 @@ export default function TriangulacaoPage() {
                       </div>
                       <div>
                         <label style={lbl}>Quantidade (sacas)</label>
-                        <input style={inp} type="number" min="0" step="1"
+                        <InputNumerico style={inp} decimais={0} min="0"
                           value={f.quantidade_kg ? Math.round(f.quantidade_kg / 60) : ""}
-                          onChange={e => sf("quantidade_kg", Number(e.target.value) * 60)}
+                          onChange={v => sf("quantidade_kg", Number(v) * 60)}
                           placeholder="0" />
                       </div>
                       <div>
                         <label style={lbl}>Preço ({f.moeda}/sc)</label>
-                        <input style={inp} type="number" min="0" step="0.01"
+                        <InputNumerico style={inp} min="0"
                           value={f.preco_unitario ?? ""}
-                          onChange={e => sf("preco_unitario", Number(e.target.value))}
+                          onChange={v => sf("preco_unitario", Number(v))}
                           placeholder="0,00" />
                       </div>
                       <div>
@@ -789,7 +790,7 @@ export default function TriangulacaoPage() {
                           </div>
                           <div>
                             <label style={lbl}>Valor Total dos Insumos (R$)</label>
-                            <input style={inp} type="number" min="0" step="0.01" value={f.valor_insumos ?? ""} onChange={e => sf("valor_insumos", Number(e.target.value))} placeholder="0,00" />
+                            <InputNumerico style={inp} min="0" value={f.valor_insumos ?? ""} onChange={v => sf("valor_insumos", Number(v))} placeholder="0,00" />
                           </div>
                         </div>
                         <div style={{ padding: 12, background: "#FDE9BB", borderRadius: 8, fontSize: 11, color: "#7A3F00" }}>
@@ -829,7 +830,7 @@ export default function TriangulacaoPage() {
                         </div>
                         <div>
                           <label style={lbl}>Valor a pagar ao terceiro (R$)</label>
-                          <input style={{ ...inp, maxWidth: 200 }} type="number" min="0" step="0.01" value={f.valor_terceiro ?? ""} onChange={e => sf("valor_terceiro", Number(e.target.value))} placeholder="0,00" />
+                          <InputNumerico style={{ ...inp, maxWidth: 200 }} min="0" value={f.valor_terceiro ?? ""} onChange={v => sf("valor_terceiro", Number(v))} placeholder="0,00" />
                           <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Parte do valor do grão que a trading transfere diretamente ao beneficiário</div>
                         </div>
                         <div style={{ padding: 12, background: "#EDE9FE", borderRadius: 8, fontSize: 11, color: "#4C1D95" }}>

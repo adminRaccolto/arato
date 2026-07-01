@@ -5,6 +5,7 @@ import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
 import type { Talhao, Insumo, AnoSafra, Ciclo } from "../../../lib/supabase";
 import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, processarPulverizacao } from "../../../lib/db";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Tipos locais ────────────────────────────────────────────────────────────
 
@@ -335,7 +336,7 @@ function ModalNova({
               </div>
               <div>
                 <label style={lbl}>Remonte / Transpasse (%)</label>
-                <input type="number" value={f.remonte_pct} onChange={e => setF(v => ({...v, remonte_pct: e.target.value}))} style={inp} min={0} max={50} step={1} />
+                <InputNumerico decimais={0} value={f.remonte_pct} onChange={v => setF(fv => ({...fv, remonte_pct: v}))} style={inp} min={0} max={50} />
               </div>
               <div>
                 <label style={lbl}>Previsto Início</label>
@@ -389,7 +390,7 @@ function ModalNova({
                   </div>
                   <div style={{ width:120 }}>
                     <label style={lbl}>{i === 0 ? "Área (ha)" : ""}</label>
-                    <input type="number" value={t.area} onChange={e => setTf(i, "area", e.target.value)} placeholder="ha" style={inp} step={0.01} />
+                    <InputNumerico value={t.area} onChange={v => setTf(i, "area", v)} placeholder="ha" style={inp} />
                   </div>
                   <button onClick={() => remTalhao(i)} disabled={talhoesForm.length <= 1}
                     style={{ padding:"8px 12px", background:"#FCEBEB", border:"0.5px solid #E24B4A50", borderRadius:8, fontSize:13, cursor:"pointer", color:"#E24B4A" }}>
@@ -408,11 +409,11 @@ function ModalNova({
                 <div style={{ display:"flex", gap:8 }}>
                   {f.tipo === "pulverizacao" && (
                     <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                      <input type="number" placeholder="Cap. tanque (L)" value={f.cap_tanque_l}
-                        onChange={e => setF(v => ({...v, cap_tanque_l: e.target.value}))}
+                      <InputNumerico decimais={0} placeholder="Cap. tanque (L)" value={f.cap_tanque_l}
+                        onChange={v => setF(fv => ({...fv, cap_tanque_l: v}))}
                         style={{ ...inp, width:140 }} />
-                      <input type="number" placeholder="Vazão (L/ha)" value={f.vazao_lha}
-                        onChange={e => setF(v => ({...v, vazao_lha: e.target.value}))}
+                      <InputNumerico placeholder="Vazão (L/ha)" value={f.vazao_lha}
+                        onChange={v => setF(fv => ({...fv, vazao_lha: v}))}
                         style={{ ...inp, width:120 }} />
                       <button onClick={arredondarPorTanque}
                         style={{ padding:"8px 14px", background:"#1A4870", color:"#fff", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
@@ -469,7 +470,7 @@ function ModalNova({
                   </div>
                   <div>
                     {i === 0 && <label style={lbl}>Dose *</label>}
-                    <input type="number" value={p.dose} onChange={e => setPf(i, "dose", e.target.value)} placeholder="0,0" style={inp} step={0.001} />
+                    <InputNumerico decimais={3} value={p.dose} onChange={v => setPf(i, "dose", v)} placeholder="0,0" style={inp} />
                   </div>
                   <div>
                     {i === 0 && <label style={lbl}>Unidade</label>}
@@ -518,49 +519,49 @@ function ModalNova({
                     </div>
                     <div>
                       <label style={lbl}>Vazão (L/ha)</label>
-                      <input type="number" value={f.vazao_lha} onChange={e => setF(v => ({...v, vazao_lha: e.target.value}))} style={inp} />
+                      <InputNumerico value={f.vazao_lha} onChange={v => setF(fv => ({...fv, vazao_lha: v}))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Pressão — mín (psi)</label>
-                      <input type="number" value={f.pressao_min} onChange={e => setF(v => ({...v, pressao_min: e.target.value}))} style={inp} step={0.5} />
+                      <InputNumerico value={f.pressao_min} onChange={v => setF(fv => ({...fv, pressao_min: v}))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Pressão — máx (psi)</label>
-                      <input type="number" value={f.pressao_max} onChange={e => setF(v => ({...v, pressao_max: e.target.value}))} style={inp} step={0.5} />
+                      <InputNumerico value={f.pressao_max} onChange={v => setF(fv => ({...fv, pressao_max: v}))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>pH da água — mín</label>
-                      <input type="number" value={f.ph_min} onChange={e => setF(v => ({...v, ph_min: e.target.value}))} style={inp} step={0.1} />
+                      <InputNumerico value={f.ph_min} onChange={v => setF(fv => ({...fv, ph_min: v}))} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>pH da água — máx</label>
-                      <input type="number" value={f.ph_max} onChange={e => setF(v => ({...v, ph_max: e.target.value}))} style={inp} step={0.1} />
+                      <InputNumerico value={f.ph_max} onChange={v => setF(fv => ({...fv, ph_max: v}))} style={inp} />
                     </div>
                   </>
                 )}
                 <div>
                   <label style={lbl}>Velocidade mín (km/h)</label>
-                  <input type="number" value={f.velocidade_min} onChange={e => setF(v => ({...v, velocidade_min: e.target.value}))} style={inp} step={0.5} />
+                  <InputNumerico value={f.velocidade_min} onChange={v => setF(fv => ({...fv, velocidade_min: v}))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Velocidade máx (km/h)</label>
-                  <input type="number" value={f.velocidade_max} onChange={e => setF(v => ({...v, velocidade_max: e.target.value}))} style={inp} step={0.5} />
+                  <InputNumerico value={f.velocidade_max} onChange={v => setF(fv => ({...fv, velocidade_max: v}))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Vento máx (km/h)</label>
-                  <input type="number" value={f.vento_max} onChange={e => setF(v => ({...v, vento_max: e.target.value}))} style={inp} step={1} />
+                  <InputNumerico decimais={0} value={f.vento_max} onChange={v => setF(fv => ({...fv, vento_max: v}))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Umidade mín (%)</label>
-                  <input type="number" value={f.umidade_min} onChange={e => setF(v => ({...v, umidade_min: e.target.value}))} style={inp} step={1} />
+                  <InputNumerico decimais={0} value={f.umidade_min} onChange={v => setF(fv => ({...fv, umidade_min: v}))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Temperatura mín (°C)</label>
-                  <input type="number" value={f.temperatura_min} onChange={e => setF(v => ({...v, temperatura_min: e.target.value}))} style={inp} step={1} />
+                  <InputNumerico decimais={0} value={f.temperatura_min} onChange={v => setF(fv => ({...fv, temperatura_min: v}))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Temperatura máx (°C)</label>
-                  <input type="number" value={f.temperatura_max} onChange={e => setF(v => ({...v, temperatura_max: e.target.value}))} style={inp} step={1} />
+                  <InputNumerico decimais={0} value={f.temperatura_max} onChange={v => setF(fv => ({...fv, temperatura_max: v}))} style={inp} />
                 </div>
               </div>
             </div>
@@ -698,8 +699,8 @@ function ModalExecutar({
                 </div>
                 <div>
                   <div style={{ fontSize:10, color:"#888", marginBottom:2 }}>Área executada (ha)</div>
-                  <input type="number" value={Number(a.area_executada_ha) || ""} step={0.01}
-                    onChange={e => setAjuste(i, "area_executada_ha", parseFloat(e.target.value) || 0)}
+                  <InputNumerico value={Number(a.area_executada_ha) || ""}
+                    onChange={v => setAjuste(i, "area_executada_ha", parseFloat(v) || 0)}
                     disabled={!a.concluido}
                     style={{ ...inp, width:"100%", opacity: a.concluido ? 1 : 0.5 }} />
                 </div>

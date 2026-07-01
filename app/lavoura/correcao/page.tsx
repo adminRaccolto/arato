@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Ciclo, Talhao, Insumo, CorrecaoSolo, CorrecaoSoloItem, AnoSafra } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ── estilos ───────────────────────────────────────────────
 const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -254,7 +255,7 @@ export default function CorrecaoSoloPage() {
               </div>
               <div>
                 <label style={lbl}>Área (ha) *</label>
-                <input style={inp} type="number" step="0.1" placeholder="Ex: 440" value={f.area_ha} onChange={e => setF(p => ({ ...p, area_ha: e.target.value }))} />
+                <InputNumerico style={inp} placeholder="Ex: 440" value={f.area_ha} onChange={v => setF(p => ({ ...p, area_ha: v }))} />
               </div>
               <div>
                 <label style={lbl}>Data de Aplicação *</label>
@@ -285,8 +286,8 @@ export default function CorrecaoSoloPage() {
                   </select>
                   <input style={{ ...inp, opacity: it.insumo_id ? 0.4 : 1 }} placeholder="Nome livre" value={it.produto_nome} disabled={!!it.insumo_id}
                     onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, produto_nome: e.target.value } : x))} />
-                  <input style={inp} type="number" step="0.1" placeholder="Ex: 2,5" value={it.dose_ton_ha}
-                    onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, dose_ton_ha: e.target.value } : x))} />
+                  <InputNumerico style={inp} placeholder="Ex: 2,5" value={it.dose_ton_ha}
+                    onChange={v => setItens(p => p.map((x, i) => i === idx ? { ...x, dose_ton_ha: v } : x))} />
                   <div style={{ ...inp, background: "#F3F6F9", color: "#555", textAlign: "center" as const }}>
                     {qtd > 0 ? fmtN(qtd) : "—"} t
                   </div>

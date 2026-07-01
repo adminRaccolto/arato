@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
+import InputNumerico from "../../../components/InputNumerico";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, listarTalhoes, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, OperacaoGerencial, Ciclo, Talhao } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -1498,7 +1499,7 @@ export default function ContasReceber() {
                       <div style={{ display: "grid", gridTemplateColumns: "160px 200px 1fr", gap: 12, marginBottom: 14 }}>
                         <div>
                           <label style={lbl}>Nº de parcelas</label>
-                          <input style={inp} type="number" min="2" max="60" value={form.totalParcelas} onChange={e => setForm(p => ({ ...p, totalParcelas: e.target.value }))} />
+                          <InputNumerico style={inp} decimais={0} min="2" max="60" value={form.totalParcelas} onChange={v => setForm(p => ({ ...p, totalParcelas: v }))} />
                         </div>
                         <div>
                           <label style={lbl}>Intervalo</label>
@@ -1559,7 +1560,7 @@ export default function ContasReceber() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                     <div>
                       <label style={lbl}>Meses Diferido</label>
-                      <input style={inp} type="number" min="0" placeholder="0" value={form.meses_diferido} onChange={e => setForm(p => ({ ...p, meses_diferido: e.target.value }))} />
+                      <InputNumerico style={inp} decimais={0} min="0" placeholder="0" value={form.meses_diferido} onChange={v => setForm(p => ({ ...p, meses_diferido: v }))} />
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

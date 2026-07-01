@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { GrupoUsuario, Usuario } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ── Estrutura de permissões ────────────────────────────────────────────────────
 // Cada módulo tem ações individuais que podem ser ligadas/desligadas
@@ -816,7 +817,7 @@ export default function AdminUsuarios() {
                   </div>
                   <div>
                     <label style={lbl}>Área Total (ha)</label>
-                    <input style={inp} type="number" value={fCliente.fazenda_area} onChange={e => setFCliente(p => ({ ...p, fazenda_area: e.target.value }))} placeholder="1500" />
+                    <InputNumerico style={inp} decimais={0} value={fCliente.fazenda_area} onChange={v => setFCliente(p => ({ ...p, fazenda_area: v }))} placeholder="1500" />
                   </div>
                   <div>
                     <label style={lbl}>Município da Fazenda</label>

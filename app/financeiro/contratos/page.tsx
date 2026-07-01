@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
+import InputNumerico from "../../../components/InputNumerico";
 import {
   listarContratosFinanceiros, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
   listarParcelasLiberacao, criarParcelaLiberacao, excluirParcelaLiberacao,
@@ -1383,7 +1384,7 @@ export default function ContratosFinanceiros() {
                     </div>
                     <div>
                       <label style={lbl}>Carência (meses)</label>
-                      <input style={inp} type="number" min="0" value={fC.carencia_meses} onChange={e => setFC(p => ({ ...p, carencia_meses: e.target.value }))} />
+                      <InputNumerico style={inp} decimais={0} min="0" value={fC.carencia_meses} onChange={v => setFC(p => ({ ...p, carencia_meses: v }))} />
                     </div>
                     {Number(fC.carencia_meses) > 0 && (
                       <div>
@@ -1404,15 +1405,15 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div>
                       <label style={lbl}>Taxa de Juros a.a. (%) <span style={{ color: "#E24B4A" }}>*</span></label>
-                      <input style={inp} type="number" step="0.001" placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={e => onChangeAa(e.target.value)} />
+                      <InputNumerico style={inp} decimais={3} placeholder="Ex: 12,00" value={fC.taxa_juros_aa} onChange={v => onChangeAa(v)} />
                     </div>
                     <div>
                       <label style={lbl}>Taxa de Juros a.m. (%)</label>
-                      <input style={inp} type="number" step="0.0001" placeholder="Auto" value={fC.taxa_juros_am} onChange={e => onChangeAm(e.target.value)} />
+                      <InputNumerico style={inp} decimais={4} placeholder="Auto" value={fC.taxa_juros_am} onChange={v => onChangeAm(v)} />
                     </div>
                     <div>
                       <label style={lbl}>IOF (%)</label>
-                      <input style={inp} type="number" step="0.001" placeholder="Ex: 0,38" value={fC.iof_pct} onChange={e => setFC(p => ({ ...p, iof_pct: e.target.value }))} />
+                      <InputNumerico style={inp} decimais={3} placeholder="Ex: 0,38" value={fC.iof_pct} onChange={v => setFC(p => ({ ...p, iof_pct: v }))} />
                     </div>
                     <div>
                       <label style={lbl}>TAC — Tarifa de Abertura (R$)</label>
@@ -1493,7 +1494,7 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, marginBottom: 16, alignItems: "end" }}>
                     <div><label style={lbl}>Data Liberação</label><input style={inp} type="date" value={fLib.data_liberacao} onChange={e => setFLib(p => ({ ...p, data_liberacao: e.target.value }))} /></div>
                     <div><label style={lbl}>Valor Liberado ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fLib.valor_liberado} onChange={v => setFLib(p => ({ ...p, valor_liberado: String(v) }))} /></div>
-                    <div><label style={lbl}>Nº Parcelas</label><input style={inp} type="number" min="1" value={fLib.parcelas_liberacao} onChange={e => setFLib(p => ({ ...p, parcelas_liberacao: e.target.value }))} /></div>
+                    <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fLib.parcelas_liberacao} onChange={v => setFLib(p => ({ ...p, parcelas_liberacao: v }))} /></div>
                     <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando || !fLib.data_liberacao || !fLib.valor_liberado}>+ Adicionar</button>
                   </div>
                   {parcelasLiberacao.length === 0 ? (
@@ -1528,8 +1529,8 @@ export default function ContratosFinanceiros() {
                   <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
-                      <div><label style={lbl}>Nº Parcelas</label><input style={inp} type="number" min="1" value={fCalc.nParcelas} onChange={e => setFCalc(p => ({ ...p, nParcelas: e.target.value }))} /></div>
-                      <div><label style={lbl}>Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}</label><input style={inp} type="number" step="0.0001" value={fCalc.taxaMensal} onChange={e => setFCalc(p => ({ ...p, taxaMensal: e.target.value }))} /></div>
+                      <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
+                      <div><label style={lbl}>Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}</label><InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} /></div>
                       <div><label style={lbl}>Data 1º Pagto.</label><input style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
                       <div><label style={lbl}>Periodicidade</label><select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
                       <div><label style={lbl}>Acessórios/parc. (R$)</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
@@ -1626,7 +1627,7 @@ export default function ContratosFinanceiros() {
                       {fGar.tipo_bem === "imovel_urbano" && <div><label style={lbl}>Imóvel Urbano</label><select style={inp} value={fGar.imovel_urbano_id} onChange={e => setFGar(p => ({ ...p, imovel_urbano_id: e.target.value }))}><option value="">— Selecione —</option>{imoveisUrbanos.map(u => <option key={u.id} value={u.id}>{u.descricao}{u.municipio ? ` — ${u.municipio}` : ""}{u.area_m2 ? ` (${u.area_m2} m²)` : ""}</option>)}</select></div>}
                       {fGar.tipo_bem === "maquina" && <div><label style={lbl}>Máquina / Veículo</label><select style={inp} value={fGar.maquina_id} onChange={e => setFGar(p => ({ ...p, maquina_id: e.target.value }))}><option value="">— Selecione —</option>{maquinas.map(m => <option key={m.id} value={m.id}>{m.nome}{m.marca ? ` — ${m.marca}` : ""}{m.ano ? ` (${m.ano})` : ""}</option>)}</select></div>}
                       {!["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") && <div><label style={lbl}>Descrição do Bem *</label><input style={inp} placeholder="Ex: 300 cabeças Nelore…" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
-                      <div><label style={lbl}>% do Bem</label><input style={inp} type="number" min="1" max="100" value={fGar.percentual_bem} onChange={e => setFGar(p => ({ ...p, percentual_bem: e.target.value }))} /></div>
+                      <div><label style={lbl}>% do Bem</label><InputNumerico style={inp} min="1" max="100" value={fGar.percentual_bem} onChange={v => setFGar(p => ({ ...p, percentual_bem: v }))} /></div>
                       <div><label style={lbl}>Valor Avaliação (R$)</label><InputMonetario style={inp} value={fGar.valor_avaliacao} onChange={v => setFGar(p => ({ ...p, valor_avaliacao: String(v) }))} /></div>
                       {["imovel","imovel_urbano","maquina"].includes(fGar.tipo_bem ?? "") && <div><label style={lbl}>Obs.</label><input style={inp} placeholder="Opcional" value={fGar.descricao} onChange={e => setFGar(p => ({ ...p, descricao: e.target.value }))} /></div>}
                       <button style={{ ...btnV, padding: "8px 14px", alignSelf: "flex-end" }} onClick={salvarGarantia} disabled={salvando}>+ Adicionar</button>
@@ -1729,9 +1730,9 @@ export default function ContratosFinanceiros() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
                         <div><label style={lbl}>Nova Data Vencimento</label><input style={inp} type="date" value={fAdit.nova_data_vencimento} onChange={e => setFAdit(p => ({ ...p, nova_data_vencimento: e.target.value }))} /></div>
                         <div><label style={lbl}>Nova Taxa a.a. (%)</label><InputMonetario style={inp} value={fAdit.nova_taxa_aa} onChange={v => { const aa = Number(v) || 0; setFAdit(p => ({ ...p, nova_taxa_aa: String(v), nova_taxa_am: aa === 0 ? "" : fmtNum(aaParaAm(aa), 4) })); }} /></div>
-                        <div><label style={lbl}>Nova Taxa a.m. (%)</label><input style={inp} type="number" step="0.0001" value={fAdit.nova_taxa_am} onChange={e => setFAdit(p => ({ ...p, nova_taxa_am: e.target.value }))} /></div>
+                        <div><label style={lbl}>Nova Taxa a.m. (%)</label><InputNumerico style={inp} decimais={4} value={fAdit.nova_taxa_am} onChange={v => setFAdit(p => ({ ...p, nova_taxa_am: v }))} /></div>
                         <div><label style={lbl}>Novo Valor Financiado</label><InputMonetario style={inp} value={fAdit.novo_valor_financiado} onChange={v => setFAdit(p => ({ ...p, novo_valor_financiado: String(v) }))} /></div>
-                        <div><label style={lbl}>Novas Parcelas</label><input style={inp} type="number" step="1" value={fAdit.novo_num_parcelas} onChange={e => setFAdit(p => ({ ...p, novo_num_parcelas: e.target.value }))} /></div>
+                        <div><label style={lbl}>Novas Parcelas</label><InputNumerico style={inp} decimais={0} value={fAdit.novo_num_parcelas} onChange={v => setFAdit(p => ({ ...p, novo_num_parcelas: v }))} /></div>
                       </div>
                       <div style={{ marginBottom: 12 }}><label style={lbl}>Observações adicionais</label><textarea style={{ ...inp, height: 52, resize: "vertical" } as React.CSSProperties} value={fAdit.obs} onChange={e => setFAdit(p => ({ ...p, obs: e.target.value }))} /></div>
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 type Talhao = { id: string; nome: string; area_ha?: number };
 type Ciclo  = { id: string; cultura: string; ano_safra?: { ano: string } };
@@ -370,7 +371,7 @@ export default function CampoMonitoramentoPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>% Plantas Afetadas</label>
-          <input type="number" min="0" max="100" placeholder="Ex: 15" value={fPct} onChange={e => setFPct(e.target.value)} style={inp} />
+          <InputNumerico min="0" max="100" placeholder="Ex: 15" value={fPct} onChange={v => setFPct(v)} style={inp} />
         </div>
         <div>
           <label style={{ fontSize: 12, fontWeight: 700, color: "#555", display: "block", marginBottom: 6 }}>Estágio</label>

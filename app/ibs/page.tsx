@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import TopNav from "../../components/TopNav";
+import InputNumerico from "../../components/InputNumerico";
 
 // ─────────────────────────────────────────────────────────────
 // Cronograma de transição — LC 214/2024
@@ -190,11 +191,11 @@ export default function IBSCBS() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
                         <label style={{ fontSize: 11, color: "#555", display: "block", marginBottom: 5 }}>Receita bruta anual estimada (R$)</label>
-                        <input type="number" value={receitaAnual || ""} onChange={e => setReceitaAnual(Number(e.target.value))} placeholder="Ex: 5.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", boxSizing: "border-box" }} />
+                        <InputNumerico decimais={0} value={receitaAnual || ""} onChange={v => setReceitaAnual(Number(v))} placeholder="Ex: 5.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", boxSizing: "border-box" }} />
                       </div>
                       <div>
                         <label style={{ fontSize: 11, color: "#555", display: "block", marginBottom: 5 }}>Total de insumos e serviços comprados com nota (R$)</label>
-                        <input type="number" value={creditosInsumos || ""} onChange={e => setCreditosInsumos(Number(e.target.value))} placeholder="Ex: 2.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", boxSizing: "border-box" }} />
+                        <InputNumerico decimais={0} value={creditosInsumos || ""} onChange={v => setCreditosInsumos(Number(v))} placeholder="Ex: 2.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", boxSizing: "border-box" }} />
                       </div>
 
                       <div style={{ borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
@@ -206,7 +207,7 @@ export default function IBSCBS() {
                         ].map((r, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                             <label style={{ fontSize: 12, color: "#555", width: 130, flexShrink: 0 }}>{r.label}</label>
-                            <input type="number" step="0.01" value={r.val} onChange={e => r.set(Number(e.target.value))} style={{ width: 80, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 12, color: "#1a1a1a" }} />
+                            <InputNumerico value={r.val} onChange={v => r.set(Number(v))} style={{ width: 80, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 12, color: "#1a1a1a" }} />
                             <span style={{ fontSize: 11, color: "#888" }}>%</span>
                           </div>
                         ))}

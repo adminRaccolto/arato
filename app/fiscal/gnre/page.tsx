@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Tipos ────────────────────────────────────────────────────
 type StatusGNRE = "rascunho" | "emitida" | "paga" | "vencida" | "cancelada";
@@ -383,23 +384,23 @@ export default function GnrePage() {
               <div style={{ background: "#F8FAFF", borderRadius: 8, padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                 <div>
                   <label style={lbl}>Valor Principal (R$) *</label>
-                  <input type="number" min="0" step="0.01"
+                  <InputNumerico min="0"
                     value={form.valor_principal}
-                    onChange={e => setForm(f => ({ ...f, valor_principal: parseFloat(e.target.value) || 0 }))}
+                    onChange={v => setForm(f => ({ ...f, valor_principal: parseFloat(v) || 0 }))}
                     style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Juros (R$)</label>
-                  <input type="number" min="0" step="0.01"
+                  <InputNumerico min="0"
                     value={form.valor_juros}
-                    onChange={e => setForm(f => ({ ...f, valor_juros: parseFloat(e.target.value) || 0 }))}
+                    onChange={v => setForm(f => ({ ...f, valor_juros: parseFloat(v) || 0 }))}
                     style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Multa (R$)</label>
-                  <input type="number" min="0" step="0.01"
+                  <InputNumerico min="0"
                     value={form.valor_multa}
-                    onChange={e => setForm(f => ({ ...f, valor_multa: parseFloat(e.target.value) || 0 }))}
+                    onChange={v => setForm(f => ({ ...f, valor_multa: parseFloat(v) || 0 }))}
                     style={inp} />
                 </div>
               </div>

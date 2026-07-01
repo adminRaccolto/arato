@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
+import InputNumerico from "../../../components/InputNumerico";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -346,16 +347,13 @@ function TelaExecucao({
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, textTransform: "uppercase" }}>
                     Área executada (ha)
                   </div>
-                  <input
-                    type="number"
-                    inputMode="decimal"
+                  <InputNumerico
                     value={Number(a.area_executada_ha) || ""}
-                    onChange={e => setA(i, "area_executada_ha", parseFloat(e.target.value) || 0)}
+                    onChange={v => setA(i, "area_executada_ha", parseFloat(v) || 0)}
                     style={{
                       width: "100%", padding: "12px 14px", border: "1.5px solid #DDE2EE", borderRadius: 10,
                       fontSize: 18, fontWeight: 700, boxSizing: "border-box", background: "#F9FAFB",
                     }}
-                    step={0.01}
                   />
                   {Number(a.area_executada_ha) !== a.area_recomendada_ha && Number(a.area_executada_ha) > 0 && (
                     <div style={{ fontSize: 12, color: "#C9921B", marginTop: 4 }}>

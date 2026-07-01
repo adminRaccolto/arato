@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/AuthProvider";
+import InputNumerico from "../../../components/InputNumerico";
 
 const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -612,11 +613,11 @@ export default function Pluviometria() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "#555", display: "block", marginBottom: 4 }}>Chuva (mm) *</label>
-                  <input type="number" min="0" step="0.1" placeholder="Ex: 25.5" value={lMm} onChange={e => setLMm(e.target.value)} style={inp} />
+                  <InputNumerico min="0" placeholder="Ex: 25.5" value={lMm} onChange={v => setLMm(v)} style={inp} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 700, color: "#555", display: "block", marginBottom: 4 }}>Duração (min)</label>
-                  <input type="number" min="0" step="1" placeholder="Ex: 45" value={lDur} onChange={e => setLDur(e.target.value)} style={inp} />
+                  <InputNumerico decimais={0} min="0" placeholder="Ex: 45" value={lDur} onChange={v => setLDur(v)} style={inp} />
                 </div>
               </div>
               {lMm && lDur && (

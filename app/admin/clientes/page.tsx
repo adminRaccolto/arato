@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { listarContasAdmin } from "../../../lib/db";
 import type { Conta } from "../../../lib/supabase";
 import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
+import InputNumerico from "../../../components/InputNumerico";
 import type { PlanoId } from "../../../lib/planos";
 
 // ─── Supabase client ─────────────────────────────────────────────────────────
@@ -236,9 +237,9 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
                 </div>
                 <div>
                   <label style={lbl}>Mensalidade (R$)</label>
-                  <input style={inp} type="number" step="0.01"
+                  <InputNumerico style={inp}
                     value={form.valor_mensalidade ?? ""}
-                    onChange={e => setForm(f => ({ ...f, valor_mensalidade: Number(e.target.value) || undefined }))} />
+                    onChange={v => setForm(f => ({ ...f, valor_mensalidade: Number(v) || undefined }))} />
                 </div>
                 <div>
                   <label style={lbl}>Data início</label>

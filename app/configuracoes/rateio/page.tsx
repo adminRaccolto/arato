@@ -8,6 +8,7 @@ import {
   listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral, listarFazendas,
 } from "../../../lib/db";
 import type { RateioRegra, RateioRegraLinha, RateioGlobal, Ciclo, AnoSafra, CentroCusto, Fazenda } from "../../../lib/supabase";
+import InputNumerico from "../../../components/InputNumerico";
 
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 3, display: "block" };
@@ -577,7 +578,7 @@ export default function RateioPage() {
                       {ciclosModal.map(c => <option key={c.id} value={c.id}>{CULT[c.cultura] ?? c.cultura}</option>)}
                     </select>
                     <div style={{ position: "relative" }}>
-                      <input style={{ ...inp, paddingRight: 20 }} type="number" min="0" max="100" step="0.5" placeholder="0" value={l.percentual} onChange={e => setPctLinha(i, e.target.value)} />
+                      <InputNumerico style={{ ...inp, paddingRight: 20 }} min="0" max="100" placeholder="0" value={l.percentual} onChange={v => setPctLinha(i, v)} />
                       <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "#888", pointerEvents: "none" }}>%</span>
                     </div>
                     <input style={inp} placeholder="Observação (opcional)" value={l.descricao} onChange={e => setLinha(i, "descricao", e.target.value)} />
@@ -693,7 +694,7 @@ export default function RateioPage() {
                       {todasFazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                     </select>
                     <div style={{ position: "relative" }}>
-                      <input style={{ ...inp, paddingRight: 20 }} type="number" min="0" max="100" step="0.5" placeholder="0" value={faz.percentual} onChange={e => setPctFazenda(i, e.target.value)} />
+                      <InputNumerico style={{ ...inp, paddingRight: 20 }} min="0" max="100" placeholder="0" value={faz.percentual} onChange={v => setPctFazenda(i, v)} />
                       <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "#888", pointerEvents: "none" }}>%</span>
                     </div>
                     <button style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeFazendaLinha(i)} disabled={fazLinhas.length <= 1}>✕</button>
@@ -778,7 +779,7 @@ export default function RateioPage() {
                                     {ciclosFaz.map(ci => <option key={ci.id} value={ci.id}>{CULT[ci.cultura] ?? ci.cultura}</option>)}
                                   </select>
                                   <div style={{ position: "relative" }}>
-                                    <input style={{ ...inp, paddingRight: 18, fontSize: 12 }} type="number" min="0" max="100" step="0.5" placeholder="0" value={c.percentual} onChange={e => setPctCicloFazenda(fazIdx, cicloIdx, e.target.value)} />
+                                    <InputNumerico style={{ ...inp, paddingRight: 18, fontSize: 12 }} min="0" max="100" placeholder="0" value={c.percentual} onChange={v => setPctCicloFazenda(fazIdx, cicloIdx, v)} />
                                     <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#888", pointerEvents: "none" }}>%</span>
                                   </div>
                                   <input style={{ ...inp, fontSize: 12 }} placeholder="Obs." value={c.descricao} onChange={e => setCicloFazenda(fazIdx, cicloIdx, "descricao", e.target.value)} />

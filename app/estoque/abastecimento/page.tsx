@@ -4,6 +4,7 @@ import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import { listarBombas, listarMaquinas, listarFuncionarios } from "../../../lib/db";
+import InputNumerico from "../../../components/InputNumerico";
 import type { BombaCombustivel, Maquina, Funcionario } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -692,16 +693,16 @@ export default function AbastecimentoPage() {
                 </div>
                 <div>
                   <label style={lbl}>Quantidade (L) *</label>
-                  <input
-                    type="number" min="0" step="0.01" placeholder="0,00"
-                    value={fQuantidade} onChange={e => setFQuantidade(e.target.value)} style={inp}
+                  <InputNumerico
+                    min="0" placeholder="0,00"
+                    value={fQuantidade} onChange={v => setFQuantidade(v)} style={inp}
                   />
                 </div>
                 <div>
                   <label style={lbl}>Valor por Litro (R$) *</label>
-                  <input
-                    type="number" min="0" step="0.0001" placeholder="6,0000"
-                    value={fValUnit} onChange={e => setFValUnit(e.target.value)} style={inp}
+                  <InputNumerico
+                    decimais={4} min="0" placeholder="6,0000"
+                    value={fValUnit} onChange={v => setFValUnit(v)} style={inp}
                   />
                 </div>
               </div>
@@ -714,12 +715,12 @@ export default function AbastecimentoPage() {
                     : "Odômetro / Horímetro"}
                 </label>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <input
-                    type="number" min="0" step="0.1"
+                  <InputNumerico
+                    min="0"
                     placeholder={fDestTipo === "maquina" && maquinas.find(m => m.id === fMaquina)?.tipo === "caminhao"
                       ? "Ex: 12.450 km" : "Ex: 4.320 h"}
                     value={fHorimetro}
-                    onChange={e => setFHorimetro(e.target.value)}
+                    onChange={v => setFHorimetro(v)}
                     style={{ ...inp, maxWidth: 220 }}
                   />
                   <span style={{ fontSize: 12, color: "#888" }}>
