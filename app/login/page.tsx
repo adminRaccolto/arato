@@ -119,7 +119,7 @@ export default function Login() {
             <img
               src={logoUrl}
               alt="Arato"
-              style={{ height: 112, width: "auto", objectFit: "contain", display: "block", margin: "0 auto 14px" }}
+              style={{ height: 112, width: "auto", objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 0 18px rgba(255,255,255,0.70)) drop-shadow(0 0 40px rgba(255,255,255,0.35)) drop-shadow(0 8px 24px rgba(255,255,255,0.20))" }}
               onError={() => setLogoAratoErr(true)}
             />
           ) : (
