@@ -633,7 +633,26 @@ export default function ContratosFinanceiros() {
     else base = calcularPRICE(contratoModal.valor_financiado, i, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
+    // Remove CP automáticos não baixados antes de recriar (evita duplicatas ao recalcular)
+    if (contratoModal.numero_documento) {
+      await supabase.from("lancamentos").delete()
+        .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
+        .eq("numero_documento", contratoModal.numero_documento).neq("status", "baixado");
+    }
     const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, comDatas.map(p => ({ ...p, status: "em_aberto" as const })));
+    // Gera CP lançamentos para cada parcela
+    const hoje = new Date().toISOString().slice(0, 10);
+    const lancsParcelas: Record<string, unknown>[] = [];
+    for (const p of salvas) {
+      const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
+      const descBase = `${contratoModal.descricao} — Parcela ${p.num_parcela}`;
+      const nrDoc = contratoModal.numero_documento || undefined;
+      if (p.amortizacao > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: `${descBase} — Amortização`, categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.amortizacao, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
+      if (p.juros > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: `${descBase} — Juros`, categoria: CAT_JUROS[contratoModal.tipo], data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.juros, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
+      if (p.despesas_acessorios > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: `${descBase} — Encargos`, categoria: "Encargos Bancários", data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.despesas_acessorios, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
+      if (p.amortizacao === 0 && p.juros === 0 && p.despesas_acessorios === 0 && p.valor_parcela > 0) lancsParcelas.push({ fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda, descricao: descBase, categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento, data_vencimento: p.data_vencimento, valor: p.valor_parcela, status: statusLanc, auto: true, numero_documento: nrDoc, origem_lancamento: "contrato_financeiro" });
+    }
+    if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
     setParcelasPagamento(salvas);
   });
 
