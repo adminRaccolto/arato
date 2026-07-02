@@ -22,13 +22,7 @@ export default function Login() {
   const router = useRouter();
 
   useEffect(() => {
-    // Só substitui URL se a imagem do storage realmente carregar
-    const { data: dLogo } = supabase.storage.from("logos").getPublicUrl("arato.png");
-    if (dLogo?.publicUrl) {
-      const img = new Image();
-      img.onload = () => setLogoUrl(dLogo.publicUrl);
-      img.src = dLogo.publicUrl;
-    }
+    // Fundo customizado via Supabase Storage (opcional)
     const { data: dBg } = supabase.storage.from("logos").getPublicUrl("login-bg.jpg");
     if (dBg?.publicUrl) {
       const img = new Image();
