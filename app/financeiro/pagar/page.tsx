@@ -169,7 +169,7 @@ function ContasPagarInner() {
 
   const [modalBaixa, setModalBaixa] = useState<Lancamento | null>(null);
   const [modalNovo,  setModalNovo]  = useState(false);
-  const [modalTab,   setModalTab]   = useState<"principal"|"parcelas"|"vinculos"|"adicionais">("principal");
+  const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
   const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
 
   // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
@@ -585,7 +585,7 @@ function ContasPagarInner() {
     if (form.moeda !== "barter" && !form.valorMask) erros.push("Valor é obrigatório (aba Principal).");
     if (form.moeda === "barter" && !form.sacasMask) erros.push("Quantidade de sacas é obrigatória (aba Principal).");
     if (!form.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória (aba Principal).");
-    if (!editandoId && form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar (aba Parcelas).");
+    if (!editandoId && form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar.");
     if (!editandoId && form.condicao === "recorrencia" && !form.vencimento) erros.push("1º Vencimento é obrigatório para recorrência (aba Principal).");
     if (erros.length > 0) { setErrosForm(erros); return; }
     setErrosForm([]);
@@ -1522,10 +1522,8 @@ function ContasPagarInner() {
               <div style={{ display: "flex", gap: 0 }}>
                 {([
                   { id: "principal",  label: "Principal"  },
-                  { id: "parcelas",   label: "Parcelas", hidden: !!editandoId },
-                  { id: "vinculos",   label: "Vínculos"   },
                   { id: "adicionais", label: "Adicionais" },
-                ] as const).filter(t => !("hidden" in t && t.hidden)).map(t => (
+                ] as const).map(t => (
                   <button key={t.id} onClick={() => setModalTab(t.id)}
                     style={{ padding: "7px 20px", border: "none", cursor: "pointer", fontSize: 13, background: "transparent",
                       fontWeight: modalTab === t.id ? 700 : 400,
@@ -1702,117 +1700,35 @@ function ContasPagarInner() {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* ─── Aba Parcelas ─── */}
-              {modalTab === "parcelas" && (
-                <div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-                    {(["avista", "prazo", "recorrencia"] as const).map(v => (
-                      <button key={v} type="button"
-                        onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelas([]); }}
-                        style={{ flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
-                          border: "0.5px solid " + (form.condicao === v ? "#C9921B" : "#D4DCE8"),
-                          background: form.condicao === v ? "#FBF3E0" : "#fff",
-                          color: form.condicao === v ? "#7A5200" : "#555" }}>
-                        {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
-                      </button>
-                    ))}
-                  </div>
-
-                  {form.condicao === "avista" && (
-                    <div style={{ fontSize: 12, color: "#888", padding: "12px 16px", background: "#F4F6FA", borderRadius: 8 }}>
-                      Pagamento em parcela única. Defina o vencimento na aba Principal.
-                    </div>
-                  )}
-
-                  {form.condicao === "prazo" && (
-                    <>
-                      <div style={{ display: "grid", gridTemplateColumns: "160px 200px auto", gap: 12, alignItems: "end", marginBottom: 16 }}>
-                        <div>
-                          <label style={lbl}>Nº de parcelas</label>
-                          <InputNumerico style={inp} decimais={0} min="2" max="120" value={form.qtdParcelas} onChange={v => setForm(p => ({ ...p, qtdParcelas: v }))} />
-                        </div>
-                        <div>
-                          <label style={lbl}>Frequência</label>
-                          <select style={inp} value={form.frequencia} onChange={e => setForm(p => ({ ...p, frequencia: e.target.value }))}>
-                            <option value="1">Mensal</option>
-                            <option value="2">Bimestral</option>
-                            <option value="3">Trimestral</option>
-                            <option value="6">Semestral</option>
-                            <option value="12">Anual</option>
-                          </select>
-                        </div>
-                        <button type="button"
-                          onClick={() => gerarParcelas(form.vencimento, Number(form.qtdParcelas), Number(form.frequencia), desmascarar(form.valorMask))}
-                          disabled={!form.vencimento || !form.valorMask}
-                          style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !form.vencimento || !form.valorMask ? 0.4 : 1 }}>
-                          Gerar parcelas
-                        </button>
+                  {/* Condição de Pagamento */}
+                  <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
+                    <div>
+                      <label style={lbl}>Condição de Pagamento</label>
+                      <div style={{ display: "flex", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+                        {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
+                          <button key={v} type="button"
+                            onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelas([]); }}
+                            style={{
+                              padding: "7px 14px", fontSize: 12, fontWeight: form.condicao === v ? 600 : 400,
+                              cursor: "pointer", border: "none",
+                              borderRight: idx < 2 ? "0.5px solid #D4DCE8" : "none",
+                              background: form.condicao === v ? "#1A4870" : "#fff",
+                              color: form.condicao === v ? "#fff" : "#555",
+                              whiteSpace: "nowrap",
+                            }}>
+                            {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
+                          </button>
+                        ))}
                       </div>
-
-                      {parcelas.length === 0 && (
-                        <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7 }}>
-                          Preencha 1º Vencimento e Valor na aba Principal, depois clique em "Gerar parcelas".
+                    </div>
+                    {(form.condicao === "prazo" || form.condicao === "recorrencia") && (
+                      <>
+                        <div>
+                          <label style={lbl}>{form.condicao === "prazo" ? "Nº de parcelas" : "Nº de repetições"}</label>
+                          <InputNumerico style={{ ...inp, width: 80 }} decimais={0} min="2" max="120" value={form.qtdParcelas} onChange={v => setForm(p => ({ ...p, qtdParcelas: v }))} />
                         </div>
-                      )}
-                      {parcelas.length > 0 && (
-                        <div style={{ overflowX: "auto" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                            <thead>
-                              <tr style={{ background: "#F3F6F9" }}>
-                                {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
-                                  <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {parcelas.map((p, i) => (
-                                <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
-                                  <td style={{ padding: "4px 10px", textAlign: "center", color: "#555", fontSize: 11, width: 50 }}>{i + 1}/{parcelas.length}</td>
-                                  <td style={{ padding: "4px 10px" }}>
-                                    <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
-                                      onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
-                                  </td>
-                                  <td style={{ padding: "4px 10px" }}>
-                                    <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
-                                      onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr style={{ background: "#F3F6F9" }}>
-                                <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
-                                <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
-                                  {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ─── Recorrência ─── */}
-                  {form.condicao === "recorrencia" && (() => {
-                    const qtdRecorr  = Math.max(2, Number(form.qtdParcelas) || 2);
-                    const freqRecorr = Math.max(1, Number(form.frequencia)  || 1);
-                    const valorRec   = desmascarar(form.valorMask);
-                    const freqLabel  = ({ "1": "mensal", "2": "bimestral", "3": "trimestral", "6": "semestral", "12": "anual" } as Record<string, string>)[form.frequencia] ?? "mensal";
-                    return (
-                      <div>
-                        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5200" }}>
-                          O mesmo valor é lançado <strong>{qtdRecorr}×</strong> com frequência <strong>{freqLabel}</strong>. Ideal para custos fixos: arrendamento, seguros, manutenção, mensalidades.
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "160px 200px 1fr", gap: 12, alignItems: "end", marginBottom: 16 }}>
-                          <div>
-                            <label style={lbl}>Nº de repetições</label>
-                            <InputNumerico style={inp} decimais={0} min="2" max="120" value={form.qtdParcelas} onChange={v => setForm(p => ({ ...p, qtdParcelas: v }))} />
-                          </div>
-                          <div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
+                          <div style={{ flex: 1 }}>
                             <label style={lbl}>Frequência</label>
                             <select style={inp} value={form.frequencia} onChange={e => setForm(p => ({ ...p, frequencia: e.target.value }))}>
                               <option value="1">Mensal</option>
@@ -1822,15 +1738,76 @@ function ContasPagarInner() {
                               <option value="12">Anual</option>
                             </select>
                           </div>
-                          {valorRec > 0 && (
-                            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0B2D50" }}>
-                              <div>{qtdRecorr} × {fmtBRL(valorRec)}</div>
-                              <div style={{ fontWeight: 700, marginTop: 2 }}>Total comprometido: {fmtBRL(valorRec * qtdRecorr)}</div>
-                            </div>
+                          {form.condicao === "prazo" && (
+                            <button type="button"
+                              onClick={() => gerarParcelas(form.vencimento, Number(form.qtdParcelas), Number(form.frequencia), desmascarar(form.valorMask))}
+                              disabled={!form.vencimento || !form.valorMask}
+                              style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid #1A5CB8", background: "#D5E8F5", color: "#0B2D50", fontWeight: 600, cursor: "pointer", fontSize: 12, whiteSpace: "nowrap", opacity: !form.vencimento || !form.valorMask ? 0.4 : 1 }}>
+                              Gerar
+                            </button>
                           )}
                         </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Grid de parcelas */}
+                  {form.condicao === "prazo" && parcelas.length === 0 && (
+                    <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7 }}>
+                      Preencha o Vencimento e Valor, depois clique em "Gerar".
+                    </div>
+                  )}
+                  {form.condicao === "prazo" && parcelas.length > 0 && (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#F3F6F9" }}>
+                            {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
+                              <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parcelas.map((p, i) => (
+                            <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                              <td style={{ padding: "4px 10px", textAlign: "center", color: "#555", fontSize: 11, width: 50 }}>{i + 1}/{parcelas.length}</td>
+                              <td style={{ padding: "4px 10px" }}>
+                                <input style={{ ...inp, fontSize: 12 }} type="date" value={p.data}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, data: e.target.value } : x))} />
+                              </td>
+                              <td style={{ padding: "4px 10px" }}>
+                                <input style={{ ...inp, fontSize: 12, textAlign: "right" }} type="text" inputMode="numeric" value={p.valorMask}
+                                  onChange={e => setParcelas(prev => prev.map((x, j) => j === i ? { ...x, valorMask: aplicarMascara(e.target.value) } : x))} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: "#F3F6F9" }}>
+                            <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
+                              {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Preview recorrência */}
+                  {form.condicao === "recorrencia" && (() => {
+                    const qtdRecorr  = Math.max(2, Number(form.qtdParcelas) || 2);
+                    const freqRecorr = Math.max(1, Number(form.frequencia)  || 1);
+                    const valorRec   = desmascarar(form.valorMask);
+                    const freqLabel  = ({ "1": "mensal", "2": "bimestral", "3": "trimestral", "6": "semestral", "12": "anual" } as Record<string, string>)[form.frequencia] ?? "mensal";
+                    return (
+                      <div>
+                        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#7A5200" }}>
+                          O mesmo valor é lançado <strong>{qtdRecorr}×</strong> com frequência <strong>{freqLabel}</strong>. Ideal para custos fixos.
+                          {valorRec > 0 && <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(valorRec * qtdRecorr)}</span>}
+                        </div>
                         {form.vencimento && valorRec > 0 && (
-                          <div style={{ overflowX: "auto", maxHeight: 260, overflowY: "auto", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
+                          <div style={{ overflowX: "auto", maxHeight: 220, overflowY: "auto", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead style={{ position: "sticky", top: 0, background: "#F3F6F9" }}>
                                 <tr>
@@ -1852,72 +1829,38 @@ function ContasPagarInner() {
                                   );
                                 })}
                               </tbody>
-                              <tfoot>
-                                <tr style={{ background: "#F3F6F9" }}>
-                                  <td colSpan={2} style={{ padding: "5px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total comprometido:</td>
-                                  <td style={{ padding: "5px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(valorRec * qtdRecorr)}</td>
-                                </tr>
-                              </tfoot>
                             </table>
                           </div>
                         )}
                         {!form.vencimento && (
                           <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7 }}>
-                            Defina o 1º Vencimento na aba Principal para visualizar as datas.
+                            Defina o 1º Vencimento para visualizar as datas.
                           </div>
                         )}
                       </div>
                     );
                   })()}
-                </div>
-              )}
 
-              {/* ─── Aba Vínculos ─── */}
-              {modalTab === "vinculos" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                  {/* Resumo da hierarquia definida na aba Principal */}
-                  <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 16px" }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Apropriação (definida na aba Principal)</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12 }}>
-                      {[
-                        { label: "Produtor",  val: produtores.find(p => p.id === cascade.produtorId)?.nome },
-                        { label: "Fazenda",   val: cascade.fazendaId ? "Selecionada" : undefined },
-                        { label: "Ano Safra", val: anosSafra.find(a => a.id === cascade.anoSafraId)?.descricao },
-                        { label: "Ciclo",     val: cascade.cicloId ? "Selecionado" : undefined },
-                        { label: "Talhão",    val: cascade.talhaoId ? "Selecionado" : undefined },
-                      ].map(({ label, val }) => (
-                        <div key={label}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: "#888", marginBottom: 3 }}>{label}</div>
-                          <div style={{ fontSize: 13, color: val ? "#1A4870" : "#aaa", fontWeight: val ? 600 : 400 }}>{val ?? "—"}</div>
-                        </div>
-                      ))}
+                  {/* Centro de Custo */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Centro de Custo</label>
+                      <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
+                        <option value="">— Sem vínculo —</option>
+                        {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
+                          <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
-                  {/* Linha 3: Centro de Custo */}
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Contabilidade</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <div>
-                        <label style={lbl}>Centro de Custo</label>
-                        <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
-                          <option value="">— Sem vínculo —</option>
-                          {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
-                            <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Seção Mão de Obra — aparece quando OG é Mão de Obra */}
+                  {/* Mão de Obra — aparece quando OG é Mão de Obra */}
                   {form.operacao_gerencial_id && (() => {
                     const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
                     if (!og || !(og.classificacao ?? "").startsWith("2.01.01.10")) return null;
                     return (
                       <div style={{ background: "#F0F7FF", border: "0.5px solid #1A487040", borderRadius: 8, padding: 14 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>👷 Mão de Obra</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Mão de Obra</div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 140px 120px", gap: 12 }}>
                           <div>
                             <label style={lbl}>Funcionário / Prestador</label>
