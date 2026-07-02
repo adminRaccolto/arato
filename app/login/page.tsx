@@ -14,7 +14,7 @@ export default function Login() {
   const [erro,         setErro]         = useState<string | null>(null);
   const [sucesso,      setSucesso]      = useState<string | null>(null);
   const [carregando,   setCarregando]   = useState(false);
-  const [logoUrl,      setLogoUrl]      = useState("/Logo_Arato.png");
+  const [logoUrl,      setLogoUrl]      = useState("/logo_Arato_Nova.png");
   const [bgUrl,        setBgUrl]        = useState(BG_FALLBACK);
   const [logoAratoErr, setLogoAratoErr] = useState(false);
   const [logoRacErr,   setLogoRacErr]   = useState(false);
