@@ -15,6 +15,7 @@ export default function Login() {
   const [sucesso,      setSucesso]      = useState<string | null>(null);
   const [carregando,   setCarregando]   = useState(false);
   const [logoUrl,      setLogoUrl]      = useState("/logo_Arato_Nova.png");
+  const [logoRacUrl,   setLogoRacUrl]   = useState("/Logo_Raccolto.png");
   const [bgUrl,        setBgUrl]        = useState(BG_FALLBACK);
   const [logoAratoErr, setLogoAratoErr] = useState(false);
   const [logoRacErr,   setLogoRacErr]   = useState(false);
@@ -22,12 +23,18 @@ export default function Login() {
   const router = useRouter();
 
   useEffect(() => {
-    // Logo do Supabase Storage — atualizável sem deploy
-    const { data: dLogo } = supabase.storage.from("logos").getPublicUrl("logo_arato.png");
+    // Logos do Supabase Storage — atualizáveis sem deploy
+    const { data: dLogo } = supabase.storage.from("logos").getPublicUrl("Logo_Arato_Nova.png");
     if (dLogo?.publicUrl) {
       const img = new Image();
       img.onload = () => setLogoUrl(dLogo.publicUrl);
       img.src = dLogo.publicUrl;
+    }
+    const { data: dRac } = supabase.storage.from("logos").getPublicUrl("Logo_Raccolto.png");
+    if (dRac?.publicUrl) {
+      const img = new Image();
+      img.onload = () => setLogoRacUrl(dRac.publicUrl);
+      img.src = dRac.publicUrl;
     }
     // Fundo customizado via Supabase Storage (opcional)
     const { data: dBg } = supabase.storage.from("logos").getPublicUrl("login-bg.jpg");
@@ -307,7 +314,7 @@ export default function Login() {
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>um produto</span>
             {!logoRacErr ? (
               <img
-                src="/Logo_Raccolto.png"
+                src={logoRacUrl}
                 alt="Raccolto"
                 style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55 }}
                 onError={() => setLogoRacErr(true)}
