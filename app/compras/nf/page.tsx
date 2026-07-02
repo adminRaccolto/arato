@@ -29,6 +29,7 @@ import { supabase } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import PlanoGate from "../../../components/PlanoGate";
+import SelectBusca from "../../../components/SelectBusca";
 
 // ─────────────────────────────────────────────────────────────
 // Estilos base
@@ -1331,10 +1332,13 @@ export default function NfCompraPage() {
                       </div>
                       <div>
                         <label style={lbl}>Operação Gerencial</label>
-                        <select value={cab.operacao_gerencial_id} onChange={e => setCab(p=>({...p,operacao_gerencial_id:e.target.value}))} style={inp}>
-                          <option value="">— nenhuma —</option>
-                          {reclassOps.map(o => <option key={o.id} value={o.id}>{o.classificacao ? `${o.classificacao} — ` : ""}{o.descricao}</option>)}
-                        </select>
+                        <SelectBusca
+                          value={cab.operacao_gerencial_id}
+                          onChange={id => setCab(p => ({ ...p, operacao_gerencial_id: id }))}
+                          options={reclassOps.map(o => ({ value: o.id, label: `${o.classificacao ? `${o.classificacao} — ` : ""}${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") || undefined }))}
+                          placeholder="— nenhuma —"
+                          style={inp}
+                        />
                       </div>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
@@ -2004,24 +2008,13 @@ export default function NfCompraPage() {
                 {/* Operação Gerencial */}
                 <div>
                   <label style={lbl}>Operação Gerencial</label>
-                  <select
+                  <SelectBusca
                     value={reclassOpId}
-                    onChange={e => setReclassOpId(e.target.value)}
+                    onChange={setReclassOpId}
+                    options={reclassOps.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                    placeholder="— sem operação —"
                     style={inp}
-                  >
-                    <option value="">— sem operação —</option>
-                    {Object.entries(
-                      reclassOps.reduce((acc, o) => {
-                        const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                        (acc[k] = acc[k] ?? []).push(o);
-                        return acc;
-                      }, {} as Record<string, typeof reclassOps>)
-                    ).map(([k, items]) => (
-                      <optgroup key={k} label={k}>
-                        {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                      </optgroup>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 {/* Centro de Custo */}

@@ -8,6 +8,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
+import SelectBusca from "../../../components/SelectBusca";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -1280,25 +1281,13 @@ function ContasPagarInner() {
                     </div>
                     <div style={{ gridColumn: "1/-1" }}>
                       <label style={lbl}>Operação Gerencial</label>
-                      <input style={{ ...inp, marginBottom: 4 }} placeholder="Buscar operação…" value={baixa.og_busca}
-                        onChange={e => setBaixa(p => ({ ...p, og_busca: e.target.value }))} />
-                      <select style={inp} value={baixa.operacao_gerencial_id}
-                        onChange={e => setBaixa(p => ({ ...p, operacao_gerencial_id: e.target.value }))}>
-                        <option value="">— Sem operação gerencial —</option>
-                        {Object.entries(
-                          opGerenciais
-                            .filter(o => !baixa.og_busca || `${o.classificacao ?? ""} ${o.descricao}`.toLowerCase().includes(baixa.og_busca.toLowerCase()))
-                            .reduce((acc, o) => {
-                              const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                              (acc[k] = acc[k] ?? []).push(o);
-                              return acc;
-                            }, {} as Record<string, typeof opGerenciais>)
-                        ).map(([k, items]) => (
-                          <optgroup key={k} label={k}>
-                            {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
+                      <SelectBusca
+                        value={baixa.operacao_gerencial_id}
+                        onChange={id => setBaixa(p => ({ ...p, operacao_gerencial_id: id }))}
+                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        placeholder="— Sem operação gerencial —"
+                        style={inp}
+                      />
                     </div>
                     <div>
                       <label style={lbl}>Ciclo / Empreendimento</label>
@@ -1578,28 +1567,16 @@ function ContasPagarInner() {
                     </div>
                     <div style={{ gridColumn: "2 / 4" }}>
                       <label style={lbl}>Operação Gerencial <span style={{ color: "#E24B4A" }}>*</span> <span style={{ color: "#888", fontWeight: 400 }}>— classifica e vincula ao plano de contas</span></label>
-                      <input style={{ ...inp, marginBottom: 4 }} placeholder="Buscar operação…" value={opGerBusca} onChange={e => setOpGerBusca(e.target.value)} />
-                      <select style={inp} value={form.operacao_gerencial_id}
-                        onChange={e => {
-                          const id = e.target.value;
+                      <SelectBusca
+                        value={form.operacao_gerencial_id}
+                        onChange={id => {
                           const op = opGerenciais.find(o => o.id === id);
                           setForm(p => ({ ...p, operacao_gerencial_id: id, categoria: op ? derivarCategoriaDespesa(op.classificacao ?? "") : p.categoria }));
-                        }}>
-                        <option value="">— Selecionar operação —</option>
-                        {Object.entries(
-                          opGerenciais
-                            .filter(o => !opGerBusca || `${o.classificacao ?? ""} ${o.descricao}`.toLowerCase().includes(opGerBusca.toLowerCase()))
-                            .reduce((acc, o) => {
-                              const k = (o.classificacao ?? "").split(".").slice(0, 3).join(".");
-                              (acc[k] = acc[k] ?? []).push(o);
-                              return acc;
-                            }, {} as Record<string, typeof opGerenciais>)
-                        ).map(([k, items]) => (
-                          <optgroup key={k} label={k}>
-                            {items.map(o => <option key={o.id} value={o.id}>{o.classificacao} — {o.descricao}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
+                        }}
+                        options={opGerenciais.map(o => ({ value: o.id, label: `${o.classificacao} — ${o.descricao}`, group: (o.classificacao ?? "").split(".").slice(0, 3).join(".") }))}
+                        placeholder="— Selecionar operação —"
+                        style={inp}
+                      />
                     </div>
                     <div>
                       <label style={lbl}>Data Emissão</label>
