@@ -1,11 +1,13 @@
 "use client";
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
+import ContextMenuColunas from "../../../components/ContextMenuColunas";
+import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
@@ -275,7 +277,23 @@ function ContasPagarInner() {
   const [parcelas, setParcelas] = useState<ParcelaGrid[]>([]);
 
   // ── Filtros de coluna ─────────────────────────────────────
-  const [mostrarObs,  setMostrarObs]  = useState(false);
+  const [menuColunas, setMenuColunas] = useState<{ x: number; y: number } | null>(null);
+  const COLS_CP = useMemo(() => [
+    { key: "fornecedor", label: "Fornecedor / Cliente", fixo: true },
+    { key: "operacao",   label: "Operação" },
+    { key: "safra",      label: "Safra" },
+    { key: "ciclo",      label: "Ciclo" },
+    { key: "vencimento", label: "Vencimento", fixo: true },
+    { key: "valor",      label: "Valor", fixo: true },
+    { key: "dt_pgto",    label: "Dt. Pgto" },
+    { key: "valor_pago", label: "Valor Pago" },
+    { key: "moeda",      label: "Moeda" },
+    { key: "conta",      label: "Conta" },
+    { key: "produtor",   label: "Produtor" },
+    { key: "origem",     label: "Origem" },
+    { key: "obs",        label: "Observação" },
+  ], []);
+  const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid("cp_colunas", COLS_CP);
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
   const [fSafra,      setFSafra]      = useState("");
@@ -864,7 +882,11 @@ function ContasPagarInner() {
                   </div>
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead style={{ position: "sticky", top: 0, zIndex: 3 }}>
+                    <thead
+                      style={{ position: "sticky", top: 0, zIndex: 3 }}
+                      onContextMenu={e => { e.preventDefault(); setMenuColunas({ x: e.clientX, y: e.clientY }); }}
+                      title="Clique com botão direito para configurar colunas"
+                    >
                       {/* Cabeçalhos */}
                       <tr style={{ background: "#F3F6F9" }}>
                         <th style={thS(32)}>
@@ -876,22 +898,18 @@ function ContasPagarInner() {
                           />
                         </th>
                         <th style={thS(150, "left")}>Fornecedor / Cliente</th>
-                        <th style={thS(150, "left")}>Operação</th>
-                        <th style={thS(100, "left")}>Safra</th>
-                        <th style={thS(180, "left")}>Ciclo</th>
+                        {col("operacao")   && <th style={thS(150, "left")}>Operação</th>}
+                        {col("safra")      && <th style={thS(100, "left")}>Safra</th>}
+                        {col("ciclo")      && <th style={thS(180, "left")}>Ciclo</th>}
                         <th style={thS(85, "center")}>Vencimento ↑</th>
                         <th style={thS(110, "right")}>Valor</th>
-                        <th style={thS(85, "center")}>Dt. Pgto</th>
-                        <th style={thS(100, "right")}>Valor Pago</th>
-                        <th style={thS(65, "center")}>Moeda</th>
-                        <th style={thS(110, "left")}>Conta</th>
-                        <th style={thS(110, "left")}>Produtor</th>
-                        <th style={thS(90, "center")}>Origem</th>
-                        <th style={{ ...thS(mostrarObs ? 160 : 28), display: mostrarObs ? undefined : "table-cell", overflow: "hidden", maxWidth: mostrarObs ? undefined : 28 }}>
-                          <button onClick={() => setMostrarObs(v => !v)} title={mostrarObs ? "Ocultar observação" : "Mostrar observação"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: mostrarObs ? "#1A4870" : "#aaa", padding: 0, lineHeight: 1 }}>
-                            {mostrarObs ? "👁 Obs" : "👁"}
-                          </button>
-                        </th>
+                        {col("dt_pgto")    && <th style={thS(85, "center")}>Dt. Pgto</th>}
+                        {col("valor_pago") && <th style={thS(100, "right")}>Valor Pago</th>}
+                        {col("moeda")      && <th style={thS(65, "center")}>Moeda</th>}
+                        {col("conta")      && <th style={thS(110, "left")}>Conta</th>}
+                        {col("produtor")   && <th style={thS(110, "left")}>Produtor</th>}
+                        {col("origem")     && <th style={thS(90, "center")}>Origem</th>}
+                        {col("obs")        && <th style={thS(160, "left")}>Observação</th>}
                         <th style={thS(70, "center")}></th>
                       </tr>
                       {/* Linha de filtros */}
@@ -900,32 +918,18 @@ function ContasPagarInner() {
                         <td style={{ padding: "3px 6px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fFornecedor} onChange={e => setFFornecedor(e.target.value)} />
                         </td>
-                        <td style={{ padding: "3px 6px" }}>
-                          <input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} />
-                        </td>
-                        <td style={{ padding: "3px 6px" }}>
-                          <select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}>
-                            <option value="">Todas</option>
-                            {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                          </select>
-                        </td>
+                        {col("operacao")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fOperacao} onChange={e => setFOperacao(e.target.value)} /></td>}
+                        {col("safra")      && <td style={{ padding: "3px 6px" }}><select style={inpF} value={fSafra} onChange={e => setFSafra(e.target.value)}><option value="">Todas</option>{anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}</select></td>}
+                        {col("ciclo")      && <td></td>}
                         <td></td>
                         <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td style={{ padding: "3px 6px" }}>
-                          <input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} />
-                        </td>
-                        <td style={{ padding: "3px 6px" }}>
-                          <input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} />
-                        </td>
-                        <td></td>
-                        {mostrarObs ? (
-                          <td style={{ padding: "3px 6px" }}>
-                            <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />
-                          </td>
-                        ) : <td style={{ maxWidth: 28, overflow: "hidden", padding: 0 }}></td>}
+                        {col("dt_pgto")    && <td></td>}
+                        {col("valor_pago") && <td></td>}
+                        {col("moeda")      && <td></td>}
+                        {col("conta")      && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fConta} onChange={e => setFConta(e.target.value)} /></td>}
+                        {col("produtor")   && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} /></td>}
+                        {col("origem")     && <td></td>}
+                        {col("obs")        && <td style={{ padding: "3px 6px" }}><input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} /></td>}
                         <td></td>
                       </tr>
                     </thead>
@@ -974,17 +978,17 @@ function ContasPagarInner() {
                               )}
                             </td>
                             {/* Operação */}
-                            <td style={{ padding: "5px 8px" }}>
+                            {col("operacao") && <td style={{ padding: "5px 8px" }}>
                               <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "2px 6px", borderRadius: 7, whiteSpace: "nowrap" }}>{l.categoria}</span>
-                            </td>
+                            </td>}
                             {/* Safra */}
-                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                            {col("safra") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.ano_safra_id ? safra : "—"}
-                            </td>
+                            </td>}
                             {/* Ciclo */}
-                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                            {col("ciclo") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.ciclo_id ? cicloDesc : "—"}
-                            </td>
+                            </td>}
                             {/* Vencimento */}
                             <td style={{ padding: "5px 8px", textAlign: "center", fontSize: 11, whiteSpace: "nowrap", color: isVenc ? "#E24B4A" : "#444", fontWeight: isVenc ? 600 : 400 }}>
                               {fmtData(l.data_vencimento)}
@@ -995,11 +999,11 @@ function ContasPagarInner() {
                               {conv && <div style={{ fontSize: 9, color: "#888" }}>{conv}</div>}
                             </td>
                             {/* Data Pgto */}
-                            <td style={{ padding: "5px 8px", textAlign: "center", fontSize: 10, color: "#16A34A", whiteSpace: "nowrap" }}>
+                            {col("dt_pgto") && <td style={{ padding: "5px 8px", textAlign: "center", fontSize: 10, color: "#16A34A", whiteSpace: "nowrap" }}>
                               {fmtData(l.data_baixa)}
-                            </td>
+                            </td>}
                             {/* Valor Pago */}
-                            <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>
+                            {col("valor_pago") && <td style={{ padding: "5px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" }}>
                               {l.status === "parcial" && l.valor_pago != null && l.valor_pago > 0
                                 ? <div>
                                     <span style={{ color: "#C9921B", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
@@ -1011,29 +1015,29 @@ function ContasPagarInner() {
                                 : l.valor_pago != null && l.valor_pago > 0
                                   ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(l.valor_pago)}</span>
                                   : <span style={{ color: "#bbb" }}>—</span>}
-                            </td>
+                            </td>}
                             {/* Moeda */}
-                            <td style={{ padding: "5px 8px", textAlign: "center" }}>
+                            {col("moeda") && <td style={{ padding: "5px 8px", textAlign: "center" }}>
                               <span style={{ fontSize: 9, padding: "2px 5px", borderRadius: 5, background: l.moeda === "USD" ? "#FEF3E2" : l.moeda === "barter" ? "#FBF3E0" : "#F0F4FA", color: l.moeda === "USD" ? "#7A4300" : l.moeda === "barter" ? "#8B5E14" : "#444", fontWeight: 600 }}>
                                 {l.moeda === "barter" ? "Barter" : (l.moeda_pagamento && l.moeda_pagamento !== l.moeda ? `${l.moeda}→${l.moeda_pagamento}` : l.moeda)}
                               </span>
-                            </td>
+                            </td>}
                             {/* Conta */}
-                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                            {col("conta") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {contas.find(c => c.id === l.conta_bancaria)?.nome ?? "—"}
-                            </td>
+                            </td>}
                             {/* Produtor */}
-                            <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
+                            {col("produtor") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.produtor_id ? prod : "—"}
-                            </td>
+                            </td>}
                             {/* Origem */}
-                            <td style={{ padding: "5px 8px", textAlign: "center" }}>
+                            {col("origem") && <td style={{ padding: "5px 8px", textAlign: "center" }}>
                               <span style={{ fontSize: 9, background: om.bg, color: om.cl, padding: "2px 6px", borderRadius: 7, fontWeight: 600, whiteSpace: "nowrap" }}>{om.label}</span>
-                            </td>
-                            {/* Observação — última coluna, ocultável */}
-                            <td style={{ padding: mostrarObs ? "5px 8px" : 0, fontSize: 10, color: "#666", whiteSpace: "nowrap", display: mostrarObs ? undefined : "table-cell", maxWidth: mostrarObs ? undefined : 28, overflow: "hidden" }}>
-                              {mostrarObs ? obsExibir : null}
-                            </td>
+                            </td>}
+                            {/* Observação */}
+                            {col("obs") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#666", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>
+                              {obsExibir}
+                            </td>}
                             {/* Ação */}
                             <td style={{ padding: "5px 6px", textAlign: "center" }}>
                               <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center" }}>
@@ -1969,6 +1973,18 @@ function ContasPagarInner() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Menu de colunas */}
+      {menuColunas && (
+        <ContextMenuColunas
+          x={menuColunas.x}
+          y={menuColunas.y}
+          colunas={COLS_CP}
+          visiveis={visCols}
+          onToggle={toggleCol}
+          onClose={() => setMenuColunas(null)}
+        />
       )}
     </div>
   );
