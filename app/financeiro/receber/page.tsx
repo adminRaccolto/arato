@@ -1481,37 +1481,91 @@ export default function ContasReceber() {
               {/* ─── Aba Parcelas ─── */}
               {modalTab === "parcelas" && (
                 <div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 16 }}>
-                    <input type="checkbox" checked={form.parcelar} onChange={e => setForm(p => ({ ...p, parcelar: e.target.checked }))} />
-                    Parcelar este recebimento
-                  </label>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                    {([false, true] as const).map(v => (
+                      <button key={String(v)} type="button"
+                        onClick={() => setForm(p => ({ ...p, parcelar: v }))}
+                        style={{ flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                          border: "0.5px solid " + (form.parcelar === v ? "#C9921B" : "#D4DCE8"),
+                          background: form.parcelar === v ? "#FBF3E0" : "#fff",
+                          color: form.parcelar === v ? "#7A5200" : "#555" }}>
+                        {v ? "Recorrência" : "Lançamento Único"}
+                      </button>
+                    ))}
+                  </div>
                   {!form.parcelar && (
                     <div style={{ fontSize: 12, color: "#888", padding: "12px 16px", background: "#F4F6FA", borderRadius: 8 }}>
-                      Recebimento em parcela única. Defina o vencimento na aba Principal.
+                      Recebimento em lançamento único. Defina o vencimento na aba Principal.
                     </div>
                   )}
-                  {form.parcelar && (
-                    <>
-                      <div style={{ display: "grid", gridTemplateColumns: "160px 200px 1fr", gap: 12, marginBottom: 14 }}>
-                        <div>
-                          <label style={lbl}>Nº de parcelas</label>
-                          <InputNumerico style={inp} decimais={0} min="2" max="60" value={form.totalParcelas} onChange={v => setForm(p => ({ ...p, totalParcelas: v }))} />
+                  {form.parcelar && (() => {
+                    const qtdRec  = Math.max(2, Number(form.totalParcelas) || 2);
+                    const freqRec = Math.max(1, Number(form.intervaloMeses) || 1);
+                    const freqLabel = ({ "1": "mensal", "2": "bimestral", "3": "trimestral", "6": "semestral", "12": "anual" } as Record<string, string>)[form.intervaloMeses] ?? "mensal";
+                    return (
+                      <div>
+                        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5200" }}>
+                          O mesmo valor é recebido <strong>{qtdRec}×</strong> com frequência <strong>{freqLabel}</strong>. Ideal para arrendamentos, contratos de prestação de serviço e receitas fixas.
                         </div>
-                        <div>
-                          <label style={lbl}>Intervalo</label>
-                          <select style={inp} value={form.intervaloMeses} onChange={e => setForm(p => ({ ...p, intervaloMeses: e.target.value }))}>
-                            <option value="1">Mensal</option><option value="2">Bimestral</option>
-                            <option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option>
-                          </select>
+                        <div style={{ display: "grid", gridTemplateColumns: "160px 200px 1fr", gap: 12, alignItems: "end", marginBottom: 16 }}>
+                          <div>
+                            <label style={lbl}>Nº de repetições</label>
+                            <InputNumerico style={inp} decimais={0} min="2" max="120" value={form.totalParcelas} onChange={v => setForm(p => ({ ...p, totalParcelas: v }))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Frequência</label>
+                            <select style={inp} value={form.intervaloMeses} onChange={e => setForm(p => ({ ...p, intervaloMeses: e.target.value }))}>
+                              <option value="1">Mensal</option><option value="2">Bimestral</option>
+                              <option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option>
+                            </select>
+                          </div>
+                          {valParcela > 0 && (
+                            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0B2D50" }}>
+                              <div>{qtdRec} × {fmtBRL(valParcela)}</div>
+                              <div style={{ fontWeight: 700, marginTop: 2 }}>Total: {fmtBRL(valParcela * qtdRec)}</div>
+                            </div>
+                          )}
                         </div>
-                        {valParcela > 0 && totalParcDisplay > 1 && (
-                          <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0B2D50", display: "flex", alignItems: "center" }}>
-                            {totalParcDisplay}× {fmtBRL(valParcela)} = <strong style={{ marginLeft: 4 }}>{fmtBRL(valParcela * totalParcDisplay)}</strong>
+                        {form.vencimento && valParcela > 0 && (
+                          <div style={{ overflowX: "auto", maxHeight: 260, overflowY: "auto", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead style={{ position: "sticky", top: 0, background: "#F3F6F9" }}>
+                                <tr>
+                                  {["#", "Vencimento", "Valor"].map((h, i) => (
+                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Array.from({ length: qtdRec }, (_, i) => {
+                                  const d = new Date(form.vencimento + "T12:00:00");
+                                  d.setMonth(d.getMonth() + i * freqRec);
+                                  return (
+                                    <tr key={i} style={{ borderBottom: i < qtdRec - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                      <td style={{ padding: "4px 10px", textAlign: "center", color: "#888", fontSize: 11, width: 50 }}>{i + 1}/{qtdRec}</td>
+                                      <td style={{ padding: "4px 10px", fontSize: 11 }}>{fmtData(d.toISOString().split("T")[0])}</td>
+                                      <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "#16A34A", fontWeight: 600 }}>{fmtBRL(valParcela)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot>
+                                <tr style={{ background: "#F3F6F9" }}>
+                                  <td colSpan={2} style={{ padding: "5px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total:</td>
+                                  <td style={{ padding: "5px 10px", textAlign: "right", fontWeight: 700, color: "#16A34A" }}>{fmtBRL(valParcela * qtdRec)}</td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        )}
+                        {!form.vencimento && (
+                          <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7 }}>
+                            Defina o 1º Vencimento na aba Principal para visualizar as datas.
                           </div>
                         )}
                       </div>
-                    </>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1591,7 +1645,7 @@ export default function ContasReceber() {
               <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={adicionarLancamento} disabled={disabled}
                 style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
-                {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.parcelar && totalParcDisplay > 1 ? `Criar ${totalParcDisplay} parcelas` : "◈ Salvar"}
+                {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.parcelar && totalParcDisplay > 1 ? `◈ Criar ${totalParcDisplay} repetições` : "◈ Salvar"}
               </button>
             </div>
           </div>

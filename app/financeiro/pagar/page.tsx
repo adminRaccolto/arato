@@ -255,7 +255,7 @@ function ContasPagarInner() {
     pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "",
     valorMask: "", cotacaoMask: "5,12",
     sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "",
-    condicao: "avista" as "avista" | "prazo",
+    condicao: "avista" as "avista" | "prazo" | "recorrencia",
     qtdParcelas: "2", frequencia: "1",
     tipo_documento_lcdpr: "RECIBO" as NonNullable<Lancamento["tipo_documento_lcdpr"]>,
     juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0",
@@ -585,6 +585,7 @@ function ContasPagarInner() {
     if (form.moeda === "barter" && !form.sacasMask) erros.push("Quantidade de sacas é obrigatória (aba Principal).");
     if (!form.operacao_gerencial_id) erros.push("Operação Gerencial é obrigatória (aba Principal).");
     if (!editandoId && form.condicao === "prazo" && parcelas.length === 0) erros.push("Gere as parcelas antes de salvar (aba Parcelas).");
+    if (!editandoId && form.condicao === "recorrencia" && !form.vencimento) erros.push("1º Vencimento é obrigatório para recorrência (aba Principal).");
     if (erros.length > 0) { setErrosForm(erros); return; }
     setErrosForm([]);
 
@@ -719,6 +720,11 @@ function ContasPagarInner() {
       } else if (form.condicao === "prazo") {
         const qtd   = Math.max(2, Number(form.qtdParcelas) || 2);
         const freq  = Math.max(1, Number(form.frequencia) || 1);
+        criados = await criarParcelamento(base, qtd, freq);
+      } else if (form.condicao === "recorrencia") {
+        const qtd   = Math.max(2, Number(form.qtdParcelas) || 2);
+        const freq  = Math.max(1, Number(form.frequencia) || 1);
+        // Recorrência: mesmo valor em cada entrada (não divide — criarParcelamento preserva base.valor)
         criados = await criarParcelamento(base, qtd, freq);
       } else {
         criados = [await criarLancamento(base)];
@@ -1726,14 +1732,14 @@ function ContasPagarInner() {
               {modalTab === "parcelas" && (
                 <div>
                   <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-                    {(["avista", "prazo"] as const).map(v => (
+                    {(["avista", "prazo", "recorrencia"] as const).map(v => (
                       <button key={v} type="button"
-                        onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v === "avista") setParcelas([]); }}
+                        onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelas([]); }}
                         style={{ flex: 1, padding: "10px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer",
                           border: "0.5px solid " + (form.condicao === v ? "#C9921B" : "#D4DCE8"),
                           background: form.condicao === v ? "#FBF3E0" : "#fff",
                           color: form.condicao === v ? "#7A5200" : "#555" }}>
-                        {v === "avista" ? "À Vista" : "Parcelado"}
+                        {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
                       </button>
                     ))}
                   </div>
@@ -1812,6 +1818,80 @@ function ContasPagarInner() {
                       )}
                     </>
                   )}
+
+                  {/* ─── Recorrência ─── */}
+                  {form.condicao === "recorrencia" && (() => {
+                    const qtdRecorr  = Math.max(2, Number(form.qtdParcelas) || 2);
+                    const freqRecorr = Math.max(1, Number(form.frequencia)  || 1);
+                    const valorRec   = desmascarar(form.valorMask);
+                    const freqLabel  = ({ "1": "mensal", "2": "bimestral", "3": "trimestral", "6": "semestral", "12": "anual" } as Record<string, string>)[form.frequencia] ?? "mensal";
+                    return (
+                      <div>
+                        <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5200" }}>
+                          O mesmo valor é lançado <strong>{qtdRecorr}×</strong> com frequência <strong>{freqLabel}</strong>. Ideal para custos fixos: arrendamento, seguros, manutenção, mensalidades.
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "160px 200px 1fr", gap: 12, alignItems: "end", marginBottom: 16 }}>
+                          <div>
+                            <label style={lbl}>Nº de repetições</label>
+                            <InputNumerico style={inp} decimais={0} min="2" max="120" value={form.qtdParcelas} onChange={v => setForm(p => ({ ...p, qtdParcelas: v }))} />
+                          </div>
+                          <div>
+                            <label style={lbl}>Frequência</label>
+                            <select style={inp} value={form.frequencia} onChange={e => setForm(p => ({ ...p, frequencia: e.target.value }))}>
+                              <option value="1">Mensal</option>
+                              <option value="2">Bimestral</option>
+                              <option value="3">Trimestral</option>
+                              <option value="6">Semestral</option>
+                              <option value="12">Anual</option>
+                            </select>
+                          </div>
+                          {valorRec > 0 && (
+                            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0B2D50" }}>
+                              <div>{qtdRecorr} × {fmtBRL(valorRec)}</div>
+                              <div style={{ fontWeight: 700, marginTop: 2 }}>Total comprometido: {fmtBRL(valorRec * qtdRecorr)}</div>
+                            </div>
+                          )}
+                        </div>
+                        {form.vencimento && valorRec > 0 && (
+                          <div style={{ overflowX: "auto", maxHeight: 260, overflowY: "auto", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead style={{ position: "sticky", top: 0, background: "#F3F6F9" }}>
+                                <tr>
+                                  {["#", "Vencimento", "Valor"].map((h, i) => (
+                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Array.from({ length: qtdRecorr }, (_, i) => {
+                                  const d = new Date(form.vencimento + "T12:00:00");
+                                  d.setMonth(d.getMonth() + i * freqRecorr);
+                                  return (
+                                    <tr key={i} style={{ borderBottom: i < qtdRecorr - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                      <td style={{ padding: "4px 10px", textAlign: "center", color: "#888", fontSize: 11, width: 50 }}>{i + 1}/{qtdRecorr}</td>
+                                      <td style={{ padding: "4px 10px", fontSize: 11 }}>{fmtData(d.toISOString().split("T")[0])}</td>
+                                      <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>{fmtBRL(valorRec)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot>
+                                <tr style={{ background: "#F3F6F9" }}>
+                                  <td colSpan={2} style={{ padding: "5px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "#555" }}>Total comprometido:</td>
+                                  <td style={{ padding: "5px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtBRL(valorRec * qtdRecorr)}</td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        )}
+                        {!form.vencimento && (
+                          <div style={{ fontSize: 11, color: "#888", padding: "10px 14px", background: "#F4F6FA", borderRadius: 7 }}>
+                            Defina o 1º Vencimento na aba Principal para visualizar as datas.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1967,7 +2047,7 @@ function ContasPagarInner() {
                 <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button onClick={adicionarLancamento} disabled={disabled}
                   style={{ padding: "8px 20px", background: disabled ? "#aaa" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", fontSize: 13 }}>
-                  {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : "◈ Salvar"}
+                  {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : form.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} repetições` : "◈ Salvar"}
                 </button>
               </div>
             </div>
