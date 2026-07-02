@@ -460,7 +460,7 @@ export default function PendenciasNfPage() {
                               style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12 }}
                             >
                               <option value="">— Nenhum —</option>
-                              {centrosCusto.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
+                              {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                             </select>
                           </div>
 
