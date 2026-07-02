@@ -6725,4 +6725,9 @@ CREATE POLICY grupomembro_via_grupo ON grupo_economico_membros FOR ALL TO authen
     (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
     OR (SELECT role FROM perfis WHERE user_id = auth.uid()) = 'raccotlo'));
 
+-- ─── Migration: centro_custo_id e produtor_id em funcionarios ──────────────────
+ALTER TABLE funcionarios
+  ADD COLUMN IF NOT EXISTS centro_custo_id UUID REFERENCES centros_custo(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS produtor_id     UUID REFERENCES produtores(id)    ON DELETE SET NULL;
+
 NOTIFY pgrst, 'reload schema';

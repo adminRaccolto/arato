@@ -338,7 +338,7 @@ export default function Estoque() {
   const salvarInsumo = () => salvar(async () => {
     if (!fIns.nome.trim()) return;
     const cat = fIns.categoria as Insumo["categoria"];
-    const tipoItem: Insumo["tipo"] = ["peca","material","uso_consumo","escritorio"].includes(cat) ? "produto" : "insumo";
+    const tipoItem: Insumo["tipo"] = ["semente","fertilizante","defensivo","corretivo"].includes(cat) ? "insumo" : "produto";
     const payload: Omit<Insumo, "id"|"created_at"> = {
       fazenda_id: fazendaId!, tipo: tipoItem, nome: fIns.nome.trim(), categoria: cat, unidade: fIns.unidade as Insumo["unidade"],
       fabricante: fIns.fabricante || undefined, estoque: Number(fIns.estoque) || 0,
@@ -505,7 +505,7 @@ export default function Estoque() {
     if (busca && !i.nome.toLowerCase().includes(busca.toLowerCase())) return false;
     if (filtroCat === "alertas")  return i.estoque <= i.estoque_minimo;
     if (filtroCat === "negativos") return i.estoque < 0;
-    if (filtroCat === "produtos")  return i.tipo === "produto";
+    if (filtroCat === "produtos")  return !["semente","fertilizante","defensivo","corretivo"].includes(i.categoria);
     if (filtroCat !== "todos")    return i.categoria === filtroCat;
     return true;
   });
@@ -554,8 +554,8 @@ export default function Estoque() {
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {([
                     ["todos","Todos"],
-                    ["semente","Semente"],["fertilizante","Fertilizante"],["defensivo","Defensivo"],["inoculante","Inoculante"],["combustivel","Combustível"],
-                    ["produtos","Produtos Gerais"],
+                    ["semente","Semente"],["fertilizante","Fertilizante"],["defensivo","Defensivo"],["corretivo","Corretivo"],
+                    ["produtos","Produtos"],
                     ["alertas","⚠ Mínimo"],["negativos","⛔ Negativos"],
                   ] as [string,string][]).map(([k,l]) => {
                     const isAlert = k === "alertas" || k === "negativos";
@@ -1457,20 +1457,20 @@ export default function Estoque() {
                 <label style={lbl}>Categoria *</label>
                 <select style={inp} value={fIns.categoria} onChange={e => setFIns(p => ({ ...p, categoria: e.target.value as Insumo["categoria"] }))}>
                   <optgroup label="── Insumos Agrícolas ──">
-                    <option value="semente">Semente</option>
+                    <option value="corretivo">Corretivo de Solo</option>
                     <option value="fertilizante">Fertilizante</option>
+                    <option value="semente">Semente</option>
                     <option value="defensivo">Defensivo</option>
-                    <option value="inoculante">Inoculante</option>
-                    <option value="produto_agricola">Produto Agrícola</option>
-                    <option value="combustivel">Combustível</option>
                   </optgroup>
-                  <optgroup label="── Produtos Gerais ──">
+                  <optgroup label="── Produtos ──">
+                    <option value="combustivel">Combustível</option>
+                    <option value="biologico">Biológico / Inoculante</option>
                     <option value="peca">Peça / Manutenção</option>
                     <option value="material">Material</option>
                     <option value="uso_consumo">Uso e Consumo</option>
                     <option value="escritorio">Escritório</option>
+                    <option value="outros">Outros</option>
                   </optgroup>
-                  <option value="outros">Outros</option>
                 </select>
               </div>
               <div>

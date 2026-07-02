@@ -3335,13 +3335,10 @@ function CadastrosInner() {
                           const cat = e.target.value as Insumo["categoria"];
                           setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "semente" ? "kg" : p.unidade, principio_ativo_id: "", nome: "" }));
                         }}>
-                          <option value="semente">Semente</option>
-                          <option value="fertilizante">Fertilizante</option>
-                          <option value="defensivo">Defensivo</option>
                           <option value="corretivo">Corretivo de Solo</option>
-                          <option value="micronutriente">Micronutriente</option>
-                          <option value="biologico">Biológico</option>
-                          <option value="inoculante">Inoculante</option>
+                          <option value="fertilizante">Fertilizante</option>
+                          <option value="semente">Semente</option>
+                          <option value="defensivo">Defensivo</option>
                         </select>
                       </div>
                       {/* Subgrupo */}
@@ -3360,8 +3357,8 @@ function CadastrosInner() {
                         )}
                       </div>
 
-                      {/* ── Defensivos / Fertilizantes / Inoculantes / Biológicos / Micronutrientes: PA é o nome canônico ── */}
-                      {["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria) ? (
+                      {/* ── Defensivos / Fertilizantes: PA é o nome canônico ── */}
+                      {["defensivo","fertilizante"].includes(fIns.categoria) ? (
                         <>
                           {/* Seletor de PA — o nome do insumo deriva daqui */}
                           <div style={{ gridColumn: "1/-1" }}>
@@ -3924,7 +3921,7 @@ function CadastrosInner() {
                   )}
                 </div>
 
-                {modalIns && !["produto_agricola","semente","fertilizante","defensivo","corretivo","micronutriente","biologico","inoculante"].includes(fIns.categoria) && (
+                {modalIns && !["produto_agricola","semente","fertilizante","defensivo","corretivo"].includes(fIns.categoria) && (
                   <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Item Geral"} onClose={() => setModalIns(false)} width={680}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                       <div>
@@ -3933,11 +3930,12 @@ function CadastrosInner() {
                           const cat = e.target.value as Insumo["categoria"];
                           setFIns(p => ({ ...p, categoria: cat, unidade: cat === "combustivel" ? "L" : cat === "semente" ? "kg" : p.unidade }));
                         }}>
-                          <option value="peca">Peça</option>
+                          <option value="combustivel">Combustível</option>
+                          <option value="biologico">Biológico / Inoculante</option>
+                          <option value="peca">Peça / Manutenção</option>
                           <option value="material">Material</option>
                           <option value="uso_consumo">Uso e Consumo</option>
                           <option value="escritorio">Escritório</option>
-                          <option value="combustivel">Combustível</option>
                           <option value="outros">Outros</option>
                         </select>
                       </div>
