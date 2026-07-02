@@ -586,7 +586,11 @@ function CadastrosInner() {
       if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {});
       if (produtores.length === 0) carregarProdutoresSilencioso();
     }
-    if (aba === "funcionarios") listarFuncionarios(fazendaId).then(setFuncs).catch(e => setErro(e.message));
+    if (aba === "funcionarios") {
+      listarFuncionarios(fazendaId).then(setFuncs).catch(e => setErro(e.message));
+      if (produtores.length === 0) carregarProdutoresSilencioso();
+      if (centrosCusto.length === 0) listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
+    }
     if (aba === "grupos_insumo") {
       listarGruposInsumo(fazendaId).then(async lista => {
         if (lista.length === 0) {
