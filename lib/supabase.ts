@@ -735,6 +735,7 @@ export type Funcionario = {
   conta_pagamento?: string;
   tipo_vinculo_esocial?: string;
   centro_custo_id?: string;
+  produtor_id?: string;
   created_at?: string;
 };
 

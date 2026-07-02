@@ -328,7 +328,7 @@ function CadastrosInner() {
     fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
     provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
     banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
-    centro_custo_id: "",
+    centro_custo_id: "", produtor_id: "",
   });
   const [premiacoes, setPremiacoes]         = useState<FuncionarioPremiacao[]>([]);
   const [ferias, setFerias]                 = useState<FuncionarioFerias[]>([]);
@@ -1648,7 +1648,7 @@ function CadastrosInner() {
       provisao_13_pct: String(f.provisao_13_pct ?? 8.33), provisao_ferias_pct: String(f.provisao_ferias_pct ?? 11.11),
       usar_funrural: f.usar_funrural ?? false,
       banco_pagamento: f.banco_pagamento ?? "", agencia_pagamento: f.agencia_pagamento ?? "", conta_pagamento: f.conta_pagamento ?? "",
-      centro_custo_id: f.centro_custo_id ?? "",
+      centro_custo_id: f.centro_custo_id ?? "", produtor_id: f.produtor_id ?? "",
     } : {
       nome: "", cpf: "", rg: "", data_nascimento: "", pis_nis: "",
       ctps_numero: "", ctps_serie: "", ctps_uf: "",
@@ -1658,7 +1658,7 @@ function CadastrosInner() {
       fgts_pct: "8", inss_empregador_pct: "20", sat_rat_pct: "1", sistema_s_pct: "5.8",
       provisao_13_pct: "8.33", provisao_ferias_pct: "11.11", usar_funrural: false,
       banco_pagamento: "", agencia_pagamento: "", conta_pagamento: "",
-      centro_custo_id: "",
+      centro_custo_id: "", produtor_id: "",
     });
     if (f) {
       const [p, fer] = await Promise.all([listarPremiacoesFuncionario(f.id), listarFeriasFuncionario(f.id)]);
@@ -1691,6 +1691,7 @@ function CadastrosInner() {
       agencia_pagamento: fFunc.agencia_pagamento || undefined,
       conta_pagamento: fFunc.conta_pagamento || undefined,
       centro_custo_id: fFunc.centro_custo_id || undefined,
+      produtor_id: fFunc.produtor_id || undefined,
     };
     let funcId: string;
     if (editFunc) {
@@ -7820,7 +7821,16 @@ function CadastrosInner() {
                     <input style={inp} value={fFunc.conta_pagamento} onChange={e => setFFunc(p => ({ ...p, conta_pagamento: e.target.value }))} placeholder="Conta" />
                   </div>
                 </div>
-                <div style={{ gridColumn: "1/-1" }}>
+                <div>
+                  <label style={lbl}>Produtor vinculado</label>
+                  <select style={inp} value={fFunc.produtor_id} onChange={e => setFFunc(p => ({ ...p, produtor_id: e.target.value }))}>
+                    <option value="">— Sem vínculo —</option>
+                    {produtores.map(p => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label style={lbl}>Centro de Custo</label>
                   <select style={inp} value={fFunc.centro_custo_id} onChange={e => setFFunc(p => ({ ...p, centro_custo_id: e.target.value }))}>
                     <option value="">— Sem vínculo —</option>
