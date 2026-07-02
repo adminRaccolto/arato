@@ -1569,8 +1569,11 @@ export default function ContasReceber() {
                       <input style={inp} placeholder="Opcional" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
                     </div>
                     <div>
-                      <label style={lbl}>Observação</label>
-                      <input style={inp} placeholder="Opcional" value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                        <label style={lbl}>Observação</label>
+                        <span style={{ fontSize: 11, color: form.obs.length > 90 ? "#E24B4A" : "#aaa" }}>{form.obs.length}/100</span>
+                      </div>
+                      <input style={inp} placeholder="Opcional" maxLength={100} value={form.obs} onChange={e => setForm(p => ({ ...p, obs: e.target.value }))} />
                     </div>
                   </div>
                 </div>
