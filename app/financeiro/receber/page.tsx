@@ -731,12 +731,12 @@ export default function ContasReceber() {
                         <th style={thS(65, "center")}>Moeda</th>
                         <th style={thS(110, "left")}>Conta</th>
                         <th style={thS(110, "left")}>Produtor</th>
+                        <th style={thS(90, "center")}>Origem</th>
                         <th style={{ ...thS(mostrarObs ? 160 : 28), display: mostrarObs ? undefined : "table-cell", overflow: "hidden", maxWidth: mostrarObs ? undefined : 28 }}>
                           <button onClick={() => setMostrarObs(v => !v)} title={mostrarObs ? "Ocultar observação" : "Mostrar observação"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: mostrarObs ? "#1A4870" : "#aaa", padding: 0, lineHeight: 1 }}>
                             {mostrarObs ? "👁 Obs" : "👁"}
                           </button>
                         </th>
-                        <th style={thS(90, "center")}>Origem</th>
                         <th style={thS(70, "center")}></th>
                       </tr>
                       {/* Linha de filtros */}
@@ -773,12 +773,12 @@ export default function ContasReceber() {
                         <td style={{ padding: "3px 8px" }}>
                           <input style={inpF} placeholder="Buscar…" value={fProdutor} onChange={e => setFProdutor(e.target.value)} />
                         </td>
+                        <td></td>
                         {mostrarObs ? (
                           <td style={{ padding: "3px 8px" }}>
                             <input style={inpF} placeholder="Buscar…" value={fObs} onChange={e => setFObs(e.target.value)} />
                           </td>
                         ) : <td style={{ maxWidth: 28, overflow: "hidden", padding: 0 }}></td>}
-                        <td></td>
                         <td></td>
                       </tr>
                     </thead>
@@ -881,13 +881,13 @@ export default function ContasReceber() {
                             <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
                               {l.produtor_id ? prod : "—"}
                             </td>
-                            {/* Observação — ocultável */}
-                            <td style={{ padding: mostrarObs ? "5px 8px" : 0, fontSize: 10, color: "#666", whiteSpace: "nowrap", display: mostrarObs ? undefined : "table-cell", maxWidth: mostrarObs ? undefined : 28, overflow: "hidden" }}>
-                              {mostrarObs ? obsExibir : null}
-                            </td>
                             {/* Origem */}
                             <td style={{ padding: "5px 8px", textAlign: "center" }}>
                               <span style={{ fontSize: 10, background: om.bg, color: om.cl, padding: "2px 6px", borderRadius: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{om.label}</span>
+                            </td>
+                            {/* Observação — última coluna, ocultável */}
+                            <td style={{ padding: mostrarObs ? "5px 8px" : 0, fontSize: 10, color: "#666", whiteSpace: "nowrap", display: mostrarObs ? undefined : "table-cell", maxWidth: mostrarObs ? undefined : 28, overflow: "hidden" }}>
+                              {mostrarObs ? obsExibir : null}
                             </td>
                             {/* Ação */}
                             <td style={{ padding: "5px 6px", textAlign: "center" }}>
