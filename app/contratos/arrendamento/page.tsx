@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -27,7 +27,7 @@ interface Arrendamento {
   produtor_id?: string | null;   // IE explorador — agricultor que declara no LCDPR
   produtor_id_2?: string | null; // segundo IE explorador (contrato conjunto)
 }
-interface Produtor { id: string; nome: string; }
+interface Produtor { id: string; nome: string; inscricao_est?: string | null; municipio?: string | null; estado?: string | null; }
 interface Pagamento {
   id: string; arrendamento_id: string; fazenda_id: string;
   ano_safra_id?: string | null; data_vencimento: string;
@@ -125,6 +125,131 @@ const initFC = () => ({
   inicio: "", vencimento: "", renovacao_auto: false, observacao: "",
   produtor_id: "", produtor_id_2: "",
 });
+
+// ── Seletor de Produtor com duas colunas (Nome | IE) ──────
+function ProdutorCombo({
+  produtores, value, onChange,
+  placeholder = "Não especificado", excludeId,
+}: {
+  produtores: Produtor[];
+  value: string;
+  onChange: (id: string) => void;
+  placeholder?: string;
+  excludeId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const opts = excludeId ? produtores.filter(p => p.id !== excludeId) : produtores;
+  const sel = produtores.find(p => p.id === value) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const triggerStyle: React.CSSProperties = {
+    width: "100%", textAlign: "left", padding: "6px 10px",
+    border: "0.5px solid #C9C9C9", borderRadius: 8, background: "#fff",
+    cursor: "pointer", fontSize: 13, color: sel ? "#1a1a1a" : "#888",
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    fontFamily: "inherit",
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button type="button" style={triggerStyle} onClick={() => setOpen(o => !o)}>
+        <span>{sel ? sel.nome : placeholder}</span>
+        <span style={{ fontSize: 10, color: "#888", flexShrink: 0 }}>▾</span>
+      </button>
+
+      {/* Resumo fixo após seleção */}
+      {sel && (
+        <div style={{
+          marginTop: 4, padding: "5px 10px", borderRadius: 6,
+          background: "#D5E8F5", display: "flex", gap: 16, flexWrap: "wrap",
+          fontSize: 11, color: "#0B2D50",
+        }}>
+          <span style={{ fontWeight: 600 }}>{sel.nome}</span>
+          <span>IE: <strong>{sel.inscricao_est || "—"}</strong></span>
+          {(sel.municipio || sel.estado) && (
+            <span style={{ color: "#555" }}>{[sel.municipio, sel.estado].filter(Boolean).join(" / ")}</span>
+          )}
+        </div>
+      )}
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0,
+          background: "#fff", border: "0.5px solid #C9C9C9", borderRadius: 8,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.14)", zIndex: 600,
+          maxHeight: 280, overflowY: "auto",
+        }}>
+          {/* Cabeçalho das colunas */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 150px",
+            padding: "5px 10px", background: "#F4F6FA",
+            borderBottom: "0.5px solid #DDE2EE",
+            fontSize: 11, fontWeight: 600, color: "#555", position: "sticky", top: 0,
+          }}>
+            <span>Nome</span>
+            <span>IE</span>
+          </div>
+
+          {/* Opção vazia */}
+          <div
+            onClick={() => { onChange(""); setOpen(false); }}
+            style={{
+              display: "grid", gridTemplateColumns: "1fr 150px",
+              padding: "7px 10px", cursor: "pointer",
+              background: value === "" ? "#EBF4FF" : "transparent",
+              borderBottom: "0.5px solid #F0F0F0", fontSize: 13, color: "#888",
+            }}
+            onMouseEnter={e => { if (value !== "") e.currentTarget.style.background = "#F8FAFB"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = value === "" ? "#EBF4FF" : "transparent"; }}
+          >
+            <span>{placeholder}</span><span>—</span>
+          </div>
+
+          {/* Linhas */}
+          {opts.map(p => {
+            const selected = p.id === value;
+            return (
+              <div
+                key={p.id}
+                onClick={() => { onChange(p.id); setOpen(false); }}
+                style={{
+                  display: "grid", gridTemplateColumns: "1fr 150px",
+                  padding: "7px 10px", cursor: "pointer",
+                  background: selected ? "#D5E8F5" : "transparent",
+                  borderBottom: "0.5px solid #F0F0F0",
+                }}
+                onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "#F4F6FA"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = selected ? "#D5E8F5" : "transparent"; }}
+              >
+                <span style={{ fontSize: 13, fontWeight: selected ? 600 : 400, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>
+                  {p.nome}
+                </span>
+                <span style={{ fontSize: 12, color: selected ? "#0B2D50" : "#555", fontWeight: selected ? 600 : 400 }}>
+                  {p.inscricao_est || "—"}
+                </span>
+              </div>
+            );
+          })}
+
+          {opts.length === 0 && (
+            <div style={{ padding: 12, fontSize: 13, color: "#888", textAlign: "center" }}>
+              Nenhum produtor disponível
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Arrendamentos() {
   const { fazendaId, contaId, podeAcessarPlano } = useAuth();
@@ -852,7 +977,8 @@ export default function Arrendamentos() {
                               const p1 = produtores.find(p => p.id === arr.produtor_id);
                               const p2 = arr.produtor_id_2 ? produtores.find(p => p.id === arr.produtor_id_2) : null;
                               if (!p1) return null;
-                              return <span style={{ color: "#1A4870" }} title="IE Explorador / Responsável LCDPR">🌾 {p1.nome}{p2 ? ` + ${p2.nome}` : ""}</span>;
+                              const fmt = (p: Produtor) => p.inscricao_est ? `${p.nome} · IE ${p.inscricao_est}` : p.nome;
+                              return <span style={{ color: "#1A4870" }} title="IE Explorador / Responsável LCDPR">🌾 {fmt(p1)}{p2 ? ` + ${fmt(p2)}` : ""}</span>;
                             })()}
                             {arr.forma_pagamento === "sc_soja_milho" && (arr.sc_ha || arr.sc_milho_ha) && (
                               <span>
@@ -1371,33 +1497,40 @@ export default function Arrendamentos() {
                 IE Explorador / Responsável LCDPR
                 <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>(1º)</span>
               </label>
-              <select style={inp} value={fC.produtor_id}
-                onChange={e => setFC(f => ({ ...f, produtor_id: e.target.value }))}>
-                <option value="">Não especificado</option>
-                {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
+              <ProdutorCombo
+                produtores={produtores}
+                value={fC.produtor_id}
+                onChange={id => setFC(f => ({ ...f, produtor_id: id }))}
+                placeholder="Não especificado"
+              />
             </div>
             <div>
               <label style={lbl}>
                 IE Explorador
                 <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>(2º — contrato conjunto)</span>
               </label>
-              <select style={inp} value={fC.produtor_id_2}
-                onChange={e => setFC(f => ({ ...f, produtor_id_2: e.target.value }))}>
-                <option value="">—</option>
-                {produtores.filter(p => p.id !== fC.produtor_id).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-              </select>
+              <ProdutorCombo
+                produtores={produtores}
+                value={fC.produtor_id_2}
+                onChange={id => setFC(f => ({ ...f, produtor_id_2: id }))}
+                placeholder="—"
+                excludeId={fC.produtor_id || undefined}
+              />
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
               {fC.produtor_id_2 ? (
                 <div style={{ fontSize: 11, color: "#7B4A00", background: "#FBF3E0", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
                   Contrato conjunto — lançamento vinculado ao 1º IE explorador no LCDPR. O 2º produtor deve replicar em seu próprio LCDPR se necessário.
                 </div>
-              ) : fC.locatario_nome && fC.produtor_id ? (
-                <div style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
-                  Contrato em nome de <strong>{fC.locatario_nome}</strong> — LCDPR declarado por <strong>{produtores.find(p=>p.id===fC.produtor_id)?.nome ?? "—"}</strong>
-                </div>
-              ) : null}
+              ) : fC.locatario_nome && fC.produtor_id ? (() => {
+                const p = produtores.find(x => x.id === fC.produtor_id);
+                return (
+                  <div style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
+                    Contrato em nome de <strong>{fC.locatario_nome}</strong> — LCDPR declarado por{" "}
+                    <strong>{p?.nome ?? "—"}</strong>{p?.inscricao_est ? ` (IE ${p.inscricao_est})` : ""}
+                  </div>
+                );
+              })() : null}
             </div>
 
             {/* Observação */}
