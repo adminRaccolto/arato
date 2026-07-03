@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import { listarAnosSafra, criarLancamento, listarProdutores } from "../../../lib/db";
+import { listarAnosSafra, criarLancamento, listarProdutoresDaConta, listarProdutoresViaFazenda } from "../../../lib/db";
 import InputNumerico from "../../../components/InputNumerico";
 import type { AnoSafra } from "../../../lib/supabase";
 import InputMonetario from "../../../components/InputMonetario";
@@ -124,7 +124,7 @@ const initFC = () => ({
 });
 
 export default function Arrendamentos() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<Aba>("lista");
 
   const [arrendamentos, setArrendamentos] = useState<Arrendamento[]>([]);
@@ -174,7 +174,7 @@ export default function Arrendamentos() {
       listarAnosSafra(fazendaId),
       supabase.from("pessoas").select("id,nome").eq("fazenda_id", fazendaId).order("nome"),
       supabase.from("fazendas").select("id,nome").eq("id", fazendaId),
-      listarProdutores(fazendaId),
+      contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutoresViaFazenda(fazendaId),
     ]).then(([arrR, pagR, anos, pesR, fazR, prods]) => {
       setArrendamentos((arrR.data ?? []) as Arrendamento[]);
       setPagamentos((pagR.data ?? []) as Pagamento[]);
@@ -183,7 +183,7 @@ export default function Arrendamentos() {
       setFazendas((fazR.data ?? []) as Fazenda[]);
       setProdutores(prods as Produtor[]);
     }).finally(() => setLoading(false));
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   // ── pagamentos por arrendamento ─────────────────────────
   useEffect(() => {
