@@ -7,6 +7,7 @@ import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import type { NotaFiscal, Produtor } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
+import ProdutorCombo from "../../components/ProdutorCombo";
 
 // ── Naturezas fiscais ────────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -1586,10 +1587,12 @@ function FiscalInner() {
               {produtores.length > 1 && (
                 <div>
                   <label style={labelSt}>Produtor / Titular *</label>
-                  <select value={certProdId} onChange={e => setCertProdId(e.target.value)} style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, outline: "none", background: "#fff" }}>
-                    <option value="">Selecione...</option>
-                    {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} — {p.cpf_cnpj ?? "—"}</option>)}
-                  </select>
+                  <ProdutorCombo
+                    produtores={produtores}
+                    value={certProdId}
+                    onChange={setCertProdId}
+                    placeholder="Selecione..."
+                  />
                 </div>
               )}
               {produtores.length === 1 && (
@@ -1721,10 +1724,12 @@ function FiscalInner() {
                         </div>, "0 0 160px"
                       ),
                       field("Produtor *",
-                        <select style={inSt} value={fVenda.produtor_id} onChange={e => onProdutorChange(e.target.value)}>
-                          <option value="">Selecione...</option>
-                          {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                        </select>, "1 1 0"
+                        <ProdutorCombo
+                          produtores={produtores}
+                          value={fVenda.produtor_id}
+                          onChange={onProdutorChange}
+                          placeholder="Selecione..."
+                        />, "1 1 0"
                       ),
                       field("Safra",
                         <select style={inSt} value={fVenda.safra_id} onChange={e => fv({safra_id: e.target.value})}>

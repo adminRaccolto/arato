@@ -46,6 +46,7 @@ import { planoContasPadrao, labelConta, type ContaContabil } from "../../lib/pla
 import { seedOperacoesGerenciais } from "../../lib/seedOperacoesGerenciais";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
+import ProdutorCombo from "../../components/ProdutorCombo";
 import type {
   Fazenda as FazendaDB, Talhao, Arrendamento,
   Produtor, ProdutorIE, Empresa, MatriculaImovel, Pessoa,
@@ -5629,33 +5630,21 @@ function CadastrosInner() {
                   <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome da fazenda *</label><input style={inp} value={fFaz.nome} onChange={e => setFFaz(p => ({ ...p, nome: e.target.value }))} /></div>
                   <div style={{ gridColumn: "1/-1" }}>
                     <label style={lbl}>Produtor / Empresa responsável *</label>
-                    <select style={inp} value={fFaz.produtor_id} onChange={e => {
-                      const pid = e.target.value;
-                      const prod = produtores.find(x => x.id === pid);
-                      const empId = prod?.tipo === "pj" ? (prodEmpresaMap[pid] ?? "") : "";
-                      setFFaz(p => ({
-                        ...p,
-                        produtor_id: pid,
-                        empresa_id: empId,
-                        ...(prod?.cpf_cnpj ? { cnpj: prod.cpf_cnpj } : {}),
-                      }));
-                    }}>
-                      <option value="">Selecione…</option>
-                      {produtores.filter(p => p.tipo === "pf").length > 0 && (
-                        <optgroup label="Produtor Rural PF">
-                          {produtores.filter(p => p.tipo === "pf").map(p => (
-                            <option key={p.id} value={p.id}>{p.nome} — CPF {p.cpf_cnpj ?? "—"}</option>
-                          ))}
-                        </optgroup>
-                      )}
-                      {produtores.filter(p => p.tipo === "pj").length > 0 && (
-                        <optgroup label="Produtor Rural PJ">
-                          {produtores.filter(p => p.tipo === "pj").map(p => (
-                            <option key={p.id} value={p.id}>{p.nome} — CNPJ {p.cpf_cnpj ?? "—"}</option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
+                    <ProdutorCombo
+                      produtores={produtores}
+                      value={fFaz.produtor_id}
+                      onChange={pid => {
+                        const prod = produtores.find(x => x.id === pid);
+                        const empId = prod?.tipo === "pj" ? (prodEmpresaMap[pid] ?? "") : "";
+                        setFFaz(p => ({
+                          ...p,
+                          produtor_id: pid,
+                          empresa_id: empId,
+                          ...(prod?.cpf_cnpj ? { cnpj: prod.cpf_cnpj } : {}),
+                        }));
+                      }}
+                      placeholder="Selecione…"
+                    />
                   </div>
                   <div><label style={lbl}>Área total (ha) *</label><InputMonetario style={inp} value={fFaz.area} onChange={v => setFFaz(p => ({ ...p, area: String(v) }))} /></div>
                   <div>
@@ -5711,11 +5700,14 @@ function CadastrosInner() {
                         <td style={{ padding: "6px 10px" }}><input style={{ ...inp, padding: "5px 8px", fontSize: 12 }} value={m.numero} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,numero:e.target.value} : x))} placeholder="Nº" /></td>
                         <td style={{ padding: "6px 10px" }}><input style={{ ...inp, padding: "5px 8px", fontSize: 12 }} value={m.cartorio} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,cartorio:e.target.value} : x))} placeholder="Cartório" /></td>
                         <td style={{ padding: "6px 10px", width: 100 }}><InputNumerico style={{ ...inp, padding: "5px 8px", fontSize: 12 }} decimais={4} value={m.area_ha} onChange={v => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,area_ha:v} : x))} placeholder="0,0000" /></td>
-                        <td style={{ padding: "6px 10px" }}>
-                          <select style={{ ...inp, padding: "5px 8px", fontSize: 12 }} value={m.produtor_id} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,produtor_id:e.target.value} : x))}>
-                            <option value="">—</option>
-                            {produtores.map(pr => <option key={pr.id} value={pr.id}>{pr.nome}</option>)}
-                          </select>
+                        <td style={{ padding: "6px 10px", minWidth: 200 }}>
+                          <ProdutorCombo
+                            produtores={produtores}
+                            value={m.produtor_id}
+                            onChange={id => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,produtor_id:id} : x))}
+                            placeholder="—"
+                            dropdownMinWidth={420}
+                          />
                         </td>
                         <td style={{ padding: "6px 10px" }}>
                           <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 12 }}><input type="checkbox" checked={m.em_garantia} onChange={e => setFazMatsLocal(p => p.map((x,j) => j===i ? {...x,em_garantia:e.target.checked} : x))} />Em garantia</label>
@@ -6174,17 +6166,22 @@ function CadastrosInner() {
                             <div style={{ gridColumn: "1/3" }}><label style={lbl}>Observação</label><input style={inp} value={a.observacao} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,observacao:e.target.value} : x))} /></div>
                             <div>
                               <label style={lbl}>Agricultor Responsável (LCDPR)</label>
-                              <select style={inp} value={a.produtor_id} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,produtor_id:e.target.value} : x))}>
-                                <option value="">Não especificado</option>
-                                {produtores.map(pr => <option key={pr.id} value={pr.id}>{pr.nome}</option>)}
-                              </select>
+                              <ProdutorCombo
+                                produtores={produtores}
+                                value={a.produtor_id}
+                                onChange={id => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,produtor_id:id} : x))}
+                                placeholder="Não especificado"
+                              />
                             </div>
                             <div>
                               <label style={lbl}>2º Agricultor (contrato conjunto)</label>
-                              <select style={inp} value={a.produtor_id_2} onChange={e => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,produtor_id_2:e.target.value} : x))}>
-                                <option value="">—</option>
-                                {produtores.filter(pr => pr.id !== a.produtor_id).map(pr => <option key={pr.id} value={pr.id}>{pr.nome}</option>)}
-                              </select>
+                              <ProdutorCombo
+                                produtores={produtores}
+                                value={a.produtor_id_2}
+                                onChange={id => setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,produtor_id_2:id} : x))}
+                                placeholder="—"
+                                excludeId={a.produtor_id || undefined}
+                              />
                             </div>
                           </div>
                           {/* Matrículas do arrendamento */}
@@ -6317,10 +6314,12 @@ function CadastrosInner() {
             <div><label style={lbl}>Área registrada (ha)</label><InputNumerico style={inp} decimais={4} value={fMat.area_ha} onChange={v => setFMat(p => ({ ...p, area_ha: v }))} /></div>
             <div style={{ gridColumn: "1/3" }}>
               <label style={lbl}>Produtor vinculado</label>
-              <select style={inp} value={fMat.produtor_id} onChange={e => setFMat(p => ({ ...p, produtor_id: e.target.value }))}>
-                <option value="">Selecione…</option>
-                {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.tipo.toUpperCase()})</option>)}
-              </select>
+              <ProdutorCombo
+                produtores={produtores}
+                value={fMat.produtor_id}
+                onChange={id => setFMat(p => ({ ...p, produtor_id: id }))}
+                placeholder="Selecione…"
+              />
             </div>
             <div />
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Descrição</label><input style={inp} value={fMat.descricao} onChange={e => setFMat(p => ({ ...p, descricao: e.target.value }))} /></div>
@@ -7825,12 +7824,12 @@ function CadastrosInner() {
                 </div>
                 <div>
                   <label style={lbl}>Produtor vinculado</label>
-                  <select style={inp} value={fFunc.produtor_id} onChange={e => setFFunc(p => ({ ...p, produtor_id: e.target.value }))}>
-                    <option value="">— Sem vínculo —</option>
-                    {produtores.map(p => (
-                      <option key={p.id} value={p.id}>{p.nome}</option>
-                    ))}
-                  </select>
+                  <ProdutorCombo
+                    produtores={produtores}
+                    value={fFunc.produtor_id}
+                    onChange={id => setFFunc(p => ({ ...p, produtor_id: id }))}
+                    placeholder="— Sem vínculo —"
+                  />
                 </div>
                 <div>
                   <label style={lbl}>Centro de Custo</label>

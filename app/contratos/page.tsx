@@ -13,6 +13,7 @@ import {
 import { supabase } from "../../lib/supabase";
 import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
+import ProdutorCombo from "../../components/ProdutorCombo";
 import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato, Insumo } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
@@ -1532,10 +1533,12 @@ export default function Contratos() {
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:12, marginBottom:12 }}>
                     <div>
                       <label style={lbl}>Produtor</label>
-                      <select style={inp} value={fC.produtor_id} onChange={e => setFC(p=>({...p,produtor_id:e.target.value}))}>
-                        <option value="">— selecione —</option>
-                        {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                      </select>
+                      <ProdutorCombo
+                        produtores={produtores}
+                        value={fC.produtor_id}
+                        onChange={id => setFC(p => ({ ...p, produtor_id: id }))}
+                        placeholder="— selecione —"
+                      />
                     </div>
                     <div>
                       <label style={lbl}>Cliente / Comprador</label>

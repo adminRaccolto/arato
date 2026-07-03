@@ -8,6 +8,7 @@ import {
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio } from "../../../lib/supabase";
+import ProdutorCombo from "../../../components/ProdutorCombo";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
 const NATUREZAS_VENDA = [
@@ -466,10 +467,12 @@ export default function Faturamento() {
           </div>
           <div>
             <label style={lbl}>Produtor *</label>
-            <select style={inp} value={fVenda.produtor_id} onChange={e => fv({ produtor_id: e.target.value })}>
-              <option value="">— selecione —</option>
-              {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
+            <ProdutorCombo
+              produtores={produtores}
+              value={fVenda.produtor_id}
+              onChange={id => fv({ produtor_id: id })}
+              placeholder="— selecione —"
+            />
           </div>
           <div>
             <label style={lbl}>Safra / Ano</label>

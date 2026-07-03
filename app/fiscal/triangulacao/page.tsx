@@ -4,6 +4,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 import type { Pessoa, Produtor } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
+import ProdutorCombo from "../../../components/ProdutorCombo";
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ export default function TriangulacaoPage() {
     const [{ data: tri }, { data: pes }, { data: prod }] = await Promise.all([
       supabase.from("triangulacoes").select("*").eq("fazenda_id", fazendaId).order("created_at", { ascending: false }),
       supabase.from("pessoas").select("id,nome,tipo,cpf_cnpj,municipio,estado,logradouro").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("produtores").select("id,nome,tipo,cpf_cnpj").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("produtores").select("id,nome,tipo,cpf_cnpj,inscricao_est,municipio,estado").eq("fazenda_id", fazendaId).order("nome"),
     ]);
     setLista((tri ?? []) as Triangulacao[]);
     setPessoas((pes ?? []) as Pessoa[]);
@@ -723,10 +724,12 @@ export default function TriangulacaoPage() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
                           <label style={lbl}>Produtor (emitente das NFs)</label>
-                          <select style={inp} value={f.produtor_id ?? ""} onChange={e => sf("produtor_id", e.target.value)}>
-                            <option value="">— Selecionar —</option>
-                            {produtores.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.tipo.toUpperCase()})</option>)}
-                          </select>
+                          <ProdutorCombo
+                            produtores={produtores}
+                            value={f.produtor_id ?? ""}
+                            onChange={id => sf("produtor_id", id)}
+                            placeholder="— Selecionar —"
+                          />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
@@ -760,10 +763,12 @@ export default function TriangulacaoPage() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
                           <label style={lbl}>Produtor</label>
-                          <select style={inp} value={f.produtor_id ?? ""} onChange={e => sf("produtor_id", e.target.value)}>
-                            <option value="">— Selecionar —</option>
-                            {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                          </select>
+                          <ProdutorCombo
+                            produtores={produtores}
+                            value={f.produtor_id ?? ""}
+                            onChange={id => sf("produtor_id", id)}
+                            placeholder="— Selecionar —"
+                          />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
@@ -807,10 +812,12 @@ export default function TriangulacaoPage() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
                           <label style={lbl}>Produtor</label>
-                          <select style={inp} value={f.produtor_id ?? ""} onChange={e => sf("produtor_id", e.target.value)}>
-                            <option value="">— Selecionar —</option>
-                            {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                          </select>
+                          <ProdutorCombo
+                            produtores={produtores}
+                            value={f.produtor_id ?? ""}
+                            onChange={id => sf("produtor_id", id)}
+                            placeholder="— Selecionar —"
+                          />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
@@ -847,10 +854,12 @@ export default function TriangulacaoPage() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>
                           <label style={lbl}>Produtor (emitente da NF)</label>
-                          <select style={inp} value={f.produtor_id ?? ""} onChange={e => sf("produtor_id", e.target.value)}>
-                            <option value="">— Selecionar —</option>
-                            {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                          </select>
+                          <ProdutorCombo
+                            produtores={produtores}
+                            value={f.produtor_id ?? ""}
+                            onChange={id => sf("produtor_id", id)}
+                            placeholder="— Selecionar —"
+                          />
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                           <div>
