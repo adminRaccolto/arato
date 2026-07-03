@@ -195,7 +195,6 @@ const NAV: NavItem[] = [
       {
         type: "subgroup", id: "sg-dfe", label: "Documentos Fiscais", moduleId: "fiscal_sped",
         children: [
-          { id: "fiscal-manifestacao",  label: "Manifestação do Destinatário", path: "/fiscal/manifestacao",  moduleId: "fiscal_nfe"  },
           { id: "fiscal-lcdpr",         label: "LCDPR",                        path: "/lcdpr",                moduleId: "fiscal_sped" },
           { id: "fiscal-sped-contabil", label: "SPED ECD — Contábil",          path: "/fiscal/sped-contabil", moduleId: "fiscal_sped" },
           { id: "fiscal-ibs",           label: "IBS / CBS — 2027",             path: "/ibs",                  moduleId: "fiscal_sped" },

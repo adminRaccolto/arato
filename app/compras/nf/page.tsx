@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
+import SiegManifestacao from "../../../components/SiegManifestacao";
 import {
   listarNfEntradas, criarNfEntrada, atualizarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem,
@@ -138,6 +139,7 @@ export default function NfCompraPage() {
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroTipo,   setFiltroTipo]   = useState("");
   const [busca,        setBusca]        = useState("");
+  const [abaCompras,   setAbaCompras]   = useState<"entradas" | "sieg">("entradas");
 
   // Wizard
   const [wizard,  setWizard]  = useState(false);
@@ -900,7 +902,22 @@ export default function NfCompraPage() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />
 
-      <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+      {/* Tab switcher */}
+      <div style={{ background: "white", borderBottom: "0.5px solid #DDE2EE", display: "flex", padding: "0 28px" }}>
+        {([
+          { id: "entradas" as const, label: "NF de Compra" },
+          { id: "sieg"     as const, label: "NF-e Recebidas / Manifestação" },
+        ]).map(t => (
+          <button key={t.id} onClick={() => setAbaCompras(t.id)}
+            style={{ padding: "12px 18px", border: "none", background: "transparent", fontSize: 13, fontWeight: abaCompras === t.id ? 700 : 400, color: abaCompras === t.id ? "#1A4870" : "#888", borderBottom: `2px solid ${abaCompras === t.id ? "#1A4870" : "transparent"}`, cursor: "pointer", marginBottom: -1 }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {abaCompras === "sieg" && <SiegManifestacao />}
+
+      {abaCompras === "entradas" && <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
 
         {/* ── Cabeçalho ── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -1017,7 +1034,7 @@ export default function NfCompraPage() {
             </table>
           )}
         </div>
-      </main>
+      </main>}
 
       {/* ══════════════════════════════════════════════════════
           WIZARD MODAL
