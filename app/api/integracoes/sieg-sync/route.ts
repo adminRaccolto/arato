@@ -34,8 +34,8 @@ function sb() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { fazenda_id: string; data_inicio?: string; data_fim?: string };
-    const { fazenda_id, data_inicio: dataInicioParam, data_fim: dataFimParam } = body;
+    const body = await req.json() as { fazenda_id: string; data_inicio?: string; data_fim?: string; force_reimport?: boolean; chaves_acesso?: string[] };
+    const { fazenda_id, data_inicio: dataInicioParam, data_fim: dataFimParam, force_reimport: forceReimport, chaves_acesso: chavesAcesso } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
 
     const db = sb();
@@ -125,17 +125,56 @@ export async function POST(req: NextRequest) {
       if (!nfe) { erros.push("XML sem Id NFe válido"); continue; }
       if (!nfe.numero || !nfe.data_emissao) { erros.push(`NF ${nfe.chave}: campos obrigatórios ausentes`); continue; }
 
+      // Filtro por chaves específicas (re-importação pontual)
+      if (chavesAcesso && chavesAcesso.length > 0 && !chavesAcesso.includes(nfe.chave)) continue;
+
       // Verificar duplicata pela chave de acesso
       const { data: dup } = await db
         .from("nf_entradas")
-        .select("id")
+        .select("id, status")
         .eq("fazenda_id", fazenda_id)
         .eq("chave_acesso", nfe.chave)
         .maybeSingle();
 
-      if (dup) { duplicados_nfe++; continue; }
+      const itensPayload = nfe.itens.map(item => ({
+        fazenda_id,
+        descricao_produto: item.descricao,
+        descricao_nf:      item.descricao,
+        ncm:               item.ncm   || null,
+        cfop:              item.cfop  || nfe.cfop || null,
+        unidade:           item.unidade || "UN",
+        unidade_nf:        item.unidade || "UN",
+        quantidade:        item.quantidade,
+        valor_unitario:    item.valor_unitario,
+        valor_total:       item.valor_total,
+        tipo_apropiacao:   "estoque",
+        alerta_preco:      false,
+      }));
 
-      // Inserir NF de Entrada
+      if (dup) {
+        if (!forceReimport) { duplicados_nfe++; continue; }
+        // Re-importação forçada: atualiza cabeçalho e, se ainda pendente, recria itens
+        await db.from("nf_entradas").update({
+          numero:        nfe.numero,
+          serie:         nfe.serie,
+          data_emissao:  nfe.data_emissao,
+          emitente_nome: nfe.nome_emitente,
+          emitente_cnpj: nfe.cnpj_emitente,
+          valor_total:   nfe.valor_total,
+          natureza:      nfe.natureza,
+          cfop:          nfe.cfop,
+          cnpj_destino,
+          observacao:    `Re-importado via Sieg DFe em ${new Date().toLocaleDateString("pt-BR")}${nfe.ie_emitente ? ` — IE: ${nfe.ie_emitente}` : ""}`,
+        }).eq("id", dup.id);
+        if (dup.status === "pendente" && itensPayload.length > 0) {
+          await db.from("nf_entrada_itens").delete().eq("nf_entrada_id", dup.id);
+          await db.from("nf_entrada_itens").insert(itensPayload.map(it => ({ ...it, nf_entrada_id: dup.id })));
+        }
+        importados_nfe++;
+        continue;
+      }
+
+      // Inserir NF nova
       const { data: nfRow, error: nfErr } = await db
         .from("nf_entradas")
         .insert({
@@ -163,23 +202,9 @@ export async function POST(req: NextRequest) {
       }
 
       // Inserir itens
-      if (nfe.itens.length > 0) {
+      if (itensPayload.length > 0) {
         const { error: iErr } = await db.from("nf_entrada_itens").insert(
-          nfe.itens.map(item => ({
-            nf_entrada_id:     nfRow.id,
-            fazenda_id,
-            descricao_produto: item.descricao,
-            descricao_nf:      item.descricao,
-            ncm:               item.ncm   || null,
-            cfop:              item.cfop  || nfe.cfop || null,
-            unidade:           item.unidade || "UN",
-            unidade_nf:        item.unidade || "UN",
-            quantidade:        item.quantidade,
-            valor_unitario:    item.valor_unitario,
-            valor_total:       item.valor_total,
-            tipo_apropiacao:   "estoque",
-            alerta_preco:      false,
-          }))
+          itensPayload.map(it => ({ ...it, nf_entrada_id: nfRow.id }))
         );
         if (iErr) erros.push(`Itens NF ${nfe.numero}: ${iErr.message}`);
       }

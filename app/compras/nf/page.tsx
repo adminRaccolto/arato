@@ -156,13 +156,18 @@ export default function NfCompraPage() {
   const [filtroOrigem, setFiltroOrigem] = useState("");
   const [busca,        setBusca]        = useState("");
 
+  // Filtro de data na tabela
+  const [filtroDataDe,   setFiltroDataDe]   = useState("");
+  const [filtroDataAte,  setFiltroDataAte]  = useState("");
   // SIEG — painel de sincronização
-  const [siegDtInicio,   setSiegDtInicio]   = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
-  const [siegDtFim,      setSiegDtFim]      = useState(() => new Date().toISOString().slice(0,10));
-  const [siegSyncing,    setSiegSyncing]    = useState(false);
-  const [siegSyncMsg,    setSiegSyncMsg]    = useState("");
-  const [siegCnpjDest,   setSiegCnpjDest]   = useState("");
-  const [siegProdutores, setSiegProdutores] = useState<Array<{nome: string; cnpj: string}>>([]);
+  const [siegDtInicio,      setSiegDtInicio]      = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
+  const [siegDtFim,         setSiegDtFim]         = useState(() => new Date().toISOString().slice(0,10));
+  const [siegForceReimport, setSiegForceReimport] = useState(false);
+  const [siegSyncing,       setSiegSyncing]       = useState(false);
+  const [siegSyncMsg,       setSiegSyncMsg]       = useState("");
+  const [siegCnpjDest,      setSiegCnpjDest]      = useState("");
+  const [siegProdutores,    setSiegProdutores]    = useState<Array<{nome: string; cnpj: string}>>([]);
+  const [siegReimporting,   setSiegReimporting]   = useState<Record<string, boolean>>({});
   // SIEG — manifestação inline
   const [siegBusy,       setSiegBusy]       = useState<Record<string, boolean>>({});
   const [siegErros,      setSiegErros]      = useState<Record<string, string>>({});
@@ -364,17 +369,37 @@ export default function NfCompraPage() {
     try {
       const res = await fetch("/api/integracoes/sieg-sync", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim }),
+        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim, force_reimport: siegForceReimport }),
       });
       const d = await res.json() as Record<string, unknown>;
       if (d.erro) setSiegSyncMsg(`✗ ${d.erro}`);
       else {
-        const imp = Number(d.importados_nfe ?? 0);
-        setSiegSyncMsg(`✓ ${imp} NF-e importada${imp !== 1 ? "s" : ""}`);
+        const imp  = Number(d.importados_nfe ?? 0);
+        const dup  = Number(d.duplicados_nfe  ?? 0);
+        const dupTxt = dup > 0 ? ` · ${dup} já existia${dup !== 1 ? "m" : ""}` : "";
+        setSiegSyncMsg(`✓ ${imp} importada${imp !== 1 ? "s" : ""}${dupTxt}`);
+        // Aplica filtro de data na tabela para mostrar NFs do período
+        setFiltroDataDe(siegDtInicio);
+        setFiltroDataAte(siegDtFim);
         await carregar();
       }
     } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
     finally { setSiegSyncing(false); }
+  }
+
+  async function reimportarNf(nf: NfEntrada) {
+    if (!fazendaId || !nf.chave_acesso) return;
+    setSiegReimporting(p => ({ ...p, [nf.id]: true }));
+    try {
+      const res = await fetch("/api/integracoes/sieg-sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: "2020-01-01", data_fim: new Date().toISOString().slice(0,10), force_reimport: true, chaves_acesso: [nf.chave_acesso] }),
+      });
+      const d = await res.json() as Record<string, unknown>;
+      if (d.erro) alert(`Erro: ${d.erro}`);
+      else await carregar();
+    } catch (e) { alert(`Erro de rede: ${e}`); }
+    finally { setSiegReimporting(p => ({ ...p, [nf.id]: false })); }
   }
 
   async function executarManifestacao(nf: NfEntrada, tipo: number, justificativa?: string) {
@@ -987,6 +1012,8 @@ export default function NfCompraPage() {
     if (filtroStatus && nf.status !== filtroStatus) return false;
     if (filtroTipo   && nf.tipo_entrada !== filtroTipo) return false;
     if (filtroOrigem && nf.origem !== filtroOrigem) return false;
+    if (filtroDataDe  && nf.data_emissao < filtroDataDe)  return false;
+    if (filtroDataAte && nf.data_emissao > filtroDataAte) return false;
     if (busca) {
       const b = busca.toLowerCase();
       if (!nf.numero.includes(busca) && !nf.emitente_nome.toLowerCase().includes(b)) return false;
@@ -1044,6 +1071,12 @@ export default function NfCompraPage() {
                 style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", color: "#1a1a1a" }} />
             </div>
 
+            {/* Força re-importação */}
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#666", cursor: "pointer", userSelect: "none" }}>
+              <input type="checkbox" checked={siegForceReimport} onChange={e => setSiegForceReimport(e.target.checked)} style={{ cursor: "pointer" }} />
+              Forçar re-importação
+            </label>
+
             <button onClick={sincronizarSieg} disabled={siegSyncing}
               style={{ padding: "6px 18px", background: siegSyncing ? "#DDE2EE" : "#1A4870", color: siegSyncing ? "#888" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
               {siegSyncing ? "Sincronizando…" : "Sincronizar"}
@@ -1091,6 +1124,18 @@ export default function NfCompraPage() {
             <option value="xml">XML</option>
             <option value="sieg">SIEG</option>
           </select>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 11, color: "#888" }}>Emissão:</span>
+            <input type="date" value={filtroDataDe} onChange={e => setFiltroDataDe(e.target.value)}
+              style={{ ...inp, width: 136, padding: "5px 8px" }} />
+            <span style={{ fontSize: 11, color: "#888" }}>–</span>
+            <input type="date" value={filtroDataAte} onChange={e => setFiltroDataAte(e.target.value)}
+              style={{ ...inp, width: 136, padding: "5px 8px" }} />
+            {(filtroDataDe || filtroDataAte) && (
+              <button onClick={() => { setFiltroDataDe(""); setFiltroDataAte(""); }}
+                style={{ fontSize: 11, color: "#888", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }} title="Limpar filtro de data">✕</button>
+            )}
+          </div>
           <span style={{ fontSize: 12, color: "#888", marginLeft: "auto" }}>{nfsFiltradas.length} resultado{nfsFiltradas.length !== 1 ? "s" : ""}</span>
         </div>
 
@@ -1173,6 +1218,12 @@ export default function NfCompraPage() {
                           {nf.status === "processada" && (
                             <button onClick={() => abrirReclassificar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #C9921B50", borderRadius: 6, background: "#FBF3E0", cursor: "pointer", fontSize: 11, color: "#7B4A00", fontWeight: 600 }}>
                               Reclassificar
+                            </button>
+                          )}
+                          {nf.origem === "sieg" && nf.status === "pendente" && (
+                            <button onClick={() => reimportarNf(nf)} disabled={siegReimporting[nf.id]}
+                              style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: siegReimporting[nf.id] ? "default" : "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600, opacity: siegReimporting[nf.id] ? 0.5 : 1 }}>
+                              {siegReimporting[nf.id] ? "…" : "↻ Re-import."}
                             </button>
                           )}
                           {nf.status !== "cancelada" && (
