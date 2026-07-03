@@ -77,8 +77,7 @@ type ProdutorImpRow = {
   nome: string; tipo: string; cpf_cnpj: string; inscricao_est: string;
   email: string; telefone: string; cep: string; logradouro: string;
   municipio: string; estado: string;
-  _status?: "ok" | "erro" | "duplicado" | "ie_merge"; _msg?: string;
-  _merge_into_id?: string; // produtor_id no banco para mesclagem de IE
+  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type FazendaImpRow = {
   nome: string; municipio: string; estado: string; area_total_ha: string;
@@ -223,9 +222,12 @@ const INSTRUCOES_PRODUTORES_IMP = [
   ["• Campos com * são obrigatórios"],
   ["• Não altere os nomes das colunas (linha 1)"],
   ["• tipo: pf (pessoa física) ou pj (pessoa jurídica)"],
-  ["• cpf_cnpj: CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00) — deve ser único"],
+  ["• cpf_cnpj: CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00)"],
   ["  Formatação livre — pontos, hífens e barras são aceitos"],
+  ["  O mesmo CPF pode aparecer mais de uma vez desde que tenha IEs diferentes"],
+  ["  (produtor com operações em mais de um município/estado)"],
   ["• inscricao_est: Inscrição Estadual (apenas dígitos, sem pontuação)"],
+  ["  Combinação CPF + IE deve ser única — duplicatas são sinalizadas e ignoradas"],
   ["• email: endereço de e-mail válido (opcional)"],
   ["• telefone: com DDD (ex: (65)99999-0001)"],
   ["• cep: CEP no formato 00000-000 (opcional)"],
@@ -1878,65 +1880,55 @@ function ImportacaoInner() {
   async function handleFileProdutoresImp(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarProdutorImp(r));
-    // Primeira ocorrência de cada CPF no arquivo
-    const cpfFirstIndex: Record<string, number> = {};
+
+    // Unicidade = CPF + IE (mesmo produtor pode ter IEs diferentes em municípios distintos)
+    const chaveSet: Record<string, number> = {};
     rows.forEach((r, i) => {
       if (r._status === "ok" && r.cpf_cnpj) {
-        const c = r.cpf_cnpj.replace(/\D/g, "");
-        if (c) {
-          if (cpfFirstIndex[c] === undefined) cpfFirstIndex[c] = i;
-          else { r._status = "ie_merge"; r._msg = `→ IE mesclada ao produtor da linha ${cpfFirstIndex[c] + 1}`; }
-        }
+        const cpf = r.cpf_cnpj.replace(/\D/g, "");
+        const ie  = (r.inscricao_est || "").trim().toUpperCase();
+        const chave = `${cpf}|${ie}`;
+        if (chaveSet[chave] === undefined) chaveSet[chave] = i;
+        else { r._status = "duplicado"; r._msg = `CPF + IE idênticos à linha ${chaveSet[chave] + 1}`; }
       }
     });
+
     if (fazendaId) {
-      const { data: exist } = await supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
-      const existMap: Record<string, string> = {};
-      (exist ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
-        if (p.cpf_cnpj) existMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+      const { data: exist } = await supabase
+        .from("produtores")
+        .select("cpf_cnpj, inscricao_est")
+        .eq("fazenda_id", fazendaId);
+      const existSet = new Set<string>();
+      (exist ?? []).forEach((p: { cpf_cnpj: string | null; inscricao_est: string | null }) => {
+        const cpf = (p.cpf_cnpj || "").replace(/\D/g, "");
+        const ie  = (p.inscricao_est || "").trim().toUpperCase();
+        existSet.add(`${cpf}|${ie}`);
       });
       rows.forEach(r => {
-        if (r._status === "ok" && r.cpf_cnpj && existMap[r.cpf_cnpj.replace(/\D/g, "")]) {
-          r._status = "ie_merge";
-          r._merge_into_id = existMap[r.cpf_cnpj.replace(/\D/g, "")];
-          r._msg = r.inscricao_est?.trim() ? "→ IE adicionada ao produtor existente" : "→ produtor já cadastrado (sem IE nova)";
+        if (r._status === "ok" && r.cpf_cnpj) {
+          const cpf = r.cpf_cnpj.replace(/\D/g, "");
+          const ie  = (r.inscricao_est || "").trim().toUpperCase();
+          if (existSet.has(`${cpf}|${ie}`)) {
+            r._status = "duplicado";
+            r._msg = "CPF + IE já cadastrados";
+          }
         }
       });
     }
+
     setProdutoresImpRows(rows); setResultProdutoresImp(null);
   }
 
   async function importarProdutoresImp() {
     if (!fazendaId || !produtoresImpRows.length) return;
     setLoadingProdutoresImp(true);
-    let ok = 0, erros = 0, mesclados = 0;
-    // Mapa cpf → produtor_id recém-criado (para IEs de duplicatas internas do arquivo)
-    const criados: Record<string, string> = {};
+    let ok = 0, erros = 0, duplicados = 0;
 
     for (const r of produtoresImpRows) {
-      if (r._status === "erro") { erros++; continue; }
+      if (r._status === "erro")       { erros++;      continue; }
+      if (r._status === "duplicado")  { duplicados++; continue; }
 
-      if (r._status === "ie_merge") {
-        // Resolve o produtor_id: banco (merge_into_id) ou recém-criado na mesma importação
-        let prodId = r._merge_into_id;
-        if (!prodId && r.cpf_cnpj) prodId = criados[r.cpf_cnpj.replace(/\D/g, "")];
-        if (prodId && r.inscricao_est?.trim()) {
-          await supabase.from("produtor_inscricoes_estaduais").insert({
-            produtor_id:       prodId,
-            inscricao_estadual: r.inscricao_est.trim(),
-            municipio:         r.municipio?.trim() || null,
-            estado:            r.estado?.trim() || "MT",
-            ativa:             true,
-          });
-          r._msg = "→ IE adicionada ✓";
-        } else if (!r.inscricao_est?.trim()) {
-          r._msg = "→ sem IE para mesclar";
-        }
-        mesclados++;
-        continue;
-      }
-
-      // Status "ok" → inserir produtor
+      // Cada linha vira um registro de produtor separado (CPF + IE = chave única)
       const { data: novo, error } = await supabase.from("produtores").insert({
         fazenda_id:    fazendaId,
         conta_id:      contaId,
@@ -1951,40 +1943,30 @@ function ImportacaoInner() {
         municipio:     r.municipio?.trim() || null,
         estado:        r.estado?.trim() || null,
       }).select("id").single();
+
       if (error) { r._status = "erro"; r._msg = error.message; erros++; continue; }
       ok++;
-      if (novo?.id && r.cpf_cnpj) criados[r.cpf_cnpj.replace(/\D/g, "")] = novo.id;
 
-      // PJ → criar Empresa vinculada automaticamente (mesmo padrão do cadastro manual)
+      // PJ → criar Empresa vinculada automaticamente
       if (novo?.id && r.tipo === "pj") {
         await supabase.from("empresas").insert({
-          fazenda_id:        fazendaId,
-          produtor_id:       novo.id,
-          nome:              r.nome.trim(),
-          razao_social:      r.nome.trim(),
-          tipo:              "pj",
-          cpf_cnpj:          r.cpf_cnpj?.trim() || null,
-          inscricao_est:     r.inscricao_est?.trim() || null,
-          municipio:         r.municipio?.trim() || null,
-          estado:            r.estado?.trim() || null,
-          email:             r.email?.trim() || null,
-          telefone:          r.telefone?.trim() || null,
-        });
-      }
-
-      // Registra também a IE principal na tabela auxiliar
-      if (novo?.id && r.inscricao_est?.trim()) {
-        await supabase.from("produtor_inscricoes_estaduais").insert({
-          produtor_id:       novo.id,
-          inscricao_estadual: r.inscricao_est.trim(),
-          municipio:         r.municipio?.trim() || null,
-          estado:            r.estado?.trim() || "MT",
-          ativa:             true,
+          fazenda_id:    fazendaId,
+          produtor_id:   novo.id,
+          nome:          r.nome.trim(),
+          razao_social:  r.nome.trim(),
+          tipo:          "pj",
+          cpf_cnpj:      r.cpf_cnpj?.trim() || null,
+          inscricao_est: r.inscricao_est?.trim() || null,
+          municipio:     r.municipio?.trim() || null,
+          estado:        r.estado?.trim() || null,
+          email:         r.email?.trim() || null,
+          telefone:      r.telefone?.trim() || null,
         });
       }
     }
+
     setProdutoresImpRows([...produtoresImpRows]);
-    setResultProdutoresImp({ ok, erros, duplicados: mesclados });
+    setResultProdutoresImp({ ok, erros, duplicados });
     setLoadingProdutoresImp(false);
   }
 
