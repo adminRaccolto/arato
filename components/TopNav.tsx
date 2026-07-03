@@ -520,7 +520,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {fazenda && (
+          {fazenda && !(userRole === "raccotlo" && nomeProdutor) && (
             <div style={{ position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, borderRadius: 8, padding: "4px 8px" }}>
                 {logoCliente ? (
@@ -557,9 +557,16 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                   </div>
                 )
               }
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {nomeProdutor}
-              </span>
+              <div style={{ maxWidth: 200 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {nomeProdutor}
+                </div>
+                {fazenda && (
+                  <div style={{ fontSize: 11, color: "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {fazenda.nome} · {fazenda.municipio} · {fazenda.estado}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={clearFazenda}
                 style={{
