@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import TopNav from "../../../components/TopNav";
-import SiegManifestacao from "../../../components/SiegManifestacao";
 import {
   listarNfEntradas, criarNfEntrada, atualizarNfEntrada,
   listarNfEntradaItens, criarNfEntradaItem,
@@ -67,6 +66,22 @@ const ORIGEM_META: Record<string, { label: string }> = {
   xml:    { label: "XML"     },
   sieg:   { label: "Sieg"    },
 };
+
+const MAN_CFG = [
+  { tipo: 0, label: "Ciência",       cor: "#378ADD", bg: "#EFF6FF", status: "ciencia",        justObrig: false },
+  { tipo: 1, label: "Confirmar",     cor: "#16A34A", bg: "#DCFCE7", status: "confirmada",      justObrig: false },
+  { tipo: 2, label: "Desconhecer",   cor: "#C9921B", bg: "#FBF3E0", status: "desconhecimento", justObrig: true  },
+  { tipo: 3, label: "Não Realizada", cor: "#E24B4A", bg: "#FFF0F0", status: "nao_realizada",   justObrig: true  },
+] as const;
+type ManStatus = "pendente"|"ciencia"|"confirmada"|"desconhecimento"|"nao_realizada";
+const MAN_ST: Record<ManStatus, { label: string; cor: string; bg: string }> = {
+  pendente:        { label: "Pendente",        cor: "#888",    bg: "#F3F4F6" },
+  ciencia:         { label: "Ciência",         cor: "#378ADD", bg: "#EFF6FF" },
+  confirmada:      { label: "Confirmada",      cor: "#16A34A", bg: "#DCFCE7" },
+  desconhecimento: { label: "Desconhecimento", cor: "#C9921B", bg: "#FBF3E0" },
+  nao_realizada:   { label: "Não Realizada",   cor: "#E24B4A", bg: "#FFF0F0" },
+};
+const fmtDoc = (s: string) => s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
 
 // ─────────────────────────────────────────────────────────────
 // Tipos locais
@@ -138,8 +153,21 @@ export default function NfCompraPage() {
   // Filtros lista
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroTipo,   setFiltroTipo]   = useState("");
+  const [filtroOrigem, setFiltroOrigem] = useState("");
   const [busca,        setBusca]        = useState("");
-  const [abaCompras,   setAbaCompras]   = useState<"entradas" | "sieg">("entradas");
+
+  // SIEG — painel de sincronização
+  const [siegDtInicio,   setSiegDtInicio]   = useState(() => { const d=new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); });
+  const [siegDtFim,      setSiegDtFim]      = useState(() => new Date().toISOString().slice(0,10));
+  const [siegSyncing,    setSiegSyncing]    = useState(false);
+  const [siegSyncMsg,    setSiegSyncMsg]    = useState("");
+  const [siegCnpjDest,   setSiegCnpjDest]   = useState("");
+  const [siegProdutores, setSiegProdutores] = useState<Array<{nome: string; cnpj: string}>>([]);
+  // SIEG — manifestação inline
+  const [siegBusy,       setSiegBusy]       = useState<Record<string, boolean>>({});
+  const [siegErros,      setSiegErros]      = useState<Record<string, string>>({});
+  const [siegJustModal,  setSiegJustModal]  = useState<{nf: NfEntrada; tipo: number}|null>(null);
+  const [siegJustText,   setSiegJustText]   = useState("");
 
   // Wizard
   const [wizard,  setWizard]  = useState(false);
@@ -294,11 +322,82 @@ export default function NfCompraPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  // Carrega config do SIEG (CNPJs → nomes de produtor)
+  useEffect(() => {
+    if (!fazendaId) return;
+    (async () => {
+      try {
+        const { data: cfgs } = await supabase
+          .from("configuracoes_modulo").select("config, modulo")
+          .eq("fazenda_id", fazendaId).in("modulo", ["sieg", "fiscal", "fiscal_nfe"]);
+        const cnpjs: string[] = [];
+        for (const row of (cfgs ?? [])) {
+          const c = (row.config ?? {}) as Record<string, unknown>;
+          if (Array.isArray(c.cnpjs_destino)) (c.cnpjs_destino as string[]).forEach(d => { const n=d.replace(/\D/g,""); if(n&&!cnpjs.includes(n)) cnpjs.push(n); });
+          const s = String(c.cnpj_destino ?? c.cpf_cnpj_emitente ?? c.cnpj ?? "").replace(/\D/g,"");
+          if (s && !cnpjs.includes(s)) cnpjs.push(s);
+        }
+        const { data: prods } = await supabase.from("produtores").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
+        const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
+        const todos: Array<{nome:string;cnpj:string}> = [];
+        for (const c of cnpjs) {
+          const match = [...(prods??[]), ...(pess??[])].find(p => (p.cpf_cnpj??"").replace(/\D/g,"") === c);
+          todos.push({ cnpj: c, nome: match?.nome ?? fmtDoc(c) });
+        }
+        setSiegProdutores(todos);
+        if (todos.length > 0 && !siegCnpjDest) setSiegCnpjDest(todos[0].cnpj);
+      } catch {}
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fazendaId]);
+
   // Carrega ciclos quando o ano safra muda no formulário
   useEffect(() => {
     if (!cab.ano_safra_id) { setCiclosNF([]); return; }
     listarCiclos(cab.ano_safra_id).then(setCiclosNF).catch(() => setCiclosNF([]));
   }, [cab.ano_safra_id]);
+
+  // ── SIEG — sincronização ────────────────────────────────────
+  async function sincronizarSieg() {
+    if (!fazendaId) return;
+    setSiegSyncing(true); setSiegSyncMsg("");
+    try {
+      const res = await fetch("/api/integracoes/sieg-sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: siegDtInicio, data_fim: siegDtFim }),
+      });
+      const d = await res.json() as Record<string, unknown>;
+      if (d.erro) setSiegSyncMsg(`✗ ${d.erro}`);
+      else {
+        const imp = Number(d.importados_nfe ?? 0);
+        setSiegSyncMsg(`✓ ${imp} NF-e importada${imp !== 1 ? "s" : ""}`);
+        await carregar();
+      }
+    } catch (e) { setSiegSyncMsg(`✗ Erro de rede: ${e}`); }
+    finally { setSiegSyncing(false); }
+  }
+
+  async function executarManifestacao(nf: NfEntrada, tipo: number, justificativa?: string) {
+    setSiegBusy(p => ({ ...p, [nf.id]: true }));
+    setSiegErros(p => { const n={...p}; delete n[nf.id]; return n; });
+    try {
+      const res = await fetch("/api/integracoes/sieg-manifestar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_id: fazendaId, nf_id: nf.id, chave_acesso: nf.chave_acesso, cnpj_destinatario: siegCnpjDest, tipo, justificativa }),
+      });
+      const d = await res.json() as Record<string, unknown>;
+      if (d.erro) setSiegErros(p => ({ ...p, [nf.id]: String(d.erro) }));
+      else setNfs(prev => prev.map(n => n.id === nf.id ? { ...n, manifestacao_tipo: tipo, manifestacao_data: new Date().toISOString().slice(0,10) } : n));
+    } catch (e) { setSiegErros(p => ({ ...p, [nf.id]: String(e) })); }
+    finally { setSiegBusy(p => ({ ...p, [nf.id]: false })); }
+  }
+
+  function manifestar(nf: NfEntrada, tipo: number) {
+    if (!siegCnpjDest) { setSiegErros(p => ({ ...p, [nf.id]: "CNPJ do destinatário não configurado." })); return; }
+    const m = MAN_CFG.find(x => x.tipo === tipo)!;
+    if (m.justObrig) { setSiegJustModal({ nf, tipo }); setSiegJustText(""); return; }
+    executarManifestacao(nf, tipo);
+  }
 
   // ── Helpers ─────────────────────────────────────────────────
   const nomeDeposito   = (id: string) => depositos.find(d => d.id === id)?.nome ?? "—";
@@ -887,6 +986,7 @@ export default function NfCompraPage() {
   const nfsFiltradas = nfs.filter(nf => {
     if (filtroStatus && nf.status !== filtroStatus) return false;
     if (filtroTipo   && nf.tipo_entrada !== filtroTipo) return false;
+    if (filtroOrigem && nf.origem !== filtroOrigem) return false;
     if (busca) {
       const b = busca.toLowerCase();
       if (!nf.numero.includes(busca) && !nf.emitente_nome.toLowerCase().includes(b)) return false;
@@ -902,32 +1002,57 @@ export default function NfCompraPage() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
       <TopNav />
 
-      {/* Tab switcher */}
-      <div style={{ background: "white", borderBottom: "0.5px solid #DDE2EE", display: "flex", padding: "0 28px" }}>
-        {([
-          { id: "entradas" as const, label: "NF de Compra" },
-          { id: "sieg"     as const, label: "NF-e Recebidas / Manifestação" },
-        ]).map(t => (
-          <button key={t.id} onClick={() => setAbaCompras(t.id)}
-            style={{ padding: "12px 18px", border: "none", background: "transparent", fontSize: 13, fontWeight: abaCompras === t.id ? 700 : 400, color: abaCompras === t.id ? "#1A4870" : "#888", borderBottom: `2px solid ${abaCompras === t.id ? "#1A4870" : "transparent"}`, cursor: "pointer", marginBottom: -1 }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {abaCompras === "sieg" && <SiegManifestacao />}
-
-      {abaCompras === "entradas" && <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+      <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
 
         {/* ── Cabeçalho ── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>NF de Compra</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Entrada de NF</div>
             <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
-              Entradas fiscais — {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
+              {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
             </div>
           </div>
-          <button style={btnV} onClick={abrirNovo}>+ Nova NF de Compra</button>
+          <button style={btnV} onClick={abrirNovo}>+ Nova NF Manual</button>
+        </div>
+
+        {/* ── Painel SIEG ── */}
+        <div style={{ background: "white", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "14px 18px", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginRight: 4 }}>⟳ Sincronizar SIEG</span>
+
+            {/* Destinatário */}
+            {siegProdutores.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 11, color: "#555" }}>Destinatário:</span>
+                {siegProdutores.length === 1
+                  ? <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{siegProdutores[0].nome}</span>
+                  : <select value={siegCnpjDest} onChange={e => setSiegCnpjDest(e.target.value)}
+                      style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "#1a1a1a" }}>
+                      {siegProdutores.map(p => <option key={p.cnpj} value={p.cnpj}>{p.nome}</option>)}
+                    </select>
+                }
+              </div>
+            )}
+
+            {/* Intervalo de datas */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 11, color: "#555" }}>De:</span>
+              <input type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
+                style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", color: "#1a1a1a" }} />
+              <span style={{ fontSize: 11, color: "#555" }}>Até:</span>
+              <input type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
+                style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", color: "#1a1a1a" }} />
+            </div>
+
+            <button onClick={sincronizarSieg} disabled={siegSyncing}
+              style={{ padding: "6px 18px", background: siegSyncing ? "#DDE2EE" : "#1A4870", color: siegSyncing ? "#888" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: siegSyncing ? "default" : "pointer" }}>
+              {siegSyncing ? "Sincronizando…" : "Sincronizar"}
+            </button>
+
+            {siegSyncMsg && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: siegSyncMsg.startsWith("✗") ? "#E24B4A" : "#16A34A" }}>{siegSyncMsg}</span>
+            )}
+          </div>
         </div>
 
         {/* ── Cards de resumo ── */}
@@ -960,6 +1085,12 @@ export default function NfCompraPage() {
             <option value="">Todos os tipos</option>
             {Object.entries(TIPO_META).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
+          <select value={filtroOrigem} onChange={e => setFiltroOrigem(e.target.value)} style={{ ...inp, width: 140 }}>
+            <option value="">Toda origem</option>
+            <option value="manual">Manual</option>
+            <option value="xml">XML</option>
+            <option value="sieg">SIEG</option>
+          </select>
           <span style={{ fontSize: 12, color: "#888", marginLeft: "auto" }}>{nfsFiltradas.length} resultado{nfsFiltradas.length !== 1 ? "s" : ""}</span>
         </div>
 
@@ -973,7 +1104,7 @@ export default function NfCompraPage() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F3F6F9" }}>
-                  {["Nº / Série", "Emitente", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Ações"].map((c, i) => (
+                  {["Nº / Série", "Emitente", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Manifest.", "Ações"].map((c, i) => (
                     <th key={i} style={{ padding: "8px 12px", textAlign: i >= 6 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
@@ -998,6 +1129,30 @@ export default function NfCompraPage() {
                       <td style={{ padding: "10px 12px" }}>{om ? badge(om.label) : <span style={{ color: "#aaa", fontSize: 12 }}>—</span>}</td>
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, textAlign: "right" }}>{fmtBRL(nf.valor_total)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                        {nf.origem === "sieg" ? (() => {
+                          const isBusy = siegBusy[nf.id];
+                          const manTipo = (nf.manifestacao_tipo ?? null);
+                          const manSt   = manTipo !== null ? (MAN_CFG.find(m=>m.tipo===manTipo)?.status ?? "pendente") : "pendente";
+                          const stCfg   = MAN_ST[manSt as ManStatus] ?? MAN_ST.pendente;
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+                              <span style={{ padding: "2px 7px", borderRadius: 8, fontSize: 10, fontWeight: 700, background: stCfg.bg, color: stCfg.cor }}>{isBusy ? "⏳…" : stCfg.label}</span>
+                              {(manTipo === null || manTipo === 0) && !isBusy && (
+                                <div style={{ display: "flex", gap: 3, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                  {MAN_CFG.filter(m => m.tipo !== manTipo).map(m => (
+                                    <button key={m.tipo} onClick={() => manifestar(nf, m.tipo)}
+                                      style={{ padding: "2px 6px", border: `0.5px solid ${m.cor}50`, borderRadius: 5, background: m.bg, color: m.cor, fontWeight: 600, fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                      {m.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              {siegErros[nf.id] && <div style={{ fontSize: 9, color: "#E24B4A", maxWidth: 160 }}>{siegErros[nf.id]}</div>}
+                            </div>
+                          );
+                        })() : <span style={{ fontSize: 11, color: "#ccc" }}>—</span>}
+                      </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           {nf.status !== "processada" && nf.status !== "cancelada" && (
@@ -1034,7 +1189,7 @@ export default function NfCompraPage() {
             </table>
           )}
         </div>
-      </main>}
+      </main>
 
       {/* ══════════════════════════════════════════════════════
           WIZARD MODAL
@@ -2229,6 +2384,33 @@ export default function NfCompraPage() {
           </div>
         </div>
       )}
+
+      {/* ── Modal de justificativa SIEG ── */}
+      {siegJustModal && (() => {
+        const m = MAN_CFG.find(x => x.tipo === siegJustModal.tipo)!;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}
+            onClick={e => { if (e.target === e.currentTarget) setSiegJustModal(null); }}>
+            <div style={{ background: "white", borderRadius: 12, padding: 28, width: 480, maxWidth: "96vw" }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: m.cor, marginBottom: 4 }}>{m.label}</div>
+              <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>NF {siegJustModal.nf.numero} · {siegJustModal.nf.emitente_nome}</div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Justificativa * (mín. 15 caracteres)</label>
+              <textarea value={siegJustText} onChange={e => setSiegJustText(e.target.value)} rows={3}
+                placeholder="Informe o motivo…"
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
+              <div style={{ fontSize: 10, color: siegJustText.length >= 15 ? "#16A34A" : "#aaa", marginBottom: 16 }}>{siegJustText.length}/15 mínimos</div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button onClick={() => setSiegJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "#555" }}>Cancelar</button>
+                <button disabled={siegJustText.length < 15}
+                  onClick={async () => { const {nf,tipo} = siegJustModal; setSiegJustModal(null); await executarManifestacao(nf, tipo, siegJustText); }}
+                  style={{ padding: "8px 20px", background: siegJustText.length < 15 ? "#DDE2EE" : m.cor, color: "white", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: siegJustText.length < 15 ? "default" : "pointer" }}>
+                  Confirmar {m.label}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -34,8 +34,8 @@ function sb() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { fazenda_id: string; data_inicio?: string };
-    const { fazenda_id, data_inicio: dataInicioParam } = body;
+    const body = await req.json() as { fazenda_id: string; data_inicio?: string; data_fim?: string };
+    const { fazenda_id, data_inicio: dataInicioParam, data_fim: dataFimParam } = body;
     if (!fazenda_id) return NextResponse.json({ erro: "fazenda_id obrigatório" }, { status: 400 });
 
     const db = sb();
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
         ? toISO(cfg.ultima_sync_ts ?? cfg.ultima_sync_data!)
         : umAnoAtras
     );
-    const uploadFim = new Date().toISOString();
+    const uploadFim = dataFimParam ? toISO(dataFimParam).replace("T00:00:00.000Z", "T23:59:59.999Z") : new Date().toISOString();
 
     // ── 2. Buscar NF-e no Sieg para cada CPF/CNPJ ───────────────────────────
     const xmlsNFe: { xml: string; cnpj_destino: string }[] = [];

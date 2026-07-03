@@ -901,6 +901,10 @@ export type NfEntrada = {
   ciclo_id?: string;
   // Destinatário (CPF/CNPJ que recebeu a NF — para Manifestação multi-CPF)
   cnpj_destino?: string;
+  // Manifestação do Destinatário (SEFAZ)
+  manifestacao_tipo?: number | null;
+  manifestacao_data?: string | null;
+  manifestacao_msg?:  string | null;
   // Contabilidade — LCDPR + SPED ECD
   vinculo_atividade?: "rural" | "pessoa_fisica" | "investimento" | "nao_tributavel";
   entidade_contabil?: "pf" | "pj";
