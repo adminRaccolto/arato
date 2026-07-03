@@ -16,14 +16,16 @@ type StatusPag  = "pendente" | "pago" | "parcial" | "cancelado";
 interface Arrendamento {
   id: string; fazenda_id: string;
   proprietario_id?: string | null; proprietario_nome?: string | null;
+  // Parte locatária no contrato (pode ser grupo econômico / empresa)
+  locatario_id?: string | null; locatario_nome?: string | null;
   area_ha: number; forma_pagamento: FormaPage;
   sc_ha?: number | null;       // soja sc/ha (ou único para sc_soja/sc_milho)
   sc_milho_ha?: number | null; // milho sc/ha — só usado em sc_soja_milho
   valor_brl?: number | null;
   ano_safra_id?: string | null; inicio?: string | null; vencimento?: string | null;
   renovacao_auto?: boolean; observacao?: string | null;
-  produtor_id?: string | null;   // agricultor principal (locatário)
-  produtor_id_2?: string | null; // segundo agricultor — contrato conjunto 50/50
+  produtor_id?: string | null;   // IE explorador — agricultor que declara no LCDPR
+  produtor_id_2?: string | null; // segundo IE explorador (contrato conjunto)
 }
 interface Produtor { id: string; nome: string; }
 interface Pagamento {
@@ -117,6 +119,7 @@ type Aba = "lista" | "pagamentos" | "calendario";
 
 const initFC = () => ({
   fazenda_id: "", proprietario_id: "", proprietario_nome: "",
+  locatario_id: "", locatario_nome: "",
   area_ha: "", forma_pagamento: "sc_soja" as FormaPage,
   sc_soja_ha: "", sc_milho_ha: "", valor_brl: "",
   inicio: "", vencimento: "", renovacao_auto: false, observacao: "",
@@ -217,11 +220,14 @@ export default function Arrendamentos() {
     if (!fazendaId) return;
     setSalvando(true);
     try {
-      const pessoa = pessoas.find(p => p.id === fC.proprietario_id);
+      const pessoa   = pessoas.find(p => p.id === fC.proprietario_id);
+      const locatPes = pessoas.find(p => p.id === fC.locatario_id);
       const payload = {
         fazenda_id: fazendaId,
-        proprietario_id: fC.proprietario_id || null,
+        proprietario_id:   fC.proprietario_id   || null,
         proprietario_nome: fC.proprietario_nome || pessoa?.nome || null,
+        locatario_id:   fC.locatario_id   || null,
+        locatario_nome: fC.locatario_nome || locatPes?.nome || null,
         area_ha: parseFloat(fC.area_ha) || 0,
         forma_pagamento: fC.forma_pagamento,
         // brl também guarda sc/ha como referência de cálculo
@@ -839,11 +845,14 @@ export default function Arrendamentos() {
                           </div>
                           <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#666", flexWrap: "wrap" }}>
                             <span><strong>{fmtN(arr.area_ha)} ha</strong></span>
+                            {arr.locatario_nome && (
+                              <span style={{ color: "#C9921B" }} title="Parte locatária no contrato">📋 {arr.locatario_nome}</span>
+                            )}
                             {arr.produtor_id && (() => {
                               const p1 = produtores.find(p => p.id === arr.produtor_id);
                               const p2 = arr.produtor_id_2 ? produtores.find(p => p.id === arr.produtor_id_2) : null;
                               if (!p1) return null;
-                              return <span style={{ color: "#1A4870" }}>{p1.nome}{p2 ? ` + ${p2.nome}` : ""}</span>;
+                              return <span style={{ color: "#1A4870" }} title="IE Explorador / Responsável LCDPR">🌾 {p1.nome}{p2 ? ` + ${p2.nome}` : ""}</span>;
                             })()}
                             {arr.forma_pagamento === "sc_soja_milho" && (arr.sc_ha || arr.sc_milho_ha) && (
                               <span>
@@ -875,8 +884,10 @@ export default function Arrendamentos() {
                             setEditContrato(arr);
                             setFC({
                               fazenda_id: arr.fazenda_id,
-                              proprietario_id: arr.proprietario_id ?? "",
+                              proprietario_id:   arr.proprietario_id   ?? "",
                               proprietario_nome: arr.proprietario_nome ?? "",
+                              locatario_id:   arr.locatario_id   ?? "",
+                              locatario_nome: arr.locatario_nome ?? "",
                               area_ha: String(arr.area_ha),
                               forma_pagamento: arr.forma_pagamento,
                               sc_soja_ha:  arr.sc_ha       != null ? String(arr.sc_ha)       : "",
@@ -1216,6 +1227,29 @@ export default function Arrendamentos() {
                 placeholder="Nome livre" />
             </div>
 
+            {/* Locatário — parte que assina o contrato como arrendatário */}
+            <div style={{ gridColumn: "1 / 3" }}>
+              <label style={lbl}>Locatário / Parte no Contrato</label>
+              <select style={inp} value={fC.locatario_id}
+                onChange={e => {
+                  const p = pessoas.find(x => x.id === e.target.value);
+                  setFC(f => ({ ...f, locatario_id: e.target.value, locatario_nome: p?.nome ?? f.locatario_nome }));
+                }}>
+                <option value="">Selecionar de Pessoas cadastradas…</option>
+                {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Nome livre (se não cadastrado)</label>
+              <input style={inp} value={fC.locatario_nome}
+                onChange={e => setFC(f => ({ ...f, locatario_nome: e.target.value }))}
+                placeholder="Ex: Rancho Alegre Ltda" />
+            </div>
+            <div style={{ gridColumn: "1/-1", fontSize: 11, color: "#888", background: "#F8FAFC", borderRadius: 6, padding: "6px 10px", lineHeight: 1.5 }}>
+              ℹ️ <strong>Locatário</strong> = quem assina o contrato como arrendatário (pode ser o grupo econômico ou empresa familiar).
+              O campo <strong>Agricultor Responsável (LCDPR)</strong> abaixo deve ser o produtor físico com IE que explora a área.
+            </div>
+
             {/* Área e forma */}
             <div>
               <label style={lbl}>Área Arrendada (ha) *</label>
@@ -1331,9 +1365,12 @@ export default function Arrendamentos() {
               <label htmlFor="renovAuto" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Renovação automática</label>
             </div>
 
-            {/* Agricultor(es) responsável(is) — impacta LCDPR */}
+            {/* IE Explorador(es) — quem declara no LCDPR */}
             <div>
-              <label style={lbl}>Agricultor Responsável (LCDPR)</label>
+              <label style={lbl}>
+                IE Explorador / Responsável LCDPR
+                <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>(1º)</span>
+              </label>
               <select style={inp} value={fC.produtor_id}
                 onChange={e => setFC(f => ({ ...f, produtor_id: e.target.value }))}>
                 <option value="">Não especificado</option>
@@ -1341,7 +1378,10 @@ export default function Arrendamentos() {
               </select>
             </div>
             <div>
-              <label style={lbl}>2º Agricultor (contrato conjunto)</label>
+              <label style={lbl}>
+                IE Explorador
+                <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>(2º — contrato conjunto)</span>
+              </label>
               <select style={inp} value={fC.produtor_id_2}
                 onChange={e => setFC(f => ({ ...f, produtor_id_2: e.target.value }))}>
                 <option value="">—</option>
@@ -1349,11 +1389,15 @@ export default function Arrendamentos() {
               </select>
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 2 }}>
-              {fC.produtor_id_2 && (
-                <div style={{ fontSize: 11, color: "#555", background: "#FBF3E0", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
-                  Contrato conjunto — um único lançamento por commodity, vinculado ao agricultor principal para o LCDPR.
+              {fC.produtor_id_2 ? (
+                <div style={{ fontSize: 11, color: "#7B4A00", background: "#FBF3E0", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
+                  Contrato conjunto — lançamento vinculado ao 1º IE explorador no LCDPR. O 2º produtor deve replicar em seu próprio LCDPR se necessário.
                 </div>
-              )}
+              ) : fC.locatario_nome && fC.produtor_id ? (
+                <div style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", borderRadius: 6, padding: "6px 10px", lineHeight: 1.4 }}>
+                  Contrato em nome de <strong>{fC.locatario_nome}</strong> — LCDPR declarado por <strong>{produtores.find(p=>p.id===fC.produtor_id)?.nome ?? "—"}</strong>
+                </div>
+              ) : null}
             </div>
 
             {/* Observação */}

@@ -6731,3 +6731,13 @@ ALTER TABLE funcionarios
   ADD COLUMN IF NOT EXISTS produtor_id     UUID REFERENCES produtores(id)    ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ─── Migration: locatario_id e locatario_nome em arrendamentos ─────────────────
+-- Separa a parte locatária no contrato (grupo econômico / empresa)
+-- do IE explorador (produtor físico responsável pelo LCDPR)
+ALTER TABLE arrendamentos
+  ADD COLUMN IF NOT EXISTS locatario_id   UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS locatario_nome TEXT;
+
+NOTIFY pgrst, 'reload schema';
