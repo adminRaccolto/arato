@@ -1027,25 +1027,36 @@ function ImportacaoInner() {
   async function handleFilePessoas(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarPessoa(r));
-    // Duplicados dentro do arquivo
-    const cpfs = rows.map(r => r.cpf_cnpj?.replace(/\D/g, "")).filter(Boolean);
-    rows.forEach((r, i) => {
+
+    // Duplicados dentro do arquivo — usa Set para evitar bug de índice com filter(Boolean)
+    const cpfVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.cpf_cnpj) {
         const cpf = r.cpf_cnpj.replace(/\D/g, "");
-        if (cpf && cpfs.indexOf(cpf) !== i) r._status = "duplicado";
+        if (!cpf) return;
+        if (cpfVisto.has(cpf)) { r._status = "duplicado"; r._msg = "CPF/CNPJ duplicado no arquivo"; }
+        else cpfVisto.add(cpf);
       }
     });
+
     // Duplicados já existentes no banco
     if (fazendaId) {
       const { data: existentes } = await supabase
         .from("pessoas").select("cpf_cnpj").eq("fazenda_id", fazendaId);
-      const cpfsExistentes = new Set((existentes ?? []).map((p: { cpf_cnpj: string | null }) => (p.cpf_cnpj ?? "").replace(/\D/g, "")).filter(Boolean));
+      const cpfsExistentes = new Set(
+        (existentes ?? [])
+          .map((p: { cpf_cnpj: string | null }) => (p.cpf_cnpj ?? "").replace(/\D/g, ""))
+          .filter(Boolean)
+      );
       rows.forEach(r => {
         if (r._status === "ok" && r.cpf_cnpj) {
-          if (cpfsExistentes.has(r.cpf_cnpj.replace(/\D/g, ""))) r._status = "duplicado";
+          if (cpfsExistentes.has(r.cpf_cnpj.replace(/\D/g, ""))) {
+            r._status = "duplicado"; r._msg = "CPF/CNPJ já cadastrado";
+          }
         }
       });
     }
+
     setPessoasRows(rows); setResultPessoas(null);
   }
 
@@ -1103,11 +1114,13 @@ function ImportacaoInner() {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarInsumo(r));
     // Duplicados dentro do arquivo
-    const nomes = rows.map(r => r.nome?.toLowerCase().trim()).filter(Boolean);
-    rows.forEach((r, i) => {
+    const nomesVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.nome) {
         const n = r.nome.toLowerCase().trim();
-        if (n && nomes.indexOf(n) !== i) r._status = "duplicado";
+        if (!n) return;
+        if (nomesVisto.has(n)) r._status = "duplicado";
+        else nomesVisto.add(n);
       }
     });
     // Duplicados já existentes no banco
@@ -1128,11 +1141,13 @@ function ImportacaoInner() {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarProduto(r));
     // Duplicados dentro do arquivo
-    const nomes = rows.map(r => r.nome?.toLowerCase().trim()).filter(Boolean);
-    rows.forEach((r, i) => {
+    const nomesVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.nome) {
         const n = r.nome.toLowerCase().trim();
-        if (n && nomes.indexOf(n) !== i) r._status = "duplicado";
+        if (!n) return;
+        if (nomesVisto.has(n)) r._status = "duplicado";
+        else nomesVisto.add(n);
       }
     });
     // Duplicados já existentes no banco
@@ -1329,11 +1344,13 @@ function ImportacaoInner() {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarContratoFin(r));
     // Duplicados dentro do arquivo
-    const nrs = rows.map(r => r.numero_contrato?.trim().toLowerCase()).filter(Boolean);
-    rows.forEach((r, i) => {
+    const nrsVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.numero_contrato) {
         const n = r.numero_contrato.trim().toLowerCase();
-        if (n && nrs.indexOf(n) !== i) r._status = "duplicado";
+        if (!n) return;
+        if (nrsVisto.has(n)) r._status = "duplicado";
+        else nrsVisto.add(n);
       }
     });
     if (fazendaId) {
@@ -1627,11 +1644,13 @@ function ImportacaoInner() {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarMaquina(r));
     // Duplicados dentro do arquivo (por patrimônio)
-    const patrimonios = rows.map(r => r.patrimonio?.toLowerCase().trim()).filter(Boolean);
-    rows.forEach((r, i) => {
+    const patrimoniosVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.patrimonio) {
         const p = r.patrimonio.toLowerCase().trim();
-        if (p && patrimonios.indexOf(p) !== i) r._status = "duplicado";
+        if (!p) return;
+        if (patrimoniosVisto.has(p)) r._status = "duplicado";
+        else patrimoniosVisto.add(p);
       }
     });
     // Duplicados já existentes no banco
@@ -1755,11 +1774,13 @@ function ImportacaoInner() {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarContratoVenda(r));
     // Duplicados dentro do arquivo por número
-    const nums = rows.map(r => r.numero?.trim().toLowerCase()).filter(Boolean);
-    rows.forEach((r, i) => {
+    const numsVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.numero) {
         const n = r.numero.trim().toLowerCase();
-        if (n && nums.indexOf(n) !== i) { r._status = "duplicado"; r._msg = "número duplicado no arquivo"; }
+        if (!n) return;
+        if (numsVisto.has(n)) { r._status = "duplicado"; r._msg = "número duplicado no arquivo"; }
+        else numsVisto.add(n);
       }
     });
     if (fazendaId) {
@@ -1974,11 +1995,13 @@ function ImportacaoInner() {
   async function handleFileFazendasImp(file: File) {
     const raw = await parseXlsx(file);
     const rows = raw.map(r => validarFazendaImp(r));
-    const nomes = rows.map(r => r.nome?.trim().toLowerCase()).filter(Boolean);
-    rows.forEach((r, i) => {
+    const nomesVisto = new Set<string>();
+    rows.forEach(r => {
       if (r._status === "ok" && r.nome) {
         const n = r.nome.trim().toLowerCase();
-        if (n && nomes.indexOf(n) !== i) { r._status = "duplicado"; r._msg = "nome duplicado no arquivo"; }
+        if (!n) return;
+        if (nomesVisto.has(n)) { r._status = "duplicado"; r._msg = "nome duplicado no arquivo"; }
+        else nomesVisto.add(n);
       }
     });
     if (contaId) {
