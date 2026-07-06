@@ -6741,3 +6741,21 @@ ALTER TABLE arrendamentos
   ADD COLUMN IF NOT EXISTS locatario_nome TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: planos_config — preços dos planos SaaS (editável pelo admin) ──
+CREATE TABLE IF NOT EXISTS planos_config (
+  plano_id    text        PRIMARY KEY CHECK (plano_id IN ('essencial','gestao','performance')),
+  preco_mensal integer    NOT NULL CHECK (preco_mensal > 0),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+-- Sem RLS: leitura e escrita apenas via service_role_key (API admin)
+ALTER TABLE planos_config DISABLE ROW LEVEL SECURITY;
+
+-- Seed com os preços atuais (pode sobrescrever depois via admin)
+INSERT INTO planos_config (plano_id, preco_mensal) VALUES
+  ('essencial',   387),
+  ('gestao',     1197),
+  ('performance', 1787)
+ON CONFLICT (plano_id) DO NOTHING;
+
+NOTIFY pgrst, 'reload schema';

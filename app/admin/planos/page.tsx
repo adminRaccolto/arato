@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PLANOS_DEFAULT, fmtPreco } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
 import InputNumerico from "../../../components/InputNumerico";
@@ -57,15 +57,38 @@ export default function PlanosPage() {
     performance: PLANOS_DEFAULT.performance.preco_mensal,
   });
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<PlanoId | null>(null);
+  const [erroSave, setErroSave] = useState<string | null>(null);
+
+  // Carrega preços reais do banco ao montar
+  useEffect(() => {
+    fetch("/api/admin/planos")
+      .then(r => r.json())
+      .then((data: Record<PlanoId, number>) => setPrecos(data))
+      .catch(() => {/* mantém defaults */});
+  }, []);
 
   async function salvarPreco(planoId: PlanoId) {
     setSaving(true);
-    await new Promise(r => setTimeout(r, 600)); // simula save via DB
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    setEditPlano(null);
+    setErroSave(null);
+    try {
+      const res = await fetch("/api/admin/planos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plano_id: planoId, preco_mensal: precos[planoId] }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Erro ao salvar");
+      }
+      setSaved(planoId);
+      setTimeout(() => setSaved(null), 2500);
+      setEditPlano(null);
+    } catch (e: unknown) {
+      setErroSave(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -161,7 +184,7 @@ export default function PlanosPage() {
                         borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer",
                       }}
                     >
-                      {saving ? "Salvando…" : saved ? "✓ Salvo" : "Salvar"}
+                      {saving ? "Salvando…" : saved === pid ? "✓ Salvo" : "Salvar"}
                     </button>
                     <button
                       onClick={() => setEditPlano(null)}
@@ -188,6 +211,12 @@ export default function PlanosPage() {
                   </button>
                 )}
               </div>
+
+              {erroSave && editPlano === pid && (
+                <div style={{ marginTop: 8, fontSize: 11, color: "#E24B4A", background: "#FEF2F2", borderRadius: 6, padding: "6px 10px" }}>
+                  ⚠ {erroSave}
+                </div>
+              )}
 
               {/* Módulos inclusos */}
               <div style={{ marginTop: 16 }}>

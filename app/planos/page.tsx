@@ -1,6 +1,5 @@
-"use client";
 import Link from "next/link";
-import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
+import { PLANOS_DEFAULT, fmtPreco, fetchPlanosPrecos } from "../../lib/planos";
 import type { PlanoId } from "../../lib/planos";
 
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
@@ -11,7 +10,9 @@ const COR: Record<PlanoId, { borda: string; bg: string; badge: string; btn: stri
   performance: { borda: "#C9921B", bg: "#FEFCF5", badge: "#C9921B", btn: "#C9921B" },
 };
 
-export default function PlanosPage() {
+export default async function PlanosPage() {
+  const precos = await fetchPlanosPrecos();
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", background: "#F4F6FA", minHeight: "100vh" }}>
 
@@ -95,7 +96,7 @@ export default function PlanosPage() {
 
                 <div style={{ marginBottom: 4 }}>
                   <span style={{ fontSize: 36, fontWeight: 800, color: "#0B2D50" }}>
-                    {fmtPreco(p.preco_mensal)}
+                    {fmtPreco(precos[pid])}
                   </span>
                   <span style={{ fontSize: 13, color: "#888" }}>/mês</span>
                 </div>
