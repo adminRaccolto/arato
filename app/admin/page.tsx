@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../components/AuthProvider";
-import { listarContasAdmin, atualizarConta } from "../../lib/db";
+import { atualizarConta } from "../../lib/db";
 import type { Conta } from "../../lib/supabase";
 import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
 import InputNumerico from "../../components/InputNumerico";
@@ -24,9 +24,9 @@ const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string
 };
 
 const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {
-  essencial:   { label: "Essencial",   cor: "#555",    bg: "#F3F4F6", valor: 290  },
-  gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: 590  },
-  performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: 990  },
+  essencial:   { label: "Essencial",   cor: "#555",    bg: "#F3F4F6", valor: PLANOS_DEFAULT.essencial.preco_mensal   },
+  gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: PLANOS_DEFAULT.gestao.preco_mensal      },
+  performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: PLANOS_DEFAULT.performance.preco_mensal },
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -259,13 +259,30 @@ export default function AdminOverview() {
   const [filtroPacote,  setFiltroPacote]  = useState<PacoteCliente | "">("");
   const [busca,         setBusca]         = useState("");
 
+  // ── Preços dinâmicos (carregados do banco) ───────────────────────────────
+  const [precos, setPrecos] = useState<Record<PlanoId, number>>({
+    essencial:   PLANOS_DEFAULT.essencial.preco_mensal,
+    gestao:      PLANOS_DEFAULT.gestao.preco_mensal,
+    performance: PLANOS_DEFAULT.performance.preco_mensal,
+  });
+
   const carregar = useCallback(async () => {
     setLoading(true);
-    try { setClientes(await listarContasAdmin()); }
-    finally { setLoading(false); }
+    try {
+      const res = await fetch("/api/admin/listar-contas");
+      if (!res.ok) throw new Error("Erro ao carregar");
+      setClientes(await res.json());
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  useEffect(() => {
+    fetch("/api/admin/planos")
+      .then(r => r.json())
+      .then((data: Record<PlanoId, number>) => setPrecos(data))
+      .catch(() => {});
+  }, []);
 
   const clientesFiltrados = clientes.filter(c => {
     if (filtroStatus && c.status !== filtroStatus) return false;
@@ -594,9 +611,18 @@ export default function AdminOverview() {
       {/* ── PLANOS ── */}
       {aba === "planos" && (
         <div>
-          <div style={{ background: "#FFF9F0", border: "0.5px solid #C9921B50", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#7A5A12", marginBottom: 20 }}>
-            <strong>Atenção:</strong> Planos são definidos em <code>lib/planos.ts</code>.
-            Para alterar preços em produção, atualize diretamente a tabela <code>planos</code> no Supabase SQL Editor.
+          {/* Header com link para gestão completa */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div>
+              <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#0B1E35" }}>Planos & Preços</h2>
+              <p style={{ margin: 0, fontSize: 12, color: "#888" }}>Preços carregados do banco de dados em tempo real.</p>
+            </div>
+            <a href="/admin/planos" style={{
+              padding: "8px 16px", background: "#0B1E35", color: "#fff",
+              borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none",
+            }}>
+              ✎ Editar planos →
+            </a>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
             {ORDEM_PLANOS.map(pid => {
@@ -605,7 +631,7 @@ export default function AdminOverview() {
                 <div key={pid} style={{ background: "#fff", borderRadius: 12, border: pid === "gestao" ? "2px solid #0B1E35" : "0.5px solid #D4DCE8", padding: "20px 22px" }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35", marginBottom: 4 }}>{p.nome}</div>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>{p.descricao}</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: "#0B1E35", marginBottom: 4 }}>{fmtPreco(p.preco_mensal)}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span></div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: "#0B1E35", marginBottom: 4 }}>{fmtPreco(precos[pid])}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span></div>
                   <div style={{ fontSize: 11, color: "#666", marginBottom: 14 }}>Trial: {p.trial_dias}d · Usuários: {p.limite_usuarios ?? "∞"}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {p.modulos.map(m => (
@@ -650,11 +676,10 @@ export default function AdminOverview() {
             </table>
           </div>
 
-          <div style={{ marginTop: 20, background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "16px 20px" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35", marginBottom: 10 }}>SQL para atualizar preços no Supabase</div>
-            <pre style={{ fontSize: 11, background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", overflow: "auto", color: "#333", margin: 0, lineHeight: 1.6 }}>{`UPDATE planos SET preco_mensal = 290,  preco_anual = 2610  WHERE id = 'essencial';
-UPDATE planos SET preco_mensal = 590,  preco_anual = 5310  WHERE id = 'gestao';
-UPDATE planos SET preco_mensal = 990,  preco_anual = 8910  WHERE id = 'performance';`}</pre>
+          <div style={{ marginTop: 20, padding: "12px 16px", background: "#F0F7FF", borderRadius: 10, border: "0.5px solid #1A487040", fontSize: 12, color: "#0B2D50", display: "flex", alignItems: "center", gap: 10 }}>
+            <span>Para editar preços, clique em <strong>"Editar planos →"</strong> acima ou acesse</span>
+            <a href="/admin/planos" style={{ color: "#1A4870", fontWeight: 600 }}>/admin/planos</a>
+            <span>. Alterações são refletidas imediatamente no site público.</span>
           </div>
         </div>
       )}
