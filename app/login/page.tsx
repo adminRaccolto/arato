@@ -14,28 +14,11 @@ export default function Login() {
   const [erro,         setErro]         = useState<string | null>(null);
   const [sucesso,      setSucesso]      = useState<string | null>(null);
   const [carregando,   setCarregando]   = useState(false);
-  const [logoUrl,      setLogoUrl]      = useState("/logo_Arato_Nova.png");
-  const [logoRacUrl,   setLogoRacUrl]   = useState("/Logo_Raccolto.png");
-  const [bgUrl,        setBgUrl]        = useState(BG_FALLBACK);
-  const [logoAratoErr, setLogoAratoErr] = useState(false);
-  const [logoRacErr,   setLogoRacErr]   = useState(false);
-  const [senhaVis,     setSenhaVis]     = useState(false);
+  const [bgUrl,    setBgUrl]    = useState(BG_FALLBACK);
+  const [senhaVis, setSenhaVis] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Logos do Supabase Storage — atualizáveis sem deploy
-    const { data: dLogo } = supabase.storage.from("logos").getPublicUrl("Logo_Arato_Nova.png");
-    if (dLogo?.publicUrl) {
-      const img = new Image();
-      img.onload = () => setLogoUrl(dLogo.publicUrl);
-      img.src = dLogo.publicUrl;
-    }
-    const { data: dRac } = supabase.storage.from("logos").getPublicUrl("Logo_Raccolto.png");
-    if (dRac?.publicUrl) {
-      const img = new Image();
-      img.onload = () => setLogoRacUrl(dRac.publicUrl);
-      img.src = dRac.publicUrl;
-    }
     // Fundo customizado via Supabase Storage (opcional)
     const { data: dBg } = supabase.storage.from("logos").getPublicUrl("login-bg.jpg");
     if (dBg?.publicUrl) {
@@ -123,22 +106,11 @@ export default function Login() {
 
         {/* ── LOGO ARATO ── */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          {!logoAratoErr ? (
-            <img
-              src={logoUrl}
-              alt="Arato"
-              style={{ height: 112, width: "auto", objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 0 18px rgba(255,255,255,0.70)) drop-shadow(0 0 40px rgba(255,255,255,0.35)) drop-shadow(0 8px 24px rgba(255,255,255,0.20))" }}
-              onError={() => setLogoAratoErr(true)}
-            />
-          ) : (
-            <div style={{
-              height: 112, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 46, fontWeight: 900, color: "#fff", letterSpacing: "-2px", marginBottom: 14,
-              textShadow: "0 2px 12px rgba(0,0,0,0.3)",
-            }}>
-              Arato
-            </div>
-          )}
+          <img
+            src="/logo_Arato_Nova.png"
+            alt="Arato"
+            style={{ height: 112, width: "auto", objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 0 18px rgba(255,255,255,0.70)) drop-shadow(0 0 40px rgba(255,255,255,0.35)) drop-shadow(0 8px 24px rgba(255,255,255,0.20))" }}
+          />
 
         </div>
 
@@ -312,16 +284,11 @@ export default function Login() {
         <div style={{ marginTop: 28, textAlign: "center" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>um produto</span>
-            {!logoRacErr ? (
-              <img
-                src={logoRacUrl}
-                alt="Raccolto"
-                style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55 }}
-                onError={() => setLogoRacErr(true)}
-              />
-            ) : (
-              <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.55)" }}>Raccolto</span>
-            )}
+            <img
+              src="/Logo_Raccolto.png"
+              alt="Raccolto"
+              style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55 }}
+            />
           </div>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>© 2026 Raccolto Consultoria · v1.0</span>
         </div>
