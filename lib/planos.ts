@@ -106,32 +106,14 @@ export function planoInclui(planoId: PlanoId | null | undefined, modulo: string)
   return PLANOS_DEFAULT[planoId]?.modulos.includes(modulo) ?? false;
 }
 
-// Busca preços salvos no banco (uso server-side apenas)
+// Preços definidos em PLANOS_DEFAULT (lib/planos.ts) — fonte de verdade única.
+// Para alterar, edite preco_mensal acima e faça deploy.
 export async function fetchPlanosPrecos(): Promise<Record<PlanoId, number>> {
-  try {
-    const { createClient } = await import("@supabase/supabase-js");
-    const sb = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-    const { data } = await sb.from("planos_config").select("plano_id, preco_mensal");
-    const overrides: Partial<Record<PlanoId, number>> = {};
-    (data ?? []).forEach((row: { plano_id: string; preco_mensal: number }) => {
-      overrides[row.plano_id as PlanoId] = row.preco_mensal;
-    });
-    return {
-      essencial:   overrides.essencial   ?? PLANOS_DEFAULT.essencial.preco_mensal,
-      gestao:      overrides.gestao      ?? PLANOS_DEFAULT.gestao.preco_mensal,
-      performance: overrides.performance ?? PLANOS_DEFAULT.performance.preco_mensal,
-    };
-  } catch {
-    return {
-      essencial:   PLANOS_DEFAULT.essencial.preco_mensal,
-      gestao:      PLANOS_DEFAULT.gestao.preco_mensal,
-      performance: PLANOS_DEFAULT.performance.preco_mensal,
-    };
-  }
+  return {
+    essencial:   PLANOS_DEFAULT.essencial.preco_mensal,
+    gestao:      PLANOS_DEFAULT.gestao.preco_mensal,
+    performance: PLANOS_DEFAULT.performance.preco_mensal,
+  };
 }
 
 export function fmtPreco(v: number): string {

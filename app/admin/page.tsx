@@ -259,12 +259,6 @@ export default function AdminOverview() {
   const [filtroPacote,  setFiltroPacote]  = useState<PacoteCliente | "">("");
   const [busca,         setBusca]         = useState("");
 
-  // ── Preços dinâmicos (carregados do banco) ───────────────────────────────
-  const [precos, setPrecos] = useState<Record<PlanoId, number>>({
-    essencial:   PLANOS_DEFAULT.essencial.preco_mensal,
-    gestao:      PLANOS_DEFAULT.gestao.preco_mensal,
-    performance: PLANOS_DEFAULT.performance.preco_mensal,
-  });
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -277,12 +271,6 @@ export default function AdminOverview() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  useEffect(() => {
-    fetch("/api/admin/planos")
-      .then(r => r.json())
-      .then((data: Record<PlanoId, number>) => setPrecos(data))
-      .catch(() => {});
-  }, []);
 
   const clientesFiltrados = clientes.filter(c => {
     if (filtroStatus && c.status !== filtroStatus) return false;
@@ -631,7 +619,7 @@ export default function AdminOverview() {
                 <div key={pid} style={{ background: "#fff", borderRadius: 12, border: pid === "gestao" ? "2px solid #0B1E35" : "0.5px solid #D4DCE8", padding: "20px 22px" }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35", marginBottom: 4 }}>{p.nome}</div>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>{p.descricao}</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: "#0B1E35", marginBottom: 4 }}>{fmtPreco(precos[pid])}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span></div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: "#0B1E35", marginBottom: 4 }}>{fmtPreco(p.preco_mensal)}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span></div>
                   <div style={{ fontSize: 11, color: "#666", marginBottom: 14 }}>Trial: {p.trial_dias}d · Usuários: {p.limite_usuarios ?? "∞"}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {p.modulos.map(m => (
