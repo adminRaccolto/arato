@@ -20,9 +20,12 @@ function mascaraCpfCnpj(v: string) {
 }
 
 function mascaraTelefone(v: string) {
-  const n = v.replace(/\D/g, "");
-  if (n.length <= 10) return n.replace(/(\d{2})(\d{4})(\d{1,4})/, "($1) $2-$3").replace(/(\d{2})(\d{1,4})/, "($1) $2");
-  return n.replace(/(\d{2})(\d{5})(\d{1,4})/, "($1) $2-$3").replace(/(\d{2})(\d{1,5})/, "($1) $2");
+  const n = v.replace(/\D/g, "").slice(0, 11);
+  if (n.length === 0)  return "";
+  if (n.length <= 2)   return `(${n}`;
+  if (n.length <= 6)   return `(${n.slice(0, 2)}) ${n.slice(2)}`;
+  if (n.length <= 10)  return `(${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
+  return `(${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`;
 }
 
 const UFS = ["AC","AL","AM","AP","BA","CE","DF","ES","GO","MA","MG","MS","MT","PA","PB","PE","PI","PR","RJ","RN","RO","RR","RS","SC","SE","SP","TO"];
@@ -107,7 +110,7 @@ function CadastroInner() {
         position: "sticky", top: 0, zIndex: 100,
       }}>
         <Link href="/planos">
-          <img src="/Logo_Arato.png" alt="Arato" style={{ height: 34, objectFit: "contain", cursor: "pointer" }} />
+          <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 34, objectFit: "contain", cursor: "pointer" }} />
         </Link>
         <Link href="/login" style={{ fontSize: 13, color: "#555", textDecoration: "none", padding: "7px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
           Já tenho conta

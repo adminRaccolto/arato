@@ -39,7 +39,7 @@ export default function AlterarSenha() {
       <div style={{ width: "100%", maxWidth: 400 }}>
 
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <img src="/Logo_Arato.png" alt="Arato" style={{ height: 38, marginBottom: 10 }} />
+          <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 38, marginBottom: 10 }} />
         </div>
 
         <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,0,0,0.09)", padding: "36px 40px" }}>

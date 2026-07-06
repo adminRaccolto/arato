@@ -3863,7 +3863,7 @@ export default function BI() {
 <div class="page-wrapper"><div class="page">
   <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:4px">
     <div style="display:flex;align-items:center;gap:12px">
-      <img src="/Logo_Arato.png" style="height:30px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
+      <img src="/logo_Arato_Nova.png" style="height:30px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
     </div>
     <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       ${logoCliente ? `<img src="${logoCliente}" style="height:28px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />` : (fazenda ? `<div style="font-size:13px;font-weight:700;color:#fff">${fazenda.nome}</div>` : "")}

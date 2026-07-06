@@ -64,7 +64,7 @@ export default function NovaSenha() {
           background: "#fff", padding: "32px 40px 24px",
           textAlign: "center", borderBottom: "0.5px solid #EEF1F6",
         }}>
-          <img src="/Logo_Arato.png" alt="Arato" style={{ height: 48, width: "auto", objectFit: "contain", marginBottom: 12 }} />
+          <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 48, width: "auto", objectFit: "contain", marginBottom: 12 }} />
           <div style={{ color: "#aaa", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
             Menos clique, mais gestão
           </div>

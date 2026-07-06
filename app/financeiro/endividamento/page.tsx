@@ -295,7 +295,7 @@ export default function RelatorioEndividamento() {
 </div>
 <div class="page-wrapper"><div class="page">
   <div style="background:#1A4870;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-radius:4px">
-    <img src="/Logo_Arato.png" style="height:28px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
+    <img src="/logo_Arato_Nova.png" style="height:28px;object-fit:contain;filter:brightness(0) invert(1)" onerror="this.style.display='none'" />
     <div style="text-align:right">
       ${logoCliente ? `<img src="${logoCliente}" style="height:24px;object-fit:contain;filter:brightness(0) invert(1);margin-bottom:3px" onerror="this.style.display='none'" /><br>` : ""}
       <span style="font-size:9px;color:rgba(255,255,255,.6)">Emitido em ${emissao}</span>

@@ -25,7 +25,7 @@ export default async function PlanosPage() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         position: "sticky", top: 0, zIndex: 100,
       }}>
-        <img src="/Logo_Arato.png" alt="Arato" style={{ height: 34, objectFit: "contain" }} />
+        <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 34, objectFit: "contain" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link href="/login" style={{ fontSize: 13, color: "#555", textDecoration: "none", padding: "7px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
             Já tenho conta

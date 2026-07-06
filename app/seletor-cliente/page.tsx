@@ -33,7 +33,7 @@ export default function SeletorCliente() {
   const [clientes,  setClientes]  = useState<ClienteItem[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [busca,     setBusca]     = useState("");
-  const [logoUrl,   setLogoUrl]   = useState("/Logo_Arato.png");
+  const [logoUrl,   setLogoUrl]   = useState("/logo_Arato_Nova.png");
 
   useEffect(() => {
     const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");

@@ -129,7 +129,7 @@ function PagamentoInner() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src="/Logo_Arato.png" alt="Arato" style={{ height: 28, filter: "brightness(0) invert(1)", objectFit: "contain" }}
+          <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 28, filter: "brightness(0) invert(1)", objectFit: "contain" }}
             onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
         </div>
         <a href="/" style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, textDecoration: "none" }}>

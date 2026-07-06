@@ -20,7 +20,7 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
       <div style={{ background: "#1A4870", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/Logo_Arato.png" alt="Arato" style={{ height: 32, width: "auto", objectFit: "contain" }} />
+          <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 32, width: "auto", objectFit: "contain" }} />
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1 }}>arato</div>
             <div style={{ fontSize: 10, color: "#B0C8E0", marginTop: 2 }}>operações rurais</div>
