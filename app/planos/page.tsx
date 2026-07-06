@@ -2,6 +2,8 @@ import Link from "next/link";
 import { PLANOS_DEFAULT, fmtPreco, fetchPlanosPrecos } from "../../lib/planos";
 import type { PlanoId } from "../../lib/planos";
 
+export const dynamic = "force-dynamic"; // sempre busca preços atuais do banco
+
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR: Record<PlanoId, { borda: string; bg: string; badge: string; btn: string }> = {
