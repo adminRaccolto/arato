@@ -49,6 +49,13 @@ export async function POST(req: Request) {
   const supabase = adminClient();
   const path = `${fazendaId}/${produtorId ?? "geral"}/${file.name}`;
 
+  // Garante que o bucket existe (cria se necessário — privado)
+  const { error: bucketErr } = await supabase.storage.createBucket("certificados", { public: false });
+  // Ignora erro de bucket já existente (código "Duplicate")
+  if (bucketErr && !bucketErr.message.toLowerCase().includes("already") && !bucketErr.message.toLowerCase().includes("duplicate")) {
+    return NextResponse.json({ error: "Bucket: " + bucketErr.message }, { status: 500 });
+  }
+
   const { error: storageErr } = await supabase.storage
     .from("certificados")
     .upload(path, Buffer.from(buffer), { upsert: true, contentType: "application/x-pkcs12" });
