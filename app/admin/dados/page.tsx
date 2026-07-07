@@ -152,15 +152,15 @@ export default function DadosAdminPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
-      const contasDB: { id: string; nome: string; tipo: string }[] = json.contas ?? [];
-      const fazendasDB: { id: string; nome: string; municipio: string; estado: string; conta_id: string }[] = json.fazendas ?? [];
-      const fazPorConta: Record<string, ContaInfo["fazendas"]> = {};
-      for (const f of fazendasDB) {
-        if (!f.conta_id) continue;
-        if (!fazPorConta[f.conta_id]) fazPorConta[f.conta_id] = [];
-        fazPorConta[f.conta_id].push({ id: f.id, nome: f.nome, municipio: f.municipio, estado: f.estado });
-      }
-      setContas(contasDB.map(c => ({ id: c.id, nome: c.nome, tipo: c.tipo, fazendas: fazPorConta[c.id] ?? [] })));
+      // listar-contas retorna array direto; cada item tem fazendas embutidas via select("*, fazendas(id, nome, municipio, estado)")
+      type ContaRaw = { id: string; nome: string; tipo?: string; fazendas?: { id: string; nome: string; municipio: string; estado: string }[] };
+      const contasDB: ContaRaw[] = Array.isArray(json) ? json : (json.contas ?? []);
+      setContas(contasDB.map(c => ({
+        id: c.id,
+        nome: c.nome,
+        tipo: c.tipo ?? "pf",
+        fazendas: (c.fazendas ?? []).map(f => ({ id: f.id, nome: f.nome, municipio: f.municipio ?? "", estado: f.estado ?? "" })),
+      })));
     } catch (e) {
       console.error("Erro ao carregar contas:", e);
     } finally {

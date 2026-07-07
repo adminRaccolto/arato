@@ -34,15 +34,15 @@ export async function GET() {
   // Lê todas as contas com contagem de fazendas — service_role ignora RLS
   const { data: contas, error } = await admin
     .from("contas")
-    .select("*, fazendas(id)")
+    .select("*, fazendas(id, nome, municipio, estado, conta_id)")
     .order("nome");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const result = (contas ?? []).map((c: Record<string, unknown> & { fazendas?: { id: string }[] }) => ({
+  const result = (contas ?? []).map((c: Record<string, unknown> & { fazendas?: { id: string; nome: string; municipio: string; estado: string; conta_id: string }[] }) => ({
     ...c,
     fazendas_count: Array.isArray(c.fazendas) ? c.fazendas.length : 0,
-    fazendas: undefined,
+    // mantém fazendas no response para uso em admin/dados
   }));
 
   return NextResponse.json(result);
