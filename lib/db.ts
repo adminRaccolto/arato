@@ -629,18 +629,33 @@ export async function encerrarContratosPorSafras(
   if (anosSafraIds.length === 0) return 0;
   const { data: antes } = await supabase
     .from("contratos")
-    .select("id")
+    .select("id, numero, dado_em_cessao")
     .eq("fazenda_id", fazendaId)
     .in("ano_safra_id", anosSafraIds)
     .in("status", ["aberto", "parcial"]);
   const count = antes?.length ?? 0;
   if (count === 0) return 0;
-  const ids = antes!.map(r => r.id as string);
+  const ids = (antes as { id: string; numero: string; dado_em_cessao?: boolean }[]).map(r => r.id);
   const { error } = await supabase
     .from("contratos")
     .update({ status: "encerrado" })
     .in("id", ids);
   if (error) throw error;
+
+  // Baixa automática dos CPs vinculados a contratos de cessão de crédito
+  const today = new Date().toISOString().split("T")[0];
+  for (const c of (antes as { id: string; numero: string; dado_em_cessao?: boolean }[])) {
+    if (!c.dado_em_cessao) continue;
+    const debs = await listarCessaoDebitos(c.id);
+    for (const d of debs) {
+      try {
+        await baixarLancamento(d.lancamento_id, d.valor_cessao, today, "cessao", {
+          observacao: `Baixa automática por cessão de crédito — Contrato ${c.numero}`,
+        });
+      } catch { /* ignora falhas individuais */ }
+    }
+  }
+
   return count;
 }
 

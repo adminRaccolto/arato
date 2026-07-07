@@ -9,6 +9,7 @@ import {
   listarCessaoDebitos, salvarCessaoDebitos,
   listarPessoas, listarProdutores, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
   encerrarAnoSafra, reabrirAnoSafra,
+  baixarLancamento,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import InputNumerico from "../../components/InputNumerico";
@@ -1184,7 +1185,25 @@ export default function Contratos() {
                                     <button style={{ padding:"3px 9px", border:"0.5px solid #D4DCE8", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c)}>Editar</button>
                                     {c.status !== "encerrado" && c.status !== "cancelado" && (
                                       <button style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
-                                        onClick={async () => { if (confirm(`Encerrar contrato ${c.numero}?`)) { await atualizarContrato(c.id, { status: "encerrado" }); await atualizarContrato(c.id, { status: "encerrado" }); await carregarTudo(); } }}>
+                                        onClick={async () => {
+                                          // Se for cessão, avisa sobre a liquidação automática dos CPs
+                                          const debs = (c as {dado_em_cessao?:boolean}).dado_em_cessao
+                                            ? await listarCessaoDebitos(c.id) : [];
+                                          const msg = debs.length > 0
+                                            ? `Encerrar contrato ${c.numero}?\n\nIsso também vai liquidar automaticamente ${debs.length} CP(s) vinculado(s) à cessão de crédito (total: R$ ${debs.reduce((s,d)=>s+d.valor_cessao,0).toLocaleString("pt-BR",{minimumFractionDigits:2})}).`
+                                            : `Encerrar contrato ${c.numero}?`;
+                                          if (!confirm(msg)) return;
+                                          await atualizarContrato(c.id, { status: "encerrado" });
+                                          // Baixa automática dos CPs vinculados à cessão
+                                          for (const d of debs) {
+                                            try {
+                                              await baixarLancamento(d.lancamento_id, d.valor_cessao, TODAY, "cessao", {
+                                                observacao: `Baixa automática por cessão de crédito — Contrato ${c.numero}`,
+                                              });
+                                            } catch { /* não bloqueia o encerramento se uma baixa falhar */ }
+                                          }
+                                          await carregarTudo();
+                                        }}>
                                         Encerrar
                                       </button>
                                     )}
