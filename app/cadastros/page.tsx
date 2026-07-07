@@ -361,7 +361,7 @@ function CadastrosInner() {
   const [bancos, setBancos]           = useState<Banco[]>([]);
   const [modalConta, setModalConta]   = useState(false);
   const [editConta, setEditConta]     = useState<ContaBancaria | null>(null);
-  const [fConta, setFConta]           = useState({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: "" });
+  const [fConta, setFConta]           = useState({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL" as "BRL"|"USD", ativa: true, empresa_id: "", tipo_conta: "corrente" as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: "", titular_produtor_id: "", conjunta: false, cotitulares: [] as { nome: string; cpf: string; produtor_id?: string }[] });
 
   // ── Insumos ──
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
@@ -4516,7 +4516,7 @@ function CadastrosInner() {
                   <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Contas Bancárias <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({contas.filter(c => c.ativa).length} ativas)</span></div>
                   <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Contas utilizadas no Fluxo de Caixa, CP/CR e LCDPR</div>
                 </div>
-                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "" }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>+ Nova Conta</button>
+                <button style={btnV} onClick={() => { setEditConta(null); setFConta({ nome: "", banco_id: "", banco: "", agencia: "", agencia_dv: "", conta: "", conta_dv: "", moeda: "BRL", ativa: true, empresa_id: "", tipo_conta: "corrente", saldo_inicial: "", titular_produtor_id: "", conjunta: false, cotitulares: [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>+ Nova Conta</button>
               </div>
               {contas.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 0", color: "#888", fontSize: 13 }}>Nenhuma conta bancária cadastrada</div>
@@ -4541,7 +4541,21 @@ function CadastrosInner() {
                         const tp = tipoCor[c.tipo_conta ?? "corrente"] ?? tipoCor.corrente;
                         return (
                         <tr key={c.id} style={{ borderBottom: i < contas.length - 1 ? "0.5px solid #EEF1F7" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                          <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1a1a1a" }}>{c.nome}</td>
+                          <td style={{ padding: "10px 14px" }}>
+                            <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.nome}</div>
+                            {(() => {
+                              const tit = produtores.find(p => p.id === c.produtor_id);
+                              if (!tit) return null;
+                              const doc = (tit.cpf_cnpj ?? "").replace(/\D/g, "");
+                              const docFmt = doc.length === 11 ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+                              return (
+                                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                                  {tit.nome}{doc ? <span style={{ marginLeft: 6, fontFamily: "monospace", color: "#378ADD" }}>{docFmt}</span> : null}
+                                  {c.conjunta && <span style={{ marginLeft: 6, background: "#FBF3E0", color: "#C9921B", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Conjunta</span>}
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td style={{ padding: "10px 14px" }}>
                             <span style={{ background: tp.bg, color: tp.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{tp.label}</span>
                           </td>
@@ -4566,7 +4580,7 @@ function CadastrosInner() {
                             <span style={{ background: c.ativa ? "#DCF5E8" : "#F4F6FA", color: c.ativa ? "#14532D" : "#888", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{c.ativa ? "Ativa" : "Inativa"}</span>
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco_id: c.banco_id ?? "", banco: c.banco ?? "", agencia: c.agencia ?? "", agencia_dv: c.agencia_dv ?? "", conta: c.conta ?? "", conta_dv: c.conta_dv ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? "") }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>Editar</button>
+                            <button style={btnX} onClick={() => { setEditConta(c); setFConta({ nome: c.nome, banco_id: c.banco_id ?? "", banco: c.banco ?? "", agencia: c.agencia ?? "", agencia_dv: c.agencia_dv ?? "", conta: c.conta ?? "", conta_dv: c.conta_dv ?? "", moeda: c.moeda, ativa: c.ativa, empresa_id: c.empresa_id ?? "", tipo_conta: (c.tipo_conta ?? "corrente") as "corrente"|"poupanca"|"investimento"|"caixa"|"transitoria", saldo_inicial: String(c.saldo_inicial ?? ""), titular_produtor_id: c.produtor_id ?? "", conjunta: c.conjunta ?? false, cotitulares: c.cotitulares ?? [] }); if (bancos.length === 0) listarBancos().then(setBancos).catch(() => {}); setModalConta(true); }}>Editar</button>
                             <button style={{ ...btnX, marginLeft: 6, color: "#E24B4A" }} onClick={async () => { if (!confirm("Excluir esta conta?")) return; await excluirConta(c.id); setContas(x => x.filter(r => r.id !== c.id)); }}>Excluir</button>
                           </td>
                         </tr>
@@ -5303,6 +5317,125 @@ function CadastrosInner() {
                   </div>
                 )}
 
+                {/* ── Titularidade ──────────────────────────────── */}
+                <div style={{ gridColumn: "1 / -1", background: "#F8FAFD", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>Titularidade</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label style={lbl}>Titular Principal (Produtor) *</label>
+                      <select style={inp} value={fConta.titular_produtor_id} onChange={e => setFConta(p => ({ ...p, titular_produtor_id: e.target.value }))}>
+                        <option value="">— Selecione o titular —</option>
+                        {produtores.map(p => {
+                          const doc = (p.cpf_cnpj ?? "").replace(/\D/g, "");
+                          const docFmt = doc.length === 11
+                            ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+                            : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+                          return <option key={p.id} value={p.id}>{p.nome}{doc ? ` — ${docFmt}` : ""}</option>;
+                        })}
+                      </select>
+                      {fConta.titular_produtor_id && (() => {
+                        const prod = produtores.find(p => p.id === fConta.titular_produtor_id);
+                        const doc = (prod?.cpf_cnpj ?? "").replace(/\D/g, "");
+                        return doc ? (
+                          <div style={{ marginTop: 6, fontSize: 11, color: "#378ADD" }}>
+                            CPF/CNPJ: <strong style={{ fontFamily: "monospace" }}>{doc.length === 11 ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}</strong>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    {/* Conta Conjunta */}
+                    <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 8 }}>
+                      <input type="checkbox" id="contaConjunta" checked={fConta.conjunta}
+                        onChange={e => setFConta(p => ({ ...p, conjunta: e.target.checked, cotitulares: e.target.checked ? p.cotitulares : [] }))} />
+                      <label htmlFor="contaConjunta" style={{ fontSize: 13, cursor: "pointer", color: "#1a1a1a" }}>Conta conjunta (mais de um titular)</label>
+                    </div>
+
+                    {/* Co-titulares */}
+                    {fConta.conjunta && (
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Co-titulares</div>
+
+                        {/* Adicionar co-titular a partir dos produtores */}
+                        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                          <select style={{ ...inp, flex: 1 }} defaultValue=""
+                            onChange={e => {
+                              const pid = e.target.value;
+                              if (!pid) return;
+                              const prod = produtores.find(p => p.id === pid);
+                              if (!prod) return;
+                              if (fConta.cotitulares.some(c => c.produtor_id === pid)) return;
+                              const doc = (prod.cpf_cnpj ?? "").replace(/\D/g, "");
+                              setFConta(p => ({ ...p, cotitulares: [...p.cotitulares, { nome: prod.nome, cpf: doc, produtor_id: pid }] }));
+                              e.target.value = "";
+                            }}>
+                            <option value="">+ Adicionar produtor cadastrado…</option>
+                            {produtores
+                              .filter(p => p.id !== fConta.titular_produtor_id && !fConta.cotitulares.some(c => c.produtor_id === p.id))
+                              .map(p => {
+                                const doc = (p.cpf_cnpj ?? "").replace(/\D/g, "");
+                                const docFmt = doc.length === 11 ? doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : doc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+                                return <option key={p.id} value={p.id}>{p.nome}{doc ? ` — ${docFmt}` : ""}</option>;
+                              })}
+                          </select>
+                        </div>
+
+                        {/* Lista de co-titulares */}
+                        {fConta.cotitulares.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                            {fConta.cotitulares.map((ct, idx) => {
+                              const cpfFmt = ct.cpf.length === 11 ? ct.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : ct.cpf.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+                              return (
+                                <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, background: "#EFF6FF", border: "0.5px solid #378ADD", borderRadius: 6, padding: "6px 10px" }}>
+                                  <div style={{ flex: 1 }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13, color: "#0B2D50" }}>{ct.nome}</span>
+                                    {ct.cpf && <span style={{ marginLeft: 8, fontSize: 11, color: "#555", fontFamily: "monospace" }}>{cpfFmt}</span>}
+                                    {ct.produtor_id && <span style={{ marginLeft: 6, fontSize: 10, background: "#D5E8F5", color: "#1A4870", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Cadastrado</span>}
+                                  </div>
+                                  <button onClick={() => setFConta(p => ({ ...p, cotitulares: p.cotitulares.filter((_, i) => i !== idx) }))}
+                                    style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Co-titular externo (não cadastrado) */}
+                        {(() => {
+                          type ExtState = { nome: string; cpf: string };
+                          return null; // campo inline abaixo
+                        })()}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end" }}>
+                          <div>
+                            <label style={{ ...lbl, fontSize: 10 }}>Nome (externo)</label>
+                            <input style={inp} placeholder="Nome completo"
+                              id="coNome" />
+                          </div>
+                          <div>
+                            <label style={{ ...lbl, fontSize: 10 }}>CPF/CNPJ (externo)</label>
+                            <input style={{ ...inp, fontFamily: "monospace" }} placeholder="000.000.000-00"
+                              id="coCpf" />
+                          </div>
+                          <button style={{ ...btnV, padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }}
+                            onClick={() => {
+                              const nomeEl = document.getElementById("coNome") as HTMLInputElement | null;
+                              const cpfEl  = document.getElementById("coCpf")  as HTMLInputElement | null;
+                              const nome = nomeEl?.value.trim() ?? "";
+                              const cpf  = (cpfEl?.value ?? "").replace(/\D/g, "");
+                              if (!nome) return;
+                              setFConta(p => ({ ...p, cotitulares: [...p.cotitulares, { nome, cpf }] }));
+                              if (nomeEl) nomeEl.value = "";
+                              if (cpfEl)  cpfEl.value  = "";
+                            }}>
+                            + Adicionar
+                          </button>
+                        </div>
+                        <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>Use este campo para titulares que não estão cadastrados como produtores no sistema.</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Banco select */}
                 <div style={{ gridColumn: "1 / 3" }}>
                   <label style={lbl}>Banco *</label>
@@ -5416,6 +5549,9 @@ function CadastrosInner() {
                     ativa: fConta.ativa,
                     tipo_conta: fConta.tipo_conta,
                     saldo_inicial: isNaN(saldoIni) ? 0 : saldoIni,
+                    produtor_id: fConta.titular_produtor_id || null,
+                    conjunta: fConta.conjunta,
+                    cotitulares: fConta.conjunta && fConta.cotitulares.length > 0 ? fConta.cotitulares : undefined,
                   };
                   if (editConta) {
                     await atualizarContaBancaria(editConta.id, payload);

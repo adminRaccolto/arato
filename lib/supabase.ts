@@ -849,7 +849,9 @@ export type ContaBancaria = {
   ativa: boolean;
   tipo_conta: "corrente" | "poupanca" | "investimento" | "caixa" | "transitoria";
   saldo_inicial?: number;
-  produtor_id?: string | null;  // FK produtores — conta pertence a este produtor (LCDPR)
+  produtor_id?: string | null;  // FK produtores — titular principal da conta (LCDPR)
+  conjunta?: boolean;            // conta conjunta com mais de um titular
+  cotitulares?: { nome: string; cpf: string; produtor_id?: string }[];
   created_at?: string;
 };
 

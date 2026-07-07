@@ -6889,3 +6889,19 @@ CREATE POLICY "culturas_fazenda" ON culturas
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Contas Bancárias — Titularidade ─────────────────────────────────────────
+-- Adiciona titular principal (FK produtores), flag conta conjunta e co-titulares
+ALTER TABLE contas_bancarias
+  ADD COLUMN IF NOT EXISTS conjunta     boolean      NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS cotitulares  jsonb        NULL;
+
+-- produtor_id já existe como FK mas agora tem semântica de "titular principal"
+-- Apenas garante que o índice existe caso a coluna tenha sido criada sem ele
+CREATE INDEX IF NOT EXISTS idx_contas_bancarias_produtor_id ON contas_bancarias(produtor_id);
+
+COMMENT ON COLUMN contas_bancarias.produtor_id  IS 'Titular principal — FK produtores (CPF do correntista para LCDPR)';
+COMMENT ON COLUMN contas_bancarias.conjunta     IS 'Conta conjunta com mais de um titular';
+COMMENT ON COLUMN contas_bancarias.cotitulares  IS 'Co-titulares adicionais: [{nome, cpf, produtor_id?}]';
+
+NOTIFY pgrst, 'reload schema';
