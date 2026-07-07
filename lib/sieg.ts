@@ -202,6 +202,30 @@ export function parseNFeXml(xml: string): NFeParseResult | null {
   }
 }
 
+// ─── Retry com backoff ───────────────────────────────────────────────────────
+
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+/** Faz fetch com retry automático em caso de 429 (Too Many Requests). */
+async function fetchComRetry(
+  url: string,
+  init: RequestInit,
+  maxTentativas = 4,
+): Promise<Response> {
+  const delays = [2000, 5000, 10000, 20000]; // backoff: 2s, 5s, 10s, 20s
+  let lastErr: Error | null = null;
+  for (let t = 0; t < maxTentativas; t++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) return res;
+    const retryAfter = Number(res.headers.get("Retry-After") ?? 0);
+    const wait = retryAfter > 0 ? retryAfter * 1000 : (delays[t] ?? 20000);
+    console.warn(`[sieg] 429 Too Many Requests — aguardando ${wait}ms antes da tentativa ${t + 2}/${maxTentativas}`);
+    await sleep(wait);
+    lastErr = new Error(`SIEG 429 após ${maxTentativas} tentativas`);
+  }
+  throw lastErr ?? new Error("SIEG 429 Too Many Requests");
+}
+
 // ─── Busca paginada de XMLs (API v1) ─────────────────────────────────────────
 // A API v1 do SIEG retorna os XMLs em um arquivo ZIP (magic "PK") ou em JSON
 // dependendo da versão. Detectamos o formato pelo primeiro byte da resposta.
@@ -218,7 +242,7 @@ export async function baixarXmlsSieg(
   for (let page = 0; page < 100; page++) {   // limite: 5.000 docs
     const body = { ...params, Take: take, Skip: skip, BaixarEventos: false };
 
-    const res = await fetch(`${SIEG_BASE}/baixar-xmls`, {
+    const res = await fetchComRetry(`${SIEG_BASE}/baixar-xmls`, {
       method:  "POST",
       headers: authHeaders(creds, jwt),
       body:    JSON.stringify(body),
@@ -270,6 +294,8 @@ export async function baixarXmlsSieg(
     }
 
     skip += take;
+    // Pausa mínima entre páginas para respeitar rate limit da API SIEG
+    if (skip > 0) await sleep(300);
   }
 
   return xmls;
