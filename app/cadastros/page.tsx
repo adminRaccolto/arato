@@ -6909,7 +6909,11 @@ function CadastrosInner() {
                           <td style={{ padding: "7px 12px", textAlign: "center" }}>
                             <input type="checkbox" checked={marcado} disabled={disponivel === 0}
                               onChange={e => setCicloTalhoes(p => {
-                                if (e.target.checked) return { ...p, [t.id]: String(disponivel) };
+                                if (e.target.checked) {
+                                  // Usa área plantada do talhão (se informada), caso contrário área total — mas nunca excede o disponível
+                                  const areaDefault = Math.min(t.area_plantada_ha ?? t.area_ha, disponivel);
+                                  return { ...p, [t.id]: String(areaDefault) };
+                                }
                                 const n = { ...p }; delete n[t.id]; return n;
                               })} />
                           </td>
