@@ -523,6 +523,25 @@ export default function ClientesPage() {
     }
   }
 
+  async function liberarOnboarding(c: ClienteAdmin) {
+    if (!window.confirm(`Liberar acesso de "${c.nome}"?\n\nO onboarding será desativado e o cliente poderá acessar o sistema conforme o perfil de usuário cadastrado.`)) return;
+    setAcaoLoading(c.id);
+    try {
+      const res = await fetch("/api/admin/liberar-onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conta_id: c.id }),
+      });
+      const json = await res.json();
+      if (!json.ok) { alert("Erro: " + (json.error ?? "desconhecido")); return; }
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, onboarding_ativo: false } : x));
+    } catch (e) {
+      alert("Erro de conexão: " + String(e));
+    } finally {
+      setAcaoLoading(null);
+    }
+  }
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
 
@@ -867,6 +886,17 @@ export default function ClientesPage() {
                               ✕ PB
                             </button>
                           )}
+                          {/* Liberar onboarding */}
+                          {c.onboarding_ativo && (
+                            <button
+                              style={{ ...btnSmall, color: "#16A34A", borderColor: "#16A34A60", background: "#F0FDF4" }}
+                              onClick={() => liberarOnboarding(c)}
+                              title="Liberar acesso — desativar onboarding"
+                              disabled={acaoLoading === c.id}
+                            >
+                              🔓
+                            </button>
+                          )}
                           {/* Editar */}
                           <button style={btnSmall} onClick={() => setModalEdit(c)} title="Editar dados">
                             ✎
@@ -904,7 +934,7 @@ export default function ClientesPage() {
 
       {/* Nota */}
       <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
-        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
+        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>🔓</strong> liberar onboarding · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
       </div>
     </div>
   );
