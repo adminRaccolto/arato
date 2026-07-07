@@ -6866,3 +6866,26 @@ CREATE POLICY talhao_cars_all ON talhao_cars FOR ALL
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Fix: RLS culturas — adiciona bypass raccotlo ────────────────────────────
+DROP POLICY IF EXISTS "culturas_fazenda" ON culturas;
+CREATE POLICY "culturas_fazenda" ON culturas
+  FOR ALL
+  USING (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  )
+  WITH CHECK (
+    fazenda_id IN (
+      SELECT f.id FROM fazendas f
+      JOIN perfis p ON p.conta_id = f.conta_id
+      WHERE p.user_id = auth.uid()
+    )
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';

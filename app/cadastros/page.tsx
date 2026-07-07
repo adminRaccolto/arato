@@ -645,15 +645,16 @@ function CadastrosInner() {
         .then(async ({ data, error }) => {
           if (error) return;
           if (!data || data.length === 0) {
-            // Auto-seed: insere as culturas padrão na primeira abertura
-            await supabase.from("culturas").insert([
-              { fazenda_id: fazendaId, nome: "Soja",               categoria: "graos", unidade: "sc", ncm: "1201.10.00", ordem: 1 },
-              { fazenda_id: fazendaId, nome: "Milho 1ª",            categoria: "graos", unidade: "sc", ncm: "1005.90.10", ordem: 2 },
-              { fazenda_id: fazendaId, nome: "Milho 2ª (Safrinha)", categoria: "graos", unidade: "sc", ncm: "1005.90.10", ordem: 3 },
-              { fazenda_id: fazendaId, nome: "Algodão",             categoria: "fibra", unidade: "@",  ncm: "5201.00.10", ordem: 4 },
-            ]);
-            const { data: seeded } = await supabase.from("culturas").select("*").eq("fazenda_id", fazendaId).order("ordem").order("nome");
-            setCulturasList((seeded ?? []) as CulturaItem[]);
+            // Auto-seed via API route com service_role_key (bypass RLS para admin Raccotlo)
+            const res = await fetch("/api/culturas-seed", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fazenda_id: fazendaId }),
+            });
+            if (res.ok) {
+              const json = await res.json();
+              setCulturasList((json.culturas ?? []) as CulturaItem[]);
+            }
           } else {
             setCulturasList(data as CulturaItem[]);
           }
