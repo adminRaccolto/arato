@@ -136,9 +136,14 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
   // ── 5b. Vincular owner_user_id na fazenda ──
   await supabase.from("fazendas").update({ owner_user_id: authUserId }).eq("id", fazendaId);
 
-  // ── 6. Buscar grupo "Gerente" ──
-  const { data: grupo } = await supabase
-    .from("grupos_usuarios").select("id").ilike("nome", "gerente").single();
+  // ── 6. Buscar grupo "Gerente Geral" entre os grupos globais (fazenda_id = NULL)
+  //       ou qualquer grupo com "gerente" no nome já existente para esta fazenda
+  const { data: grupoGerente } = await supabase
+    .from("grupos_usuarios")
+    .select("id")
+    .ilike("nome", "%gerente%")
+    .or(`fazenda_id.is.null,fazenda_id.eq.${fazendaId}`)
+    .maybeSingle();
 
   // ── 7. Criar registro de usuário ──
   await supabase.from("usuarios").insert({
@@ -147,7 +152,7 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
     nome:         user_nome,
     email:        user_email,
     ativo:        true,
-    grupo_id:     grupo?.id ?? null,
+    grupo_id:     grupoGerente?.id ?? null,
   });
 
   // ── 8. Semear operações gerenciais padrão ──

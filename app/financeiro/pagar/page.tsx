@@ -8,6 +8,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
+import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
@@ -295,6 +296,11 @@ function ContasPagarInner() {
     { key: "obs",        label: "Observação" },
   ], []);
   const { col, toggle: toggleCol, visiveis: visCols } = useColunasGrid("cp_colunas", COLS_CP);
+  const { w: cw, startResize } = useColumnResize({
+    fornecedor: 280, operacao: 150, safra: 100, ciclo: 180,
+    vencimento: 90, valor: 110, dt_pgto: 85, valor_pago: 100,
+    moeda: 65, conta: 110, produtor: 110, origem: 90, obs: 160,
+  });
   const [fFornecedor, setFFornecedor] = useState("");
   const [fOperacao,   setFOperacao]   = useState("");
   const [fSafra,      setFSafra]      = useState("");
@@ -896,7 +902,7 @@ function ContasPagarInner() {
                     >
                       {/* Cabeçalhos */}
                       <tr style={{ background: "#F3F6F9" }}>
-                        <th style={thS(32)}>
+                        <th style={{ ...thS(32), width: 32 }}>
                           <input type="checkbox"
                             style={{ cursor: "pointer", accentColor: "#1A5CB8" }}
                             checked={filtrados.length > 0 && filtrados.every(l => selecionados.has(l.id))}
@@ -904,20 +910,20 @@ function ContasPagarInner() {
                             title="Selecionar todos"
                           />
                         </th>
-                        <th style={thS(150, "left")}>Fornecedor / Cliente</th>
-                        {col("operacao")   && <th style={thS(150, "left")}>Operação</th>}
-                        {col("safra")      && <th style={thS(100, "left")}>Safra</th>}
-                        {col("ciclo")      && <th style={thS(180, "left")}>Ciclo</th>}
-                        <th style={thS(85, "center")}>Vencimento ↑</th>
-                        <th style={thS(110, "right")}>Valor</th>
-                        {col("dt_pgto")    && <th style={thS(85, "center")}>Dt. Pgto</th>}
-                        {col("valor_pago") && <th style={thS(100, "right")}>Valor Pago</th>}
-                        {col("moeda")      && <th style={thS(65, "center")}>Moeda</th>}
-                        {col("conta")      && <th style={thS(110, "left")}>Conta</th>}
-                        {col("produtor")   && <th style={thS(110, "left")}>Produtor</th>}
-                        {col("origem")     && <th style={thS(90, "center")}>Origem</th>}
-                        {col("obs")        && <th style={thS(160, "left")}>Observação</th>}
-                        <th style={thS(70, "center")}></th>
+                        <th style={{ ...thS(cw("fornecedor"), "left"), width: cw("fornecedor"), position: "relative", userSelect: "none" }}>Fornecedor / Cliente<ResizeHandle onMouseDown={startResize("fornecedor")} /></th>
+                        {col("operacao")   && <th style={{ ...thS(cw("operacao"),   "left"),   width: cw("operacao"),   position: "relative", userSelect: "none" }}>Operação  <ResizeHandle onMouseDown={startResize("operacao")}   /></th>}
+                        {col("safra")      && <th style={{ ...thS(cw("safra"),      "left"),   width: cw("safra"),      position: "relative", userSelect: "none" }}>Safra     <ResizeHandle onMouseDown={startResize("safra")}      /></th>}
+                        {col("ciclo")      && <th style={{ ...thS(cw("ciclo"),      "left"),   width: cw("ciclo"),      position: "relative", userSelect: "none" }}>Ciclo     <ResizeHandle onMouseDown={startResize("ciclo")}      /></th>}
+                        <th style={{ ...thS(cw("vencimento"), "center"), width: cw("vencimento"), position: "relative", userSelect: "none" }}>Vencimento ↑<ResizeHandle onMouseDown={startResize("vencimento")} /></th>
+                        <th style={{ ...thS(cw("valor"),      "right"),  width: cw("valor"),      position: "relative", userSelect: "none" }}>Valor       <ResizeHandle onMouseDown={startResize("valor")}      /></th>
+                        {col("dt_pgto")    && <th style={{ ...thS(cw("dt_pgto"),    "center"), width: cw("dt_pgto"),    position: "relative", userSelect: "none" }}>Dt. Pgto  <ResizeHandle onMouseDown={startResize("dt_pgto")}    /></th>}
+                        {col("valor_pago") && <th style={{ ...thS(cw("valor_pago"), "right"),  width: cw("valor_pago"), position: "relative", userSelect: "none" }}>Valor Pago<ResizeHandle onMouseDown={startResize("valor_pago")} /></th>}
+                        {col("moeda")      && <th style={{ ...thS(cw("moeda"),      "center"), width: cw("moeda"),      position: "relative", userSelect: "none" }}>Moeda     <ResizeHandle onMouseDown={startResize("moeda")}      /></th>}
+                        {col("conta")      && <th style={{ ...thS(cw("conta"),      "left"),   width: cw("conta"),      position: "relative", userSelect: "none" }}>Conta     <ResizeHandle onMouseDown={startResize("conta")}      /></th>}
+                        {col("produtor")   && <th style={{ ...thS(cw("produtor"),   "left"),   width: cw("produtor"),   position: "relative", userSelect: "none" }}>Produtor  <ResizeHandle onMouseDown={startResize("produtor")}   /></th>}
+                        {col("origem")     && <th style={{ ...thS(cw("origem"),     "center"), width: cw("origem"),     position: "relative", userSelect: "none" }}>Origem    <ResizeHandle onMouseDown={startResize("origem")}     /></th>}
+                        {col("obs")        && <th style={{ ...thS(cw("obs"),    "left"),   width: cw("obs"),    position: "relative", userSelect: "none" }}>Observação <ResizeHandle onMouseDown={startResize("obs")}      /></th>}
+                        <th style={{ ...thS(70, "center"), width: 70 }}></th>
                       </tr>
                       {/* Linha de filtros */}
                       <tr style={{ background: "#FAFBFC", borderBottom: "0.5px solid #D4DCE8" }}>
