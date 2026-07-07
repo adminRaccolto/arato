@@ -524,7 +524,7 @@ export default function ClientesPage() {
   }
 
   async function liberarOnboarding(c: ClienteAdmin) {
-    if (!window.confirm(`Liberar acesso de "${c.nome}"?\n\nO onboarding será desativado e o cliente poderá acessar o sistema conforme o perfil de usuário cadastrado.`)) return;
+    if (!window.confirm(`Liberar acesso de "${c.nome}"?\n\nIsso vai:\n• Desbloquear todos os usuários desta conta\n• Remover qualquer restrição de onboarding\n• Reativar conta se estiver cancelada`)) return;
     setAcaoLoading(c.id);
     try {
       const res = await fetch("/api/admin/liberar-onboarding", {
@@ -886,12 +886,12 @@ export default function ClientesPage() {
                               ✕ PB
                             </button>
                           )}
-                          {/* Liberar onboarding */}
-                          {c.onboarding_ativo && (
+                          {/* Liberar acesso — sempre visível; desbloqueia usuários banidos e remove onboarding */}
+                          {!c._sem_conta && (
                             <button
                               style={{ ...btnSmall, color: "#16A34A", borderColor: "#16A34A60", background: "#F0FDF4" }}
                               onClick={() => liberarOnboarding(c)}
-                              title="Liberar acesso — desativar onboarding"
+                              title="Liberar acesso — desbloqueia usuários e remove restrições"
                               disabled={acaoLoading === c.id}
                             >
                               🔓

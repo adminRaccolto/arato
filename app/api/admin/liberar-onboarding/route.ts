@@ -1,7 +1,9 @@
 /**
  * POST /api/admin/liberar-onboarding
- * Desativa onboarding_ativo = false para TODAS as contas (ou uma conta específica).
- * Restrito a usuários raccotlo.
+ * Libera o acesso de uma conta (ou todas):
+ *  1. Remove o ban dos usuários no Supabase Auth (ban_duration: "none")
+ *  2. Desativa onboarding_ativo na conta
+ *  3. Se status = "cancelado", restaura para "pro_bono"
  *
  * Body: { conta_id?: string }   → omitir para liberar todas
  */
@@ -44,28 +46,64 @@ export async function POST(req: Request) {
   let contaId: string | undefined;
   try { const body = await req.json(); contaId = body.conta_id; } catch { /* sem body */ }
 
-  // Busca quais contas estão com onboarding ativo antes de atualizar
-  const selectQ = db.from("contas").select("id, nome").eq("onboarding_ativo", true);
-  const { data: antes } = contaId
-    ? await selectQ.eq("id", contaId)
-    : await selectQ;
-
-  if (!antes || antes.length === 0) {
-    return NextResponse.json({ ok: true, liberadas: 0, contas: [], msg: "Nenhuma conta com onboarding ativo." });
+  // Busca as contas-alvo (sempre pelo conta_id se fornecido, senão todas)
+  let contasAlvo: { id: string; nome: string; status?: string }[] = [];
+  if (contaId) {
+    const { data } = await db.from("contas").select("id, nome, status").eq("id", contaId);
+    contasAlvo = (data ?? []) as { id: string; nome: string; status?: string }[];
+  } else {
+    const { data } = await db.from("contas").select("id, nome, status").order("nome");
+    contasAlvo = (data ?? []) as { id: string; nome: string; status?: string }[];
   }
 
-  const ids = (antes as { id: string; nome: string }[]).map(c => c.id);
+  if (contasAlvo.length === 0) {
+    return NextResponse.json({ ok: true, liberadas: 0, contas: [], users_desbloqueados: 0 });
+  }
 
-  const { error } = await db
+  const contaIds = contasAlvo.map(c => c.id);
+  let usersDesbloqueados = 0;
+
+  // ── 1. Busca todos os user_ids dos perfis dessas contas ──
+  const { data: perfis } = await db
+    .from("perfis")
+    .select("user_id")
+    .in("conta_id", contaIds);
+
+  const userIds = [...new Set((perfis ?? []).map((p: { user_id: string }) => p.user_id))];
+
+  // ── 2. Remove o ban de todos os usuários ──
+  await Promise.all(
+    userIds.map(uid =>
+      db.auth.admin.updateUserById(uid, { ban_duration: "none" })
+    )
+  );
+  usersDesbloqueados = userIds.length;
+
+  // ── 3. Desativa onboarding + restaura status se cancelado ──
+  await db
     .from("contas")
     .update({ onboarding_ativo: false })
-    .in("id", ids);
+    .in("id", contaIds);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Reativa contas canceladas → pro_bono
+  const canceladas = contasAlvo.filter(c => c.status === "cancelado").map(c => c.id);
+  if (canceladas.length > 0) {
+    await db
+      .from("contas")
+      .update({ status: "pro_bono" })
+      .in("id", canceladas);
+    // Restaura acesso raccotlo nas fazendas dessas contas
+    await db
+      .from("fazendas")
+      .update({ raccolto_acesso: true })
+      .in("conta_id", canceladas);
+  }
 
   return NextResponse.json({
     ok: true,
-    liberadas: ids.length,
-    contas: (antes as { id: string; nome: string }[]).map(c => c.nome),
+    liberadas: contasAlvo.length,
+    contas: contasAlvo.map(c => c.nome),
+    users_desbloqueados: usersDesbloqueados,
+    reativadas: canceladas.length,
   });
 }
