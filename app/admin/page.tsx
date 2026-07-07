@@ -258,8 +258,7 @@ export default function AdminOverview() {
   const [filtroStatus,     setFiltroStatus]     = useState<StatusCliente | "">("");
   const [filtroPacote,     setFiltroPacote]     = useState<PacoteCliente | "">("");
   const [busca,            setBusca]            = useState("");
-  const [liberandoOnb,     setLiberandoOnb]     = useState(false);
-  const [resultadoOnb,     setResultadoOnb]     = useState<string | null>(null);
+  const [liberandoOnb,     setLiberandoOnb]     = useState<string | null>(null); // conta_id em progresso
 
 
   const carregar = useCallback(async () => {
@@ -273,23 +272,20 @@ export default function AdminOverview() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const liberarOnboarding = useCallback(async () => {
-    if (!confirm("Desativar onboarding de TODAS as contas? O acesso será liberado conforme o grupo de cada usuário.")) return;
-    setLiberandoOnb(true);
-    setResultadoOnb(null);
+  const liberarOnboarding = useCallback(async (contaId: string, contaNome: string) => {
+    if (!confirm(`Liberar acesso de "${contaNome}"?\n\nO onboarding será desativado e o cliente poderá acessar o sistema conforme o perfil de usuário cadastrado.`)) return;
+    setLiberandoOnb(contaId);
     try {
-      const res = await fetch("/api/admin/liberar-onboarding", { method: "POST" });
+      const res = await fetch("/api/admin/liberar-onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conta_id: contaId }),
+      });
       const json = await res.json();
-      if (json.ok) {
-        setResultadoOnb(json.liberadas === 0
-          ? "Nenhuma conta tinha onboarding ativo."
-          : `✓ ${json.liberadas} conta(s) liberada(s): ${(json.contas as string[]).join(", ")}`);
-        await carregar();
-      } else {
-        setResultadoOnb("Erro: " + (json.error ?? "desconhecido"));
-      }
-    } catch { setResultadoOnb("Erro de conexão."); }
-    setLiberandoOnb(false);
+      if (!json.ok) alert("Erro ao liberar: " + (json.error ?? "desconhecido"));
+      await carregar();
+    } catch { alert("Erro de conexão."); }
+    setLiberandoOnb(null);
   }, [carregar]);
 
   const clientesFiltrados = clientes.filter(c => {
@@ -531,18 +527,6 @@ export default function AdminOverview() {
               {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => <option key={p} value={p}>{PACOTE_CFG[p].label}</option>)}
             </select>
             <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
-            <button
-              onClick={liberarOnboarding}
-              disabled={liberandoOnb}
-              style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600, borderRadius: 8, border: "none", cursor: liberandoOnb ? "not-allowed" : "pointer", background: liberandoOnb ? "#aaa" : "#16A34A", color: "#fff" }}
-            >
-              {liberandoOnb ? "Liberando…" : "🔓 Liberar onboarding (todos)"}
-            </button>
-            {resultadoOnb && (
-              <div style={{ fontSize: 11, color: resultadoOnb.startsWith("✓") ? "#16A34A" : "#E24B4A", fontWeight: 600, maxWidth: 400 }}>
-                {resultadoOnb}
-              </div>
-            )}
             <div style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>{clientesFiltrados.length} de {clientes.length} clientes</div>
           </div>
 
@@ -611,12 +595,24 @@ export default function AdminOverview() {
                           </span>
                         </td>
                         <td style={{ padding: "11px 14px", textAlign: "center" }}>
-                          <button
-                            onClick={() => setModalEdit(c)}
-                            style={{ padding: "5px 12px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#0B1E35", fontWeight: 600 }}
-                          >
-                            ✎ Editar
-                          </button>
+                          <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
+                            {c.onboarding_ativo && (
+                              <button
+                                onClick={() => liberarOnboarding(c.id, c.nome)}
+                                disabled={liberandoOnb === c.id}
+                                title="Liberar acesso — desativar onboarding"
+                                style={{ padding: "5px 10px", border: "0.5px solid #16A34A80", borderRadius: 6, background: "#F0FDF4", cursor: liberandoOnb === c.id ? "not-allowed" : "pointer", fontSize: 11, color: "#16A34A", fontWeight: 600, whiteSpace: "nowrap" }}
+                              >
+                                {liberandoOnb === c.id ? "…" : "🔓 Liberar"}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setModalEdit(c)}
+                              style={{ padding: "5px 12px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 11, color: "#0B1E35", fontWeight: 600 }}
+                            >
+                              ✎ Editar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
