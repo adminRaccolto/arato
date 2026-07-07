@@ -6764,3 +6764,41 @@ NOTIFY pgrst, 'reload schema';
 ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS area_plantada_ha numeric(10,4);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: talhao_arrendamentos (multiple arrendamentos per talhão) ────
+CREATE TABLE IF NOT EXISTS talhao_arrendamentos (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  talhao_id       uuid NOT NULL REFERENCES talhoes(id) ON DELETE CASCADE,
+  arrendamento_id uuid NOT NULL REFERENCES arrendamentos(id) ON DELETE CASCADE,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(talhao_id, arrendamento_id)
+);
+
+ALTER TABLE talhao_arrendamentos ENABLE ROW LEVEL SECURITY;
+
+-- Mesmo acesso que talhoes (via fazenda → conta)
+CREATE POLICY talhao_arrendamentos_select ON talhao_arrendamentos FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_arrendamentos.talhao_id AND p.user_id = auth.uid()
+  ));
+
+CREATE POLICY talhao_arrendamentos_insert ON talhao_arrendamentos FOR INSERT
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_arrendamentos.talhao_id AND p.user_id = auth.uid()
+  ));
+
+CREATE POLICY talhao_arrendamentos_delete ON talhao_arrendamentos FOR DELETE
+  USING (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_arrendamentos.talhao_id AND p.user_id = auth.uid()
+  ));
+
+NOTIFY pgrst, 'reload schema';

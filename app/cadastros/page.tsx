@@ -38,7 +38,7 @@ import {
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
   listarIEsDoProdutor, salvarIEsDoProdutor,
   listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
-  excluirTalhao,
+  excluirTalhao, listarArrendamentosTalhao, salvarArrendamentosTalhao,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -264,7 +264,7 @@ function CadastrosInner() {
   });
   const [modalTalhao, setModalTalhao] = useState<string | null>(null); // fazenda_id
   const [editTalhao, setEditTalhao]   = useState<Talhao | null>(null);
-  const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", area_plantada: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio" as "proprio"|"arrendado", arrendamento_id: "" });
+  const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", area_plantada: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio" as "proprio"|"arrendado", arrendamento_ids: [] as string[] });
   const [talhaoArrs, setTalhaoArrs]   = useState<Arrendamento[]>([]); // arrendamentos da fazenda no modal talhão
   const [modalMatricula, setModalMatricula] = useState<string | null>(null); // fazenda_id
   const [editMatricula, setEditMatricula]   = useState<MatriculaImovel | null>(null);
@@ -1205,18 +1205,19 @@ function CadastrosInner() {
 
   const abrirModalTalhao = async (fid: string, t?: Talhao) => {
     setModalTalhao(fid); setEditTalhao(t ?? null);
-    setFTalhao(t ? {
-      nome: t.nome, area: String(t.area_ha), area_plantada: String(t.area_plantada_ha ?? ""),
-      solo: t.tipo_solo ?? "LVdf",
-      lat: String(t.lat ?? ""), lng: String(t.lng ?? ""),
-      tipo_posse: t.tipo_posse ?? "proprio",
-      arrendamento_id: t.arrendamento_id ?? "",
-    } : { nome: "", area: "", area_plantada: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio", arrendamento_id: "" });
-    try {
-      const res = await fetch(`/api/fazenda/arrendamentos?fazenda_id=${fid}`);
-      const json = res.ok ? await res.json() : { arrendamentos: [] };
-      setTalhaoArrs(json.arrendamentos ?? []);
-    } catch { setTalhaoArrs([]); }
+    // Carrega arrendamentos da fazenda e ids já vinculados ao talhão (em paralelo)
+    const [arrFaz, arrIds] = await Promise.all([
+      fetch(`/api/fazenda/arrendamentos?fazenda_id=${fid}`).then(r => r.ok ? r.json() : { arrendamentos: [] }).catch(() => ({ arrendamentos: [] })),
+      t ? listarArrendamentosTalhao(t.id).catch(() => [] as string[]) : Promise.resolve([] as string[]),
+    ]);
+    setTalhaoArrs(arrFaz.arrendamentos ?? []);
+    setFTalhao({
+      nome: t?.nome ?? "", area: String(t?.area_ha ?? ""), area_plantada: String(t?.area_plantada_ha ?? ""),
+      solo: t?.tipo_solo ?? "LVdf",
+      lat: String(t?.lat ?? ""), lng: String(t?.lng ?? ""),
+      tipo_posse: t?.tipo_posse ?? "proprio",
+      arrendamento_ids: arrIds,
+    });
   };
   const salvarTalhao = () => salvar(async () => {
     if (!modalTalhao || !fTalhao.nome.trim() || !fTalhao.area) return;
@@ -1235,12 +1236,15 @@ function CadastrosInner() {
         `Reduza a área deste talhão para no máximo ${disponivel.toLocaleString("pt-BR")} ha.`
       );
     }
-    const payload = { fazenda_id: modalTalhao, nome: fTalhao.nome.trim(), area_ha: novaArea, area_plantada_ha: fTalhao.area_plantada ? Number(fTalhao.area_plantada) : undefined, tipo_solo: fTalhao.solo || undefined, lat: fTalhao.lat ? Number(fTalhao.lat) : undefined, lng: fTalhao.lng ? Number(fTalhao.lng) : undefined, tipo_posse: fTalhao.tipo_posse, arrendamento_id: fTalhao.tipo_posse === "arrendado" ? fTalhao.arrendamento_id || undefined : undefined };
+    const payload = { fazenda_id: modalTalhao, nome: fTalhao.nome.trim(), area_ha: novaArea, area_plantada_ha: fTalhao.area_plantada ? Number(fTalhao.area_plantada) : undefined, tipo_solo: fTalhao.solo || undefined, lat: fTalhao.lat ? Number(fTalhao.lat) : undefined, lng: fTalhao.lng ? Number(fTalhao.lng) : undefined, tipo_posse: fTalhao.tipo_posse };
+    const idsVinculados = fTalhao.tipo_posse === "arrendado" ? fTalhao.arrendamento_ids : [];
     if (editTalhao) {
       await atualizarTalhao(editTalhao.id, payload);
+      await salvarArrendamentosTalhao(editTalhao.id, idsVinculados);
       setTalhoes(prev => ({ ...prev, [modalTalhao]: (prev[modalTalhao] ?? []).map(x => x.id === editTalhao.id ? { ...x, ...payload } : x) }));
     } else {
       const n = await criarTalhao(payload);
+      await salvarArrendamentosTalhao(n.id, idsVinculados);
       setTalhoes(prev => ({ ...prev, [modalTalhao]: [...(prev[modalTalhao] ?? []), n] }));
     }
     setModalTalhao(null);
@@ -6249,7 +6253,7 @@ function CadastrosInner() {
               <div style={{ display: "flex", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
                 {(["proprio", "arrendado"] as const).map(v => (
                   <button key={v} type="button"
-                    onClick={() => setFTalhao(p => ({ ...p, tipo_posse: v, arrendamento_id: v === "proprio" ? "" : p.arrendamento_id }))}
+                    onClick={() => setFTalhao(p => ({ ...p, tipo_posse: v, arrendamento_ids: v === "proprio" ? [] : p.arrendamento_ids }))}
                     style={{ flex: 1, padding: "8px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: fTalhao.tipo_posse === v ? 700 : 400,
                       background: fTalhao.tipo_posse === v ? (v === "arrendado" ? "#C9921B" : "#1A4870") : "#fff",
                       color: fTalhao.tipo_posse === v ? "#fff" : "#555" }}>
@@ -6260,47 +6264,69 @@ function CadastrosInner() {
             </div>
           </div>
 
-          {/* Arrendamento vinculado — só quando arrendado */}
+          {/* Arrendamentos vinculados — múltiplos, só quando arrendado */}
           {fTalhao.tipo_posse === "arrendado" && (
             <div style={{ marginBottom: 14, padding: "14px 16px", background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 10 }}>
-              <label style={{ ...lbl, color: "#7A4300" }}>Contrato de Arrendamento vinculado</label>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <label style={{ ...lbl, color: "#7A4300", marginBottom: 0 }}>
+                  Contratos de Arrendamento vinculados
+                  {fTalhao.arrendamento_ids.length > 0 && (
+                    <span style={{ marginLeft: 6, background: "#C9921B", color: "#fff", borderRadius: 10, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>
+                      {fTalhao.arrendamento_ids.length}
+                    </span>
+                  )}
+                </label>
+                {fTalhao.arrendamento_ids.length > 0 && (
+                  <button type="button" onClick={() => setFTalhao(p => ({ ...p, arrendamento_ids: [] }))}
+                    style={{ fontSize: 11, color: "#7A4300", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    Limpar seleção
+                  </button>
+                )}
+              </div>
               {talhaoArrs.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#7A4300", marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: "#7A4300" }}>
                   Nenhum arrendamento cadastrado para esta fazenda. Cadastre em Fazendas › aba Arrendamentos primeiro.
                 </div>
               ) : (
-                <select style={{ ...inp, borderColor: "#C9921B" }}
-                  value={fTalhao.arrendamento_id}
-                  onChange={e => setFTalhao(p => ({ ...p, arrendamento_id: e.target.value }))}>
-                  <option value="">— Selecionar arrendamento —</option>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {talhaoArrs.map(a => {
-                    const props = pessoas.find(p => p.id === a.proprietario_id);
-                    const proprietario = props?.nome ?? a.proprietario_nome ?? "Proprietário não informado";
+                    const prop = pessoas.find(p => p.id === a.proprietario_id);
+                    const proprietario = prop?.nome ?? a.proprietario_nome ?? "Proprietário não informado";
                     const valorLabel = a.forma_pagamento === "sc_soja_milho"
-                      ? `${a.sc_ha ?? 0} sc soja + ${a.sc_milho_ha ?? 0} sc milho`
+                      ? `${a.sc_ha ?? 0} sc soja + ${a.sc_milho_ha ?? 0} sc milho/ha`
                       : a.forma_pagamento === "brl"
-                        ? `R$ ${(a.valor_brl ?? 0).toLocaleString("pt-BR",{minimumFractionDigits:2})}/ano`
-                        : `${(a.sc_ha ?? 0).toLocaleString("pt-BR")} sc ${{ sc_soja:"soja", sc_milho:"milho" }[a.forma_pagamento] ?? ""}/ha`;
+                        ? `R$ ${(a.valor_brl ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/ano`
+                        : `${(a.sc_ha ?? 0).toLocaleString("pt-BR")} sc ${{ sc_soja: "soja", sc_milho: "milho" }[a.forma_pagamento] ?? ""}/ha`;
+                    const checked = fTalhao.arrendamento_ids.includes(a.id);
+                    const toggle = () => setFTalhao(p => ({
+                      ...p,
+                      arrendamento_ids: checked
+                        ? p.arrendamento_ids.filter(id => id !== a.id)
+                        : [...p.arrendamento_ids, a.id],
+                    }));
                     return (
-                      <option key={a.id} value={a.id}>
-                        {proprietario} · {a.area_ha?.toLocaleString("pt-BR")} ha · {valorLabel}
-                      </option>
+                      <label key={a.id} onClick={toggle} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+                        padding: "8px 10px", borderRadius: 7, border: `0.5px solid ${checked ? "#C9921B" : "#DDD"}`,
+                        background: checked ? "#FFF7E8" : "#fff", transition: "all .15s" }}>
+                        <div style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, borderRadius: 4,
+                          border: `2px solid ${checked ? "#C9921B" : "#ccc"}`,
+                          background: checked ? "#C9921B" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {checked && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: "#3A2000" }}>{proprietario}</div>
+                          <div style={{ fontSize: 11, color: "#7A4300", marginTop: 2, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                            {a.area_ha && <span>📐 {a.area_ha.toLocaleString("pt-BR")} ha</span>}
+                            <span>💰 {valorLabel}</span>
+                            {a.inicio && <span>Início: {new Date(a.inicio + "T12:00").toLocaleDateString("pt-BR")}</span>}
+                            {a.vencimento && <span>Venc.: {new Date(a.vencimento + "T12:00").toLocaleDateString("pt-BR")}</span>}
+                          </div>
+                        </div>
+                      </label>
                     );
                   })}
-                </select>
+                </div>
               )}
-              {fTalhao.arrendamento_id && (() => {
-                const arr = talhaoArrs.find(a => a.id === fTalhao.arrendamento_id);
-                if (!arr) return null;
-                const props = pessoas.find(p => p.id === arr.proprietario_id);
-                return (
-                  <div style={{ marginTop: 8, display: "flex", gap: 16, fontSize: 11, color: "#7A4300" }}>
-                    {arr.inicio && <span>Início: <strong>{new Date(arr.inicio + "T12:00").toLocaleDateString("pt-BR")}</strong></span>}
-                    {arr.vencimento && <span>Vencimento: <strong>{new Date(arr.vencimento + "T12:00").toLocaleDateString("pt-BR")}</strong></span>}
-                    {props && <span>Proprietário: <strong>{props.nome}</strong></span>}
-                  </div>
-                );
-              })()}
             </div>
           )}
 

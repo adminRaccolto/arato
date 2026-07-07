@@ -180,7 +180,21 @@ export async function atualizarTalhao(id: string, t: Partial<Talhao>): Promise<v
 }
 
 export async function excluirTalhao(id: string): Promise<void> {
+  await supabase.from("talhao_arrendamentos").delete().eq("talhao_id", id);
   const { error } = await supabase.from("talhoes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarArrendamentosTalhao(talhao_id: string): Promise<string[]> {
+  const { data } = await supabase.from("talhao_arrendamentos").select("arrendamento_id").eq("talhao_id", talhao_id);
+  return (data ?? []).map((r: { arrendamento_id: string }) => r.arrendamento_id);
+}
+
+export async function salvarArrendamentosTalhao(talhao_id: string, arrendamento_ids: string[]): Promise<void> {
+  await supabase.from("talhao_arrendamentos").delete().eq("talhao_id", talhao_id);
+  if (arrendamento_ids.length === 0) return;
+  const rows = arrendamento_ids.map(arrendamento_id => ({ talhao_id, arrendamento_id }));
+  const { error } = await supabase.from("talhao_arrendamentos").insert(rows);
   if (error) throw error;
 }
 

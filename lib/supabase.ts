@@ -109,7 +109,14 @@ export type Talhao = {
   lng?: number;
   kml_url?: string;
   tipo_posse?: "proprio" | "arrendado";   // próprio ou arrendado
-  arrendamento_id?: string;               // FK arrendamentos.id (quando arrendado)
+  arrendamento_id?: string;               // FK legado (mantido para compatibilidade); preferir talhao_arrendamentos
+  created_at?: string;
+};
+
+export type TalhaoArrendamento = {
+  id?: string;
+  talhao_id: string;
+  arrendamento_id: string;
   created_at?: string;
 };
 
