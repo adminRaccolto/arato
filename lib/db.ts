@@ -192,6 +192,15 @@ export async function listarArrendamentosTalhao(talhao_id: string): Promise<stri
   return json.ids ?? [];
 }
 
+// Retorna ids de arrendamentos já vinculados a outros talhões da mesma fazenda
+export async function listarArrendamentosUsadosFazenda(fazenda_id: string, exclude_talhao_id?: string): Promise<string[]> {
+  const url = `/api/talhao-arrendamentos?fazenda_id=${fazenda_id}${exclude_talhao_id ? `&exclude_talhao=${exclude_talhao_id}` : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.ids ?? [];
+}
+
 export async function salvarArrendamentosTalhao(talhao_id: string, arrendamento_ids: string[]): Promise<void> {
   const res = await fetch("/api/talhao-arrendamentos", {
     method: "POST",

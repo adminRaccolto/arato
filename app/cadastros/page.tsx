@@ -38,7 +38,7 @@ import {
   listarNomesComerciais, salvarNomeComercial, excluirNomeComercial,
   listarIEsDoProdutor, salvarIEsDoProdutor,
   listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
-  excluirTalhao, listarArrendamentosTalhao, salvarArrendamentosTalhao,
+  excluirTalhao, listarArrendamentosTalhao, salvarArrendamentosTalhao, listarArrendamentosUsadosFazenda,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -266,6 +266,7 @@ function CadastrosInner() {
   const [editTalhao, setEditTalhao]   = useState<Talhao | null>(null);
   const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", area_plantada: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio" as "proprio"|"arrendado", arrendamento_ids: [] as string[] });
   const [talhaoArrs, setTalhaoArrs]   = useState<Arrendamento[]>([]); // arrendamentos da fazenda no modal talhão
+  const [talhaoArrsUsados, setTalhaoArrsUsados] = useState<string[]>([]); // ids já vinculados a outros talhões
   const [modalMatricula, setModalMatricula] = useState<string | null>(null); // fazenda_id
   const [editMatricula, setEditMatricula]   = useState<MatriculaImovel | null>(null);
   const [fMat, setFMat]               = useState({ produtor_id: "", numero: "", cartorio: "", area_ha: "", descricao: "", em_garantia: false, garantia_banco: "", garantia_valor: "", garantia_vencimento: "" });
@@ -1205,12 +1206,14 @@ function CadastrosInner() {
 
   const abrirModalTalhao = async (fid: string, t?: Talhao) => {
     setModalTalhao(fid); setEditTalhao(t ?? null);
-    // Carrega arrendamentos da fazenda e ids já vinculados ao talhão (em paralelo)
-    const [arrFaz, arrIds] = await Promise.all([
+    // Carrega arrendamentos da fazenda, ids vinculados a este talhão e ids usados por outros talhões (em paralelo)
+    const [arrFaz, arrIds, usados] = await Promise.all([
       fetch(`/api/fazenda/arrendamentos?fazenda_id=${fid}`).then(r => r.ok ? r.json() : { arrendamentos: [] }).catch(() => ({ arrendamentos: [] })),
       t ? listarArrendamentosTalhao(t.id).catch(() => [] as string[]) : Promise.resolve([] as string[]),
+      listarArrendamentosUsadosFazenda(fid, t?.id).catch(() => [] as string[]),
     ]);
     setTalhaoArrs(arrFaz.arrendamentos ?? []);
+    setTalhaoArrsUsados(usados);
     setFTalhao({
       nome: t?.nome ?? "", area: String(t?.area_ha ?? ""), area_plantada: String(t?.area_plantada_ha ?? ""),
       solo: t?.tipo_solo ?? "LVdf",
@@ -6289,7 +6292,7 @@ function CadastrosInner() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {talhaoArrs.map(a => {
+                  {talhaoArrs.filter(a => !talhaoArrsUsados.includes(a.id)).map(a => {
                     const prop = pessoas.find(p => p.id === a.proprietario_id);
                     const proprietario = prop?.nome ?? a.proprietario_nome ?? "Proprietário não informado";
                     const valorLabel = a.forma_pagamento === "sc_soja_milho"
