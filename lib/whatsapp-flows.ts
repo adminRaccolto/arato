@@ -5,7 +5,7 @@ import { extrairEntidade } from "./whatsapp-ai";
 export type FluxoNome =
   | "abastecimento" | "operacao_lavoura" | "entrada_estoque"
   | "saida_estoque" | "lancar_cp" | "baixar_cp"
-  | "lancar_cr" | "baixar_cr" | "romaneio" | "vincular_nf"
+  | "lancar_cr" | "baixar_cr" | "romaneio" | "registrar_romaneio" | "vincular_nf"
   | "nf_compra_foto" | "cadastrar_fornecedor" | "cadastrar_insumo"
   | "contrato_graos" | "recomendacao_agronomica";
 
@@ -193,6 +193,10 @@ const FLUXOS: Record<FluxoNome, { etapas: EtapaConfig[]; resumo: (d: Record<stri
   recomendacao_agronomica: {
     etapas: [],
     resumo: (d) => `Recomendação: ${d.tipo ?? "—"} · Agrônomo: ${d.agronomo_nome ?? "—"}`,
+  },
+  registrar_romaneio: {
+    etapas: [],
+    resumo: (d) => `Romaneio: ${d.commodity ?? "—"} · Placa ${d.placa ?? "—"} · Safra ${d.safra ?? "—"}`,
   },
 };
 

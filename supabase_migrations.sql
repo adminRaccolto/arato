@@ -6802,3 +6802,10 @@ CREATE POLICY talhao_arrendamentos_delete ON talhao_arrendamentos FOR DELETE
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: ciclo_id e contrato_id em romaneios ─────────────────────────
+ALTER TABLE romaneios
+  ADD COLUMN IF NOT EXISTS ciclo_id    uuid REFERENCES ciclos(id)    ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS contrato_id uuid REFERENCES contratos(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';

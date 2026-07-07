@@ -772,7 +772,8 @@ export async function executarInsercao(
     case "lancar_cr":          return inserirLancamento("receber", dados, fazendaId);
     case "baixar_cp":          return baixarLancamento("pagar", dados, fazendaId);
     case "baixar_cr":          return baixarLancamento("receber", dados, fazendaId);
-    case "romaneio":           return inserirRomaneio(dados, fazendaId);
+    case "romaneio":             return inserirRomaneio(dados, fazendaId);
+    case "registrar_romaneio":   return inserirRomaneioFoto(dados, fazendaId);
     case "vincular_nf":        return vincularNF(dados, fazendaId);
     case "nf_compra_foto":     return inserirNfCompraFoto(dados, fazendaId);
     case "cadastrar_fornecedor": return inserirNovoFornecedor(dados, fazendaId);
@@ -1747,6 +1748,146 @@ async function inserirRomaneio(dados: Record<string, unknown>, fazendaId: string
   return {
     ok: true,
     mensagem: `✅ Romaneio registrado!\n• ${dados.commodity} — Placa ${dados.placa}\n• Líquido: ${liquido.toLocaleString("pt-BR")} kg (${sacas.toFixed(0)} sc)`,
+  };
+}
+
+// ── Romaneio por foto (com preview/confirm, ciclo e contrato) ───────────────
+async function inserirRomaneioFoto(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const confirmado  = dados.confirmado === true;
+  const commodity   = String(dados.commodity ?? "soja").toLowerCase().trim();
+  const placa       = String(dados.placa ?? "").toUpperCase().trim();
+  const pesoBruto   = Number(dados.peso_bruto ?? 0);
+  const tara        = Number(dados.tara ?? 0);
+  const liquido     = pesoBruto - tara;
+  const sacas       = liquido / 60;
+  const umidade     = dados.umidade  != null ? Number(dados.umidade)  : null;
+  const impureza    = dados.impureza != null ? Number(dados.impureza) : null;
+  const safraStr    = String(dados.safra   ?? "").trim();
+  const contratoStr = String(dados.contrato ?? "").trim();
+  const destinoStr  = String(dados.destino  ?? "").trim();
+  const dataRom     = parseData(String(dados.data ?? "hoje"));
+
+  const fmtKg = (v: number) => v.toLocaleString("pt-BR") + " kg";
+  const fmtSc = (v: number) => v.toFixed(0) + " sc";
+  const cap   = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // Validações obrigatórias antes de qualquer lookup
+  if (!pesoBruto || !tara) return { ok: false, mensagem: "❓ Informe o peso bruto e a tara do caminhão (em kg)." };
+  if (!placa)              return { ok: false, mensagem: "❓ Qual a placa do caminhão?" };
+  if (!safraStr)           return { ok: false, mensagem: "❓ Qual a safra/ciclo dessa carga?\n(ex: *Soja 25/26*, *Milho 2ª 25/26*)" };
+
+  // Buscar talhão (não obrigatório — pode não aparecer no ticket)
+  let talhao: { id: string; nome: string } | null = null;
+  if (dados.talhao) {
+    const { data } = await sb().from("talhoes")
+      .select("id, nome").eq("fazenda_id", fazendaId)
+      .ilike("nome", `%${dados.talhao}%`).limit(1);
+    talhao = (data?.[0] ?? null) as { id: string; nome: string } | null;
+  }
+
+  // Buscar ciclo — tenta por descrição/cultura, depois por ano_safra
+  let ciclo: { id: string; descricao?: string; cultura?: string } | null = null;
+  {
+    const { data: c1 } = await sb().from("ciclos")
+      .select("id, descricao, cultura").eq("fazenda_id", fazendaId)
+      .or(`descricao.ilike.%${safraStr}%,cultura.ilike.%${safraStr}%`).limit(3);
+    // Preferir o que bate com a commodity também
+    ciclo = c1?.find(c => (c.cultura ?? "").toLowerCase().includes(commodity)) ?? c1?.[0] ?? null;
+  }
+  if (!ciclo) {
+    const { data: anos } = await sb().from("anos_safra")
+      .select("id").eq("fazenda_id", fazendaId).ilike("descricao", `%${safraStr}%`).limit(1);
+    if (anos?.[0]) {
+      const { data: c2 } = await sb().from("ciclos")
+        .select("id, descricao, cultura").eq("fazenda_id", fazendaId)
+        .eq("ano_safra_id", anos[0].id)
+        .order("created_at", { ascending: false });
+      ciclo = c2?.find(c => (c.cultura ?? "").toLowerCase().includes(commodity)) ?? c2?.[0] ?? null;
+    }
+  }
+  if (!ciclo) {
+    return { ok: false, mensagem: `❓ Não encontrei a safra *${safraStr}* cadastrada. Informe o ciclo exato:\n(ex: *Soja 25/26*, *Milho 2ª 25/26*)` };
+  }
+
+  // Buscar contrato — por número ou por comprador
+  type ContratoRef = { id: string; numero: string | null };
+  let contrato: ContratoRef | null = null;
+  if (contratoStr) {
+    const { data: cNum } = await sb().from("contratos")
+      .select("id, numero").eq("fazenda_id", fazendaId)
+      .ilike("numero", `%${contratoStr}%`).limit(1);
+    contrato = (cNum?.[0] as ContratoRef | undefined) ?? null;
+
+    if (!contrato) {
+      // busca por comprador
+      const { data: pBusca } = await sb().from("pessoas")
+        .select("id").eq("fazenda_id", fazendaId).ilike("nome", `%${contratoStr}%`).limit(1);
+      if (pBusca?.[0]) {
+        const { data: cComp } = await sb().from("contratos")
+          .select("id, numero").eq("fazenda_id", fazendaId)
+          .eq("pessoa_id", pBusca[0].id)
+          .ilike("produto", `%${commodity}%`).limit(1);
+        contrato = (cComp?.[0] as ContratoRef | undefined) ?? null;
+      }
+    }
+  }
+
+  // Montar linhas de preview
+  const previewLines = [
+    `🌾 *Romaneio — Resumo*`,
+    `• Commodity: *${cap(commodity)}*`,
+    talhao ? `• Talhão: *${talhao.nome}*` : dados.talhao ? `• Talhão: _${dados.talhao}_ (não localizado)` : "",
+    `• Placa: *${placa}*`,
+    `• Peso bruto: *${fmtKg(pesoBruto)}*`,
+    `• Tara: *${fmtKg(tara)}*`,
+    `• Líquido: *${fmtKg(liquido)}* (${fmtSc(sacas)})`,
+    umidade  != null ? `• Umidade: *${umidade}%*`  : "",
+    impureza != null ? `• Impureza: *${impureza}%*` : "",
+    `• Safra/Ciclo: *${[ciclo.cultura, ciclo.descricao].filter(Boolean).join(" — ") || safraStr}*`,
+    contrato
+      ? `• Contrato: *${contrato.numero ?? contratoStr}* ✅`
+      : contratoStr
+        ? `• Contrato: _${contratoStr}_ ⚠️ (não localizado — salvo como texto)`
+        : `• Contrato: _não vinculado_`,
+    destinoStr ? `• Destino: *${destinoStr}*` : "",
+    `• Data: *${dataRom.split("-").reverse().join("/")}*`,
+  ].filter(Boolean).join("\n");
+
+  if (!confirmado) {
+    return { ok: true, mensagem: `${previewLines}\n\nConfirma? Responda *sim* ou *não*` };
+  }
+
+  // Salvar no banco
+  const { error } = await sb().from("romaneios").insert({
+    fazenda_id:     fazendaId,
+    talhao_id:      talhao?.id    ?? null,
+    ciclo_id:       ciclo.id,
+    contrato_id:    contrato?.id  ?? null,
+    commodity,
+    placa_veiculo:  placa,
+    peso_bruto_kg:  pesoBruto,
+    tara_kg:        tara,
+    peso_liquido_kg: liquido,
+    total_sacas:    sacas,
+    umidade_pct:    umidade,
+    impureza_pct:   impureza,
+    origem:         destinoStr || null,
+    data_romaneio:  dataRom,
+  });
+
+  if (error) return { ok: false, mensagem: `❌ Erro ao salvar romaneio: [${error.code}] ${error.message}` };
+
+  const cicloLabel = [ciclo.cultura, ciclo.descricao].filter(Boolean).join(" — ") || safraStr;
+  return {
+    ok: true,
+    mensagem: [
+      `✅ Romaneio registrado!`,
+      `• ${cap(commodity)} — Placa ${placa}`,
+      `• Líquido: ${fmtKg(liquido)} (${fmtSc(sacas)})`,
+      `• Ciclo: ${cicloLabel}`,
+      contrato ? `• Contrato: ${contrato.numero ?? contratoStr}` : "",
+      destinoStr ? `• Destino: ${destinoStr}` : "",
+    ].filter(Boolean).join("\n"),
   };
 }
 

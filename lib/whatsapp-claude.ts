@@ -320,6 +320,28 @@ const TOOLS: Anthropic.Tool[] = [
       required: ["tipo", "agronomo_nome"],
     },
   },
+  {
+    name: "registrar_romaneio",
+    description: "Registra um romaneio de saída/colheita de grãos. SEMPRE chame com confirmado=false primeiro para mostrar o resumo. Só use confirmado=true após o usuário confirmar com 'sim'. Quando o usuário enviar foto de um ticket de balança: extraia commodity, placa, peso bruto, tara, umidade e impureza da imagem. Sempre pergunte (ou extraia) a safra/ciclo — sem ela o romaneio fica perdido. Pergunte também sobre o contrato se não mencionado.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        commodity:  { type: "string", description: "Produto: soja, milho, algodão, sorgo, trigo" },
+        talhao:     { type: "string", description: "Nome ou número do talhão de origem (se visível no ticket ou mencionado)" },
+        placa:      { type: "string", description: "Placa do caminhão (ex: ABC1D23)" },
+        peso_bruto: { type: "number", description: "Peso bruto em kg" },
+        tara:       { type: "number", description: "Tara do veículo em kg" },
+        umidade:    { type: "number", description: "Umidade em % — extraia do ticket se visível (ex: 13.5)" },
+        impureza:   { type: "number", description: "Impureza/materiais estranhos em % — extraia do ticket se visível" },
+        safra:      { type: "string", description: "Safra/ciclo: ex '2025/2026', '25/26', 'soja 25/26'. OBRIGATÓRIO — pergunte ao usuário se não estiver na foto ou no contexto." },
+        contrato:   { type: "string", description: "Número do contrato de venda ou nome do comprador. Pergunte se não foi mencionado — vincula a entrega ao contrato correto." },
+        destino:    { type: "string", description: "Destino da carga: nome do armazém, cooperativa ou comprador (opcional)" },
+        data:       { type: "string", description: "Data do romaneio: hoje, ontem, dd/mm/aaaa. Padrão: hoje" },
+        confirmado: { type: "boolean", description: "false = mostra resumo para confirmar (padrão). true = salva no sistema após o usuário confirmar com 'sim'." },
+      },
+      required: ["commodity", "placa", "peso_bruto", "tara", "safra"],
+    },
+  },
 ];
 
 // ── Executor das ferramentas ────────────────────────────────────────────────
@@ -475,6 +497,23 @@ async function executarFerramenta(
         }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
         return res.mensagem;
       }
+      case "registrar_romaneio": {
+        const res = await executarInsercao("registrar_romaneio", {
+          commodity:  input.commodity ?? "soja",
+          talhao:     input.talhao ?? "",
+          placa:      input.placa ?? "",
+          peso_bruto: input.peso_bruto ?? 0,
+          tara:       input.tara ?? 0,
+          umidade:    input.umidade ?? null,
+          impureza:   input.impureza ?? null,
+          safra:      input.safra ?? "",
+          contrato:   input.contrato ?? "",
+          destino:    input.destino ?? "",
+          data:       input.data ?? "hoje",
+          confirmado: input.confirmado === true,
+        }, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+        return res.mensagem;
+      }
       case "registrar_recomendacao_agronomica": {
         const res = await executarInsercao("recomendacao_agronomica", {
           tipo:               input.tipo ?? "pulverizacao",
@@ -542,6 +581,8 @@ function deveForcarFerramenta(texto: string, historico: Mensagem[]): boolean {
     "recomendação", "recomendacao", "receita agronômica", "receita agronomica",
     "rec técnica", "rec tecnica", "prescrição", "prescricao", "agronomo recomenda",
     "agrônomo recomenda", "crea", "receita de aplicação", "receita de aplicacao",
+    "romaneio", "ticket balança", "ticket balanca", "peso bruto", "tara caminhão", "tara caminhao",
+    "saída de grão", "saida de grao", "embarque", "expedição de grão", "expedicao de grao",
   ];
   if (kw.some(k => t.includes(k))) return true;
 
@@ -648,6 +689,16 @@ REGRA #10 — RECOMENDAÇÃO AGRONÔMICA:
 - Campo produtos: array JSON [{produto: "Herbicida X", dose: 1.5, unidade: "L/ha"}, ...] — extraia todos os produtos.
 - Para pulverização, capture também: vazão (L/ha), bico, pressão (min/max), pH calda, velocidade (min/max), vento máximo, umidade (min/max), temperatura (min/max).
 - Se o documento for uma foto/PDF de receita agronômica → leia o documento e chame a ferramenta com todos os dados extraídos.
+
+REGRA #11 — ROMANEIO POR FOTO (ticket de balança):
+- Quando o usuário enviar foto de um *ticket de balança* (romaneio físico), ou mencionar pesos de saída de grãos:
+  → LEIA a imagem e extraia: commodity, placa, peso bruto, tara, umidade, impureza (o que estiver visível).
+  → Se a safra/ciclo *não estiver na foto* e *não for mencionada no texto*, pergunte ANTES de chamar a ferramenta: "❓ Qual a safra desse romaneio? (ex: Soja 25/26, Milho 2ª 25/26)"
+  → Se o contrato *não for mencionado*, inclua no texto de confirmação: "Deseja vincular a um contrato de venda? (informe o número ou o comprador)"
+  → Chame registrar_romaneio com confirmado=false mostrando o resumo completo.
+  → Quando o usuário confirmar com "sim", chame novamente com confirmado=true e os MESMOS dados.
+- Romaneio de saída ≠ romaneio de colheita interna (colhedora). Para colheita no campo use registrar_operacao_lavoura.
+- NUNCA registre um romaneio sem safra/ciclo definido — peça ao usuário se não estiver disponível.
 
 COMPORTAMENTO GERAL:
 - Seu nome é Arato. Responda em português, direto e prático.
