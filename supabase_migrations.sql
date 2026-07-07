@@ -6759,3 +6759,8 @@ INSERT INTO planos_config (plano_id, preco_mensal) VALUES
 ON CONFLICT (plano_id) DO NOTHING;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: area_plantada_ha em talhoes ──────────────────────────────────
+ALTER TABLE talhoes ADD COLUMN IF NOT EXISTS area_plantada_ha numeric(10,4);
+
+NOTIFY pgrst, 'reload schema';

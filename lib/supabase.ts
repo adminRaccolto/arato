@@ -102,7 +102,8 @@ export type Talhao = {
   id: string;
   fazenda_id: string;
   nome: string;
-  area_ha: number;
+  area_ha: number;             // área total (física) do talhão
+  area_plantada_ha?: number;   // área efetivamente plantada (pode ser menor que total por APPs, estradas, etc.)
   tipo_solo?: string;
   lat?: number;
   lng?: number;
