@@ -30,10 +30,11 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } }
   );
 
-  // Insere culturas padrão (ignora conflito — UNIQUE fazenda_id+nome)
-  const { error: errC } = await sb.from("culturas").insert(
-    DEFAULTS.map(d => ({ ...d, fazenda_id }))
-  ).throwOnError().catch(() => ({ error: null }));
+  // upsert ignora conflito UNIQUE (fazenda_id, nome)
+  await sb.from("culturas").upsert(
+    DEFAULTS.map(d => ({ ...d, fazenda_id })),
+    { onConflict: "fazenda_id,nome", ignoreDuplicates: true }
+  );
 
   // Insere produtos agrícolas padrão em insumos (ignora se já existe)
   const { data: existPA } = await sb.from("insumos").select("id").eq("fazenda_id", fazenda_id).eq("categoria", "produto_agricola");
@@ -43,10 +44,10 @@ export async function POST(req: NextRequest) {
         fazenda_id, tipo: "produto", nome: p.nome, categoria: "produto_agricola",
         unidade: p.unidade, estoque: 0, estoque_minimo: 0, valor_unitario: 0,
       }))
-    ).throwOnError().catch(() => null);
+    );
   }
 
   // Retorna as culturas inseridas/existentes
   const { data } = await sb.from("culturas").select("*").eq("fazenda_id", fazenda_id).order("ordem").order("nome");
-  return NextResponse.json({ culturas: data ?? [], error: errC?.message ?? null });
+  return NextResponse.json({ culturas: data ?? [] });
 }
