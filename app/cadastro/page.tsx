@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { PLANOS_DEFAULT, fmtPreco } from "../../lib/planos";
 import type { PlanoId } from "../../lib/planos";
 
@@ -110,7 +111,7 @@ function CadastroInner() {
         position: "sticky", top: 0, zIndex: 100,
       }}>
         <Link href="/planos">
-          <img src="/logo_Arato_Nova.png" alt="Arato" style={{ height: 34, objectFit: "contain", cursor: "pointer" }} />
+          <Image src="/logo_Arato_Nova.png" alt="Arato" width={82} height={34} priority style={{ objectFit: "contain", cursor: "pointer" }} />
         </Link>
         <Link href="/login" style={{ fontSize: 13, color: "#555", textDecoration: "none", padding: "7px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
           Já tenho conta

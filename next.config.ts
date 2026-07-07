@@ -4,7 +4,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Páginas HTML nunca ficam em cache — sempre busca versão atual
+        // Assets estáticos: cache longo (imutável após build)
+        source: "/:path*\\.(png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|otf)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        // Páginas HTML/JSON/API: sempre busca versão atual
         source: "/((?!_next/static|_next/image|favicon.ico|api/).*)",
         headers: [
           { key: "Cache-Control", value: "no-store, must-revalidate" },

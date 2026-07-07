@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 
 const BG_FALLBACK = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80";
@@ -106,10 +107,13 @@ export default function Login() {
 
         {/* ── LOGO ARATO ── */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <img
+          <Image
             src="/logo_Arato_Nova.png"
             alt="Arato"
-            style={{ height: 112, width: "auto", objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 0 18px rgba(255,255,255,0.70)) drop-shadow(0 0 40px rgba(255,255,255,0.35)) drop-shadow(0 8px 24px rgba(255,255,255,0.20))" }}
+            width={269}
+            height={112}
+            priority
+            style={{ objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 0 18px rgba(255,255,255,0.70)) drop-shadow(0 0 40px rgba(255,255,255,0.35)) drop-shadow(0 8px 24px rgba(255,255,255,0.20))" }}
           />
 
         </div>
@@ -284,10 +288,12 @@ export default function Login() {
         <div style={{ marginTop: 28, textAlign: "center" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>um produto</span>
-            <img
+            <Image
               src="/Logo_Raccolto.png"
               alt="Raccolto"
-              style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55 }}
+              width={60}
+              height={16}
+              style={{ objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55 }}
             />
           </div>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>© 2026 Raccolto Consultoria · v1.0</span>
