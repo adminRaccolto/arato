@@ -97,11 +97,13 @@ interface CertResult {
 // ─── Modal Sieg ───────────────────────────────────────────────────────────────
 function ModalSieg({
   fazendaId,
+  contaId,
   cfgInicial,
   onClose,
   onSaved,
 }: {
   fazendaId: string;
+  contaId: string | null;
   cfgInicial: SiegCfg;
   onClose: () => void;
   onSaved: (cfg: SiegCfg) => void;
@@ -112,6 +114,23 @@ function ModalSieg({
   const [syncing,  setSyncing] = useState(false);
   const [result,   setResult]  = useState<SiegSyncResult | null>(null);
   const [tab,      setTab]     = useState<"config" | "cert">("config");
+
+  // Produtores cadastrados para sugestão automática
+  const [produtoresSugeridos, setProdutoresSugeridos] = useState<{ nome: string; cpf_cnpj: string }[]>([]);
+
+  useEffect(() => {
+    const query = supabase.from("produtores").select("nome, cpf_cnpj").not("cpf_cnpj", "is", null);
+    const promise = contaId
+      ? query.eq("conta_id", contaId)
+      : query.eq("fazenda_id", fazendaId);
+    promise.then(({ data }) => {
+      if (data) setProdutoresSugeridos(
+        data
+          .map(p => ({ nome: p.nome as string, cpf_cnpj: (p.cpf_cnpj as string).replace(/\D/g, "") }))
+          .filter(p => p.cpf_cnpj.length === 11 || p.cpf_cnpj.length === 14)
+      );
+    });
+  }, [fazendaId, contaId]);
 
   // Registro de certificado
   const [certCnpj,    setCertCnpj]    = useState("");
@@ -307,6 +326,40 @@ function ModalSieg({
                                fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>×</button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Produtores cadastrados — sugestões rápidas */}
+            {produtoresSugeridos.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+                  Produtores cadastrados — clique para incluir:
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {produtoresSugeridos.map(p => {
+                    const jaAdicionado = cfg.cnpjs_destino.includes(p.cpf_cnpj);
+                    return (
+                      <button
+                        key={p.cpf_cnpj}
+                        onClick={() => {
+                          if (!jaAdicionado) {
+                            setCfg(prev => ({ ...prev, cnpjs_destino: [...prev.cnpjs_destino, p.cpf_cnpj] }));
+                          }
+                        }}
+                        style={{
+                          padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                          cursor: jaAdicionado ? "default" : "pointer",
+                          border: `0.5px solid ${jaAdicionado ? "#86EFAC" : "#DDE2EE"}`,
+                          background: jaAdicionado ? "#F0FFF4" : "#F4F6FA",
+                          color: jaAdicionado ? "#16A34A" : "#1A4870",
+                        }}
+                        title={jaAdicionado ? "Já monitorado" : `Adicionar ${p.cpf_cnpj}`}
+                      >
+                        {jaAdicionado ? "✓ " : ""}{p.nome}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -801,7 +854,7 @@ function ModalConfigurar({
 
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function IntegracoesPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
   const router = useRouter();
   const [abaCat,  setAbaCat]  = useState<Categoria>("fiscal");
   const [catalogo, setCatalogo] = useState<IntegracaoCatalogo[]>([]);
@@ -1147,6 +1200,7 @@ export default function IntegracoesPage() {
       {modalSieg && fazendaId && (
         <ModalSieg
           fazendaId={fazendaId}
+          contaId={contaId ?? null}
           cfgInicial={siegCfg}
           onClose={() => setModalSieg(false)}
           onSaved={cfg => { setSiegCfg(cfg); setSiegAtivo(cfg.cnpjs_destino.length > 0); }}
