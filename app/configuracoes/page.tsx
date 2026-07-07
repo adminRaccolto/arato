@@ -139,7 +139,7 @@ function ConfiguracoesInner() {
     try {
       const produtor = produtores.find(p => p.id === certProdutorId) ?? produtores[0];
       const formData = new FormData();
-      formData.append("arquivo", certFile);
+      formData.append("file", certFile);
       formData.append("senha", certSenha);
       formData.append("fazenda_id", fazendaId ?? "");
       formData.append("produtor_id", produtor?.id ?? "");
