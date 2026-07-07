@@ -252,12 +252,14 @@ export default function AdminOverview() {
   }, [userRole, raccotloGestor, router]);
 
   // ── Clientes ────────────────────────────────────────────────────────────────
-  const [clientes,      setClientes]      = useState<ContaAdmin[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [modalEdit,     setModalEdit]     = useState<ContaAdmin | null>(null);
-  const [filtroStatus,  setFiltroStatus]  = useState<StatusCliente | "">("");
-  const [filtroPacote,  setFiltroPacote]  = useState<PacoteCliente | "">("");
-  const [busca,         setBusca]         = useState("");
+  const [clientes,         setClientes]         = useState<ContaAdmin[]>([]);
+  const [loading,          setLoading]          = useState(true);
+  const [modalEdit,        setModalEdit]        = useState<ContaAdmin | null>(null);
+  const [filtroStatus,     setFiltroStatus]     = useState<StatusCliente | "">("");
+  const [filtroPacote,     setFiltroPacote]     = useState<PacoteCliente | "">("");
+  const [busca,            setBusca]            = useState("");
+  const [liberandoOnb,     setLiberandoOnb]     = useState(false);
+  const [resultadoOnb,     setResultadoOnb]     = useState<string | null>(null);
 
 
   const carregar = useCallback(async () => {
@@ -271,6 +273,24 @@ export default function AdminOverview() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  const liberarOnboarding = useCallback(async () => {
+    if (!confirm("Desativar onboarding de TODAS as contas? O acesso será liberado conforme o grupo de cada usuário.")) return;
+    setLiberandoOnb(true);
+    setResultadoOnb(null);
+    try {
+      const res = await fetch("/api/admin/liberar-onboarding", { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        setResultadoOnb(json.liberadas === 0
+          ? "Nenhuma conta tinha onboarding ativo."
+          : `✓ ${json.liberadas} conta(s) liberada(s): ${(json.contas as string[]).join(", ")}`);
+        await carregar();
+      } else {
+        setResultadoOnb("Erro: " + (json.error ?? "desconhecido"));
+      }
+    } catch { setResultadoOnb("Erro de conexão."); }
+    setLiberandoOnb(false);
+  }, [carregar]);
 
   const clientesFiltrados = clientes.filter(c => {
     if (filtroStatus && c.status !== filtroStatus) return false;
@@ -511,6 +531,18 @@ export default function AdminOverview() {
               {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => <option key={p} value={p}>{PACOTE_CFG[p].label}</option>)}
             </select>
             <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
+            <button
+              onClick={liberarOnboarding}
+              disabled={liberandoOnb}
+              style={{ padding: "7px 14px", fontSize: 12, fontWeight: 600, borderRadius: 8, border: "none", cursor: liberandoOnb ? "not-allowed" : "pointer", background: liberandoOnb ? "#aaa" : "#16A34A", color: "#fff" }}
+            >
+              {liberandoOnb ? "Liberando…" : "🔓 Liberar onboarding (todos)"}
+            </button>
+            {resultadoOnb && (
+              <div style={{ fontSize: 11, color: resultadoOnb.startsWith("✓") ? "#16A34A" : "#E24B4A", fontWeight: 600, maxWidth: 400 }}>
+                {resultadoOnb}
+              </div>
+            )}
             <div style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>{clientesFiltrados.length} de {clientes.length} clientes</div>
           </div>
 
