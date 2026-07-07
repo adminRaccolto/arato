@@ -23,7 +23,7 @@ export default function Login() {
     // Fundo customizado via Supabase Storage (opcional)
     const { data: dBg } = supabase.storage.from("logos").getPublicUrl("login-bg.jpg");
     if (dBg?.publicUrl) {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => setBgUrl(dBg.publicUrl);
       img.src = dBg.publicUrl;
     }

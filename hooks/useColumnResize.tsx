@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 
 /**
  * Hook para redimensionamento de colunas de tabela via drag, estilo Excel.
