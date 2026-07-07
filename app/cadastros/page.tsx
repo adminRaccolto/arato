@@ -5550,8 +5550,10 @@ function CadastrosInner() {
                     tipo_conta: fConta.tipo_conta,
                     saldo_inicial: isNaN(saldoIni) ? 0 : saldoIni,
                     produtor_id: fConta.titular_produtor_id || null,
-                    conjunta: fConta.conjunta,
-                    cotitulares: fConta.conjunta && fConta.cotitulares.length > 0 ? fConta.cotitulares : undefined,
+                    ...(fConta.conjunta ? {
+                      conjunta: true,
+                      cotitulares: fConta.cotitulares.length > 0 ? fConta.cotitulares : undefined,
+                    } : {}),
                   };
                   if (editConta) {
                     await atualizarContaBancaria(editConta.id, payload);
