@@ -221,7 +221,6 @@ const NAV: NavItem[] = [
     type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
     children: [
       { type: "divider", label: "Empresa" },
-      { id: "conf-certificado",  label: "Certificado A1",    path: "/configuracoes?tab=certificado", moduleId: "conf_empresa" },
       { id: "conf-empresa",      label: "Empresas & Produtores", path: "/cadastros?tab=empresas",    moduleId: "conf_empresa" },
 
       { type: "divider", label: "Fiscal" },
