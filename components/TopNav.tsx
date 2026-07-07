@@ -520,7 +520,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {fazenda && !(userRole === "raccotlo" && nomeProdutor) && (
+          {fazenda && !(userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada)) && (
             <div style={{ position: "relative" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, borderRadius: 8, padding: "4px 8px" }}>
                 {logoCliente ? (
@@ -547,23 +547,23 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           <div style={{ width: 1, height: 32, background: "#D4DCE8" }} />
 
           {/* Nome + logo do cliente ativo (raccotlo navegando por um cliente) */}
-          {userRole === "raccotlo" && nomeProdutor && (
+          {userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada) && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {logoCliente
                 ? <img src={logoCliente} alt="" style={{ height: 26, width: 26, objectFit: "contain", borderRadius: 4, border: "0.5px solid #DDE2EE" }} />
                 : (
                   <div style={{ width: 26, height: 26, borderRadius: 4, background: "#D5E8F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1A4870", flexShrink: 0 }}>
-                    {nomeProdutor.substring(0, 2).toUpperCase()}
+                    {(nomeProdutor || nomeFazendaSelecionada || "").substring(0, 2).toUpperCase()}
                   </div>
                 )
               }
               <div style={{ maxWidth: 200 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {nomeProdutor}
+                  {nomeProdutor || nomeFazendaSelecionada}
                 </div>
                 {fazenda && (
                   <div style={{ fontSize: 11, color: "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {fazenda.nome} · {fazenda.municipio} · {fazenda.estado}
+                    {nomeProdutor ? `${fazenda.nome} · ` : ""}{fazenda.municipio} · {fazenda.estado}
                   </div>
                 )}
               </div>
