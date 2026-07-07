@@ -186,16 +186,22 @@ export async function excluirTalhao(id: string): Promise<void> {
 }
 
 export async function listarArrendamentosTalhao(talhao_id: string): Promise<string[]> {
-  const { data } = await supabase.from("talhao_arrendamentos").select("arrendamento_id").eq("talhao_id", talhao_id);
-  return (data ?? []).map((r: { arrendamento_id: string }) => r.arrendamento_id);
+  const res = await fetch(`/api/talhao-arrendamentos?talhao_id=${talhao_id}`);
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.ids ?? [];
 }
 
 export async function salvarArrendamentosTalhao(talhao_id: string, arrendamento_ids: string[]): Promise<void> {
-  await supabase.from("talhao_arrendamentos").delete().eq("talhao_id", talhao_id);
-  if (arrendamento_ids.length === 0) return;
-  const rows = arrendamento_ids.map(arrendamento_id => ({ talhao_id, arrendamento_id }));
-  const { error } = await supabase.from("talhao_arrendamentos").insert(rows);
-  if (error) throw error;
+  const res = await fetch("/api/talhao-arrendamentos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ talhao_id, arrendamento_ids }),
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? "Erro ao salvar arrendamentos do talhão");
+  }
 }
 
 // ————————————————————————————————————————
