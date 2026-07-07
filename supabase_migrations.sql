@@ -6809,3 +6809,60 @@ ALTER TABLE romaneios
   ADD COLUMN IF NOT EXISTS contrato_id uuid REFERENCES contratos(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Migration: talhao_matriculas e talhao_cars (documentação por talhão) ────
+-- Matrículas e CARs são documentos do imóvel físico → pertencem ao talhão,
+-- não ao contrato de arrendamento.
+CREATE TABLE IF NOT EXISTS talhao_matriculas (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  talhao_id    uuid NOT NULL REFERENCES talhoes(id) ON DELETE CASCADE,
+  matricula_id uuid NOT NULL REFERENCES matriculas_imoveis(id) ON DELETE CASCADE,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(talhao_id, matricula_id)
+);
+
+CREATE TABLE IF NOT EXISTS talhao_cars (
+  id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  talhao_id uuid NOT NULL REFERENCES talhoes(id) ON DELETE CASCADE,
+  car_id    uuid NOT NULL REFERENCES fazenda_cars(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(talhao_id, car_id)
+);
+
+ALTER TABLE talhao_matriculas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE talhao_cars ENABLE ROW LEVEL SECURITY;
+
+-- RLS via talhão → fazenda → conta
+CREATE POLICY talhao_matriculas_all ON talhao_matriculas FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_matriculas.talhao_id
+      AND (p.user_id = auth.uid() OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_matriculas.talhao_id
+      AND (p.user_id = auth.uid() OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  ));
+
+CREATE POLICY talhao_cars_all ON talhao_cars FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_cars.talhao_id
+      AND (p.user_id = auth.uid() OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  ))
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM talhoes t
+    JOIN fazendas f ON f.id = t.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE t.id = talhao_cars.talhao_id
+      AND (p.user_id = auth.uid() OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'))
+  ));
+
+NOTIFY pgrst, 'reload schema';

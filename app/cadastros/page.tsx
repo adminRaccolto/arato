@@ -39,6 +39,7 @@ import {
   listarIEsDoProdutor, salvarIEsDoProdutor,
   listarImoveisUrbanos, criarImovelUrbano, atualizarImovelUrbano, excluirImovelUrbano,
   excluirTalhao, listarArrendamentosTalhao, salvarArrendamentosTalhao, listarArrendamentosUsadosFazenda,
+  listarDocumentacaoTalhao, salvarDocumentacaoTalhao,
 } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
@@ -264,9 +265,11 @@ function CadastrosInner() {
   });
   const [modalTalhao, setModalTalhao] = useState<string | null>(null); // fazenda_id
   const [editTalhao, setEditTalhao]   = useState<Talhao | null>(null);
-  const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", area_plantada: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio" as "proprio"|"arrendado", arrendamento_ids: [] as string[] });
+  const [fTalhao, setFTalhao]         = useState({ nome: "", area: "", area_plantada: "", solo: "LVdf", lat: "", lng: "", tipo_posse: "proprio" as "proprio"|"arrendado", arrendamento_ids: [] as string[], matricula_ids: [] as string[], car_ids: [] as string[] });
   const [talhaoArrs, setTalhaoArrs]   = useState<Arrendamento[]>([]); // arrendamentos da fazenda no modal talhão
   const [talhaoArrsUsados, setTalhaoArrsUsados] = useState<string[]>([]); // ids já vinculados a outros talhões
+  const [talhaoMatsFaz, setTalhaoMatsFaz] = useState<{ id: string; numero: string; cartorio?: string; area_ha?: number }[]>([]);
+  const [talhaoCarsFaz, setTalhaoCarsFaz] = useState<{ id: string; numero: string; status: string; area_ha?: number }[]>([]);
   const [modalMatricula, setModalMatricula] = useState<string | null>(null); // fazenda_id
   const [editMatricula, setEditMatricula]   = useState<MatriculaImovel | null>(null);
   const [fMat, setFMat]               = useState({ produtor_id: "", numero: "", cartorio: "", area_ha: "", descricao: "", em_garantia: false, garantia_banco: "", garantia_valor: "", garantia_vencimento: "" });
@@ -1206,20 +1209,26 @@ function CadastrosInner() {
 
   const abrirModalTalhao = async (fid: string, t?: Talhao) => {
     setModalTalhao(fid); setEditTalhao(t ?? null);
-    // Carrega arrendamentos da fazenda, ids vinculados a este talhão e ids usados por outros talhões (em paralelo)
-    const [arrFaz, arrIds, usados] = await Promise.all([
+    // Carrega tudo em paralelo: arrendamentos, ids vinculados, ids usados por outros talhões, documentação (mats/CARs)
+    const [arrFaz, arrIds, usados, docIds, fazDocs] = await Promise.all([
       fetch(`/api/fazenda/arrendamentos?fazenda_id=${fid}`).then(r => r.ok ? r.json() : { arrendamentos: [] }).catch(() => ({ arrendamentos: [] })),
       t ? listarArrendamentosTalhao(t.id).catch(() => [] as string[]) : Promise.resolve([] as string[]),
       listarArrendamentosUsadosFazenda(fid, t?.id).catch(() => [] as string[]),
+      t ? listarDocumentacaoTalhao(t.id).catch(() => ({ matricula_ids: [] as string[], car_ids: [] as string[] })) : Promise.resolve({ matricula_ids: [] as string[], car_ids: [] as string[] }),
+      fetch(`/api/talhao-documentacao?fazenda_id=${fid}`).then(r => r.ok ? r.json() : { matriculas: [], cars: [] }).catch(() => ({ matriculas: [], cars: [] })),
     ]);
     setTalhaoArrs(arrFaz.arrendamentos ?? []);
     setTalhaoArrsUsados(usados);
+    setTalhaoMatsFaz(fazDocs.matriculas ?? []);
+    setTalhaoCarsFaz(fazDocs.cars ?? []);
     setFTalhao({
       nome: t?.nome ?? "", area: String(t?.area_ha ?? ""), area_plantada: String(t?.area_plantada_ha ?? ""),
       solo: t?.tipo_solo ?? "LVdf",
       lat: String(t?.lat ?? ""), lng: String(t?.lng ?? ""),
       tipo_posse: t?.tipo_posse ?? "proprio",
       arrendamento_ids: arrIds,
+      matricula_ids: docIds.matricula_ids,
+      car_ids: docIds.car_ids,
     });
   };
   const salvarTalhao = () => salvar(async () => {
@@ -1243,11 +1252,17 @@ function CadastrosInner() {
     const idsVinculados = fTalhao.tipo_posse === "arrendado" ? fTalhao.arrendamento_ids : [];
     if (editTalhao) {
       await atualizarTalhao(editTalhao.id, payload);
-      await salvarArrendamentosTalhao(editTalhao.id, idsVinculados);
+      await Promise.all([
+        salvarArrendamentosTalhao(editTalhao.id, idsVinculados),
+        salvarDocumentacaoTalhao(editTalhao.id, fTalhao.matricula_ids, fTalhao.car_ids),
+      ]);
       setTalhoes(prev => ({ ...prev, [modalTalhao]: (prev[modalTalhao] ?? []).map(x => x.id === editTalhao.id ? { ...x, ...payload } : x) }));
     } else {
       const n = await criarTalhao(payload);
-      await salvarArrendamentosTalhao(n.id, idsVinculados);
+      await Promise.all([
+        salvarArrendamentosTalhao(n.id, idsVinculados),
+        salvarDocumentacaoTalhao(n.id, fTalhao.matricula_ids, fTalhao.car_ids),
+      ]);
       setTalhoes(prev => ({ ...prev, [modalTalhao]: [...(prev[modalTalhao] ?? []), n] }));
     }
     setModalTalhao(null);
@@ -6332,6 +6347,121 @@ function CadastrosInner() {
               )}
             </div>
           )}
+
+          {/* Documentação — Matrículas e CARs */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+            {/* Matrículas */}
+            <div style={{ padding: "12px 14px", background: "#EEF5FF", border: "0.5px solid #1A487040", borderRadius: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <label style={{ ...lbl, color: "#0B2D50", marginBottom: 0 }}>
+                  Matrículas de Imóvel
+                  {fTalhao.matricula_ids.length > 0 && (
+                    <span style={{ marginLeft: 6, background: "#1A4870", color: "#fff", borderRadius: 10, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>
+                      {fTalhao.matricula_ids.length}
+                    </span>
+                  )}
+                </label>
+                {fTalhao.matricula_ids.length > 0 && (
+                  <button type="button" onClick={() => setFTalhao(p => ({ ...p, matricula_ids: [] }))}
+                    style={{ fontSize: 11, color: "#0B2D50", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    Limpar
+                  </button>
+                )}
+              </div>
+              {talhaoMatsFaz.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#5A7090" }}>
+                  Nenhuma matrícula cadastrada nesta fazenda. Cadastre em Fazendas › aba Matrículas primeiro.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, maxHeight: 180, overflowY: "auto" }}>
+                  {talhaoMatsFaz.map(m => {
+                    const checked = fTalhao.matricula_ids.includes(m.id);
+                    const toggle = () => setFTalhao(p => ({
+                      ...p,
+                      matricula_ids: checked ? p.matricula_ids.filter(id => id !== m.id) : [...p.matricula_ids, m.id],
+                    }));
+                    return (
+                      <label key={m.id} onClick={toggle} style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer",
+                        padding: "6px 8px", borderRadius: 7, border: `0.5px solid ${checked ? "#1A4870" : "#C5D8EE"}`,
+                        background: checked ? "#D5E8F5" : "#fff", transition: "all .15s" }}>
+                        <div style={{ marginTop: 1, width: 15, height: 15, flexShrink: 0, borderRadius: 3,
+                          border: `2px solid ${checked ? "#1A4870" : "#9AB5CC"}`,
+                          background: checked ? "#1A4870" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {checked && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#0B2D50" }}>Matrícula {m.numero}</div>
+                          {(m.cartorio || m.area_ha) && (
+                            <div style={{ fontSize: 11, color: "#5A7090", marginTop: 1 }}>
+                              {m.cartorio && <span>{m.cartorio}</span>}
+                              {m.area_ha && <span style={{ marginLeft: m.cartorio ? 8 : 0 }}>📐 {Number(m.area_ha).toLocaleString("pt-BR")} ha</span>}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* CARs */}
+            <div style={{ padding: "12px 14px", background: "#F0FAF0", border: "0.5px solid #16A34A40", borderRadius: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <label style={{ ...lbl, color: "#14532D", marginBottom: 0 }}>
+                  CAR — Cadastro Ambiental Rural
+                  {fTalhao.car_ids.length > 0 && (
+                    <span style={{ marginLeft: 6, background: "#16A34A", color: "#fff", borderRadius: 10, padding: "0 7px", fontSize: 11, fontWeight: 700 }}>
+                      {fTalhao.car_ids.length}
+                    </span>
+                  )}
+                </label>
+                {fTalhao.car_ids.length > 0 && (
+                  <button type="button" onClick={() => setFTalhao(p => ({ ...p, car_ids: [] }))}
+                    style={{ fontSize: 11, color: "#14532D", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                    Limpar
+                  </button>
+                )}
+              </div>
+              {talhaoCarsFaz.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#3D7A3D" }}>
+                  Nenhum CAR cadastrado nesta fazenda. Cadastre em Fazendas › aba CAR primeiro.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, maxHeight: 180, overflowY: "auto" }}>
+                  {talhaoCarsFaz.map(c => {
+                    const checked = fTalhao.car_ids.includes(c.id);
+                    const toggle = () => setFTalhao(p => ({
+                      ...p,
+                      car_ids: checked ? p.car_ids.filter(id => id !== c.id) : [...p.car_ids, c.id],
+                    }));
+                    const statusColor = c.status === "ativo" ? "#16A34A" : c.status === "pendente" ? "#EF9F27" : "#888";
+                    return (
+                      <label key={c.id} onClick={toggle} style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer",
+                        padding: "6px 8px", borderRadius: 7, border: `0.5px solid ${checked ? "#16A34A" : "#B8DDB8"}`,
+                        background: checked ? "#DCFCE7" : "#fff", transition: "all .15s" }}>
+                        <div style={{ marginTop: 1, width: 15, height: 15, flexShrink: 0, borderRadius: 3,
+                          border: `2px solid ${checked ? "#16A34A" : "#8FBF8F"}`,
+                          background: checked ? "#16A34A" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {checked && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, color: "#14532D", wordBreak: "break-all" }}>
+                            {c.numero}
+                            <span style={{ marginLeft: 6, fontSize: 10, color: statusColor, fontWeight: 700, textTransform: "uppercase" }}>{c.status}</span>
+                          </div>
+                          {c.area_ha && (
+                            <div style={{ fontSize: 11, color: "#3D7A3D", marginTop: 1 }}>📐 {Number(c.area_ha).toLocaleString("pt-BR")} ha</div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Linha 2: Solo + GPS */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>

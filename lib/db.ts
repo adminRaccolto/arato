@@ -214,6 +214,28 @@ export async function salvarArrendamentosTalhao(talhao_id: string, arrendamento_
 }
 
 // ————————————————————————————————————————
+// TALHÃO — DOCUMENTAÇÃO (matrículas e CARs)
+// ————————————————————————————————————————
+
+export async function listarDocumentacaoTalhao(talhao_id: string): Promise<{ matricula_ids: string[]; car_ids: string[] }> {
+  const res = await fetch(`/api/talhao-documentacao?talhao_id=${talhao_id}`);
+  if (!res.ok) return { matricula_ids: [], car_ids: [] };
+  return res.json();
+}
+
+export async function salvarDocumentacaoTalhao(talhao_id: string, matricula_ids: string[], car_ids: string[]): Promise<void> {
+  const res = await fetch("/api/talhao-documentacao", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ talhao_id, matricula_ids, car_ids }),
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? "Erro ao salvar documentação do talhão");
+  }
+}
+
+// ————————————————————————————————————————
 // SAFRAS
 // ————————————————————————————————————————
 
@@ -2897,10 +2919,21 @@ export async function excluirCategoriaLancamento(id: string): Promise<void> {
 // ARRENDAMENTOS
 // ————————————————————————————————————————
 
-export async function listarArrendamentos(fazenda_id: string): Promise<Arrendamento[]> {
+export async function listarArrendamentos(fazenda_id: string): Promise<(Arrendamento & { _mats?: { id: string; numero: string; area_ha?: number; cartorio?: string }[] })[]> {
   const { data, error } = await supabase.from("arrendamentos").select("*").eq("fazenda_id", fazenda_id).order("created_at");
   if (error) throw error;
-  return data ?? [];
+  const arrs = data ?? [];
+  if (arrs.length === 0) return arrs;
+  // Carrega matrículas de todos os arrendamentos em paralelo (fix: mats nunca eram carregadas ao reabrir modal)
+  const ids = arrs.map((a: Arrendamento) => a.id);
+  const { data: matsData } = await supabase.from("arrendamento_matriculas").select("*").in("arrendamento_id", ids);
+  const matsByArr: Record<string, { id: string; numero: string; area_ha?: number; cartorio?: string }[]> = {};
+  for (const m of matsData ?? []) {
+    const row = m as { arrendamento_id: string; id: string; numero: string; area_ha?: number; cartorio?: string };
+    if (!matsByArr[row.arrendamento_id]) matsByArr[row.arrendamento_id] = [];
+    matsByArr[row.arrendamento_id].push({ id: row.id, numero: row.numero, area_ha: row.area_ha, cartorio: row.cartorio });
+  }
+  return arrs.map((a: Arrendamento) => ({ ...a, _mats: matsByArr[a.id] ?? [] }));
 }
 
 export async function criarArrendamento(a: Omit<Arrendamento, "id" | "created_at">): Promise<Arrendamento> {
