@@ -149,14 +149,34 @@ export async function listarTalhoes(fazenda_id: string): Promise<Talhao[]> {
 }
 
 export async function criarTalhao(t: Omit<Talhao, "id" | "created_at">): Promise<Talhao> {
-  const { data, error } = await supabase.from("talhoes").insert(t).select().single();
+  const { area_plantada_ha, ...rest } = t;
+  const { data, error } = await supabase.from("talhoes").insert(rest).select().single();
   if (error) throw error;
-  return data;
+  // Salva area_plantada_ha separadamente via rpc para contornar cache de schema desatualizado
+  if (area_plantada_ha != null) {
+    await supabase.rpc("set_talhao_area_plantada", { p_id: data.id, p_area: area_plantada_ha }).then(r => {
+      if (r.error) {
+        // Fallback: tenta update direto (funciona quando cache já foi recarregado)
+        supabase.from("talhoes").update({ area_plantada_ha } as Partial<Talhao>).eq("id", data.id);
+      }
+    });
+  }
+  return { ...data, area_plantada_ha: area_plantada_ha ?? undefined };
 }
 
 export async function atualizarTalhao(id: string, t: Partial<Talhao>): Promise<void> {
-  const { error } = await supabase.from("talhoes").update(t).eq("id", id);
-  if (error) throw error;
+  const { area_plantada_ha, ...rest } = t;
+  if (Object.keys(rest).length > 0) {
+    const { error } = await supabase.from("talhoes").update(rest).eq("id", id);
+    if (error) throw error;
+  }
+  if (area_plantada_ha != null) {
+    await supabase.rpc("set_talhao_area_plantada", { p_id: id, p_area: area_plantada_ha }).then(r => {
+      if (r.error) {
+        supabase.from("talhoes").update({ area_plantada_ha } as Partial<Talhao>).eq("id", id);
+      }
+    });
+  }
 }
 
 export async function excluirTalhao(id: string): Promise<void> {
