@@ -11,7 +11,7 @@ import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
 import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
-import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario } from "../../../lib/supabase";
+import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
 interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?: string; conta?: string; }
@@ -172,6 +172,27 @@ function ContasPagarInner() {
   const [modalNovo,  setModalNovo]  = useState(false);
   const [modalTab,   setModalTab]   = useState<"principal"|"adicionais">("principal");
   const [alertaNF, setAlertaNF] = useState<Lancamento | null>(null);
+  const [nfsVinculo, setNfsVinculo] = useState<NfEntrada[]>([]);
+  const [nfsVinculoLoading, setNfsVinculoLoading] = useState(false);
+  const [nfVinculoBusca, setNfVinculoBusca] = useState("");
+  const [nfVinculoSelecionada, setNfVinculoSelecionada] = useState<NfEntrada | null>(null);
+
+  useEffect(() => {
+    if (!alertaNF || !fid) return;
+    setNfVinculoSelecionada(null);
+    setNfVinculoBusca("");
+    setNfsVinculoLoading(true);
+    supabase.from("nf_entradas")
+      .select("id,numero,serie,emitente_nome,emitente_cnpj,valor_total,data_emissao,data_vencimento_cp,status,tipo_entrada,origem")
+      .eq("fazenda_id", fid)
+      .in("status", ["pendente", "processada"])
+      .order("data_emissao", { ascending: false })
+      .limit(100)
+      .then(({ data }) => {
+        setNfsVinculo((data ?? []) as NfEntrada[]);
+        setNfsVinculoLoading(false);
+      });
+  }, [alertaNF, fid]);
 
   // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -1124,42 +1145,100 @@ function ContasPagarInner() {
         </div>
       </main>
 
-      {/* ── Alerta: CP sem NF ───────────────────────────────────── */}
+      {/* ── Vínculo de NF na baixa ──────────────────────────────── */}
       {alertaNF && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 420, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <span style={{ fontSize: 22 }}>⚠️</span>
-              <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Conta a Pagar sem Nota Fiscal</span>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: "#fff", borderRadius: 14, width: 680, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(11,45,80,0.15)" }}>
+
+            {/* Header */}
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>Vincular Nota Fiscal à Baixa</div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 3 }}>{alertaNF.descricao} — {alertaNF.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+              </div>
+              <button onClick={() => setAlertaNF(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>×</button>
             </div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>{alertaNF.descricao}</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>
-              Este lançamento não possui nota fiscal vinculada. Para conformidade com o LCDPR e SPED, recomenda-se registrar a NF antes de baixar.
+
+            {/* Busca */}
+            <div style={{ padding: "12px 22px 8px" }}>
+              <input
+                type="text"
+                placeholder="Buscar por nº NF, emitente ou valor…"
+                value={nfVinculoBusca}
+                onChange={e => setNfVinculoBusca(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                autoFocus
+              />
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setAlertaNF(null)} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
-              <button onClick={async () => {
-                // Garante que existe uma pendência fiscal para este lançamento
-                const l = alertaNF;
-                const { data: existe } = await supabase.from("pendencias_fiscais")
-                  .select("id").eq("lancamento_id", l.id).maybeSingle();
-                if (!existe) {
-                  await supabase.from("pendencias_fiscais").insert({
-                    fazenda_id:      fid,
-                    lancamento_id:   l.id,
-                    tipo:            "compra",
-                    status:          "aguardando",
-                    descricao:       l.descricao ?? "",
-                    valor:           l.valor ?? 0,
-                    data_operacao:   l.data_vencimento ?? TODAY,
-                    fornecedor_nome: "",
-                    origem:          "manual",
-                  });
-                }
-                setAlertaNF(null);
-                router.push("/fiscal/pendencias");
-              }} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #1A4870", background: "transparent", color: "#1A4870", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                📎 Vincular Nota
+
+            {/* Lista de NFs */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 22px 8px" }}>
+              {nfsVinculoLoading ? (
+                <div style={{ textAlign: "center", padding: 24, color: "#888", fontSize: 13 }}>Carregando NFs…</div>
+              ) : (() => {
+                const busca = nfVinculoBusca.toLowerCase();
+                const filtradas = nfsVinculo.filter(nf =>
+                  !busca ||
+                  (nf.numero ?? "").includes(busca) ||
+                  (nf.emitente_nome ?? "").toLowerCase().includes(busca) ||
+                  (nf.valor_total ?? 0).toFixed(2).includes(busca)
+                );
+                if (filtradas.length === 0) return (
+                  <div style={{ textAlign: "center", padding: 24, color: "#888", fontSize: 13 }}>
+                    {nfsVinculo.length === 0 ? "Nenhuma NF importada encontrada." : "Nenhuma NF corresponde à busca."}
+                  </div>
+                );
+                return (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#F4F6FA" }}>
+                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Nº NF</th>
+                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Emitente</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Emissão</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Vencimento</th>
+                        <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Valor</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtradas.map(nf => {
+                        const sel = nfVinculoSelecionada?.id === nf.id;
+                        const fmtD = (s?: string | null) => { if (!s) return "—"; const [y,m,d] = s.split("-"); return `${d}/${m}/${y}`; };
+                        return (
+                          <tr key={nf.id}
+                            onClick={() => setNfVinculoSelecionada(sel ? null : nf)}
+                            style={{ cursor: "pointer", background: sel ? "#D5E8F5" : "transparent", borderBottom: "0.5px solid #F0F2F7" }}>
+                            <td style={{ padding: "8px 10px", fontWeight: 700, color: sel ? "#0B2D50" : "#1A4870" }}>{nf.numero}/{nf.serie}</td>
+                            <td style={{ padding: "8px 10px", color: "#1a1a1a", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome || "—"}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "center", color: "#555" }}>{fmtD(nf.data_emissao)}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "center", color: nf.data_vencimento_cp ? "#7A4300" : "#888", fontWeight: nf.data_vencimento_cp ? 600 : 400 }}>{fmtD(nf.data_vencimento_cp)}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600, color: "#1a1a1a" }}>{(nf.valor_total ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                            <td style={{ padding: "8px 10px", textAlign: "center" }}>
+                              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, fontWeight: 700,
+                                background: nf.status === "processada" ? "#E8F5E9" : "#FBF3E0",
+                                color: nf.status === "processada" ? "#1A6B3C" : "#C9921B" }}>
+                                {nf.status === "processada" ? "Processada" : "Pendente"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: "12px 22px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+              {nfVinculoSelecionada && (
+                <span style={{ fontSize: 12, color: "#0B2D50", background: "#D5E8F5", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }}>
+                  NF {nfVinculoSelecionada.numero} selecionada
+                </span>
+              )}
+              <button onClick={() => setAlertaNF(null)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #CCC", background: "#F4F6FA", cursor: "pointer", fontSize: 13 }}>
+                Cancelar
               </button>
               <button onClick={() => {
                 const l = alertaNF;
@@ -1173,10 +1252,36 @@ function ContasPagarInner() {
                   og_busca: "", salvar_class: false,
                   ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
                 });
-              }} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#C9921B", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                Continuar sem NF
+              }} style={{ padding: "8px 16px", borderRadius: 8, border: "0.5px solid #888", background: "transparent", color: "#555", cursor: "pointer", fontSize: 13 }}>
+                Baixar sem NF
+              </button>
+              <button
+                disabled={!nfVinculoSelecionada}
+                onClick={async () => {
+                  if (!nfVinculoSelecionada) return;
+                  const l = alertaNF;
+                  // Vincula o número da NF ao lançamento
+                  await supabase.from("lancamentos").update({ nfe_numero: nfVinculoSelecionada.numero }).eq("id", l.id);
+                  // Atualiza localmente
+                  setLancamentos(prev => prev.map(x => x.id === l.id ? { ...x, nfe_numero: nfVinculoSelecionada.numero } : x));
+                  const lAtualizado = { ...l, nfe_numero: nfVinculoSelecionada.numero };
+                  setAlertaNF(null);
+                  // Abre o modal de baixa
+                  setModalBaixa(lAtualizado);
+                  setBaixa({
+                    valorMask: l.moeda === "barter" ? "" : numParaMascara(paraBRL(l)),
+                    data: TODAY, conta: l.conta_bancaria ?? "", obs: l.observacao ?? "",
+                    multa_pct: "", juros_pct: "", desconto_pct: "",
+                    pessoa_id: l.pessoa_id ?? "", operacao_gerencial_id: l.operacao_gerencial_id ?? "",
+                    og_busca: "", salvar_class: false,
+                    ano_safra_id: l.ano_safra_id ?? "", ciclo_id: l.ciclo_id ?? "",
+                  });
+                }}
+                style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: nfVinculoSelecionada ? "#1A4870" : "#CCC", color: "#fff", cursor: nfVinculoSelecionada ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 700 }}>
+                Vincular e Baixar
               </button>
             </div>
+
           </div>
         </div>
       )}

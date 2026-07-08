@@ -1311,18 +1311,19 @@ export default function NfCompraPage() {
                 {/* Dados fiscais */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                   {[
-                    { label: "Emissão",    value: fmtData(nf.data_emissao) },
-                    { label: "Entrada",    value: fmtData(nf.data_entrada) ?? "—" },
-                    { label: "Natureza",   value: nf.natureza || "—" },
-                    { label: "CFOP",       value: nf.cfop || "—" },
-                    { label: "Valor Total",value: fmtBRL(nf.valor_total) },
-                    { label: "Origem",     value: nf.origem?.toUpperCase() ?? "—" },
-                    { label: "Tipo",       value: nf.tipo_entrada ? TIPO_META[nf.tipo_entrada]?.label ?? nf.tipo_entrada : "—" },
-                    { label: "Observação", value: nf.observacao || "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} style={{ background: "#fff", border: "0.5px solid #EEF1F6", borderRadius: 8, padding: "10px 12px" }}>
-                      <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>{label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", wordBreak: "break-word" }}>{value}</div>
+                    { label: "Emissão",       value: fmtData(nf.data_emissao) },
+                    { label: "Entrada",        value: fmtData(nf.data_entrada) ?? "—" },
+                    { label: "Vencimento CP",  value: nf.data_vencimento_cp ? fmtData(nf.data_vencimento_cp) : "—", destaque: !!nf.data_vencimento_cp },
+                    { label: "Natureza",       value: nf.natureza || "—" },
+                    { label: "CFOP",           value: nf.cfop || "—" },
+                    { label: "Valor Total",    value: fmtBRL(nf.valor_total) },
+                    { label: "Origem",         value: nf.origem?.toUpperCase() ?? "—" },
+                    { label: "Tipo",           value: nf.tipo_entrada ? TIPO_META[nf.tipo_entrada]?.label ?? nf.tipo_entrada : "—" },
+                    { label: "Observação",     value: nf.observacao || "—" },
+                  ].map(({ label, value, destaque }) => (
+                    <div key={label} style={{ background: destaque ? "#FBF3E0" : "#fff", border: `0.5px solid ${destaque ? "#C9921B" : "#EEF1F6"}`, borderRadius: 8, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 10, color: destaque ? "#7A4300" : "#888", marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: destaque ? "#7A4300" : "#1a1a1a", wordBreak: "break-word" }}>{value}</div>
                     </div>
                   ))}
                 </div>
