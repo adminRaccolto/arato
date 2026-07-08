@@ -220,9 +220,6 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "configuracoes", label: "Configurações", minStep: 0,
     children: [
-      { type: "divider", label: "Empresa" },
-      { id: "conf-empresa",      label: "Empresas & Produtores", path: "/cadastros?tab=empresas",    moduleId: "conf_empresa" },
-
       { type: "divider", label: "Fiscal" },
       { id: "conf-modulos",        label: "Parâmetros NF-e / MDF-e",   path: "/configuracoes/modulos",               moduleId: "conf_fiscal" },
       { id: "conf-op-fiscais",     label: "Operações Fiscais",          path: "/configuracoes/modulos?aba=operacoes", moduleId: "conf_fiscal" },
