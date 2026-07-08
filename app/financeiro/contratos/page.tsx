@@ -4,7 +4,7 @@ import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
 import {
-  listarContratosFinanceiros, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
+  listarContratosFinanceiros, listarContratosFinanceirosDaConta, criarContratoFinanceiro, atualizarContratoFinanceiro, excluirContratoFinanceiro,
   listarParcelasLiberacao, criarParcelaLiberacao, excluirParcelaLiberacao,
   listarParcelasPagamento, salvarParcelasPagamento,
   listarGarantias, criarGarantia, excluirGarantia,
@@ -439,7 +439,7 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
 // PÁGINA
 // ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
   const [contas, setContas]       = useState<ContaBancaria[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
@@ -480,7 +480,7 @@ export default function ContratosFinanceiros() {
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
-    listarContratosFinanceiros(fazendaId)
+    listarContratosFinanceirosDaConta(contaId, fazendaId)
       .then(setContratos)
       .catch(err => {
         console.error("[CF] Erro ao carregar contratos financeiros:", err);
@@ -973,7 +973,7 @@ export default function ContratosFinanceiros() {
             <div style={{ background: "#FCEBEB", borderRadius: 14, border: "0.5px solid #E24B4A50", padding: "32px 24px", textAlign: "center" }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#791F1F", marginBottom: 6 }}>Erro ao carregar contratos</div>
               <div style={{ fontSize: 12, color: "#791F1F", marginBottom: 16 }}>{erroCarregamento}</div>
-              <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceiros(fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
+              <button style={{ ...btnV, background: "#1A4870" }} onClick={() => { setErroCarregamento(null); if (fazendaId) listarContratosFinanceirosDaConta(contaId, fazendaId).then(setContratos).catch(err => setErroCarregamento(String(err?.message ?? err))); }}>
                 Tentar novamente
               </button>
             </div>

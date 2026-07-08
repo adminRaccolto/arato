@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
-import { listarLancamentosPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior } from "../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, listarSimulacoes, criarSimulacao, toggleSimulacao, excluirSimulacao, calcularSaldoAnterior } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import type { Lancamento, Simulacao } from "../../lib/supabase";
 
@@ -191,7 +191,7 @@ const conciliados: { data: string; descricao: string; valor: number; tipo: "cred
 
 // ═══════════════════════════════════════════════════════════════
 export default function Financeiro() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, contaId } = useAuth();
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [loading, setLoading]   = useState(true);
   const [erro, setErro]         = useState<string | null>(null);
@@ -255,14 +255,14 @@ export default function Financeiro() {
       setPeriodoTemp({ inicio: periodoInicio, fim: periodoFim });
       carregarDados();
     }
-  }, [fazendaId, periodoInicio, periodoFim]);
+  }, [fazendaId, contaId, periodoInicio, periodoFim]);
 
   async function carregarDados() {
     try {
       setLoading(true);
       setErro(null);
       const [lans] = await Promise.all([
-        listarLancamentosPeriodo(fazendaId!, periodoInicio, periodoFim),
+        listarLancamentosContaPeriodo(contaId, periodoInicio, periodoFim, undefined, fazendaId),
         calcularSaldoAnterior(fazendaId!, periodoInicio).then(setSaldoAnterior).catch(() => setSaldoAnterior(0)),
       ]);
       setLancamentos(lans);

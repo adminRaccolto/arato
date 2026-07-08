@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import TopNav from "../../components/TopNav";
 import BalancaSerial from "../../components/BalancaSerial";
 import {
-  listarContratos, criarContrato, atualizarContrato, excluirContrato, encerrarContratosPorSafras,
+  listarContratos, listarContratosDaConta, criarContrato, atualizarContrato, excluirContrato, encerrarContratosPorSafras,
   listarRomaneios, criarRomaneio,
   listarItensContrato, salvarItensContrato,
   listarCessaoDebitos, salvarCessaoDebitos,
@@ -195,7 +195,7 @@ type AbaLista = "contratos" | "expedicao" | "posicao";
 
 // ═══════════════════════════════════════════════════════════════════
 export default function Contratos() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
 
   // ── dados ────────────────────────────────────────────────────
   const [contratos, setContratos]     = useState<ContratoVM[]>([]);
@@ -399,13 +399,13 @@ export default function Contratos() {
   }, [filtroAno]);
 
   // ── carga ────────────────────────────────────────────────────
-  useEffect(() => { if (fazendaId) carregarTudo(); }, [fazendaId]);
+  useEffect(() => { if (fazendaId) carregarTudo(); }, [fazendaId, contaId]);
 
   async function carregarTudo() {
     try {
       setLoading(true); setErro(null);
       const [cList, rList, pList, prodList, aList, dList, fList] = await Promise.all([
-        listarContratos(fazendaId!),
+        listarContratosDaConta(contaId, fazendaId),
         listarRomaneios(fazendaId!),
         listarPessoas(fazendaId!),
         listarProdutores(fazendaId!),

@@ -1960,6 +1960,56 @@ export async function listarContratosFinanceiros(fazenda_id: string): Promise<Co
   return (data ?? []).map(normalizarContrato);
 }
 
+// Versão multi-fazenda: busca via /api/fazenda/da-conta, igual ao padrão de listarLancamentosContaPeriodo
+export async function listarContratosFinanceirosDaConta(
+  conta_id: string | null,
+  fazenda_id_fallback?: string | null,
+): Promise<ContratoFinanceiro[]> {
+  const cidReal = (conta_id && !conta_id.startsWith("sem_conta_")) ? conta_id : null;
+  let fazendaIds: string[] = [];
+  try {
+    const res = await fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conta_id: cidReal, fazenda_id: fazenda_id_fallback }),
+    });
+    if (res.ok) {
+      const json = await res.json() as { ok: boolean; fazendas?: { id: string }[] };
+      if (json.ok && json.fazendas?.length) fazendaIds = json.fazendas.map((f: { id: string }) => f.id);
+    }
+  } catch { /* ignora */ }
+  if (fazenda_id_fallback && !fazendaIds.includes(fazenda_id_fallback)) fazendaIds.push(fazenda_id_fallback);
+  if (!fazendaIds.length) return [];
+  const { data, error } = await supabase.from("contratos_financeiros").select("*").in("fazenda_id", fazendaIds).order("data_contrato", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(normalizarContrato);
+}
+
+// Versão multi-fazenda para contratos de grãos
+export async function listarContratosDaConta(
+  conta_id: string | null,
+  fazenda_id_fallback?: string | null,
+): Promise<Contrato[]> {
+  const cidReal = (conta_id && !conta_id.startsWith("sem_conta_")) ? conta_id : null;
+  let fazendaIds: string[] = [];
+  try {
+    const res = await fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conta_id: cidReal, fazenda_id: fazenda_id_fallback }),
+    });
+    if (res.ok) {
+      const json = await res.json() as { ok: boolean; fazendas?: { id: string }[] };
+      if (json.ok && json.fazendas?.length) fazendaIds = json.fazendas.map((f: { id: string }) => f.id);
+    }
+  } catch { /* ignora */ }
+  if (fazenda_id_fallback && !fazendaIds.includes(fazenda_id_fallback)) fazendaIds.push(fazenda_id_fallback);
+  if (!fazendaIds.length) return [];
+  const { data, error } = await supabase.from("contratos").select("*").in("fazenda_id", fazendaIds).order("data_contrato", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 // Converte campos TypeScript → colunas reais do banco (compatível com schema antigo e novo)
 function desnormalizarContrato(c: Omit<ContratoFinanceiro, "id" | "created_at">): Record<string, unknown> {
   const vfBrl = c.valor_financiado_brl

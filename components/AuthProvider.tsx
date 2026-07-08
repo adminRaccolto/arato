@@ -15,6 +15,7 @@ export type ModuloPermissao = "escrita" | "leitura" | "nenhum";
 
 type AuthCtx = {
   fazendaId:              string | null;
+  fazendaIds:             string[];        // todas as fazendas da conta (multi-fazenda)
   contaId:                string | null;
   nomeUsuario:            string | null;
   emailUsuario:           string | null;
@@ -45,6 +46,7 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx>({
   fazendaId:              null,
+  fazendaIds:             [],
   contaId:                null,
   nomeUsuario:            null,
   emailUsuario:           null,
@@ -74,6 +76,7 @@ export function useAuth() { return useContext(Ctx); }
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [fazendaId,              setFazendaId]              = useState<string | null>(null);
+  const [fazendaIds,             setFazendaIds]             = useState<string[]>([]);
   const [contaId,                setContaId]                = useState<string | null>(null);
   const [nomeUsuario,            setNomeUsuario]            = useState<string | null>(null);
   const [emailUsuario,           setEmailUsuario]           = useState<string | null>(null);
@@ -97,6 +100,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     if (produtorNome) localStorage.setItem("raccotlo_produtor_nome", produtorNome);
     else              localStorage.removeItem("raccotlo_produtor_nome");
     setFazendaId(id);
+    setFazendaIds([id]); // provisório até a API responder
     setNomeFazendaSelecionada(fazendaNome);
     setNomeProdutor(produtorNome ?? null);
     // Sincroniza logo e contaId com o que acessarCliente() escreveu no localStorage
@@ -104,7 +108,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const logoUrl         = localStorage.getItem("raccotlo_cliente_logo");
     const clienteContaId  = localStorage.getItem("raccotlo_cliente_conta_id");
     setLogoCliente(logoUrl ?? null);
-    setContaId(clienteContaId && !clienteContaId.startsWith("sem_conta_") ? clienteContaId : null);
+    const cidReal = clienteContaId && !clienteContaId.startsWith("sem_conta_") ? clienteContaId : null;
+    setContaId(cidReal);
+    // Resolve todas as fazendas da conta para queries multi-fazenda
+    fetch("/api/fazenda/da-conta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conta_id: cidReal, fazenda_id: id }),
+    }).then(r => r.ok ? r.json() : null).then((json: { ok: boolean; fazendas?: { id: string }[] } | null) => {
+      if (json?.ok && json.fazendas?.length) setFazendaIds(json.fazendas.map(f => f.id));
+    }).catch(() => {});
     router.push("/");
   }, [router]);
 
@@ -115,6 +128,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("raccotlo_cliente_logo");
     localStorage.removeItem("raccotlo_cliente_conta_id");
     setFazendaId(null);
+    setFazendaIds([]);
     setContaId(null);
     setNomeFazendaSelecionada(null);
     setNomeProdutor(null);
@@ -187,11 +201,21 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const savedClienteContaId = localStorage.getItem("raccotlo_cliente_conta_id");
         if (savedId) {
           setFazendaId(savedId);
+          setFazendaIds([savedId]); // provisório
           setNomeFazendaSelecionada(savedNome);
           setNomeProdutor(savedProdutorNome);
           if (savedLogoUrl)       setLogoCliente(savedLogoUrl);
           // Ignora IDs sintéticos "sem_conta_<fazenda_id>" — deixa contaId=null nesses casos
-          if (savedClienteContaId && !savedClienteContaId.startsWith("sem_conta_")) setContaId(savedClienteContaId);
+          const cidReal = savedClienteContaId && !savedClienteContaId.startsWith("sem_conta_") ? savedClienteContaId : null;
+          if (cidReal) setContaId(cidReal);
+          // Resolve todas as fazendas da conta para queries multi-fazenda (fire-and-forget)
+          fetch("/api/fazenda/da-conta", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conta_id: cidReal, fazenda_id: savedId }),
+          }).then(r => r.ok ? r.json() : null).then((json: { ok: boolean; fazendas?: { id: string }[] } | null) => {
+            if (json?.ok && json.fazendas?.length) setFazendaIds(json.fazendas.map(f => f.id));
+          }).catch(() => {});
         } else {
           // Sem farm: hub (/raccotlo), seletor e admin são rotas livres
           const pathname = typeof window !== "undefined" ? window.location.pathname : "";
@@ -210,6 +234,18 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const cid: string | null = (perfil as { conta_id?: string } | null)?.conta_id ?? null;
       setFazendaId(fid);
       setContaId(cid);
+      // Carrega todas as fazendas da conta para queries multi-fazenda
+      if (cid) {
+        (async () => {
+          try {
+            const { data: fazs } = await supabase.from("fazendas").select("id").eq("conta_id", cid);
+            const ids = (fazs ?? []).map((f: { id: string }) => f.id).filter(Boolean);
+            setFazendaIds(ids.length > 0 ? ids : (fid ? [fid] : []));
+          } catch { if (fid) setFazendaIds([fid]); }
+        })();
+      } else if (fid) {
+        setFazendaIds([fid]);
+      }
 
       // Carrega conta + usuário em paralelo (evita 2 round-trips sequenciais)
       const [contaRes, usuarioRes] = await Promise.allSettled([
@@ -293,6 +329,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         setFazendaId(null);
+        setFazendaIds([]);
         setContaId(null);
         setNomeUsuario(null);
         setEmailUsuario(null);
@@ -413,7 +450,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      fazendaId, contaId, nomeUsuario, emailUsuario, userRole, raccotloGestor,
+      fazendaId, fazendaIds, contaId, nomeUsuario, emailUsuario, userRole, raccotloGestor,
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,

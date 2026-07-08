@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
+import { listarContratosFinanceirosDaConta } from "../../../lib/db";
 import TopNav from "../../../components/TopNav";
 import type { ContratoFinanceiro, ParcelaPagamento, GarantiaContrato } from "../../../lib/supabase";
 
@@ -51,7 +52,7 @@ interface ContratoEnriquecido extends ContratoFinanceiro {
 }
 
 export default function RelatorioEndividamento() {
-  const { fazendaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
+  const { fazendaId, contaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
 
   const [contratos,  setContratos]  = useState<ContratoEnriquecido[]>([]);
   const [produtores, setProdutores] = useState<Produtor[]>([]);
@@ -81,16 +82,15 @@ export default function RelatorioEndividamento() {
     setLoading(true);
     setErro(null);
     try {
-      const [{ data: ctsRaw, error: ctsErr }, { data: prods }] = await Promise.all([
-        supabase.from("contratos_financeiros").select("*").eq("fazenda_id", fazendaId).order("credor"),
+      const [ctsRaw, { data: prods }] = await Promise.all([
+        listarContratosFinanceirosDaConta(contaId, fazendaId),
         supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").eq("fazenda_id", fazendaId).order("nome_razao_social"),
       ]);
 
-      if (ctsErr) { setErro(ctsErr.message); setContratos([]); return; }
-      if (!ctsRaw) { setContratos([]); return; }
+      if (!ctsRaw?.length) { setContratos([]); setProdutores((prods ?? []) as Produtor[]); return; }
       setProdutores((prods ?? []) as Produtor[]);
 
-      const ids = (ctsRaw as ContratoFinanceiro[]).map(c => c.id);
+      const ids = ctsRaw.map(c => c.id);
       const [{ data: parcsAll }, { data: garsAll }] = await Promise.all([
         ids.length > 0
           ? supabase.from("parcelas_pagamento").select("*").in("contrato_id", ids).order("data_vencimento")
@@ -100,7 +100,7 @@ export default function RelatorioEndividamento() {
           : { data: [] as GarantiaContrato[] },
       ]);
 
-      const enriched: ContratoEnriquecido[] = (ctsRaw as ContratoFinanceiro[]).map(c => {
+      const enriched: ContratoEnriquecido[] = ctsRaw.map(c => {
         const parcelas  = ((parcsAll ?? []) as ParcelaPagamento[]).filter(p => p.contrato_id === c.id);
         const pagas     = parcelas.filter(p => p.status === "pago");
         const emAberto  = parcelas.filter(p => p.status !== "pago").sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
@@ -128,7 +128,7 @@ export default function RelatorioEndividamento() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
 

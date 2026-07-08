@@ -5,7 +5,7 @@ import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 import type { PrecosData } from "../api/precos/route";
-import { listarAlertasController, reconhecerAlerta, resolverAlerta, upsertAlertaController } from "../../lib/db";
+import { listarAlertasController, reconhecerAlerta, resolverAlerta, upsertAlertaController, listarContratosFinanceirosDaConta } from "../../lib/db";
 import type { ControllerAlerta } from "../../lib/supabase";
 
 // ── Tipos ─────────────────────────────────────────────────────
@@ -251,7 +251,7 @@ const CAT_ICONE: Record<Categoria,  string> = { Fiscal: "📄", Financeiro: "�
 
 // ── Componente principal ──────────────────────────────────────
 export default function BI() {
-  const { fazendaId, userRole, logoCliente } = useAuth();
+  const { fazendaId, fazendaIds, contaId, userRole, logoCliente } = useAuth();
   const router = useRouter();
 
   const [fazenda,     setFazenda]     = useState<Fazenda | null>(null);
@@ -331,16 +331,18 @@ export default function BI() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
+    // Usa fazendaIds para cobrir todas as fazendas da conta (multi-fazenda)
+    const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
     const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
-      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc").eq("fazenda_id", fazendaId),
-      supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").eq("fazenda_id", fazendaId),
-      supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").eq("fazenda_id", fazendaId),
-      supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").eq("fazenda_id", fazendaId),
-      supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").eq("fazenda_id", fazendaId),
-      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome").eq("fazenda_id", fazendaId),
-      supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").eq("fazenda_id", fazendaId),
+      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc").in("fazenda_id", fids),
+      supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids),
+      supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids),
+      supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
+      supabase.from("lancamentos").select("id,fazenda_id,tipo,moeda,status,valor,sacas,cultura_barter,data_vencimento,data_baixa,descricao,categoria,cotacao_usd,ano_safra_id,auto").in("fazenda_id", fids),
+      supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome").in("fazenda_id", fids),
+      supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").in("fazenda_id", fids),
       fetch("/api/precos").then(r => r.json()),
     ]);
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
@@ -361,8 +363,8 @@ export default function BI() {
   }, [fazendaId]);
 
   useEffect(() => {
-    if (userRole === "raccotlo" && fazendaId) carregar();
-  }, [userRole, fazendaId, carregar]);
+    if (userRole === "raccotlo" && fazendaId && fazendaIds.length > 0) carregar();
+  }, [userRole, fazendaId, fazendaIds, carregar]);
 
   const carregarAlertas = useCallback(async () => {
     if (!fazendaId) return;
@@ -379,21 +381,18 @@ export default function BI() {
     if (!fazendaId) return;
     setCfLoading(true);
     try {
-      const { data: cs } = await supabase
-        .from("contratos_financeiros")
-        .select("id,descricao,credor,tipo,moeda,data_contrato,valor_total,cotacao_usd,linha_credito,status")
-        .eq("fazenda_id", fazendaId);
-      const ids = (cs ?? []).map((c: Record<string, unknown>) => c.id as string);
+      const cs = await listarContratosFinanceirosDaConta(contaId, fazendaId);
+      const ids = cs.map(c => c.id);
       const { data: ps } = ids.length > 0
         ? await supabase
             .from("parcelas_pagamento")
             .select("id,contrato_id,num_parcela,data_vencimento,amortizacao,juros,despesas_acessorios,valor_parcela,saldo_devedor,status")
             .in("contrato_id", ids)
         : { data: [] as CFParcela[] };
-      setCfContratos((cs ?? []) as CFContrato[]);
+      setCfContratos(cs as unknown as CFContrato[]);
       setCfParcelas((ps ?? []) as CFParcela[]);
     } catch { /* ignora */ } finally { setCfLoading(false); }
-  }, [fazendaId]);
+  }, [fazendaId, contaId]);
 
   useEffect(() => {
     if (fazendaId && userRole === "raccotlo") carregarCF();
