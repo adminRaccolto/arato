@@ -447,7 +447,10 @@ function ContasPagarInner() {
   const abrirBaixa = (l: Lancamento) => {
     // Intercepta se não tem NF vinculada (exceto barter e lançamentos de arrendamento/financiamento)
     const categoriasSemNF = ["Arrendamento de Terra", "Pagamento de Custeio", "Pagamento de Financiamento", "Pagamento de Empréstimo", "Consórcio — A Contemplar", "Consórcio — Contemplado", "Impostos", "Juros e IOF", "Combustível — Consumo Direto"];
-    const precisaNF = l.moeda !== "barter" && !l.nfe_numero && !categoriasSemNF.includes(l.categoria ?? "");
+    const precisaNF = l.moeda !== "barter"
+      && !l.nfe_numero
+      && l.origem_lancamento !== "nf_entrada"   // CP originado de NF já tem vínculo implícito
+      && !categoriasSemNF.includes(l.categoria ?? "");
     if (precisaNF) { setAlertaNF(l); return; }
     setModalBaixa(l);
     const saldoRestante = paraBRL(l) - (l.valor_pago ?? 0);
