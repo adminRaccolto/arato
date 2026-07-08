@@ -782,6 +782,15 @@ export default function NfCompraPage() {
         nfEdit.emitente_nome,
         nfEdit.data_entrada ?? nfEdit.data_emissao,
         nfEdit.emitente_cnpj,
+        {
+          nfeNumero:           nfEdit.numero,
+          dataVencimentoCp:    nfEdit.data_vencimento_cp,
+          tipoEntrada:         nfEdit.tipo_entrada,
+          anoSafraId:          nfEdit.ano_safra_id,
+          cicloId:             nfEdit.ciclo_id,
+          operacaoGerencialId: nfEdit.operacao_gerencial_id,
+          centroCustoId:       nfEdit.centro_custo_id,
+        },
       );
 
       // 3. Marcar como processada

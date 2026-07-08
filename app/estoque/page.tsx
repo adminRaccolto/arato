@@ -486,6 +486,7 @@ export default function Estoque() {
       fNf.valor_total || 0,
       fNf.emitente_nome, fNf.data_emissao,
       fNf.emitente_cnpj || undefined,
+      { nfeNumero: fNf.numero },
     );
     // Recarregar
     const [nfs, ins] = await Promise.all([listarNfEntradas(fazendaId!), listarInsumos(fazendaId!)]);
