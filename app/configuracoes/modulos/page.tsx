@@ -386,6 +386,7 @@ function ParametrosSistemaContent() {
   const [logoUrl,        setLogoUrl]        = useState<string | null>(null);
   const [logoUploading,  setLogoUploading]  = useState(false);
   const [logoOk,         setLogoOk]         = useState(false);
+  const [resolvedContaId, setResolvedContaId] = useState<string | null>(null);;
 
   // ── Transportes
   const [transportadoras, setTransportadoras] = useState<Transportadora[]>([]);
@@ -423,20 +424,28 @@ function ParametrosSistemaContent() {
     supabase.from("motoristas").select("*").eq("fazenda_id", fazendaId).then(({ data }) => data && setMotoristas(data));
   }, [fazendaId]);
 
+  // Resolve contaId: usa direto se disponível, senão busca da fazenda (admin Raccolto ou backfill pendente)
   useEffect(() => {
-    if (!contaId) return;
-    supabase.from("contas").select("logo_url").eq("id", contaId).maybeSingle()
+    if (contaId) { setResolvedContaId(contaId); return; }
+    if (!fazendaId) return;
+    supabase.from("fazendas").select("conta_id").eq("id", fazendaId).maybeSingle()
+      .then(({ data }) => { if (data?.conta_id) setResolvedContaId(data.conta_id as string); });
+  }, [contaId, fazendaId]);
+
+  useEffect(() => {
+    if (!resolvedContaId) return;
+    supabase.from("contas").select("logo_url").eq("id", resolvedContaId).maybeSingle()
       .then(({ data }) => { if (data?.logo_url) setLogoUrl(data.logo_url); });
-  }, [contaId]);
+  }, [resolvedContaId]);
 
   // ── Upload de logo via API route (usa service role key para bypass de RLS)
   const uploadLogo = async (file: File) => {
-    if (!contaId) return;
+    if (!resolvedContaId) return;
     setLogoUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("conta_id", contaId);
+      fd.append("conta_id", resolvedContaId);
       const res = await fetch("/api/upload-logo", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Falha no upload");
@@ -451,8 +460,8 @@ function ParametrosSistemaContent() {
   };
 
   const removerLogo = async () => {
-    if (!contaId || !confirm("Remover a logo?")) return;
-    await supabase.from("contas").update({ logo_url: null }).eq("id", contaId);
+    if (!resolvedContaId || !confirm("Remover a logo?")) return;
+    await supabase.from("contas").update({ logo_url: null }).eq("id", resolvedContaId);
     setLogoUrl(null);
     setLogoCliente(null);
   };
@@ -1304,12 +1313,12 @@ function ParametrosSistemaContent() {
                         type="file"
                         accept="image/png,image/jpeg,image/svg+xml,image/webp"
                         style={{ display: "none" }}
-                        disabled={logoUploading || !contaId}
+                        disabled={logoUploading || !resolvedContaId}
                         onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }}
                       />
                       {logoUploading ? "Enviando…" : "↑ Escolher arquivo"}
                     </label>
-                    {!contaId && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#E24B4A" }}>Conta não identificada — recarregue a página.</p>}
+                    {!resolvedContaId && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#E24B4A" }}>Conta não identificada — recarregue a página.</p>}
                   </div>
 
                   {logoOk && (
