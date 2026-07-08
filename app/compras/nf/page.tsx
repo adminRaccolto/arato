@@ -137,7 +137,7 @@ const TIPO_LABELS: Record<TipoEntrada, { label: string; desc: string; cor: strin
 // Componente principal
 // ─────────────────────────────────────────────────────────────
 export default function NfCompraPage() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
 
   // Dados mestre
   const [nfs, setNfs]             = useState<NfEntrada[]>([]);
@@ -181,6 +181,17 @@ export default function NfCompraPage() {
   const [tipo,    setTipo]    = useState<TipoEntrada>("insumos");
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
+
+  // Visualizador de NF (read-only)
+  const [nfViewer, setNfViewer] = useState<{ nf: NfEntrada; itens: NfEntradaItem[] } | null>(null);
+  const [nfViewerLoading, setNfViewerLoading] = useState(false);
+
+  async function abrirVisualizador(nf: NfEntrada) {
+    setNfViewerLoading(true);
+    const itens = await listarNfEntradaItens(nf.id).catch(() => []);
+    setNfViewer({ nf, itens });
+    setNfViewerLoading(false);
+  }
 
   // Wizard — visão de NF (edição)
   const [nfEdit, setNfEdit] = useState<NfEntrada | null>(null);
@@ -342,7 +353,10 @@ export default function NfCompraPage() {
           const s = String(c.cnpj_destino ?? c.cpf_cnpj_emitente ?? c.cnpj ?? "").replace(/\D/g,"");
           if (s && !cnpjs.includes(s)) cnpjs.push(s);
         }
-        const { data: prods } = await supabase.from("produtores").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
+        const prodsQ = contaId
+          ? supabase.from("produtores").select("nome,cpf_cnpj").eq("conta_id", contaId)
+          : supabase.from("produtores").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
+        const { data: prods } = await prodsQ;
         const { data: pess  } = await supabase.from("pessoas").select("nome,cpf_cnpj").eq("fazenda_id", fazendaId);
         const todos: Array<{nome:string;cnpj:string}> = [];
         for (const c of cnpjs) {
@@ -1200,6 +1214,10 @@ export default function NfCompraPage() {
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          <button onClick={() => abrirVisualizador(nf)} disabled={nfViewerLoading}
+                            style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                            Ver
+                          </button>
                           {nf.status !== "processada" && nf.status !== "cancelada" && (
                             <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
                               Editar
@@ -1241,6 +1259,135 @@ export default function NfCompraPage() {
           )}
         </div>
       </main>
+
+      {/* ══════════════════════════════════════════════════════
+          MODAL VISUALIZADOR DE NF
+      ══════════════════════════════════════════════════════ */}
+      {nfViewer && (() => {
+        const { nf, itens } = nfViewer;
+        const fmtDoc = (d: string) => d.length === 14
+          ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")
+          : d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+               onClick={() => setNfViewer(null)}>
+            <div style={{ background: "#fff", borderRadius: 14, width: 820, maxWidth: "95vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
+                 onClick={e => e.stopPropagation()}>
+
+              {/* Header */}
+              <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+                    NF-e {nf.numero}/{nf.serie}
+                    <span style={{ marginLeft: 10 }}>{sm && <span style={{ padding: "2px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, background: sm.bg, color: sm.cl }}>{sm.label}</span>}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666", marginTop: 4, fontFamily: "monospace" }}>{nf.chave_acesso}</div>
+                </div>
+                <button onClick={() => setNfViewer(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1, padding: 0 }}>×</button>
+              </div>
+
+              <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+                {/* Emitente / Destinatário */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div style={{ background: "#F8FAFD", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Emitente (Fornecedor)</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{nf.emitente_nome || "—"}</div>
+                    {nf.emitente_cnpj && <div style={{ fontSize: 12, color: "#555", fontFamily: "monospace", marginTop: 4 }}>{fmtDoc(nf.emitente_cnpj)}</div>}
+                  </div>
+                  <div style={{ background: "#F8FAFD", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Destinatário</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>
+                      {nf.cnpj_destino ? (() => {
+                        const prod = siegProdutores.find(p => p.cnpj === nf.cnpj_destino?.replace(/\D/g,""));
+                        return prod?.nome ?? fmtDoc(nf.cnpj_destino);
+                      })() : "—"}
+                    </div>
+                    {nf.cnpj_destino && <div style={{ fontSize: 12, color: "#555", fontFamily: "monospace", marginTop: 4 }}>{fmtDoc(nf.cnpj_destino.replace(/\D/g,""))}</div>}
+                  </div>
+                </div>
+
+                {/* Dados fiscais */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+                  {[
+                    { label: "Emissão",    value: fmtData(nf.data_emissao) },
+                    { label: "Entrada",    value: fmtData(nf.data_entrada) ?? "—" },
+                    { label: "Natureza",   value: nf.natureza || "—" },
+                    { label: "CFOP",       value: nf.cfop || "—" },
+                    { label: "Valor Total",value: fmtBRL(nf.valor_total) },
+                    { label: "Origem",     value: nf.origem?.toUpperCase() ?? "—" },
+                    { label: "Tipo",       value: nf.tipo_entrada ? TIPO_META[nf.tipo_entrada]?.label ?? nf.tipo_entrada : "—" },
+                    { label: "Observação", value: nf.observacao || "—" },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ background: "#fff", border: "0.5px solid #EEF1F6", borderRadius: 8, padding: "10px 12px" }}>
+                      <div style={{ fontSize: 10, color: "#888", marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", wordBreak: "break-word" }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Itens */}
+                {itens.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                      Itens ({itens.length})
+                    </div>
+                    <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: "#F4F6FA" }}>
+                            {["#", "Produto / Descrição", "NCM", "CFOP", "Unid.", "Qtde.", "Vl. Unit.", "Vl. Total"].map((h, i) => (
+                              <th key={h} style={{ padding: "8px 10px", textAlign: i >= 5 ? "right" : "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itens.map((it, idx) => (
+                            <tr key={it.id} style={{ borderBottom: idx < itens.length - 1 ? "0.5px solid #EEF1F6" : "none", background: idx % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                              <td style={{ padding: "8px 10px", color: "#888" }}>{idx + 1}</td>
+                              <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1a1a1a", maxWidth: 220, wordBreak: "break-word" }}>{it.descricao_produto || it.descricao_nf}</td>
+                              <td style={{ padding: "8px 10px", color: "#555", fontFamily: "monospace" }}>{it.ncm || "—"}</td>
+                              <td style={{ padding: "8px 10px", color: "#555", fontFamily: "monospace" }}>{it.cfop || "—"}</td>
+                              <td style={{ padding: "8px 10px", color: "#555" }}>{it.unidade_nf || it.unidade}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", color: "#1a1a1a" }}>{Number(it.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", color: "#1a1a1a" }}>{fmtBRL(it.valor_unitario)}</td>
+                              <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#1a1a1a" }}>{fmtBRL(it.valor_total)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                            <td colSpan={7} style={{ padding: "8px 10px", fontWeight: 700, fontSize: 12, textAlign: "right", color: "#555" }}>Total</td>
+                            <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 13, textAlign: "right", color: "#1A4870" }}>
+                              {fmtBRL(itens.reduce((s, it) => s + (it.valor_total ?? 0), 0))}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                {nf.status === "pendente" && (
+                  <button onClick={() => { setNfViewer(null); abrirEditar(nf); }}
+                    style={{ padding: "8px 20px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    Processar
+                  </button>
+                )}
+                <button onClick={() => setNfViewer(null)}
+                  style={{ padding: "8px 20px", background: "#F4F6FA", color: "#555", border: "0.5px solid #DDE2EE", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════
           WIZARD MODAL
