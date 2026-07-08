@@ -185,7 +185,7 @@ function ContasPagarInner() {
     supabase.from("nf_entradas")
       .select("id,numero,serie,emitente_nome,emitente_cnpj,valor_total,data_emissao,data_vencimento_cp,status,tipo_entrada,origem")
       .eq("fazenda_id", fid)
-      .in("status", ["pendente", "processada"])
+      .in("status", ["pendente"])
       .order("data_emissao", { ascending: false })
       .limit(100)
       .then(({ data }) => {
@@ -813,6 +813,12 @@ function ContasPagarInner() {
             <input type="date" value={periodoFim}
               onChange={e => setPeriodoFim(e.target.value)}
               style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, outline: "none" }} />
+            <a href="/compras/nf"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", border: "0.5px solid #1A4870", borderRadius: 8, background: "#D5E8F5", color: "#0B2D50", fontSize: 12, fontWeight: 600, textDecoration: "none", cursor: "pointer" }}
+              title="Ver e processar NFs importadas do SIEG"
+            >
+              📄 NFs Importadas
+            </a>
             <button
               onClick={() => {
               setCascade({});
@@ -825,7 +831,7 @@ function ContasPagarInner() {
               carregarOps();
               setModalNovo(true);
             }}
-              style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginLeft: 4 }}
+              style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
               ↑ Nova Conta a Pagar
             </button>
@@ -1184,8 +1190,21 @@ function ContasPagarInner() {
                   (nf.valor_total ?? 0).toFixed(2).includes(busca)
                 );
                 if (filtradas.length === 0) return (
-                  <div style={{ textAlign: "center", padding: 24, color: "#888", fontSize: 13 }}>
-                    {nfsVinculo.length === 0 ? "Nenhuma NF importada encontrada." : "Nenhuma NF corresponde à busca."}
+                  <div style={{ textAlign: "center", padding: "24px 16px" }}>
+                    {nfsVinculo.length === 0 ? (
+                      <>
+                        <div style={{ color: "#888", fontSize: 13, marginBottom: 12 }}>
+                          Nenhuma NF pendente de processamento encontrada.
+                        </div>
+                        <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>
+                          Importe NFs via SIEG ou cadastre manualmente em <strong>Compras &gt; NF de Produtos</strong>,<br/>
+                          depois clique em <strong>Processar</strong> — o financeiro é gerado automaticamente.
+                        </div>
+                        <a href="/compras/nf" style={{ display: "inline-block", padding: "8px 18px", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                          Ir para NFs de Produtos →
+                        </a>
+                      </>
+                    ) : "Nenhuma NF corresponde à busca."}
                   </div>
                 );
                 return (
