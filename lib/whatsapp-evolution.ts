@@ -1,5 +1,5 @@
 // Camada de comunicação com a Evolution API
-const EVO_BASE     = process.env.EVOLUTION_API_URL ?? "";
+const EVO_BASE     = (process.env.EVOLUTION_API_URL ?? "").replace(/\/+$/, "");
 const EVO_KEY      = process.env.EVOLUTION_API_KEY ?? "";
 const EVO_INSTANCE = process.env.EVOLUTION_INSTANCE ?? "";
 
