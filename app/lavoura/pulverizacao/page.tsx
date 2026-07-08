@@ -247,7 +247,7 @@ export default function PulverizacaoPage() {
 
       {/* Modal Detalhe Produtos */}
       {detalhe && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
             <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
             <div style={{ fontSize: 12, color: "#555", marginBottom: detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) ? 8 : 18 }}>
@@ -295,7 +295,7 @@ export default function PulverizacaoPage() {
 
       {/* Modal Registrar Aplicação */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 740, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
             <div style={{ marginBottom: 14 }}>
               <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>

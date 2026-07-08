@@ -673,7 +673,7 @@ export default function ComprasPage() {
 
       {/* ── MODAL NOVO / EDITAR PEDIDO ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 920, maxWidth: "98vw", maxHeight: "95vh", overflowY: "auto" }}>
 
@@ -1163,7 +1163,7 @@ export default function ComprasPage() {
 
       {/* ── MODAL ENTREGAS ── */}
       {modalEntrega && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalEntrega(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between" }}>
@@ -1265,7 +1265,7 @@ export default function ComprasPage() {
 
       {/* ── MODAL RELATÓRIO ── */}
       {modalRelatorio && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 130 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalRelatorio(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 700, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between" }}>

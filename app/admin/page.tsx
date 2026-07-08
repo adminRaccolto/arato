@@ -97,7 +97,7 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
 
         {/* Header */}

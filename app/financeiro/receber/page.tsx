@@ -1008,7 +1008,7 @@ export default function ContasReceber() {
         const valorCom = valorOrig + multaV + jurosV - descV;
         const temEncargo = multaV + jurosV + descV !== 0;
         return (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 620, maxHeight: "93vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
@@ -1177,7 +1177,7 @@ export default function ContasReceber() {
 
       {/* ── Modal Recebimento em Lote ────────────────────────── */}
       {modalLote && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1253,7 +1253,7 @@ export default function ContasReceber() {
 
       {/* ── Modal Nova CR ──────────────────────────────────────── */}
       {modalNovo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)", display: "flex", flexDirection: "column" }}>
 

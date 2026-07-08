@@ -266,7 +266,7 @@ export default function ClassificacaoPage() {
 
       {/* Modal */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "min(660px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
             <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>{editId ? "Editar Regra" : "Nova Regra de Classificação"}</div>

@@ -231,7 +231,7 @@ function ModalSieg({
   const temChaveFazenda = !!(cfg.api_key?.trim());
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000,
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000,
                   display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 700,
                     maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
@@ -690,7 +690,7 @@ function ModalConfigurar({
   const isResend  = integracao.nome.includes("Resend");
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000,
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000,
                   display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 640,
                     maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>

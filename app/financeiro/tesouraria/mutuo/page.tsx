@@ -223,7 +223,7 @@ export default function MutuoPage() {
 
       {/* Modal Mútuo */}
       {modalMutuo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, overflowY: "auto", padding: "24px 0" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
@@ -279,7 +279,7 @@ export default function MutuoPage() {
 
       {/* Modal Pagamento */}
       {modalPag && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 440, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>

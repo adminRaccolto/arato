@@ -877,7 +877,7 @@ export default function Faturamento() {
       {/* MODAL DE EMISSÃO                                                   */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {modalAberto && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
 
           {/* ── PASSO 1: Origem ── */}
           {passo === "origem" && (

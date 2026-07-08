@@ -151,7 +151,7 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
 
         <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -556,7 +556,7 @@ export default function ClientesPage() {
 
       {/* Modal upgrade / downgrade de plano */}
       {modalPlano && (
-        <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+        <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) setModalPlano(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 560, padding: "24px", boxShadow: "0 12px 48px #0004" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>

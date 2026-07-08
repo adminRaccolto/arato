@@ -509,7 +509,7 @@ export default function RateioPage() {
           MODAL — Regra por Ciclo
       ══════════════════════════════════════════════════════════ */}
       {modalCiclo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalCiclo(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 760, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -613,7 +613,7 @@ export default function RateioPage() {
           MODAL — Regra Global
       ══════════════════════════════════════════════════════════ */}
       {modalGlobal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalGlobal(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 860, maxWidth: "97vw", maxHeight: "94vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>

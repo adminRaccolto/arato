@@ -276,7 +276,7 @@ function ModalNova({
   ] as const;
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:12, width:760, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
         {/* Header */}
         <div style={{ padding:"20px 28px 0", borderBottom:"0.5px solid #DDE2EE" }}>
@@ -629,7 +629,7 @@ function ModalExecutar({
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:"#fff", borderRadius:12, width:640, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
         <div style={{ padding:"20px 28px", borderBottom:"0.5px solid #DDE2EE", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>

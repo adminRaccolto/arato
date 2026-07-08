@@ -154,7 +154,7 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ background: "#fff", borderRadius: 14, width: 480, boxShadow: "0 12px 48px #0004" }}>
         <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>Registrar Pagamento Manual</div>

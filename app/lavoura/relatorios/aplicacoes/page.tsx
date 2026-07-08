@@ -844,7 +844,7 @@ export default function RelAplicacoesPage() {
 
       {/* ── Modal WhatsApp ────────────────────────────────── */}
       {modalWA && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalWA(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, width: 560, maxWidth: "96vw", padding: 26 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 18 }}>

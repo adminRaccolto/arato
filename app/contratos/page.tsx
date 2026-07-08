@@ -1454,7 +1454,7 @@ export default function Contratos() {
           MODAL CONTRATO — Principal / Adicionais / Itens
       ═══════════════════════════════════════════════════════════ */}
       {modalContrato && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:120 }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalContrato(false); }}>
           <div style={{ background:"#fff", borderRadius:14, width:980, maxWidth:"97vw", maxHeight:"95vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
@@ -1938,7 +1938,7 @@ export default function Contratos() {
 
       {/* ══ MODAL ROMANEIO ══════════════════════════════════════ */}
       {modalRomaneio && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:120 }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalRomaneio(false); }}>
           <div style={{ background:"#fff", borderRadius:14, padding:26, width:780, maxWidth:"97vw", maxHeight:"95vh", overflowY:"auto" }}>
             <div style={{ fontWeight:600, fontSize:15, color:"#1a1a1a", marginBottom:2 }}>Novo Romaneio de Expedição</div>
@@ -2292,7 +2292,7 @@ export default function Contratos() {
 
       {/* ── Modal Encerramento em Lote ─────────────────────────────────────── */}
       {modalLote && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ background:"#fff", borderRadius:14, width:680, maxWidth:"96vw", maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* cabeçalho */}
@@ -2400,7 +2400,7 @@ export default function Contratos() {
       )}
       {/* ── Modal: Registrar Adiantamento ── */}
       {modalAdiant && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300 }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalAdiant(false); }}>
           <div style={{ background:"#fff", borderRadius:14, padding:28, width:500, maxWidth:"96vw" }}>
             <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", marginBottom:4 }}>Registrar Adiantamento de Cliente</div>

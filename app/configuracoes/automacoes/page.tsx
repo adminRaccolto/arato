@@ -424,7 +424,7 @@ export default function AutomacoesPage() {
 
       {/* ── Modal Configuração SIEG ── */}
       {modalSieg && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "min(560px, 97vw)", padding: 28 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>🔄 Configuração SIEG</div>
             <p style={{ fontSize: 12, color: "#666", margin: "0 0 20px", lineHeight: 1.6 }}>

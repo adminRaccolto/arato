@@ -343,7 +343,7 @@ export default function PendenciasNfPage() {
 
       {/* ── Modal Classificação ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 16px", overflowY: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 16px", overflowY: "auto" }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "min(900px, 97vw)", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Header */}
@@ -490,7 +490,7 @@ export default function PendenciasNfPage() {
 
       {/* ── Modal Criar Regra ── */}
       {modalRegra && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "#fff", borderRadius: 12, width: "min(520px, 97vw)", padding: 28 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>💡 Criar Regra Automática?</div>
             <p style={{ fontSize: 13, color: "#555", margin: "0 0 20px", lineHeight: 1.6 }}>

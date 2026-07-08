@@ -324,7 +324,7 @@ CREATE POLICY logs_leitura ON logs_sistema FOR SELECT USING (fazenda_id = curren
 
       {/* Modal detalhe */}
       {detalhe && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
           <div style={{ background: "#fff", borderRadius: 12, width: 700, maxWidth: "95vw", maxHeight: "85vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

@@ -1241,7 +1241,7 @@ function ParametrosSistemaContent() {
     setModalM(null);
   };
 
-  const modalStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 };
+  const modalStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 };
   const boxStyle: React.CSSProperties = { background: "#fff", borderRadius: 12, padding: 28, width: 640, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.2)" };
 
   // ── Render ────────────────────────────────────────────────────────────────

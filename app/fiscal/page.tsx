@@ -1542,7 +1542,7 @@ function FiscalInner() {
 
       {/* ── MODAL: Ativar Contingência ── */}
       {modalContingencia && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalContingencia(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 500, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#92400E", marginBottom: 4 }}>⚡ Ativar Modo de Contingência</div>
@@ -1578,7 +1578,7 @@ function FiscalInner() {
 
       {/* ── MODAL: Certificado A1 ── */}
       {modalCert && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) fecharCert(); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 460, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Carregar certificado A1</div>
@@ -1674,7 +1674,7 @@ function FiscalInner() {
         const prodSel = produtores.find(p => p.id === fVenda.produtor_id);
 
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
             <div style={{ background: "#f0f2f5", borderRadius: 10, width: "94vw", maxWidth: 1200, height: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
               {/* Barra de título */}
@@ -2058,7 +2058,7 @@ function FiscalInner() {
 
       {/* ── MODAL: Editar Item ── */}
       {editItemModal && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:110 }}>
+        <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}>
           <div style={{ background:"#fff", borderRadius:10, padding:22, width:640, maxWidth:"96vw" }}>
             <div style={{ fontWeight:600, fontSize:14, marginBottom:14 }}>Editar Item</div>
             {[
@@ -2089,7 +2089,7 @@ function FiscalInner() {
 
       {/* ── MODAL: Nova NF-e de Devolução ── */}
       {modalDevolucao && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalDevolucao(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 780, maxWidth: "97vw", maxHeight: "95vh", overflowY: "auto" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Nova NF-e de Devolução</div>
@@ -2128,7 +2128,7 @@ function FiscalInner() {
 
       {/* ── MODAL: Cancelamento ── */}
       {modalCancelamento && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalCancelamento(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 520, maxWidth: "97vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Cancelar NF-e</div>

@@ -413,7 +413,7 @@ function FinanceiroRelatoriosInner() {
                   <>
                     {/* Popup Simulador */}
                     {simPopupAberto && (
-                      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
                         onClick={e => { if (e.target === e.currentTarget) setSimPopupAberto(false); }}>
                         <div style={{ background: "#fff", borderRadius: 12, width: 1080, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
                           <div style={{ padding: "18px 28px", borderBottom: "0.5px solid #DDD6FE", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F5F3FF", borderRadius: "12px 12px 0 0" }}>

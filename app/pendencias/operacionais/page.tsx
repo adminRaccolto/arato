@@ -344,7 +344,7 @@ export default function PendenciasOperacionais() {
 
       {/* ── Modal: Resolver Pendência ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -495,7 +495,7 @@ export default function PendenciasOperacionais() {
 
       {/* ── Modal: Confirmar Cancelamento ── */}
       {cancelId && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420, padding: "28px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <h2 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>Cancelar pendência?</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.6 }}>

@@ -1579,7 +1579,7 @@ export default function Financeiro() {
 
       {/* ─── Modal Baixa ───────────────────────────────────────── */}
       {modalBaixa && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalBaixa(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 440, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>
@@ -1667,7 +1667,7 @@ export default function Financeiro() {
           || (novoLanc.moeda === "barter" && !novoLanc.sacasMask);
 
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
             onClick={e => { if (e.target === e.currentTarget) setModalNovo(false); }}>
             <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 560, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
               <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 2 }}>Novo Lançamento</div>
@@ -1837,7 +1837,7 @@ export default function Financeiro() {
 
       {/* ─── Modal Previsão de Gastos ───────────────────────────── */}
       {modalPrevisao && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalPrevisao(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 520, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -1934,7 +1934,7 @@ export default function Financeiro() {
 
       {/* ─── Modal Converter Previsão → CP ─────────────────────── */}
       {modalConverterPrev && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalConverterPrev(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 420, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>Converter previsão em CP</div>
@@ -1958,7 +1958,7 @@ export default function Financeiro() {
 
       {/* ─── Modal Gerenciar Simulações ─────────────────────────── */}
       {modalGerenciarSim && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalGerenciarSim(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 560, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -2013,7 +2013,7 @@ export default function Financeiro() {
 
       {/* ─── Modal Simulação ────────────────────────────────────── */}
       {modalSimDia && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalSimDia(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 400, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: 4 }}>Nova Simulação</div>

@@ -1279,7 +1279,7 @@ export default function NfCompraPage() {
           : d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
         const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
                onClick={() => setNfViewer(null)}>
             <div style={{ background: "#fff", borderRadius: 14, width: 820, maxWidth: "95vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.18)" }}
                  onClick={e => e.stopPropagation()}>
@@ -1403,7 +1403,7 @@ export default function NfCompraPage() {
           WIZARD MODAL
       ══════════════════════════════════════════════════════ */}
       {wizard && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 200, overflowY: "auto", padding: "24px 0" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 900, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
@@ -2235,7 +2235,7 @@ export default function NfCompraPage() {
           MODAL DE DEVOLUÇÃO
       ══════════════════════════════════════════════════════ */}
       {devModal && devNfOrig && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 24 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho */}
@@ -2360,7 +2360,7 @@ export default function NfCompraPage() {
           MODAL RECLASSIFICAÇÃO
       ══════════════════════════════════════════════════════ */}
       {modalReclass && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho */}
@@ -2431,7 +2431,7 @@ export default function NfCompraPage() {
 
       {/* ——— Modal: Exclusão de NF ——— */}
       {modalExcluir && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget && !modalExcluir.excluindo) setModalExcluir(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
 
@@ -2497,7 +2497,7 @@ export default function NfCompraPage() {
 
       {/* ——— Modal: Cadastro Rápido de Insumo ——— */}
       {modalNovoInsumo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalNovoInsumo(null); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 480, maxWidth: "92vw" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Cadastrar produto no catálogo</div>
@@ -2597,7 +2597,7 @@ export default function NfCompraPage() {
       {siegJustModal && (() => {
         const m = MAN_CFG.find(x => x.tipo === siegJustModal.tipo)!;
         return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}
+          <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
             onClick={e => { if (e.target === e.currentTarget) setSiegJustModal(null); }}>
             <div style={{ background: "white", borderRadius: 12, padding: 28, width: 480, maxWidth: "96vw" }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: m.cor, marginBottom: 4 }}>{m.label}</div>

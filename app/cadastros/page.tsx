@@ -182,7 +182,7 @@ function maskCep(v: string) {
 // ── Modal wrapper ──────────────────────────────────────
 function Modal({ titulo, subtitulo, onClose, children, width = 860 }: { titulo: string; subtitulo?: string; onClose: () => void; children: React.ReactNode; width?: number }) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 120 }}
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
       <div style={{ background: "#fff", borderRadius: 14, padding: 28, width, maxWidth: "96vw", maxHeight: "94vh", overflowY: "auto" }}>
         <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
@@ -5215,7 +5215,7 @@ function CadastrosInner() {
                 </table>
 
                 {modalCultura && (
-                  <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
                     <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 560, maxHeight: "90vh", overflowY: "auto" }}>
                       <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{editCultura ? "Editar Cultura" : "Nova Cultura"}</div>
                       <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Culturas disponíveis nos ciclos de safra</div>
@@ -7837,7 +7837,7 @@ function CadastrosInner() {
 
           {/* ── Modal CFOP ── */}
           {modalCfop && editOpGer && (
-            <div style={{ position: "fixed", inset: 0, background: "#00000060", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ position: "fixed", inset: 0, background: "#00000060", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ background: "#fff", borderRadius: 12, padding: 24, width: 520, boxShadow: "0 8px 32px #0003" }}>
                 <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 16 }}>Adicionar CFOP — {fOG.classificacao} {fOG.descricao}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>

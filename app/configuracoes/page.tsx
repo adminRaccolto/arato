@@ -481,7 +481,7 @@ function ConfiguracoesInner() {
 
       {/* ── Modal Conta Contábil ── */}
       {modalConta && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalConta(false); }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 26, width: 480, maxWidth: "92vw", border: "0.5px solid #DDE2EE", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 20 }}>
@@ -569,7 +569,7 @@ function ConfiguracoesInner() {
 
       {/* ── Modal Certificado ── */}
       {modalCert && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) fecharModalCert(); }}>
           <div style={{ background: "#fff", borderRadius: 12, padding: 26, width: 460, maxWidth: "92vw", border: "0.5px solid #DDE2EE", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Carregar certificado A1</div>

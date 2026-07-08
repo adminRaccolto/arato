@@ -220,7 +220,7 @@ export default function AdubacaoBasePage() {
 
       {/* ── Modal ── */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 110 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
           <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ marginBottom: 4 }}>

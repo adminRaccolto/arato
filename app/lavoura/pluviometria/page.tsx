@@ -586,7 +586,7 @@ export default function Pluviometria() {
 
       {/* Modal leitura manual */}
       {modalLeit && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 480, boxShadow: "0 12px 40px rgba(0,0,0,0.2)", overflow: "hidden" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>Lançar Leitura Manual</div>
