@@ -2839,6 +2839,13 @@ export async function listarGruposInsumo(fazenda_id: string): Promise<GrupoInsum
   if (error) throw error;
   return data ?? [];
 }
+export async function listarGruposInsumoDaConta(fazenda_id_fallback?: string | null): Promise<GrupoInsumo[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("grupos_insumos").select("*").in("fazenda_id", ids).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
 export async function criarGrupoInsumo(g: Omit<GrupoInsumo, "id" | "created_at">): Promise<GrupoInsumo> {
   const { data, error } = await supabase.from("grupos_insumos").insert(g).select().single();
   if (error) throw error;
@@ -2856,6 +2863,15 @@ export async function excluirGrupoInsumo(id: string): Promise<void> {
 // Subgrupos de Insumos
 export async function listarSubgruposInsumo(fazenda_id: string, grupo_id?: string): Promise<SubgrupoInsumo[]> {
   let q = supabase.from("subgrupos_insumos").select("*").eq("fazenda_id", fazenda_id).order("nome");
+  if (grupo_id) q = q.eq("grupo_id", grupo_id);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+export async function listarSubgruposInsumoDaConta(fazenda_id_fallback?: string | null, grupo_id?: string): Promise<SubgrupoInsumo[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  let q = supabase.from("subgrupos_insumos").select("*").in("fazenda_id", ids).order("nome");
   if (grupo_id) q = q.eq("grupo_id", grupo_id);
   const { data, error } = await q;
   if (error) throw error;
@@ -2950,6 +2966,13 @@ export async function listarTiposPessoa(fazenda_id: string): Promise<TipoPessoa[
   if (error) throw error;
   return data ?? [];
 }
+export async function listarTiposPessoaDaConta(fazenda_id_fallback?: string | null): Promise<TipoPessoa[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("tipos_pessoa").select("*").in("fazenda_id", ids).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
 export async function criarTipoPessoa(t: Omit<TipoPessoa, "id" | "created_at">): Promise<TipoPessoa> {
   const { data, error } = await supabase.from("tipos_pessoa").insert(t).select().single();
   if (error) throw error;
@@ -2967,6 +2990,13 @@ export async function excluirTipoPessoa(id: string): Promise<void> {
 // Centros de Custo (tabela de dados mestres — diferente de centros_custo_contrato)
 export async function listarCentrosCustoGeral(fazenda_id: string): Promise<CentroCusto[]> {
   const { data, error } = await supabase.from("centros_custo").select("*").eq("fazenda_id", fazenda_id).order("codigo");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function listarCentrosCustoGeralDaConta(fazenda_id_fallback?: string | null): Promise<CentroCusto[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("centros_custo").select("*").in("fazenda_id", ids).order("codigo");
   if (error) throw error;
   return data ?? [];
 }
@@ -3499,6 +3529,13 @@ export async function sincronizarOperacoesCompra(fazenda_id: string): Promise<{ 
 
 export async function listarFormasPagamento(fazenda_id: string): Promise<FormaPagamento[]> {
   const { data, error } = await supabase.from("formas_pagamento").select("*").eq("fazenda_id", fazenda_id).order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function listarFormasPagamentoDaConta(fazenda_id_fallback?: string | null): Promise<FormaPagamento[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("formas_pagamento").select("*").in("fazenda_id", ids).order("nome");
   if (error) throw error;
   return data ?? [];
 }

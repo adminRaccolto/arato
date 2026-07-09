@@ -10,7 +10,7 @@ import {
   listarEmpresas, criarEmpresa, atualizarEmpresa, excluirEmpresa,
   listarMatriculas, criarMatricula, atualizarMatricula, excluirMatricula,
   listarArrendamentos, salvarArrendamentos,
-  listarPessoas, criarPessoa, atualizarPessoa, excluirPessoa,
+  listarPessoas, listarPessoasDaConta, criarPessoa, atualizarPessoa, excluirPessoa,
   listarAnosSafra, criarAnoSafra, atualizarAnoSafra, excluirAnoSafra, encerrarAnoSafra, reabrirAnoSafra,
   listarCiclos, criarCiclo, atualizarCiclo, excluirCiclo,
   listarMaquinas, criarMaquina, atualizarMaquina, excluirMaquina, excluirMaquinas,
@@ -22,15 +22,15 @@ import {
   listarGrupos, criarGrupo, atualizarGrupo, excluirGrupo,
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarDepositos, criarDeposito, atualizarDeposito, excluirDeposito,
-  listarGruposInsumo, criarGrupoInsumo, atualizarGrupoInsumo, excluirGrupoInsumo,
-  listarSubgruposInsumo, criarSubgrupoInsumo, atualizarSubgrupoInsumo, excluirSubgrupoInsumo,
+  listarGruposInsumo, listarGruposInsumoDaConta, criarGrupoInsumo, atualizarGrupoInsumo, excluirGrupoInsumo,
+  listarSubgruposInsumo, listarSubgruposInsumoDaConta, criarSubgrupoInsumo, atualizarSubgrupoInsumo, excluirSubgrupoInsumo,
   seederGruposInsumo,
   seederProdutosAgricolas,
-  listarTiposPessoa, criarTipoPessoa, atualizarTipoPessoa, excluirTipoPessoa,
-  listarCentrosCustoGeral, criarCentroCusto, atualizarCentroCusto, excluirCentroCusto,
+  listarTiposPessoa, listarTiposPessoaDaConta, criarTipoPessoa, atualizarTipoPessoa, excluirTipoPessoa,
+  listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, criarCentroCusto, atualizarCentroCusto, excluirCentroCusto,
   listarCategoriasLancamento, criarCategoriaLancamento, atualizarCategoriaLancamento, excluirCategoriaLancamento,
   listarInsumos, criarInsumo, atualizarInsumo, excluirInsumo,
-  listarFormasPagamento, criarFormaPagamento, atualizarFormaPagamento, excluirFormaPagamento,
+  listarFormasPagamento, listarFormasPagamentoDaConta, criarFormaPagamento, atualizarFormaPagamento, excluirFormaPagamento,
   listarOperacoesGerenciais, criarOperacaoGerencial, atualizarOperacaoGerencial, excluirOperacaoGerencial,
   listarBancos, listarContas, criarConta, atualizarContaBancaria, excluirConta,
   listarPlanoContas,
@@ -557,13 +557,13 @@ function CadastrosInner() {
         emps.forEach(e => { if (e.produtor_id) map[e.produtor_id] = e.id; });
         setProdEmpresaMap(map);
       }).catch(() => {});
-      listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+      listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     }
-    if (aba === "pessoas")     listarPessoas(fazendaId).then(setPessoas).catch(e => setErro(e.message));
+    if (aba === "pessoas")     listarPessoasDaConta(fazendaId).then(setPessoas).catch(e => setErro(e.message));
     if (aba === "safras")      listarAnosSafra(fazendaId).then(setAnosSafra).catch(e => setErro(e.message));
     if (aba === "maquinas") {
       listarMaquinas(fazendaId).then(setMaquinas).catch(e => setErro(e.message));
-      listarPessoas(fazendaId).then(setPessoas).catch(() => {});
+      listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
       listarContratosFinanceiros(fazendaId).then(setContratsFinanc).catch(() => {});
     }
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
@@ -578,8 +578,8 @@ function CadastrosInner() {
           } catch {}
         }
       }).catch(e => setErro(e.message));
-      listarGruposInsumo(fazendaId).then(setGruposInsumo).catch(() => {});
-      listarSubgruposInsumo(fazendaId).then(setSubgruposInsumo).catch(() => {});
+      listarGruposInsumoDaConta(fazendaId).then(setGruposInsumo).catch(() => {});
+      listarSubgruposInsumoDaConta(fazendaId).then(setSubgruposInsumo).catch(() => {});
       listarDepositos(fazendaId).then(setDepositos).catch(() => {});
       listarBombas(fazendaId).then(setBombas).catch(() => {});
       listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
@@ -594,24 +594,24 @@ function CadastrosInner() {
     if (aba === "funcionarios") {
       listarFuncionarios(fazendaId).then(setFuncs).catch(e => setErro(e.message));
       if (produtores.length === 0) carregarProdutoresSilencioso();
-      if (centrosCusto.length === 0) listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
+      if (centrosCusto.length === 0) listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
     }
     if (aba === "grupos_insumo") {
-      listarGruposInsumo(fazendaId).then(async lista => {
+      listarGruposInsumoDaConta(fazendaId).then(async lista => {
         if (lista.length === 0) {
           // Auto-seed na primeira vez que o usuário abre a aba sem grupos
           await seederGruposInsumo(fazendaId);
-          const [g, s] = await Promise.all([listarGruposInsumo(fazendaId), listarSubgruposInsumo(fazendaId)]);
+          const [g, s] = await Promise.all([listarGruposInsumoDaConta(fazendaId), listarSubgruposInsumoDaConta(fazendaId)]);
           setGruposInsumo(g);
           setSubgruposInsumo(s);
         } else {
           setGruposInsumo(lista);
-          listarSubgruposInsumo(fazendaId).then(setSubgruposInsumo).catch(() => {});
+          listarSubgruposInsumoDaConta(fazendaId).then(setSubgruposInsumo).catch(() => {});
         }
       }).catch(e => setErro(e.message));
     }
-    if (aba === "centros_custo")    listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(e => setErro(e.message));
-    if (aba === "formas_pagamento")     listarFormasPagamento(fazendaId).then(setFormasPagamento).catch(e => setErro(e.message));
+    if (aba === "centros_custo")    listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(e => setErro(e.message));
+    if (aba === "formas_pagamento") listarFormasPagamentoDaConta(fazendaId).then(setFormasPagamento).catch(e => setErro(e.message));
     if (aba === "operacoes_gerenciais") {
       listarOperacoesGerenciais(fazendaId).then(setOpGers).catch(e => setErro(e.message));
       listarPlanoContas(fazendaId).then(r => setPlanoContasDB(r.length > 0 ? r : planoContasPadrao)).catch(() => setPlanoContasDB(planoContasPadrao));
