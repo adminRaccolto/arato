@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
@@ -113,7 +113,7 @@ function Badge({ label, bg, color }: { label: string; bg: string; color: string 
 }
 
 interface Pessoa  { id: string; nome: string; }
-interface Fazenda { id: string; nome: string; }
+interface Fazenda { id: string; nome: string; produtor_id?: string | null; }
 
 // ── componente principal ───────────────────────────────────
 type Aba = "lista" | "pagamentos" | "calendario";
@@ -128,7 +128,7 @@ const initFC = () => ({
 });
 
 export default function Arrendamentos() {
-  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
   const [aba, setAba] = useState<Aba>("lista");
 
   const [arrendamentos, setArrendamentos] = useState<Arrendamento[]>([]);
@@ -136,7 +136,7 @@ export default function Arrendamentos() {
   const [anosSafra,     setAnosSafra]     = useState<AnoSafra[]>([]);
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
-  const [_fazendas,     setFazendas]      = useState<Fazenda[]>([]);
+  const [fazendas,      setFazendas]      = useState<Fazenda[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
 
@@ -172,13 +172,16 @@ export default function Arrendamentos() {
   useEffect(() => {
     if (!fazendaId) return;
     setLoading(true);
+    // Carrega para TODAS as fazendas da conta (multi-fazenda)
+    const fids = fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
+    if (!fids.length) { setLoading(false); return; }
     Promise.all([
-      supabase.from("arrendamentos").select("*").eq("fazenda_id", fazendaId).order("proprietario_nome"),
-      supabase.from("arrendamento_pagamentos").select("*").eq("fazenda_id", fazendaId).order("data_vencimento"),
-      listarAnosSafra(fazendaId),
-      supabase.from("pessoas").select("id,nome").eq("fazenda_id", fazendaId).order("nome"),
-      supabase.from("fazendas").select("id,nome").eq("id", fazendaId),
-      contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutoresViaFazenda(fazendaId),
+      supabase.from("arrendamentos").select("*").in("fazenda_id", fids).order("proprietario_nome"),
+      supabase.from("arrendamento_pagamentos").select("*").in("fazenda_id", fids).order("data_vencimento"),
+      listarAnosSafra(fazendaId!),
+      supabase.from("pessoas").select("id,nome").in("fazenda_id", fids).order("nome").limit(5000),
+      supabase.from("fazendas").select("id,nome,produtor_id").in("id", fids),
+      contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutoresViaFazenda(fazendaId!),
     ]).then(([arrR, pagR, anos, pesR, fazR, prods]) => {
       setArrendamentos((arrR.data ?? []) as Arrendamento[]);
       setPagamentos((pagR.data ?? []) as Pagamento[]);
@@ -187,7 +190,7 @@ export default function Arrendamentos() {
       setFazendas((fazR.data ?? []) as Fazenda[]);
       setProdutores(prods as Produtor[]);
     }).finally(() => setLoading(false));
-  }, [fazendaId, contaId]);
+  }, [fazendaId, fazendaIds, contaId]);
 
   // ── pagamentos por arrendamento ─────────────────────────
   useEffect(() => {
@@ -811,7 +814,24 @@ export default function Arrendamentos() {
         {loading && <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Carregando...</div>}
 
         {/* ═══════════ ABA LISTA ═══════════ */}
-        {!loading && aba === "lista" && (
+        {!loading && aba === "lista" && (() => {
+          // Mapa fazenda_id → fazenda (com produtor_id)
+          const fazMap = Object.fromEntries(fazendas.map(f => [f.id, f]));
+
+          // Agrupa arrendamentos por produtor da fazenda
+          const grupos: Record<string, Arrendamento[]> = {};
+          for (const arr of arrendamentos) {
+            const prodId = fazMap[arr.fazenda_id]?.produtor_id ?? "__sem_produtor__";
+            if (!grupos[prodId]) grupos[prodId] = [];
+            grupos[prodId].push(arr);
+          }
+          const ordemGrupos = Object.keys(grupos).sort((a, b) => {
+            const pA = produtores.find(p => p.id === a)?.nome ?? "ZZZ";
+            const pB = produtores.find(p => p.id === b)?.nome ?? "ZZZ";
+            return pA.localeCompare(pB);
+          });
+
+          return (
           <div>
             {arrendamentos.length === 0 ? (
               <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
@@ -820,8 +840,27 @@ export default function Arrendamentos() {
                 <div style={{ fontSize: 13, color: "#888" }}>Cadastre os contratos em Cadastros → Fazendas → aba Arrendamentos</div>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {arrendamentos.map(arr => {
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {ordemGrupos.map(prodId => {
+                  const produtor = produtores.find(p => p.id === prodId);
+                  const arrsGrupo = grupos[prodId];
+                  return (
+                    <div key={prodId}>
+                      {/* Cabeçalho do grupo — Produtor */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: "0.5px solid #D4DCE8" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.05em" }}>🌾 Produtor Responsável</span>
+                        {produtor ? (
+                          <span style={{ fontWeight: 700, fontSize: 13, color: "#0B2D50" }}>
+                            {produtor.nome}{produtor.inscricao_est ? ` · IE ${produtor.inscricao_est}` : ""}{produtor.municipio ? ` · ${produtor.municipio}/${produtor.estado ?? ""}` : ""}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 13, color: "#888", fontStyle: "italic" }}>Produtor não definido na fazenda</span>
+                        )}
+                        <span style={{ marginLeft: "auto", fontSize: 11, color: "#666" }}>{arrsGrupo.length} contrato{arrsGrupo.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {arrsGrupo.map(arr => {
+                  const fazNome = fazMap[arr.fazenda_id]?.nome;
                   const pags    = pagsByArr[arr.id] ?? [];
                   const pend    = pags.filter(p => p.status === "pendente").length;
                   const atras   = pags.filter(p => p.status === "pendente" && p.data_vencimento < hoje()).length;
@@ -840,6 +879,7 @@ export default function Arrendamentos() {
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
                             <span style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{arr.proprietario_nome ?? "Proprietário não informado"}</span>
                             <Badge label={FORMA_LABEL[arr.forma_pagamento]} bg="#EBF3FC" color="#0C447C" />
+                            {fazNome && <Badge label={fazNome} bg="#F4F6FA" color="#555" />}
                             {atras > 0 && <Badge label={`${atras} vencido${atras > 1 ? "s" : ""}`} bg="#FCEBEB" color="#791F1F" />}
                             {pend > 0 && atras === 0 && <Badge label={`${pend} pendente${pend > 1 ? "s" : ""}`} bg="#FBF3E0" color="#7A5A12" />}
                             {pagos > 0 && pend === 0 && <Badge label="Em dia" bg="#ECFDF5" color="#14532D" />}
@@ -849,13 +889,6 @@ export default function Arrendamentos() {
                             {arr.locatario_nome && (
                               <span style={{ color: "#C9921B" }} title="Parte locatária no contrato">📋 {arr.locatario_nome}</span>
                             )}
-                            {arr.produtor_id && (() => {
-                              const p1 = produtores.find(p => p.id === arr.produtor_id);
-                              const p2 = arr.produtor_id_2 ? produtores.find(p => p.id === arr.produtor_id_2) : null;
-                              if (!p1) return null;
-                              const fmt = (p: Produtor) => p.inscricao_est ? `${p.nome} · IE ${p.inscricao_est}` : p.nome;
-                              return <span style={{ color: "#1A4870" }} title="IE Explorador / Responsável LCDPR">🌾 {fmt(p1)}{p2 ? ` + ${fmt(p2)}` : ""}</span>;
-                            })()}
                             {arr.forma_pagamento === "sc_soja_milho" && (arr.sc_ha || arr.sc_milho_ha) && (
                               <span>
                                 {arr.sc_ha ? `${fmtN(arr.sc_ha, 4)} sc soja/ha` : ""}
@@ -1080,10 +1113,15 @@ export default function Arrendamentos() {
                     </div>
                   );
                 })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ═══════════ ABA PAGAMENTOS ═══════════ */}
         {!loading && aba === "pagamentos" && (

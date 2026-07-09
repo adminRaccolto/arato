@@ -6379,7 +6379,7 @@ function CadastrosInner() {
                     </div>
                   )}
                 </div>
-                <button style={{ ...btnV, background: "#C9921B", marginTop: 14 }} onClick={() => setFazArrendamentos(p => [...p, { _key: `arr_${Date.now()}`, proprietario_id: "", proprietario_nome: "", area_ha: "", forma_pagamento: "sc_soja", sc_ha: "", sc_milho_ha: "", valor_brl: "", ano_safra_id: "", inicio: "", vencimento: "", renovacao_auto: false, observacao: "", produtor_id: "", produtor_id_2: "", aberto: true, mats: [] }])}>+ Novo Arrendamento</button>
+                <button style={{ ...btnV, background: "#C9921B", marginTop: 14 }} onClick={() => setFazArrendamentos(p => [...p, { _key: `arr_${Date.now()}`, proprietario_id: "", proprietario_nome: "", area_ha: "", forma_pagamento: "sc_soja", sc_ha: "", sc_milho_ha: "", valor_brl: "", ano_safra_id: "", inicio: "", vencimento: "", renovacao_auto: false, observacao: "", produtor_id: fFaz.produtor_id, produtor_id_2: "", aberto: true, mats: [] }])}>+ Novo Arrendamento</button>
                 {!fFaz.area && <div style={{ fontSize: 11, color: "#888", marginTop: 8 }}>Dica: preencha a Área total na aba Dados Gerais para calcular percentuais.</div>}
               </div>
             )}
