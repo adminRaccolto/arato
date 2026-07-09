@@ -115,6 +115,7 @@ function FinanceiroRelatoriosInner() {
 
   // Fluxo — sub-aba Diário / Mensal
   const [subAbaFluxo, setSubAbaFluxo] = useState<"diario" | "mensal" | "anual">("diario");
+  const [expandidosA, setExpandidosA] = useState<Set<string>>(new Set());
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
@@ -1025,6 +1026,24 @@ function FinanceiroRelatoriosInner() {
                         else                        row.anos[idxAno].prev += paraBRLRel(l, cotacaoUSD);
                       }
 
+                      // Mapa de detalhe: tipo__cat → label → CellA por ano
+                      type DetRowA = { label: string; tipo: "receber"|"pagar"; anos: CellA[] };
+                      const detMapA = new Map<string, Map<string, DetRowA>>();
+                      for (const l of lanVisA) {
+                        const cat = l.categoria || "Sem categoria";
+                        const catKey = `${l.tipo}__${cat}`;
+                        const label = (l.numero_documento ? `${l.numero_documento} — ` : "") + (l.descricao || "Sem descrição");
+                        const ano = (l.data_vencimento ?? l.data_lancamento ?? "").slice(0, 4);
+                        const idxAno = anosPresentes.indexOf(ano);
+                        if (idxAno < 0) continue;
+                        if (!detMapA.has(catKey)) detMapA.set(catKey, new Map());
+                        const inner = detMapA.get(catKey)!;
+                        if (!inner.has(label)) inner.set(label, { label, tipo: l.tipo as "receber"|"pagar", anos: anosPresentes.map(() => ({ real: 0, prev: 0 })) });
+                        const dr = inner.get(label)!;
+                        if (l.status === "baixado") dr.anos[idxAno].real += paraBRLRel(l, cotacaoUSD);
+                        else                        dr.anos[idxAno].prev += paraBRLRel(l, cotacaoUSD);
+                      }
+
                       const entradasA = Array.from(catMapA.values()).filter(r => r.tipo === "receber").sort((a, b) => a.cat.localeCompare(b.cat));
                       const saidasA   = Array.from(catMapA.values()).filter(r => r.tipo === "pagar").sort((a, b) => a.cat.localeCompare(b.cat));
                       const totEntA   = anosPresentes.map((_, i) => entradasA.reduce((s, r) => s + r.anos[i].real + r.anos[i].prev, 0));
@@ -1038,24 +1057,73 @@ function FinanceiroRelatoriosInner() {
                         const totRow = row.anos.reduce((s, c) => s + c.real + c.prev, 0);
                         if (totRow === 0) return null;
                         const cor = row.tipo === "receber" ? "#1A4870" : "#1a1a1a";
+                        const catKey = `${row.tipo}__${row.cat}`;
+                        const expandido = expandidosA.has(catKey);
+                        const detItems = Array.from(detMapA.get(catKey)?.values() ?? [])
+                          .filter(d => d.anos.some(c => c.real + c.prev > 0))
+                          .sort((a, b) => a.label.localeCompare(b.label));
+                        const temDetalhe = detItems.length > 1 || (detItems.length === 1 && detItems[0].label !== row.cat);
+                        const toggleExpand = () => setExpandidosA(prev => {
+                          const s = new Set(prev);
+                          if (s.has(catKey)) s.delete(catKey); else s.add(catKey);
+                          return s;
+                        });
                         return (
-                          <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
-                            <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: cor, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</td>
-                            {row.anos.map((c, i) => {
-                              const total = c.real + c.prev;
+                          <>
+                            <tr style={{ borderBottom: "0.5px solid #F0F3FA", cursor: temDetalhe ? "pointer" : "default" }}
+                              onClick={temDetalhe ? toggleExpand : undefined}>
+                              <td style={{ padding: "6px 14px 6px 10px", fontSize: 12, color: cor, maxWidth: 240 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
+                                  {temDetalhe ? (
+                                    <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, background: expandido ? "#D5E8F5" : "#F4F6FA", border: "0.5px solid #C0CEDF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#1A4870", lineHeight: 1 }}>
+                                      {expandido ? "−" : "+"}
+                                    </span>
+                                  ) : (
+                                    <span style={{ flexShrink: 0, width: 16 }} />
+                                  )}
+                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.cat}</span>
+                                </div>
+                              </td>
+                              {row.anos.map((c, i) => {
+                                const total = c.real + c.prev;
+                                return (
+                                  <td key={i} style={{ padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                    {total > 0 ? (
+                                      <>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: cor }}>{fmtBRL(total, 2)}</div>
+                                        {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
+                                      </>
+                                    ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
+                                  </td>
+                                );
+                              })}
+                              <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: cor, whiteSpace: "nowrap" }}>{fmtBRL(totRow, 2)}</td>
+                            </tr>
+                            {expandido && detItems.map(d => {
+                              const totDet = d.anos.reduce((s, c) => s + c.real + c.prev, 0);
                               return (
-                                <td key={i} style={{ padding: "5px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-                                  {total > 0 ? (
-                                    <>
-                                      <div style={{ fontSize: 12, fontWeight: 600, color: cor }}>{fmtBRL(total, 2)}</div>
-                                      {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
-                                    </>
-                                  ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
-                                </td>
+                                <tr key={d.label} style={{ background: "#F8FAFD", borderBottom: "0.5px solid #EEF1F8" }}>
+                                  <td style={{ padding: "4px 14px 4px 34px", fontSize: 11, color: "#555", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {d.label}
+                                  </td>
+                                  {d.anos.map((c, i) => {
+                                    const total = c.real + c.prev;
+                                    return (
+                                      <td key={i} style={{ padding: "4px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                        {total > 0 ? (
+                                          <>
+                                            <div style={{ fontSize: 11, color: "#555" }}>{fmtBRL(total, 2)}</div>
+                                            {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 8, color: "#C9921B" }}>prev</div>}
+                                          </>
+                                        ) : <span style={{ color: "#E5E8EE", fontSize: 10 }}>—</span>}
+                                      </td>
+                                    );
+                                  })}
+                                  <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>{fmtBRL(totDet, 2)}</td>
+                                </tr>
                               );
                             })}
-                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: cor, whiteSpace: "nowrap" }}>{fmtBRL(totRow, 2)}</td>
-                          </tr>
+                          </>
                         );
                       };
 
