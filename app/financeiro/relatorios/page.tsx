@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import { abrirPreviewImpressao } from "../../../lib/print";
@@ -74,7 +74,7 @@ const labelStyle: React.CSSProperties = { fontSize: 11, color: "#555", marginBot
 
 // ─── Componente principal ─────────────────────────────────────
 function FinanceiroRelatoriosInner() {
-  const { fazendaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, podeAcessarPlano, nomeFazendaSelecionada } = useAuth();
   const searchParams = useSearchParams();
   const aba = (searchParams.get("aba") as AbaFin) || "fluxo";
 
@@ -116,6 +116,19 @@ function FinanceiroRelatoriosInner() {
   // Fluxo — sub-aba Diário / Mensal
   const [subAbaFluxo, setSubAbaFluxo] = useState<"diario" | "mensal" | "anual">("diario");
   const [expandidosA, setExpandidosA] = useState<Set<string>>(new Set());
+
+  // Ref para dados do modo Anual — alimentado durante o render do IIFE
+  type PrintAnualData = {
+    anosPresentes: string[];
+    entradasA: { cat: string; anos: { real: number; prev: number }[] }[];
+    saidasA:   { cat: string; anos: { real: number; prev: number }[] }[];
+    totEntA: number[];
+    totSaiA: number[];
+    saldoAnoA: number[];
+    saldoAcA:  number[];
+    incluirPrevisoes: boolean;
+  };
+  const printAnualRef = useRef<PrintAnualData | null>(null);
 
   // DFC / Mensal — filtros
   const [dfcAno, setDfcAno] = useState(String(anoAtual));
@@ -266,10 +279,85 @@ function FinanceiroRelatoriosInner() {
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
           </div>
           <button onClick={() => {
-            const el = document.getElementById("fluxo-print-content");
-            abrirPreviewImpressao("Fluxo de Caixa", el?.innerHTML ?? "", "landscape");
+            const fazenda = nomeFazendaSelecionada ?? "";
+            const opts = { orientation: "landscape" as const, fazenda };
+
+            if (aba === "fluxo" && subAbaFluxo === "anual" && printAnualRef.current) {
+              // Gera HTML limpo — tabela de categorias × anos sem elementos interativos
+              const d = printAnualRef.current;
+              const fmtV = (v: number) => v === 0 ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+              const corV = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#aaa" : "#1A4870";
+              const th = (txt: string, align = "right") =>
+                `<th style="padding:6px 8px;text-align:${align};font-size:11px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">${txt}</th>`;
+              const td = (txt: string, opts2: { color?: string; bold?: boolean; align?: string; bg?: string } = {}) =>
+                `<td style="padding:5px 8px;text-align:${opts2.align ?? "right"};color:${opts2.color ?? "#1a1a1a"};font-weight:${opts2.bold ? 700 : 400};background:${opts2.bg ?? "transparent"};white-space:nowrap;font-size:11px">${txt}</td>`;
+
+              const catRows = (rows: typeof d.entradasA, cor: string) => rows
+                .filter(r => r.anos.some(c => c.real + c.prev > 0))
+                .map(r => {
+                  const totRow = r.anos.reduce((s, c) => s + c.real + c.prev, 0);
+                  const cells = r.anos.map(c => {
+                    const tot = c.real + c.prev;
+                    const prevOnly = c.prev > 0 && c.real === 0;
+                    return tot > 0
+                      ? `<td style="padding:5px 8px;text-align:right;white-space:nowrap;font-size:11px"><span style="color:${cor};font-weight:600">${fmtV(tot)}</span>${prevOnly ? `<br><span style="font-size:8px;color:#C9921B">prev</span>` : ""}</td>`
+                      : `<td style="padding:5px 8px;text-align:right;color:#DDE2EE;font-size:10px">—</td>`;
+                  }).join("");
+                  return `<tr style="border-bottom:0.5px solid #F0F3FA">
+                    <td style="padding:5px 8px 5px 20px;font-size:11px;color:${cor};max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cat}</td>
+                    ${cells}
+                    ${td(fmtV(totRow), { color: cor, bold: true })}
+                  </tr>`;
+                }).join("");
+
+              const secHeader = (label: string, bg: string, cor: string) =>
+                `<tr style="background:${bg}"><td colspan="${d.anosPresentes.length + 2}" style="padding:6px 10px;font-weight:700;font-size:10px;color:${cor};letter-spacing:.06em;text-transform:uppercase">${label}</td></tr>`;
+
+              const totalRow = (label: string, vals: number[], cor: string, bg = "#F4F6FA", bold = true) =>
+                `<tr style="background:${bg};border-top:0.5px solid #DDE2EE">
+                  ${td(label, { align: "left", bold, color: "#1A4870", bg })}
+                  ${vals.map(v => td(v === 0 ? "—" : fmtV(v), { color: v === 0 ? "#bbb" : cor, bold, bg })).join("")}
+                  ${td(fmtV(vals.reduce((s, v) => s + v, 0)), { color: corV(vals.reduce((s, v) => s + v, 0)), bold, bg })}
+                </tr>`;
+
+              const html = `
+                <p style="font-size:11px;color:#555;margin-bottom:12px">
+                  Visão plurianual · anos: ${d.anosPresentes.join(", ")} · ${d.incluirPrevisoes ? "Realizados + pendentes" : "Somente realizados"}
+                </p>
+                <div style="overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
+                  <thead>
+                    <tr style="background:#F4F6FA">
+                      ${th("Categoria", "left")}
+                      ${d.anosPresentes.map(a => th(a)).join("")}
+                      ${th("Total Geral")}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${secHeader("Entradas", "#F4F6FA", "#1A4870")}
+                    ${d.entradasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.entradasA, "#1A4870") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma entrada.</td></tr>`}
+                    ${totalRow("Total Entradas", d.totEntA, "#1A4870")}
+                    ${secHeader("Saídas", "#F4F6FA", "#555")}
+                    ${d.saidasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.saidasA, "#1a1a1a") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma saída.</td></tr>`}
+                    ${totalRow("Total Saídas", d.totSaiA, "#1a1a1a")}
+                    ${totalRow("Saldo do Ano", d.saldoAnoA, "", "#EFF3FA")}
+                    ${totalRow("Saldo Acumulado", d.saldoAcA, "", "#EFF3FA")}
+                  </tbody>
+                </table>
+                </div>`;
+
+              abrirPreviewImpressao("Fluxo de Caixa — Anual", html, { ...opts, subtitulo: fazenda });
+            } else {
+              // Outros modos: DOM com elementos interativos ocultos
+              const el = document.getElementById("fluxo-print-content");
+              abrirPreviewImpressao(
+                `Fluxo de Caixa${{ diario: " — Diário", mensal: " — Mensal", anual: " — Anual" }[subAbaFluxo]}`,
+                el?.innerHTML ?? "",
+                opts,
+              );
+            }
           }} style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            Visualizar / PDF
+            Imprimir / PDF
           </button>
         </header>
 
@@ -1052,6 +1140,9 @@ function FinanceiroRelatoriosInner() {
                       let _accA = 0;
                       const saldoAcA  = saldoAnoA.map(v => { _accA += v; return _accA; });
                       const corSaldoA = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870";
+
+                      // Captura dados para o relatório PDF
+                      printAnualRef.current = { anosPresentes, entradasA, saidasA, totEntA, totSaiA, saldoAnoA, saldoAcA, incluirPrevisoes };
 
                       const CatRowAEl = ({ row }: { row: CatRowA }) => {
                         const totRow = row.anos.reduce((s, c) => s + c.real + c.prev, 0);
