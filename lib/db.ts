@@ -932,7 +932,7 @@ export async function excluirMatricula(id: string): Promise<void> {
 // ————————————————————————————————————————
 
 export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
-  const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome");
+  const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome").limit(10000);
   if (error) throw error;
   return data ?? [];
 }
@@ -959,7 +959,7 @@ async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): P
 export async function listarPessoasDaConta(fazenda_id_fallback?: string | null): Promise<Pessoa[]> {
   const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
   if (!ids.length) return [];
-  const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome");
+  const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").limit(10000);
   if (error) throw error;
   return data ?? [];
 }
