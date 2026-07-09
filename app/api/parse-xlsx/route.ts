@@ -58,7 +58,23 @@ export async function POST(req: NextRequest) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
 
-    return NextResponse.json({ rows, sheetName: wb.SheetNames[0] });
+    // Converte objetos Date (gerados por cellDates:true) para AAAA-MM-DD
+    const normalizedRows = rows.map(row => {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(row)) {
+        if (v instanceof Date && !isNaN(v.getTime())) {
+          const y = v.getFullYear();
+          const m = String(v.getMonth() + 1).padStart(2, "0");
+          const d = String(v.getDate()).padStart(2, "0");
+          out[k] = `${y}-${m}-${d}`;
+        } else {
+          out[k] = v;
+        }
+      }
+      return out;
+    });
+
+    return NextResponse.json({ rows: normalizedRows, sheetName: wb.SheetNames[0] });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: msg }, { status: 422 });
