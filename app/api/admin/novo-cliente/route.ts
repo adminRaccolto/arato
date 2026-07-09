@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { criarClienteCompleto } from "../../../../lib/criarClienteCompleto";
 
 function corsHeaders(req: Request) {
@@ -17,28 +19,39 @@ export async function OPTIONS(req: Request) {
 }
 
 async function autorizado(req: Request): Promise<boolean> {
-  // Opção 1 — chave estática (compatibilidade com integrações externas)
+  // Opção 1 — chave estática (integrações externas)
   const secret = process.env.ADMIN_ONBOARDING_SECRET;
   if (secret && req.headers.get("x-admin-key") === secret) return true;
 
-  // Opção 2 — token Supabase com role=raccotlo (uso pelo painel interno)
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
+
+  // Opção 2 — sessão via cookie (painel interno, mais confiável que Bearer token)
+  try {
+    const cookieStore = await cookies();
+    const supabaseCookie = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } },
+    );
+    const { data: { user } } = await supabaseCookie.auth.getUser();
+    if (user) {
+      const { data: perfil } = await supabaseAdmin
+        .from("perfis").select("role").eq("user_id", user.id).single();
+      if (perfil?.role === "raccotlo") return true;
+    }
+  } catch { /* ignora — tenta Bearer abaixo */ }
+
+  // Opção 3 — Bearer token (fallback, pode expirar)
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) return false;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !user) return false;
 
-  const { data: perfil } = await supabase
-    .from("perfis")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
+  const { data: perfil } = await supabaseAdmin
+    .from("perfis").select("role").eq("user_id", user.id).single();
 
   return perfil?.role === "raccotlo";
 }

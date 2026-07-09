@@ -487,6 +487,38 @@ export default function Arrendamentos() {
         return;
       }
 
+      // ── Verificar duplicatas ────────────────────────────
+      // Busca parcelas já existentes para este arrendamento + safras selecionadas
+      const anosSelecionados = [...new Set(novosPagamentos.map(p => p.ano_safra_id).filter(Boolean))];
+      const { data: existentes } = await supabase
+        .from("arrendamento_pagamentos")
+        .select("ano_safra_id, commodity")
+        .eq("arrendamento_id", selArrGerador.id)
+        .in("ano_safra_id", anosSelecionados as string[]);
+
+      if (existentes && existentes.length > 0) {
+        const chaveExistente = new Set(
+          (existentes as { ano_safra_id: string; commodity: string }[])
+            .map(e => `${e.ano_safra_id}|${e.commodity ?? ""}`)
+        );
+        const antes = novosPagamentos.length;
+        const filtrados = novosPagamentos.filter(p =>
+          !chaveExistente.has(`${p.ano_safra_id}|${p.commodity ?? ""}`)
+        );
+        const duplicadas = antes - filtrados.length;
+        if (filtrados.length === 0) {
+          alert(`Todas as parcelas já foram geradas anteriormente para este contrato. Nenhuma inserida.`);
+          setSalvando(false);
+          return;
+        }
+        if (duplicadas > 0) {
+          const ok = confirm(`${duplicadas} parcela(s) já existem e serão ignoradas. Deseja inserir as ${filtrados.length} novas?`);
+          if (!ok) { setSalvando(false); return; }
+        }
+        novosPagamentos.length = 0;
+        novosPagamentos.push(...filtrados);
+      }
+
       // ── Auto-criar anos_safra ausentes ──────────────────
       const anosSafraAtualizado = [...anosSafra];
       for (const cfg of configSafras) {
