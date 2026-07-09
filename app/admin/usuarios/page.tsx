@@ -386,10 +386,15 @@ export default function AdminUsuarios() {
   // Carrega equipe Raccotlo de perfis (via API route com service_role_key)
   const carregarEquipe = () => {
     setCarregando(true);
+    setErro(null);
     fetch("/api/admin/equipe-raccotlo")
-      .then(r => r.json())
-      .then(json => setUsuarios((json.data ?? []) as Usuario[]))
-      .catch(() => setUsuarios([]))
+      .then(async r => {
+        const json = await r.json();
+        console.log("[equipe-raccotlo]", r.status, json);
+        if (!r.ok) throw new Error(json.error ?? `Erro HTTP ${r.status}: ${JSON.stringify(json)}`);
+        setUsuarios((json.data ?? []) as Usuario[]);
+      })
+      .catch(e => { setUsuarios([]); setErro(`Erro ao carregar equipe: ${String(e)}`); })
       .finally(() => setCarregando(false));
   };
 

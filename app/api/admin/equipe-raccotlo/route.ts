@@ -53,6 +53,7 @@ export async function GET() {
     .in("role", RACCOTLO_ROLES)
     .order("nome");
 
+  console.log("[equipe-raccotlo] membros encontrados:", membros?.length ?? 0, "| erro:", error?.message);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Busca todos os emails de uma vez (listUsers é paginado — 1000 é o max por página)
