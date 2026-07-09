@@ -283,10 +283,12 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
   const contratos: ContratoImportado[] = [];
 
   // ── Detecta formato ──────────────────────────────────────
-  // Formato AgroSoft: tem CD_DIVIDA como chave de agrupamento
-  // Formato alternativo: tem N_CONTRATO (Nº CONTRATO) ou DIVIDA como chave
+  // Formato AgroSoft:  tem CD_DIVIDA como chave de agrupamento (N linhas por contrato)
+  // Formato alternativo: tem N_CONTRATO/DIVIDA/NR_CONTRATO (N linhas por contrato)
+  // Formato Livre:     tem NUMERO_CONTRATO (1 linha por contrato, parcelas geradas automaticamente)
   const isAgrosoft = colunas.includes("CD_DIVIDA");
   const isAlt = !isAgrosoft && colunas.some(c => c === "N_CONTRATO" || c === "DIVIDA" || c === "NR_CONTRATO");
+  const isManual = !isAgrosoft && !isAlt && colunas.includes("NUMERO_CONTRATO");
 
   if (isAgrosoft) {
     // Coleta valores de OPERACAO_CONTA para diagnóstico
@@ -428,6 +430,96 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
     }
 
     return { contratos, debug: { colunas, totalLinhas: rows.length, gruposEncontrados: grupos.size, valoresOperacao, avisos } };
+  }
+
+  if (isManual) {
+    // Formato Livre: 1 linha = 1 contrato. Parcelas geradas pelos parâmetros de amortização.
+    // Colunas esperadas: NUMERO_CONTRATO, DESCRICAO, CREDOR, TIPO, LINHA_CREDITO,
+    //   TIPO_CALCULO (SAC/PRICE), MOEDA, VALOR_FINANCIADO, VALOR_LIBERADO, COTACAO_USD,
+    //   DATA_CONTRATO, DATA_LIBERACAO, DATA_VENCIMENTO, PRAZO_MESES, CARENCIA_MESES,
+    //   PERIODICIDADE_PAGAMENTO, TAXA_JUROS_AA, TAXA_JUROS_AM, IOF_PCT, TAC_VALOR,
+    //   OUTROS_CUSTOS, PRODUTOR_CPF_CNPJ
+    const valoresOperacao: string[] = [];
+
+    const addMonths = (dateStr: string, months: number): string => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr + "T00:00:00");
+      d.setMonth(d.getMonth() + months);
+      return d.toISOString().slice(0, 10);
+    };
+
+    for (const row of rows) {
+      const nrContrato = str(row, "NUMERO_CONTRATO");
+      if (!nrContrato) continue;
+
+      const valorFin    = num(row, "VALOR_FINANCIADO") || num(row, "VALOR_LIBERADO");
+      const taxaAa      = num(row, "TAXA_JUROS_AA");
+      const taxaAm      = num(row, "TAXA_JUROS_AM");
+      const prazoMeses  = Math.round(Math.abs(num(row, "PRAZO_MESES")));
+      const carenciaMeses = Math.round(Math.abs(num(row, "CARENCIA_MESES")));
+      const tipoCalc    = str(row, "TIPO_CALCULO").toUpperCase();
+      const dataVenc    = dat(row, "DATA_VENCIMENTO", "DATA_ENTREGA_PRODUTO");
+      const dataBase    = dat(row, "DATA_LIBERACAO", "DATA_CONTRATO");
+      const dataContrato = dat(row, "DATA_CONTRATO", "DATA_LIBERACAO");
+      const moedaRaw    = str(row, "MOEDA").toUpperCase();
+      const moeda: "BRL" | "USD" = moedaRaw === "USD" ? "USD" : "BRL";
+      const cotacao     = moeda === "USD" ? (num(row, "COTACAO_USD") || undefined) : undefined;
+      const taxaAmDecimal = taxaAm > 0 ? taxaAm / 100 : taxaAa > 0 ? aaParaAm(taxaAa) / 100 : 0;
+
+      let parcelas: ContratoImportado["parcelas"];
+
+      if (prazoMeses > 0 && valorFin > 0) {
+        // Gera cronograma completo de amortização
+        let raw: { num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number }[];
+        if (tipoCalc.includes("PRICE") || tipoCalc.includes("FRANCES") || tipoCalc.includes("FRANCÊS")) {
+          raw = calcularPRICE(valorFin, taxaAmDecimal, prazoMeses, carenciaMeses, "so_juros");
+        } else {
+          raw = calcularSAC(valorFin, taxaAmDecimal, prazoMeses, carenciaMeses, "so_juros");
+          if (tipoCalc && !tipoCalc.includes("SAC") && !tipoCalc.includes("AMORT")) {
+            avisos.push(`Contrato ${nrContrato}: tipo de cálculo "${tipoCalc}" não reconhecido — usando SAC`);
+          }
+        }
+        parcelas = raw.map(p => ({
+          ...p,
+          data_vencimento: dataBase ? addMonths(dataBase, p.num_parcela) : dataVenc,
+        }));
+      } else {
+        // Parcela única com vencimento final
+        const iofPct   = num(row, "IOF_PCT");
+        const tac      = num(row, "TAC_VALOR");
+        const outros   = num(row, "OUTROS_CUSTOS");
+        const despAcess = tac + outros + (iofPct > 0 && valorFin > 0 ? (iofPct / 100) * valorFin : 0);
+        parcelas = [{
+          num_parcela: 1,
+          data_vencimento: dataVenc,
+          amortizacao: valorFin,
+          juros: 0,
+          despesas_acessorios: despAcess,
+          valor_parcela: valorFin + despAcess,
+          saldo_devedor: 0,
+        }];
+        if (!dataVenc) avisos.push(`Contrato ${nrContrato}: sem DATA_VENCIMENTO e PRAZO_MESES = 0`);
+      }
+
+      const tipoRaw  = str(row, "TIPO", "LINHA_CREDITO");
+      const descricao = str(row, "DESCRICAO", "LINHA_CREDITO") || `Contrato ${nrContrato}`;
+
+      contratos.push({
+        cd_divida:       nrContrato,
+        descricao,
+        nr_contrato:     nrContrato,
+        data_contrato:   dataContrato,
+        tipo:            mapTipoContrato(tipoRaw),
+        credor:          str(row, "CREDOR"),
+        taxa_juros_aa:   taxaAa,
+        taxa_juros_am:   taxaAm > 0 ? taxaAm : undefined,
+        valor_financiado: valorFin,
+        moeda, cotacao,
+        parcelas,
+      });
+    }
+
+    return { contratos, debug: { colunas, totalLinhas: rows.length, gruposEncontrados: contratos.length, valoresOperacao, avisos } };
   }
 
   // Formato não reconhecido — retorna debug para o usuário
@@ -1039,7 +1131,7 @@ export default function ContratosFinanceiros() {
             <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>Importar Contratos Financeiros — XLSX</div>
-                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Formato compatível com AgroSoft, Agrobase e sistemas SAC/Amortização Constante</div>
+                <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>AgroSoft · Formato alternativo · Formato livre (1 linha por contrato, qualquer fonte)</div>
               </div>
               <button onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
             </div>
@@ -1062,20 +1154,30 @@ export default function ContratosFinanceiros() {
               ) : !importPreview ? (
                 <div>
                   <div style={{ marginBottom: 16, background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#0B2D50" }}>
-                    <div style={{ fontWeight: 600, marginBottom: 6 }}>Formatos aceitos:</div>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>3 formatos aceitos — o sistema detecta automaticamente:</div>
                     <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato AgroSoft/Agrobase (colunas padrão):</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato AgroSoft/Agrobase (N linhas por contrato, agrupadas por CD_DIVIDA):</div>
                       <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
                         CD_DIVIDA · NR_CONTRATO · DESCRICAO · DATA_DIVIDA · ST_TIPO_DIVIDA · NOME_CREDOR_DEVEDOR · PERC_JUROS · VALOR_FINANCIADO · CD_MOEDA · VL_COTACAO · OPERACAO_CONTA · NUM_PARC · DATA_VENCIMENTO · VALOR_AMORTIZACAO · VALOR_JUROS_ENCARGOS · VALOR_ACESSORIOS · VALOR_PARCELAS · SALDO_DEVEDOR
                       </div>
                       <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato alternativo (exportação com acentos/espaços):</div>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato alternativo (N linhas por contrato, com acentos/espaços):</div>
                       <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
                         Nº CONTRATO · DÍVIDA · CREDOR/DEVEDOR · DATA DÍVIDA · % JUROS · MOEDA · VALOR · DATA PARCELA · VALOR SALDO · TIPO PARC.
                       </div>
                       <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>TIPO PARC.: C/R = crédito (liberação), D/P = débito (parcela) &nbsp;|&nbsp; MOEDA: BRL ou USD</div>
+                    </div>
+                    <div style={{ borderTop: "0.5px solid #1A487030", paddingTop: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 3 }}>Formato Livre — 1 linha por contrato (manual ou de qualquer sistema):</div>
+                      <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
+                        NUMERO_CONTRATO · DESCRICAO · CREDOR · TIPO · LINHA_CREDITO · TIPO_CALCULO · MOEDA · VALOR_FINANCIADO · VALOR_LIBERADO · COTACAO_USD · DATA_CONTRATO · DATA_LIBERACAO · DATA_VENCIMENTO · PRAZO_MESES · CARENCIA_MESES · TAXA_JUROS_AA · TAXA_JUROS_AM · IOF_PCT · TAC_VALOR · OUTROS_CUSTOS
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>
+                        TIPO: Custeio, Investimento, CPR, Outros &nbsp;|&nbsp; TIPO_CALCULO: SAC ou PRICE &nbsp;|&nbsp; MOEDA: BRL ou USD
+                        <br/>Se PRAZO_MESES &gt; 0: parcelas geradas pelo sistema (SAC/PRICE). Senão: parcela única em DATA_VENCIMENTO.
+                      </div>
                     </div>
                   </div>
 
@@ -1101,7 +1203,7 @@ export default function ContratosFinanceiros() {
 
                       {importDiag.gruposEncontrados === 0 && (
                         <div style={{ padding: "8px 12px", background: "#FFF0F0", borderRadius: 7, fontSize: 12, color: "#7A1A1A", marginBottom: 10 }}>
-                          <strong>Formato não reconhecido.</strong> A planilha deve ter a coluna <code>CD_DIVIDA</code> (AgroSoft) ou <code>Nº CONTRATO</code> / <code>DÍVIDA</code> (formato alternativo) para agrupamento dos contratos.
+                          <strong>Formato não reconhecido.</strong> A planilha precisa de uma coluna de identificação do contrato: <code>CD_DIVIDA</code> (AgroSoft), <code>NR_CONTRATO</code> / <code>DÍVIDA</code> (alternativo), ou <code>NUMERO_CONTRATO</code> (formato livre — 1 linha por contrato).
                         </div>
                       )}
 
