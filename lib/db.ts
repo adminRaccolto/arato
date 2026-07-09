@@ -932,9 +932,17 @@ export async function excluirMatricula(id: string): Promise<void> {
 // ————————————————————————————————————————
 
 export async function listarPessoas(fazenda_id: string): Promise<Pessoa[]> {
-  const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome").limit(10000);
-  if (error) throw error;
-  return data ?? [];
+  const PAGE = 1000;
+  let all: Pessoa[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from("pessoas").select("*").eq("fazenda_id", fazenda_id).order("nome").range(from, from + PAGE - 1);
+    if (error) throw error;
+    all = [...all, ...(data ?? [])];
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
 }
 
 // Resolve IDs de fazendas dado contaId + fallback de fazenda individual
@@ -959,9 +967,17 @@ async function resolverFazendaIdsDaConta(fazenda_id_fallback?: string | null): P
 export async function listarPessoasDaConta(fazenda_id_fallback?: string | null): Promise<Pessoa[]> {
   const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
   if (!ids.length) return [];
-  const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").limit(10000);
-  if (error) throw error;
-  return data ?? [];
+  const PAGE = 1000;
+  let all: Pessoa[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase.from("pessoas").select("*").in("fazenda_id", ids).order("nome").range(from, from + PAGE - 1);
+    if (error) throw error;
+    all = [...all, ...(data ?? [])];
+    if (!data || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
 }
 
 // Carrega contas bancárias de TODAS as fazendas da conta
