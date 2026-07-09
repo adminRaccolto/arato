@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -80,22 +80,15 @@ const btnSecondary: React.CSSProperties = {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function NovoClientePage() {
-  const [sessionToken, setSessionToken] = useState("");
   const [salvando, setSalvando]         = useState(false);
   const [erro, setErro]                 = useState("");
   const [resultado, setResultado]       = useState<ResultadoCriacao | null>(null);
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
-  // Captura o token da sessão atual automaticamente
-  useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) setSessionToken(session.access_token);
-    });
-  }, []);
+  const supabaseClient = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
 
   const [form, setForm] = useState<FormData>({
     tipo:            "pf",
@@ -131,7 +124,6 @@ export default function NovoClientePage() {
     if (!form.user_senha.trim())    { setErro("Senha é obrigatória."); return; }
     if (form.user_senha !== form.user_senha_conf) { setErro("As senhas não coincidem."); return; }
     if (form.user_senha.length < 8) { setErro("A senha deve ter pelo menos 8 caracteres."); return; }
-    if (!sessionToken)              { setErro("Sessão não carregada. Recarregue a página e tente novamente."); return; }
 
     setSalvando(true);
 
@@ -156,11 +148,15 @@ export default function NovoClientePage() {
     };
 
     try {
+      // Busca token fresco — getSession() faz refresh automático se expirado
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const token = session?.access_token ?? "";
+
       const res = await fetch("/api/admin/novo-cliente", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionToken}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
