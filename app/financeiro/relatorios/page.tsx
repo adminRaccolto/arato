@@ -115,7 +115,12 @@ function FinanceiroRelatoriosInner() {
 
   // Fluxo — sub-aba Diário / Mensal
   const [subAbaFluxo, setSubAbaFluxo] = useState<"diario" | "mensal" | "anual">("diario");
-  const [expandidosA, setExpandidosA] = useState<Set<string>>(new Set());
+  const [expandidosA,  setExpandidosA]  = useState<Set<string>>(new Set());
+  // Filtros exclusivos da aba Anual
+  const [anualInicio,  setAnualInicio]  = useState("");
+  const [anualFim,     setAnualFim]     = useState("");
+  const ALL_STATUS_A = ["baixado", "em_aberto", "vencido", "vencendo"] as const;
+  const [anualStatus, setAnualStatus]   = useState<Set<string>>(new Set(ALL_STATUS_A));
 
   // Ref para dados do modo Anual — alimentado durante o render do IIFE
   type PrintAnualData = {
@@ -1064,16 +1069,6 @@ function FinanceiroRelatoriosInner() {
 
                     {/* ── ANUAL ── */}
                     {subAbaFluxo === "anual" && (() => {
-                      // Extrai todos os anos presentes nos lançamentos
-                      const anosPresentes = [...new Set(
-                        lancamentos
-                          .map(l => (l.data_vencimento ?? l.data_lancamento ?? "").slice(0, 4))
-                          .filter(a => /^\d{4}$/.test(a))
-                      )].sort();
-                      if (anosPresentes.length === 0) {
-                        return <div style={{ padding: 40, textAlign: "center", color: "#888", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>Nenhum lançamento encontrado.</div>;
-                      }
-
                       const contasFiltProdA = filtro.produtoresSel.length > 0
                         ? contasFluxo.filter(c => c.produtor_id && filtro.produtoresSel.includes(c.produtor_id))
                         : contasFluxo;
@@ -1090,11 +1085,76 @@ function FinanceiroRelatoriosInner() {
                       const lanFiltMoedaA = filtro.moedasSel.length > 0
                         ? lanBase.filter(l => { const m = l.moeda ?? "BRL"; return filtro.moedasSel.includes(m); })
                         : lanBase.filter(l => l.moeda !== "barter");
+
+                      // Filtros exclusivos do modo Anual: intervalo de vencimento + status da parcela
                       const lanVisA = lanFiltMoedaA.filter(l => {
-                        if (filtro.tipoVis === "realizado") return l.status === "baixado";
-                        if (filtro.tipoVis === "previsto")  return l.status !== "baixado";
-                        return l.status === "baixado" || incluirPrevisoes;
+                        const dt = l.data_vencimento ?? l.data_lancamento ?? "";
+                        if (anualInicio && dt < anualInicio) return false;
+                        if (anualFim    && dt > anualFim)   return false;
+                        return anualStatus.has(l.status);
                       });
+
+                      // ── Barra de filtros do modo Anual ──────────────────────
+                      const STATUS_OPTS: { key: string; label: string; cor: string; bg: string; bgA: string; corA: string }[] = [
+                        { key: "baixado",   label: "Baixados",  cor: "#555",    bg: "#F4F6FA", bgA: "#1A5C38", corA: "#fff" },
+                        { key: "em_aberto", label: "Em Aberto", cor: "#555",    bg: "#F4F6FA", bgA: "#1A4870", corA: "#fff" },
+                        { key: "vencido",   label: "Vencidos",  cor: "#555",    bg: "#F4F6FA", bgA: "#B91C1C", corA: "#fff" },
+                        { key: "vencendo",  label: "A Vencer",  cor: "#555",    bg: "#F4F6FA", bgA: "#C9921B", corA: "#fff" },
+                      ];
+                      const inpA: React.CSSProperties = { padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 12, color: "#1a1a1a", background: "#fff", outline: "none" };
+                      const barraFiltros = (
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                          {/* Intervalo de vencimento */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>Vencimento de</span>
+                            <input type="date" value={anualInicio} onChange={e => setAnualInicio(e.target.value)} style={inpA} />
+                            <span style={{ fontSize: 11, color: "#555" }}>até</span>
+                            <input type="date" value={anualFim} onChange={e => setAnualFim(e.target.value)} style={inpA} />
+                            {(anualInicio || anualFim) && (
+                              <button onClick={() => { setAnualInicio(""); setAnualFim(""); }}
+                                style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", color: "#888", cursor: "pointer" }}>✕</button>
+                            )}
+                          </div>
+                          {/* Separador */}
+                          <div style={{ width: 1, height: 20, background: "#D4DCE8" }} />
+                          {/* Status */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>Status:</span>
+                            {STATUS_OPTS.map(s => {
+                              const ativo = anualStatus.has(s.key);
+                              return (
+                                <button key={s.key} onClick={() => setAnualStatus(prev => {
+                                  const ns = new Set(prev);
+                                  if (ns.has(s.key)) ns.delete(s.key); else ns.add(s.key);
+                                  return ns;
+                                })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 7, border: `0.5px solid ${ativo ? s.bgA : "#D4DCE8"}`, background: ativo ? s.bgA : s.bg, color: ativo ? s.corA : s.cor, cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
+                                  {s.label}
+                                </button>
+                              );
+                            })}
+                            {anualStatus.size < ALL_STATUS_A.length && (
+                              <button onClick={() => setAnualStatus(new Set(ALL_STATUS_A))}
+                                style={{ fontSize: 10, padding: "3px 7px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", color: "#888", cursor: "pointer" }}>Todos</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+
+                      // Anos derivados dos lançamentos filtrados (respeita intervalo de datas e status)
+                      const anosPresentes = [...new Set(
+                        lanVisA
+                          .map(l => (l.data_vencimento ?? l.data_lancamento ?? "").slice(0, 4))
+                          .filter(a => /^\d{4}$/.test(a))
+                      )].sort();
+
+                      if (anosPresentes.length === 0) {
+                        return (
+                          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                            {barraFiltros}
+                            <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado com os filtros aplicados.</div>
+                          </div>
+                        );
+                      }
 
                       type CellA = { real: number; prev: number };
                       type CatRowA = { cat: string; tipo: "receber" | "pagar"; anos: CellA[] };
@@ -1140,9 +1200,6 @@ function FinanceiroRelatoriosInner() {
                       let _accA = 0;
                       const saldoAcA  = saldoAnoA.map(v => { _accA += v; return _accA; });
                       const corSaldoA = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870";
-
-                      // Captura dados para o relatório PDF
-                      printAnualRef.current = { anosPresentes, entradasA, saidasA, totEntA, totSaiA, saldoAnoA, saldoAcA, incluirPrevisoes };
 
                       const CatRowAEl = ({ row }: { row: CatRowA }) => {
                         const totRow = row.anos.reduce((s, c) => s + c.real + c.prev, 0);
@@ -1218,16 +1275,20 @@ function FinanceiroRelatoriosInner() {
                         );
                       };
 
+                      // Atualiza dados para impressão PDF
+                      printAnualRef.current = { anosPresentes, entradasA, saidasA, totEntA, totSaiA, saldoAnoA, saldoAcA, incluirPrevisoes: anualStatus.size === ALL_STATUS_A.length };
+
+                      const descFiltroStatus = ALL_STATUS_A.filter(s => anualStatus.has(s))
+                        .map(s => ({ baixado: "Baixados", em_aberto: "Em Aberto", vencido: "Vencidos", vencendo: "A Vencer" }[s]))
+                        .join(", ");
+
                       return (
                         <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                            <div style={{ fontSize: 11, color: "#555" }}>
-                              Entradas e saídas por categoria · visão plurianual · {anosPresentes.join(", ")}
-                            </div>
-                            <button onClick={() => setIncluirPrevisoes(v => !v)}
-                              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer", background: incluirPrevisoes ? "#FBF3E0" : "#F4F6FA", color: incluirPrevisoes ? "#7A4300" : "#555", borderColor: incluirPrevisoes ? "#C9921B" : "#D4DCE8" }}>
-                              {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
-                            </button>
+                          {barraFiltros}
+                          <div style={{ padding: "8px 16px", borderBottom: "0.5px solid #DEE5EE", background: "#F4F6FA", fontSize: 11, color: "#555" }}>
+                            Visão plurianual · {anosPresentes.join(", ")}
+                            {(anualInicio || anualFim) && <> · Vencimento: {anualInicio || "…"} → {anualFim || "…"}</>}
+                            {" · "}{descFiltroStatus}
                           </div>
                           <div style={{ overflowX: "auto" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
@@ -1269,7 +1330,9 @@ function FinanceiroRelatoriosInner() {
                             </table>
                           </div>
                           <div style={{ padding: "8px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
-                            {incluirPrevisoes ? "Baixados + pendentes (em aberto/vencidos). Prev em mostarda." : "Apenas lançamentos com status Baixado."}
+                            {descFiltroStatus}
+                            {(anualInicio || anualFim) ? ` · Vencimento: ${anualInicio || "início"} até ${anualFim || "hoje"}` : ""}
+                            {(anualStatus.has("em_aberto") || anualStatus.has("vencido") || anualStatus.has("vencendo")) ? " · Pendentes em mostarda." : ""}
                           </div>
                         </div>
                       );
