@@ -117,6 +117,10 @@ export function abrirPreviewImpressao(
     /* Ocultar elementos marcados como no-print no conteúdo clonado */
     .no-print { display: none !important; }
 
+    /* ── Auto-fit: tabelas largas são escaladas para caber na página ── */
+    .auto-fit-table { overflow-x: hidden; }
+    .auto-fit-table table { transform-origin: top left; }
+
     @media print {
       @page { size: ${pageSize}; margin: 10mm 12mm; }
       body { background: #fff; }
@@ -125,6 +129,39 @@ export function abrirPreviewImpressao(
       .rt-page { box-shadow: none; width: 100%; padding: 0; }
     }
   </style>
+  <script>
+    (function () {
+      function fitTables() {
+        var page = document.querySelector('.rt-page');
+        if (!page) return;
+        var pageW = page.clientWidth || page.offsetWidth;
+        page.querySelectorAll('.auto-fit-table').forEach(function (wrapper) {
+          var table = wrapper.querySelector('table');
+          if (!table) return;
+          // Reset primeiro para medir tamanho real
+          table.style.transform = '';
+          wrapper.style.height = '';
+          var tableW = table.scrollWidth;
+          if (tableW > pageW && pageW > 0) {
+            var scale = pageW / tableW;
+            table.style.transform = 'scale(' + scale + ')';
+            table.style.transformOrigin = 'top left';
+            // Corrige a altura do wrapper (scale não afeta o flow)
+            wrapper.style.height = (table.offsetHeight * scale) + 'px';
+          }
+        });
+      }
+      document.addEventListener('DOMContentLoaded', fitTables);
+      window.addEventListener('resize', fitTables);
+      // Garante a escala certa no momento do print
+      window.addEventListener('beforeprint', fitTables);
+      if (window.matchMedia) {
+        window.matchMedia('print').addEventListener('change', function (e) {
+          if (e.matches) fitTables();
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
   <!-- Toolbar de pré-visualização -->

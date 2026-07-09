@@ -292,10 +292,19 @@ function FinanceiroRelatoriosInner() {
               const d = printAnualRef.current;
               const fmtV = (v: number) => v === 0 ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
               const corV = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#aaa" : "#1A4870";
+              // Com muitas colunas, reduz fonte e padding para maximizar aproveitamento da página
+              const nCols = d.anosPresentes.length + 2; // anos + Categoria + Total
+              const compacto = nCols > 8;
+              const fs   = compacto ? "9px"  : "11px";
+              const fsSm = compacto ? "8px"  : "10px";
+              const pad  = compacto ? "4px 5px" : "6px 8px";
+              const padL = compacto ? "4px 5px 4px 14px" : "5px 8px 5px 20px";
+              const padSec = compacto ? "4px 6px" : "6px 10px";
+
               const th = (txt: string, align = "right") =>
-                `<th style="padding:6px 8px;text-align:${align};font-size:11px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">${txt}</th>`;
+                `<th style="padding:${pad};text-align:${align};font-size:${fs};font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">${txt}</th>`;
               const td = (txt: string, opts2: { color?: string; bold?: boolean; align?: string; bg?: string } = {}) =>
-                `<td style="padding:5px 8px;text-align:${opts2.align ?? "right"};color:${opts2.color ?? "#1a1a1a"};font-weight:${opts2.bold ? 700 : 400};background:${opts2.bg ?? "transparent"};white-space:nowrap;font-size:11px">${txt}</td>`;
+                `<td style="padding:${pad};text-align:${opts2.align ?? "right"};color:${opts2.color ?? "#1a1a1a"};font-weight:${opts2.bold ? 700 : 400};background:${opts2.bg ?? "transparent"};white-space:nowrap;font-size:${fs}">${txt}</td>`;
 
               const catRows = (rows: typeof d.entradasA, cor: string) => rows
                 .filter(r => r.anos.some(c => c.real + c.prev > 0))
@@ -305,18 +314,18 @@ function FinanceiroRelatoriosInner() {
                     const tot = c.real + c.prev;
                     const prevOnly = c.prev > 0 && c.real === 0;
                     return tot > 0
-                      ? `<td style="padding:5px 8px;text-align:right;white-space:nowrap;font-size:11px"><span style="color:${cor};font-weight:600">${fmtV(tot)}</span>${prevOnly ? `<br><span style="font-size:8px;color:#C9921B">prev</span>` : ""}</td>`
-                      : `<td style="padding:5px 8px;text-align:right;color:#DDE2EE;font-size:10px">—</td>`;
+                      ? `<td style="padding:${pad};text-align:right;white-space:nowrap;font-size:${fs}"><span style="color:${cor};font-weight:600">${fmtV(tot)}</span>${prevOnly ? `<br><span style="font-size:${fsSm};color:#C9921B">prev</span>` : ""}</td>`
+                      : `<td style="padding:${pad};text-align:right;color:#DDE2EE;font-size:${fsSm}">—</td>`;
                   }).join("");
                   return `<tr style="border-bottom:0.5px solid #F0F3FA">
-                    <td style="padding:5px 8px 5px 20px;font-size:11px;color:${cor};max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cat}</td>
+                    <td style="padding:${padL};font-size:${fs};color:${cor};max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.cat}</td>
                     ${cells}
                     ${td(fmtV(totRow), { color: cor, bold: true })}
                   </tr>`;
                 }).join("");
 
               const secHeader = (label: string, bg: string, cor: string) =>
-                `<tr style="background:${bg}"><td colspan="${d.anosPresentes.length + 2}" style="padding:6px 10px;font-weight:700;font-size:10px;color:${cor};letter-spacing:.06em;text-transform:uppercase">${label}</td></tr>`;
+                `<tr style="background:${bg}"><td colspan="${d.anosPresentes.length + 2}" style="padding:${padSec};font-weight:700;font-size:${fsSm};color:${cor};letter-spacing:.06em;text-transform:uppercase">${label}</td></tr>`;
 
               const totalRow = (label: string, vals: number[], cor: string, bg = "#F4F6FA", bold = true) =>
                 `<tr style="background:${bg};border-top:0.5px solid #DDE2EE">
@@ -326,11 +335,11 @@ function FinanceiroRelatoriosInner() {
                 </tr>`;
 
               const html = `
-                <p style="font-size:11px;color:#555;margin-bottom:12px">
+                <p style="font-size:11px;color:#555;margin-bottom:10px">
                   Visão plurianual · anos: ${d.anosPresentes.join(", ")} · ${d.incluirPrevisoes ? "Realizados + pendentes" : "Somente realizados"}
                 </p>
-                <div style="overflow-x:auto">
-                <table style="width:100%;border-collapse:collapse;font-family:system-ui,sans-serif">
+                <div class="auto-fit-table">
+                <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
                   <thead>
                     <tr style="background:#F4F6FA">
                       ${th("Categoria", "left")}
