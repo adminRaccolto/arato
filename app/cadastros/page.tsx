@@ -6276,7 +6276,9 @@ function CadastrosInner() {
                                 setFazArrendamentos(p => p.map((x,j) => j===ai ? {...x,proprietario_id:pid,proprietario_nome:pnome} : x));
                               }}>
                                 <option value="">Selecione a pessoa…</option>
-                                {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome} ({p.tipo.toUpperCase()})</option>)}
+                                {pessoas
+                                  .filter(p => p.subcategorias?.includes("Arrendante"))
+                                  .map(p => <option key={p.id} value={p.id}>{p.cpf_cnpj ? `${p.cpf_cnpj} — ` : ""}{p.nome} ({p.tipo.toUpperCase()})</option>)}
                               </select>
                             </div>
                             <div>
