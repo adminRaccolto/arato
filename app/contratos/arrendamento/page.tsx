@@ -487,38 +487,6 @@ export default function Arrendamentos() {
         return;
       }
 
-      // ── Verificar duplicatas ────────────────────────────
-      // Busca parcelas já existentes para este arrendamento + safras selecionadas
-      const anosSelecionados = [...new Set(novosPagamentos.map(p => p.ano_safra_id).filter(Boolean))];
-      const { data: existentes } = await supabase
-        .from("arrendamento_pagamentos")
-        .select("ano_safra_id, commodity")
-        .eq("arrendamento_id", selArrGerador.id)
-        .in("ano_safra_id", anosSelecionados as string[]);
-
-      if (existentes && existentes.length > 0) {
-        const chaveExistente = new Set(
-          (existentes as { ano_safra_id: string; commodity: string }[])
-            .map(e => `${e.ano_safra_id}|${e.commodity ?? ""}`)
-        );
-        const antes = novosPagamentos.length;
-        const filtrados = novosPagamentos.filter(p =>
-          !chaveExistente.has(`${p.ano_safra_id}|${p.commodity ?? ""}`)
-        );
-        const duplicadas = antes - filtrados.length;
-        if (filtrados.length === 0) {
-          alert(`Todas as parcelas já foram geradas anteriormente para este contrato. Nenhuma inserida.`);
-          setSalvando(false);
-          return;
-        }
-        if (duplicadas > 0) {
-          const ok = confirm(`${duplicadas} parcela(s) já existem e serão ignoradas. Deseja inserir as ${filtrados.length} novas?`);
-          if (!ok) { setSalvando(false); return; }
-        }
-        novosPagamentos.length = 0;
-        novosPagamentos.push(...filtrados);
-      }
-
       // ── Auto-criar anos_safra ausentes ──────────────────
       const anosSafraAtualizado = [...anosSafra];
       for (const cfg of configSafras) {
@@ -545,9 +513,57 @@ export default function Arrendamentos() {
         }
       }
 
-      // ── Inserir pagamentos ──────────────────────────────
-      const { data } = await supabase.from("arrendamento_pagamentos").insert(novosPagamentos).select();
-      setPagamentos(prev => [...prev, ...(data ?? []) as Pagamento[]]);
+      // ── UPSERT: atualizar existentes, inserir novas ─────
+      const anosSelecionados = [...new Set(novosPagamentos.map(p => p.ano_safra_id).filter(Boolean))];
+      const { data: existentes } = await supabase
+        .from("arrendamento_pagamentos")
+        .select("id, ano_safra_id, commodity")
+        .eq("arrendamento_id", selArrGerador.id)
+        .in("ano_safra_id", anosSelecionados as string[]);
+
+      type ExRow = { id: string; ano_safra_id: string; commodity: string };
+      const existenteMap = new Map<string, ExRow>(
+        ((existentes ?? []) as ExRow[]).map(e => [`${e.ano_safra_id}|${e.commodity ?? ""}`, e])
+      );
+
+      const paraInserir: Omit<Pagamento, "id">[] = [];
+      const paraAtualizar: { id: string; campos: Partial<Omit<Pagamento, "id">> }[] = [];
+
+      for (const p of novosPagamentos) {
+        const chave = `${p.ano_safra_id}|${p.commodity ?? ""}`;
+        const ex = existenteMap.get(chave);
+        if (ex) {
+          paraAtualizar.push({ id: ex.id, campos: {
+            sacas_previstas:      p.sacas_previstas,
+            valor_previsto:       p.valor_previsto,
+            preco_sc_referencia:  p.preco_sc_referencia,
+            data_vencimento:      p.data_vencimento,
+            observacao:           p.observacao,
+          }});
+        } else {
+          paraInserir.push(p);
+        }
+      }
+
+      const atualizados: Pagamento[] = [];
+      for (const { id, campos } of paraAtualizar) {
+        const { data: upd } = await supabase
+          .from("arrendamento_pagamentos").update(campos).eq("id", id).select().single();
+        if (upd) atualizados.push(upd as Pagamento);
+      }
+
+      let inseridos: Pagamento[] = [];
+      if (paraInserir.length > 0) {
+        const { data: ins } = await supabase.from("arrendamento_pagamentos").insert(paraInserir).select();
+        inseridos = (ins ?? []) as Pagamento[];
+      }
+
+      setPagamentos(prev => {
+        const idsAtt = new Set(atualizados.map(p => p.id));
+        return [...prev.filter(p => !idsAtt.has(p.id)), ...atualizados, ...inseridos];
+      });
+
+      const safrasComNovoInsert = new Set(inseridos.map(p => p.ano_safra_id).filter(Boolean));
 
       // ── Criar contratos de grãos para TODAS as safras selecionadas ──
       const errosContrato: string[] = [];
@@ -555,6 +571,7 @@ export default function Arrendamentos() {
       if (!ehBrl) {
         for (const cfg of configSafras) {
           if (!cfg.incluir) continue;
+          if (!safrasComNovoInsert.has(cfg.ano_safra_id || "")) continue;
 
           const anoSafraId   = cfg.ano_safra_id || null;
           const propNome     = arr.proprietario_nome ?? "Arrendante";
@@ -625,12 +642,19 @@ export default function Arrendamentos() {
 
       setModalGerador(false);
 
+      const msgParcelas = [
+        atualizados.length > 0 ? `${atualizados.length} parcela(s) atualizada(s)` : "",
+        inseridos.length > 0   ? `${inseridos.length} parcela(s) nova(s) criada(s)` : "",
+      ].filter(Boolean).join(", ") || "Nenhuma alteração nas parcelas.";
+
       if (errosContrato.length > 0) {
         alert(
-          `Parcelas geradas com sucesso.\n\n` +
+          `${msgParcelas}.\n\n` +
           `⚠️ Contrato(s) de grãos não criado(s):\n${errosContrato.join("\n")}\n\n` +
-          `Verifique se as Migrations 34 e 35 foram executadas no Supabase SQL Editor e se o sc/ha está preenchido no contrato.`
+          `Verifique se as Migrations 34 e 35 foram executadas e se o sc/ha está preenchido.`
         );
+      } else {
+        alert(msgParcelas);
       }
     } catch (e) { alert((e as { message?: string })?.message ?? "Erro ao gerar parcelas"); }
     finally { setSalvando(false); }
