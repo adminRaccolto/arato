@@ -6,7 +6,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
 
 // ─── Tipos ────────────────────────────────────────────────────
-type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos" | "contratos_venda" | "produtores_imp" | "fazendas_imp" | "talhoes_imp";
+type Aba = "pessoas" | "cp" | "cr" | "insumos" | "produtos" | "maquinas" | "contratos_fin" | "arrendamentos" | "contratos_venda" | "produtores_imp" | "fazendas_imp" | "talhoes_imp" | "funcionarios";
 
 type PessoaRow = {
   nome: string; tipo: string; cpf_cnpj: string; cliente: string; fornecedor: string;
@@ -33,6 +33,15 @@ type ProdutoRow = {
   nome: string; categoria: string; unidade: string; codigo_interno: string;
   ncm: string; estoque: string; estoque_minimo: string; valor_unitario: string;
   valor_venda: string; fabricante: string; marca: string; subgrupo: string;
+  _status?: "ok" | "erro" | "duplicado"; _msg?: string;
+};
+type FuncionarioRow = {
+  nome: string; cpf: string; rg: string; pis_nis: string;
+  tipo: string; funcao: string;
+  data_admissao: string; data_demissao: string;
+  salario_base: string;
+  banco_pagamento: string; agencia_pagamento: string; conta_pagamento: string;
+  produtor_cpf_cnpj: string;
   _status?: "ok" | "erro" | "duplicado"; _msg?: string;
 };
 type MaquinaRow = {
@@ -122,6 +131,28 @@ const TEMPLATE_PRODUTOS = [
   ["Papel A4 75g/m² (Resma)", "escritorio", "cx", "PAP-A4", "48025590", "20", "5", "22.00", "32.00", "Chamex", "Chamex", "Papelaria"],
   ["Óleo Hidráulico ISO 68", "uso_consumo", "L", "OLH-068", "27101980", "200", "50", "18.50", "0", "Ipiranga", "Lubrax", "Lubrificantes"],
   ["Correia Trapezoidal B-75", "peca", "un", "COR-B75", "40103900", "5", "2", "45.00", "68.00", "Gates", "Gates", "Transmissão"],
+];
+
+const TEMPLATE_FUNCIONARIOS = [
+  ["nome*", "cpf", "rg", "pis_nis", "tipo*", "funcao", "data_admissao", "data_demissao", "salario_base", "banco_pagamento", "agencia_pagamento", "conta_pagamento", "produtor_cpf_cnpj"],
+  ["João Antônio Pereira", "012.345.678-90", "1234567-8 MT", "12345678901", "clt", "Operador de Máquina", "2024-01-15", "", "3200.00", "001", "1234-5", "12345-6", "012.345.678-90"],
+  ["Maria da Silva Costa", "987.654.321-00", "", "", "clt", "Auxiliar Administrativa", "2023-05-01", "", "2800.00", "033", "4321-0", "98765-4", "012.345.678-90"],
+  ["Carlos Aparecido Lima", "111.222.333-44", "", "11122233344", "diarista", "Tratorista", "", "", "280.00", "", "", "", "987.654.321-00"],
+  ["Antônio José Ferreira", "444.555.666-77", "9876543-2 MT", "44455566677", "empreiteiro", "Aplicador de Defensivos", "2025-03-01", "", "0", "", "", "", "012.345.678-90"],
+];
+
+const INSTRUCOES_FUNCIONARIOS = [
+  ["INSTRUÇÕES — IMPORTAÇÃO DE FUNCIONÁRIOS"],
+  [""],
+  ["• Campos com * são obrigatórios"],
+  ["• tipo*: clt | diarista | empreiteiro | outro"],
+  ["• cpf: somente dígitos ou formatado (012.345.678-90)"],
+  ["• pis_nis: somente dígitos (11 dígitos)"],
+  ["• data_admissao / data_demissao: AAAA-MM-DD (ex: 2024-03-15)"],
+  ["• salario_base: valor numérico sem R$ (ex: 3200.00) — para diaristas é a diária"],
+  ["• produtor_cpf_cnpj: CPF/CNPJ do produtor responsável — vincula o funcionário ao produtor correto"],
+  ["• Funcionário com mesmo CPF é ignorado (não duplica)"],
+  ["• Se CPF estiver em branco, o nome é usado como chave de deduplicação"],
 ];
 
 const TEMPLATE_MAQUINAS = [
@@ -481,6 +512,7 @@ function downloadTemplate(aba: Aba) {
       produtores_imp:   TEMPLATE_PRODUTORES_IMP,
       fazendas_imp:     TEMPLATE_FAZENDAS_IMP,
       talhoes_imp:      TEMPLATE_TALHOES_IMP,
+      funcionarios:     TEMPLATE_FUNCIONARIOS,
     };
     const ws = utils.aoa_to_sheet(templates[aba]);
     ws["!cols"] = templates[aba][0].map(() => ({ wch: 26 }));
@@ -515,6 +547,7 @@ function downloadTemplate(aba: Aba) {
       produtores_imp:   INSTRUCOES_PRODUTORES_IMP,
       fazendas_imp:     INSTRUCOES_FAZENDAS_IMP,
       talhoes_imp:      INSTRUCOES_TALHOES_IMP,
+      funcionarios:     INSTRUCOES_FUNCIONARIOS,
     };
     const instrucoes = utils.aoa_to_sheet(instrMap[aba]);
     utils.book_append_sheet(wb, instrucoes, "Instruções");
@@ -532,6 +565,7 @@ function downloadTemplate(aba: Aba) {
       produtores_imp:   "template_produtores.xlsx",
       fazendas_imp:     "template_fazendas.xlsx",
       talhoes_imp:      "template_talhoes.xlsx",
+      funcionarios:     "template_funcionarios.xlsx",
     };
     writeFile(wb, nomes[aba]);
   });
@@ -800,6 +834,22 @@ function validarMaquina(r: Record<string, string>): MaquinaRow {
   };
 }
 
+const TIPOS_FUNCIONARIO = ["clt", "diarista", "empreiteiro", "outro"];
+function validarFuncionario(r: Record<string, string>): FuncionarioRow {
+  const row = r as unknown as FuncionarioRow;
+  if (!row.nome?.trim())  return { ...row, _status: "erro", _msg: "nome obrigatório" };
+  const tipo = row.tipo?.trim().toLowerCase();
+  if (!tipo || !TIPOS_FUNCIONARIO.includes(tipo))
+    return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_FUNCIONARIO.join(", ")}` };
+  if (row.data_admissao?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_admissao.trim()))
+    return { ...row, _status: "erro", _msg: "data_admissao deve ser AAAA-MM-DD" };
+  if (row.data_demissao?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_demissao.trim()))
+    return { ...row, _status: "erro", _msg: "data_demissao deve ser AAAA-MM-DD" };
+  if (row.salario_base?.trim() && isNaN(parseFloat(row.salario_base.replace(",", "."))))
+    return { ...row, _status: "erro", _msg: "salario_base deve ser numérico" };
+  return { ...row, tipo, _status: "ok", _msg: "" };
+}
+
 // ─── Componente UploadZone ────────────────────────────────────
 function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -978,6 +1028,7 @@ function ImportacaoInner() {
   const [produtoresImpRows,  setProdutoresImpRows]  = useState<ProdutorImpRow[]>([]);
   const [fazendasImpRows,    setFazendasImpRows]    = useState<FazendaImpRow[]>([]);
   const [talhoesImpRows,     setTalhoesImpRows]     = useState<TalhaoImpRow[]>([]);
+  const [funcionariosRows,   setFuncionariosRows]   = useState<FuncionarioRow[]>([]);
 
   const [loadingPessoas,     setLoadingPessoas]     = useState(false);
   const [loadingCp,          setLoadingCp]          = useState(false);
@@ -994,6 +1045,7 @@ function ImportacaoInner() {
   const [loadingProdutoresImp,  setLoadingProdutoresImp]  = useState(false);
   const [loadingFazendasImp,    setLoadingFazendasImp]    = useState(false);
   const [loadingTalhoesImp,     setLoadingTalhoesImp]     = useState(false);
+  const [loadingFuncionarios,   setLoadingFuncionarios]   = useState(false);
 
   type Resultado = { ok: number; erros: number; duplicados: number; atualizados?: number };
   const [resultPessoas,      setResultPessoas]      = useState<Resultado | null>(null);
@@ -1008,6 +1060,7 @@ function ImportacaoInner() {
   const [resultProdutoresImp,  setResultProdutoresImp]  = useState<Resultado | null>(null);
   const [resultFazendasImp,    setResultFazendasImp]    = useState<Resultado | null>(null);
   const [resultTalhoesImp,     setResultTalhoesImp]     = useState<Resultado | null>(null);
+  const [resultFuncionarios,   setResultFuncionarios]   = useState<Resultado | null>(null);
 
   // ─── Acesso restrito ──────────────────────────────────────
   if (userRole !== "raccotlo") {
@@ -2112,6 +2165,80 @@ function ImportacaoInner() {
     setLoadingTalhoesImp(false);
   }
 
+  async function handleFileFuncionarios(file: File) {
+    const raw = await parseXlsx(file);
+    const rows = raw.map(r => validarFuncionario(r));
+    // Dedup intra-arquivo por CPF ou nome
+    const vistos = new Set<string>();
+    rows.forEach(r => {
+      const chave = (r.cpf?.replace(/\D/g, "") || r.nome?.toLowerCase().trim() || "");
+      if (!chave) return;
+      if (r._status === "ok") {
+        if (vistos.has(chave)) r._status = "duplicado";
+        else vistos.add(chave);
+      }
+    });
+    // Dedup contra banco
+    if (fazendaId) {
+      const { data: existentes } = await supabase.from("funcionarios").select("cpf, nome").eq("fazenda_id", fazendaId);
+      const cpfsExist  = new Set((existentes ?? []).map((f: { cpf: string | null }) => (f.cpf ?? "").replace(/\D/g, "")).filter(Boolean));
+      const nomesExist = new Set((existentes ?? []).map((f: { nome: string }) => f.nome.toLowerCase().trim()));
+      rows.forEach(r => {
+        if (r._status !== "ok") return;
+        const cpfDigits = (r.cpf ?? "").replace(/\D/g, "");
+        if (cpfDigits && cpfsExist.has(cpfDigits)) r._status = "duplicado";
+        else if (!cpfDigits && nomesExist.has(r.nome.toLowerCase().trim())) r._status = "duplicado";
+      });
+    }
+    setFuncionariosRows(rows); setResultFuncionarios(null);
+  }
+
+  async function importarFuncionarios() {
+    if (!fazendaId || !funcionariosRows.length) return;
+    setLoadingFuncionarios(true);
+    let ok = 0, erros = 0, duplicados = 0;
+
+    // Mapeia CPF/CNPJ de produtor → produtor_id
+    const { data: produtoresDB } = await supabase.from("produtores").select("id, cpf_cnpj").eq("fazenda_id", fazendaId);
+    const produtorMap: Record<string, string> = {};
+    (produtoresDB ?? []).forEach((p: { id: string; cpf_cnpj: string | null }) => {
+      if (p.cpf_cnpj) produtorMap[p.cpf_cnpj.replace(/\D/g, "")] = p.id;
+    });
+
+    for (const r of funcionariosRows) {
+      if (r._status === "duplicado") { duplicados++; continue; }
+      if (r._status === "erro")      { erros++;      continue; }
+
+      const docProd   = r.produtor_cpf_cnpj?.replace(/\D/g, "");
+      const produtorId = docProd ? (produtorMap[docProd] ?? null) : null;
+
+      const { error } = await supabase.from("funcionarios").insert({
+        fazenda_id:        fazendaId,
+        nome:              r.nome.trim(),
+        cpf:               r.cpf?.replace(/\D/g, "") || null,
+        rg:                r.rg?.trim() || null,
+        pis_nis:           r.pis_nis?.replace(/\D/g, "") || null,
+        tipo:              r.tipo,
+        funcao:            r.funcao?.trim() || null,
+        data_admissao:     r.data_admissao?.trim() || null,
+        data_demissao:     r.data_demissao?.trim() || null,
+        salario_base:      r.salario_base?.trim() ? parseFloat(r.salario_base.replace(",", ".")) : null,
+        banco_pagamento:   r.banco_pagamento?.trim() || null,
+        agencia_pagamento: r.agencia_pagamento?.trim() || null,
+        conta_pagamento:   r.conta_pagamento?.trim() || null,
+        produtor_id:       produtorId,
+        ativo:             !r.data_demissao?.trim(),
+      });
+
+      if (error) { r._status = "erro"; r._msg = error.message; erros++; }
+      else ok++;
+    }
+
+    setFuncionariosRows([...funcionariosRows]);
+    setResultFuncionarios({ ok, erros, duplicados });
+    setLoadingFuncionarios(false);
+  }
+
   // ─── Config por aba ───────────────────────────────────────
   const ABA_CONFIG: Record<Aba, {
     label: string; icon: string; desc: string;
@@ -2239,6 +2366,16 @@ function ImportacaoInner() {
       onFile: handleFileTalhoesImp,
       onImport: importarTalhoesImp,
     },
+    funcionarios: {
+      label: "Funcionários", icon: "👷",
+      desc: "Importe o quadro de funcionários: CLT, diaristas, empreiteiros. Vincula automaticamente ao produtor responsável pelo CPF/CNPJ.",
+      cols: ["nome", "cpf", "tipo", "funcao", "data_admissao", "salario_base", "produtor_cpf_cnpj"],
+      rows: funcionariosRows as Record<string, unknown>[],
+      loading: loadingFuncionarios,
+      result: resultFuncionarios,
+      onFile: handleFileFuncionarios,
+      onImport: importarFuncionarios,
+    },
   };
 
   const cfg      = ABA_CONFIG[aba];
@@ -2263,6 +2400,7 @@ function ImportacaoInner() {
     if (aba === "produtores_imp") { setProdutoresImpRows([]);    setResultProdutoresImp(null); }
     if (aba === "fazendas_imp")   { setFazendasImpRows([]);      setResultFazendasImp(null); }
     if (aba === "talhoes_imp")    { setTalhoesImpRows([]);       setResultTalhoesImp(null); }
+    if (aba === "funcionarios")   { setFuncionariosRows([]);      setResultFuncionarios(null); }
   }
 
   return (
@@ -2285,7 +2423,7 @@ function ImportacaoInner() {
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
           <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "talhoes_imp"] as Aba[]).map(a => {
+            {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "talhoes_imp", "funcionarios"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
                 <button
