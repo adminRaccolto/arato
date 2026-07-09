@@ -988,8 +988,8 @@ export default function ContratosFinanceiros() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    {["Descrição / Credor", "Tipo", "Cálculo", "Taxa a.a.", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 3 && i <= 5 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                    {["Descrição / Credor", "Nº Operação", "Tipo", "Cálculo", "Taxa a.a.", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 4 && i <= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1005,6 +1005,7 @@ export default function ContratosFinanceiros() {
                           <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.descricao}</div>
                           <div style={{ fontSize: 11, color: "#888" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
                         </td>
+                        <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
                         <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo_calculo.toUpperCase(), "#F1EFE8", "#555")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
