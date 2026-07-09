@@ -22,6 +22,7 @@ export interface CriarClientePayload {
 
 export interface CriarClienteResult {
   ok: true;
+  conta_id: string;
   fazenda_id: string;
   user_email: string;
   email_enviado: boolean;
@@ -263,5 +264,5 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
     } catch { /* e-mail não bloqueia o cadastro */ }
   }
 
-  return { ok: true, fazenda_id: fazendaId, user_email, email_enviado: emailEnviado };
+  return { ok: true, conta_id: contaId, fazenda_id: fazendaId, user_email, email_enviado: emailEnviado };
 }
