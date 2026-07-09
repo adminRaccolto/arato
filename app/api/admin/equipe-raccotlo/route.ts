@@ -49,7 +49,7 @@ export async function GET() {
   // Busca membros da equipe Raccotlo na tabela perfis
   const { data: membros, error } = await db
     .from("perfis")
-    .select("user_id, nome, role, whatsapp")
+    .select("user_id, nome, role")
     .in("role", RACCOTLO_ROLES)
     .order("nome");
 
@@ -66,7 +66,7 @@ export async function GET() {
     nome:       m.nome ?? "",
     email:      emailMap[m.user_id] ?? "",
     hub_acesso: m.role,
-    whatsapp:   m.whatsapp ?? "",
+    whatsapp:   "",
     ativo:      true,
   }));
 
