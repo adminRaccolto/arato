@@ -210,7 +210,7 @@ export default function RomaneioEntradaPage() {
   const salvar = async (confirmar = false) => {
     if (!fazendaId) return;
     if (!form.peso_bruto || parseFloat(form.peso_bruto) <= 0) { alert("Informe o peso bruto."); return; }
-    if (confirmar && form.tipo === "proprio" && !form.deposito_id) { alert("Selecione o depósito de destino."); return; }
+    if (confirmar && !form.deposito_id) { alert("Selecione o depósito de destino."); return; }
     setSalvando(true);
     try {
       const { pl, cls, umid, imp, avar, dUmid, dImp, dAvar, class_, sacas,
@@ -289,7 +289,7 @@ export default function RomaneioEntradaPage() {
   // ── Confirmar rascunho existente ─────────────────────────────────────────
   const confirmarExistente = async (r: RomaneioEntrada) => {
     if (!fazendaId) return;
-    if (r.tipo === "proprio" && !r.deposito_id) { alert("Edite o romaneio e selecione o depósito de destino antes de confirmar."); return; }
+    if (!r.deposito_id) { alert("Edite o romaneio e selecione o depósito de destino antes de confirmar."); return; }
     if (!confirm(`Confirmar romaneio ${r.ticket_numero ?? r.id.slice(0, 8)}? Isso gerará entrada no estoque.`)) return;
     try {
       await confirmarRomaneioEntrada(r, fazendaId);
@@ -326,7 +326,8 @@ export default function RomaneioEntradaPage() {
   const qConfirmado   = filtrados.filter(r => r.status === "confirmado").length;
 
   // ── Render ───────────────────────────────────────────────────────────────
-  const deposArmazem = depositos.filter(d => d.tipo === "armazem_fazenda");
+  const deposArmazem   = depositos.filter(d => d.tipo === "armazem_fazenda");
+  const deposTerceiros = depositos.filter(d => d.tipo === "armazem_terceiro" || d.tipo === "terceiro");
 
   if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#555" }}>Carregando…</div>;
 
@@ -528,28 +529,39 @@ export default function RomaneioEntradaPage() {
             )}
           </div>
 
-          {/* Emissor (apenas terceiro) */}
+          {/* Emissor + Depósito de Armazém (apenas terceiro) */}
           {form.tipo === "terceiro" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, padding: "12px 14px", background: "#FAFAFA", borderRadius: 8, border: "0.5px solid #E2E8F0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16, padding: "12px 14px", background: "#F5F3FF", borderRadius: 8, border: "0.5px solid #DDD6FE" }}>
               <div>
                 <label style={lbl}>Emitido por (empresa) *</label>
                 <input style={inp} placeholder="Ex: Bunge Alimentos, Cooperativa…" value={form.emitido_por} onChange={e => setForm(p => ({ ...p, emitido_por: e.target.value }))} disabled={editRom?.status === "confirmado"} />
               </div>
               <div>
-                <label style={lbl}>Vínculo Cadastro (Pessoas)</label>
-                <select style={inp} value={form.pessoa_id} onChange={e => setForm(p => ({ ...p, pessoa_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+                <label style={lbl}>Armazém (Pessoas cadastradas)</label>
+                <select style={inp} value={form.pessoa_id} disabled={editRom?.status === "confirmado"}
+                  onChange={e => {
+                    const pid = e.target.value;
+                    const depVinc = deposTerceiros.find(d => d.pessoa_id === pid);
+                    setForm(p => ({ ...p, pessoa_id: pid, deposito_id: depVinc ? depVinc.id : p.deposito_id }));
+                  }}>
                   <option value="">— sem vínculo —</option>
                   {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
               <div style={{ gridColumn: "1/-1" }}>
-                <label style={lbl}>Contrato Relacionado (opcional — para conferência)</label>
-                <select style={inp} value={form.contrato_id} onChange={e => setForm(p => ({ ...p, contrato_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
-                  <option value="">— sem vínculo —</option>
-                  {contratos.filter(c => c.status !== "cancelado").map(c => (
-                    <option key={c.id} value={c.id}>{c.numero} — {c.produto ?? c.tipo} ({c.quantidade_sc ? fmt(c.quantidade_sc, 0) + " sc" : ""})</option>
-                  ))}
+                <label style={lbl}>Depósito de Armazém *</label>
+                <select style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+                  <option value="">— selecione o armazém —</option>
+                  {deposTerceiros.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                 </select>
+                {deposTerceiros.length === 0 && (
+                  <div style={{ fontSize: 11, color: "#7C3AED", marginTop: 4 }}>
+                    Nenhum depósito de terceiro cadastrado. Vá em Cadastros → Pessoas e marque "Criar depósito de armazém vinculado".
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+                  O grão ainda é seu, mas ficará registrado neste armazém. Aparecerá na posição de estoque em terceiros.
+                </div>
               </div>
             </div>
           )}
@@ -714,9 +726,9 @@ export default function RomaneioEntradaPage() {
                 <label style={lbl}>Depósito / Armazém de Destino *</label>
                 <select style={inp} value={form.deposito_id} onChange={e => setForm(p => ({ ...p, deposito_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                   <option value="">— selecione —</option>
-                  {deposArmazem.length > 0 ? (
-                    deposArmazem.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)
-                  ) : depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                  {deposArmazem.length > 0
+                    ? deposArmazem.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)
+                    : depositos.map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                 </select>
                 {deposArmazem.length === 0 && <div style={{ fontSize: 11, color: "#C9921B", marginTop: 4 }}>Nenhum armazém cadastrado. Vá em Cadastros → Depósitos.</div>}
               </div>

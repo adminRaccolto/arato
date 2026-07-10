@@ -354,7 +354,7 @@ function CadastrosInner() {
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
   const [modalDep, setModalDep]       = useState(false);
   const [editDep, setEditDep]         = useState<Deposito | null>(null);
-  const [fDep, setFDep]               = useState({ nome: "", tipo: "insumo_fazenda" as Deposito["tipo"], capacidade_sc: "" });
+  const [fDep, setFDep]               = useState({ nome: "", tipo: "insumo_fazenda" as Deposito["tipo"], capacidade_sc: "", pessoa_id: "" });
 
   // ── Contas Bancárias ──
   const [contas, setContas]           = useState<ContaBancaria[]>([]);
@@ -584,7 +584,10 @@ function CadastrosInner() {
       listarBombas(fazendaId).then(setBombas).catch(() => {});
       listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
     }
-    if (aba === "depositos")       listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
+    if (aba === "depositos") {
+      listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
+      listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
+    }
     if (aba === "imoveis_urbanos") listarImoveisUrbanos(fazendaId).then(setImoveisUrbanos).catch(e => setErro(e.message));
     if (aba === "contas_bancarias") {
       listarContas(fazendaId).then(setContas).catch(e => setErro(e.message));
@@ -1358,17 +1361,17 @@ function CadastrosInner() {
     } else {
       const n = await criarPessoa({ ...pesPayload, fazenda_id: fazIdEff! });
       setPessoas(p => [...p, n]);
-      // Cria depósito de terceiro vinculado automaticamente
-      if (criar_deposito_terceiro && fPes.cliente) {
+      // Cria depósito de armazém terceiro vinculado automaticamente
+      if (criar_deposito_terceiro) {
         const endereco = [fPes.logradouro, fPes.numero, fPes.bairro, fPes.municipio, fPes.estado]
           .filter(Boolean).join(", ");
         const dep = await criarDeposito({
           fazenda_id: fazIdEff!,
           nome: fPes.nome.trim(),
-          tipo: "terceiro" as const,
+          tipo: "armazem_terceiro" as const,
           capacidade_sc: undefined,
           ativo: true,
-          descricao: `Depósito de terceiro — ${fPes.nome.trim()}${endereco ? ` · ${endereco}` : ""}`,
+          descricao: `Armazém terceiro — ${fPes.nome.trim()}${endereco ? ` · ${endereco}` : ""}`,
           pessoa_id: n.id,
         });
         setDepositos(p => [...p, dep]);
@@ -1645,12 +1648,18 @@ function CadastrosInner() {
   // ─────────────── DEPÓSITOS ───────────────
   const abrirModalDep = (d?: Deposito) => {
     setEditDep(d ?? null);
-    setFDep(d ? { nome: d.nome, tipo: d.tipo, capacidade_sc: String(d.capacidade_sc ?? "") } : { nome: "", tipo: "insumo_fazenda", capacidade_sc: "" });
+    setFDep(d ? { nome: d.nome, tipo: d.tipo, capacidade_sc: String(d.capacidade_sc ?? ""), pessoa_id: d.pessoa_id ?? "" } : { nome: "", tipo: "insumo_fazenda", capacidade_sc: "", pessoa_id: "" });
     setModalDep(true);
   };
   const salvarDep = () => salvar(async () => {
     if (!fDep.nome.trim()) return;
-    const payload = { fazenda_id: fazIdEff!, nome: fDep.nome.trim(), tipo: fDep.tipo, capacidade_sc: fDep.capacidade_sc ? Number(fDep.capacidade_sc) : undefined, ativo: true };
+    const isTerceiro = fDep.tipo === "armazem_terceiro" || fDep.tipo === "terceiro";
+    const payload = {
+      fazenda_id: fazIdEff!, nome: fDep.nome.trim(), tipo: fDep.tipo,
+      capacidade_sc: fDep.capacidade_sc ? Number(fDep.capacidade_sc) : undefined,
+      ativo: true,
+      pessoa_id: isTerceiro && fDep.pessoa_id ? fDep.pessoa_id : undefined,
+    };
     if (editDep) { await atualizarDeposito(editDep.id, payload); setDepositos(p => p.map(x => x.id === editDep.id ? { ...x, ...payload } : x)); }
     else { const n = await criarDeposito(payload); setDepositos(p => [...p, n]); }
     setModalDep(false);
@@ -4056,9 +4065,9 @@ function CadastrosInner() {
                 <button style={btnV} onClick={() => abrirModalDep()}>+ Novo Depósito</button>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome", "Tipo", "Capacidade (sc)", "Status", ""]} />
+                <TH cols={["Nome", "Tipo", "Pessoa/Armazém", "Capacidade (sc)", "Status", ""]} />
                 <tbody>
-                  {depositos.length === 0 && <tr><td colSpan={5} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado</td></tr>}
+                  {depositos.length === 0 && <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado</td></tr>}
                   {depositos.map((d, i) => {
                     const corTipo: Record<string, [string,string]> = {
                       insumo_fazenda:   ["#D5E8F5","#0B2D50"],
@@ -4066,7 +4075,7 @@ function CadastrosInner() {
                       almoxarifado:     ["#FAEEDA","#633806"],
                       oficina:          ["#F1EFE8","#555"],
                       terceiro:         ["#FBF3E0","#C9921B"],
-                      armazem_terceiro: ["#FBF0D8","#7A5A12"],
+                      armazem_terceiro: ["#F5F3FF","#7C3AED"],
                     };
                     const labelTipoDep: Record<string,string> = {
                       insumo_fazenda:   "Insumo - Fazenda",
@@ -4074,13 +4083,15 @@ function CadastrosInner() {
                       almoxarifado:     "Almoxarifado - Fazenda",
                       oficina:          "Oficina - Fazenda",
                       terceiro:         "Depósito de Terceiros",
-                      armazem_terceiro: "Armazém/Silo Terceiros",
+                      armazem_terceiro: "Armazém Terceiro",
                     };
                     const [bg, cl] = corTipo[d.tipo] ?? ["#F1EFE8","#555"];
+                    const pessoaVinc = d.pessoa_id ? pessoas.find(p => p.id === d.pessoa_id)?.nome : null;
                     return (
                       <tr key={d.id} style={{ borderBottom: i < depositos.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
                         <td style={{ padding: "10px 14px", color: "#1a1a1a", fontWeight: 600 }}>{d.nome}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(labelTipoDep[d.tipo] ?? d.tipo, bg, cl)}</td>
+                        <td style={{ padding: "10px 14px", fontSize: 12, color: pessoaVinc ? "#7C3AED" : "#888" }}>{pessoaVinc ?? "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{d.capacidade_sc ? d.capacidade_sc.toLocaleString("pt-BR") + " sc" : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(d.ativo ? "Ativo" : "Inativo", d.ativo ? "#D5E8F5" : "#F1EFE8", d.ativo ? "#0B2D50" : "#555")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
@@ -6683,13 +6694,35 @@ function CadastrosInner() {
             <div style={{ gridColumn: "1/-1", display: "flex", gap: 24, padding: "8px 12px", background: "#F4F6FA", borderRadius: 8, marginBottom: 14 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={fPes.cliente} onChange={e => setFPes(p => ({ ...p, cliente: e.target.checked, criar_deposito_terceiro: e.target.checked ? p.criar_deposito_terceiro : false }))} />Cliente comprador</label>
               <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}><input type="checkbox" checked={fPes.fornecedor} onChange={e => setFPes(p => ({ ...p, fornecedor: e.target.checked }))} />Fornecedor</label>
-              {fPes.cliente && !editPes && (
-                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "#1A4870", fontWeight: 500 }}>
+              {!editPes && (
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "#7C3AED", fontWeight: 500 }}>
                   <input type="checkbox" checked={fPes.criar_deposito_terceiro} onChange={e => setFPes(p => ({ ...p, criar_deposito_terceiro: e.target.checked }))} />
-                  Criar depósito de terceiro vinculado
-                  <span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>(para controle de insumos em poder deste cliente)</span>
+                  Criar depósito de armazém vinculado
+                  <span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>(para registrar produção guardada neste local)</span>
                 </label>
               )}
+              {editPes && (() => {
+                const depExiste = depositos.some(d => d.pessoa_id === editPes.id);
+                return !depExiste ? (
+                  <button type="button" style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, border: "0.5px solid #7C3AED", background: "#F5F3FF", color: "#7C3AED", cursor: "pointer", fontWeight: 600 }}
+                    onClick={async () => {
+                      const endereco = [fPes.logradouro, fPes.numero, fPes.bairro, fPes.municipio, fPes.estado].filter(Boolean).join(", ");
+                      const dep = await criarDeposito({
+                        fazenda_id: fazIdEff!,
+                        nome: editPes.nome,
+                        tipo: "armazem_terceiro" as const,
+                        capacidade_sc: undefined,
+                        ativo: true,
+                        descricao: `Armazém terceiro — ${editPes.nome}${endereco ? ` · ${endereco}` : ""}`,
+                        pessoa_id: editPes.id,
+                      });
+                      setDepositos(p => [...p, dep]);
+                      alert(`Depósito "${dep.nome}" criado com sucesso.`);
+                    }}>
+                    + Criar depósito de armazém vinculado
+                  </button>
+                ) : <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 500 }}>✓ Depósito vinculado já existe</span>;
+              })()}
             </div>
             <div style={{ marginBottom: 14 }}><label style={lbl}>E-mail</label><input style={inp} type="email" value={fPes.email} onChange={e => setFPes(p => ({ ...p, email: e.target.value }))} /></div>
             <div style={{ marginBottom: 14 }}><label style={lbl}>Telefone</label><input style={inp} value={fPes.telefone} onChange={e => setFPes(p => ({ ...p, telefone: maskPhone(e.target.value) }))} placeholder="(00) 00000-0000" /></div>
@@ -8054,11 +8087,21 @@ function CadastrosInner() {
                 <option value="armazem_fazenda">Armazém / Silo — Fazenda</option>
                 <option value="almoxarifado">Almoxarifado — Fazenda</option>
                 <option value="oficina">Oficina — Fazenda</option>
-                <option value="terceiro">Depósito de Terceiros</option>
+                <option value="terceiro">Depósito de Terceiros (legado)</option>
                 <option value="armazem_terceiro">Armazém / Silo Terceiros</option>
               </select>
             </div>
             <div><label style={lbl}>Capacidade (sacas)</label><InputNumerico style={inp} decimais={0} placeholder="Ex: 50000" value={fDep.capacidade_sc} onChange={v => setFDep(p => ({ ...p, capacidade_sc: v }))} /></div>
+            {(fDep.tipo === "armazem_terceiro" || fDep.tipo === "terceiro") && (
+              <div style={{ gridColumn: "1/-1" }}>
+                <label style={lbl}>Pessoa vinculada (armazém/cooperativa)</label>
+                <select style={inp} value={fDep.pessoa_id} onChange={e => setFDep(p => ({ ...p, pessoa_id: e.target.value }))}>
+                  <option value="">— sem vínculo —</option>
+                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                </select>
+                <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>Vinculando a uma pessoa, o depósito aparece automaticamente ao selecioná-la no Romaneio de Entrada.</div>
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalDep(false)}>Cancelar</button>
