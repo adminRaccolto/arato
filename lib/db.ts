@@ -1055,8 +1055,10 @@ export async function reabrirAnoSafra(id: string): Promise<void> {
 // CICLOS
 // ————————————————————————————————————————
 
-export async function listarCiclos(ano_safra_id: string): Promise<Ciclo[]> {
-  const { data, error } = await supabase.from("ciclos").select("*").eq("ano_safra_id", ano_safra_id).order("data_inicio");
+export async function listarCiclos(ano_safra_id: string, fazenda_id?: string | null): Promise<Ciclo[]> {
+  let q = supabase.from("ciclos").select("*").eq("ano_safra_id", ano_safra_id);
+  if (fazenda_id) q = q.eq("fazenda_id", fazenda_id);
+  const { data, error } = await q.order("data_inicio");
   if (error) throw error;
   return data ?? [];
 }

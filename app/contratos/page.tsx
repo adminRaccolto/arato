@@ -389,14 +389,14 @@ export default function Contratos() {
   // ── ciclos: carrega quando safra muda (formulário) ───────────
   useEffect(() => {
     if (!fC.ano_safra_id) { setCiclos([]); return; }
-    listarCiclos(fC.ano_safra_id).then(setCiclos).catch(() => setCiclos([]));
-  }, [fC.ano_safra_id]);
+    listarCiclos(fC.ano_safra_id, fazendaId).then(setCiclos).catch(() => setCiclos([]));
+  }, [fC.ano_safra_id, fazendaId]);
 
   // ── ciclos: carrega quando filtro de ano muda ────────────────
   useEffect(() => {
     if (!filtroAno) { setCiclosFiltro([]); setFiltroCiclo(""); return; }
-    listarCiclos(filtroAno).then(setCiclosFiltro).catch(() => setCiclosFiltro([]));
-  }, [filtroAno]);
+    listarCiclos(filtroAno, fazendaId).then(setCiclosFiltro).catch(() => setCiclosFiltro([]));
+  }, [filtroAno, fazendaId]);
 
   // ── carga ────────────────────────────────────────────────────
   useEffect(() => { if (fazendaId) carregarTudo(); }, [fazendaId, contaId]);

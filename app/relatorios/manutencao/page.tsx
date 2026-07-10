@@ -78,10 +78,10 @@ function RelManutInner() {
   }, [fazendaId]);
 
   useEffect(() => {
-    if (anoSafraId) listarCiclos(anoSafraId).then(setCiclos).catch(() => {});
+    if (anoSafraId) listarCiclos(anoSafraId, fazendaId).then(setCiclos).catch(() => {});
     else setCiclos([]);
     setCicloId("");
-  }, [anoSafraId]);
+  }, [anoSafraId, fazendaId]);
 
   function toggleSet(_set: Set<string>, key: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) {
     setter((prev: Set<string>) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });

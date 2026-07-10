@@ -373,8 +373,8 @@ export default function NfCompraPage() {
   // Carrega ciclos quando o ano safra muda no formulário
   useEffect(() => {
     if (!cab.ano_safra_id) { setCiclosNF([]); return; }
-    listarCiclos(cab.ano_safra_id).then(setCiclosNF).catch(() => setCiclosNF([]));
-  }, [cab.ano_safra_id]);
+    listarCiclos(cab.ano_safra_id, fazendaId).then(setCiclosNF).catch(() => setCiclosNF([]));
+  }, [cab.ano_safra_id, fazendaId]);
 
   // ── SIEG — sincronização ────────────────────────────────────
   async function sincronizarSieg() {

@@ -703,10 +703,10 @@ function CadastrosInner() {
     }
   };
 
-  // Carrega ciclos ao selecionar Ano Safra
+  // Carrega ciclos ao selecionar Ano Safra — filtrado pela fazenda ativa
   const selecionarAno = async (id: string) => {
     setAnoSel(id);
-    listarCiclos(id).then(setCiclos).catch(() => setCiclos([]));
+    listarCiclos(id, fazIdEff).then(setCiclos).catch(() => setCiclos([]));
   };
 
   // ── Helpers de save ──
@@ -1485,15 +1485,10 @@ function CadastrosInner() {
     if (!anoSel) return;
     setOcupado({});
     setEditCiclo(c ?? null);
-    // Garante que talhões de todas as fazendas estejam carregados (importados via SQL ou nunca expandidos)
-    const fazendasSemTalhoes = fazendas.filter(f => !talhoes[f.id]);
-    if (fazendasSemTalhoes.length > 0) {
-      const resultados = await Promise.all(fazendasSemTalhoes.map(f => listarTalhoes(f.id)));
-      setTalhoes(prev => {
-        const novo = { ...prev };
-        fazendasSemTalhoes.forEach((f, i) => { novo[f.id] = resultados[i]; });
-        return novo;
-      });
+    // Carrega talhões apenas da fazenda ativa (ciclo é por fazenda)
+    if (fazIdEff && !talhoes[fazIdEff]) {
+      const t = await listarTalhoes(fazIdEff);
+      setTalhoes(prev => ({ ...prev, [fazIdEff]: t }));
     }
     const inicio = c?.data_inicio ?? "";
     const fim    = c?.data_fim    ?? "";
@@ -2188,8 +2183,13 @@ function CadastrosInner() {
               {/* Ciclos */}
               <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <div style={{ padding: "13px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 13 }}>
-                    Ciclos {anoSel && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>— {anosSafra.find(a => a.id === anoSel)?.descricao}</span>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 13 }}>
+                      Ciclos {anoSel && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>— {anosSafra.find(a => a.id === anoSel)?.descricao}</span>}
+                    </span>
+                    {fazIdEff && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
+                      {fazendas.find(f => f.id === fazIdEff)?.nome ?? "Fazenda ativa"}
+                    </span>}
                   </div>
                   {anoSel && <button style={{ ...btnV, padding: "6px 12px", fontSize: 12 }} onClick={() => abrirModalCiclo()}>+ Novo Ciclo</button>}
                 </div>
@@ -6979,17 +6979,21 @@ function CadastrosInner() {
             })()}
           </div>
 
-          {/* Talhões do ciclo */}
+          {/* Talhões do ciclo — apenas da fazenda ativa, pois ciclo é por fazenda */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 10 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }}>
               Talhões Plantados neste Ciclo
-              <span style={{ fontSize: 11, fontWeight: 400, color: "#555", marginLeft: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 400, color: "#555" }}>
                 (informe a área efetivamente plantada — usada para rateio de custos por ha)
               </span>
+              {fazIdEff && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
+                {fazendas.find(f => f.id === fazIdEff)?.nome ?? "Fazenda ativa"}
+              </span>}
             </div>
-            {/* Agrupar talhões por fazenda */}
-            {Object.entries(talhoes).length === 0 ? (
-              <div style={{ fontSize: 12, color: "#888", padding: "10px 0" }}>Nenhum talhão cadastrado. Cadastre talhões nas fazendas primeiro.</div>
+            {(() => {
+              const talhoesFazenda = fazIdEff ? (talhoes[fazIdEff] ?? []) : [];
+              return talhoesFazenda.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#888", padding: "10px 0" }}>Nenhum talhão cadastrado para esta fazenda. Cadastre talhões primeiro.</div>
             ) : (
               <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -7003,7 +7007,7 @@ function CadastrosInner() {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.values(talhoes).flat().map((t, ti, arr) => {
+                    {talhoesFazenda.map((t, ti, arr) => {
                       const areaSel   = cicloTalhoes[t.id] ?? "";
                       const marcado   = parseFloat(areaSel) > 0;
                       const ocupado   = ocupadoEmOutrosCiclos[t.id] ?? 0;
@@ -7064,7 +7068,8 @@ function CadastrosInner() {
                   </tbody>
                 </table>
               </div>
-            )}
+            );
+            })()}
           </div>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
