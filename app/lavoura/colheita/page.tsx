@@ -6,7 +6,7 @@ import InputNumerico from "../../../components/InputNumerico";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import {
-  listarColheitas,
+  listarColheitasDaConta,
   criarColheita,
   excluirColheita,
   listarColheitaRomaneios,
@@ -18,8 +18,9 @@ import {
   listarTalhoes,
   listarDepositos,
   listarInsumos,
+  listarFazendas,
 } from "../../../lib/db";
-import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo } from "../../../lib/supabase";
+import type { ColheitaRegistro, ColheitaRomaneio, Ciclo, AnoSafra, Talhao, Deposito, Insumo, Fazenda } from "../../../lib/supabase";
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -151,6 +152,8 @@ export default function ColheitaPage() {
   const [talhoes,     setTalhoes]     = useState<Talhao[]>([]);
   const [depositos,   setDepositos]   = useState<Deposito[]>([]);
   const [insumos,     setInsumos]     = useState<Insumo[]>([]);
+  const [fazendas,    setFazendas]    = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [anoSafraSel, setAnoSafraSel] = useState("");
   const [expandido,  setExpandido]  = useState<string | null>(null);
   const [loading,    setLoading]    = useState(true);
@@ -174,16 +177,18 @@ export default function ColheitaPage() {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const [c, t, d, ins] = await Promise.all([
-        listarColheitas(fazendaId),
+      const [allC, t, d, ins] = await Promise.all([
+        listarColheitasDaConta(fazendaId),
         listarTalhoes(fazendaId),
         listarDepositos(fazendaId),
         listarInsumos(fazendaId),
       ]);
+      const c = fazendaFiltro ? allC.filter(x => x.fazenda_id === fazendaFiltro) : allC;
       setColheitas(c);
       setTalhoes(t);
       setDepositos(d);
       setInsumos(ins.filter(i => i.categoria === "produto_agricola"));
+      listarFazendas(fazendaId).then(setFazendas).catch(() => {});
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
       listarTodosCiclos(fazendaId).then(setTodosCiclos).catch(() => {});
     } catch (e: unknown) {
@@ -191,7 +196,7 @@ export default function ColheitaPage() {
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]);
+  }, [fazendaId, fazendaFiltro]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -311,7 +316,7 @@ export default function ColheitaPage() {
       setModalRomaneio(null);
       // Recarrega romaneios e totais
       const roms = await listarColheitaRomaneios(modalRomaneio);
-      const colAtt = await listarColheitas(fazendaId);
+      const colAtt = await listarColheitasDaConta(fazendaId);
       setColheitas(colAtt.map(c => c.id === modalRomaneio ? { ...c, romaneios: roms } : c));
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao salvar romaneio");
@@ -326,7 +331,7 @@ export default function ColheitaPage() {
     try {
       await excluirColheitaRomaneio(romId, colheitaId, fazendaId);
       const roms  = await listarColheitaRomaneios(colheitaId);
-      const colAtt = await listarColheitas(fazendaId);
+      const colAtt = await listarColheitasDaConta(fazendaId);
       setColheitas(colAtt.map(c => c.id === colheitaId ? { ...c, romaneios: roms } : c));
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao remover");
@@ -382,15 +387,27 @@ export default function ColheitaPage() {
               Pesagem de caminhões, classificação de grãos e entrada no estoque
             </p>
           </div>
-          <button
-            onClick={abrirModalColheita}
-            style={{
-              background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8,
-              padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            + Nova Colheita
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select
+                value={fazendaFiltro}
+                onChange={e => setFazendaFiltro(e.target.value)}
+                style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }}
+              >
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button
+              onClick={abrirModalColheita}
+              style={{
+                background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8,
+                padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              + Nova Colheita
+            </button>
+          </div>
         </div>
 
         {/* Stats */}

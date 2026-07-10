@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
+import { listarFazendas } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import TopNav from "../../components/TopNav";
 import PlanoGate from "../../components/PlanoGate";
@@ -11,6 +12,8 @@ type StatusCarga = "rascunho" | "em_transito" | "entregue" | "corrigindo_peso" |
 
 interface AnoSafra { id: string; descricao: string }
 interface Ciclo    { id: string; cultura: string; ano_safra_id: string }
+
+interface Fazenda { id: string; nome: string }
 
 interface Contrato {
   id: string;
@@ -24,6 +27,7 @@ interface Contrato {
   ano_safra_id?: string;
   ciclo_id?: string;
   modalidade?: string;
+  fazenda_id?: string;
 }
 
 interface Carga {
@@ -103,6 +107,10 @@ const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
 export default function Expedicao() {
   const { fazendaId, podeAcessarPlano } = useAuth();
 
+  // Fazendas da conta
+  const [fazendas, setFazendas]         = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
+
   // Dados de referência
   const [anosS, setAnosS]       = useState<AnoSafra[]>([]);
   const [ciclos, setCiclos]     = useState<Ciclo[]>([]);
@@ -145,6 +153,7 @@ export default function Expedicao() {
   // ── Carregar referências ──────────────────────────────────────────────────
   useEffect(() => {
     if (!fazendaId) return;
+    listarFazendas(fazendaId).then(f => setFazendas(f as Fazenda[]));
     supabase.from("anos_safra").select("id,descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false })
       .then(({ data }) => data && setAnosS(data));
     supabase.from("ciclos").select("id,cultura,ano_safra_id").eq("fazenda_id", fazendaId).order("cultura")
@@ -161,10 +170,11 @@ export default function Expedicao() {
   const carregarContratos = useCallback(async () => {
     if (!fazendaId) return;
     setCarregando(true);
+    const fids = fazendas.length > 0 ? fazendas.map(f => f.id) : [fazendaId];
     let q = supabase
       .from("contratos")
-      .select("id,numero,produto,comprador,safra,quantidade_sc,entregue_sc,status,ano_safra_id,ciclo_id,modalidade")
-      .eq("fazenda_id", fazendaId)
+      .select("id,numero,produto,comprador,safra,quantidade_sc,entregue_sc,status,ano_safra_id,ciclo_id,modalidade,fazenda_id")
+      .in("fazenda_id", fids)
       .in("status", ["aberto","parcial","em andamento","confirmado"])
       .order("created_at", { ascending: false });
     if (filtroAno)   q = q.eq("ano_safra_id", filtroAno);
@@ -172,7 +182,7 @@ export default function Expedicao() {
     const { data } = await q;
     setContratos(data ?? []);
     setCarregando(false);
-  }, [fazendaId, filtroAno, filtroCiclo]);
+  }, [fazendaId, fazendas, filtroAno, filtroCiclo]);
 
   useEffect(() => { carregarContratos(); }, [carregarContratos]);
 
@@ -235,8 +245,9 @@ export default function Expedicao() {
   // ── Filtrar ciclos pelo ano safra selecionado ─────────────────────────────
   const ciclosFiltrados = filtroAno ? ciclos.filter(c => c.ano_safra_id === filtroAno) : ciclos;
 
-  // ── Filtrar contratos por busca ───────────────────────────────────────────
+  // ── Filtrar contratos por busca + fazenda ─────────────────────────────────
   const contratosFiltrados = contratos.filter(c => {
+    if (fazendaFiltro && c.fazenda_id !== fazendaFiltro) return false;
     if (!filtroBusca) return true;
     const q = filtroBusca.toLowerCase();
     return c.numero?.toLowerCase().includes(q) ||
@@ -249,10 +260,11 @@ export default function Expedicao() {
     if (!fazendaId || !contratoSel || !nova.rota || !nova.data_saida) return;
     setSaving(true);
     const numero = `EXP-${Date.now().toString().slice(-6)}`;
+    const fidCarga = contratoSel.fazenda_id ?? fazendaId;
     await supabase.from("cargas_expedicao").insert({
       ...nova,
       numero,
-      fazenda_id: fazendaId,
+      fazenda_id: fidCarga,
       contrato_id: contratoSel.id,
       contrato_numero: contratoSel.numero,
       produto: contratoSel.produto,
@@ -432,6 +444,16 @@ export default function Expedicao() {
                 {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.cultura}</option>)}
               </select>
             </div>
+            {fazendas.length > 1 && (
+              <select
+                value={fazendaFiltro}
+                onChange={e => setFazendaFiltro(e.target.value)}
+                style={{ width: "100%", padding: "6px 8px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, background: "#fff", outline: "none", marginTop: 6 }}
+              >
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+              </select>
+            )}
           </div>
 
           {/* Lista de contratos */}

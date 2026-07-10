@@ -5,12 +5,12 @@ import {
   listarTalhoes, listarInsumos,
   listarAnosSafra, listarTodosCiclos,
   criarPulverizacao, criarPulverizacaoItem, processarPulverizacao,
-  listarPulverizacoes, listarPulverizacaoItens, excluirPulverizacao,
+  listarPulverizacoesDaConta, listarPulverizacaoItens, excluirPulverizacao, listarFazendas,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import InputNumerico from "../../../components/InputNumerico";
-import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo } from "../../../lib/supabase";
+import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
@@ -50,6 +50,8 @@ export default function PulverizacaoPage() {
   const [insumos, setInsumos]     = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra] = useState<AnoSafra[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
+  const [fazendas, setFazendas]   = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
@@ -65,14 +67,18 @@ export default function PulverizacaoPage() {
   const [itens, setItens] = useState<ItemForm[]>([{ insumo_id: "", dose_ha: "", unidade: "L" }]);
 
   useEffect(() => {
+    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
+  }, [fazendaId]);
+
+  useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
-    Promise.all([
-      listarPulverizacoes(fazendaId).then(setPulverizacoes),
-      listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))),
-    ]).catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
+    listarPulverizacoesDaConta(fazendaId)
+      .then(data => setPulverizacoes(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
+      .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
+    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+  }, [fazendaId, fazendaFiltro]);
 
   useEffect(() => {
     if (!fid) return;
@@ -155,7 +161,15 @@ export default function PulverizacaoPage() {
             <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Pulverização</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
-          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+          </div>
         </header>
 
         {/* Stats */}
@@ -182,6 +196,7 @@ export default function PulverizacaoPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
+                    {fazendas.length > 1 && <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Fazenda</th>}
                     <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Safra / Talhão</th>
                     <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Tipo</th>
                     <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Estádio</th>
@@ -197,6 +212,13 @@ export default function PulverizacaoPage() {
                     const tm = TIPOS[p.tipo];
                     return (
                       <tr key={p.id} style={{ borderBottom: i < pulverizacoes.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        {fazendas.length > 1 && (
+                          <td style={{ padding: "10px 14px" }}>
+                            <span style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
+                              {fazendas.find(f => f.id === p.fazenda_id)?.nome ?? "—"}
+                            </span>
+                          </td>
+                        )}
                         <td style={{ padding: "10px 14px" }}>
                           <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{cicloLabel(p.ciclo_id ?? "")}</div>
                           {p.talhao_id && <div style={{ fontSize: 11, color: "#555" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>}

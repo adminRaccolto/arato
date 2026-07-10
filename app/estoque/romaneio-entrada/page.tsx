@@ -2,10 +2,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../../components/AuthProvider";
 import {
-  listarRomaneiosEntrada, criarRomaneioEntrada, atualizarRomaneioEntrada,
+  listarRomaneiosEntradaDaConta, criarRomaneioEntrada, atualizarRomaneioEntrada,
   excluirRomaneioEntrada, confirmarRomaneioEntrada,
   listarDepositos, listarPessoasDaConta, listarAnosSafra, listarTodosCiclos, listarInsumos,
-  listarContratosDaConta,
+  listarContratosDaConta, listarFazendas,
 } from "../../../lib/db";
 import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato } from "../../../lib/supabase";
 
@@ -34,6 +34,7 @@ const calcDescAvar  = (pl: number, a: number, aPad: number) => a > aPad ? +(pl *
 // ── Tipos internos ───────────────────────────────────────────────────────────
 type Modo = "proprio" | "terceiro";
 type FormRom = {
+  fazenda_id: string;
   tipo: Modo; data: string; placa: string; motorista: string;
   insumo_id: string; ciclo_id: string; contrato_id: string;
   peso_bruto: string; tara: string;
@@ -50,6 +51,7 @@ type FormRom = {
 };
 
 const FORM_VAZIO: FormRom = {
+  fazenda_id: "",
   tipo: "proprio", data: TODAY, placa: "", motorista: "",
   insumo_id: "", ciclo_id: "", contrato_id: "",
   peso_bruto: "", tara: "",
@@ -87,6 +89,9 @@ function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onC
 export default function RomaneioEntradaPage() {
   const { fazendaId, contaId } = useAuth();
 
+  const [fazendas,      setFazendas]      = useState<{ id: string; nome: string }[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
+
   const [romaneios,  setRomaneios]  = useState<RomaneioEntrada[]>([]);
   const [depositos,  setDepositos]  = useState<Deposito[]>([]);
   const [pessoas,    setPessoas]    = useState<Pessoa[]>([]);
@@ -113,8 +118,9 @@ export default function RomaneioEntradaPage() {
   useEffect(() => {
     if (!fazendaId) return;
     const fid = fazendaId;
+    listarFazendas(fid).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
     Promise.all([
-      listarRomaneiosEntrada(fid),
+      listarRomaneiosEntradaDaConta(fid),
       listarDepositos(fid),
       listarPessoasDaConta(fid),
       listarAnosSafra(fid),
@@ -182,6 +188,7 @@ export default function RomaneioEntradaPage() {
     const ciclo = ciclos.find(c => c.id === r.ciclo_id);
     setAnoSel(ciclo?.ano_safra_id ?? "");
     setForm({
+      fazenda_id: r.fazenda_id ?? "",
       tipo: r.tipo, data: r.data, placa: r.placa ?? "", motorista: r.motorista ?? "",
       insumo_id: r.insumo_id ?? "", ciclo_id: r.ciclo_id ?? "", contrato_id: r.contrato_id ?? "",
       peso_bruto: String(r.peso_bruto_kg ?? ""), tara: String(r.tara_kg ?? ""),
@@ -211,8 +218,9 @@ export default function RomaneioEntradaPage() {
       const temClassif = umid > 0 || imp > 0 || avar > 0;
       const insumoNome = insumos.find(i => i.id === form.insumo_id)?.nome ?? undefined;
 
+      const fidRom = form.fazenda_id || fazendaId!;
       const payload: Omit<RomaneioEntrada, "id" | "created_at" | "peso_liquido_kg"> = {
-        fazenda_id:           fazendaId,
+        fazenda_id:           fidRom,
         tipo:                 form.tipo,
         data:                 form.data,
         placa:                form.placa.toUpperCase() || null,
@@ -262,7 +270,7 @@ export default function RomaneioEntradaPage() {
       }
 
       if (confirmar && !rom.entrada_estoque) {
-        await confirmarRomaneioEntrada(rom, fazendaId);
+        await confirmarRomaneioEntrada(rom, fidRom);
         rom = { ...rom, status: "confirmado", entrada_estoque: true };
       }
 
@@ -293,6 +301,7 @@ export default function RomaneioEntradaPage() {
 
   // ── Filtros lista ────────────────────────────────────────────────────────
   const filtrados = useMemo(() => romaneios.filter(r => {
+    if (fazendaFiltro && r.fazenda_id !== fazendaFiltro) return false;
     if (fTipo   && r.tipo !== fTipo)     return false;
     if (fStatus && r.status !== fStatus) return false;
     if (fDe     && r.data < fDe)         return false;
@@ -308,7 +317,7 @@ export default function RomaneioEntradaPage() {
       if (!match) return false;
     }
     return true;
-  }), [romaneios, fTipo, fStatus, fDe, fAte, fBusca]);
+  }), [romaneios, fazendaFiltro, fTipo, fStatus, fDe, fAte, fBusca]);
 
   // ── KPIs ────────────────────────────────────────────────────────────────
   const sacasTotal    = filtrados.reduce((s, r) => s + (r.sacas ?? 0), 0);
@@ -330,7 +339,16 @@ export default function RomaneioEntradaPage() {
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Romaneio de Entrada</h1>
           <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Recebimento de grãos — pesagem própria ou ticket de terceiros</p>
         </div>
-        <button style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          {fazendas.length > 1 && (
+            <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
+              style={{ padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+              <option value="">Todas as fazendas</option>
+              {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+            </select>
+          )}
+          <button style={btnV} onClick={abrirNovo}>+ Novo Romaneio</button>
+        </div>
       </div>
 
       {/* KPI cards */}
@@ -455,6 +473,19 @@ export default function RomaneioEntradaPage() {
       {/* ── Modal Novo / Editar ─────────────────────────────────────────────── */}
       {modal && (
         <Modal titulo={editRom ? "Editar Romaneio de Entrada" : "Novo Romaneio de Entrada"} onClose={() => setModal(false)} width={860}>
+
+          {/* Fazenda — seletor explícito */}
+          {fazendas.length > 1 && (
+            <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Este romaneio pertence a</div>
+              <select style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid #DDE2EE", fontSize:13, background:"#fff" }}
+                value={form.fazenda_id || fazendaId || ""}
+                onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
+                <option value="">— Selecionar fazenda —</option>
+                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Toggle tipo */}
           <div style={{ display: "flex", gap: 0, marginBottom: 20, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>

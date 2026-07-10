@@ -4764,6 +4764,66 @@ export async function excluirRomaneioEntrada(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ————————————————————————————————————————
+// VARIANTES MULTI-FAZENDA (DaConta) — carregam de todas as fazendas da conta
+// ————————————————————————————————————————
+
+export async function listarPlantiosDaConta(fazenda_id_fallback?: string | null): Promise<Plantio[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("plantios").select("*").in("fazenda_id", ids).order("data_plantio", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarPulverizacoesDaConta(fazenda_id_fallback?: string | null): Promise<PulverizacaoOp[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("pulverizacoes").select("*").in("fazenda_id", ids).order("data_inicio", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarColheitasDaConta(fazenda_id_fallback?: string | null): Promise<ColheitaRegistro[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("colheitas").select("*").in("fazenda_id", ids).order("data_colheita", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarAdubacoesDaConta(fazenda_id_fallback?: string | null): Promise<AdubacaoBase[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("adubacoes_base").select("*").in("fazenda_id", ids).order("data_aplicacao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarCorrecoesDaConta(fazenda_id_fallback?: string | null): Promise<CorrecaoSolo[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("correcoes_solo").select("*").in("fazenda_id", ids).order("data_aplicacao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarPedidosCompraDaConta(fazenda_id_fallback?: string | null): Promise<PedidoCompra[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("pedidos_compra").select("*").in("fazenda_id", ids).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarRomaneiosEntradaDaConta(fazenda_id_fallback?: string | null): Promise<RomaneioEntrada[]> {
+  const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("romaneios_entrada").select("*").in("fazenda_id", ids).order("data", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function confirmarRomaneioEntrada(
   romaneio: RomaneioEntrada,
   fazenda_id: string,

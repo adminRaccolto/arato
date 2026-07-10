@@ -4,11 +4,11 @@ import TopNav from "../../../components/TopNav";
 import {
   listarTodosCiclos, listarTalhoes, listarInsumos,
   listarAnosSafra,
-  listarAdubacoes, criarAdubacao, criarAdubacaoItem, processarAdubacao, excluirAdubacao,
+  listarAdubacoesDaConta, criarAdubacao, criarAdubacaoItem, processarAdubacao, excluirAdubacao, listarFazendas,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import type { Ciclo, Talhao, Insumo, AdubacaoBase, AdubacaoBaseItem, AnoSafra } from "../../../lib/supabase";
+import type { Ciclo, Talhao, Insumo, AdubacaoBase, AdubacaoBaseItem, AnoSafra, Fazenda } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
 
 // ── estilos ───────────────────────────────────────────────
@@ -45,6 +45,8 @@ export default function AdubacaoBasePage() {
   const [talhoes, setTalhoes]         = useState<Talhao[]>([]);
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra]     = useState<AnoSafra[]>([]);
+  const [fazendas, setFazendas]       = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erro, setErro]           = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
@@ -56,16 +58,19 @@ export default function AdubacaoBasePage() {
   });
   const [itens, setItens] = useState<ItemForm[]>([{ insumo_id: "", produto_nome: "", dose_kg_ha: "" }]);
 
-  // Lista de registros — sempre da fazenda ativa no switcher
+  useEffect(() => {
+    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
+  }, [fazendaId]);
+
   useEffect(() => {
     if (!fazendaId) return;
     setErro(null);
-    Promise.all([
-      listarAdubacoes(fazendaId).then(setRegistros),
-      listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))),
-    ]).catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
+    listarAdubacoesDaConta(fazendaId)
+      .then(data => setRegistros(fazendaFiltro ? data.filter(r => r.fazenda_id === fazendaFiltro) : data))
+      .catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
+    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+  }, [fazendaId, fazendaFiltro]);
 
   // Ciclos e talhões — recarregam quando fazenda do formulário muda
   useEffect(() => {
@@ -156,7 +161,15 @@ export default function AdubacaoBasePage() {
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Adubação de Base</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>NPK, micronutrientes, adubação foliar e fertirrigação</p>
           </div>
-          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+          </div>
         </header>
 
         <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>

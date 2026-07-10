@@ -4,11 +4,11 @@ import TopNav from "../../../components/TopNav";
 import {
   listarTodosCiclos, listarTalhoes, listarInsumos,
   listarAnosSafra,
-  listarCorrecoes, criarCorrecao, criarCorrecaoItem, processarCorrecao, excluirCorrecao,
+  listarCorrecoesDaConta, criarCorrecao, criarCorrecaoItem, processarCorrecao, excluirCorrecao, listarFazendas,
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import type { Ciclo, Talhao, Insumo, CorrecaoSolo, CorrecaoSoloItem, AnoSafra } from "../../../lib/supabase";
+import type { Ciclo, Talhao, Insumo, CorrecaoSolo, CorrecaoSoloItem, AnoSafra, Fazenda } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
 
 // ── estilos ───────────────────────────────────────────────
@@ -45,6 +45,8 @@ export default function CorrecaoSoloPage() {
   const [talhoes, setTalhoes]       = useState<Talhao[]>([]);
   const [insumos, setInsumos]       = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra]   = useState<AnoSafra[]>([]);
+  const [fazendas, setFazendas]     = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erro, setErro]           = useState<string | null>(null);
   const [salvando, setSalvando]   = useState(false);
   const [modal, setModal]         = useState(false);
@@ -57,14 +59,18 @@ export default function CorrecaoSoloPage() {
   const [itens, setItens] = useState<ItemForm[]>([{ insumo_id: "", produto_nome: "", dose_ton_ha: "" }]);
 
   useEffect(() => {
+    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
+  }, [fazendaId]);
+
+  useEffect(() => {
     if (!fazendaId) return;
     setErro(null);
-    Promise.all([
-      listarCorrecoes(fazendaId).then(setRegistros),
-      listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))),
-    ]).catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
+    listarCorrecoesDaConta(fazendaId)
+      .then(data => setRegistros(fazendaFiltro ? data.filter(r => r.fazenda_id === fazendaFiltro) : data))
+      .catch(e => setErro((e as { message?: string })?.message || JSON.stringify(e)));
+    listarInsumos(fazendaId).then(ins => setInsumos(ins.filter(i => i.tipo === "insumo"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+  }, [fazendaId, fazendaFiltro]);
 
   useEffect(() => {
     if (!fid) return;
@@ -154,7 +160,15 @@ export default function CorrecaoSoloPage() {
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Correção de Solo</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Calcário, gesso agrícola, micronutrientes e corretivos orgânicos</p>
           </div>
-          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Aplicação</button>
+          </div>
         </header>
 
         <div style={{ padding: "18px 22px", flex: 1, overflowY: "auto" }}>

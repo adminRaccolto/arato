@@ -223,6 +223,7 @@ export default function Contratos() {
   const [filtroStatus,  setFiltroStatus]  = useState("");
   const [filtroComprador, setFiltroComprador] = useState("");
   const [filtroBusca,   setFiltroBusca]   = useState("");
+  const [filtroFazenda, setFiltroFazenda] = useState("");
 
   // ── PTAX dinâmico para contratos em USD ─────────────────────
   const [ptaxAtual, setPtaxAtual] = useState<number>(5.90);
@@ -288,6 +289,7 @@ export default function Contratos() {
   const [itens, setItens]                 = useState<Omit<ContratoItem,"id"|"created_at"|"contrato_id"|"fazenda_id">[]>([itemVazio()]);
 
   const fContratoVazio = () => ({
+    fazenda_id: fazendaId ?? "",
     // principal
     ano_safra_id: anosSafra[0]?.id ?? "",
     safra: anosSafra[0]?.descricao ?? "25/26",
@@ -466,6 +468,7 @@ export default function Contratos() {
   const abrirEditar = async (c: ContratoVM) => {
     setEditContrato(c);
     setFC({
+      fazenda_id: c.fazenda_id ?? "",
       safra: c.safra ?? "", tipo: c.tipo ?? "venda",
       autorizacao: c.autorizacao ?? "autorizada",
       confirmado: c.confirmado ?? false,
@@ -601,8 +604,9 @@ export default function Contratos() {
     try {
       // produto/quantidade principal = primeiro item
       const primeiroItem = itensCalc[0];
+      const fidContrato = fC.fazenda_id || fazendaId!;
       const payload: Omit<Contrato,"id"|"created_at"|"entregue_sc"> = {
-        fazenda_id: fazendaId!,
+        fazenda_id: fidContrato,
         numero: editContrato?.numero ?? `CTR-${new Date().getFullYear()}/${String(contratos.length+1).padStart(3,"0")}`,
         safra: fC.safra,
         tipo: fC.tipo,
@@ -659,15 +663,15 @@ export default function Contratos() {
       } else {
         salvo = await criarContrato({ ...payload, entregue_sc: 0 });
       }
-      await salvarItensContrato(salvo.id, fazendaId!, itensCalc.filter(i=>i._qKg>0).map(i=>({
+      await salvarItensContrato(salvo.id, fidContrato, itensCalc.filter(i=>i._qKg>0).map(i=>({
         tipo: i.tipo, produto: i.produto, unidade: "kg",
         quantidade: i._qKg, valor_unitario: i.valor_unitario,
         valor_total: i.valor_total, moeda: fC.moeda, classificacao: i.classificacao,
-        contrato_id: salvo.id, fazenda_id: fazendaId!,
+        contrato_id: salvo.id, fazenda_id: fidContrato,
       })));
       // salva débitos de cessão se houver
       if (fC.dado_em_cessao && Object.keys(cessaoSelecionados).length > 0) {
-        await salvarCessaoDebitos(salvo.id, fazendaId!, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
+        await salvarCessaoDebitos(salvo.id, fidContrato, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
       }
       // cria CR automático quando contrato confirmado + data de pagamento + sem CR existente
       const valorTotal = itensCalc.reduce((s, i) => s + i.valor_total, 0);
@@ -936,6 +940,7 @@ export default function Contratos() {
   // ── filtro da lista ───────────────────────────────────────────
   const safraDescFiltro = filtroAno ? (anosSafra.find(a => a.id === filtroAno)?.descricao ?? "") : "";
   const contratosFiltrados = contratos.filter(c => {
+    if (filtroFazenda && c.fazenda_id !== filtroFazenda) return false;
     if (filtroAno) {
       const porId   = c.ano_safra_id === filtroAno;
       const porText = !c.ano_safra_id && safraDescFiltro && c.safra === safraDescFiltro;
@@ -954,8 +959,8 @@ export default function Contratos() {
   });
 
   const compradores = [...new Set(contratos.map(c => c.comprador).filter(Boolean))].sort() as string[];
-  const hasAnyFilter = !!(filtroAno || filtroCiclo || filtroProduto || filtroStatus || filtroComprador || filtroBusca);
-  const limparFiltros = () => { setFiltroAno(""); setFiltroCiclo(""); setFiltroProduto(""); setFiltroStatus(""); setFiltroComprador(""); setFiltroBusca(""); };
+  const hasAnyFilter = !!(filtroFazenda || filtroAno || filtroCiclo || filtroProduto || filtroStatus || filtroComprador || filtroBusca);
+  const limparFiltros = () => { setFiltroFazenda(""); setFiltroAno(""); setFiltroCiclo(""); setFiltroProduto(""); setFiltroStatus(""); setFiltroComprador(""); setFiltroBusca(""); };
 
   // ── métricas (baseadas nos contratos filtrados) ───────────────
   const contratosAtivos = contratosFiltrados.filter(c => c.status !== "encerrado" && c.status !== "cancelado").length;
@@ -1071,6 +1076,14 @@ export default function Contratos() {
                     {/* busca livre */}
                     <input value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} placeholder="🔍 Buscar contrato, comprador…"
                       style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", minWidth:190 }} />
+                    {/* fazenda */}
+                    {fazendas.length > 1 && (
+                      <select value={filtroFazenda} onChange={e => setFiltroFazenda(e.target.value)}
+                        style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                        <option value="">Todas as fazendas</option>
+                        {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                      </select>
+                    )}
                     {/* safra */}
                     <select value={filtroAno} onChange={e => { setFiltroAno(e.target.value); setFiltroCiclo(""); }}
                       style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
@@ -1491,6 +1504,22 @@ export default function Contratos() {
 
             {/* Conteúdo das abas */}
             <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
+              {/* Fazenda — seletor explícito */}
+              {fazendas.length > 1 && (
+                <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:10 }}>
+                    <div>
+                      <label style={{ fontSize:11, fontWeight:700, color:"#1A4870", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                      <select style={inp} value={fC.fazenda_id ?? fazendaId ?? ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
+                        <option value="">— Selecionar —</option>
+                        {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {abaForm === "principal" && (
                 <>
                   {/* Linha 1: Nº Lançamento | Nº Contrato | Safra | Tipo Contrato */}

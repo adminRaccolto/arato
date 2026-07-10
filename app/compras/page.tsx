@@ -3,13 +3,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import TopNav from "../../components/TopNav";
 import { useAuth } from "../../components/AuthProvider";
 import {
-  listarPedidosCompra, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
+  listarPedidosCompraDaConta, criarPedidoCompra, atualizarPedidoCompra, excluirPedidoCompra,
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
-  listarOperacoesGerenciais, criarLancamento, excluirLancamento,
+  listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas,
 } from "../../lib/db";
-import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial } from "../../lib/supabase";
+import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
@@ -115,6 +115,7 @@ const ITEM_VAZIO: ItemForm = {
 };
 
 type FormPedido = {
+  fazenda_id: string;
   status: PedidoCompra["status"];
   data_registro: string; tipo: string; fiscal: boolean; cotacao_moeda: string;
   possui_ordem_compra: boolean; entrega_unica: boolean;
@@ -134,6 +135,7 @@ type FormPedido = {
 };
 
 const PEDIDO_VAZIO: FormPedido = {
+  fazenda_id: "",
   data_registro: hoje(), tipo: "Pedido Compra", fiscal: false, status: "rascunho",
   cotacao_moeda: "R$", possui_ordem_compra: false, entrega_unica: true,
   antecipacao_juros_pct: "", desc_antecipacao_pct: "", desc_pontualidade_pct: "",
@@ -161,6 +163,8 @@ export default function ComprasPage() {
   const [anosSafra,       setAnosSafra]       = useState<AnoSafra[]>([]);
   const [centrosCusto,    setCentrosCusto]    = useState<CentroCusto[]>([]);
   const [operacoes,       setOperacoes]       = useState<OperacaoGerencial[]>([]);
+  const [fazendas,        setFazendas]        = useState<Fazenda[]>([]);
+  const [fazendaFiltro,   setFazendaFiltro]   = useState("");
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
   const [erro,          setErro]          = useState<string | null>(null);
@@ -187,28 +191,30 @@ export default function ComprasPage() {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const [ped, pes, ins, cic, anos, cc, ops] = await Promise.all([
-        listarPedidosCompra(fazendaId),
+      const [allPed, pes, ins, cic, anos, cc, ops, fzs] = await Promise.all([
+        listarPedidosCompraDaConta(fazendaId),
         listarPessoas(fazendaId),
         listarInsumos(fazendaId),
         listarTodosCiclos(fazendaId),
         listarAnosSafra(fazendaId),
         listarCentrosCustoGeral(fazendaId),
         listarOperacoesGerenciais(fazendaId),
+        listarFazendas(fazendaId),
       ]);
-      setPedidos(ped);
+      setPedidos(fazendaFiltro ? allPed.filter(p => p.fazenda_id === fazendaFiltro) : allPed);
       setPessoas(pes);
       setInsumos(ins);
       setCiclos(cic);
       setAnosSafra(anos);
       setCentrosCusto(cc);
       setOperacoes(ops);
+      setFazendas(fzs);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]);
+  }, [fazendaId, fazendaFiltro]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -254,6 +260,7 @@ export default function ComprasPage() {
 
   const abrirEditar = async (ped: PedidoCompra) => {
     setF({
+      fazenda_id: ped.fazenda_id ?? "",
       data_registro: ped.data_registro, tipo: ped.tipo ?? "Pedido Compra",
       fiscal: ped.fiscal ?? false, status: ped.status,
       cotacao_moeda: ped.cotacao_moeda ?? "R$", possui_ordem_compra: ped.possui_ordem_compra ?? false,
@@ -304,8 +311,9 @@ export default function ComprasPage() {
     if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErro("Informe o fornecedor"); return; }
     setSalvando(true); setErro(null);
     try {
+      const fidPedido = f.fazenda_id || fazendaId;
       const payload: Omit<PedidoCompra, "id" | "created_at" | "numero"> = {
-        fazenda_id: fazendaId, status: f.status,
+        fazenda_id: fidPedido, status: f.status,
         data_registro: f.data_registro, tipo: f.tipo, fiscal: f.fiscal,
         operacao: f.operacao || undefined,
         operacao_nf: f.operacao_nf || undefined,
@@ -355,7 +363,7 @@ export default function ComprasPage() {
       const itensSalvar: Omit<PedidoCompraItem, "id" | "created_at" | "valor_total">[] = itens
         .filter(it => it.nome_item.trim())
         .map(it => ({
-          pedido_id: pedidoId, fazenda_id: fazendaId,
+          pedido_id: pedidoId, fazenda_id: fidPedido,
           tipo_item: it.tipo_item,
           insumo_id: it.insumo_id || undefined,
           nome_item: it.nome_item, unidade: it.unidade,
@@ -365,7 +373,7 @@ export default function ComprasPage() {
           qtd_entregue: it.qtd_entregue,
           centro_custo_id: it.centro_custo_id || undefined,
         }));
-      await salvarPedidoCompraItens(pedidoId, fazendaId, itensSalvar);
+      await salvarPedidoCompraItens(pedidoId, fidPedido, itensSalvar);
 
       // Gera lançamento quando pedido é aprovado
       const pedidoExistente = pedidoEdit ? pedidos.find(p => p.id === pedidoEdit) : null;
@@ -392,7 +400,7 @@ export default function ComprasPage() {
             const precoBarter = parseFloat(f.barter_preco_saca) || cicloSelecionado?.preco_esperado_sc || 0;
             const sacasComprometidas = precoBarter > 0 ? Math.ceil((totalItens / precoBarter) * 100) / 100 : totalItens;
             const lanc = await criarLancamento({
-              fazenda_id:        fazendaId!,
+              fazenda_id:        fidPedido,
               tipo:              "pagar",
               moeda:             "barter",
               descricao:         `Barter — PC nº ${f.nr_pedido || pedidoId.slice(0,8)} — ${fornecedorNome}`,
@@ -412,7 +420,7 @@ export default function ComprasPage() {
             // Pagamento normal (PIX / Boleto / Transferência) → CP em R$ ou USD
             const isUSD = f.cotacao_moeda === "USD";
             const lanc = await criarLancamento({
-              fazenda_id:        fazendaId!,
+              fazenda_id:        fidPedido,
               tipo:              "pagar",
               moeda:             isUSD ? "USD" : "BRL",
               cotacao_usd:       isUSD && f.variacao_cambial ? parseFloat(f.variacao_cambial) : undefined,
@@ -595,8 +603,15 @@ export default function ComprasPage() {
               <option value="USD">US$ (Dólar)</option>
               <option value="barter">Barter</option>
             </select>
-            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda) && (
-              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); }}
+            {fazendas.length > 1 && (
+              <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
+                style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+              </select>
+            )}
+            {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda || fazendaFiltro) && (
+              <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFazendaFiltro(""); }}
                 style={{ padding: "7px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, background: "#fff", cursor: "pointer", color: "#555" }}>
                 Limpar filtros
               </button>
@@ -694,6 +709,20 @@ export default function ComprasPage() {
             </div>
 
             <div style={{ padding: "18px 22px" }}>
+
+              {/* Fazenda — seletor explícito */}
+              {fazendas.length > 1 && (
+                <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este pedido pertence a</div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:700, color:"#1A4870", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                    <select style={inp} value={f.fazenda_id || fazendaId || ""} onChange={e => setF(p => ({ ...p, fazenda_id: e.target.value }))}>
+                      <option value="">— Selecionar —</option>
+                      {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {/* ── ABA PRINCIPAL ── */}
               {abaModal === "principal" && (<>

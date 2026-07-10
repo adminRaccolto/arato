@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
-import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantios, excluirPlantio, atualizarPlantio } from "../../../lib/db";
+import { listarTalhoes, listarInsumos, listarAnosSafra, listarTodosCiclos, criarPlantio, processarPlantio, listarPlantiosDaConta, excluirPlantio, atualizarPlantio, listarFazendas } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
-import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo } from "../../../lib/supabase";
+import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
@@ -32,6 +32,8 @@ export default function PlantioPage() {
   const [sementes, setSementes]       = useState<Insumo[]>([]);
   const [anosSafra, setAnosSafra]     = useState<AnoSafra[]>([]);
   const [todosCiclos, setTodosCiclos] = useState<Ciclo[]>([]);
+  const [fazendas, setFazendas]       = useState<Fazenda[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [salvando, setSalvando]       = useState(false);
   const [modal, setModal]             = useState(false);
@@ -43,16 +45,21 @@ export default function PlantioPage() {
     observacao: "",
   });
 
-  // Lista sempre da fazenda ativa no switcher
+  // Carrega fazendas da conta para filtro
+  useEffect(() => {
+    listarFazendas(fazendaId ?? undefined).then(setFazendas).catch(() => {});
+  }, [fazendaId]);
+
+  // Lista de todas as fazendas da conta, com filtro opcional
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
-    Promise.all([
-      listarPlantios(fazendaId).then(setPlantios),
-      listarInsumos(fazendaId).then(ins => setSementes(ins.filter(i => i.categoria === "semente"))),
-    ]).catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
+    listarPlantiosDaConta(fazendaId)
+      .then(data => setPlantios(fazendaFiltro ? data.filter(p => p.fazenda_id === fazendaFiltro) : data))
+      .catch(e => setErroCarregamento((e as {message?:string})?.message || JSON.stringify(e)));
+    listarInsumos(fazendaId).then(ins => setSementes(ins.filter(i => i.categoria === "semente"))).catch(() => {});
     listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-  }, [fazendaId]);
+  }, [fazendaId, fazendaFiltro]);
 
   // Ciclos e talhões recarregam quando fazenda do formulário muda
   useEffect(() => {
@@ -136,7 +143,15 @@ export default function PlantioPage() {
             <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Plantio</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
           </div>
-          <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {fazendas.length > 1 && (
+              <select style={{ ...inp, width: 200 }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
+                <option value="">Todas as fazendas</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            )}
+            <button style={btnV} onClick={() => { setCascade({}); setModal(true); }}>+ Registrar Plantio</button>
+          </div>
         </header>
 
         {/* Stats */}
@@ -165,6 +180,7 @@ export default function PlantioPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
+                    {fazendas.length > 1 && <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Fazenda</th>}
                     <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Safra / Talhão</th>
                     <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Semente / Cultivar</th>
                     <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Área</th>
@@ -180,6 +196,13 @@ export default function PlantioPage() {
                 <tbody>
                   {plantios.map((p, i) => (
                     <tr key={p.id} style={{ borderBottom: i < plantios.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      {fazendas.length > 1 && (
+                        <td style={{ padding: "10px 12px" }}>
+                          <span style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
+                            {fazendas.find(f => f.id === p.fazenda_id)?.nome ?? "—"}
+                          </span>
+                        </td>
+                      )}
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{cicloLabel(p.ciclo_id)}</div>
                         <div style={{ fontSize: 11, color: "#555" }}>{talhaoLabel(p.talhao_id)}</div>

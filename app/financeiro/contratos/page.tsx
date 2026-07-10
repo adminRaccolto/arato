@@ -14,6 +14,7 @@ import {
   listarMaquinas,
   listarContas,
   listarImoveisUrbanos,
+  listarFazendas,
 } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../components/AuthProvider";
@@ -153,6 +154,7 @@ const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: str
 };
 
 const FC_VAZIO = {
+  fazenda_id: "",
   descricao: "", pessoa_id: "", credor: "",
   tipo: "custeio" as ContratoFinanceiro["tipo"],
   tipo_calculo: "sac" as ContratoFinanceiro["tipo_calculo"],
@@ -532,6 +534,8 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
 // ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
   const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
+  const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
   const [contas, setContas]       = useState<ContaBancaria[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
@@ -578,6 +582,7 @@ export default function ContratosFinanceiros() {
         console.error("[CF] Erro ao carregar contratos financeiros:", err);
         setErroCarregamento(String(err?.message ?? err ?? "Erro desconhecido ao carregar contratos"));
       });
+    listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
     supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
     const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
@@ -622,6 +627,7 @@ export default function ContratosFinanceiros() {
     setContratoModal(c ?? null);
     setAbaModal("principal");
     setFC(c ? {
+      fazenda_id: c.fazenda_id ?? fazendaId ?? "",
       descricao: c.descricao, pessoa_id: c.pessoa_id ?? "", credor: c.credor,
       tipo: c.tipo, tipo_calculo: c.tipo_calculo, linha_credito: c.linha_credito ?? "",
       moeda: c.moeda, valor_financiado: String(c.valor_financiado), valor_cotacao: String(c.valor_cotacao ?? ""),
@@ -656,8 +662,9 @@ export default function ContratosFinanceiros() {
     if (!credorNome) { alert("Informe o credor."); return; }
     const vf = parseFloat(fC.valor_financiado.replace(",", ".")) || 0;
     const vc = fC.valor_cotacao ? parseFloat(fC.valor_cotacao.replace(",", ".")) : undefined;
+    const fidCf = fC.fazenda_id || fazendaId!;
     const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
-      fazenda_id: fazendaId!, descricao: fC.descricao.trim(),
+      fazenda_id: fidCf, descricao: fC.descricao.trim(),
       pessoa_id: fC.pessoa_id || undefined, credor: credorNome,
       tipo: fC.tipo, tipo_calculo: fC.tipo_calculo, linha_credito: fC.linha_credito || undefined,
       moeda: fC.moeda, valor_financiado: vf, valor_cotacao: vc,
@@ -803,8 +810,9 @@ export default function ContratosFinanceiros() {
     setFAdit({ ...FA_VAZIO });
   });
 
-  // ── Totais ──
-  const totalFinanciado = contratos.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
+  // ── Filtros + Totais ──
+  const contratosFiltrados = fazendaFiltro ? contratos.filter(c => c.fazenda_id === fazendaFiltro) : contratos;
+  const totalFinanciado = contratosFiltrados.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
   // ── Importar XLSX ──
@@ -1039,18 +1047,25 @@ export default function ContratosFinanceiros() {
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {ptax && <span style={{ fontSize: 11, color: "#555", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
+              {fazendas.length > 1 && (
+                <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
+                  style={{ padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+                  <option value="">Todas as fazendas</option>
+                  {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+                </select>
+              )}
               <button style={{ ...btnR, padding: "9px 20px" }} onClick={() => { setModalImport(true); setImportPreview(null); setImportLog([]); }}>↑ Importar XLSX</button>
               <button style={{ ...btnV, background: "#1A4870", padding: "9px 20px" }} onClick={() => abrirModal()}>+ Novo Contrato</button>
             </div>
           </div>
 
           {/* KPI */}
-          {contratos.length > 0 && (
+          {contratosFiltrados.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
               {[
-                { label: "Contratos Ativos",  valor: contratos.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#1A4870", suf: "" },
+                { label: "Contratos Ativos",  valor: contratosFiltrados.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#1A4870", suf: "" },
                 { label: "Total Captado",     valor: totalFinanciado,                                      fmt: fmtBRL,                           cor: "#1A5C38", suf: ptax ? " (conv. PTAX)" : "" },
-                { label: "Quitados/Cancelados", valor: contratos.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "#555",    suf: "" },
+                { label: "Quitados/Cancelados", valor: contratosFiltrados.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "#555",    suf: "" },
               ].map((k, i) => (
                 <div key={i} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
                   <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{k.label}{k.suf}</div>
@@ -1069,7 +1084,7 @@ export default function ContratosFinanceiros() {
                 Tentar novamente
               </button>
             </div>
-          ) : contratos.length === 0 ? (
+          ) : contratosFiltrados.length === 0 ? (
             <div style={{ background: "#fff", borderRadius: 14, border: "0.5px solid #DDE2EE", padding: "56px 0", textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🏦</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
@@ -1086,11 +1101,11 @@ export default function ContratosFinanceiros() {
                   </tr>
                 </thead>
                 <tbody>
-                  {contratos.map((c, idx) => {
+                  {contratosFiltrados.map((c, idx) => {
                     const tm = TIPO_META[c.tipo];
                     const sm = STATUS_META[c.status];
                     return (
-                      <tr key={c.id} style={{ borderBottom: idx < contratos.length - 1 ? "0.5px solid #EEF1F6" : "none", cursor: "pointer" }}
+                      <tr key={c.id} style={{ borderBottom: idx < contratosFiltrados.length - 1 ? "0.5px solid #EEF1F6" : "none", cursor: "pointer" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "#FAFBFD")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                         <td style={{ padding: "10px 14px" }}>
@@ -1397,6 +1412,20 @@ export default function ContratosFinanceiros() {
 
             {/* Conteúdo */}
             <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
+
+              {/* Fazenda — seletor explícito */}
+              {fazendas.length > 1 && (
+                <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Este contrato pertence a</div>
+                  <div>
+                    <label style={{ fontSize:11, fontWeight:700, color:"#1A4870", textTransform:"uppercase" as const, letterSpacing:"0.05em", display:"block", marginBottom:4 }}>Fazenda <span style={{ color:"#E24B4A" }}>*</span></label>
+                    <select style={inp} value={fC.fazenda_id || fazendaId || ""} onChange={e => setFC(p => ({ ...p, fazenda_id: e.target.value }))}>
+                      <option value="">— Selecionar —</option>
+                      {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {/* ── Principal ── */}
               {abaModal === "principal" && (
