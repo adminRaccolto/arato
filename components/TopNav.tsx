@@ -121,7 +121,6 @@ const NAV: NavItem[] = [
     type: "group", id: "estoque", label: "Estoque", minStep: 5,
     children: [
       { id: "est-posicao",          label: "Posição de Estoque",        path: "/estoque"                          },
-      { id: "est-rom-entrada",      label: "Romaneio de Entrada",       path: "/estoque/romaneio-entrada"         },
       { id: "est-kardex",           label: "Kardex (Ficha de Estoque)", path: "/estoque/kardex"                   },
       { id: "est-abastecimento",    label: "Abastecimento de Máquinas", path: "/estoque/abastecimento"            },
     ],
@@ -174,6 +173,7 @@ const NAV: NavItem[] = [
       { id: "lav-plantio",      label: "Plantio",             path: "/lavoura/plantio"               },
       { id: "lav-pulverizacao", label: "Pulverização",        path: "/lavoura/pulverizacao"          },
       { id: "lav-colheita",     label: "Colheita Própria",    path: "/lavoura/colheita"              },
+      { id: "lav-rom-entrada",  label: "Romaneio de Entrada", path: "/estoque/romaneio-entrada"      },
       { type: "divider", label: "Planejamento" },
       { id: "lav-planejamento", label: "Planejamento de Safra", path: "/lavoura/planejamento"        },
       { type: "divider", label: "Monitoramento" },
@@ -358,9 +358,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "comercial")       return pathname === "/contratos" || pathname.startsWith("/expedicao") || pathname.startsWith("/contratos") || pathname.startsWith("/comercial");
     if (item.id === "transporte")      return pathname.startsWith("/transporte");
     if (item.id === "compras")  return pathname.startsWith("/compras") || pathname === "/fiscal/manifestacao" || pathname === "/financeiro/pendencias-nf";
-    if (item.id === "estoque")  return pathname === "/estoque" || pathname.startsWith("/estoque");
+    if (item.id === "estoque")  return (pathname === "/estoque" || pathname.startsWith("/estoque")) && pathname !== "/estoque/romaneio-entrada";
     if (item.id === "financeiro")      return pathname.startsWith("/financeiro");
-    if (item.id === "lavoura")         return pathname.startsWith("/lavoura");
+    if (item.id === "lavoura")         return pathname.startsWith("/lavoura") || pathname === "/estoque/romaneio-entrada";
     if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias" || pathname.startsWith("/fiscal");
     if (item.id === "custos")          return pathname.startsWith("/custos") || pathname.startsWith("/relatorios/dre");
     if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");

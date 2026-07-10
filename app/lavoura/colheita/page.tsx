@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import TopNav from "../../../components/TopNav";
 import InputMonetario from "../../../components/InputMonetario";
 import InputNumerico from "../../../components/InputNumerico";
@@ -398,6 +399,13 @@ export default function ColheitaPage() {
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             )}
+            <Link href="/estoque/romaneio-entrada" style={{
+              background: "#F0F4FA", color: "#1A5CB8", border: "0.5px solid #B8CEED",
+              borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600,
+              textDecoration: "none", display: "inline-block",
+            }}>
+              ⚖ Romaneio de Entrada
+            </Link>
             <button
               onClick={abrirModalColheita}
               style={{
@@ -485,11 +493,12 @@ export default function ColheitaPage() {
                     </div>
 
                     {/* Métricas */}
-                    <div style={{ display: "flex", gap: 20, flexWrap: "nowrap", flexShrink: 0 }}>
+                    <div style={{ display: "flex", gap: 20, flexWrap: "nowrap", flexShrink: 0, alignItems: "center" }}>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Área</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(col.area_ha ?? 0, 1)} ha</div>
                       </div>
+                      {col.total_sacas > 0 ? (<>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Peso Liq.</div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(col.total_kg_bruto / 1000, 1)} t</div>
@@ -512,6 +521,14 @@ export default function ColheitaPage() {
                         <div style={{ textAlign: "center" }}>
                           <div style={{ fontSize: 11, color: "#444" }}>Umid. méd.</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#EF9F27" }}>{fmt(col.umidade_media, 1)}%</div>
+                        </div>
+                      )}
+                      </>) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: "#FBF3E0", borderRadius: 8, border: "0.5px solid #F0D888" }}>
+                          <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600 }}>⚖ Aguardando pesagem</span>
+                          <button onClick={() => abrirRomaneio(col.id)} style={{ fontSize: 11, color: "#1A5CB8", background: "#EBF3FF", border: "0.5px solid #B8CEED", borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                            + 1º Romaneio
+                          </button>
                         </div>
                       )}
                     </div>
@@ -733,6 +750,44 @@ export default function ColheitaPage() {
                 <div style={lbStyle}>Observação</div>
                 <textarea value={formColheita.observacao ?? ""} onChange={e => setFormColheita(f => ({ ...f, observacao: e.target.value }))} style={{ ...inpStyle, height: 60, resize: "vertical" }} placeholder="Observações gerais" />
               </label>
+
+              {/* Peso colhido — entrada rápida (opcional) */}
+              <div style={{ background: "#F3F8FF", borderRadius: 10, border: "0.5px solid #C5D9F0", padding: "14px 16px" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 4 }}>Peso colhido (opcional)</div>
+                <div style={{ fontSize: 11, color: "#555", marginBottom: 12 }}>
+                  Informe o total colhido agora, ou deixe em branco e registre romaneio a romaneio depois (pesagem caminhão a caminhão).
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  <label>
+                    <div style={lbStyle}>Total sacas colhidas (sc)</div>
+                    <InputNumerico decimais={3} value={formColheita.total_sacas || ""}
+                      onChange={v => {
+                        const sc = parseFloat(v) || 0;
+                        const cls = CLASSE_COMMODITY[formColheita.produto] ?? CLASSE_COMMODITY["soja"];
+                        setFormColheita(f => ({ ...f, total_sacas: sc, total_kg_bruto: sc * cls.kg_saca, total_kg_classificado: sc * cls.kg_saca }));
+                      }}
+                      style={inpStyle} min={0} placeholder="Ex: 3.600" />
+                  </label>
+                  <label>
+                    <div style={lbStyle}>Peso líquido total (kg)</div>
+                    <InputNumerico decimais={0} value={formColheita.total_kg_bruto || ""}
+                      onChange={v => {
+                        const kg = parseFloat(v) || 0;
+                        const cls = CLASSE_COMMODITY[formColheita.produto] ?? CLASSE_COMMODITY["soja"];
+                        setFormColheita(f => ({ ...f, total_kg_bruto: kg, total_kg_classificado: kg, total_sacas: +(kg / cls.kg_saca).toFixed(3) }));
+                      }}
+                      style={inpStyle} min={0} placeholder="Ex: 216.000" />
+                  </label>
+                  <div>
+                    <div style={lbStyle}>Produtividade (calculada)</div>
+                    <div style={{ ...inpStyle, background: "#E8F4EC", color: "#16A34A", fontWeight: 700 }}>
+                      {formColheita.area_ha && formColheita.total_sacas
+                        ? `${((formColheita.total_sacas) / formColheita.area_ha).toFixed(1)} sc/ha`
+                        : "—"}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {erro && <div style={{ color: "#E24B4A", fontSize: 13, background: "#FFF5F5", padding: "8px 12px", borderRadius: 7 }}>{erro}</div>}
 
