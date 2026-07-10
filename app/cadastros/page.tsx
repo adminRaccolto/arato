@@ -240,6 +240,8 @@ function CadastrosInner() {
   // ── Fazendas ──
   const [fazendas, setFazendas]       = useState<FazendaDB[]>([]);
   const fazIdEff: string | null = fazendaId ?? (fazendas.length > 0 ? fazendas[0].id : null);
+  // Fazenda de trabalho — seletor explícito no topo da página, usado em todos os modais
+  const [fazTrabalho, setFazTrabalho] = useState<string>("");
   const [talhoes, setTalhoes]         = useState<Record<string, Talhao[]>>({});
   const [matriculas, setMatriculas]   = useState<Record<string, MatriculaImovel[]>>({});
   const [expandFaz, setExpandFaz]     = useState<Set<string>>(new Set());
@@ -298,6 +300,7 @@ function CadastrosInner() {
   const [fAno, setFAno]               = useState({ descricao: "", data_inicio: "", data_fim: "" });
   const [modalCiclo, setModalCiclo]   = useState(false);
   const [editCiclo, setEditCiclo]     = useState<Ciclo | null>(null);
+  const [cicloFazendaId, setCicloFazendaId] = useState<string>("");
   const [fCiclo, setFCiclo]           = useState({ descricao: "", cultura: "Soja", data_inicio: "", data_fim: "", produtividade_esperada_sc_ha: "", preco_esperado_sc: "", is_auxiliar: false, ciclo_pai_id: "", absorcao_pct: "100", motivo_auxiliar: "", produto_agricola_id: "" });
   // talhões vinculados ao ciclo: { talhao_id -> area_plantada_ha (string para input) }
   const [cicloTalhoes, setCicloTalhoes] = useState<Record<string, string>>({});
@@ -542,12 +545,18 @@ function CadastrosInner() {
         })
           .then(r => r.json())
           .then(json => {
-            if (json.ok) setFazendas(json.fazendas ?? []);
-            else setErro(json.error ?? "Erro ao carregar fazendas");
+            if (json.ok) {
+              const fzs = json.fazendas ?? [];
+              setFazendas(fzs);
+              setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+            } else setErro(json.error ?? "Erro ao carregar fazendas");
           })
           .catch(e => setErro(e.message));
       } else {
-        listarFazendas().then(setFazendas).catch(e => setErro(e.message));
+        listarFazendas().then(fzs => {
+          setFazendas(fzs);
+          setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+        }).catch(e => setErro(e.message));
       }
       carregarProdutoresSilencioso();
       listarEmpresas(fazendaId).then(emps => {
@@ -1305,7 +1314,7 @@ function CadastrosInner() {
   const salvarEmp = () => salvar(async () => {
     if (!fEmp.nome.trim()) return;
     const payload = {
-      fazenda_id: fazIdEff!, nome: fEmp.nome.trim(),
+      fazenda_id: (fazTrabalho || fazIdEff)!, nome: fEmp.nome.trim(),
       razao_social: fEmp.razao_social || undefined, tipo: fEmp.tipo,
       cpf_cnpj: fEmp.cpf_cnpj || undefined, inscricao_est: fEmp.inscricao_est || undefined,
       regime_tributario: fEmp.regime_tributario || undefined,
@@ -1359,14 +1368,14 @@ function CadastrosInner() {
       await atualizarPessoa(editPes.id, pesPayload);
       setPessoas(p => p.map(x => x.id === editPes.id ? { ...x, ...pesPayload } : x));
     } else {
-      const n = await criarPessoa({ ...pesPayload, fazenda_id: fazIdEff! });
+      const n = await criarPessoa({ ...pesPayload, fazenda_id: (fazTrabalho || fazIdEff)! });
       setPessoas(p => [...p, n]);
       // Cria depósito de armazém terceiro vinculado automaticamente
       if (criar_deposito_terceiro) {
         const endereco = [fPes.logradouro, fPes.numero, fPes.bairro, fPes.municipio, fPes.estado]
           .filter(Boolean).join(", ");
         const dep = await criarDeposito({
-          fazenda_id: fazIdEff!,
+          fazenda_id: (fazTrabalho || fazIdEff)!,
           nome: fPes.nome.trim(),
           tipo: "armazem_terceiro" as const,
           capacidade_sc: undefined,
@@ -1454,18 +1463,18 @@ function CadastrosInner() {
   const salvarAno = () => salvar(async () => {
     if (!fAno.descricao.trim() || !fAno.data_inicio || !fAno.data_fim) return;
     if (editAno) { await atualizarAnoSafra(editAno.id, fAno); setAnosSafra(p => p.map(x => x.id === editAno.id ? { ...x, ...fAno } : x)); }
-    else { const n = await criarAnoSafra({ ...fAno, fazenda_id: fazIdEff! }); setAnosSafra(p => [...p, n]); }
+    else { const n = await criarAnoSafra({ ...fAno, fazenda_id: (fazTrabalho || fazIdEff)! }); setAnosSafra(p => [...p, n]); }
     setModalAno(false);
   });
   // Calcula quantos ha cada talhão já tem comprometido em ciclos que se sobrepõem
   // ao intervalo [inicio, fim], excluindo o próprio ciclo em edição (excluirCicloId)
-  const calcularOcupacao = async (inicio: string, fim: string, excluirCicloId?: string) => {
-    if (!fazendaId || !inicio || !fim) { setOcupado({}); return; }
+  const calcularOcupacao = async (inicio: string, fim: string, excluirCicloId?: string, fazendaCicloId?: string) => {
+    if (!inicio || !fim) { setOcupado({}); return; }
     // Busca todos os ciclos da fazenda cujas datas se sobrepõem com [inicio, fim]
     const { data: ciclosOverlap } = await supabase
       .from("ciclos")
       .select("id")
-      .eq("fazenda_id", fazendaId)
+      .eq("fazenda_id", fazendaCicloId ?? fazendaId)
       .lte("data_inicio", fim)   // ciclo começa antes do fim do atual
       .gte("data_fim",    inicio); // ciclo termina depois do início do atual
     if (!ciclosOverlap || ciclosOverlap.length === 0) { setOcupado({}); return; }
@@ -1484,22 +1493,28 @@ function CadastrosInner() {
     setOcupado(soma);
   };
 
+  const carregarTalhoesDeFazenda = async (fid: string) => {
+    if (!fid) return;
+    if (!talhoes[fid]) {
+      const t = await listarTalhoes(fid);
+      setTalhoes(prev => ({ ...prev, [fid]: t }));
+    }
+  };
+
   const abrirModalCiclo = async (c?: Ciclo) => {
     if (!anoSel) return;
     setOcupado({});
     setEditCiclo(c ?? null);
-    // Carrega talhões apenas da fazenda ativa (ciclo é por fazenda)
-    if (fazIdEff && !talhoes[fazIdEff]) {
-      const t = await listarTalhoes(fazIdEff);
-      setTalhoes(prev => ({ ...prev, [fazIdEff]: t }));
-    }
+    const fid = c?.fazenda_id ?? fazIdEff ?? "";
+    setCicloFazendaId(fid);
+    await carregarTalhoesDeFazenda(fid);
     const inicio = c?.data_inicio ?? "";
     const fim    = c?.data_fim    ?? "";
     // Garante que insumosPA esteja carregado (pode chegar vazio se modal abrir antes do fetch async)
     let paList = insumosPA;
     if (paList.length === 0) {
       const { data: paData } = await supabase.from("insumos").select("id,nome,unidade")
-        .eq("fazenda_id", fazIdEff!).eq("categoria", "produto_agricola").order("nome");
+        .eq("fazenda_id", fid).eq("categoria", "produto_agricola").order("nome");
       paList = (paData ?? []) as Insumo[];
       if (paList.length > 0) setInsumosPA(paList);
     }
@@ -1524,7 +1539,7 @@ function CadastrosInner() {
       const mapa: Record<string, string> = {};
       (ct ?? []).forEach((r: { talhao_id: string; area_plantada_ha: number }) => { mapa[r.talhao_id] = String(r.area_plantada_ha); });
       setCicloTalhoes(mapa);
-      if (inicio && fim) await calcularOcupacao(inicio, fim, c.id);
+      if (inicio && fim) await calcularOcupacao(inicio, fim, c.id, fid);
     } else {
       setCicloTalhoes({});
     }
@@ -1560,13 +1575,14 @@ function CadastrosInner() {
       motivo_auxiliar: fCiclo.is_auxiliar && fCiclo.motivo_auxiliar.trim() ? fCiclo.motivo_auxiliar.trim() : null,
       produto_agricola_id: fCiclo.produto_agricola_id || null,
     };
+    const fazCiclo = cicloFazendaId || (fazTrabalho || fazIdEff)!;
     let cicloId: string;
     if (editCiclo) {
       await atualizarCiclo(editCiclo.id, payload);
       setCiclos(p => p.map(x => x.id === editCiclo.id ? { ...x, ...payload } : x));
       cicloId = editCiclo.id;
     } else {
-      const n = await criarCiclo({ ...payload, ano_safra_id: anoSel, fazenda_id: fazIdEff! });
+      const n = await criarCiclo({ ...payload, ano_safra_id: anoSel, fazenda_id: fazCiclo });
       setCiclos(p => [...p, n]);
       cicloId = n.id;
     }
@@ -1574,7 +1590,7 @@ function CadastrosInner() {
     await supabase.from("ciclo_talhoes").delete().eq("ciclo_id", cicloId);
     const rows = Object.entries(cicloTalhoes)
       .filter(([, area]) => parseFloat(area) > 0)
-      .map(([talhao_id, area]) => ({ ciclo_id: cicloId, talhao_id, area_plantada_ha: parseFloat(area), fazenda_id: fazIdEff! }));
+      .map(([talhao_id, area]) => ({ ciclo_id: cicloId, talhao_id, area_plantada_ha: parseFloat(area), fazenda_id: fazCiclo }));
     if (rows.length > 0) await supabase.from("ciclo_talhoes").insert(rows);
     setModalCiclo(false);
   });
@@ -1606,7 +1622,7 @@ function CadastrosInner() {
     if (!fMaq.nome.trim()) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payload: any = {
-      fazenda_id: fazIdEff!, nome: fMaq.nome.trim(), tipo: fMaq.tipo,
+      fazenda_id: (fazTrabalho || fazIdEff)!, nome: fMaq.nome.trim(), tipo: fMaq.tipo,
       marca: fMaq.marca || undefined, modelo: fMaq.modelo || undefined,
       ano: fMaq.ano ? Number(fMaq.ano) : undefined, patrimonio: fMaq.patrimonio || undefined,
       chassi: fMaq.chassi || undefined,
@@ -1639,7 +1655,7 @@ function CadastrosInner() {
   };
   const salvarBomba = () => salvar(async () => {
     if (!fBomba.nome.trim()) return;
-    const payload = { fazenda_id: fazIdEff!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, ativa: true };
+    const payload = { fazenda_id: (fazTrabalho || fazIdEff)!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, ativa: true };
     if (editBomba) { await atualizarBomba(editBomba.id, payload); setBombas(p => p.map(x => x.id === editBomba.id ? { ...x, ...payload } : x)); }
     else { const n = await criarBomba(payload); setBombas(p => [...p, n]); }
     setModalBomba(false);
@@ -1655,7 +1671,7 @@ function CadastrosInner() {
     if (!fDep.nome.trim()) return;
     const isTerceiro = fDep.tipo === "armazem_terceiro" || fDep.tipo === "terceiro";
     const payload = {
-      fazenda_id: fazIdEff!, nome: fDep.nome.trim(), tipo: fDep.tipo,
+      fazenda_id: (fazTrabalho || fazIdEff)!, nome: fDep.nome.trim(), tipo: fDep.tipo,
       capacidade_sc: fDep.capacidade_sc ? Number(fDep.capacidade_sc) : undefined,
       ativo: true,
       pessoa_id: isTerceiro && fDep.pessoa_id ? fDep.pessoa_id : undefined,
@@ -1703,7 +1719,7 @@ function CadastrosInner() {
   const salvarFunc = () => salvar(async () => {
     if (!fFunc.nome.trim()) return;
     const payload: Omit<Funcionario, "id" | "created_at"> = {
-      fazenda_id: fazIdEff!, nome: fFunc.nome.trim(), cpf: fFunc.cpf || undefined,
+      fazenda_id: (fazTrabalho || fazIdEff)!, nome: fFunc.nome.trim(), cpf: fFunc.cpf || undefined,
       rg: fFunc.rg || undefined, data_nascimento: fFunc.data_nascimento || undefined,
       pis_nis: fFunc.pis_nis || undefined, ctps_numero: fFunc.ctps_numero || undefined,
       ctps_serie: fFunc.ctps_serie || undefined, ctps_uf: fFunc.ctps_uf || undefined,
@@ -1737,7 +1753,7 @@ function CadastrosInner() {
       funcId = n.id;
     }
     if (fFunc.data_admissao) {
-      await sincronizarPeriodosFerias(funcId, fazIdEff!, fFunc.data_admissao);
+      await sincronizarPeriodosFerias(funcId, (fazTrabalho || fazIdEff)!, fFunc.data_admissao);
     }
     setModalFunc(false);
   });
@@ -1745,7 +1761,7 @@ function CadastrosInner() {
   const salvarPremiacao = () => salvar(async () => {
     if (!editFunc || !fPremiacao.descricao || !fPremiacao.valor) return;
     const p = await criarPremiacao({
-      funcionario_id: editFunc.id, fazenda_id: fazIdEff!,
+      funcionario_id: editFunc.id, fazenda_id: (fazTrabalho || fazIdEff)!,
       mes_referencia: fPremiacao.mes_referencia,
       data_pagamento: fPremiacao.data_pagamento || undefined,
       descricao: fPremiacao.descricao, valor: Number(fPremiacao.valor),
@@ -1823,7 +1839,7 @@ function CadastrosInner() {
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px" }}>
+        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>
               {TAB_GROUPS.flatMap(g => g.tabs).find(t => t.key === aba)?.label ?? "Cadastros"}
@@ -1832,6 +1848,20 @@ function CadastrosInner() {
               {TAB_GROUPS.find(g => g.tabs.some(t => t.key === aba))?.group}
             </p>
           </div>
+          {/* Seletor de fazenda — obrigatório, usado em todos os modais desta página */}
+          {fazendas.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#555", whiteSpace: "nowrap" }}>Fazenda de trabalho:</span>
+              <select
+                value={fazTrabalho}
+                onChange={e => setFazTrabalho(e.target.value)}
+                style={{ padding: "6px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
+              >
+                <option value="">— selecionar —</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </div>
+          )}
         </header>
 
         <div style={{ padding: "20px 22px", flex: 1, overflowY: "auto" }}>
@@ -2176,7 +2206,7 @@ function CadastrosInner() {
                           <button style={{ ...btnE, color: "#8B1A1A", borderColor: "#E24B4A60" }} onClick={e => {
                             e.stopPropagation();
                             if (!confirm(`Encerrar a safra "${a.descricao}"?\n\nA safra não aceitará mais novos contratos, romaneios ou operações de lavoura.\nOs contratos abertos serão mantidos (use Comercialização para encerrá-los em lote).`)) return;
-                            encerrarAnoSafra(a.id, fazIdEff!).then(n => {
+                            encerrarAnoSafra(a.id, (fazTrabalho || fazIdEff)!).then(n => {
                               setAnosSafra(p => p.map(x => x.id === a.id ? { ...x, status: "encerrada" as const } : x));
                               if (n > 0) alert(`Safra encerrada. ${n} contrato(s) foram encerrados.`);
                             });
@@ -2196,8 +2226,8 @@ function CadastrosInner() {
                     <span style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 13 }}>
                       Ciclos {anoSel && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>— {anosSafra.find(a => a.id === anoSel)?.descricao}</span>}
                     </span>
-                    {fazIdEff && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
-                      {fazendas.find(f => f.id === fazIdEff)?.nome ?? "Fazenda ativa"}
+                    {fazTrabalho && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
+                      {fazendas.find(f => f.id === fazTrabalho)?.nome ?? fazendas.find(f => f.id === fazIdEff)?.nome}
                     </span>}
                   </div>
                   {anoSel && <button style={{ ...btnV, padding: "6px 12px", fontSize: 12 }} onClick={() => abrirModalCiclo()}>+ Novo Ciclo</button>}
@@ -2419,8 +2449,8 @@ function CadastrosInner() {
                       try {
                         // Remove todos os existentes e re-seed
                         for (const g of gruposInsumo) await excluirGrupoInsumo(g.id);
-                        await seederGruposInsumo(fazIdEff!);
-                        const [gs, ss] = await Promise.all([listarGruposInsumo(fazIdEff!), listarSubgruposInsumo(fazIdEff!)]);
+                        await seederGruposInsumo((fazTrabalho || fazIdEff)!);
+                        const [gs, ss] = await Promise.all([listarGruposInsumo((fazTrabalho || fazIdEff)!), listarSubgruposInsumo((fazTrabalho || fazIdEff)!)]);
                         setGruposInsumo(gs);
                         setSubgruposInsumo(ss);
                       } catch (e) { alert((e as {message?:string})?.message || JSON.stringify(e)); }
@@ -2756,8 +2786,8 @@ function CadastrosInner() {
                       if (!confirm("Isso vai substituir TODAS as operações existentes pelo plano padrão. Continuar?")) return;
                       setSeedingOpGer(true);
                       try {
-                        const { inseridos } = await seedOperacoesGerenciais(fazIdEff!);
-                        const lista = await listarOperacoesGerenciais(fazIdEff!);
+                        const { inseridos } = await seedOperacoesGerenciais((fazTrabalho || fazIdEff)!);
+                        const lista = await listarOperacoesGerenciais((fazTrabalho || fazIdEff)!);
                         setOpGers(lista);
                         alert(`Plano importado com sucesso! ${inseridos} operações criadas.`);
                       } catch (e: unknown) {
@@ -3020,7 +3050,7 @@ function CadastrosInner() {
                             alert(`CFOPs importados com sucesso!\n${inseridos} registros inseridos${ignorados > 0 ? `\n${ignorados} ignorados` : ""}.`);
                             // Recarregar
                             setLoadingHisFiscal(true);
-                            const { data } = await supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", fazIdEff!).eq("ativo", true).order("cfop");
+                            const { data } = await supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", (fazTrabalho || fazIdEff)!).eq("ativo", true).order("cfop");
                             setLoadingHisFiscal(false);
                             setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; }));
                           } catch (e: unknown) {
@@ -3032,7 +3062,7 @@ function CadastrosInner() {
                         style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #C9921B", borderRadius: 8, background: "#FBF3E0", color: "#7A5A10", cursor: seedingCfop ? "not-allowed" : "pointer", fontWeight: 600, opacity: seedingCfop ? 0.6 : 1 }}
                       >{seedingCfop ? "Importando…" : "↓ Importar CFOPs Padrão"}</button>
                       <button
-                        onClick={() => { setLoadingHisFiscal(true); supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", fazIdEff!).eq("ativo", true).order("cfop").then(({ data }) => { setLoadingHisFiscal(false); setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; })); }); }}
+                        onClick={() => { setLoadingHisFiscal(true); supabase.from("operacao_cfop_fiscal").select("*, operacoes_gerenciais(classificacao, descricao, tipo)").eq("fazenda_id", (fazTrabalho || fazIdEff)!).eq("ativo", true).order("cfop").then(({ data }) => { setLoadingHisFiscal(false); setHisFiscal((data ?? []).map((r: Record<string, unknown>) => { const op = (r.operacoes_gerenciais as Record<string, string> | null) ?? {}; return { id: String(r.id), cfop: String(r.cfop ?? ""), descricao_cfop: r.descricao_cfop as string | null, operacao_nf: r.operacao_nf as string | null, tipo_pessoa: r.tipo_pessoa as string | null, cst_pis: r.cst_pis as string | null, cst_cofins: r.cst_cofins as string | null, ncm: r.ncm as string | null, fins_exportacao: Boolean(r.fins_exportacao), compoe_faturamento: Boolean(r.compoe_faturamento), op_classificacao: op.classificacao ?? "—", op_descricao: op.descricao ?? "—", op_tipo: op.tipo ?? "" }; })); }); }}
                         style={{ fontSize: 12, padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}
                       >↺ Atualizar</button>
                     </div>
@@ -3219,7 +3249,7 @@ function CadastrosInner() {
               try {
                 const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
-                  fazenda_id:          fazIdEff!,
+                  fazenda_id:          (fazTrabalho || fazIdEff)!,
                   nome:                fIns.nome.trim(),
                   categoria:           fIns.categoria,
                   subgrupo:            fIns.subgrupo || undefined,
@@ -3619,7 +3649,7 @@ function CadastrosInner() {
               setSalvando(true); setErro("");
               try {
                 const payload: Omit<Insumo, "id" | "created_at"> = {
-                  fazenda_id: fazIdEff!, nome: fIns.nome.trim(),
+                  fazenda_id: (fazTrabalho || fazIdEff)!, nome: fIns.nome.trim(),
                   categoria: "produto_agricola", subgrupo: fIns.subgrupo || undefined,
                   unidade: fIns.unidade, fabricante: fIns.fabricante || undefined,
                   estoque: parseFloat(fIns.estoque) || 0,
@@ -3847,7 +3877,7 @@ function CadastrosInner() {
               try {
                 const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
-                  fazenda_id: fazIdEff!, nome: fIns.nome.trim(), categoria: fIns.categoria,
+                  fazenda_id: (fazTrabalho || fazIdEff)!, nome: fIns.nome.trim(), categoria: fIns.categoria,
                   subgrupo: fIns.subgrupo || undefined,
                   unidade: isComb ? "L" : fIns.unidade,
                   fabricante: fIns.fabricante || undefined,
@@ -4196,7 +4226,7 @@ function CadastrosInner() {
             const salvarPCls = async () => {
               await salvar(async () => {
                 const payload = {
-                  fazenda_id: fazIdEff!,
+                  fazenda_id: (fazTrabalho || fazIdEff)!,
                   commodity: fPCls.commodity,
                   nome_padrao: fPCls.nome_padrao.trim(),
                   ativo: fPCls.ativo,
@@ -4261,7 +4291,7 @@ function CadastrosInner() {
                         const defaults = [
                           { commodity: "Soja", nome_padrao: "ABIOVE 2025", ativo: true, umidade_padrao: 14, impureza_padrao: 1, avariados_padrao: 8, ardidos_max: 8, mofados_max: null, esverdeados_max: 8, quebrados_max: 30, ph_minimo: 78, carunchados_max: null, kg_saca: 60 },
                           { commodity: "Milho", nome_padrao: "IN MAPA 60/2011", ativo: true, umidade_padrao: 14.5, impureza_padrao: 1, avariados_padrao: 6, ardidos_max: 3, mofados_max: null, esverdeados_max: null, quebrados_max: null, ph_minimo: 74, carunchados_max: 3, kg_saca: 60 },
-                        ].map(d => ({ ...d, fazenda_id: fazIdEff! }));
+                        ].map(d => ({ ...d, fazenda_id: (fazTrabalho || fazIdEff)! }));
                         const { data } = await supabase.from("padroes_classificacao").insert(defaults).select();
                         if (data) setPadroesCls(data as PadraoClassificacao[]);
                       }}>
@@ -6708,7 +6738,7 @@ function CadastrosInner() {
                     onClick={async () => {
                       const endereco = [fPes.logradouro, fPes.numero, fPes.bairro, fPes.municipio, fPes.estado].filter(Boolean).join(", ");
                       const dep = await criarDeposito({
-                        fazenda_id: fazIdEff!,
+                        fazenda_id: (fazTrabalho || fazIdEff)!,
                         nome: editPes.nome,
                         tipo: "armazem_terceiro" as const,
                         capacidade_sc: undefined,
@@ -6981,8 +7011,8 @@ function CadastrosInner() {
                 )}
               </div>
             )}
-            <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id); }} /></div>
-            <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id); }} /></div>
+            <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId); }} /></div>
+            <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId); }} /></div>
             {!fCiclo.is_auxiliar && <div>
               <label style={lbl}>Produtividade esperada (sc/ha)</label>
               <InputMonetario style={inp} placeholder="Ex: 62,00" value={fCiclo.produtividade_esperada_sc_ha}
@@ -7012,19 +7042,45 @@ function CadastrosInner() {
             })()}
           </div>
 
-          {/* Talhões do ciclo — apenas da fazenda ativa, pois ciclo é por fazenda */}
+          {/* Fazenda do ciclo — seletor explícito */}
+          {fazendas.length > 1 && (
+            <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Este ciclo pertence à fazenda</div>
+              <select
+                style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff" }}
+                value={cicloFazendaId}
+                disabled={!!editCiclo}
+                onChange={async e => {
+                  const fid = e.target.value;
+                  setCicloFazendaId(fid);
+                  setCicloTalhoes({});
+                  setOcupado({});
+                  await carregarTalhoesDeFazenda(fid);
+                  if (fCiclo.data_inicio && fCiclo.data_fim) await calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, fid);
+                }}
+              >
+                <option value="">— Selecionar fazenda —</option>
+                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+              </select>
+              {editCiclo && <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>A fazenda não pode ser alterada em um ciclo existente.</div>}
+            </div>
+          )}
+
+          {/* Talhões do ciclo */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 6, display: "flex", alignItems: "center", gap: 10 }}>
               Talhões Plantados neste Ciclo
               <span style={{ fontSize: 11, fontWeight: 400, color: "#555" }}>
                 (informe a área efetivamente plantada — usada para rateio de custos por ha)
               </span>
-              {fazIdEff && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
-                {fazendas.find(f => f.id === fazIdEff)?.nome ?? "Fazenda ativa"}
-              </span>}
+              {cicloFazendaId && fazendas.length > 1 && (
+                <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
+                  {fazendas.find(f => f.id === cicloFazendaId)?.nome}
+                </span>
+              )}
             </div>
             {(() => {
-              const talhoesFazenda = fazIdEff ? (talhoes[fazIdEff] ?? []) : [];
+              const talhoesFazenda = cicloFazendaId ? (talhoes[cicloFazendaId] ?? []) : [];
               return talhoesFazenda.length === 0 ? (
               <div style={{ fontSize: 12, color: "#888", padding: "10px 0" }}>Nenhum talhão cadastrado para esta fazenda. Cadastre talhões primeiro.</div>
             ) : (
@@ -7303,7 +7359,7 @@ function CadastrosInner() {
                     await atualizarGrupoInsumo(editGrupoIns.id, fGrupoIns);
                     setGruposInsumo(x => x.map(r => r.id === editGrupoIns.id ? { ...r, ...fGrupoIns } : r));
                   } else {
-                    const n = await criarGrupoInsumo({ fazenda_id: fazIdEff!, ...fGrupoIns });
+                    const n = await criarGrupoInsumo({ fazenda_id: (fazTrabalho || fazIdEff)!, ...fGrupoIns });
                     setGruposInsumo(x => [...x, n]);
                   }
                   setModalGrupoIns(false);
@@ -7340,7 +7396,7 @@ function CadastrosInner() {
                     await atualizarSubgrupoInsumo(editSubgIns.id, fSubgIns);
                     setSubgruposInsumo(x => x.map(r => r.id === editSubgIns.id ? { ...r, ...fSubgIns } : r));
                   } else {
-                    const n = await criarSubgrupoInsumo({ fazenda_id: fazIdEff!, ...fSubgIns });
+                    const n = await criarSubgrupoInsumo({ fazenda_id: (fazTrabalho || fazIdEff)!, ...fSubgIns });
                     setSubgruposInsumo(x => [...x, n]);
                   }
                   setModalSubgIns(false);
@@ -7370,7 +7426,7 @@ function CadastrosInner() {
                     await atualizarTipoPessoa(editTipoPes.id, fTipoPes);
                     setTiposPessoa(x => x.map(r => r.id === editTipoPes.id ? { ...r, ...fTipoPes } : r));
                   } else {
-                    const n = await criarTipoPessoa({ fazenda_id: fazIdEff!, ...fTipoPes });
+                    const n = await criarTipoPessoa({ fazenda_id: (fazTrabalho || fazIdEff)!, ...fTipoPes });
                     setTiposPessoa(x => [...x, n]);
                   }
                   setModalTipoPes(false);
@@ -7428,7 +7484,7 @@ function CadastrosInner() {
               onClick={async () => {
                 setSalvando(true);
                 try {
-                  const payload = { fazenda_id: fazIdEff!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined, manutencao_maquinas: fCC.manutencao_maquinas };
+                  const payload = { fazenda_id: (fazTrabalho || fazIdEff)!, codigo: fCC.codigo || undefined, nome: fCC.nome, tipo: fCC.tipo, parent_id: fCC.parent_id || undefined, manutencao_maquinas: fCC.manutencao_maquinas };
                   if (editCC) {
                     await atualizarCentroCusto(editCC.id, payload);
                     setCentrosCusto(x => x.map(r => r.id === editCC.id ? { ...r, ...payload } : r));
@@ -7470,7 +7526,7 @@ function CadastrosInner() {
                     await atualizarCategoriaLancamento(editCatLanc.id, fCatLanc);
                     setCategoriasLanc(x => x.map(r => r.id === editCatLanc.id ? { ...r, ...fCatLanc } : r));
                   } else {
-                    const n = await criarCategoriaLancamento({ fazenda_id: fazIdEff!, ...fCatLanc });
+                    const n = await criarCategoriaLancamento({ fazenda_id: (fazTrabalho || fazIdEff)!, ...fCatLanc });
                     setCategoriasLanc(x => [...x, n]);
                   }
                   setModalCatLanc(false);
@@ -7979,7 +8035,7 @@ function CadastrosInner() {
                 setErroOpGer(null);
                 await salvar(async () => {
                   const payload: Omit<OperacaoGerencial, "id" | "created_at"> = {
-                    fazenda_id: fazIdEff!,
+                    fazenda_id: (fazTrabalho || fazIdEff)!,
                     parent_id: fOG.parent_id || undefined,
                     classificacao: fOG.classificacao, descricao: fOG.descricao, tipo: fOG.tipo,
                     tipo_lcdpr: fOG.tipo_lcdpr || undefined,
@@ -8065,7 +8121,7 @@ function CadastrosInner() {
                   await atualizarFormaPagamento(editFP.id, payload);
                   setFormasPagamento(x => x.map(r => r.id === editFP.id ? { ...r, ...payload } : r));
                 } else {
-                  const n = await criarFormaPagamento({ fazenda_id: fazIdEff!, ...payload });
+                  const n = await criarFormaPagamento({ fazenda_id: (fazTrabalho || fazIdEff)!, ...payload });
                   setFormasPagamento(x => [...x, n]);
                 }
                 setModalFP(false);
