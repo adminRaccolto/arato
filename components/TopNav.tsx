@@ -90,6 +90,8 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "transporte", label: "Transporte", minStep: 7,
     children: [
+      { id: "transp-cadastros", label: "Cadastros de Transporte", path: "/transporte/cadastros", moduleId: "transporte" },
+      { type: "divider", label: "Documentos Fiscais" },
       { id: "transp-cte",  label: "CT-e — Conhecimento de Transporte", path: "/transporte/cte",  moduleId: "transporte" },
       { id: "transp-mdfe", label: "MDF-e — Manifesto de Cargas",       path: "/transporte/mdfe", moduleId: "transporte" },
     ],

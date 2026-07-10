@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
 import BalancaSerial from "../../../components/BalancaSerial";
+import TicketBalanca, { type DadosTicket } from "../../../components/TicketBalanca";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   listarRomaneiosEntradaDaConta, criarRomaneioEntrada, atualizarRomaneioEntrada,
@@ -116,6 +117,9 @@ export default function RomaneioEntradaPage() {
   const [modal,    setModal]    = useState(false);
   const [editRom,  setEditRom]  = useState<RomaneioEntrada | null>(null);
   const [form,     setForm]     = useState<FormRom>(FORM_VAZIO);
+
+  // Ticket de balança
+  const [ticketDados, setTicketDados] = useState<DadosTicket | null>(null);
   const [anoSel,   setAnoSel]   = useState("");
 
   useEffect(() => {
@@ -466,6 +470,40 @@ export default function RomaneioEntradaPage() {
                       {r.status === "rascunho" && (
                         <button style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
                       )}
+                      <button
+                        style={{ background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
+                        title="Imprimir ticket de balança"
+                        onClick={() => {
+                          const pl = (r.peso_bruto_kg ?? 0) - (r.tara_kg ?? 0);
+                          const insumoNome = insumos.find(i => i.id === r.insumo_id)?.nome;
+                          const cicloDesc  = ciclos.find(c => c.id === r.ciclo_id)?.descricao;
+                          const talhaoNome = talhoes.find(t => t.id === r.talhao_id)?.nome;
+                          setTicketDados({
+                            tipo: "entrada",
+                            numero: r.ticket_numero ?? r.ticket_terceiro ?? undefined,
+                            data: r.data,
+                            produto: insumoNome,
+                            safra: cicloDesc,
+                            talhao: talhaoNome,
+                            placa: r.placa ?? undefined,
+                            motorista: r.motorista ?? undefined,
+                            pesoBrutoKg: r.peso_bruto_kg ?? 0,
+                            taraKg: r.tara_kg ?? 0,
+                            pesoLiquidoKg: pl,
+                            umidadePct: r.umidade_pct ?? undefined,
+                            umidadePadraoPct: insumoNome ? getClasse(insumoNome).umidade_padrao : 14,
+                            descontoUmidadeKg: r.desconto_umidade_kg ?? undefined,
+                            impurezaPct: r.impureza_pct ?? undefined,
+                            impurezaPadraoPct: insumoNome ? getClasse(insumoNome).impureza_padrao : 1,
+                            descontoImpurezaKg: r.desconto_impureza_kg ?? undefined,
+                            avar: r.avariados_pct ?? undefined,
+                            descontoAvarKg: r.desconto_avariados_kg ?? undefined,
+                            pesoClassificadoKg: r.peso_classificado_kg ?? undefined,
+                            sacas: r.sacas ?? (pl / 60),
+                            kgSaca: insumoNome ? getClasse(insumoNome).kg_saca : 60,
+                          });
+                        }}
+                      >🎫</button>
                       {r.status === "rascunho" && (
                         <button
                           style={{ background: "#FEF2F2", color: "#E24B4A", border: "0.5px solid #FECACA", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
@@ -805,6 +843,11 @@ export default function RomaneioEntradaPage() {
             </div>
           )}
         </Modal>
+      )}
+
+      {/* Ticket de Balança */}
+      {ticketDados && (
+        <TicketBalanca dados={ticketDados} onFechar={() => setTicketDados(null)} />
       )}
     </div>
     </>

@@ -6987,3 +6987,45 @@ ALTER TABLE romaneios_entrada
   ADD COLUMN IF NOT EXISTS modo_pesagem TEXT DEFAULT 'balanca';  -- 'balanca' | 'manual'
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Seção 61 — Transportadoras, Veículos e Motoristas: colunas expandidas
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Transportadoras: adicionar IE, endereço completo, contato
+ALTER TABLE transportadoras
+  ADD COLUMN IF NOT EXISTS cpf          TEXT,
+  ADD COLUMN IF NOT EXISTS ie           TEXT,
+  ADD COLUMN IF NOT EXISTS cep          TEXT,
+  ADD COLUMN IF NOT EXISTS logradouro   TEXT,
+  ADD COLUMN IF NOT EXISTS numero       TEXT,
+  ADD COLUMN IF NOT EXISTS bairro       TEXT,
+  ADD COLUMN IF NOT EXISTS municipio    TEXT,
+  ADD COLUMN IF NOT EXISTS uf           TEXT,
+  ADD COLUMN IF NOT EXISTS telefone     TEXT,
+  ADD COLUMN IF NOT EXISTS email        TEXT,
+  ADD COLUMN IF NOT EXISTS obs          TEXT;
+
+-- Veículos: RENAVAM, carroceria, dados do veículo, proprietário, motorista habitual
+ALTER TABLE veiculos
+  ADD COLUMN IF NOT EXISTS renavam                TEXT,
+  ADD COLUMN IF NOT EXISTS uf_placa               TEXT,
+  ADD COLUMN IF NOT EXISTS tipo_carroceria        TEXT,
+  ADD COLUMN IF NOT EXISTS marca                  TEXT,
+  ADD COLUMN IF NOT EXISTS modelo                 TEXT,
+  ADD COLUMN IF NOT EXISTS ano_fab                INTEGER,
+  ADD COLUMN IF NOT EXISTS cor                    TEXT,
+  ADD COLUMN IF NOT EXISTS transportadora_id      UUID REFERENCES transportadoras(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS motorista_habitual_id  UUID REFERENCES motoristas(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS obs                    TEXT;
+
+-- Motoristas: CNH detalhada, transportadora, contato
+ALTER TABLE motoristas
+  ADD COLUMN IF NOT EXISTS cnh_categoria     TEXT,
+  ADD COLUMN IF NOT EXISTS cnh_uf            TEXT,
+  ADD COLUMN IF NOT EXISTS transportadora_id UUID REFERENCES transportadoras(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS telefone          TEXT,
+  ADD COLUMN IF NOT EXISTS email             TEXT,
+  ADD COLUMN IF NOT EXISTS obs               TEXT;
+
+NOTIFY pgrst, 'reload schema';
