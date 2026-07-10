@@ -41,6 +41,7 @@ function derivarCategoriaDespesa(classificacao: string): string {
   if (c.startsWith("2.01.01.01"))    return "Insumos";
   if (c.startsWith("2.01.01.02.099")) return "Combustível — Consumo Direto";
   if (c.startsWith("2.01.01.02"))    return "Combustível — Compra para Estoque";
+  if (c.startsWith("2.01.01.03.002")) return "Manutenção de Veículos";
   if (c.startsWith("2.01.01.03"))    return "Manutenção de Máquinas";
   if (c.startsWith("2.01.01.04.001")) return "Arrendamento de Terra";
   if (c.startsWith("2.01.01.04"))    return "Serviços Agrícolas";
@@ -426,6 +427,9 @@ function ContasPagarInner() {
   const pagosNoMes   = lancamentos.filter(l => l.status === "baixado" && (l.data_baixa ?? "").startsWith(mesAtual))
                          .reduce((a, l) => a + (l.valor_pago ?? paraBRL(l)), 0);
 
+  // Mapa id → descrição da OG para exibição rápida no grid
+  const ogMap = useMemo(() => new Map(opGerenciais.map(o => [o.id, o.descricao])), [opGerenciais]);
+
   // ── Filtragem e ordenação ──────────────────────────────────
 
   const filtradosBase = useMemo(() => {
@@ -450,7 +454,8 @@ function ContasPagarInner() {
     return filtradosBase.filter(l => {
       const prodLabel  = produtores.find(p => p.id === l.produtor_id)?.nome ?? "";
       if (fFornecedor && !l.descricao.toLowerCase().includes(fFornecedor.toLowerCase()))       return false;
-      if (fOperacao   && !l.categoria.toLowerCase().includes(fOperacao.toLowerCase()))         return false;
+      const ogDesc = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria ?? "") : (l.categoria ?? "");
+      if (fOperacao   && !ogDesc.toLowerCase().includes(fOperacao.toLowerCase()))               return false;
       if (fSafra      && l.ano_safra_id !== fSafra)                                            return false;
       if (fVencDe     && (l.data_vencimento ?? "") < fVencDe)                                  return false;
       if (fVencAte    && (l.data_vencimento ?? "") > fVencAte)                                  return false;
@@ -461,7 +466,7 @@ function ContasPagarInner() {
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))      return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, anosSafra, produtores]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, anosSafra, produtores, ogMap]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -1022,7 +1027,9 @@ function ContasPagarInner() {
                             </td>
                             {/* Operação */}
                             {col("operacao") && <td style={{ padding: "5px 8px" }}>
-                              <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "2px 6px", borderRadius: 7, whiteSpace: "nowrap" }}>{l.categoria}</span>
+                              <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "2px 6px", borderRadius: 7, whiteSpace: "nowrap" }}>
+                                {l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}
+                              </span>
                             </td>}
                             {/* Safra */}
                             {col("safra") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>

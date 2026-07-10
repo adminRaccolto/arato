@@ -345,6 +345,9 @@ export default function ContasReceber() {
   const totalBarter = lancamentos.filter(l => l.moeda === "barter" && statusEfetivo(l) !== "baixado").reduce((a, l) => a + l.valor, 0);
   const qtdBarter   = lancamentos.filter(l => l.moeda === "barter" && statusEfetivo(l) !== "baixado").length;
 
+  // Mapa id → descrição da OG para exibição rápida no grid
+  const ogMap = useMemo(() => new Map(opGerenciais.map(o => [o.id, o.descricao])), [opGerenciais]);
+
   // ── Filtragem e ordenação ──────────────────────────────────
 
   const filtradosBase = useMemo(() => {
@@ -367,7 +370,8 @@ export default function ContasReceber() {
     return filtradosBase.filter(l => {
       const prodLabel = produtores.find(p => p.id === l.produtor_id)?.nome ?? "";
       if (fFornecedor && !l.descricao.toLowerCase().includes(fFornecedor.toLowerCase()))        return false;
-      if (fOperacao   && !l.categoria.toLowerCase().includes(fOperacao.toLowerCase()))          return false;
+      const ogDesc = l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria ?? "") : (l.categoria ?? "");
+      if (fOperacao   && !ogDesc.toLowerCase().includes(fOperacao.toLowerCase()))               return false;
       if (fSafra      && l.ano_safra_id !== fSafra)                                             return false;
       if (fVencDe     && (l.data_vencimento ?? "") < fVencDe)                                   return false;
       if (fVencAte    && (l.data_vencimento ?? "") > fVencAte)                                  return false;
@@ -377,7 +381,7 @@ export default function ContasReceber() {
       if (fObs        && !(l.observacao ?? "").toLowerCase().includes(fObs.toLowerCase()))       return false;
       return true;
     });
-  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, produtores]);
+  }, [filtradosBase, fFornecedor, fOperacao, fSafra, fVencDe, fVencAte, fMoedaOrig, fConta, fProdutor, fObs, produtores, ogMap]);
 
   // ── Baixar ─────────────────────────────────────────────────
 
@@ -833,7 +837,9 @@ export default function ContasReceber() {
                             </td>
                             {/* Operação */}
                             {col("operacao") && <td style={{ padding: "5px 8px" }}>
-                              <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>{l.categoria}</span>
+                              <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 6px", borderRadius: 8, whiteSpace: "nowrap" }}>
+                                {l.operacao_gerencial_id ? (ogMap.get(l.operacao_gerencial_id) ?? l.categoria) : l.categoria}
+                              </span>
                             </td>}
                             {/* Safra */}
                             {col("safra") && <td style={{ padding: "5px 8px", fontSize: 10, color: "#555", whiteSpace: "nowrap" }}>
