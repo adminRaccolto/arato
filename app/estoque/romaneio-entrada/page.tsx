@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import TopNav from "../../../components/TopNav";
+import BalancaSerial from "../../../components/BalancaSerial";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   listarRomaneiosEntradaDaConta, criarRomaneioEntrada, atualizarRomaneioEntrada,
@@ -642,6 +643,15 @@ export default function RomaneioEntradaPage() {
           {/* Pesagem */}
           <div style={{ background: "#F8FAFD", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 16px", marginBottom: 16 }}>
             <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 12 }}>Pesagem</div>
+
+            {/* Integração balança Toledo PRIX — só no modo Balança Física (sua própria balança) */}
+            {form.tipo === "proprio" && form.modo_pesagem === "balanca" && editRom?.status !== "confirmado" && (
+              <BalancaSerial
+                onCapturarBruto={kg => setForm(p => ({ ...p, peso_bruto: String(kg) }))}
+                onCapturarTara={kg  => setForm(p => ({ ...p, tara: String(kg) }))}
+              />
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div>
                 <label style={lbl}>Peso Bruto (kg) *</label>
