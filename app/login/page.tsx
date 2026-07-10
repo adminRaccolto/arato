@@ -110,8 +110,8 @@ export default function Login() {
           <img
             src="/logo_Arato_Nova.png"
             alt="Arato"
-            width={269}
-            style={{ objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 0 18px rgba(255,255,255,0.70)) drop-shadow(0 0 40px rgba(255,255,255,0.35)) drop-shadow(0 8px 24px rgba(255,255,255,0.20))", maxWidth: "100%" }}
+            width={260}
+            style={{ objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.35))", maxWidth: "100%" }}
           />
 
         </div>
