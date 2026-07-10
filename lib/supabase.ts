@@ -459,6 +459,51 @@ export type Romaneio = {
   created_at?: string;
 };
 
+export type RomaneioEntrada = {
+  id: string;
+  fazenda_id: string;
+  tipo: "proprio" | "terceiro";
+  ticket_numero?: string | null;
+  ticket_terceiro?: string | null;
+  emitido_por?: string | null;
+  pessoa_id?: string | null;
+  data: string;
+  insumo_id?: string | null;
+  produto_nome?: string | null;
+  ciclo_id?: string | null;
+  contrato_id?: string | null;
+  placa?: string | null;
+  motorista?: string | null;
+  peso_bruto_kg: number;
+  tara_kg: number;
+  peso_liquido_kg?: number | null;      // GENERATED
+  umidade_pct?: number | null;
+  umidade_padrao_pct?: number | null;
+  desconto_umidade_kg?: number | null;
+  impureza_pct?: number | null;
+  impureza_padrao_pct?: number | null;
+  desconto_impureza_kg?: number | null;
+  avariados_pct?: number | null;
+  avariados_padrao_pct?: number | null;
+  desconto_avariados_kg?: number | null;
+  ardidos_pct?: number | null;
+  mofados_pct?: number | null;
+  fermentados_pct?: number | null;
+  germinados_pct?: number | null;
+  esverdeados_pct?: number | null;
+  quebrados_pct?: number | null;
+  carunchados_pct?: number | null;
+  outros_avariados_pct?: number | null;
+  ph_hl?: number | null;
+  peso_classificado_kg?: number | null;
+  sacas?: number | null;
+  deposito_id?: string | null;
+  status: "rascunho" | "confirmado";
+  entrada_estoque?: boolean | null;
+  obs?: string | null;
+  created_at?: string;
+};
+
 export type Operacao = {
   id: string;
   safra_id: string;

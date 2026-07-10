@@ -6905,3 +6905,76 @@ COMMENT ON COLUMN contas_bancarias.conjunta     IS 'Conta conjunta com mais de u
 COMMENT ON COLUMN contas_bancarias.cotitulares  IS 'Co-titulares adicionais: [{nome, cpf, produtor_id?}]';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─── Romaneio de Entrada ────────────────────────────────────────────────────
+-- Registro de recebimento de grãos: pesagem própria OU ticket emitido por terceiro
+CREATE TABLE IF NOT EXISTS romaneios_entrada (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id            UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo                  TEXT NOT NULL DEFAULT 'proprio',   -- 'proprio' | 'terceiro'
+
+  -- Identificação
+  ticket_numero         TEXT,              -- número sequencial interno (gerado ou manual)
+  ticket_terceiro       TEXT,              -- número do ticket/romaneio emitido pelo terceiro
+  emitido_por           TEXT,              -- nome livre da empresa emissora (Bunge, cooperativa…)
+  pessoa_id             UUID REFERENCES pessoas(id) ON DELETE SET NULL,   -- FK entidade emissora
+  data                  DATE NOT NULL DEFAULT CURRENT_DATE,
+
+  -- Produto e ciclo
+  insumo_id             UUID REFERENCES insumos(id) ON DELETE SET NULL,
+  produto_nome          TEXT,             -- denormalizado para exibição rápida
+  ciclo_id              UUID REFERENCES ciclos(id) ON DELETE SET NULL,
+  contrato_id           UUID REFERENCES contratos(id) ON DELETE SET NULL,  -- para terceiro: conciliação
+
+  -- Transporte
+  placa                 TEXT,
+  motorista             TEXT,
+
+  -- Pesagem
+  peso_bruto_kg         NUMERIC(12,2) NOT NULL DEFAULT 0,
+  tara_kg               NUMERIC(12,2) NOT NULL DEFAULT 0,
+  peso_liquido_kg       NUMERIC(12,2) GENERATED ALWAYS AS (peso_bruto_kg - tara_kg) STORED,
+
+  -- Classificação ABIOVE
+  umidade_pct           NUMERIC(5,2),
+  umidade_padrao_pct    NUMERIC(5,2),
+  desconto_umidade_kg   NUMERIC(12,2),
+  impureza_pct          NUMERIC(5,2),
+  impureza_padrao_pct   NUMERIC(5,2),
+  desconto_impureza_kg  NUMERIC(12,2),
+  avariados_pct         NUMERIC(5,2),
+  avariados_padrao_pct  NUMERIC(5,2),
+  desconto_avariados_kg NUMERIC(12,2),
+  ardidos_pct           NUMERIC(5,2),
+  mofados_pct           NUMERIC(5,2),
+  fermentados_pct       NUMERIC(5,2),
+  germinados_pct        NUMERIC(5,2),
+  esverdeados_pct       NUMERIC(5,2),
+  quebrados_pct         NUMERIC(5,2),
+  carunchados_pct       NUMERIC(5,2),
+  outros_avariados_pct  NUMERIC(5,2),
+  ph_hl                 NUMERIC(6,2),
+
+  -- Resultado
+  peso_classificado_kg  NUMERIC(12,2),
+  sacas                 NUMERIC(10,3),
+
+  -- Destino
+  deposito_id           UUID REFERENCES depositos(id) ON DELETE SET NULL,  -- próprio: silo/armazém de destino
+
+  -- Status
+  status                TEXT NOT NULL DEFAULT 'rascunho',  -- 'rascunho' | 'confirmado'
+  entrada_estoque       BOOLEAN DEFAULT FALSE,              -- TRUE após gerar movimentação
+
+  obs                   TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE romaneios_entrada ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "re_fazenda" ON romaneios_entrada FOR ALL
+  USING (
+    fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+  );
+
+NOTIFY pgrst, 'reload schema';

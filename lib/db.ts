@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -4732,3 +4732,74 @@ export function calcularCotas(
 
 /** ID fixo da fazenda demo — substituir por auth.user() quando implementar login */
 export const FAZENDA_ID = "00000000-0000-0000-0000-000000000001";
+
+// ————————————————————————————————————————
+// ROMANEIOS DE ENTRADA
+// ————————————————————————————————————————
+
+export async function listarRomaneiosEntrada(fazenda_id: string): Promise<RomaneioEntrada[]> {
+  const { data, error } = await supabase
+    .from("romaneios_entrada")
+    .select("*")
+    .eq("fazenda_id", fazenda_id)
+    .order("data", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarRomaneioEntrada(r: Omit<RomaneioEntrada, "id" | "created_at" | "peso_liquido_kg">): Promise<RomaneioEntrada> {
+  const { data, error } = await supabase.from("romaneios_entrada").insert(r).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarRomaneioEntrada(id: string, r: Partial<Omit<RomaneioEntrada, "id" | "created_at" | "peso_liquido_kg">>): Promise<void> {
+  const { error } = await supabase.from("romaneios_entrada").update(r).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirRomaneioEntrada(id: string): Promise<void> {
+  const { error } = await supabase.from("romaneios_entrada").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function confirmarRomaneioEntrada(
+  romaneio: RomaneioEntrada,
+  fazenda_id: string,
+): Promise<void> {
+  if (romaneio.entrada_estoque) return; // idempotente
+  const pl    = (romaneio.peso_bruto_kg ?? 0) - (romaneio.tara_kg ?? 0);
+  const sacas = romaneio.sacas ?? pl / 60;
+
+  // Movimentação de estoque: entrada
+  if (romaneio.insumo_id && romaneio.deposito_id) {
+    // Busca custo médio atual
+    const { data: est } = await supabase
+      .from("estoque")
+      .select("custo_medio_unitario")
+      .eq("fazenda_id", fazenda_id)
+      .eq("insumo_id", romaneio.insumo_id)
+      .eq("deposito_id", romaneio.deposito_id)
+      .maybeSingle();
+    await supabase.from("movimentacoes_estoque").insert({
+      fazenda_id,
+      insumo_id:           romaneio.insumo_id,
+      deposito_id:         romaneio.deposito_id,
+      tipo:                "entrada",
+      quantidade:          sacas,
+      unidade:             "sc",
+      custo_unitario:      est?.custo_medio_unitario ?? 0,
+      data:                romaneio.data,
+      origem:              romaneio.tipo === "proprio" ? "romaneio_entrada_proprio" : "romaneio_entrada_terceiro",
+      referencia_id:       romaneio.id,
+      observacao:          romaneio.obs ?? undefined,
+    });
+  }
+  // Marca como confirmado
+  const { error } = await supabase
+    .from("romaneios_entrada")
+    .update({ status: "confirmado", entrada_estoque: true })
+    .eq("id", romaneio.id);
+  if (error) throw error;
+}
