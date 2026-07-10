@@ -7042,29 +7042,31 @@ function CadastrosInner() {
             })()}
           </div>
 
-          {/* Fazenda do ciclo — seletor explícito */}
-          {fazendas.length > 1 && (
-            <div style={{ background: "#EFF6FF", border: "0.5px solid #B8D4F0", borderRadius: 10, padding: "10px 16px", marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Este ciclo pertence à fazenda</div>
-              <select
-                style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff" }}
-                value={cicloFazendaId}
-                disabled={!!editCiclo}
-                onChange={async e => {
-                  const fid = e.target.value;
-                  setCicloFazendaId(fid);
-                  setCicloTalhoes({});
-                  setOcupado({});
-                  await carregarTalhoesDeFazenda(fid);
-                  if (fCiclo.data_inicio && fCiclo.data_fim) await calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, fid);
-                }}
-              >
-                <option value="">— Selecionar fazenda —</option>
-                {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
-              </select>
-              {editCiclo && <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>A fazenda não pode ser alterada em um ciclo existente.</div>}
+          {/* Fazenda do ciclo — seletor SEMPRE visível */}
+          <div style={{ background: "#EFF6FF", border: "1.5px solid #1A5CB8", borderRadius: 10, padding: "10px 16px", marginBottom: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+              Fazenda *
             </div>
-          )}
+            <select
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 7, border: "1px solid #93C5FD", fontSize: 14, fontWeight: 600, color: "#0B2D50", background: "#fff", cursor: editCiclo ? "not-allowed" : "pointer" }}
+              value={cicloFazendaId}
+              disabled={!!editCiclo}
+              onChange={async e => {
+                const fid = e.target.value;
+                setCicloFazendaId(fid);
+                setCicloTalhoes({});
+                setOcupado({});
+                await carregarTalhoesDeFazenda(fid);
+                if (fCiclo.data_inicio && fCiclo.data_fim) await calcularOcupacao(fCiclo.data_inicio, fCiclo.data_fim, editCiclo?.id, fid);
+              }}
+            >
+              <option value="">— selecionar fazenda —</option>
+              {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
+            </select>
+            {editCiclo
+              ? <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>Fazenda não pode ser alterada em um ciclo existente.</div>
+              : !cicloFazendaId && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>Selecione a fazenda antes de continuar.</div>}
+          </div>
 
           {/* Talhões do ciclo */}
           <div style={{ marginBottom: 20 }}>
@@ -7073,9 +7075,9 @@ function CadastrosInner() {
               <span style={{ fontSize: 11, fontWeight: 400, color: "#555" }}>
                 (informe a área efetivamente plantada — usada para rateio de custos por ha)
               </span>
-              {cicloFazendaId && fazendas.length > 1 && (
+              {cicloFazendaId && (
                 <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
-                  {fazendas.find(f => f.id === cicloFazendaId)?.nome}
+                  {fazendas.find(f => f.id === cicloFazendaId)?.nome ?? "—"}
                 </span>
               )}
             </div>
@@ -7163,7 +7165,7 @@ function CadastrosInner() {
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button style={btnR} onClick={() => setModalCiclo(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim ? 0.5 : 1 }} disabled={salvando || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim} onClick={salvarCiclo}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={{ ...btnV, opacity: salvando || !cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim ? 0.5 : 1 }} disabled={salvando || !cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim} onClick={salvarCiclo}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
