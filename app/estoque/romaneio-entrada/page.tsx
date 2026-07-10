@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import TopNav from "../../../components/TopNav";
 import { useAuth } from "../../../components/AuthProvider";
 import {
   listarRomaneiosEntradaDaConta, criarRomaneioEntrada, atualizarRomaneioEntrada,
   excluirRomaneioEntrada, confirmarRomaneioEntrada,
   listarDepositos, listarPessoasDaConta, listarAnosSafra, listarTodosCiclos, listarInsumos,
-  listarContratosDaConta, listarFazendas,
+  listarContratosDaConta, listarFazendas, listarTalhoes,
 } from "../../../lib/db";
-import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato } from "../../../lib/supabase";
+import type { RomaneioEntrada, Deposito, Pessoa, AnoSafra, Ciclo, Insumo, Contrato, Talhao } from "../../../lib/supabase";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const fmt   = (n?: number | null, d = 2) => (n ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -35,8 +36,8 @@ const calcDescAvar  = (pl: number, a: number, aPad: number) => a > aPad ? +(pl *
 type Modo = "proprio" | "terceiro";
 type FormRom = {
   fazenda_id: string;
-  tipo: Modo; data: string; placa: string; motorista: string;
-  insumo_id: string; ciclo_id: string; contrato_id: string;
+  tipo: Modo; modo_pesagem: "balanca" | "manual"; data: string; placa: string; motorista: string;
+  insumo_id: string; ciclo_id: string; talhao_id: string; contrato_id: string;
   peso_bruto: string; tara: string;
   umidade: string; impureza: string;
   ardidos: string; mofados: string; fermentados: string; germinados: string;
@@ -52,8 +53,8 @@ type FormRom = {
 
 const FORM_VAZIO: FormRom = {
   fazenda_id: "",
-  tipo: "proprio", data: TODAY, placa: "", motorista: "",
-  insumo_id: "", ciclo_id: "", contrato_id: "",
+  tipo: "proprio", modo_pesagem: "balanca", data: TODAY, placa: "", motorista: "",
+  insumo_id: "", ciclo_id: "", talhao_id: "", contrato_id: "",
   peso_bruto: "", tara: "",
   umidade: "", impureza: "",
   ardidos: "", mofados: "", fermentados: "", germinados: "",
@@ -97,6 +98,7 @@ export default function RomaneioEntradaPage() {
   const [pessoas,    setPessoas]    = useState<Pessoa[]>([]);
   const [anos,       setAnos]       = useState<AnoSafra[]>([]);
   const [ciclos,     setCiclos]     = useState<Ciclo[]>([]);
+  const [talhoes,    setTalhoes]    = useState<Talhao[]>([]);
   const [insumos,    setInsumos]    = useState<Insumo[]>([]);
   const [contratos,  setContratos]  = useState<Contrato[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -127,7 +129,8 @@ export default function RomaneioEntradaPage() {
       listarTodosCiclos(fid),
       listarInsumos(fid),
       listarContratosDaConta(contaId ?? "", fid),
-    ]).then(([r, d, p, a, c, i, ct]) => {
+      listarTalhoes(fid),
+    ]).then(([r, d, p, a, c, i, ct, t]) => {
       setRomaneios(r);
       setDepositos(d.filter(x => x.ativo));
       setPessoas(p);
@@ -135,6 +138,7 @@ export default function RomaneioEntradaPage() {
       setCiclos(c);
       setInsumos(i.filter(x => x.categoria === "produto_agricola"));
       setContratos(ct);
+      setTalhoes(t);
     }).catch(console.error).finally(() => setLoading(false));
   }, [fazendaId, contaId]);
 
@@ -189,8 +193,9 @@ export default function RomaneioEntradaPage() {
     setAnoSel(ciclo?.ano_safra_id ?? "");
     setForm({
       fazenda_id: r.fazenda_id ?? "",
-      tipo: r.tipo, data: r.data, placa: r.placa ?? "", motorista: r.motorista ?? "",
-      insumo_id: r.insumo_id ?? "", ciclo_id: r.ciclo_id ?? "", contrato_id: r.contrato_id ?? "",
+      tipo: r.tipo, modo_pesagem: (r as RomaneioEntrada & { modo_pesagem?: string }).modo_pesagem === "manual" ? "manual" : "balanca",
+      data: r.data, placa: r.placa ?? "", motorista: r.motorista ?? "",
+      insumo_id: r.insumo_id ?? "", ciclo_id: r.ciclo_id ?? "", talhao_id: (r as RomaneioEntrada & { talhao_id?: string }).talhao_id ?? "", contrato_id: r.contrato_id ?? "",
       peso_bruto: String(r.peso_bruto_kg ?? ""), tara: String(r.tara_kg ?? ""),
       umidade: String(r.umidade_pct ?? ""), impureza: String(r.impureza_pct ?? ""),
       ardidos: String(r.ardidos_pct ?? ""), mofados: String(r.mofados_pct ?? ""),
@@ -219,9 +224,11 @@ export default function RomaneioEntradaPage() {
       const insumoNome = insumos.find(i => i.id === form.insumo_id)?.nome ?? undefined;
 
       const fidRom = form.fazenda_id || fazendaId!;
-      const payload: Omit<RomaneioEntrada, "id" | "created_at" | "peso_liquido_kg"> = {
+      const payload: Omit<RomaneioEntrada, "id" | "created_at" | "peso_liquido_kg"> & { talhao_id?: string | null; modo_pesagem?: string } = {
         fazenda_id:           fidRom,
         tipo:                 form.tipo,
+        modo_pesagem:         form.modo_pesagem,
+        talhao_id:            form.talhao_id || null,
         data:                 form.data,
         placa:                form.placa.toUpperCase() || null,
         motorista:            form.motorista || null,
@@ -329,9 +336,11 @@ export default function RomaneioEntradaPage() {
   const deposArmazem   = depositos.filter(d => d.tipo === "armazem_fazenda");
   const deposTerceiros = depositos.filter(d => d.tipo === "armazem_terceiro" || d.tipo === "terceiro");
 
-  if (loading) return <div style={{ padding: 40, textAlign: "center", color: "#555" }}>Carregando…</div>;
+  if (loading) return (<><TopNav /><div style={{ padding: 40, textAlign: "center", color: "#555" }}>Carregando…</div></>);
 
   return (
+    <>
+    <TopNav />
     <div style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "100vh" }}>
 
       {/* Header */}
@@ -489,8 +498,8 @@ export default function RomaneioEntradaPage() {
           )}
 
           {/* Toggle tipo */}
-          <div style={{ display: "flex", gap: 0, marginBottom: 20, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>
-            {([["proprio", "Pesagem Própria", "#1A5CB8"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
+          <div style={{ display: "flex", gap: 0, marginBottom: 12, border: "0.5px solid #CDD5E0", borderRadius: 8, overflow: "hidden" }}>
+            {([["proprio", "Pesagem por Balança", "#1A5CB8"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
               <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
                 flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
                 background: form.tipo === v ? c : "#F8FAFD",
@@ -500,14 +509,32 @@ export default function RomaneioEntradaPage() {
             ))}
           </div>
 
+          {/* Sub-toggle balança/manual (só para próprio) */}
+          {form.tipo === "proprio" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 11, color: "#555", fontWeight: 600, minWidth: 80 }}>Modo:</span>
+              {([["balanca", "⚖ Balança Física"], ["manual", "✎ Entrada Manual"]] as const).map(([v, l]) => (
+                <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
+                  padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "0.5px solid",
+                  background: form.modo_pesagem === v ? "#EBF3FF" : "#F8FAFD",
+                  color:      form.modo_pesagem === v ? "#1A5CB8" : "#777",
+                  borderColor: form.modo_pesagem === v ? "#1A5CB8" : "#CDD5E0",
+                }}>{l}</button>
+              ))}
+              {form.modo_pesagem === "balanca" && (
+                <span style={{ fontSize: 11, color: "#378ADD" }}>Informe os pesos lidos na balança (bruto e tara)</span>
+              )}
+            </div>
+          )}
+
           {/* Info contextual */}
           {form.tipo === "proprio" ? (
             <div style={{ background: "#EBF3FF", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#0B2D50", marginBottom: 18 }}>
-              <strong>Pesagem Própria</strong> — você tem balança. Pese o caminhão, informe bruto e tara. O peso líquido e as sacas serão calculados automaticamente.
+              <strong>Pesagem por Balança</strong> — pese o caminhão carregado (bruto) e o caminhão vazio (tara). O peso líquido e as sacas são calculados automaticamente.
             </div>
           ) : (
             <div style={{ background: "#F5F3FF", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#4C1D95", marginBottom: 18 }}>
-              <strong>Romaneio de Terceiro</strong> — o comprador/armazém emitiu o ticket. Registre os dados do documento recebido para conferência e controle de contrato.
+              <strong>Romaneio de Terceiro</strong> — o comprador/armazém emitiu o ticket. Registre os dados do documento recebido. O grão ainda é seu — aparece na posição de estoque em terceiros.
             </div>
           )}
 
@@ -518,8 +545,8 @@ export default function RomaneioEntradaPage() {
               <input style={inp} type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} disabled={editRom?.status === "confirmado"} />
             </div>
             <div>
-              <label style={lbl}>Ticket Interno</label>
-              <input style={inp} placeholder="Ex: 001" value={form.ticket_interno} onChange={e => setForm(p => ({ ...p, ticket_interno: e.target.value }))} disabled={editRom?.status === "confirmado"} />
+              <label style={lbl}>{form.tipo === "proprio" && form.modo_pesagem === "balanca" ? "Nº Ticket da Balança" : "Ticket Interno"}</label>
+              <input style={inp} placeholder={form.modo_pesagem === "balanca" ? "Ex: 0042 (nº impresso pela balança)" : "Ex: 001"} value={form.ticket_interno} onChange={e => setForm(p => ({ ...p, ticket_interno: e.target.value }))} disabled={editRom?.status === "confirmado"} />
             </div>
             {form.tipo === "terceiro" && (
               <div>
@@ -566,8 +593,8 @@ export default function RomaneioEntradaPage() {
             </div>
           )}
 
-          {/* Produto e Ciclo */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+          {/* Produto, Ciclo e Talhão */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Produto</label>
               <select style={inp} value={form.insumo_id} onChange={e => setForm(p => ({ ...p, insumo_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
@@ -577,16 +604,25 @@ export default function RomaneioEntradaPage() {
             </div>
             <div>
               <label style={lbl}>Ano Safra</label>
-              <select style={inp} value={anoSel} onChange={e => { setAnoSel(e.target.value); setForm(p => ({ ...p, ciclo_id: "" })); }} disabled={editRom?.status === "confirmado"}>
+              <select style={inp} value={anoSel} onChange={e => { setAnoSel(e.target.value); setForm(p => ({ ...p, ciclo_id: "", talhao_id: "" })); }} disabled={editRom?.status === "confirmado"}>
                 <option value="">— selecione —</option>
                 {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
               </select>
             </div>
             <div>
               <label style={lbl}>Ciclo / Empreendimento</label>
-              <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value }))} disabled={editRom?.status === "confirmado" || !anoSel}>
+              <select style={inp} value={form.ciclo_id} onChange={e => setForm(p => ({ ...p, ciclo_id: e.target.value, talhao_id: "" }))} disabled={editRom?.status === "confirmado" || !anoSel}>
                 <option value="">— selecione —</option>
                 {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Talhão <span style={{ fontWeight: 400, color: "#888" }}>(produtividade)</span></label>
+              <select style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
+                <option value="">— selecione —</option>
+                {talhoes
+                  .filter(t => !form.fazenda_id || t.fazenda_id === (form.fazenda_id || fazendaId))
+                  .map(t => <option key={t.id} value={t.id}>{t.nome} {t.area_ha ? `(${t.area_ha} ha)` : ""}</option>)}
               </select>
             </div>
           </div>
@@ -761,5 +797,6 @@ export default function RomaneioEntradaPage() {
         </Modal>
       )}
     </div>
+    </>
   );
 }

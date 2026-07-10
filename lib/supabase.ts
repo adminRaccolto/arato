@@ -463,6 +463,7 @@ export type RomaneioEntrada = {
   id: string;
   fazenda_id: string;
   tipo: "proprio" | "terceiro";
+  modo_pesagem?: "balanca" | "manual" | null;
   ticket_numero?: string | null;
   ticket_terceiro?: string | null;
   emitido_por?: string | null;
@@ -471,6 +472,7 @@ export type RomaneioEntrada = {
   insumo_id?: string | null;
   produto_nome?: string | null;
   ciclo_id?: string | null;
+  talhao_id?: string | null;
   contrato_id?: string | null;
   placa?: string | null;
   motorista?: string | null;

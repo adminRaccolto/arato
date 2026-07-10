@@ -6978,3 +6978,12 @@ CREATE POLICY "re_fazenda" ON romaneios_entrada FOR ALL
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Seção 60 — romaneios_entrada: talhao_id + modo_pesagem
+-- ═══════════════════════════════════════════════════════════════════
+ALTER TABLE romaneios_entrada
+  ADD COLUMN IF NOT EXISTS talhao_id    UUID REFERENCES talhoes(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS modo_pesagem TEXT DEFAULT 'balanca';  -- 'balanca' | 'manual'
+
+NOTIFY pgrst, 'reload schema';
