@@ -523,6 +523,32 @@ function CadastrosInner() {
     carunchados_max: "3", kg_saca: "60",
   });
 
+  // ── Carregar fazendas da conta na inicialização (necessário para seletores em todos os modais) ──
+  useEffect(() => {
+    if (!fazendaId && !contaId) return;
+    const carregarFazendasConta = () => {
+      if (userRole === "raccotlo" && (contaId || fazendaId)) {
+        fetch("/api/fazenda/da-conta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conta_id: contaId, fazenda_id: fazendaId }),
+        }).then(r => r.json()).then(json => {
+          if (json.ok) {
+            const fzs = json.fazendas ?? [];
+            setFazendas(fzs);
+            setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+          }
+        }).catch(() => {});
+      } else {
+        listarFazendas().then(fzs => {
+          setFazendas(fzs);
+          setFazTrabalho(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+        }).catch(() => {});
+      }
+    };
+    carregarFazendasConta();
+  }, [fazendaId, contaId, userRole]);
+
   // ── Carregar dados conforme aba ──
   useEffect(() => {
     if (!fazendaId) return;
