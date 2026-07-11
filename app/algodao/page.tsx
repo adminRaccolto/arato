@@ -9,7 +9,7 @@ import type { PrecosData } from "../api/precos/route";
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 interface Fazenda   { id: string; nome: string; municipio?: string; estado?: string }
-interface Ciclo     { id: string; descricao: string; cultura: string; fazenda_id: string; ano_safra_id?: string; area_ha?: number; data_inicio?: string; data_fim?: string }
+interface Ciclo     { id: string; descricao: string; cultura: string; ano_safra_id?: string; area_ha?: number; data_inicio?: string; data_fim?: string }
 interface Talhao    { id: string; nome: string; area_ha?: number }
 interface Pessoa    { id: string; nome: string }
 
@@ -199,17 +199,32 @@ export default function AlgodaoPage() {
 
   useEffect(() => {
     if (!fazTrabalho) return;
+    // talhões e pessoas — têm fazenda_id direto
     supabase.from("talhoes").select("id, nome, area_ha").eq("fazenda_id", fazTrabalho).order("nome")
       .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
-    supabase.from("ciclos").select("id, descricao, cultura, fazenda_id, area_ha, data_inicio, data_fim")
-      .eq("fazenda_id", fazTrabalho).order("descricao", { ascending: false })
-      .then(({ data }) => {
-        const alg = ((data ?? []) as Ciclo[]).filter(c => c.cultura?.toLowerCase().includes("algodão") || c.cultura?.toLowerCase().includes("algodao"));
-        setCiclos(alg);
-        setCicloSel(prev => prev || alg[0]?.id || "");
-      });
     supabase.from("pessoas").select("id, nome").order("nome")
       .then(({ data }) => setPessoas((data ?? []) as Pessoa[]));
+    // ciclos não têm fazenda_id direto — pertencem a anos_safra que tem fazenda_id
+    const loadCiclos = async () => {
+      const { data: anos } = await supabase
+        .from("anos_safra")
+        .select("id")
+        .eq("fazenda_id", fazTrabalho);
+      const anoIds = (anos ?? []).map((a: { id: string }) => a.id);
+      if (anoIds.length === 0) { setCiclos([]); setCicloSel(""); return; }
+      const { data } = await supabase
+        .from("ciclos")
+        .select("id, descricao, cultura, ano_safra_id, area_ha, data_inicio, data_fim")
+        .in("ano_safra_id", anoIds)
+        .order("descricao", { ascending: false });
+      const alg = ((data ?? []) as Ciclo[]).filter(c => {
+        const cult = (c.cultura ?? "").toLowerCase();
+        return cult.includes("algod");
+      });
+      setCiclos(alg);
+      setCicloSel(prev => prev || alg[0]?.id || "");
+    };
+    loadCiclos();
   }, [fazTrabalho]);
 
   // ─── Carrega dados quando ciclo muda ─────────────────────────────────────
