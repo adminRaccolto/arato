@@ -9,7 +9,7 @@ import type { PrecosData } from "../api/precos/route";
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 interface Fazenda   { id: string; nome: string; municipio?: string; estado?: string }
-interface Ciclo     { id: string; descricao: string; cultura: string; ano_safra_id?: string; area_ha?: number; data_inicio?: string; data_fim?: string }
+interface Ciclo     { id: string; descricao: string; cultura: string; fazenda_id?: string; ano_safra_id?: string; area_ha?: number; data_inicio?: string; data_fim?: string }
 interface Talhao    { id: string; nome: string; area_ha?: number }
 interface Pessoa    { id: string; nome: string }
 
@@ -204,25 +204,37 @@ export default function AlgodaoPage() {
       .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
     supabase.from("pessoas").select("id, nome").order("nome")
       .then(({ data }) => setPessoas((data ?? []) as Pessoa[]));
-    // ciclos não têm fazenda_id direto — pertencem a anos_safra que tem fazenda_id
+    // Busca ciclos pela fazenda_id direta (ciclos tem fazenda_id) — dois caminhos para garantir
     const loadCiclos = async () => {
+      // caminho 1: direto por fazenda_id
+      const { data: direto } = await supabase
+        .from("ciclos")
+        .select("id, descricao, cultura, ano_safra_id, fazenda_id, area_ha, data_inicio, data_fim")
+        .eq("fazenda_id", fazTrabalho)
+        .order("descricao", { ascending: false });
+
+      if (direto && direto.length > 0) {
+        // mostra todos — label inclui cultura para o usuário poder identificar
+        setCiclos(direto as Ciclo[]);
+        const alg = (direto as Ciclo[]).find(c => (c.cultura ?? "").toLowerCase().includes("algod"));
+        setCicloSel(prev => prev || alg?.id || direto[0]?.id || "");
+        return;
+      }
+
+      // caminho 2: via anos_safra (fallback caso fazenda_id em ciclos esteja NULL)
       const { data: anos } = await supabase
-        .from("anos_safra")
-        .select("id")
-        .eq("fazenda_id", fazTrabalho);
+        .from("anos_safra").select("id").eq("fazenda_id", fazTrabalho);
       const anoIds = (anos ?? []).map((a: { id: string }) => a.id);
       if (anoIds.length === 0) { setCiclos([]); setCicloSel(""); return; }
       const { data } = await supabase
         .from("ciclos")
-        .select("id, descricao, cultura, ano_safra_id, area_ha, data_inicio, data_fim")
+        .select("id, descricao, cultura, ano_safra_id, fazenda_id, area_ha, data_inicio, data_fim")
         .in("ano_safra_id", anoIds)
         .order("descricao", { ascending: false });
-      const alg = ((data ?? []) as Ciclo[]).filter(c => {
-        const cult = (c.cultura ?? "").toLowerCase();
-        return cult.includes("algod");
-      });
-      setCiclos(alg);
-      setCicloSel(prev => prev || alg[0]?.id || "");
+      const todos = (data ?? []) as Ciclo[];
+      setCiclos(todos);
+      const alg = todos.find(c => (c.cultura ?? "").toLowerCase().includes("algod"));
+      setCicloSel(prev => prev || alg?.id || todos[0]?.id || "");
     };
     loadCiclos();
   }, [fazTrabalho]);
@@ -448,7 +460,7 @@ export default function AlgodaoPage() {
             <label style={{ ...lbl, marginBottom: 2 }}>Ciclo de Algodão *</label>
             <select value={cicloSel} onChange={e => setCicloSel(e.target.value)} style={{ ...inp, width: 240, fontWeight: 600 }} disabled={!fazTrabalho}>
               <option value="">— selecionar ciclo —</option>
-              {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+              {ciclos.map(c => <option key={c.id} value={c.id}>{c.descricao}{c.cultura && ` — ${c.cultura}`}</option>)}
             </select>
           </div>
           {!fazTrabalho && <span style={{ fontSize: 11, color: "#E24B4A", alignSelf: "flex-end", paddingBottom: 6 }}>Selecione a fazenda</span>}
