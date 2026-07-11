@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../components/AuthProvider";
 import { listarFazendas } from "../../lib/db";
+import TopNav from "../../components/TopNav";
 import type { PrecosData } from "../api/precos/route";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -407,6 +408,8 @@ export default function AlgodaoPage() {
   const alertasBicudo = armadilhas.filter(a => a.ultima_leitura && a.ultima_leitura.capturas >= THRESHOLD_BICUDO);
 
   return (
+    <>
+    <TopNav />
     <div style={{ padding: "24px 28px", fontFamily: "system-ui, sans-serif", fontSize: 13, background: "#F4F6FA", minHeight: "100vh" }}>
 
       {/* ── Cabeçalho ── */}
@@ -1311,6 +1314,7 @@ export default function AlgodaoPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
 
