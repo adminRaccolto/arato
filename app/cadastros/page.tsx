@@ -2266,6 +2266,8 @@ function CadastrosInner() {
                   const area = c.area_plantada_ha;
                   const sacasEsp = prod && area ? area * prod : null;
                   const receitaEsp = sacasEsp && preco ? sacasEsp * preco : null;
+                  const cultL = (c.cultura ?? "").toLowerCase();
+                  const unidC = cultL.includes("algod") ? "@" : cultL.includes("cana") ? "t" : cultL.includes("café") || cultL.includes("cafe") ? "sc (60kg)" : "sc";
                   const isAux = c.is_auxiliar;
                   const nomePai = isAux && c.ciclo_pai_id ? ciclos.find(x => x.id === c.ciclo_pai_id)?.descricao : null;
                   const auxiliaresDeste = ciclos.filter(x => x.ciclo_pai_id === c.id);
@@ -2288,14 +2290,14 @@ function CadastrosInner() {
                           <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {badge(c.cultura, isAux ? "#FDE9BB" : "#D5E8F5", isAux ? "#7A5200" : "#0B2D50")}
                             {area != null && <span style={{ fontSize: 10, background: "#F0FDF7", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{area.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha plantados</span>}
-                            {!isAux && prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} sc/ha</span>}
-                            {!isAux && preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/sc</span>}
+                            {!isAux && prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unidC}/ha</span>}
+                            {!isAux && preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{unidC}</span>}
                             {auxiliaresDeste.length > 0 && <span style={{ fontSize:10, background:"#FBF3E0", color:"#C9921B", borderRadius:5, padding:"2px 7px", fontWeight:600 }}>{auxiliaresDeste.length} auxiliar{auxiliaresDeste.length > 1 ? "es" : ""} vinculado{auxiliaresDeste.length > 1 ? "s" : ""}</span>}
                           </div>
                           {!isAux && receitaEsp != null && (
                             <div style={{ fontSize: 11, color: "#14532D", marginTop: 4, fontWeight: 600 }}>
                               Receita bruta estimada: {receitaEsp.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                              <span style={{ fontWeight: 400, color: "#555", marginLeft: 6 }}>({sacasEsp!.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} sc esperadas)</span>
+                              <span style={{ fontWeight: 400, color: "#555", marginLeft: 6 }}>({sacasEsp!.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} {unidC} esperadas)</span>
                             </div>
                           )}
                         </div>
@@ -7039,32 +7041,36 @@ function CadastrosInner() {
             )}
             <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId); }} /></div>
             <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId); }} /></div>
-            {!fCiclo.is_auxiliar && <div>
-              <label style={lbl}>Produtividade esperada (sc/ha)</label>
-              <InputMonetario style={inp} placeholder="Ex: 62,00" value={fCiclo.produtividade_esperada_sc_ha}
-                onChange={v => setFCiclo(p => ({ ...p, produtividade_esperada_sc_ha: String(v) }))} />
-            </div>}
-            {!fCiclo.is_auxiliar && <div>
-              <label style={lbl}>Preço de venda esperado (R$/sc)</label>
-              <InputMonetario style={inp} placeholder="Ex: 118,50" value={fCiclo.preco_esperado_sc}
-                onChange={v => setFCiclo(p => ({ ...p, preco_esperado_sc: String(v) }))} />
-            </div>}
-            {/* Preview receita esperada */}
-            {(() => {
+            {!fCiclo.is_auxiliar && (() => {
+              const cult = (fCiclo.cultura ?? "").toLowerCase();
+              const unid = cult.includes("algod") ? "@" : cult.includes("cana") ? "t" : cult.includes("café") || cult.includes("cafe") ? "sc (60kg)" : "sc";
+              const placeholderProd = cult.includes("algod") ? "Ex: 320,00" : cult.includes("cana") ? "Ex: 80,00" : "Ex: 62,00";
+              const placeholderPreco = cult.includes("algod") ? "Ex: 9,20 (R$/@)" : cult.includes("cana") ? "Ex: 120,00 (R$/t)" : "Ex: 118,50";
               const talhoesSel = Object.entries(cicloTalhoes).filter(([, a]) => parseFloat(a) > 0);
               const areaTotal = talhoesSel.reduce((s, [, a]) => s + parseFloat(a), 0);
               const prod = parseFloat(fCiclo.produtividade_esperada_sc_ha) || 0;
               const preco = parseFloat(fCiclo.preco_esperado_sc) || 0;
-              const sacas = areaTotal * prod;
-              const receita = sacas * preco;
-              if (areaTotal > 0 && prod > 0) return (
-                <div style={{ gridColumn: "1/-1", background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#14532D" }}>
-                  <strong>{areaTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha</strong> plantados ·{" "}
-                  <strong>{sacas.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} sc</strong> esperadas
-                  {preco > 0 && <> · Receita bruta estimada: <strong>{receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></>}
+              const qtd = areaTotal * prod;
+              const receita = qtd * preco;
+              return (<>
+                <div>
+                  <label style={lbl}>Produtividade esperada ({unid}/ha)</label>
+                  <InputMonetario style={inp} placeholder={placeholderProd} value={fCiclo.produtividade_esperada_sc_ha}
+                    onChange={v => setFCiclo(p => ({ ...p, produtividade_esperada_sc_ha: String(v) }))} />
                 </div>
-              );
-              return null;
+                <div>
+                  <label style={lbl}>Preço de venda esperado (R$/{unid})</label>
+                  <InputMonetario style={inp} placeholder={placeholderPreco} value={fCiclo.preco_esperado_sc}
+                    onChange={v => setFCiclo(p => ({ ...p, preco_esperado_sc: String(v) }))} />
+                </div>
+                {areaTotal > 0 && prod > 0 && (
+                  <div style={{ gridColumn: "1/-1", background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#14532D" }}>
+                    <strong>{areaTotal.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha</strong> plantados ·{" "}
+                    <strong>{qtd.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} {unid}</strong> esperadas
+                    {preco > 0 && <> · Receita bruta estimada: <strong>{receita.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong></>}
+                  </div>
+                )}
+              </>);
             })()}
           </div>
 
