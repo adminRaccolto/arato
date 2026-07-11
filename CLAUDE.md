@@ -960,6 +960,40 @@ Padrão de cada aba:
 
 ---
 
+### Sessão julho/2026 — Módulo Algodão (Add-on)
+
+#### Arquitetura de Add-ons Opcionais
+- `conta_modulos` (tabela existente): `(conta_id, modulo, habilitado)` — override por conta
+- `AuthProvider.podeAcessarPlano(modulo)` agora lê os overrides **primeiro**, antes de verificar o plano
+- `/admin/modulos` — grupo "Add-ons Opcionais": algodao, cerealista, sementes, pecuaria
+- TopNav: grupo Algodão condicional via `NAV_MODULE_MAP["algodao"] = ["algodao"]`
+
+#### `app/algodao/page.tsx` ✅ — Módulo de Algodão completo (6 abas)
+- **Safra & Operações**: stat cards (área/módulos/fardos/rendimento), operações especiais (defolhação + regulador crescimento com NAWF / % abertura maçãs)
+- **Bicudo**: armadilhas por talhão, leituras semanais, alerta automático ≥ 8 capturas/armadilha/semana, histórico
+- **Colheita & Módulos**: rastreamento campo→transporte→algodoeira, peso estimado, romaneio
+- **Algodoeira / Beneficiamento**: lotes com rendimento pluma (semáforo <38%/38-40%/≥40%), fardos, caroço, custo beneficiamento
+- **HVI & Qualidade**: laudo por lote com semáforo por parâmetro vs referências MT; prêmio/desconto
+- **Posição (cockpit)**: preço ICE/CBOT ao vivo (¢/lb + R$/@), valor do estoque de pluma, fluxo de produção, posição por algodoeira
+
+#### Tabelas criadas (Seção 62, já executada)
+```
+bicudo_armadilhas         armadilhas por fazenda/ciclo/talhão
+bicudo_capturas           UNIQUE(armadilha_id, data_leitura) — upsert por semana
+algodao_modulos           status: campo | em_transporte | entregue
+algodao_operacoes_especiais tipo: regulador_crescimento | defoliacao
+algodao_beneficiamentos   por algodoeira — rendimento, fardos, caroço
+algodao_laudos_hvi        por beneficiamento — 11 parâmetros USDA/HVI
+```
+
+#### Padrão do módulo algodão
+- Ciclos filtrados por `cultura ILIKE '%algodão%'` da fazenda selecionada
+- Algodoeira = pessoa do cadastro `pessoas` (tipo comprador/algodoeira)
+- 1 fardo pluma ≈ 220 kg · 14,67 @ · preco_arroba via `/api/precos` (CT=F Yahoo Finance)
+- Threshold bicudo configurável como constante `THRESHOLD_BICUDO = 8`
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.
