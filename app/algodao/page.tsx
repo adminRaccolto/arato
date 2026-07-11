@@ -204,17 +204,16 @@ export default function AlgodaoPage() {
       .then(({ data }) => setTalhoes((data ?? []) as Talhao[]));
     supabase.from("pessoas").select("id, nome").order("nome")
       .then(({ data }) => setPessoas((data ?? []) as Pessoa[]));
-    // Busca ciclos pela fazenda_id direta (ciclos tem fazenda_id) — dois caminhos para garantir
+    // Busca todos os ciclos da fazenda — dois caminhos para garantir
     const loadCiclos = async () => {
-      // caminho 1: direto por fazenda_id
-      const { data: direto } = await supabase
+      // caminho 1: direto por fazenda_id (ciclos tem fazenda_id na coluna)
+      const { data: direto, error: errDireto } = await supabase
         .from("ciclos")
-        .select("id, descricao, cultura, ano_safra_id, fazenda_id, area_ha, data_inicio, data_fim")
+        .select("*")
         .eq("fazenda_id", fazTrabalho)
         .order("descricao", { ascending: false });
 
-      if (direto && direto.length > 0) {
-        // mostra todos — label inclui cultura para o usuário poder identificar
+      if (!errDireto && direto && direto.length > 0) {
         setCiclos(direto as Ciclo[]);
         const alg = (direto as Ciclo[]).find(c => (c.cultura ?? "").toLowerCase().includes("algod"));
         setCicloSel(prev => prev || alg?.id || direto[0]?.id || "");
@@ -227,9 +226,7 @@ export default function AlgodaoPage() {
       const anoIds = (anos ?? []).map((a: { id: string }) => a.id);
       if (anoIds.length === 0) { setCiclos([]); setCicloSel(""); return; }
       const { data } = await supabase
-        .from("ciclos")
-        .select("id, descricao, cultura, ano_safra_id, fazenda_id, area_ha, data_inicio, data_fim")
-        .in("ano_safra_id", anoIds)
+        .from("ciclos").select("*").in("ano_safra_id", anoIds)
         .order("descricao", { ascending: false });
       const todos = (data ?? []) as Ciclo[];
       setCiclos(todos);
