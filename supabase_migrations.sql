@@ -7029,3 +7029,156 @@ ALTER TABLE motoristas
   ADD COLUMN IF NOT EXISTS obs               TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Seção 62 — Módulo Algodão
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Armadilhas de monitoramento do Bicudo do Algodoeiro
+CREATE TABLE IF NOT EXISTS bicudo_armadilhas (
+  id             UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id     UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id       UUID REFERENCES ciclos(id) ON DELETE SET NULL,
+  talhao_id      UUID REFERENCES talhoes(id) ON DELETE SET NULL,
+  nome           TEXT NOT NULL,                         -- "A1", "A2", "Bloco Norte"
+  latitude       NUMERIC,
+  longitude      NUMERIC,
+  data_instalacao DATE,
+  ativa          BOOLEAN DEFAULT true,
+  obs            TEXT,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Leituras semanais por armadilha
+CREATE TABLE IF NOT EXISTS bicudo_capturas (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  armadilha_id  UUID NOT NULL REFERENCES bicudo_armadilhas(id) ON DELETE CASCADE,
+  data_leitura  DATE NOT NULL,
+  capturas      INTEGER NOT NULL DEFAULT 0,
+  obs           TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(armadilha_id, data_leitura)
+);
+
+-- Módulos de algodão em caroço (colheita → campo → algodoeira)
+CREATE TABLE IF NOT EXISTS algodao_modulos (
+  id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id           UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id             UUID NOT NULL REFERENCES ciclos(id) ON DELETE CASCADE,
+  talhao_id            UUID REFERENCES talhoes(id) ON DELETE SET NULL,
+  numero               INTEGER NOT NULL,
+  data_colheita        DATE,
+  peso_estimado_kg     NUMERIC,
+  localizacao_campo    TEXT,
+  latitude             NUMERIC,
+  longitude            NUMERIC,
+  status               TEXT DEFAULT 'campo',            -- 'campo' | 'em_transporte' | 'entregue'
+  algodoeira_id        UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  data_entrega         DATE,
+  romaneio_algodoeira  TEXT,
+  obs                  TEXT,
+  created_at           TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Operações especiais do algodão (regulador de crescimento, defolhação)
+CREATE TABLE IF NOT EXISTS algodao_operacoes_especiais (
+  id               UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id       UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id         UUID NOT NULL REFERENCES ciclos(id) ON DELETE CASCADE,
+  talhao_id        UUID REFERENCES talhoes(id) ON DELETE SET NULL,
+  tipo             TEXT NOT NULL,                       -- 'regulador_crescimento' | 'defoliacao'
+  data_aplicacao   DATE NOT NULL,
+  area_ha          NUMERIC,
+  produto          TEXT,
+  dose_ha          NUMERIC,
+  unidade_dose     TEXT DEFAULT 'L/ha',
+  altura_planta_cm NUMERIC,                             -- para regulador
+  nawf             INTEGER,                             -- Nodes Above White Flower
+  abertura_macas_pct NUMERIC,                           -- % maçãs abertas antes defolhação
+  obs              TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Lotes de beneficiamento na algodoeira
+CREATE TABLE IF NOT EXISTS algodao_beneficiamentos (
+  id                      UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id              UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id                UUID NOT NULL REFERENCES ciclos(id) ON DELETE CASCADE,
+  algodoeira_id           UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  data_entrada            DATE,
+  data_beneficiamento     DATE,
+  num_modulos             INTEGER DEFAULT 0,
+  peso_bruto_caroco_kg    NUMERIC,                      -- peso caroço entregue
+  num_fardos              INTEGER DEFAULT 0,
+  peso_pluma_kg           NUMERIC,                      -- peso pluma produzida
+  rendimento_pluma_pct    NUMERIC,                      -- % real (typ 38-42%)
+  peso_caroco_retorno_kg  NUMERIC,                      -- caroço devolvido ao produtor
+  custo_beneficiamento    NUMERIC DEFAULT 0,            -- cobrado pela algodoeira
+  num_fardo_inicial       TEXT,
+  num_fardo_final         TEXT,
+  status                  TEXT DEFAULT 'em_processamento', -- 'em_processamento' | 'concluido'
+  obs                     TEXT,
+  created_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Laudos HVI por lote de beneficiamento
+CREATE TABLE IF NOT EXISTS algodao_laudos_hvi (
+  id                  UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  beneficiamento_id   UUID NOT NULL REFERENCES algodao_beneficiamentos(id) ON DELETE CASCADE,
+  num_fardo_inicio    TEXT,
+  num_fardo_fim       TEXT,
+  num_fardos          INTEGER,
+  -- Parâmetros HVI (padrão ABNT/MAPA/HVI)
+  comprimento_uhml_mm NUMERIC,                         -- comprimento (UHML em mm). Ref MT: > 28.5
+  uniformidade_pct    NUMERIC,                         -- uniformidade %. Ref: > 82%
+  resistencia_gtex    NUMERIC,                         -- resistência g/tex. Ref: > 30
+  micronaire          NUMERIC,                         -- micronaire μg/pol. Ref: 3.5–4.9
+  elongacao_pct       NUMERIC,                         -- elongação %
+  reflectancia_rd     NUMERIC,                         -- reflectância Rd %. Ref: > 72%
+  amarelamento_b      NUMERIC,                         -- amarelamento +b. Ref: < 9
+  sfi_pct             NUMERIC,                         -- Short Fiber Index %. Ref: < 10%
+  neps                INTEGER,                         -- neps/g
+  tipo_classificacao  TEXT,                            -- 'Tipo 1' … 'Tipo 8'
+  impurezas_pct       NUMERIC,
+  premium_desconto_pct NUMERIC,                        -- vs. qualidade referência
+  arquivo_pdf_url     TEXT,
+  obs                 TEXT,
+  created_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS: todas as tabelas seguem o padrão fazenda_id
+ALTER TABLE bicudo_armadilhas          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bicudo_capturas            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE algodao_modulos            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE algodao_operacoes_especiais ENABLE ROW LEVEL SECURITY;
+ALTER TABLE algodao_beneficiamentos    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE algodao_laudos_hvi         ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de acesso por fazenda (mesmo padrão do resto do sistema)
+CREATE POLICY "bicudo_armadilhas_acesso" ON bicudo_armadilhas
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE POLICY "bicudo_capturas_acesso" ON bicudo_capturas
+  USING (armadilha_id IN (SELECT id FROM bicudo_armadilhas
+    WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')));
+
+CREATE POLICY "algodao_modulos_acesso" ON algodao_modulos
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE POLICY "algodao_op_esp_acesso" ON algodao_operacoes_especiais
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE POLICY "algodao_benef_acesso" ON algodao_beneficiamentos
+  USING (fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+CREATE POLICY "algodao_hvi_acesso" ON algodao_laudos_hvi
+  USING (beneficiamento_id IN (SELECT id FROM algodao_beneficiamentos
+    WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')));
+
+NOTIFY pgrst, 'reload schema';

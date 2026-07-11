@@ -55,6 +55,11 @@ const MODULOS_LABEL: Record<string, string> = {
   fiscal_sped:     "SPED ECD / LCDPR",
   configuracoes:   "Configurações",
   bi:              "BI — Raccotlo Intelligence",
+  // ── Add-ons opcionais (vendidos separadamente) ──
+  algodao:         "🌱 Módulo Algodão (Add-on)",
+  cerealista:      "🌾 Módulo Cerealista (Add-on)",
+  sementes:        "🫘 Módulo Sementes (Add-on)",
+  pecuaria:        "🐄 Módulo Pecuário (Add-on)",
 };
 
 const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
@@ -77,6 +82,10 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   {
     label: "Sistema",
     modulos: ["usuarios", "configuracoes", "bi"],
+  },
+  {
+    label: "Add-ons Opcionais",
+    modulos: ["algodao", "cerealista", "sementes", "pecuaria"],
   },
 ];
 

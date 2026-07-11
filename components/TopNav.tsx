@@ -189,6 +189,21 @@ const NAV: NavItem[] = [
   },
 
   {
+    type: "group", id: "algodao", label: "Algodão", minStep: 3,
+    children: [
+      { type: "divider", label: "Lavoura" },
+      { id: "alg-safra",    label: "Safra & Operações",        path: "/algodao?aba=safra",      moduleId: "algodao" },
+      { id: "alg-bicudo",   label: "Monitoramento de Bicudo",  path: "/algodao?aba=bicudo",     moduleId: "algodao" },
+      { type: "divider", label: "Pós-Colheita" },
+      { id: "alg-modulos",  label: "Colheita & Módulos",       path: "/algodao?aba=modulos",    moduleId: "algodao" },
+      { id: "alg-benef",    label: "Algodoeira / Beneficiamento", path: "/algodao?aba=algodoeira", moduleId: "algodao" },
+      { id: "alg-hvi",      label: "HVI & Qualidade",          path: "/algodao?aba=hvi",        moduleId: "algodao" },
+      { type: "divider", label: "Gestão" },
+      { id: "alg-posicao",  label: "Posição de Algodão",       path: "/algodao?aba=posicao",    moduleId: "algodao" },
+    ],
+  },
+
+  {
     type: "group", id: "fiscal", label: "Fiscal", minStep: 7,
     children: [
       { id: "fiscal-monitor",       label: "Monitor NF-e Emitidas",  path: "/fiscal",                     moduleId: "fiscal_nfe"  },
@@ -277,6 +292,7 @@ const NAV_MODULE_MAP: Record<string, string[]> = {
   "fiscal":        ["fiscal_nfe", "fiscal_sped"],
   "custos":        ["custos", "fin_relatorios"],
   "configuracoes": ["conf_empresa", "conf_fiscal", "conf_financeiro", "conf_contabilidade", "conf_sistema", "conf_importacao", "usuarios", "logs"],
+  "algodao":       ["algodao"],
 };
 
 // ─── Componente ──────────────────────────────────────────────
@@ -366,6 +382,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (item.id === "fiscal")          return pathname === "/fiscal" || pathname === "/lcdpr" || pathname === "/ibs" || pathname === "/parcerias" || pathname.startsWith("/fiscal");
     if (item.id === "custos")          return pathname.startsWith("/custos") || pathname.startsWith("/relatorios/dre");
     if (item.id === "configuracoes")   return pathname.startsWith("/configuracoes") || pathname.startsWith("/admin");
+    if (item.id === "algodao")         return pathname.startsWith("/algodao");
     if (item.id === "ajuda")           return pathname === "/learning" || pathname === "/suporte";
     return false;
   };

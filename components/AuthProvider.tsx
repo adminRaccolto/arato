@@ -13,6 +13,10 @@ const LAST_ACTIVE_KEY = "ractech_last_active";
 // Vazio = sem restrição (raccotlo ou usuário sem grupo)
 export type ModuloPermissao = "escrita" | "leitura" | "nenhum";
 
+// Módulos opcionais (add-ons) habilitados por conta via conta_modulos
+// Ex: { algodao: true, cerealista: false }
+export type ContaModulosOverrides = Record<string, boolean>;
+
 type AuthCtx = {
   fazendaId:              string | null;
   fazendaIds:             string[];        // todas as fazendas da conta (multi-fazenda)
@@ -32,10 +36,12 @@ type AuthCtx = {
   inadimplente:           boolean;
   // Permissões por módulo do grupo do usuário
   permissoes:             Record<string, ModuloPermissao>;
+  // Add-ons habilitados por conta (via conta_modulos)
+  contaModulosOverrides:  ContaModulosOverrides;
   // Helpers
   podeAcessar:            (modulo: string) => boolean;  // false quando 'nenhum'
   podeEscrever:           (modulo: string) => boolean;  // true quando 'escrita'
-  podeAcessarPlano:       (modulo: string) => boolean;  // false se módulo não está no plano
+  podeAcessarPlano:       (modulo: string) => boolean;  // false se módulo não está no plano nem em add-on
   refetchOnboarding:      () => void;
   selectFazenda:          (id: string, fazendaNome: string, produtorNome?: string | null) => void;
   setFazendaAtiva:        (id: string, nome: string) => Promise<void>;
@@ -61,6 +67,7 @@ const Ctx = createContext<AuthCtx>({
   contaStatus:            null,
   inadimplente:           false,
   permissoes:             {},
+  contaModulosOverrides:  {},
   podeAcessar:            () => true,
   podeEscrever:           () => true,
   podeAcessarPlano:       () => true,
@@ -87,6 +94,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [onboardingAtivo,        setOnboardingAtivo]        = useState<boolean>(false);
   const [stepsCompletos,         setStepsCompletos]         = useState<number>(0);
   const [permissoes,             setPermissoes]             = useState<Record<string, ModuloPermissao>>({});
+  const [contaModulosOverrides,  setContaModulosOverrides]  = useState<ContaModulosOverrides>({});
   const [logoCliente,            setLogoCliente]            = useState<string | null>(null);
   const [planoAtual,             setPlanoAtual]             = useState<PlanoId | null>(null);
   const [contaStatus,            setContaStatus]            = useState<string | null>(null);
@@ -247,8 +255,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         setFazendaIds([fid]);
       }
 
-      // Carrega conta + usuário em paralelo (evita 2 round-trips sequenciais)
-      const [contaRes, usuarioRes] = await Promise.allSettled([
+      // Carrega conta + usuário + add-ons em paralelo (evita round-trips sequenciais)
+      const [contaRes, usuarioRes, modulosRes] = await Promise.allSettled([
         cid
           ? supabase.from("contas")
               .select("pacote, status, onboarding_ativo, logo_url")
@@ -259,6 +267,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           .select("grupo_id, grupos_usuarios(permissoes)")
           .eq("auth_user_id", user.id)
           .maybeSingle(),
+        cid
+          ? supabase.from("conta_modulos").select("modulo, habilitado").eq("conta_id", cid)
+          : Promise.resolve({ data: null, error: null }),
       ]);
 
       // Processa conta
@@ -292,6 +303,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setPermissoes({});
+      }
+
+      // Processa add-ons da conta (conta_modulos)
+      if (modulosRes.status === "fulfilled") {
+        const rows = (modulosRes.value as { data?: { modulo: string; habilitado: boolean }[] | null }).data ?? [];
+        const overrides: ContaModulosOverrides = {};
+        rows.forEach(r => { overrides[r.modulo] = r.habilitado; });
+        setContaModulosOverrides(overrides);
       }
 
       // Assina mudanças em usuarios para recarregar permissões em tempo real
@@ -413,12 +432,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return (p as string) === "escrita";
   }, [permissoes]);
 
-  // raccotlo tem acesso irrestrito a tudo; clientes verificam o plano
+  // raccotlo tem acesso irrestrito a tudo; clientes verificam add-on ou plano
   const podeAcessarPlano = useCallback((modulo: string) => {
     if (userRole === "raccotlo") return true;
+    // Override explícito via conta_modulos tem precedência sobre o plano
+    if (modulo in contaModulosOverrides) return contaModulosOverrides[modulo];
     if (!planoAtual) return true; // sem plano carregado ainda → não bloqueia
     return planoInclui(planoAtual, modulo);
-  }, [planoAtual, userRole]);
+  }, [planoAtual, userRole, contaModulosOverrides]);
 
   // Troca de fazenda ativa dentro da mesma conta (farm switcher)
   const setFazendaAtiva = useCallback(async (id: string, nome: string) => {
@@ -454,7 +475,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       nomeFazendaSelecionada, nomeProdutor, logoCliente, setLogoCliente,
       onboardingAtivo, stepsCompletos, refetchOnboarding,
       planoAtual, contaStatus, inadimplente,
-      permissoes, podeAcessar, podeEscrever, podeAcessarPlano,
+      permissoes, contaModulosOverrides, podeAcessar, podeEscrever, podeAcessarPlano,
       selectFazenda, setFazendaAtiva, clearFazenda, signOut,
     }}>
       {children}
