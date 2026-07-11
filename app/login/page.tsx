@@ -108,10 +108,10 @@ export default function Login() {
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo_Arato_Nova.png"
+            src="/Logo_Arato.png"
             alt="Arato"
             width={260}
-            style={{ objectFit: "contain", display: "block", margin: "0 auto 14px", filter: "drop-shadow(0 4px 16px rgba(0,0,0,0.35))", maxWidth: "100%" }}
+            style={{ objectFit: "contain", display: "block", margin: "0 auto 14px", maxWidth: "100%" }}
           />
 
         </div>
