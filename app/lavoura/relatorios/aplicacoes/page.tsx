@@ -449,7 +449,7 @@ export default function RelAplicacoesPage() {
       } catch { return null; }
     };
 
-    const imgArato = await loadImg("/logo_Arato_Nova.png");
+    const imgArato = await loadImg("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png");
     const imgFaz   = logoFaz ?? null;
 
     const doc  = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -574,7 +574,7 @@ export default function RelAplicacoesPage() {
         });
       } catch { return ""; }
     };
-    const imgArato = await loadImg("/logo_Arato_Nova.png");
+    const imgArato = await loadImg("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png");
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(buildPrintHtml(imgArato));

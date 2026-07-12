@@ -533,7 +533,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           {logoArato ? (
             <img src={logoArato} alt={nomeArato} style={{ height: 36, maxWidth: 130, objectFit: "contain" }} />
           ) : (
-            <img src="/Logo_Arato.png" alt="Arato" style={{ height: 36, width: "auto", objectFit: "contain" }} />
+            <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 36, width: "auto", objectFit: "contain" }} />
           )}
         </div>
 

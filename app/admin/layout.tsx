@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { userRole, raccotloGestor } = useAuth();
   const router   = useRouter();
   const pathname = usePathname();
-  const [logoUrl, setLogoUrl] = useState("/Logo_Raccolto.png");
+  const [logoUrl, setLogoUrl] = useState("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Raccolto.png");
 
   // Auth guard
   useEffect(() => {

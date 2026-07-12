@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabase";
 export default function RaccotloHub() {
   const { userRole, raccotloGestor, nomeUsuario, signOut } = useAuth();
   const router = useRouter();
-  const [logoUrl, setLogoUrl] = useState("/logo_Arato_Nova.png");
+  const [logoUrl, setLogoUrl] = useState("https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png");
 
   useEffect(() => {
     const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");

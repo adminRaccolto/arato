@@ -111,7 +111,7 @@ function CadastroInner() {
         position: "sticky", top: 0, zIndex: 100,
       }}>
         <Link href="/planos">
-          <Image src="/logo_Arato_Nova.png" alt="Arato" width={82} height={34} priority style={{ objectFit: "contain", cursor: "pointer" }} />
+          <Image src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" width={82} height={34} priority style={{ objectFit: "contain", cursor: "pointer" }} />
         </Link>
         <Link href="/login" style={{ fontSize: 13, color: "#555", textDecoration: "none", padding: "7px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
           Já tenho conta

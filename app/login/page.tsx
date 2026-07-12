@@ -108,7 +108,7 @@ export default function Login() {
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/Logo_Arato.png"
+            src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png"
             alt="Arato"
             width={260}
             style={{ objectFit: "contain", display: "block", margin: "0 auto 14px", maxWidth: "100%" }}
@@ -288,7 +288,7 @@ export default function Login() {
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 400 }}>um produto</span>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/Logo_Raccolto.png"
+              src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Raccolto.png"
               alt="Raccolto"
               style={{ objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.55, height: 16, width: "auto" }}
             />
