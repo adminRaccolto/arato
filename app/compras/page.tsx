@@ -14,6 +14,7 @@ import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insum
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
+import AnexoDocumentos from "../../components/AnexoDocumentos";
 
 // ── Estilos base ─────────────────────────────────────────────
 const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
@@ -176,7 +177,7 @@ export default function ComprasPage() {
 
   // Modal novo pedido
   const [modal,         setModal]         = useState(false);
-  const [abaModal,      setAbaModal]      = useState<"principal"|"desconto"|"entrega"|"cobranca"|"observacao">("principal");
+  const [abaModal,      setAbaModal]      = useState<"principal"|"desconto"|"entrega"|"cobranca"|"observacao"|"documentos">("principal");
   const [abaItens,      setAbaItens]      = useState<"itens"|"servicos"|"cc">("itens");
   const [f,             setF]             = useState({ ...PEDIDO_VAZIO });
   const [itens,         setItens]         = useState<ItemForm[]>([{ ...ITEM_VAZIO }]);
@@ -772,6 +773,7 @@ export default function ComprasPage() {
                 {tabAba("entrega",    "Entrega")}
                 {tabAba("cobranca",   "Cobrança")}
                 {tabAba("observacao", "Observação")}
+                {pedidoEdit && tabAba("documentos", "📎 Documentos")}
               </div>
             </div>
 
@@ -1259,6 +1261,14 @@ export default function ComprasPage() {
                 <div style={secTit}>Observação</div>
                 <textarea style={{ ...inp, height: 140, resize: "vertical" }} value={f.observacao} onChange={e => setF(p => ({ ...p, observacao: e.target.value }))} placeholder="Observações gerais sobre o pedido..." />
               </>)}
+
+              {abaModal === "documentos" && pedidoEdit && (
+                <AnexoDocumentos
+                  entidade_tipo="pedido_compra"
+                  entidade_id={pedidoEdit}
+                  fazenda_id={f.fazenda_id || fazendaId || ""}
+                />
+              )}
 
               {/* Footer */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid #D4DCE8" }}>

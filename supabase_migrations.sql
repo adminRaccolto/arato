@@ -7212,12 +7212,70 @@ NOTIFY pgrst, 'reload schema';
 -- ═══════════════════════════════════════════════════════════
 -- Seção 65 — usuarios: trocar UNIQUE(email) por UNIQUE(fazenda_id, email)
 -- Email único por fazenda, não globalmente.
--- Compatível com onConflict: "fazenda_id,email" no upsert.
+-- IF NOT EXISTS não é suportado em ADD CONSTRAINT — usar DO/EXCEPTION.
 -- ═══════════════════════════════════════════════════════════
 ALTER TABLE usuarios
   DROP CONSTRAINT IF EXISTS usuarios_email_key;
 
-ALTER TABLE usuarios
-  ADD CONSTRAINT IF NOT EXISTS usuarios_fazenda_email_key UNIQUE (fazenda_id, email);
+DO $$ BEGIN
+  ALTER TABLE usuarios
+    ADD CONSTRAINT usuarios_fazenda_email_key UNIQUE (fazenda_id, email);
+EXCEPTION WHEN duplicate_table THEN NULL;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════
+-- Seção 66 — Armazenamento de Documentos (Storage)
+-- planos: storage_gb por plano
+-- contas: contador de bytes usados
+-- documentos_anexos: registro de cada arquivo
+-- ═══════════════════════════════════════════════════════════
+
+-- Quota de storage por plano (0 = sem storage)
+ALTER TABLE planos
+  ADD COLUMN IF NOT EXISTS storage_gb NUMERIC(6,2) NOT NULL DEFAULT 0;
+
+-- Valores padrão por plano (ajuste conforme seus planos reais)
+UPDATE planos SET storage_gb = 0 WHERE id ILIKE '%essencial%' OR nome ILIKE '%essencial%';
+UPDATE planos SET storage_gb = 1 WHERE id ILIKE '%gestao%'    OR nome ILIKE '%gestão%' OR nome ILIKE '%gestao%';
+UPDATE planos SET storage_gb = 3 WHERE id ILIKE '%performan%' OR nome ILIKE '%performan%';
+
+-- Contador de bytes usados por conta (atualizado a cada upload/exclusão)
+ALTER TABLE contas
+  ADD COLUMN IF NOT EXISTS storage_usado_bytes BIGINT NOT NULL DEFAULT 0;
+
+-- Tabela de documentos anexados a qualquer entidade do sistema
+CREATE TABLE IF NOT EXISTS documentos_anexos (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  conta_id       UUID        NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  fazenda_id     UUID        REFERENCES fazendas(id) ON DELETE SET NULL,
+  entidade_tipo  TEXT        NOT NULL,  -- ex: 'pedido_compra', 'nf_entrada', 'contrato'
+  entidade_id    UUID        NOT NULL,
+  nome_original  TEXT        NOT NULL,
+  storage_path   TEXT        NOT NULL UNIQUE,
+  tamanho_bytes  BIGINT      NOT NULL DEFAULT 0,
+  mime_type      TEXT,
+  criado_por     UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Índices para listagem eficiente por entidade (dentro da mesma conta)
+CREATE INDEX IF NOT EXISTS idx_documentos_anexos_conta_entidade
+  ON documentos_anexos (conta_id, entidade_tipo, entidade_id);
+
+-- RLS: cada conta vê apenas seus próprios documentos
+ALTER TABLE documentos_anexos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "doc_anexos_conta" ON documentos_anexos;
+CREATE POLICY "doc_anexos_conta" ON documentos_anexos
+  FOR ALL USING (
+    conta_id IN (
+      SELECT conta_id FROM perfis WHERE user_id = auth.uid()
+    )
+    OR EXISTS (
+      SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'
+    )
+  );
 
 NOTIFY pgrst, 'reload schema';
