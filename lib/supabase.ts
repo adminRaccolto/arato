@@ -1551,6 +1551,7 @@ export type PedidoCompra = {
   observacao?: string;
   total_financeiro?: number;
   total_produtos_servicos?: number;
+  produtor_id?: string;
   lancamento_id?: string;
   created_at?: string;
 };

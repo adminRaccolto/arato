@@ -8,8 +8,9 @@ import {
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
   listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas, criarContrato,
+  listarProdutoresViaFazenda,
 } from "../../lib/db";
-import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda } from "../../lib/supabase";
+import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda, Produtor } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import InputNumerico from "../../components/InputNumerico";
 import PlanoGate from "../../components/PlanoGate";
@@ -126,6 +127,7 @@ type FormPedido = {
   ano_safra_id: string; ciclo_id: string;
   data_vencimento: string;
   meio_pagamento: string; barter_ano_safra_id: string; barter_ciclo_id: string; barter_preco_saca: string;
+  produtor_id: string;
   aprovador: string; nr_pedido: string; nr_solicitacao: string;
   fornecedor_id: string; nr_pedido_fornecedor: string; variacao_cambial: string;
   deposito_previsao: string; contato_fornecedor: string;
@@ -145,6 +147,7 @@ const PEDIDO_VAZIO: FormPedido = {
   ano_safra_id: "", ciclo_id: "",
   data_vencimento: "",
   meio_pagamento: "", barter_ano_safra_id: "", barter_ciclo_id: "", barter_preco_saca: "",
+  produtor_id: "",
   aprovador: "", nr_pedido: "", nr_solicitacao: "",
   fornecedor_id: "", nr_pedido_fornecedor: "", variacao_cambial: "",
   deposito_previsao: "", contato_fornecedor: "",
@@ -164,6 +167,7 @@ export default function ComprasPage() {
   const [centrosCusto,    setCentrosCusto]    = useState<CentroCusto[]>([]);
   const [operacoes,       setOperacoes]       = useState<OperacaoGerencial[]>([]);
   const [fazendas,        setFazendas]        = useState<Fazenda[]>([]);
+  const [produtores,      setProdutores]      = useState<Produtor[]>([]);
   const [fazendaFiltro,   setFazendaFiltro]   = useState("");
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
@@ -192,7 +196,7 @@ export default function ComprasPage() {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const [allPed, pes, ins, cic, anos, cc, ops, fzs] = await Promise.all([
+      const [allPed, pes, ins, cic, anos, cc, ops, fzs, prods] = await Promise.all([
         listarPedidosCompraDaConta(fazendaId),
         listarPessoas(fazendaId),
         listarInsumos(fazendaId),
@@ -201,6 +205,7 @@ export default function ComprasPage() {
         listarCentrosCustoGeral(fazendaId),
         listarOperacoesGerenciais(fazendaId),
         listarFazendas(fazendaId),
+        listarProdutoresViaFazenda(fazendaId),
       ]);
       setPedidos(fazendaFiltro ? allPed.filter(p => p.fazenda_id === fazendaFiltro) : allPed);
       setPessoas(pes);
@@ -210,6 +215,7 @@ export default function ComprasPage() {
       setCentrosCusto(cc);
       setOperacoes(ops);
       setFazendas(fzs);
+      setProdutores(prods);
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar");
     } finally {
@@ -280,6 +286,7 @@ export default function ComprasPage() {
       data_vencimento: ped.data_vencimento ?? "",
       meio_pagamento: ped.meio_pagamento ?? "",
       barter_ano_safra_id: ped.barter_ano_safra_id ?? "", barter_ciclo_id: ped.barter_ciclo_id ?? "", barter_preco_saca: String(ped.barter_preco_saca ?? ""),
+      produtor_id: ped.produtor_id ?? "",
       aprovador: ped.aprovador ?? "", nr_pedido: ped.nr_pedido ?? "",
       nr_solicitacao: ped.nr_solicitacao ?? "",
       fornecedor_id: ped.fornecedor_id ?? "", nr_pedido_fornecedor: ped.nr_pedido_fornecedor ?? "",
@@ -336,6 +343,7 @@ export default function ComprasPage() {
         barter_ano_safra_id: f.barter_ano_safra_id || undefined,
         barter_ciclo_id: f.barter_ciclo_id || undefined,
         barter_preco_saca: f.barter_preco_saca ? parseFloat(f.barter_preco_saca) : undefined,
+        produtor_id: f.produtor_id || undefined,
         aprovador: f.aprovador || undefined, nr_pedido: f.nr_pedido || undefined,
         nr_solicitacao: f.nr_solicitacao || undefined,
         fornecedor_id: f.fornecedor_id || undefined,
@@ -449,7 +457,7 @@ export default function ComprasPage() {
                 entregue_sc:       0,
                 comprador:         fornecedorNome,
                 pessoa_id:         f.fornecedor_id || undefined,
-                produtor_id:       undefined,
+                produtor_id:       f.produtor_id || undefined,
                 ano_safra_id:      f.barter_ano_safra_id || undefined,
                 ciclo_id:          f.barter_ciclo_id || undefined,
                 data_contrato:     f.data_registro,
@@ -916,6 +924,30 @@ export default function ComprasPage() {
                   <div>
                     <label style={lbl}>Variação Cambial</label>
                     <InputNumerico style={inp} decimais={4} value={f.variacao_cambial} onChange={v => setF(p => ({ ...p, variacao_cambial: v }))} placeholder="0,0000" />
+                  </div>
+                </div>
+
+                {/* Linha 3b: Produtor responsável */}
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <label style={lbl}>
+                      Produtor responsável
+                      <span style={{ marginLeft: 6, fontSize: 10, color: "#888", fontWeight: 400 }}>— a quem o custo pertence</span>
+                    </label>
+                    <select style={inp} value={f.produtor_id} onChange={e => setF(p => ({ ...p, produtor_id: e.target.value }))}>
+                      <option value="">— Todos / não identificado —</option>
+                      {produtores.map(pr => (
+                        <option key={pr.id} value={pr.id}>{pr.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Aprovador</label>
+                    <input style={inp} value={f.aprovador} onChange={e => setF(p => ({ ...p, aprovador: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Nº Solicitação</label>
+                    <input style={inp} value={f.nr_solicitacao} onChange={e => setF(p => ({ ...p, nr_solicitacao: e.target.value }))} />
                   </div>
                 </div>
 

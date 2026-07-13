@@ -7182,7 +7182,15 @@ CREATE POLICY "algodao_hvi_acesso" ON algodao_laudos_hvi
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')));
 
 -- ═══════════════════════════════════════════════════════════
--- Seção 63 — lancamentos: colunas barter para DRE correto
+-- Seção 63a — pedidos_compra: produtor responsável
+-- ═══════════════════════════════════════════════════════════
+ALTER TABLE pedidos_compra
+  ADD COLUMN IF NOT EXISTS produtor_id UUID REFERENCES produtores(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_pc_produtor ON pedidos_compra(produtor_id);
+
+-- ═══════════════════════════════════════════════════════════
+-- Seção 63b — lancamentos: colunas barter para DRE correto
 -- Garante sacas, preco_saca_barter e cultura_barter na tabela
 -- lancamentos (idempotente — ADD COLUMN IF NOT EXISTS).
 -- ═══════════════════════════════════════════════════════════
