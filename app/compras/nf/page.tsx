@@ -1227,6 +1227,16 @@ export default function NfCompraPage() {
                             style={{ padding: "4px 10px", border: "0.5px solid #378ADD50", borderRadius: 6, background: "#EFF6FF", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
                             Ver
                           </button>
+                          {nf.chave_acesso && (
+                            <a
+                              href={`/api/fiscal/danfe?chave=${nf.chave_acesso}&fazenda_id=${nf.fazenda_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#F0FDF4", cursor: "pointer", fontSize: 11, color: "#15803D", fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
+                            >
+                              ↗ DANFE
+                            </a>
+                          )}
                           {nf.status !== "processada" && nf.status !== "cancelada" && (
                             <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
                               Editar
@@ -1293,7 +1303,19 @@ export default function NfCompraPage() {
                   </div>
                   <div style={{ fontSize: 12, color: "#666", marginTop: 4, fontFamily: "monospace" }}>{nf.chave_acesso}</div>
                 </div>
-                <button onClick={() => setNfViewer(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1, padding: 0 }}>×</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {nf.chave_acesso && (
+                    <a
+                      href={`/api/fiscal/danfe?chave=${nf.chave_acesso}&fazenda_id=${nf.fazenda_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: "6px 14px", border: "0.5px solid #16A34A60", borderRadius: 8, background: "#F0FDF4", fontSize: 12, color: "#15803D", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}
+                    >
+                      ↗ Abrir DANFE PDF
+                    </a>
+                  )}
+                  <button onClick={() => setNfViewer(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1, padding: 0 }}>×</button>
+                </div>
               </div>
 
               <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
