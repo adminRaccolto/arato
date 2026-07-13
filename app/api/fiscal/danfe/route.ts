@@ -30,13 +30,14 @@ export async function GET(req: NextRequest) {
     if (data?.xml_storage_path) { xmlStoragePath = data.xml_storage_path; nfStatus = data.status; }
   }
 
-  // 1b. nf_entradas (sync manual / reimport)
+  // 1b. nf_entradas (sync manual / reimport) — ignora erro se coluna ainda não existe
   if (!xmlStoragePath) {
-    let q = db.from("nf_entradas").select("xml_storage_path, status").eq("chave_acesso", chave);
-    if (fazenda_id) q = q.eq("fazenda_id", fazenda_id);
-    const { data, error } = await q.maybeSingle();
-    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
-    if (data?.xml_storage_path) { xmlStoragePath = data.xml_storage_path; nfStatus = data.status; }
+    try {
+      let q = db.from("nf_entradas").select("xml_storage_path, status").eq("chave_acesso", chave);
+      if (fazenda_id) q = q.eq("fazenda_id", fazenda_id);
+      const { data } = await q.maybeSingle();
+      if (data?.xml_storage_path) { xmlStoragePath = data.xml_storage_path; nfStatus = data.status; }
+    } catch { /* coluna pode não existir ainda — migration pendente */ }
   }
 
   if (!xmlStoragePath) {
