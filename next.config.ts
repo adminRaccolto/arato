@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["node-forge", "pdfkit", "nfe-danfe-pdf"],
+  outputFileTracingIncludes: {
+    "/api/fiscal/danfe": [
+      "./node_modules/nfe-danfe-pdf/**/*",
+      "./node_modules/pdfkit/js/data/**/*",
+    ],
+  },
   async headers() {
     return [
       {
