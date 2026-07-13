@@ -195,7 +195,7 @@ export default function DrePage() {
         supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
         supabase.from("orcamentos").select("area_ha, produtividade_esperada, preco_esperado_sc").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).maybeSingle(),
         supabase.from("contratos").select("valor_total, quantidade_sc, status").eq("fazenda_id", cfid).eq("ciclo_id", cicloId).eq("confirmado", true),
-        supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
+        supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", cicloId),
       ]);
 
       // ── Mapear operacao_gerencial_id → classificacao (batch) ──
@@ -230,10 +230,18 @@ export default function DrePage() {
       }
 
       // Acumular por grupo DRE (principal)
+      // Barter: valor está em BRL (totalItens do PC); sacas + preco_saca_barter são auxiliares de exibição
+      // Fallback para entradas antigas: se moeda=barter e sacas+preco existem, recalcula BRL
       const grp: Record<string, number> = {};
       for (const cp of cpRows) {
         const g = cpGrupo(cp as { categoria?: string; operacao_gerencial_id?: string });
-        grp[g] = (grp[g] ?? 0) + ((cp.valor as number) ?? 0);
+        const cpM = (cp as { moeda?: string }).moeda;
+        const cpSacas = (cp as { sacas?: number }).sacas;
+        const cpPreco = (cp as { preco_saca_barter?: number }).preco_saca_barter;
+        const valorBRL = cpM === "barter" && cpSacas && cpPreco
+          ? cpSacas * cpPreco   // entradas antigas onde valor ainda é nº de sacas
+          : ((cp.valor as number) ?? 0);
+        grp[g] = (grp[g] ?? 0) + valorBRL;
       }
 
       // ── Receitas ──
@@ -274,7 +282,7 @@ export default function DrePage() {
           supabase.from("correcoes_solo").select("custo_total").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
           Promise.resolve({ data: null }),
           Promise.resolve({ data: null }),
-          supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
+          supabase.from("contas_pagar").select("valor, categoria, operacao_gerencial_id, moeda, sacas, preco_saca_barter").eq("fazenda_id", cfid).eq("ciclo_id", aux.id),
         ]);
         aux_sementes     += (auxPl ?? []).reduce((s, r) => s + (r.custo_sementes ?? 0), 0) * pct;
         aux_fertilizantes += (auxAd ?? []).reduce((s, r) => s + (r.custo_total ?? 0), 0) * pct;
@@ -287,7 +295,7 @@ export default function DrePage() {
           const { data: auxOgs } = await supabase.from("operacoes_gerenciais").select("id, classificacao").in("id", auxOgIds);
           for (const og of auxOgs ?? []) auxOgMap[og.id] = og.classificacao;
         }
-        for (const cp of (auxCp ?? []) as { valor?: number; categoria?: string; operacao_gerencial_id?: string }[]) {
+        for (const cp of (auxCp ?? []) as { valor?: number; categoria?: string; operacao_gerencial_id?: string; moeda?: string; sacas?: number; preco_saca_barter?: number }[]) {
           // Usa auxOgMap específico do auxiliar; cpGrupo como fallback para categoria
           let g: string;
           if (cp.operacao_gerencial_id && auxOgMap[cp.operacao_gerencial_id]) {
@@ -295,7 +303,10 @@ export default function DrePage() {
           } else {
             g = cpGrupo(cp);
           }
-          aux_grp[g] = (aux_grp[g] ?? 0) + (cp.valor ?? 0) * pct;
+          const valorBRL = cp.moeda === "barter" && cp.sacas && cp.preco_saca_barter
+            ? cp.sacas * cp.preco_saca_barter
+            : (cp.valor ?? 0);
+          aux_grp[g] = (aux_grp[g] ?? 0) + valorBRL * pct;
         }
       }
       // Merge aux_grp → grp (deve acontecer ANTES de operacoes_mecanizadas/combustivel/etc.)

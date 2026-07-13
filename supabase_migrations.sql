@@ -7181,4 +7181,14 @@ CREATE POLICY "algodao_hvi_acesso" ON algodao_laudos_hvi
     WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')));
 
+-- ═══════════════════════════════════════════════════════════
+-- Seção 63 — lancamentos: colunas barter para DRE correto
+-- Garante sacas, preco_saca_barter e cultura_barter na tabela
+-- lancamentos (idempotente — ADD COLUMN IF NOT EXISTS).
+-- ═══════════════════════════════════════════════════════════
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS sacas             NUMERIC(12,3),
+  ADD COLUMN IF NOT EXISTS preco_saca_barter NUMERIC(12,4),
+  ADD COLUMN IF NOT EXISTS cultura_barter    TEXT;
+
 NOTIFY pgrst, 'reload schema';

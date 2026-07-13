@@ -7,7 +7,7 @@ import {
   listarPedidoCompraItens, salvarPedidoCompraItens,
   listarPedidoCompraEntregas, registrarEntrega,
   listarPessoas, listarInsumos, listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral,
-  listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas,
+  listarOperacoesGerenciais, criarLancamento, excluirLancamento, listarFazendas, criarContrato,
 } from "../../lib/db";
 import type { PedidoCompra, PedidoCompraItem, PedidoCompraEntrega, Pessoa, Insumo, Ciclo, AnoSafra, CentroCusto, OperacaoGerencial, Fazenda } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
@@ -168,6 +168,7 @@ export default function ComprasPage() {
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
   const [erro,          setErro]          = useState<string | null>(null);
+  const [barterContratoNum, setBarterContratoNum] = useState<string | null>(null);
 
   // Modal novo pedido
   const [modal,         setModal]         = useState(false);
@@ -306,10 +307,21 @@ export default function ComprasPage() {
 
   // ── Salvar pedido ─────────────────────────────────────────────
 
+  function extrairProdutoBarter(cultura?: string): string {
+    const c = (cultura ?? "").toLowerCase();
+    if (c.includes("algod")) return "Algodão";
+    if (c.includes("milho")) return "Milho";
+    if (c.includes("sorgo")) return "Sorgo";
+    if (c.includes("trigo")) return "Trigo";
+    if (c.includes("cana"))  return "Cana";
+    return "Soja";
+  }
+
   const salvar = async () => {
     if (!fazendaId) return;
     if (!f.fornecedor_id && !f.contato_fornecedor.trim()) { setErro("Informe o fornecedor"); return; }
     setSalvando(true); setErro(null);
+    let barterContratoGerado: string | null = null;
     try {
       const fidPedido = f.fazenda_id || fazendaId;
       const payload: Omit<PedidoCompra, "id" | "created_at" | "numero"> = {
@@ -394,11 +406,12 @@ export default function ComprasPage() {
         const vencimento = f.data_vencimento || f.previsao_entrega_unica || f.data_registro;
         try {
           if (isBarter) {
-            // Barter: lançamento com moeda="barter" — não compõe fluxo de caixa em R$
-            // Valor em sacas = total R$ ÷ preço/sc (negociado ou projeção do ciclo)
+            // Barter: lançamento em moeda="barter"
+            // valor = equivalente BRL (totalItens) para apropriação correta no DRE
+            // sacas + preco_saca_barter armazenados para exibição em sacas na tela CP
             const cicloSelecionado = ciclos.find(c => c.id === f.barter_ciclo_id);
             const precoBarter = parseFloat(f.barter_preco_saca) || cicloSelecionado?.preco_esperado_sc || 0;
-            const sacasComprometidas = precoBarter > 0 ? Math.ceil((totalItens / precoBarter) * 100) / 100 : totalItens;
+            const sacasComprometidas = precoBarter > 0 ? Math.ceil((totalItens / precoBarter) * 100) / 100 : 0;
             const lanc = await criarLancamento({
               fazenda_id:        fidPedido,
               tipo:              "pagar",
@@ -407,7 +420,10 @@ export default function ComprasPage() {
               categoria:         "Insumos",
               data_lancamento:   f.data_registro,
               data_vencimento:   vencimento,
-              valor:             sacasComprometidas,
+              valor:             totalItens,           // BRL para DRE e fluxo de caixa projetado
+              sacas:             sacasComprometidas,   // sacas para exibição em CP
+              preco_saca_barter: precoBarter,
+              cultura_barter:    extrairProdutoBarter(cicloSelecionado?.cultura),
               status:            "em_aberto",
               auto:              true,
               pessoa_id:         f.fornecedor_id || undefined,
@@ -416,6 +432,34 @@ export default function ComprasPage() {
               ciclo_id:          f.barter_ciclo_id || f.ciclo_id || undefined,
             });
             await atualizarPedidoCompra(pedidoId, { lancamento_id: lanc.id });
+
+            // Cria contrato de entrega de grãos automaticamente
+            if (sacasComprometidas > 0) {
+              const produtoBarter  = extrairProdutoBarter(cicloSelecionado?.cultura);
+              const numContratoBrt = `BRT-${new Date().getFullYear()}-${pedidoId.slice(-6).toUpperCase()}`;
+              const contBarter = await criarContrato({
+                fazenda_id:        fidPedido,
+                numero:            numContratoBrt,
+                tipo:              "barter",
+                modalidade:        "barter",
+                moeda:             "BRL",
+                produto:           produtoBarter,
+                preco:             precoBarter,
+                quantidade_sc:     sacasComprometidas,
+                entregue_sc:       0,
+                comprador:         fornecedorNome,
+                pessoa_id:         f.fornecedor_id || undefined,
+                produtor_id:       undefined,
+                ano_safra_id:      f.barter_ano_safra_id || undefined,
+                ciclo_id:          f.barter_ciclo_id || undefined,
+                data_contrato:     f.data_registro,
+                data_entrega:      f.data_vencimento || f.previsao_entrega_unica || f.data_registro,
+                status:            "aberto",
+                confirmado:        true,
+                observacao:        `Gerado automaticamente — PC nº ${f.nr_pedido || pedidoId.slice(0,8)} — Insumos: R$ ${totalItens.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+              });
+              barterContratoGerado = contBarter.numero;
+            }
           } else {
             // Pagamento normal (PIX / Boleto / Transferência) → CP em R$ ou USD
             const isUSD = f.cotacao_moeda === "USD";
@@ -445,6 +489,10 @@ export default function ComprasPage() {
 
       setModal(false);
       await carregar();
+      if (barterContratoGerado) {
+        setBarterContratoNum(barterContratoGerado);
+        setTimeout(() => setBarterContratoNum(null), 8000);
+      }
     } catch (e: unknown) {
       setErro(e instanceof Error ? e.message : "Erro ao salvar");
     } finally {
@@ -551,6 +599,17 @@ export default function ComprasPage() {
           </div>
           <button style={btnV} onClick={abrirNovo}>+ Novo Pedido</button>
         </header>
+
+        {barterContratoNum && (
+          <div style={{ margin: "12px 22px 0", padding: "12px 16px", background: "#D1FAE5", border: "0.5px solid #6EE7B7", borderRadius: 8, display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+            <span style={{ fontSize: 16 }}>✓</span>
+            <span style={{ color: "#065F46", fontWeight: 600 }}>
+              Contrato barter <strong>{barterContratoNum}</strong> gerado automaticamente em Comercialização de Grãos.
+            </span>
+            <a href="/contratos" style={{ marginLeft: "auto", color: "#065F46", fontSize: 12, fontWeight: 700, textDecoration: "underline" }}>Ver contrato →</a>
+            <button onClick={() => setBarterContratoNum(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#065F46", fontSize: 16, padding: "0 4px" }}>×</button>
+          </div>
+        )}
 
         <div style={{ padding: "18px 22px", flex: 1 }}>
 
