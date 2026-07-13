@@ -86,17 +86,30 @@ export async function POST(req: Request) {
       throw new Error("Perfil: " + perfErr.message);
     }
 
-    // ── 3. Criar registro na tabela usuarios (upsert por email+fazenda) ──
-    const { data: usuarioRow, error: userErr } = await supabase.from("usuarios").upsert({
-      fazenda_id:   fazenda_id,
-      auth_user_id: authUserId,
-      nome:         user_nome,
-      email:        user_email,
-      ativo:        true,
-      grupo_id:     grupo_id || null,
-      whatsapp:     whatsapp || null,
-    }, { onConflict: "fazenda_id,email" }).select("id").single();
-    if (userErr) throw new Error("Usuario: " + userErr.message);
+    // ── 3. Criar/atualizar registro na tabela usuarios ──
+    // Usa select-then-update para não depender de constraint específico
+    const { data: usuExist } = await supabase
+      .from("usuarios")
+      .select("id")
+      .eq("fazenda_id", fazenda_id)
+      .eq("email",      user_email)
+      .maybeSingle();
+
+    let usuarioRow: { id: string } | null = null;
+    if (usuExist) {
+      const { data, error: updErr } = await supabase.from("usuarios")
+        .update({ auth_user_id: authUserId, nome: user_nome, ativo: true, grupo_id: grupo_id || null, whatsapp: whatsapp || null })
+        .eq("id", usuExist.id)
+        .select("id").single();
+      if (updErr) throw new Error("Usuario: " + updErr.message);
+      usuarioRow = data;
+    } else {
+      const { data, error: insErr } = await supabase.from("usuarios")
+        .insert({ fazenda_id, auth_user_id: authUserId, nome: user_nome, email: user_email, ativo: true, grupo_id: grupo_id || null, whatsapp: whatsapp || null })
+        .select("id").single();
+      if (insErr) throw new Error("Usuario: " + insErr.message);
+      usuarioRow = data;
+    }
 
     // ── 4. Enviar e-mail de boas-vindas (opcional) ──
     let emailEnviado = false;
