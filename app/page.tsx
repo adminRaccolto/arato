@@ -103,6 +103,35 @@ type Alerta = {
   linkLabel: string;
 };
 
+// ─── Saudação por hora ───────────────────────────────────────
+function saudar(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+// ─── Counter animation hook ───────────────────────────────────
+function useCountUp(target: number, duration = 900): number {
+  const [display, setDisplay] = useState(0);
+  const rafRef = useRef<number>(0);
+  useEffect(() => {
+    cancelAnimationFrame(rafRef.current);
+    if (target === 0) { setDisplay(0); return; }
+    let start = 0;
+    function step(ts: number) {
+      if (!start) start = ts;
+      const pct = Math.min((ts - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - pct, 3); // cubic ease-out
+      setDisplay(target * ease);
+      if (pct < 1) rafRef.current = requestAnimationFrame(step);
+    }
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+  return display;
+}
+
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
   const { fazendaId, onboardingAtivo } = useAuth();
@@ -623,373 +652,346 @@ export default function Dashboard() {
     { label: "Relatórios",       link: "/relatorios",          cor: "#378ADD", sigla: "RL" },
   ];
 
+  // ── Counter animations (disparadas quando dados chegam do banco) ──
+  const saldoAnim  = useCountUp(!loadAl ? saldoSemana : 0);
+  const cpAnim     = useCountUp(!loadAl ? cpAberto    : 0);
+  const crAnim     = useCountUp(!loadAl ? crAberto    : 0);
+
+  // ── CSS keyframes (injetados uma vez no DOM) ──
+  const CSS = `
+    @keyframes heroIn  { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes slideIn { from { opacity:0; transform:translateX(-6px) } to { opacity:1; transform:translateX(0) } }
+    @keyframes pulso   { 0%,100% { opacity:1 } 50% { opacity:.35 } }
+    .al-row  { transition: background .12s }
+    .al-row:hover { background: #FAFBFD !important }
+    .al-btn  { transition: background .12s, color .12s }
+    .al-btn:hover { background: #1A4870 !important; color: #fff !important }
+    .mkt-row { transition: background .7s ease }
+    .atalho  { transition: all .15s }
+    .atalho:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(26,72,112,.13) !important }
+  `;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" }}>
+      {/* eslint-disable-next-line react/no-danger */}
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <TopNav />
 
-      <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+      {onboardingAtivo && <OnboardingPanel />}
 
-        {/* ── Onboarding ── */}
-        {onboardingAtivo && <OnboardingPanel />}
+      <main style={{ flex: 1, maxWidth: 1440, margin: "0 auto", width: "100%", paddingBottom: 48 }}>
 
-        {/* ── Cabeçalho ── */}
-        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ flex: "0 0 auto" }}>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>Dashboard</h1>
-            <p style={{ margin: "3px 0 0", fontSize: 12, color: "#666" }}>
-              {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-              {ciclosAtivos > 0 && ` · ${ciclosAtivos} ciclo${ciclosAtivos > 1 ? "s" : ""} ativo${ciclosAtivos > 1 ? "s" : ""}`}
-              {contratosAtivos > 0 && ` · ${contratosAtivos} contrato${contratosAtivos > 1 ? "s" : ""} em aberto`}
-            </p>
+        {/* ════════ HERO BAND ════════ */}
+        <div style={{
+          background: "linear-gradient(130deg,#0B2D50 0%,#1A4870 55%,#1A5CB8 100%)",
+          padding: "28px 32px",
+          display: "flex",
+          alignItems: "center",
+          position: "relative",
+          overflow: "hidden",
+          marginBottom: 0,
+        }}>
+          {/* Círculos decorativos */}
+          <div style={{ position:"absolute",right:-70,top:-70,width:280,height:280,borderRadius:"50%",background:"rgba(255,255,255,.03)",pointerEvents:"none" }} />
+          <div style={{ position:"absolute",right:100,bottom:-90,width:220,height:220,borderRadius:"50%",background:"rgba(201,146,27,.07)",pointerEvents:"none" }} />
+          <div style={{ position:"absolute",left:"28%",top:-20,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.02)",pointerEvents:"none" }} />
+
+          {/* Número herói */}
+          <div style={{ flex:1, animation:"heroIn .65s cubic-bezier(.22,1,.36,1) both" }}>
+            <div style={{ fontSize:10,fontWeight:700,color:"rgba(255,255,255,.38)",letterSpacing:".12em",textTransform:"uppercase",marginBottom:10 }}>
+              SALDO PROJETADO — PRÓXIMOS 7 DIAS
+            </div>
+            <div style={{ fontSize:52,fontWeight:800,color:"#fff",letterSpacing:"-1.5px",fontVariantNumeric:"tabular-nums",lineHeight:1,textShadow:"0 2px 20px rgba(0,0,0,.15)" }}>
+              {loadAl
+                ? <span style={{ color:"rgba(255,255,255,.2)" }}>—</span>
+                : <>{saldoSemana >= 0 ? "+" : ""}{fmtMoeda(saldoAnim)}</>
+              }
+            </div>
+            <div style={{ display:"flex",gap:22,marginTop:13,flexWrap:"wrap" }}>
+              <span style={{ fontSize:12,color:"rgba(255,255,255,.5)" }}>
+                Entradas: <strong style={{ color:"#86EFAC",fontVariantNumeric:"tabular-nums" }}>+{fmtMoeda(crSemana)}</strong>
+              </span>
+              <span style={{ fontSize:12,color:"rgba(255,255,255,.5)" }}>
+                Saídas: <strong style={{ color:"#FCA5A5",fontVariantNumeric:"tabular-nums" }}>−{fmtMoeda(cpSemana)}</strong>
+              </span>
+              {vencidosCp > 0 && (
+                <span style={{ fontSize:12,fontWeight:700,color:"#FCA5A5" }}>⚠ {fmtMoeda(vencidosCp)} vencidos</span>
+              )}
+            </div>
           </div>
 
+          {/* Divisor */}
+          <div style={{ width:1,height:68,background:"rgba(255,255,255,.1)",margin:"0 36px",flexShrink:0 }} />
+
+          {/* 4 mini KPIs */}
+          <div style={{ display:"flex",gap:30,flexShrink:0 }}>
+            {([
+              { label:"A PAGAR",    value: loadAl ? "—" : fmtMoeda(cpAnim),       color:"#FCA5A5", big:false },
+              { label:"A RECEBER",  value: loadAl ? "—" : fmtMoeda(crAnim),       color:"#86EFAC", big:false },
+              { label:"CICLOS",     value: loadAl ? "—" : String(ciclosAtivos),    color:"#93C5FD", big:true  },
+              { label:"CONTRATOS",  value: loadAl ? "—" : String(contratosAtivos), color:"#FCD34D", big:true  },
+            ] as const).map((s,i) => (
+              <div key={i} style={{ textAlign:"center" }}>
+                <div style={{ fontSize:9,fontWeight:700,color:"rgba(255,255,255,.32)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:6 }}>{s.label}</div>
+                <div style={{ fontSize:s.big?32:18,fontWeight:800,color:s.color,fontVariantNumeric:"tabular-nums",lineHeight:1 }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ════════ SUBHEADER ════════ */}
+        <div style={{ padding:"14px 32px 14px",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",background:"#fff",borderBottom:"0.5px solid #E8ECF4",marginBottom:20 }}>
+          <div style={{ fontSize:13,color:"#555",fontWeight:500 }}>
+            {saudar()} &nbsp;·&nbsp; {new Date().toLocaleDateString("pt-BR",{ weekday:"long",day:"numeric",month:"long",year:"numeric" })}
+            {ciclosAtivos > 0 && <span style={{ color:"#888" }}> · {ciclosAtivos} ciclo{ciclosAtivos>1?"s":""} ativo{ciclosAtivos>1?"s":""}</span>}
+          </div>
+
+          {/* Dots CBOT / B3 */}
+          {[mercado.cbot, mercado.b3].map((m,i) => (
+            <span key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,color:m.cor,fontWeight:600,padding:"3px 10px",borderRadius:20,background:m.aberto?"#F0FDF4":"#F3F6F9",border:`0.5px solid ${m.aberto?"#86EFAC60":"#DDE2EE"}` }}>
+              <span style={{ width:6,height:6,borderRadius:"50%",background:m.cor,display:"inline-block",animation:m.aberto?"pulso 2s ease infinite":"none" }} />
+              {m.label}
+            </span>
+          ))}
+
+          {/* Badge críticos */}
+          {alertas.some(a => a.urgencia === "critico") && (
+            <span style={{ display:"flex",alignItems:"center",gap:5,fontSize:11,fontWeight:700,color:"#991B1B",background:"#FEF2F2",border:"0.5px solid #FECACA",borderRadius:20,padding:"3px 10px" }}>
+              <span style={{ width:6,height:6,borderRadius:"50%",background:"#E24B4A",display:"inline-block",animation:"pulso 1.2s ease infinite" }} />
+              {alertas.filter(a => a.urgencia === "critico").length} crítico{alertas.filter(a=>a.urgencia==="critico").length>1?"s":""}
+            </span>
+          )}
+
           {/* Busca global */}
-          <div ref={buscaRef} style={{ flex: 1, minWidth: 220, maxWidth: 420, position: "relative" }}>
-            <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "#aaa", pointerEvents: "none" }}>🔍</span>
+          <div ref={buscaRef} style={{ marginLeft:"auto",position:"relative",width:380 }}>
+            <div style={{ position:"relative" }}>
+              <span style={{ position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"#bbb",pointerEvents:"none" }}>🔍</span>
               <input
                 type="text"
-                placeholder="Buscar lançamentos, contratos, insumos, pessoas…"
+                placeholder="Buscar lançamentos, contratos, insumos…"
                 value={buscaGlobal}
                 onChange={e => { setBuscaGlobal(e.target.value); setBuscaAberta(true); }}
                 onFocus={() => setBuscaAberta(true)}
-                style={{ width: "100%", boxSizing: "border-box", padding: "7px 10px 7px 32px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff", outline: "none", color: "#1a1a1a" }}
+                style={{ width:"100%",boxSizing:"border-box",padding:"8px 12px 8px 34px",border:"0.5px solid #DDE2EE",borderRadius:10,fontSize:13,background:"#F8FAFB",outline:"none",color:"#1a1a1a",boxShadow:"0 1px 3px rgba(26,72,112,.04)" }}
               />
-              {buscandoGlobal && (
-                <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#aaa" }}>…</span>
-              )}
+              {buscandoGlobal && <span style={{ position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"#ccc" }}>…</span>}
               {buscaGlobal && !buscandoGlobal && (
-                <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#aaa", padding: "0 2px", lineHeight: 1 }}>×</button>
+                <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#aaa",padding:0,lineHeight:1 }}>×</button>
               )}
             </div>
-            {/* Dropdown de resultados */}
-            {buscaAberta && (buscaGlobal.trim().length >= 2) && (
-              <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 200, overflow: "hidden", maxHeight: 360, overflowY: "auto" }}>
+            {buscaAberta && buscaGlobal.trim().length >= 2 && (
+              <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#fff",border:"0.5px solid #DDE2EE",borderRadius:10,boxShadow:"0 6px 24px rgba(0,0,0,.09)",zIndex:200,overflow:"hidden",maxHeight:360,overflowY:"auto" }}>
                 {resultadosBusca.length === 0 && !buscandoGlobal && (
-                  <div style={{ padding: "12px 14px", fontSize: 12, color: "#888", textAlign: "center" }}>Nenhum resultado para "{buscaGlobal}"</div>
+                  <div style={{ padding:"14px",fontSize:12,color:"#888",textAlign:"center" }}>Nenhum resultado para "{buscaGlobal}"</div>
                 )}
                 {resultadosBusca.map(r => (
-                  <a key={r.id} href={r.link} onClick={() => setBuscaAberta(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", borderBottom: "0.5px solid #F3F5F9", textDecoration: "none", background: "#fff" }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#F4F6FA")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: r.cor + "18", color: r.cor, flexShrink: 0 }}>{r.categoria}</span>
-                    <span style={{ flex: 1, fontSize: 13, color: "#1a1a1a", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.titulo}</span>
-                    {r.subtitulo && <span style={{ fontSize: 11, color: "#888", flexShrink: 0 }}>{r.subtitulo}</span>}
+                  <a key={r.id} href={r.link} onClick={() => setBuscaAberta(false)} style={{ display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:"0.5px solid #F3F5F9",textDecoration:"none",background:"#fff" }}
+                    onMouseEnter={e => (e.currentTarget.style.background="#F4F6FA")}
+                    onMouseLeave={e => (e.currentTarget.style.background="#fff")}>
+                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:6,background:r.cor+"18",color:r.cor,flexShrink:0 }}>{r.categoria}</span>
+                    <span style={{ flex:1,fontSize:13,color:"#1a1a1a",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{r.titulo}</span>
+                    {r.subtitulo && <span style={{ fontSize:11,color:"#888",flexShrink:0 }}>{r.subtitulo}</span>}
                   </a>
                 ))}
               </div>
             )}
           </div>
-
-          {alertas.some(a => a.urgencia === "critico") && (
-            <div style={{ flex: "0 0 auto", background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#991B1B" }}>
-              {alertas.filter(a => a.urgencia === "critico").length} alerta{alertas.filter(a => a.urgencia === "critico").length > 1 ? "s" : ""} crítico{alertas.filter(a => a.urgencia === "critico").length > 1 ? "s" : ""}
-            </div>
-          )}
         </div>
 
-        {/* ── Grade principal ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, alignItems: "start" }}>
+        {/* ════════ GRID PRINCIPAL ════════ */}
+        <div style={{ padding:"0 28px",display:"grid",gridTemplateColumns:"1fr 330px",gap:16,alignItems:"start" }}>
 
-          {/* ── COLUNA ESQUERDA ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* ── COLUNA ESQUERDA: Alertas + Conciliação ── */}
+          <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
 
-            {/* Alertas */}
-            <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
-                  Alertas & Pendências
-                </span>
+            {/* Card Alertas */}
+            <div style={{ background:"#fff",borderRadius:12,boxShadow:"0 1px 4px rgba(26,72,112,.07),0 1px 2px rgba(0,0,0,.03)",overflow:"hidden" }}>
+              <div style={{ padding:"14px 20px",borderBottom:"0.5px solid #EFF2F8",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                <span style={{ fontWeight:700,fontSize:14,color:"#0B2D50" }}>Alertas &amp; Pendências</span>
                 {loadAl
-                  ? <span style={{ fontSize: 11, color: "#aaa" }}>verificando...</span>
-                  : <span style={{ fontSize: 11, color: "#888" }}>{alertas.length} item{alertas.length !== 1 ? "s" : ""}</span>
+                  ? <span style={{ fontSize:11,color:"#ccc" }}>verificando…</span>
+                  : <span style={{ fontSize:11,color:"#888",background:"#F4F6FA",padding:"2px 9px",borderRadius:10,fontWeight:600 }}>{alertas.length} {alertas.length===1?"item":"itens"}</span>
                 }
               </div>
 
               {loadAl ? (
-                <div style={{ padding: "20px 16px", textAlign: "center", fontSize: 12, color: "#aaa" }}>Verificando pendências...</div>
+                <div style={{ padding:"32px 20px",textAlign:"center",fontSize:12,color:"#ccc" }}>Verificando pendências…</div>
               ) : alertas.length === 0 ? (
-                <div style={{ padding: "20px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#16A34A", marginBottom: 2 }}>Tudo em dia</div>
-                  <div style={{ fontSize: 12, color: "#888" }}>Nenhuma pendência nos próximos 7 dias</div>
+                <div style={{ padding:"44px 20px",textAlign:"center" }}>
+                  <div style={{ width:52,height:52,borderRadius:"50%",background:"#F0FDF4",border:"1.5px solid #BBF7D0",margin:"0 auto 14px",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,color:"#16A34A" }}>✓</div>
+                  <div style={{ fontSize:15,fontWeight:700,color:"#16A34A",marginBottom:5 }}>Tudo em dia</div>
+                  <div style={{ fontSize:12,color:"#aaa" }}>Nenhuma pendência nos próximos 7 dias</div>
                 </div>
-              ) : (
-                <div>
-                  {alertas.map(a => {
-                    const cor = COR[a.urgencia];
-                    return (
-                      <div
-                        key={a.id}
-                        style={{
-                          display: "flex", alignItems: "center",
-                          flexDirection: "row",
-                          gap: 12,
-                          padding: "11px 16px",
-                          borderBottom: "0.5px solid #EEF1F6",
-                          background: "#fff",
-                          borderLeft: `2px solid ${cor.badge}`,
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, width: "100%" }}>
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8, flexShrink: 0,
-                            background: cor.badge + "18", color: cor.badge, border: `0.5px solid ${cor.badge}40`,
-                          }}>
-                            {TIPO_LABEL[a.tipo] ?? a.tipo}
-                          </span>
-                          <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#1a1a1a", lineHeight: 1.4 }}>{a.desc}</span>
-                          <a href={a.link} style={{ fontSize: 12, padding: "5px 12px", borderRadius: 6, background: "#F4F6FA", border: "0.5px solid #DDE2EE", color: "#1A4870", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
-                            {a.linkLabel}
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              ) : alertas.map((a, idx) => {
+                const cor = COR[a.urgencia];
+                const strip = a.urgencia==="critico"?"4px":a.urgencia==="alto"?"3px":"2px";
+                return (
+                  <div key={a.id} className="al-row" style={{
+                    display:"flex",alignItems:"center",gap:12,padding:"13px 20px",
+                    borderBottom: idx < alertas.length-1 ? "0.5px solid #F3F5FB" : "none",
+                    background:"#fff",
+                    borderLeft:`${strip} solid ${cor.badge}`,
+                    animation:`slideIn .35s ease ${Math.min(idx*.06,.3)}s both`,
+                  }}>
+                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,flexShrink:0,background:cor.badge+"14",color:cor.badge,letterSpacing:".04em",textTransform:"uppercase" }}>
+                      {TIPO_LABEL[a.tipo] ?? a.tipo}
+                    </span>
+                    <span style={{ flex:1,fontSize:13,color:"#1a1a1a",lineHeight:1.45 }}>{a.desc}</span>
+                    <a href={a.link} className="al-btn"
+                      style={{ fontSize:11,padding:"5px 12px",borderRadius:7,background:"#F4F6FA",border:"0.5px solid #DDE2EE",color:"#1A4870",fontWeight:600,textDecoration:"none",whiteSpace:"nowrap",flexShrink:0 }}>
+                      {a.linkLabel} →
+                    </a>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Inconsistências de Conciliação */}
+            {/* Card Conciliação */}
             {conciliPend.length > 0 && (
-              <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>
-                    Inconsistências de Conciliação
-                  </span>
-                  <span style={{ fontSize: 11, color: "#C9921B", fontWeight: 600, background: "#FBF3E0", padding: "2px 8px", borderRadius: 8, border: "0.5px solid #C9921B40" }}>
+              <div style={{ background:"#fff",borderRadius:12,boxShadow:"0 1px 4px rgba(26,72,112,.07)",overflow:"hidden" }}>
+                <div style={{ padding:"12px 20px",borderBottom:"0.5px solid #EFF2F8",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                  <span style={{ fontWeight:700,fontSize:14,color:"#0B2D50" }}>Inconsistências de Conciliação</span>
+                  <span style={{ fontSize:11,fontWeight:700,color:"#C9921B",background:"#FBF3E0",padding:"2px 8px",borderRadius:10,border:"0.5px solid #C9921B40" }}>
                     {conciliPend.length} sem lançamento
                   </span>
                 </div>
-                {conciliPend.slice(0, 5).map(p => (
-                  <div key={p.id} style={{ padding: "10px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", gap: 12, background: "#fff" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 8,
-                      background: p.tipo === "debito" ? "#E24B4A18" : "#16A34A18",
-                      color: p.tipo === "debito" ? "#E24B4A" : "#16A34A",
-                      border: `0.5px solid ${p.tipo === "debito" ? "#E24B4A40" : "#16A34A40"}` }}>
-                      {p.tipo === "debito" ? "DÉBITO" : "CRÉDITO"}
+                {conciliPend.slice(0,5).map(p => (
+                  <div key={p.id} style={{ padding:"11px 20px",borderBottom:"0.5px solid #F3F5FB",display:"flex",alignItems:"center",gap:12,background:"#fff" }}>
+                    <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:p.tipo==="debito"?"#E24B4A18":"#16A34A18",color:p.tipo==="debito"?"#E24B4A":"#16A34A",flexShrink:0 }}>
+                      {p.tipo==="debito"?"DÉBITO":"CRÉDITO"}
                     </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.descricao}</div>
-                      <div style={{ fontSize: 11, color: "#888" }}>{p.data.split("-").reverse().join("/")} · {p.conta_nome ?? "—"}</div>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <div style={{ fontSize:12,fontWeight:600,color:"#1a1a1a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{p.descricao}</div>
+                      <div style={{ fontSize:11,color:"#888" }}>{p.data.split("-").reverse().join("/")} · {p.conta_nome ?? "—"}</div>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: p.tipo === "debito" ? "#E24B4A" : "#16A34A", whiteSpace: "nowrap" }}>
-                      {p.tipo === "debito" ? "-" : "+"}R$ {p.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    <span style={{ fontSize:13,fontWeight:700,color:p.tipo==="debito"?"#E24B4A":"#16A34A",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums" }}>
+                      {p.tipo==="debito"?"−":"+"}R$ {p.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
                     </span>
-                    <button
-                      disabled={resolvendo === p.id}
-                      onClick={() => {
-                        const cat = prompt(`Categoria para este lançamento (${p.descricao}):`, p.tipo === "debito" ? "Taxas Bancárias" : "Outros Créditos");
-                        if (cat !== null) resolverInconsistencia(p, cat || (p.tipo === "debito" ? "Taxas Bancárias" : "Outros Créditos"));
-                      }}
-                      style={{ padding: "5px 12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", opacity: resolvendo === p.id ? 0.6 : 1 }}>
-                      {resolvendo === p.id ? "Lançando…" : "Lançar e Conciliar"}
+                    <button disabled={resolvendo===p.id} onClick={() => { const cat=prompt(`Categoria (${p.descricao}):`,p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos"); if(cat!==null) resolverInconsistencia(p,cat||(p.tipo==="debito"?"Taxas Bancárias":"Outros Créditos")); }}
+                      style={{ padding:"5px 12px",background:"#1A4870",color:"#fff",border:"none",borderRadius:7,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",opacity:resolvendo===p.id?.6:1,flexShrink:0 }}>
+                      {resolvendo===p.id?"Lançando…":"Lançar"}
                     </button>
-                    <button onClick={() => ignorarInconsistencia(p.id)}
-                      style={{ padding: "5px 10px", background: "#F4F6FA", color: "#888", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, cursor: "pointer" }}>
+                    <button onClick={() => ignorarInconsistencia(p.id)} style={{ padding:"5px 10px",background:"#F4F6FA",color:"#888",border:"0.5px solid #DDE2EE",borderRadius:7,fontSize:11,cursor:"pointer",flexShrink:0 }}>
                       Ignorar
                     </button>
                   </div>
                 ))}
                 {conciliPend.length > 5 && (
-                  <div style={{ padding: "8px 16px", textAlign: "center", borderTop: "0.5px solid #EEF1F6" }}>
-                    <a href="/financeiro/conciliacao" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>
-                      Ver todas ({conciliPend.length}) na Conciliação →
-                    </a>
+                  <div style={{ padding:"10px 20px",textAlign:"center" }}>
+                    <a href="/financeiro/conciliacao" style={{ fontSize:12,color:"#1A4870",fontWeight:600,textDecoration:"none" }}>Ver todas ({conciliPend.length}) →</a>
                   </div>
                 )}
               </div>
             )}
 
-            {/* KPIs financeiros */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-              {[
-                { label: "A Pagar — total", valor: cpAberto, cor: "#E24B4A" },
-                { label: "A Receber — total", valor: crAberto, cor: "#1A4870" },
-                { label: "A Pagar — 7 dias", valor: cpSemana, cor: "#EF9F27" },
-                { label: "A Receber — 7 dias", valor: crSemana, cor: "#16A34A" },
-              ].map((k, i) => (
-                <div key={i} style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 14px" }}>
-                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{k.label}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: loadAl ? "#ccc" : k.cor }}>
-                    {loadAl ? "—" : fmtMoeda(k.valor)}
-                  </div>
-                </div>
-              ))}
-            </div>
+          </div>
 
-            {/* Saldo da semana */}
-            <div style={{
-              background: "#fff",
-              border: "0.5px solid #DDE2EE",
-              borderRadius: 10, padding: "14px 18px",
-              display: "flex", alignItems: "center",
-              justifyContent: "space-between",
-              flexDirection: "row",
-              borderLeft: `3px solid ${saldoSemana >= 0 ? "#16A34A" : "#E24B4A"}`,
-            }}>
-              <div>
-                <div style={{ fontSize: 11, color: "#888", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                  Saldo projetado — próximos 7 dias
-                </div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: saldoSemana >= 0 ? "#16A34A" : "#E24B4A" }}>
-                  {loadAl ? "—" : fmtMoeda(saldoSemana)}
-                </div>
-              </div>
-              <div style={{ textAlign: "right", fontSize: 12, color: "#666" }}>
-                <div>Recebimentos: <strong style={{ color: "#16A34A" }}>{fmtMoeda(crSemana)}</strong></div>
-                <div>Pagamentos: <strong style={{ color: "#E24B4A" }}>{fmtMoeda(cpSemana)}</strong></div>
-                {vencidosCp > 0 && (
-                  <div style={{ color: "#E24B4A", fontWeight: 600, marginTop: 4 }}>
-                    Vencidos: {fmtMoeda(vencidosCp)}
-                  </div>
+          {/* ── COLUNA DIREITA: Mercado + Atalhos ── */}
+          <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+
+            {/* Card Mercado */}
+            <div style={{ background:"#fff",borderRadius:12,boxShadow:"0 1px 4px rgba(26,72,112,.07)",overflow:"hidden" }}>
+              <div style={{ padding:"14px 18px",borderBottom:"0.5px solid #EFF2F8",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                <span style={{ fontWeight:700,fontSize:14,color:"#0B2D50" }}>Mercado ao Vivo</span>
+                {!loadPr && precos && (
+                  <span style={{ fontSize:10,color:"#ccc" }}>
+                    {precos.erro ? "⚠ fallback" : new Date(precos.atualizadoEm).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+                  </span>
                 )}
               </div>
+
+              {/* Status bolsas */}
+              <div style={{ padding:"10px 18px 0",display:"flex",gap:8,flexWrap:"wrap" }}>
+                {[mercado.cbot, mercado.b3].map((m,i) => (
+                  <span key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:10,fontWeight:600,color:m.cor,padding:"3px 9px",borderRadius:20,background:m.aberto?"#F0FDF4":"#F3F6F9",border:`0.5px solid ${m.aberto?"#86EFAC60":"#DDE2EE"}` }}>
+                    <span style={{ width:5,height:5,borderRadius:"50%",background:m.cor,display:"inline-block",animation:m.aberto?"pulso 2s ease infinite":"none" }} />
+                    {m.label}
+                  </span>
+                ))}
+              </div>
+
+              {loadPr ? (
+                <div style={{ padding:"28px 18px",textAlign:"center",fontSize:12,color:"#ccc" }}>Carregando…</div>
+              ) : !precos ? null : (() => {
+                type Linha = { key:string; nome:string; fonte:string; valor:string; brl?:string; var:number };
+                const linhas: Linha[] = [
+                  { key:"soja",    nome:"Soja",    fonte:"CBOT · ¢/bu",                                             valor:`${fmtUsd(precos.soja.cbot)}¢`,     brl:`R$ ${fmtBrl(precos.soja.brl)}/sc`,   var:precos.soja.variacao    },
+                  { key:"milho",   nome:"Milho",   fonte:precos.milho.fonte==="B3"?"B3 · R$/sc":"CBOT est. · R$/sc", valor:`R$ ${fmtBrl(precos.milho.brl)}/sc`,                                           var:precos.milho.variacao   },
+                  { key:"algodao", nome:"Algodão", fonte:"CBOT · ¢/lb",                                             valor:`${fmtUsd(precos.algodao.cbot)}¢`,  brl:`R$ ${fmtBrl(precos.algodao.brl)}/@`, var:precos.algodao.variacao },
+                ];
+                return (
+                  <div style={{ paddingTop:6 }}>
+                    {linhas.map(m => {
+                      const dir = flash[m.key] ?? "same";
+                      return (
+                        <div key={m.key} className="mkt-row" style={{ padding:"13px 18px",borderBottom:"0.5px solid #EFF2F8",background:dir==="up"?"#F0FDF480":dir==="down"?"#FEF2F280":"transparent" }}>
+                          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"baseline" }}>
+                            <span style={{ fontWeight:700,fontSize:14,color:"#0B2D50" }}>{m.nome}</span>
+                            <div style={{ textAlign:"right" }}>
+                              <span style={{ fontWeight:800,fontSize:17,color:DIR_COLOR[dir],fontVariantNumeric:"tabular-nums",transition:"color .6s" }}>
+                                {m.valor}{DIR_ARROW[dir]}
+                              </span>
+                              <span style={{ marginLeft:6,fontSize:10,fontWeight:700,color:m.var>=0?"#16A34A":"#E24B4A",background:m.var>=0?"#F0FDF4":"#FEF2F2",padding:"1px 6px",borderRadius:5 }}>
+                                {fmtPct(m.var)}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display:"flex",justifyContent:"space-between",marginTop:3 }}>
+                            <span style={{ fontSize:10,color:"#bbb" }}>{m.fonte}</span>
+                            {m.brl && <span style={{ fontSize:11,color:"#1A4870",fontWeight:600 }}>{m.brl}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* USD Spot */}
+                    {(() => {
+                      const dir = flash["usd"] ?? "same";
+                      return (
+                        <div className="mkt-row" style={{ padding:"13px 18px",borderBottom:"0.5px solid #EFF2F8",background:dir==="up"?"#F0FDF480":dir==="down"?"#FEF2F280":"transparent" }}>
+                          <div style={{ display:"flex",justifyContent:"space-between" }}>
+                            <span style={{ fontWeight:700,fontSize:14,color:"#0B2D50" }}>Dólar Spot</span>
+                            <span style={{ fontWeight:800,fontSize:17,color:DIR_COLOR[dir],fontVariantNumeric:"tabular-nums",transition:"color .6s" }}>R$ {fmtBrl(precos.usdBrl)}{DIR_ARROW[dir]}</span>
+                          </div>
+                          <span style={{ fontSize:10,color:"#bbb" }}>Comercial · AwesomeAPI</span>
+                        </div>
+                      );
+                    })()}
+                    {/* PTAX */}
+                    <div style={{ padding:"13px 18px" }}>
+                      <div style={{ display:"flex",justifyContent:"space-between" }}>
+                        <span style={{ fontWeight:700,fontSize:14,color:"#0B2D50" }}>Dólar PTAX</span>
+                        <span style={{ fontWeight:700,fontSize:15,color:precos.usdPtax?"#1a1a1a":"#ddd",fontVariantNumeric:"tabular-nums" }}>
+                          {precos.usdPtax?`R$ ${fmtBrl4(precos.usdPtax)}`:"—"}
+                        </span>
+                      </div>
+                      <span style={{ fontSize:10,color:"#bbb" }}>Banco Central · oficial</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Atalhos */}
-            <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "12px 16px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>Atalhos</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {/* Card Atalhos */}
+            <div style={{ background:"#fff",borderRadius:12,boxShadow:"0 1px 4px rgba(26,72,112,.07)",padding:"14px 18px" }}>
+              <div style={{ fontSize:10,fontWeight:700,color:"#bbb",letterSpacing:".1em",textTransform:"uppercase",marginBottom:12 }}>Acesso Rápido</div>
+              <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
                 {ATALHOS.map(a => (
-                  <a key={a.link} href={a.link} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, padding: "10px 6px", borderRadius: 8, border: "0.5px solid #EEF1F6", textDecoration: "none", background: "#FAFBFC", transition: "border-color 0.15s, background 0.15s" }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = a.cor + "10"; (e.currentTarget as HTMLAnchorElement).style.borderColor = a.cor + "60"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "#FAFBFC"; (e.currentTarget as HTMLAnchorElement).style.borderColor = "#EEF1F6"; }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 8, background: a.cor + "18", color: a.cor, fontWeight: 800, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center", letterSpacing: "0.03em" }}>{a.sigla}</span>
-                    <span style={{ fontSize: 11, color: "#444", fontWeight: 500, textAlign: "center", lineHeight: 1.2 }}>{a.label}</span>
+                  <a key={a.link} href={a.link} className="atalho"
+                    style={{ display:"flex",alignItems:"center",gap:9,padding:"10px 11px",borderRadius:9,border:"0.5px solid #EEF1F6",textDecoration:"none",background:"#FAFBFC",boxShadow:"none" }}
+                    onMouseEnter={e => { const el=e.currentTarget as HTMLAnchorElement; el.style.background=a.cor+"0D"; el.style.borderColor=a.cor+"55"; }}
+                    onMouseLeave={e => { const el=e.currentTarget as HTMLAnchorElement; el.style.background="#FAFBFC"; el.style.borderColor="#EEF1F6"; }}>
+                    <span style={{ width:30,height:30,borderRadius:8,background:a.cor+"18",color:a.cor,fontWeight:800,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,letterSpacing:".02em" }}>{a.sigla}</span>
+                    <span style={{ fontSize:11,color:"#333",fontWeight:500,lineHeight:1.25 }}>{a.label}</span>
                   </a>
                 ))}
               </div>
             </div>
 
           </div>
-
-          {/* ── COLUNA DIREITA — Preços ao vivo ── */}
-          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "14px 16px" }}>
-
-            {/* Header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Mercado</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {!loadPr && precos && (
-                  <span style={{ fontSize: 10, color: "#888" }}>
-                    {precos.erro ? "⚠ fallback" : new Date(precos.atualizadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                  </span>
-                )}
-                {loadPr && <span style={{ fontSize: 10, color: "#aaa" }}>buscando...</span>}
-              </div>
-            </div>
-
-            {/* Status CBOT / B3 */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              {[mercado.cbot, mercado.b3].map((m, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, padding: "3px 8px", borderRadius: 20, background: m.aberto ? "#F0FDF4" : "#F3F6F9", border: `0.5px solid ${m.aberto ? "#86EFAC" : "#DDE2EE"}`, color: m.cor }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: m.cor, display: "inline-block", boxShadow: m.aberto ? `0 0 0 2px ${m.cor}33` : "none" }} />
-                  {m.label}
-                </div>
-              ))}
-              <div style={{ marginLeft: "auto", fontSize: 10, color: "#aaa", alignSelf: "center" }}>30s</div>
-            </div>
-
-            {loadPr ? (
-              <div style={{ padding: "20px 0", textAlign: "center", fontSize: 12, color: "#aaa" }}>Carregando...</div>
-            ) : !precos ? null : (() => {
-              type Linha = { key: string; nome: string; fonte: string; valor: string; brl: string; var: number };
-              const linhas: Linha[] = [
-                {
-                  key: "soja",
-                  nome: "Soja",
-                  fonte: "CBOT · ¢/bu",
-                  valor: `${fmtUsd(precos.soja.cbot)}¢`,
-                  brl: `R$ ${fmtBrl(precos.soja.brl)}/sc`,
-                  var: precos.soja.variacao,
-                },
-                {
-                  key: "milho",
-                  nome: "Milho",
-                  fonte: precos.milho.fonte === "B3" ? "B3 · R$/sc" : "CBOT est. · R$/sc",
-                  valor: `R$ ${fmtBrl(precos.milho.brl)}/sc`,
-                  brl: "",
-                  var: precos.milho.variacao,
-                },
-                {
-                  key: "algodao",
-                  nome: "Algodão",
-                  fonte: "CBOT · ¢/lb",
-                  valor: `${fmtUsd(precos.algodao.cbot)}¢`,
-                  brl: `R$ ${fmtBrl(precos.algodao.brl)}/@`,
-                  var: precos.algodao.variacao,
-                },
-              ];
-
-              return (
-                <>
-                  {linhas.map(m => {
-                    const dir = flash[m.key] ?? "same";
-                    const flashBg = dir === "up" ? "#F0FDF4" : dir === "down" ? "#FEF2F2" : "transparent";
-                    return (
-                      <div
-                        key={m.key}
-                        style={{
-                          padding: "10px 6px",
-                          borderBottom: "0.5px solid #EEF1F6",
-                          borderRadius: 6,
-                          background: flashBg,
-                          transition: "background 0.6s ease",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>{m.nome}</span>
-                          <div style={{ textAlign: "right" }}>
-                            <span style={{ fontWeight: 700, fontSize: 16, color: DIR_COLOR[dir], transition: "color 0.6s" }}>
-                              {m.valor}{DIR_ARROW[dir]}
-                            </span>
-                            <span style={{ fontSize: 11, marginLeft: 8, color: m.var >= 0 ? "#16A34A" : "#E24B4A", fontWeight: 600 }}>
-                              {fmtPct(m.var)}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
-                          <span style={{ fontSize: 10, color: "#aaa" }}>{m.fonte}</span>
-                          {m.brl && <span style={{ fontSize: 11, color: "#1A4870", fontWeight: 600 }}>{m.brl}</span>}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* USD */}
-                  {(() => {
-                    const dir = flash["usd"] ?? "same";
-                    const flashBg = dir === "up" ? "#F0FDF4" : dir === "down" ? "#FEF2F2" : "transparent";
-                    return (
-                      <div style={{ padding: "10px 6px", borderBottom: "0.5px solid #EEF1F6", borderRadius: 6, background: flashBg, transition: "background 0.6s ease" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>Dólar Spot</span>
-                          <span style={{ fontWeight: 700, fontSize: 16, color: DIR_COLOR[dir], transition: "color 0.6s" }}>
-                            R$ {fmtBrl(precos.usdBrl)}{DIR_ARROW[dir]}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: 10, color: "#aaa" }}>Comercial · AwesomeAPI</span>
-                      </div>
-                    );
-                  })()}
-
-                  <div style={{ padding: "10px 6px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>Dólar PTAX</span>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: precos.usdPtax ? "#1a1a1a" : "#ccc" }}>
-                        {precos.usdPtax ? `R$ ${fmtBrl4(precos.usdPtax)}` : "—"}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: 10, color: "#aaa" }}>Banco Central · oficial</span>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-
         </div>
 
       </main>
     </div>
   );
 }
+
