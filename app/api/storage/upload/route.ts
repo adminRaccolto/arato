@@ -19,7 +19,7 @@ function sb() {
 }
 
 export async function POST(req: NextRequest) {
-  const { getSessionUser, validateFazendaAccess } = await import("../../../lib/api-auth");
+  const { getSessionUser, validateFazendaAccess } = await import("../../../../lib/api-auth");
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
 

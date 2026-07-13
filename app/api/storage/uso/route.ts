@@ -17,7 +17,7 @@ const COTAS_FALLBACK: Record<string, number> = {
 };
 
 export async function GET() {
-  const { getSessionUser } = await import("../../../lib/api-auth");
+  const { getSessionUser } = await import("../../../../lib/api-auth");
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
 
