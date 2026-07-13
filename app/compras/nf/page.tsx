@@ -173,6 +173,7 @@ export default function NfCompraPage() {
   const [siegErros,      setSiegErros]      = useState<Record<string, string>>({});
   const [siegJustModal,  setSiegJustModal]  = useState<{nf: NfEntrada; tipo: number}|null>(null);
   const [siegJustText,   setSiegJustText]   = useState("");
+  const [manDropdown,    setManDropdown]    = useState<string|null>(null);
 
   // Wizard
   const [wizard,  setWizard]  = useState(false);
@@ -1049,7 +1050,7 @@ export default function NfCompraPage() {
   // ─────────────────────────────────────────────────────────
   if (!podeAcessarPlano("nf_entrada")) return <PlanoGate modulo="nf_entrada" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }} onClick={() => setManDropdown(null)}>
       <TopNav />
 
       <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
@@ -1199,24 +1200,31 @@ export default function NfCompraPage() {
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         {nf.origem === "sieg" ? (() => {
-                          const isBusy = siegBusy[nf.id];
-                          const manTipo = (nf.manifestacao_tipo ?? null);
-                          const manSt   = manTipo !== null ? (MAN_CFG.find(m=>m.tipo===manTipo)?.status ?? "pendente") : "pendente";
+                          const isBusy  = siegBusy[nf.id];
+                          const manTipo = nf.manifestacao_tipo ?? null;
+                          const manSt   = manTipo !== null ? (MAN_CFG.find(m => m.tipo === manTipo)?.status ?? "pendente") : "pendente";
                           const stCfg   = MAN_ST[manSt as ManStatus] ?? MAN_ST.pendente;
+                          const aberto  = manDropdown === nf.id;
                           return (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-                              <span style={{ padding: "2px 7px", borderRadius: 8, fontSize: 10, fontWeight: 700, background: stCfg.bg, color: stCfg.cor }}>{isBusy ? "⏳…" : stCfg.label}</span>
-                              {(manTipo === null || manTipo === 0) && !isBusy && (
-                                <div style={{ display: "flex", gap: 3, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                                  {MAN_CFG.filter(m => m.tipo !== manTipo).map(m => (
-                                    <button key={m.tipo} onClick={() => manifestar(nf, m.tipo)}
-                                      style={{ padding: "2px 6px", border: `0.5px solid ${m.cor}50`, borderRadius: 5, background: m.bg, color: m.cor, fontWeight: 600, fontSize: 10, cursor: "pointer", whiteSpace: "nowrap" }}>
-                                      {m.label}
+                            <div style={{ position: "relative", display: "inline-block" }}>
+                              <button
+                                disabled={isBusy}
+                                onClick={e => { e.stopPropagation(); setManDropdown(aberto ? null : nf.id); }}
+                                style={{ padding: "3px 8px", border: `0.5px solid ${stCfg.cor}60`, borderRadius: 6, background: stCfg.bg, color: stCfg.cor, fontWeight: 700, fontSize: 11, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
+                                {isBusy ? "⏳…" : stCfg.label} {!isBusy && "▾"}
+                              </button>
+                              {aberto && (
+                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 200, minWidth: 150, overflow: "hidden" }}>
+                                  {MAN_CFG.map(m => (
+                                    <button key={m.tipo}
+                                      onClick={e => { e.stopPropagation(); setManDropdown(null); manifestar(nf, m.tipo); }}
+                                      style={{ display: "block", width: "100%", padding: "8px 14px", border: "none", background: m.tipo === manTipo ? m.bg : "transparent", color: m.cor, fontWeight: m.tipo === manTipo ? 700 : 600, fontSize: 12, cursor: "pointer", textAlign: "left" }}>
+                                      {m.tipo === manTipo ? "✓ " : ""}{m.label}
                                     </button>
                                   ))}
                                 </div>
                               )}
-                              {siegErros[nf.id] && <div style={{ fontSize: 9, color: "#E24B4A", maxWidth: 160 }}>{siegErros[nf.id]}</div>}
+                              {siegErros[nf.id] && <div style={{ fontSize: 9, color: "#E24B4A", marginTop: 3 }}>{siegErros[nf.id]}</div>}
                             </div>
                           );
                         })() : <span style={{ fontSize: 11, color: "#ccc" }}>—</span>}
