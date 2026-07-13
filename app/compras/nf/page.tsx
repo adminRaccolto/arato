@@ -406,14 +406,20 @@ export default function NfCompraPage() {
     if (!fazendaId || !nf.chave_acesso) return;
     setSiegReimporting(p => ({ ...p, [nf.id]: true }));
     try {
+      // Janela de ±7 dias em torno da emissão — evita buscar anos inteiros (timeout)
+      const base  = nf.data_emissao ?? new Date().toISOString().slice(0, 10);
+      const dtIni = new Date(new Date(base).getTime() - 7 * 86_400_000).toISOString().slice(0, 10);
+      const dtFim = new Date(new Date(base).getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
       const res = await fetch("/api/integracoes/sieg-sync", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: "2020-01-01", data_fim: new Date().toISOString().slice(0,10), force_reimport: true, chaves_acesso: [nf.chave_acesso] }),
+        body: JSON.stringify({ fazenda_id: fazendaId, data_inicio: dtIni, data_fim: dtFim, force_reimport: true, chaves_acesso: [nf.chave_acesso] }),
       });
-      const d = await res.json() as Record<string, unknown>;
+      const txt = await res.text();
+      let d: Record<string, unknown>;
+      try { d = JSON.parse(txt); } catch { throw new Error(txt.slice(0, 300)); }
       if (d.erro) alert(`Erro: ${d.erro}`);
       else await carregar();
-    } catch (e) { alert(`Erro de rede: ${e}`); }
+    } catch (e) { alert(`Erro ao reimportar: ${e}`); }
     finally { setSiegReimporting(p => ({ ...p, [nf.id]: false })); }
   }
 
