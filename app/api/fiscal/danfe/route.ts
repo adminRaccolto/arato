@@ -69,12 +69,22 @@ export async function GET(req: NextRequest) {
       cancelada: nfStatus === "cancelada",
     });
 
-    // Converte o PDFDocument (stream) em Buffer
+    // Converte o PDFDocument (stream) em Buffer.
+    // pdfkit em Node.js ≥18 emite "stream.push() after EOF" como evento de erro
+    // após o evento "end" — é um quirk não-fatal; se já temos os dados, resolvemos.
     const chunks: Buffer[] = [];
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      let ended = false;
       pdfDoc.on("data",  (chunk: Buffer) => chunks.push(chunk));
-      pdfDoc.on("end",   () => resolve(Buffer.concat(chunks)));
-      pdfDoc.on("error", reject);
+      pdfDoc.on("end",   () => { ended = true; resolve(Buffer.concat(chunks)); });
+      pdfDoc.on("error", (err: Error) => {
+        if (ended) return; // erro tardio após "end" — ignorar
+        if (chunks.length > 0 && /push.*after EOF/i.test(err?.message ?? "")) {
+          resolve(Buffer.concat(chunks));
+        } else {
+          reject(err);
+        }
+      });
       pdfDoc.end();
     });
 
