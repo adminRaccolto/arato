@@ -1237,7 +1237,7 @@ export default function NfCompraPage() {
                               ↗ DANFE
                             </a>
                           )}
-                          {nf.status !== "processada" && nf.status !== "cancelada" && (
+                          {nf.status !== "processada" && nf.status !== "cancelada" && nf.origem !== "sieg" && (
                             <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
                               Editar
                             </button>
