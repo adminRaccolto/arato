@@ -57,11 +57,6 @@ export async function validateFazendaAccess(
 
   if (!userId) return { ok: false, status: 401, error: "Não autenticado" };
 
-  // Raccotlo bypassa verificação de tenant
-  if ((userEmail ?? "").toLowerCase().endsWith("@raccolto.com.br")) {
-    return { ok: true, userId };
-  }
-
   const { data: perfil } = await adminClient()
     .from("perfis")
     .select("conta_id, role")

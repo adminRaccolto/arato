@@ -94,10 +94,25 @@ export async function DELETE(req: Request) {
   const { data: { user }, error } = await getUser();
   if (error || !user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
-  const id = new URL(req.url).searchParams.get("id");
+  const params = new URL(req.url).searchParams;
+  const id = params.get("id");
+  const fazenda_id = params.get("fazenda_id");
   if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
 
   const db = adminClient();
+
+  // Verifica que o grupo pertence à fazenda do usuário (previne IDOR)
+  if (fazenda_id) {
+    const { validateFazendaAccess } = await import("../../../../lib/api-auth");
+    const access = await validateFazendaAccess(fazenda_id);
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
+    const { data: grupo } = await db.from("grupos_usuarios").select("fazenda_id").eq("id", id).maybeSingle();
+    if (grupo && grupo.fazenda_id && grupo.fazenda_id !== fazenda_id) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+  }
+
   const { error: dbErr } = await db.from("grupos_usuarios").delete().eq("id", id);
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
   return NextResponse.json({ ok: true });

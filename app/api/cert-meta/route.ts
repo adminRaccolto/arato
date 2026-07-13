@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 function adminClient() {
   return createClient(
@@ -14,6 +15,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const fazendaId = searchParams.get("fazenda_id");
   if (!fazendaId) return NextResponse.json({ error: "fazenda_id obrigatório" }, { status: 400 });
+
+  const access = await validateFazendaAccess(fazendaId);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const supabase = adminClient();
   const { data, error } = await supabase
@@ -46,6 +50,9 @@ export async function POST(req: Request) {
   };
 
   if (!body.fazenda_id) return NextResponse.json({ error: "fazenda_id obrigatório" }, { status: 400 });
+
+  const access = await validateFazendaAccess(body.fazenda_id);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const supabase = adminClient();
   const modulo = `certificado_a1_${body.produtor_id ?? "geral"}`;

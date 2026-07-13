@@ -13,6 +13,14 @@ const sb = () =>
   );
 
 export async function POST(req: Request) {
+  const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (webhookToken) {
+    const received = req.headers.get("asaas-access-token") ?? "";
+    if (received !== webhookToken) {
+      return NextResponse.json({ ok: false, error: "Token inválido" }, { status: 401 });
+    }
+  }
+
   try {
     const body = await req.json();
     const event = body.event as string;

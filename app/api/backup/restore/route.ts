@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 const ORDEM_RESTORE: string[] = [
   "fazendas", "produtores", "pessoas",
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
   }
 
   const fazendaId = body.fazenda_id;
+
+  const access = await validateFazendaAccess(fazendaId);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
   const admin = adminClient();
 
   // Baixar o arquivo do Storage

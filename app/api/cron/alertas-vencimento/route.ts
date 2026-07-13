@@ -6,7 +6,11 @@ import { createClient } from "@supabase/supabase-js";
 // A Vercel injeta o header Authorization: Bearer <CRON_SECRET>
 function autorizado(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true; // local sem secret → permite
+  if (!secret) {
+    // Em produção sem CRON_SECRET configurado: bloqueia para não expor o endpoint
+    if (process.env.NODE_ENV === "production") return false;
+    return true; // local sem secret → permite
+  }
   const auth = req.headers.get("authorization");
   return auth === `Bearer ${secret}`;
 }

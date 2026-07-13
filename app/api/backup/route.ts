@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 // ── Tabelas exportadas no backup (em ordem de dependência) ──────
 const TABELAS: string[] = [
@@ -31,6 +32,9 @@ function adminClient() {
 export async function GET(req: NextRequest) {
   const fazendaId = req.nextUrl.searchParams.get("fazenda_id");
   if (!fazendaId) return NextResponse.json({ backups: [] });
+
+  const access = await validateFazendaAccess(fazendaId, req.headers.get("authorization") ?? undefined);
+  if (!access.ok) return NextResponse.json({ erro: access.error }, { status: access.status });
 
   const admin = adminClient();
   const { data: arquivos, error } = await admin.storage

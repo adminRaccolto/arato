@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ erro: "Campos obrigatórios ausentes" }, { status: 400 });
     }
 
+    const { validateFazendaAccess } = await import("../../../../lib/api-auth");
+    const access = await validateFazendaAccess(fazenda_id, req.headers.get("authorization") ?? undefined);
+    if (!access.ok) return NextResponse.json({ erro: access.error }, { status: access.status });
+
     if (![0, 1, 2, 3].includes(tipo)) {
       return NextResponse.json({ erro: "tipo deve ser 0, 1, 2 ou 3" }, { status: 400 });
     }

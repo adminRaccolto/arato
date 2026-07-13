@@ -33,6 +33,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, mensagem: "Parâmetros obrigatórios ausentes." }, { status: 400 });
   }
 
+  const { validateFazendaAccess } = await import("../../../../lib/api-auth");
+  const access = await validateFazendaAccess(fazendaId, req.headers.get("authorization") ?? undefined);
+  if (!access.ok) return NextResponse.json({ ok: false, mensagem: access.error }, { status: access.status });
+
   console.log("[PEND-REPROCESS] pendencia:", pendenciaId, "insumo:", insumoId, "fazenda:", fazendaId);
 
   try {

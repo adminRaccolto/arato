@@ -76,11 +76,11 @@ export async function POST(req: NextRequest) {
     try { resposta = JSON.parse(text); } catch { resposta = text; }
 
     if (!res.ok) {
+      console.error(`[sieg-cert] API HTTP ${res.status} key_source=${keySource} key_info=${keyInfo}`);
       return NextResponse.json(
         {
           erro:       `Sieg API HTTP ${res.status}: ${text.slice(0, 300)}`,
           key_source: keySource,
-          key_info:   keyInfo,
           cnpj:       cnpjLimpo,
         },
         { status: 502 }
@@ -91,7 +91,6 @@ export async function POST(req: NextRequest) {
       sucesso:    true,
       resposta,
       key_source: keySource,
-      key_info:   keyInfo,
       cnpj:       cnpjLimpo,
     });
 

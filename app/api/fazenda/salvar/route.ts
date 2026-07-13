@@ -44,7 +44,11 @@ export async function POST(req: Request) {
   const db = adminClient();
 
   if (id) {
-    // UPDATE
+    // UPDATE — verifica que a fazenda pertence à conta do usuário (previne IDOR)
+    const { validateFazendaAccess } = await import("../../../../lib/api-auth");
+    const access = await validateFazendaAccess(id);
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+
     const { data, error } = await db
       .from("fazendas")
       .update(campos)

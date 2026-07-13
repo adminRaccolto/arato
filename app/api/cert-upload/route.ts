@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import forge from "node-forge";
+import { validateFazendaAccess } from "../../../../lib/api-auth";
 
 function adminClient() {
   return createClient(
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
   if (!file || !senha || !fazendaId) {
     return NextResponse.json({ error: "file, senha e fazenda_id são obrigatórios" }, { status: 400 });
   }
+
+  const access = await validateFazendaAccess(fazendaId);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const buffer = await file.arrayBuffer();
   const dataVencimento = extrairVencimento(buffer, senha);
