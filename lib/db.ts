@@ -1296,7 +1296,7 @@ export async function listarUsuarios(): Promise<Usuario[]> {
 export async function criarUsuario(u: Omit<Usuario, "id" | "created_at">): Promise<Usuario> {
   const { data, error } = await supabase
     .from("usuarios")
-    .upsert(u, { onConflict: "email", ignoreDuplicates: false })
+    .upsert(u, { onConflict: "fazenda_id,email", ignoreDuplicates: false })
     .select()
     .single();
   if (error) throw error;

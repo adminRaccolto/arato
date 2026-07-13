@@ -1847,8 +1847,10 @@ function CadastrosInner() {
   };
   const salvarUser = () => salvar(async () => {
     if (!fUser.nome.trim() || !fUser.email.trim()) return;
+    const fazId = fazTrabalho || fazIdEff;
+    if (!fazId) throw new Error("Selecione uma fazenda antes de cadastrar usuários.");
     const whatsapp = fUser.whatsapp.trim() || undefined;
-    const payload = { nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, whatsapp, ativo: true };
+    const payload = { fazenda_id: fazId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, whatsapp, ativo: true };
     if (editUser) {
       await atualizarUsuario(editUser.id, payload);
       setUsuarios(p => p.map(x => x.id === editUser.id ? { ...x, ...payload } : x));

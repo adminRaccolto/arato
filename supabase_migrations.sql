@@ -7208,3 +7208,16 @@ ALTER TABLE nf_entradas
   ADD COLUMN IF NOT EXISTS xml_storage_path TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════
+-- Seção 65 — usuarios: trocar UNIQUE(email) por UNIQUE(fazenda_id, email)
+-- Email único por fazenda, não globalmente.
+-- Compatível com onConflict: "fazenda_id,email" no upsert.
+-- ═══════════════════════════════════════════════════════════
+ALTER TABLE usuarios
+  DROP CONSTRAINT IF EXISTS usuarios_email_key;
+
+ALTER TABLE usuarios
+  ADD CONSTRAINT IF NOT EXISTS usuarios_fazenda_email_key UNIQUE (fazenda_id, email);
+
+NOTIFY pgrst, 'reload schema';

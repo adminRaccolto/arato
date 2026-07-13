@@ -837,6 +837,7 @@ export type GrupoUsuario = {
 
 export type Usuario = {
   id: string;
+  fazenda_id?: string;
   auth_user_id?: string;
   grupo_id?: string;
   nome: string;
