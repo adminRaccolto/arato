@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { validateFazendaAccess } from "../../../../lib/api-auth";
+import { validateFazendaAccess } from "../../../lib/api-auth";
 
 function adminClient() {
   return createClient(

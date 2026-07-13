@@ -103,7 +103,7 @@ export async function DELETE(req: Request) {
 
   // Verifica que o grupo pertence à fazenda do usuário (previne IDOR)
   if (fazenda_id) {
-    const { validateFazendaAccess } = await import("../../../../lib/api-auth");
+    const { validateFazendaAccess } = await import("../../../lib/api-auth");
     const access = await validateFazendaAccess(fazenda_id);
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 

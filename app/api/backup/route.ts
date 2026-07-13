@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { validateFazendaAccess } from "../../../../lib/api-auth";
+import { validateFazendaAccess } from "../../../lib/api-auth";
 
 // ── Tabelas exportadas no backup (em ordem de dependência) ──────
 const TABELAS: string[] = [

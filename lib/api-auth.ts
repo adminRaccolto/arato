@@ -40,19 +40,18 @@ export async function validateFazendaAccess(
 ): Promise<{ ok: true; userId: string } | { ok: false; status: number; error: string }> {
   // Tenta obter usuário via Authorization header (Bearer token) ou cookies
   let userId: string | null = null;
-  let userEmail: string | null = null;
 
   if (authHeader) {
     const token = authHeader.replace("Bearer ", "").trim();
     if (token) {
       const { data: { user } } = await adminClient().auth.getUser(token);
-      if (user) { userId = user.id; userEmail = user.email ?? null; }
+      if (user) { userId = user.id; }
     }
   }
 
   if (!userId) {
     const user = await getSessionUser();
-    if (user) { userId = user.id; userEmail = user.email ?? null; }
+    if (user) { userId = user.id; }
   }
 
   if (!userId) return { ok: false, status: 401, error: "Não autenticado" };
