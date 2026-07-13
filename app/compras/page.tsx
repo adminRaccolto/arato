@@ -1120,10 +1120,24 @@ export default function ComprasPage() {
                                   <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.quantidade} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, quantidade: v } : x))} placeholder="0" />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 110 }}>
-                                  <InputMonetario style={{ ...inp, fontSize: 12, textAlign: "right" }} value={it.valor_unitario} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(v) } : x))} placeholder="0,00" />
+                                  <InputMonetario
+                                    style={{ ...inp, fontSize: 12, textAlign: "right" }}
+                                    value={it.valor_unitario}
+                                    onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(v) } : x))}
+                                    placeholder="0,00"
+                                  />
                                 </td>
-                                <td style={{ padding: "5px 6px", textAlign: "right", width: 100, color: "#1A4870", fontWeight: 600 }}>
-                                  {calcItem(it) > 0 ? fmtMoeda(calcItem(it), f.cotacao_moeda) : "—"}
+                                <td style={{ padding: "5px 6px", width: 110 }}>
+                                  <InputMonetario
+                                    style={{ ...inp, fontSize: 12, textAlign: "right", color: "#1A4870", fontWeight: 600 }}
+                                    value={calcItem(it)}
+                                    onChange={total => {
+                                      const qty = parseFloat(it.quantidade) || 0;
+                                      const vu = qty > 0 ? total / qty : 0;
+                                      setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, valor_unitario: String(vu) } : x));
+                                    }}
+                                    placeholder="0,00"
+                                  />
                                 </td>
                                 <td style={{ padding: "5px 6px", width: 80 }}>
                                   <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} value={it.qtd_cancelada} onChange={v => setItens(prev => prev.map((x, j) => j === it._idx ? { ...x, qtd_cancelada: v } : x))} />
