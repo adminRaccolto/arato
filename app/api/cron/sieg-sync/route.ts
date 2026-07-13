@@ -14,7 +14,7 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse }     from "next/server";
-import { baixarXmlsSieg, parseNFeXml, credenciaisEnv } from "../../../../lib/sieg";
+import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -86,7 +86,7 @@ async function syncFazenda(
   for (const cnpj of cnpjs) {
     let xmls: string[] = [];
     try {
-      xmls = await baixarXmlsSieg(siegCreds, {
+      xmls = await baixarXmlsSiegChunked(siegCreds, {
         TipoXml: 1,
         DataUploadInicio: dtIni,
         DataUploadFim:    dtFim,

@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient }              from "@supabase/supabase-js";
-import { baixarXmlsSieg, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
+import { baixarXmlsSiegChunked, parseNFeXml, credenciaisEnv, credenciaisValidas } from "../../../../lib/sieg";
 
 export const runtime = "nodejs";
 
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     const xmlsNFe: { xml: string; cnpj_destino: string }[] = [];
     for (const cnpj of cnpjs) {
       try {
-        const docs = await baixarXmlsSieg(siegCreds, {
+        const docs = await baixarXmlsSiegChunked(siegCreds, {
           TipoXml: 1,
           DataUploadInicio: uploadInicio,
           DataUploadFim:    uploadFim,

@@ -352,6 +352,56 @@ export async function contarXmlsSieg(
   return Number(obj.Total ?? obj.total ?? obj.Count ?? obj.count ?? 0);
 }
 
+// ─── Chunked download (divide intervalos > 55 dias automaticamente) ──────────
+
+const MAX_CHUNK_DIAS = 55; // SIEG rejeita intervalos > 2 meses; 55 dias é margem segura
+
+/**
+ * Mesma interface de baixarXmlsSieg, mas divide automaticamente intervalos longos
+ * em janelas de ≤55 dias para respeitar o limite da API SIEG.
+ */
+export async function baixarXmlsSiegChunked(
+  creds:  SiegCredentials,
+  params: Omit<SiegBaixarParams, "Take" | "Skip">
+): Promise<string[]> {
+  const useUpload = !!(params.DataUploadInicio || params.DataUploadFim);
+  const iniKey    = useUpload ? "DataUploadInicio" : "DataEmissaoInicio";
+  const fimKey    = useUpload ? "DataUploadFim"    : "DataEmissaoFim";
+
+  const iniStr = params[iniKey];
+  const fimStr = params[fimKey] ?? new Date().toISOString();
+
+  if (!iniStr) return baixarXmlsSieg(creds, params);
+
+  const iniDate  = new Date(iniStr);
+  const fimDate  = new Date(fimStr);
+  const diffDias = (fimDate.getTime() - iniDate.getTime()) / 86_400_000;
+
+  if (diffDias <= MAX_CHUNK_DIAS) return baixarXmlsSieg(creds, params);
+
+  console.log(`[sieg] intervalo de ${Math.ceil(diffDias)} dias — particionando em chunks de ${MAX_CHUNK_DIAS} dias`);
+
+  const xmls: string[] = [];
+  let cur = new Date(iniDate);
+
+  while (cur < fimDate) {
+    const chunkFimTs = Math.min(cur.getTime() + MAX_CHUNK_DIAS * 86_400_000, fimDate.getTime());
+    const chunkFim   = new Date(chunkFimTs);
+
+    const chunkXmls = await baixarXmlsSieg(creds, {
+      ...params,
+      [iniKey]: cur.toISOString(),
+      [fimKey]: chunkFim.toISOString(),
+    });
+    xmls.push(...chunkXmls);
+    console.log(`[sieg] chunk ${cur.toISOString().slice(0,10)} → ${chunkFim.toISOString().slice(0,10)}: ${chunkXmls.length} XMLs`);
+
+    cur = new Date(chunkFimTs + 1000); // próximo chunk começa 1s depois
+  }
+
+  return xmls;
+}
+
 // ─── Normaliza credencial (mantido para compatibilidade) ──────────────────────
 
 /** @deprecated Use SiegCredentials — mantido apenas para backward compat. */
