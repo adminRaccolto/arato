@@ -429,7 +429,7 @@ export default function NfCompraPage() {
     try {
       const res = await fetch("/api/integracoes/sieg-manifestar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fazenda_id: fazendaId, nf_id: nf.id, chave_acesso: nf.chave_acesso, cnpj_destinatario: siegCnpjDest, tipo, justificativa }),
+        body: JSON.stringify({ fazenda_id: fazendaId, nf_id: nf.id, chave_acesso: nf.chave_acesso, cnpj_destinatario: nf.cnpj_destino || siegCnpjDest, tipo, justificativa }),
       });
       const d = await res.json() as Record<string, unknown>;
       if (d.erro) setSiegErros(p => ({ ...p, [nf.id]: String(d.erro) }));

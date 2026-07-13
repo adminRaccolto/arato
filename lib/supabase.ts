@@ -973,6 +973,7 @@ export type NfEntrada = {
   valor_fcp_st?: number;
   valor_difal?: number;
   valor_desconto?: number;
+  xml_storage_path?: string;
   created_at?: string;
 };
 

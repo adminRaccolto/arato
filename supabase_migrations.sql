@@ -7200,3 +7200,11 @@ ALTER TABLE lancamentos
   ADD COLUMN IF NOT EXISTS cultura_barter    TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════
+-- Seção 64 — nf_entradas: xml_storage_path para DANFE
+-- ═══════════════════════════════════════════════════════════
+ALTER TABLE nf_entradas
+  ADD COLUMN IF NOT EXISTS xml_storage_path TEXT;
+
+NOTIFY pgrst, 'reload schema';

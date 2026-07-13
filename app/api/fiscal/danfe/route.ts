@@ -17,20 +17,31 @@ export async function GET(req: NextRequest) {
 
   const db = createClient(SUPABASE_URL, SERVICE_KEY);
 
-  // 1. Localiza registro SIEG pelo chave de acesso
-  let query = db
-    .from("nf_importadas_sieg")
-    .select("xml_storage_path, status")
-    .eq("chave_acesso", chave);
-  if (fazenda_id) query = query.eq("fazenda_id", fazenda_id);
-  const { data: nfReg, error: errNf } = await query.maybeSingle();
+  // 1. Localiza o xml_storage_path — tenta nf_importadas_sieg primeiro, depois nf_entradas
+  let xmlStoragePath: string | null = null;
+  let nfStatus: string | null = null;
 
-  if (errNf) {
-    return NextResponse.json({ erro: errNf.message }, { status: 500 });
+  // 1a. nf_importadas_sieg (cron de sincronização automática)
+  {
+    let q = db.from("nf_importadas_sieg").select("xml_storage_path, status").eq("chave_acesso", chave);
+    if (fazenda_id) q = q.eq("fazenda_id", fazenda_id);
+    const { data, error } = await q.maybeSingle();
+    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+    if (data?.xml_storage_path) { xmlStoragePath = data.xml_storage_path; nfStatus = data.status; }
   }
-  if (!nfReg?.xml_storage_path) {
+
+  // 1b. nf_entradas (sync manual / reimport)
+  if (!xmlStoragePath) {
+    let q = db.from("nf_entradas").select("xml_storage_path, status").eq("chave_acesso", chave);
+    if (fazenda_id) q = q.eq("fazenda_id", fazenda_id);
+    const { data, error } = await q.maybeSingle();
+    if (error) return NextResponse.json({ erro: error.message }, { status: 500 });
+    if (data?.xml_storage_path) { xmlStoragePath = data.xml_storage_path; nfStatus = data.status; }
+  }
+
+  if (!xmlStoragePath) {
     return NextResponse.json(
-      { erro: "XML não encontrado no Storage. A NF pode ter sido importada antes do armazenamento de XMLs ser ativado." },
+      { erro: "XML não encontrado. Use o botão '↻ Re-import.' na lista para baixar o XML desta NF do SIEG." },
       { status: 404 }
     );
   }
@@ -38,7 +49,7 @@ export async function GET(req: NextRequest) {
   // 2. Baixa o XML do Supabase Storage
   const { data: xmlBlob, error: errStorage } = await db.storage
     .from("arquivos")
-    .download(nfReg.xml_storage_path);
+    .download(xmlStoragePath);
 
   if (errStorage || !xmlBlob) {
     return NextResponse.json(
@@ -54,7 +65,7 @@ export async function GET(req: NextRequest) {
     const { gerarPDF } = await import("nfe-danfe-pdf");
 
     const pdfDoc = await gerarPDF(xmlContent, {
-      cancelada: nfReg.status === "cancelada",
+      cancelada: nfStatus === "cancelada",
     });
 
     // Converte o PDFDocument (stream) em Buffer
