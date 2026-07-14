@@ -139,6 +139,11 @@ Você ajuda produtores rurais, consultores e equipes de fazenda a:
 - **Baixa individual:** Financeiro → CP → Baixar → data pagamento + conta bancária
 - **Borderô (baixa em lote):** vários CP do mesmo banco e data → selecionar todos → Baixar em Lote
 - **Conciliação OFX:** Financeiro → Fluxo de Caixa → Importar OFX → sistema concilia automaticamente
+- **Anexar documento no CP:** ao criar ou editar um CP, clique na aba **Obs/Anexo** dentro do modal → campo "Anexar NF (PDF ou XML)" → selecione o arquivo (PDF, XML, PNG ou JPG) → o arquivo é enviado ao Supabase Storage e o link é salvo junto ao lançamento. Para ver o documento depois, abra o CP e vá à aba Obs/Anexo.
+- **Campos do modal CP – aba Principal:** Produtor, Fazenda, Ano Safra, Ciclo, Moeda, Operação Gerencial, Fornecedor/Credor, Nº Documento, Série, Tipo Doc LCDPR, Descrição, Vencimento, Forma de Pagamento (PIX/Boleto/TED/Débito/Dinheiro), Conta Pagamento, Valor Total, Condição de Pagamento (à vista ou parcelado), Centro de Custo
+- **Campos do modal CP – aba Obs/Anexo:** Observação (máx 100 caracteres) + campo de upload de arquivo (PDF/XML/PNG/JPG)
+- **Parcelamento:** ao selecionar "Parcelado", defina o número de parcelas e a frequência em meses; o sistema gera as parcelas automaticamente com datas e valores calculados
+- **Classificação automática:** se o fornecedor tiver uma regra cadastrada em Compras → Regras de Classificação (por CNPJ), o campo Operação Gerencial é preenchido automaticamente pelo SIEG
 
 ### Fluxo 5: Automação SIEG — NF de Entrada
 - **Ativar em:** Configurações → Automações → SIEG → inserir API Key + CNPJs → ativar toggle
@@ -187,6 +192,39 @@ Vá em **Cadastros → Fazendas**, abra a fazenda, clique na aba **Arrendamentos
 
 **"Como exportar o DRE?"**
 Vá em **Relatórios → DRE Agrícola**, selecione o ano safra e os ciclos, e clique no botão de impressão. O DRE é impresso em A4 paisagem com todos os blocos de receita, CPV, deduções e resultado.
+
+**"Como faço para anexar um documento no contas a pagar?"**
+No modal de CP (ao criar ou editar), clique na aba **Obs/Anexo** (última aba, à direita). Aparecerá o campo "Anexar NF (PDF ou XML)" onde você seleciona o arquivo — pode ser PDF, XML de NF-e, PNG ou JPG. Após salvar, o arquivo é enviado ao Storage e vinculado ao lançamento. Para visualizar depois, abra o CP → aba Obs/Anexo → clique no link do arquivo.
+
+**"Como adicionar um novo fornecedor?"**
+Vá em **Cadastros → Pessoas → + Nova Pessoa**. Defina o tipo (Pessoa Física ou Jurídica), preencha nome, CPF/CNPJ, Inscrição Estadual (se aplicável), e-mail e telefone. Na aba **Financeiro**, informe os dados bancários e chave PIX (preenchida automaticamente a partir do CPF/CNPJ). Na aba **Categorização**, selecione a subcategoria (Fornecedor, Transportadora, Banco, etc.).
+
+**"Como criar um novo ciclo / safra?"**
+Vá em **Cadastros → Anos Safra** e verifique se o ano safra existe (ex: 2025/2026). Depois vá em **Cadastros → Ciclos → + Novo**: defina cultura (soja, milho, algodão), vínculo com o Ano Safra e os talhões da fazenda. O sistema gera o cronograma de operações automaticamente.
+
+**"Como cadastrar um novo talhão?"**
+Vá em **Cadastros → Fazendas** → abra a fazenda → aba **Talhões** → **+ Novo**. Informe nome, área em ha, tipo de solo e coordenadas GPS (opcional). Talhões são a unidade básica de plantio do Arato.
+
+**"Como importar notas fiscais de fornecedores?"**
+Duas formas: (1) **Manual**: Compras & Estoque → NF de Produtos → + Nova → preencha os dados ou faça upload do XML da NF-e para preenchimento automático. (2) **Automático SIEG**: ative em Configurações → Automações → SIEG — o sistema baixa e classifica as NFs 2× por dia. NFs sem classificação automática vão para Compras → Pendências de Classificação.
+
+**"Como funciona o balanço/posição de grãos?"**
+Vá em **BI → Posição de Grãos** (ou **Relatórios → BI de Grãos**). O painel mostra: sacas físicas em estoque, sacas comprometidas (arrendamentos em saca + contratos em aberto), sacas disponíveis para venda e conversão de dívidas financeiras em sacas.
+
+**"Como lançar a colheita e fazer o romaneio?"**
+Vá em **Lavoura → Colheita → + Novo Romaneio**. Selecione o ciclo e talhão. Informe: peso bruto (kg), tara (kg) — o líquido é calculado. Na aba **Classificação**, preencha umidade (%), impureza (%), chochamento (%), ardidos, avariados. O sistema aplica os descontos ABIOVE e calcula as sacas líquidas que entram no estoque.
+
+**"Como pagar um lote de contas (borderô)?"**
+Em **Financeiro → Contas a Pagar**, marque os checkboxes de todos os lançamentos que quer pagar (mesmo banco, mesma data). Aparecerá o botão **Baixar em Lote** no topo. Informe a data de pagamento e a conta bancária — o sistema baixa todos de uma vez.
+
+**"Como configurar o certificado A1 para emitir NF-e?"**
+Vá em **Configurações → Parâmetros do Sistema → aba Fiscal**. No campo "Certificado A1 (.pfx)", informe o caminho do arquivo ou faça upload. No campo "Senha A1", informe a senha do certificado. O sistema usa esse certificado para assinar e transmitir todas as NF-e à SEFAZ. O alerta de vencimento é enviado automaticamente 30, 15, 7 e 1 dia antes de vencer.
+
+**"O que é Operação Gerencial?"**
+Operação Gerencial é a classificação contábil/gerencial de um lançamento financeiro. Define como o custo ou receita aparece no DRE (ex: "Sementes — Soja", "Defensivos — Herbicida", "Arrendamento", "Mão de Obra"). Gerencie em **Cadastros → Tabelas Auxiliares → Operações Gerenciais**. Cada CP/CR deve ter uma OG para aparecer no DRE Agrícola.
+
+**"Como funciona o LCDPR?"**
+LCDPR (Livro Caixa Digital do Produtor Rural) é uma obrigação acessória da Receita Federal para produtores rurais PF. No Arato: cada CP/CR tem o campo "Tipo Doc LCDPR" (Recibo, NF, Duplicata, etc.) e "Vínculo de Atividade" (rural/PF/investimento). Para gerar o arquivo, vá em **Fiscal → SPED ECD** → selecione o exercício e a entidade (PF). O arquivo gerado é enviado via PGE da Receita Federal.
 
 ## Regras de comportamento
 - Responda SEMPRE em português do Brasil
@@ -294,7 +332,7 @@ export async function POST(req: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-5",
+        model: "claude-sonnet-4-6",
         max_tokens: 2048,
         system: systemPromptCompleto,
         messages: mensagens.map(m => ({ role: m.role, content: m.content })),
@@ -303,14 +341,16 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const err = await response.text();
-      console.error("Anthropic API error:", err);
-      return NextResponse.json({ error: "Erro na API de IA" }, { status: 500 });
+      console.error("Anthropic API error:", response.status, err);
+      return NextResponse.json({ error: `Erro na API de IA (${response.status})` }, { status: 500 });
     }
 
     const data = await response.json() as {
-      content: Array<{ type: string; text: string }>;
+      content: Array<{ type: string; text?: string }>;
     };
-    const resposta = data.content?.[0]?.text ?? "Não consegui gerar uma resposta.";
+    // Pode vir bloco "thinking" antes do "text" — busca o primeiro text block
+    const textBlock = data.content?.find(b => b.type === "text");
+    const resposta = textBlock?.text ?? "Não consegui gerar uma resposta.";
 
     return NextResponse.json({ resposta });
   } catch (err) {
