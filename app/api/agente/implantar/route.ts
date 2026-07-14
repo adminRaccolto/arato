@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { enviarTexto } from "../../../../lib/whatsapp-evolution";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -616,23 +617,8 @@ async function saveOnboarding(rec: OnboardingRecord, db: SupabaseClient) {
 }
 
 async function enviarWhatsApp(telefone: string, mensagem: string) {
-  const instanceId = process.env.ZAPI_INSTANCE_ID;
-  const token = process.env.ZAPI_TOKEN;
-  const clientToken = process.env.ZAPI_CLIENT_TOKEN;
-
-  if (!instanceId || !token || telefone === "test") return;
-
-  await fetch(
-    `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(clientToken ? { "Client-Token": clientToken } : {}),
-      },
-      body: JSON.stringify({ phone: telefone, message: mensagem }),
-    }
-  ).catch(() => {/* ignora erro de envio */});
+  if (!telefone || telefone.startsWith("test")) return;
+  await enviarTexto(telefone, mensagem).catch(() => {/* ignora erro de envio */});
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -641,16 +627,37 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as Record<string, unknown>;
 
-    // Detecta se é webhook Z-API ou chamada direta do painel admin
+    // Detecta se é webhook Evolution API ou chamada direta do painel admin
     let telefone: string;
     let mensagemTexto: string;
     const modoTeste = !!body.modo_teste;
 
-    if (body.type === "ReceivedCallback" || body.fromMe === false) {
-      // Formato Z-API
-      if (body.fromMe === true) return NextResponse.json({ ok: true }); // ignora mensagens próprias
-      telefone = (body.phone as string) ?? "";
-      mensagemTexto = ((body.text as Record<string, string>)?.message ?? "").trim();
+    if (body.event === "messages.upsert") {
+      // Formato Evolution API — mesmo formato do webhook operacional
+      const rawData = body.data;
+      const data = (Array.isArray(rawData) ? rawData[0] : rawData) as Record<string, unknown> | undefined;
+      if (!data) return NextResponse.json({ ok: true });
+
+      const key = data.key as Record<string, unknown> | undefined;
+      if (!key || key.fromMe === true) return NextResponse.json({ ok: true });
+
+      const remoteJid = String(key.remoteJid ?? "");
+      if (!remoteJid || remoteJid.includes("@g.us")) return NextResponse.json({ ok: true });
+
+      telefone = remoteJid.replace(/@.*$/, "").replace(/\D/g, "");
+      if (!telefone || telefone.length < 10) return NextResponse.json({ ok: true });
+
+      const message = data.message as Record<string, unknown> | undefined;
+      if (!message) return NextResponse.json({ ok: true });
+
+      const messageType = String(data.messageType ?? "");
+      if (messageType === "conversation") {
+        mensagemTexto = String(message.conversation ?? "").trim();
+      } else if (messageType === "extendedTextMessage") {
+        mensagemTexto = String((message.extendedTextMessage as Record<string, unknown> | undefined)?.text ?? "").trim();
+      } else {
+        return NextResponse.json({ ok: true }); // ignora áudio/imagem no onboarding
+      }
     } else {
       // Chamada direta (painel admin ou teste)
       telefone = (body.telefone as string) ?? "test";
