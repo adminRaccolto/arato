@@ -266,7 +266,7 @@ function ContasPagarInner() {
       forma_pagamento:       l.forma_pagamento       ?? "PIX",
       conta_pagamento:       l.conta_bancaria        ?? "",
       data_emissao:          l.data_lancamento       ?? TODAY,
-      numero_documento:      "",
+      numero_documento:      l.numero_documento      ?? "",
       serie:                 "",
       funcionario_id:        l.funcionario_id        ?? "",
       tipo_mao_obra:         l.tipo_mao_obra         ?? "",
@@ -684,6 +684,7 @@ function ContasPagarInner() {
           multa_pct:             form.multa_pct     ? Number(form.multa_pct)   : null,
           desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : null,
           chave_xml:             chaveXmlFinal ?? null,
+          numero_documento:      form.numero_documento      || null,
           centro_custo:          form.centro_custo          || null,
           observacao:            form.obs                   || null,
           ano_safra_id:          form.ano_safra_id          || null,
@@ -739,6 +740,7 @@ function ContasPagarInner() {
       multa_pct:     form.multa_pct     ? Number(form.multa_pct)   : undefined,
       desconto_pontualidade_pct: form.desconto_pct ? Number(form.desconto_pct) : undefined,
       chave_xml:     chaveXmlFinal,
+      numero_documento:      form.numero_documento      || undefined,
       centro_custo:          form.centro_custo          || undefined,
       observacao:            form.obs                   || undefined,
       ano_safra_id:          form.ano_safra_id          || undefined,
@@ -2097,6 +2099,20 @@ function ContasPagarInner() {
                     <div>
                       <label style={lbl}>Chave XML / NF-e</label>
                       <input style={inp} placeholder="Opcional — 44 dígitos ou URL" value={form.chave_xml} onChange={e => setForm(p => ({ ...p, chave_xml: e.target.value }))} />
+                      {form.chave_xml?.startsWith("http") && (() => {
+                        const nome = form.chave_xml.split("/").pop()?.split("?")[0] ?? "arquivo";
+                        const decodedNome = decodeURIComponent(nome);
+                        return (
+                          <a
+                            href={form.chave_xml}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 11, color: "#1A4870", textDecoration: "none", background: "#D5E8F5", borderRadius: 5, padding: "3px 8px", border: "0.5px solid #97C3E0", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                          >
+                            📎 <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{decodedNome}</span> ↗
+                          </a>
+                        );
+                      })()}
                     </div>
                     <div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
