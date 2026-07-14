@@ -197,6 +197,7 @@ function ContasPagarInner() {
 
   // ── Edição: reutiliza o modal de Nova CP com editandoId marcado ──
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [salvarComoRegra, setSalvarComoRegra] = useState(false);
 
   function fecharModal() {
     setModalNovo(false);
@@ -206,6 +207,25 @@ function ContasPagarInner() {
     setOpGerBusca("");
     setCascade({});
     setArquivoNF(null);
+    setSalvarComoRegra(false);
+  }
+
+  async function criarRegraClassificacao() {
+    if (!fid || !form.pessoa_id || !form.operacao_gerencial_id) return;
+    const pessoa = pessoas.find(p => p.id === form.pessoa_id);
+    if (!pessoa?.cpf_cnpj) return;
+    const og = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+    await supabase.from("regras_classificacao_nf").insert({
+      fazenda_id:            fid,
+      nome_regra:            pessoa.nome,
+      cnpj_emitente:         pessoa.cpf_cnpj.replace(/\D/g, ""),
+      operacao_gerencial_id: form.operacao_gerencial_id,
+      categoria:             form.categoria || null,
+      ativo:                 true,
+      criada_por:            "CP — manual",
+    });
+    // feedback discreto no console — o modal já fecha
+    console.log("[CP] regra automática criada:", pessoa.nome, "→", og?.descricao);
   }
 
   function abrirEditar(l: Lancamento) {
@@ -685,6 +705,7 @@ function ContasPagarInner() {
         setLancamentos(prev => prev.map(x =>
           x.id === editandoId ? { ...x, ...patch, data_vencimento: form.vencimento } as Lancamento : x
         ));
+        if (salvarComoRegra) await criarRegraClassificacao();
         fecharModal();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
@@ -766,6 +787,7 @@ function ContasPagarInner() {
         criados = [await criarLancamento(base)];
       }
       setLancamentos(prev => [...criados, ...prev]);
+      if (salvarComoRegra) await criarRegraClassificacao();
       fecharModal();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : (e as { message?: string })?.message ?? JSON.stringify(e);
@@ -1756,6 +1778,31 @@ function ContasPagarInner() {
                       </select>
                     </div>
                   </div>
+
+                  {/* Classificação automática — aparece quando Fornecedor + OG preenchidos */}
+                  {form.pessoa_id && form.operacao_gerencial_id && (() => {
+                    const pessoa = pessoas.find(p => p.id === form.pessoa_id);
+                    const og     = opGerenciais.find(o => o.id === form.operacao_gerencial_id);
+                    if (!pessoa?.cpf_cnpj) return null;
+                    return (
+                      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", background: salvarComoRegra ? "#EBF5EB" : "var(--bg-page)", border: `0.5px solid ${salvarComoRegra ? "#86C78A" : "var(--border)"}`, borderRadius: 8, cursor: "pointer", userSelect: "none" }}>
+                        <input
+                          type="checkbox"
+                          checked={salvarComoRegra}
+                          onChange={e => setSalvarComoRegra(e.target.checked)}
+                          style={{ marginTop: 1, flexShrink: 0, accentColor: "#16A34A" }}
+                        />
+                        <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+                          <span style={{ fontWeight: 600, color: salvarComoRegra ? "#166534" : "var(--text-1)" }}>
+                            Salvar como regra de classificação automática
+                          </span>
+                          <span style={{ color: "var(--text-3)", display: "block", fontSize: 11, marginTop: 2 }}>
+                            Próximas NFs de <strong>{pessoa.nome}</strong> serão classificadas automaticamente como <strong>{og?.descricao ?? "—"}</strong>
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })()}
 
                   {/* Linha 3: Descrição (2) | 1º Vencimento | Forma Pgto | Conta Pgto */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 160px 160px 1fr", gap: 12 }}>
