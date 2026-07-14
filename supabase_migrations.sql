@@ -7298,3 +7298,12 @@ CREATE TABLE IF NOT EXISTS agente_onboarding (
 );
 
 CREATE INDEX IF NOT EXISTS agente_onboarding_concluido_idx ON agente_onboarding(concluido, updated_at DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Seção 68 — ie_id em contratos: qual IE do produtor foi usada no contrato
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS ie_id uuid REFERENCES produtor_inscricoes_estaduais(id) ON DELETE SET NULL;
+
+NOTIFY pgrst, 'reload schema';

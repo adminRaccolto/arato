@@ -10,12 +10,13 @@ import {
   listarPessoas, listarProdutores, listarAnosSafra, listarCiclos, listarDepositos, listarFazendas,
   encerrarAnoSafra, reabrirAnoSafra,
   baixarLancamento,
+  listarIEsDoProdutor,
 } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 import InputNumerico from "../../components/InputNumerico";
 import { useAuth } from "../../components/AuthProvider";
 import ProdutorCombo from "../../components/ProdutorCombo";
-import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato, Insumo } from "../../lib/supabase";
+import type { Contrato, ContratoItem, Romaneio, Pessoa, Produtor, ProdutorIE, AnoSafra, Ciclo, Deposito, Fazenda, AdiantamentoCliente, Cultura as CulturaContrato, Insumo } from "../../lib/supabase";
 import InputMonetario from "../../components/InputMonetario";
 import PlanoGate from "../../components/PlanoGate";
 
@@ -301,6 +302,7 @@ export default function Contratos() {
     data_contrato: TODAY,
     pessoa_id: "",
     produtor_id: "",
+    ie_id: "" as string | undefined,
     nr_contrato_cliente: "",
     contato_broker: "",
     grupo_vendedor: "",
@@ -340,6 +342,18 @@ export default function Contratos() {
   });
 
   const [fC, setFC] = useState(fContratoVazio());
+  const [iesProdutor, setIesProdutor] = useState<ProdutorIE[]>([]);
+
+  // carrega IEs do produtor quando ele muda
+  useEffect(() => {
+    if (!fC.produtor_id) { setIesProdutor([]); return; }
+    listarIEsDoProdutor(fC.produtor_id).then(list => {
+      setIesProdutor(list);
+      // auto-seleciona se só há uma IE
+      if (list.length === 1) setFC(p => ({ ...p, ie_id: list[0].id }));
+      else if (list.length === 0) setFC(p => ({ ...p, ie_id: "" }));
+    }).catch(() => setIesProdutor([]));
+  }, [fC.produtor_id]);
 
   // ── sugestão automática de natureza ──────────────────────────
   const [naturezaSugerida, setNaturezaSugerida] = useState<string>("");
@@ -476,6 +490,7 @@ export default function Contratos() {
       venda_a_ordem: c.venda_a_ordem ?? false,
       data_contrato: c.data_contrato ?? "", pessoa_id: c.pessoa_id ?? "",
       produtor_id: c.produtor_id ?? "",
+      ie_id: c.ie_id ?? "",
       nr_contrato_cliente: c.nr_contrato_cliente ?? "",
       contato_broker: c.contato_broker ?? "",
       grupo_vendedor: c.grupo_vendedor ?? "",
@@ -619,6 +634,7 @@ export default function Contratos() {
         data_pagamento: fC.data_pagamento || undefined,
         pessoa_id: fC.pessoa_id || undefined,
         produtor_id: fC.produtor_id || undefined,
+        ie_id: fC.ie_id || undefined,
         comprador: pessoas.find(p=>p.id===fC.pessoa_id)?.nome ?? fC.pessoa_id ?? "",
         nr_contrato_cliente: fC.nr_contrato_cliente || undefined,
         contato_broker: fC.contato_broker || undefined,
@@ -1594,9 +1610,26 @@ export default function Contratos() {
                       <ProdutorCombo
                         produtores={produtores}
                         value={fC.produtor_id}
-                        onChange={id => setFC(p => ({ ...p, produtor_id: id }))}
+                        onChange={id => setFC(p => ({ ...p, produtor_id: id, ie_id: "" }))}
                         placeholder="— selecione —"
                       />
+                      {iesProdutor.length > 1 && (
+                        <div style={{ marginTop: 6 }}>
+                          <label style={{ ...lbl, color: "#C9921B" }}>IE do Produtor *</label>
+                          <select
+                            style={{ ...inp, borderColor: !fC.ie_id ? "#E24B4A" : undefined }}
+                            value={fC.ie_id ?? ""}
+                            onChange={e => setFC(p => ({ ...p, ie_id: e.target.value || undefined }))}
+                          >
+                            <option value="">— selecione a IE —</option>
+                            {iesProdutor.map(ie => (
+                              <option key={ie.id} value={ie.id}>
+                                {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label style={lbl}>Cliente / Comprador</label>

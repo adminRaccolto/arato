@@ -355,6 +355,8 @@ export type Contrato = {
   adiantamento_total?:    number;   // valor acordado para adiantar
   adiantamento_recebido?: number;   // soma dos recebimentos registrados
   adiantamento_aplicado?: number;   // soma abatida nas entregas (romaneios)
+  // IE do produtor selecionada para este contrato
+  ie_id?: string | null;
   // Cessão — produtor cede o recebível a um fornecedor para quitar débito
   dado_em_cessao?: boolean;
   cessao_fornecedor_id?: string;   // FK pessoas.id

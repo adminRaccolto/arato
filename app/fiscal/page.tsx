@@ -2,10 +2,10 @@
 import { useState, useEffect, useRef, Fragment, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../components/TopNav";
-import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores } from "../../lib/db";
+import { listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe, listarProdutores, listarIEsDoProdutor } from "../../lib/db";
 import { useAuth } from "../../components/AuthProvider";
 import { supabase } from "../../lib/supabase";
-import type { NotaFiscal, Produtor } from "../../lib/supabase";
+import type { NotaFiscal, Produtor, ProdutorIE } from "../../lib/supabase";
 import PlanoGate from "../../components/PlanoGate";
 import ProdutorCombo from "../../components/ProdutorCombo";
 
@@ -78,7 +78,7 @@ type TabNFe = "produtor"|"destinatario"|"operacoes"|"transportador"|"retirada"|"
 
 const FVENDA_INICIAL = {
   // Produtor
-  tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "",
+  tipo_nota: "propria" as "propria"|"terceiros", produtor_id: "", safra_id: "", ie_selecionada: "",
   // Destinatário
   destinatario: "", cnpj: "",
   dest_endereco: "", dest_numero: "", dest_cidade: "", dest_uf: "",
@@ -587,9 +587,17 @@ function FiscalInner() {
     setEditItemModal(null);
   }
 
-  // Auto-fill Produtor → dados do produtor
+  // IEs do produtor selecionado
+  const [iesProdutor, setIesProdutor] = useState<ProdutorIE[]>([]);
+
+  // Auto-fill Produtor → dados do produtor + carrega IEs
   function onProdutorChange(prodId: string) {
-    setFVenda(p => ({ ...p, produtor_id: prodId, tipo_nota: "propria" }));
+    setFVenda(p => ({ ...p, produtor_id: prodId, tipo_nota: "propria", ie_selecionada: "" }));
+    if (!prodId) { setIesProdutor([]); return; }
+    listarIEsDoProdutor(prodId).then(list => {
+      setIesProdutor(list);
+      if (list.length === 1) setFVenda(p => ({ ...p, ie_selecionada: list[0].inscricao_estadual }));
+    }).catch(() => setIesProdutor([]));
   }
 
   // Auto-fill CFOP → natureza + obs. legal
@@ -1752,7 +1760,22 @@ function FiscalInner() {
                             </div>, "0 0 140px"
                           ),
                           field("CPF/CNPJ", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.cpf_cnpj ?? ""} />, "0 0 160px"),
-                          field("Inscrição Estadual", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.inscricao_est ?? ""} />, "0 0 140px"),
+                          field("Inscrição Estadual",
+                            iesProdutor.length > 1
+                              ? <select
+                                  style={{ ...inSt, borderColor: !fVenda.ie_selecionada ? "#E24B4A" : undefined }}
+                                  value={fVenda.ie_selecionada}
+                                  onChange={e => fv({ ie_selecionada: e.target.value })}
+                                >
+                                  <option value="">— selecione —</option>
+                                  {iesProdutor.map(ie => (
+                                    <option key={ie.id} value={ie.inscricao_estadual}>
+                                      {ie.inscricao_estadual}{ie.municipio ? ` — ${ie.municipio}/${ie.estado}` : ` — ${ie.estado}`}
+                                    </option>
+                                  ))}
+                                </select>
+                              : <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={fVenda.ie_selecionada || prodSel.inscricao_est || ""} />
+                          , "0 0 200px"),
                           field("Endereço", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.logradouro ?? ""} />),
                           field("Cidade", <input style={{ ...inSt, background: "#f4f4f4" }} readOnly value={prodSel.municipio ?? ""} />, "0 0 150px"),
                           field("UF", <input style={{ ...inSt, background: "#f4f4f4", textAlign:"center" }} readOnly value={prodSel.estado ?? ""} />, "0 0 50px"),
