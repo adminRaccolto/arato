@@ -101,6 +101,7 @@ type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 const TAB_GROUPS: TabGroup[] = [
   { group: "Cadastros Gerais", tabs: [
     { key: "produtores",      label: "Produtores"      },
+    { key: "empresas",        label: "Empresas"        },
     { key: "fazendas",        label: "Fazendas"        },
     { key: "funcionarios",    label: "Funcionários"    },
     { key: "pessoas",         label: "Pessoas"         },
@@ -561,6 +562,15 @@ function CadastrosInner() {
       : listarProdutores(fazendaId).then(setProdutores).catch(() => {});
 
     if (aba === "produtores")  carregarProdutores();
+    if (aba === "empresas") {
+      listarEmpresas(fazendaId).then(emps => {
+        setEmpresas(emps);
+        const map: Record<string, string> = {};
+        emps.forEach(e => { if (e.produtor_id) map[e.produtor_id] = e.id; });
+        setProdEmpresaMap(map);
+      }).catch(e => setErro(e.message));
+      carregarProdutoresSilencioso();
+    }
     if (aba === "fazendas") {
       if (userRole === "raccotlo" && (contaId || fazendaId)) {
         // Raccotlo admin: usa endpoint server-side (service role) para listar todas as fazendas da conta do cliente
@@ -1927,6 +1937,42 @@ function CadastrosInner() {
           )}
 
           {/* ══ EMPRESAS ══ */}
+          {aba === "empresas" && (
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Empresas <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({empresas.length})</span></div>
+                <button style={btnV} onClick={() => abrirModalEmp()}>+ Nova Empresa</button>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <TH cols={["Empresa / Razão Social", "Tipo", "CNPJ / CPF", "IE", "Regime", "Produtor vinculado", ""]} />
+                <tbody>
+                  {empresas.length === 0 && (
+                    <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma empresa cadastrada</td></tr>
+                  )}
+                  {empresas.map((e, i) => (
+                    <tr key={e.id} style={{ borderBottom: i < empresas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                      <td style={{ padding: "10px 14px" }}>
+                        <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{e.razao_social || e.nome}</div>
+                        {e.razao_social && e.nome !== e.razao_social && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{e.nome}</div>}
+                      </td>
+                      <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(e.tipo.toUpperCase(), e.tipo === "pj" ? "#E6F1FB" : "#FBF0D8", e.tipo === "pj" ? "#0C447C" : "#7A5A12")}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 12 }}>{e.cpf_cnpj || "—"}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 12 }}>{e.inscricao_est || "—"}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "var(--text-2)" }}>{e.regime_tributario || "—"}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{produtores.find(p => p.id === e.produtor_id)?.nome || "—"}</td>
+                      <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          <button style={btnE} onClick={() => abrirModalEmp(e)}>Editar</button>
+                          <button style={btnX} onClick={() => { if (confirm("Excluir empresa?")) excluirEmpresa(e.id).then(() => setEmpresas(x => x.filter(r => r.id !== e.id))); }}>✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* ══ FAZENDAS ══ */}
           {aba === "fazendas" && (
             <div>
@@ -8737,6 +8783,94 @@ function CadastrosInner() {
             >
               {salvandoUM ? "Salvando…" : "Salvar"}
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Modal Empresa ── */}
+      {modalEmp && (
+        <Modal titulo={editEmp ? "Editar Empresa" : "Nova Empresa"} onClose={() => setModalEmp(false)} width={800}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={lbl}>Razão Social *</label>
+              <input style={inp} placeholder="Ex: Costa Beber Agropecuária Ltda" value={fEmp.razao_social} onChange={e => setFEmp(p => ({ ...p, razao_social: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>Nome Fantasia</label>
+              <input style={inp} placeholder="Ex: Fazenda Santa Fé" value={fEmp.nome} onChange={e => setFEmp(p => ({ ...p, nome: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>Tipo</label>
+              <select style={inp} value={fEmp.tipo} onChange={e => setFEmp(p => ({ ...p, tipo: e.target.value as "pf"|"pj" }))}>
+                <option value="pj">Pessoa Jurídica</option>
+                <option value="pf">Pessoa Física</option>
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>CNPJ / CPF</label>
+              <input style={{ ...inp, fontFamily: "monospace" }} placeholder={fEmp.tipo === "pj" ? "00.000.000/0001-00" : "000.000.000-00"} value={fEmp.cpf_cnpj} onChange={e => setFEmp(p => ({ ...p, cpf_cnpj: maskCpfCnpj(e.target.value, p.tipo) }))} />
+            </div>
+            <div>
+              <label style={lbl}>Inscrição Estadual</label>
+              <input style={{ ...inp, fontFamily: "monospace" }} placeholder="Apenas dígitos" value={fEmp.inscricao_est} onChange={e => setFEmp(p => ({ ...p, inscricao_est: e.target.value.replace(/\D/g,"") }))} />
+            </div>
+            <div>
+              <label style={lbl}>Regime Tributário</label>
+              <select style={inp} value={fEmp.regime_tributario} onChange={e => setFEmp(p => ({ ...p, regime_tributario: e.target.value }))}>
+                <option value="">— selecione —</option>
+                <option value="Produtor Rural PJ">Produtor Rural PJ</option>
+                <option value="Simples Nacional">Simples Nacional</option>
+                <option value="Lucro Presumido">Lucro Presumido</option>
+                <option value="Lucro Real">Lucro Real</option>
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Produtor vinculado</label>
+              <select style={inp} value={fEmp.produtor_id} onChange={e => setFEmp(p => ({ ...p, produtor_id: e.target.value }))}>
+                <option value="">— nenhum —</option>
+                {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Município</label>
+              <input style={inp} value={fEmp.municipio} onChange={e => setFEmp(p => ({ ...p, municipio: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>Estado</label>
+              <select style={inp} value={fEmp.estado} onChange={e => setFEmp(p => ({ ...p, estado: e.target.value }))}>
+                {ESTADOS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+              </select>
+            </div>
+            <div style={{ borderTop: "0.5px solid var(--border-table)", gridColumn: "1 / -1", paddingTop: 12, fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em" }}>REGISTROS RURAIS</div>
+            <div>
+              <label style={lbl}>CAR</label>
+              <input style={inp} placeholder="MT-..." value={fEmp.car} onChange={e => setFEmp(p => ({ ...p, car: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>NIRF</label>
+              <input style={inp} value={fEmp.nirf} onChange={e => setFEmp(p => ({ ...p, nirf: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>ITR</label>
+              <input style={inp} value={fEmp.itr} onChange={e => setFEmp(p => ({ ...p, itr: e.target.value }))} />
+            </div>
+            <div style={{ borderTop: "0.5px solid var(--border-table)", gridColumn: "1 / -1", paddingTop: 12, fontSize: 11, fontWeight: 600, color: "var(--text-2)", letterSpacing: "0.05em" }}>CONTATO</div>
+            <div>
+              <label style={lbl}>E-mail</label>
+              <input style={inp} type="email" value={fEmp.email} onChange={e => setFEmp(p => ({ ...p, email: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>E-mail relatórios</label>
+              <input style={inp} type="email" value={fEmp.email_relatorios} onChange={e => setFEmp(p => ({ ...p, email_relatorios: e.target.value }))} />
+            </div>
+            <div>
+              <label style={lbl}>Telefone</label>
+              <input style={inp} value={fEmp.telefone} onChange={e => setFEmp(p => ({ ...p, telefone: maskPhone(e.target.value) }))} />
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+            <button style={btnR} onClick={() => setModalEmp(false)}>Cancelar</button>
+            <button style={{ ...btnV, opacity: !fEmp.razao_social.trim() && !fEmp.nome.trim() ? 0.5 : 1 }} disabled={!fEmp.razao_social.trim() && !fEmp.nome.trim()} onClick={salvarEmp}>Salvar</button>
           </div>
         </Modal>
       )}
