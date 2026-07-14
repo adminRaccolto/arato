@@ -129,13 +129,13 @@ const PADRAO = (fid: string): ConfigNfe => ({
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
-  borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff",
+  borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 500 };
-const card: React.CSSProperties = { background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "20px 24px", marginBottom: 16 };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 500 };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "20px 24px", marginBottom: 16 };
 const sH: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 14, paddingBottom: 8, borderBottom: "0.5px solid #EEF1F6" };
-const hint: React.CSSProperties = { fontSize: 11, color: "#888", marginTop: 5 };
+const hint: React.CSSProperties = { fontSize: 11, color: "var(--text-3)", marginTop: 5 };
 const alerta: React.CSSProperties = { background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 };
 
 type Aba = "perfil" | "emissao" | "tributacao" | "textos" | "ibs_cbs" | "automacao";
@@ -154,16 +154,16 @@ function Toggle({ on, onChange, label, desc, disabled = false }: {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "0.5px solid #F0F2F7" }}>
       <div style={{ opacity: disabled ? 0.5 : 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{label}</div>
-        {desc && <div style={{ fontSize: 11, color: "#888", marginTop: 2, maxWidth: 600, lineHeight: 1.5 }}>{desc}</div>}
+        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{label}</div>
+        {desc && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, maxWidth: 600, lineHeight: 1.5 }}>{desc}</div>}
       </div>
       <button type="button" onClick={() => !disabled && onChange(!on)} disabled={disabled}
         style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: disabled ? "default" : "pointer",
-          background: on && !disabled ? "#1A5C38" : "#D4DCE8", position: "relative", transition: "background 0.2s",
+          background: on && !disabled ? "#1A5C38" : "var(--border-table)", position: "relative", transition: "background 0.2s",
           flexShrink: 0, marginLeft: 20, opacity: disabled ? 0.5 : 1 }}
       >
         <span style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 18, height: 18,
-          borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+          borderRadius: "50%", background: "var(--bg-card)", transition: "left 0.2s" }} />
       </button>
     </div>
   );
@@ -182,7 +182,7 @@ function NumInput({ value, onChange, label, hint: h, suffix, min = 0, max = 100,
           disabled={disabled}
           style={{ ...inp, maxWidth: 120, opacity: disabled ? 0.5 : 1 }}
         />
-        {suffix && <span style={{ fontSize: 12, color: "#555" }}>{suffix}</span>}
+        {suffix && <span style={{ fontSize: 12, color: "var(--text-2)" }}>{suffix}</span>}
       </div>
       {h && <p style={{ ...hint, opacity: disabled ? 0.5 : 1 }}>{h}</p>}
     </div>
@@ -263,23 +263,23 @@ export default function ConfigNfePage() {
     : 0;
 
   if (!cfg) return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#888", fontSize: 13 }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-3)", fontSize: 13 }}>
         Carregando…
       </div>
     </div>
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <main style={{ flex: 1, padding: "24px 28px", maxWidth: 980, margin: "0 auto", width: "100%" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Configurações de NF-e</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Configurações de NF-e</div>
             <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
               Perfil tributário, regras fiscais, textos legais e automação
             </div>
@@ -307,13 +307,13 @@ export default function ConfigNfePage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 20, background: "#fff", borderRadius: 10,
+        <div style={{ display: "flex", gap: 2, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10,
           border: "0.5px solid #D4DCE8", padding: 4 }}>
           {ABAS.map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
               style={{ flex: 1, padding: "8px 10px", border: "none", borderRadius: 8, cursor: "pointer",
                 background: aba === a.id ? "#1A4870" : "transparent",
-                color: aba === a.id ? "#fff" : "#555",
+                color: aba === a.id ? "#fff" : "var(--text-2)",
                 fontWeight: aba === a.id ? 600 : 400, fontSize: 13, transition: "all 0.15s" }}>
               {a.label}
             </button>
@@ -344,8 +344,8 @@ export default function ConfigNfePage() {
                   },
                 ] as { v: "pf"|"pj"; titulo: string; itens: string[] }[]).map(({ v, titulo, itens }) => (
                   <button key={v} type="button" onClick={() => mudarTipoEmitente(v)}
-                    style={{ padding: "18px 20px", border: `2px solid ${cfg.tipo_emitente === v ? "#1A4870" : "#D4DCE8"}`,
-                      borderRadius: 12, background: cfg.tipo_emitente === v ? "#D5E8F5" : "#fff", cursor: "pointer", textAlign: "left" }}>
+                    style={{ padding: "18px 20px", border: `2px solid ${cfg.tipo_emitente === v ? "#1A4870" : "var(--border-table)"}`,
+                      borderRadius: 12, background: cfg.tipo_emitente === v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
                       {cfg.tipo_emitente === v ? "● " : "○ "}{titulo}
                     </div>
@@ -371,9 +371,9 @@ export default function ConfigNfePage() {
                   { label: "PIS/COFINS",     value: cfg.tipo_emitente === "pf" ? "Não incide (PF imune)" : cfg.pis_cofins_ativo ? `CST ${cfg.cst_pis_cofins} — PIS ${cfg.aliquota_pis}% / COFINS ${cfg.aliquota_cofins}%` : "Isento / não destacado" },
                   { label: "IBS/CBS 2027",   value: cfg.destaque_ibs_cbs ? `IBS ${cfg.aliquota_ibs}% + CBS ${cfg.aliquota_cbs}%` : "Não configurado" },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ background: "#F4F6FA", borderRadius: 8, padding: "12px 14px" }}>
-                    <div style={{ fontSize: 10, color: "#888", marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
-                    <div style={{ fontSize: 12, color: "#1a1a1a", fontWeight: 600, lineHeight: 1.5 }}>{value}</div>
+                  <div key={label} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px" }}>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-1)", fontWeight: 600, lineHeight: 1.5 }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -394,10 +394,10 @@ export default function ConfigNfePage() {
                   { v: "producao",    label: "🟢 Produção",    desc: "NF-e com validade fiscal real junto à SEFAZ.", bg: "#E8F5E9", border: "#1A5C38" },
                 ] as {v:"producao"|"homologacao"; label:string; desc:string; bg:string; border:string}[]).map(({ v, label, desc, bg, border }) => (
                   <button key={v} type="button" onClick={() => set("ambiente", v)}
-                    style={{ padding: "16px 20px", border: `2px solid ${cfg.ambiente === v ? border : "#D4DCE8"}`,
-                      borderRadius: 10, background: cfg.ambiente === v ? bg : "#fff", cursor: "pointer", textAlign: "left" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 12, color: "#555" }}>{desc}</div>
+                    style={{ padding: "16px 20px", border: `2px solid ${cfg.ambiente === v ? border : "var(--border-table)"}`,
+                      borderRadius: 10, background: cfg.ambiente === v ? bg : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)" }}>{desc}</div>
                   </button>
                 ))}
               </div>
@@ -457,11 +457,11 @@ export default function ConfigNfePage() {
                     { v: "3", crt: "CRT 3", label: "Regime Normal",               desc: "Lucro Presumido, Lucro Real ou Produtor Rural PJ." },
                   ] as {v:"1"|"2"|"3";crt:string;label:string;desc:string}[]).map(({ v, crt, label, desc }) => (
                     <button key={v} type="button" onClick={() => set("regime_tributario", v)}
-                      style={{ padding: "14px 16px", border: `2px solid ${cfg.regime_tributario === v ? "#1A4870" : "#D4DCE8"}`,
-                        borderRadius: 10, background: cfg.regime_tributario === v ? "#D5E8F5" : "#fff", cursor: "pointer", textAlign: "left" }}>
+                      style={{ padding: "14px 16px", border: `2px solid ${cfg.regime_tributario === v ? "#1A4870" : "var(--border-table)"}`,
+                        borderRadius: 10, background: cfg.regime_tributario === v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#1A4870", marginBottom: 2, textTransform: "uppercase" }}>{crt}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>{label}</div>
-                      <div style={{ fontSize: 11, color: "#555" }}>{desc}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-2)" }}>{desc}</div>
                     </button>
                   ))}
                 </div>
@@ -497,10 +497,10 @@ export default function ConfigNfePage() {
                         { v: "emitente",   label: "Emitente recolhe diretamente", desc: "Produtor recolhe via GPS/DARF." },
                       ] as {v:"emitente"|"adquirente";label:string;desc:string}[]).map(({ v, label, desc }) => (
                         <button key={v} type="button" onClick={() => set("funrural_responsavel", v)}
-                          style={{ flex: 1, padding: "12px 14px", border: `2px solid ${cfg.funrural_responsavel === v ? "#1A4870" : "#D4DCE8"}`,
-                            borderRadius: 10, background: cfg.funrural_responsavel === v ? "#D5E8F5" : "#fff", cursor: "pointer", textAlign: "left" }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontSize: 11, color: "#555" }}>{desc}</div>
+                          style={{ flex: 1, padding: "12px 14px", border: `2px solid ${cfg.funrural_responsavel === v ? "#1A4870" : "var(--border-table)"}`,
+                            borderRadius: 10, background: cfg.funrural_responsavel === v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{desc}</div>
                         </button>
                       ))}
                     </div>
@@ -543,7 +543,7 @@ export default function ConfigNfePage() {
                 <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <NumInput value={cfg.pct_icms_diferido} onChange={v => set("pct_icms_diferido", v)}
                     label="Percentual do diferimento" hint="Normalmente 100% para grãos em MT." suffix="%" />
-                  <div style={{ paddingTop: 18, fontSize: 12, color: "#555", lineHeight: 1.6 }}>
+                  <div style={{ paddingTop: 18, fontSize: 12, color: "var(--text-2)", lineHeight: 1.6 }}>
                     ICMS diferido significa que o imposto <strong>não é destacado na NF-e</strong>. O campo CST será{" "}
                     <strong>051 (diferimento)</strong> e o valor do ICMS será zero na NF.
                   </div>
@@ -662,7 +662,7 @@ export default function ConfigNfePage() {
                 </button>
               </div>
               {cfg.textos_por_cfop.length === 0 ? (
-                <div style={{ fontSize: 12, color: "#888", textAlign: "center", padding: "20px 0" }}>
+                <div style={{ fontSize: 12, color: "var(--text-3)", textAlign: "center", padding: "20px 0" }}>
                   Nenhum texto por CFOP. Use para textos exigidos por operação específica (ex: retorno de armazém, remessa de demonstração).
                 </div>
               ) : cfg.textos_por_cfop.map((t, idx) => (
@@ -687,7 +687,7 @@ export default function ConfigNfePage() {
             {/* Preview */}
             <div style={card}>
               <div style={sH}>Prévia do infCpl gerado automaticamente</div>
-              <div style={{ background: "#F4F6FA", borderRadius: 8, padding: 14, fontFamily: "monospace", fontSize: 12, color: "#333", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: 14, fontFamily: "monospace", fontSize: 12, color: "#333", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
                 {[
                   cfg.texto_produtor_rural,
                   cfg.funrural_ativo ? cfg.funrural_texto : "",
@@ -735,7 +735,7 @@ export default function ConfigNfePage() {
             {cfg.destaque_ibs_cbs && (
               <div style={card}>
                 <div style={sH}>Prévia do destaque no DANFE</div>
-                <div style={{ background: "#F4F6FA", borderRadius: 8, padding: 14, fontFamily: "monospace", fontSize: 12, color: "#333" }}>
+                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: 14, fontFamily: "monospace", fontSize: 12, color: "#333" }}>
                   {cfg.texto_ibs_cbs} IBS: {cfg.aliquota_ibs}% | CBS: {cfg.aliquota_cbs}%.
                   Valores estimados calculados por item.
                 </div>
@@ -777,8 +777,8 @@ export default function ConfigNfePage() {
             </div>
 
             {/* Resumo status */}
-            <div style={{ ...card, background: "#F4F6FA" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Status das automações</div>
+            <div style={{ ...card, background: "var(--bg-page)" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Status das automações</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
                   { label: "Emissão automática",    on: cfg.emissao_automatica    },
@@ -787,10 +787,10 @@ export default function ConfigNfePage() {
                   { label: "Envio XML por e-mail",   on: cfg.enviar_xml_email      },
                 ].map(({ label, on }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
-                    background: "#fff", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: on ? "#1A5C38" : "#D4DCE8", flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: on ? "#1a1a1a" : "#888" }}>{label}</span>
-                    <span style={{ marginLeft: "auto", fontSize: 10, color: on ? "#1A5C38" : "#aaa", fontWeight: 600 }}>{on ? "Ativo" : "Inativo"}</span>
+                    background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: on ? "#1A5C38" : "var(--border-table)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: on ? "var(--text-1)" : "var(--text-3)" }}>{label}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 10, color: on ? "#1A5C38" : "var(--text-muted)", fontWeight: 600 }}>{on ? "Ativo" : "Inativo"}</span>
                   </div>
                 ))}
               </div>

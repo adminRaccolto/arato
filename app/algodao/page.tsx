@@ -110,19 +110,19 @@ const STATUS_BENEF_LABEL: Record<string, { label: string; cor: string }> = {
 // ─── Estilos base ─────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
-  background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE",
+  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE",
   padding: "20px 24px",
 };
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
   border: "0.5px solid #D4DCE8", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff",
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 
 const lbl: React.CSSProperties = {
-  fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600,
+  fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600,
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -131,7 +131,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSec: React.CSSProperties = {
-  padding: "8px 14px", background: "#fff", color: "#555",
+  padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)",
   border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13,
 };
 
@@ -434,7 +434,7 @@ export default function AlgodaoPage() {
   return (
     <>
     <TopNav />
-    <div style={{ padding: "24px 28px", fontFamily: "system-ui, sans-serif", fontSize: 13, background: "#F4F6FA", minHeight: "100vh" }}>
+    <div style={{ padding: "24px 28px", fontFamily: "system-ui, sans-serif", fontSize: 13, background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* ── Cabeçalho ── */}
       <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
@@ -442,7 +442,7 @@ export default function AlgodaoPage() {
           <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Módulo Algodão
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#888" }}>Lavoura · Bicudo · Módulos · Algodoeira · HVI · Posição</p>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>Lavoura · Bicudo · Módulos · Algodoeira · HVI · Posição</p>
         </div>
         {/* Seletores: Fazenda + Ciclo */}
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -523,11 +523,11 @@ export default function AlgodaoPage() {
       </div>
 
       {!fazTrabalho || !cicloSel ? (
-        <div style={{ ...card, textAlign: "center", padding: "60px 0", color: "#888" }}>
+        <div style={{ ...card, textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>
           Selecione a fazenda e o ciclo de algodão para visualizar os dados.
         </div>
       ) : carregando ? (
-        <div style={{ ...card, textAlign: "center", padding: "60px 0", color: "#888" }}>Carregando…</div>
+        <div style={{ ...card, textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>Carregando…</div>
       ) : (
         <>
           {/* ═══════ ABA: SAFRA & OPERAÇÕES ═══════ */}
@@ -542,9 +542,9 @@ export default function AlgodaoPage() {
                   { label: "Rendimento Médio", valor: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—", sub: "pluma / caroço" },
                 ].map(c => (
                   <div key={c.label} style={{ ...card }}>
-                    <div style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{c.label}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{c.label}</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: "#0B1E35" }}>{c.valor}</div>
-                    <div style={{ fontSize: 11, color: "#aaa" }}>{c.sub}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.sub}</div>
                   </div>
                 ))}
               </div>
@@ -556,13 +556,13 @@ export default function AlgodaoPage() {
                   <button style={btnPrimary} onClick={() => setModalOp({})}>+ Nova Operação</button>
                 </div>
                 {operacoes.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa" }}>Nenhuma operação registrada. Registre reguladores de crescimento e defolhações.</div>
+                  <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhuma operação registrada. Registre reguladores de crescimento e defolhações.</div>
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "#F3F6F9" }}>
                         {["Tipo","Data","Talhão","Produto","Dose","Área (ha)","NAWF / Alt. (cm)","Açab. Maçãs","Ações"].map(h => (
-                          <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -604,13 +604,13 @@ export default function AlgodaoPage() {
                     <button style={btnPrimary} onClick={() => setModalArm({})}>+ Nova Armadilha</button>
                   </div>
                   {armadilhas.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa" }}>Nenhuma armadilha cadastrada.</div>
+                    <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhuma armadilha cadastrada.</div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F3F6F9" }}>
                           {["Armadilha","Talhão","Última leitura","Capturas","Status",""].map(h => (
-                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -629,7 +629,7 @@ export default function AlgodaoPage() {
                                 {alerta && <span style={{ marginLeft: 4, fontSize: 11, color: "#B91C1C" }}>⚠️ ACIONAR</span>}
                               </td>
                               <td style={{ padding: "8px 10px" }}>
-                                <span style={{ color: a.ativa ? "#16A34A" : "#aaa", fontSize: 11 }}>{a.ativa ? "Ativa" : "Inativa"}</span>
+                                <span style={{ color: a.ativa ? "#16A34A" : "var(--text-muted)", fontSize: 11 }}>{a.ativa ? "Ativa" : "Inativa"}</span>
                               </td>
                               <td style={{ padding: "8px 10px" }}>
                                 <button style={{ ...btnSec, padding: "4px 8px", fontSize: 11, marginRight: 4 }} onClick={() => setModalCap({ armadilha_id: a.id, armadilha_nome: a.nome })}>+ Leitura</button>
@@ -641,7 +641,7 @@ export default function AlgodaoPage() {
                       </tbody>
                     </table>
                   )}
-                  <div style={{ marginTop: 10, fontSize: 11, color: "#888" }}>
+                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-3)" }}>
                     Threshold: <strong>{THRESHOLD_BICUDO} capturas/semana</strong> por armadilha → acionar pulverização dirigida.
                   </div>
                 </div>
@@ -650,13 +650,13 @@ export default function AlgodaoPage() {
                 <div style={{ ...card }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35", marginBottom: 14 }}>Histórico de Capturas — Últimas 10 Leituras</div>
                   {capturas.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa" }}>Sem leituras registradas.</div>
+                    <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Sem leituras registradas.</div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F3F6F9" }}>
                           {["Data","Armadilha","Capturas","Situação"].map(h => (
-                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -700,31 +700,31 @@ export default function AlgodaoPage() {
                   const cnt = modulos.filter(m => m.status === k).length;
                   return (
                     <div key={k} style={{ background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", borderLeft: `4px solid ${v.cor}` }}>
-                      <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>{v.label}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{v.label}</div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: v.cor }}>{cnt}</div>
                     </div>
                   );
                 })}
                 <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #1A4870" }}>
-                  <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>Peso Estimado Total</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>Peso Estimado Total</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#1A4870" }}>{fmtN(pesoEstimadoKg / 1000, 1)} ton</div>
                 </div>
               </div>
 
               {modulos.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa" }}>Nenhum módulo registrado.</div>
+                <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhum módulo registrado.</div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F3F6F9" }}>
                       {["Nº","Talhão","Data Colheita","Peso Est. (kg)","Status","Algodoeira","Entrega","Romaneio","Ações"].map(h => (
-                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {modulos.map((m, i) => {
-                      const st = STATUS_MODULO_LABEL[m.status] ?? { label: m.status, cor: "#888" };
+                      const st = STATUS_MODULO_LABEL[m.status] ?? { label: m.status, cor: "var(--text-3)" };
                       return (
                         <tr key={m.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                           <td style={{ padding: "8px 10px", fontWeight: 700 }}>#{String(m.numero).padStart(3, "0")}</td>
@@ -767,26 +767,26 @@ export default function AlgodaoPage() {
                   { l: "Valor Pluma", v: fmtR(valorEstoqueR) },
                 ].map(c => (
                   <div key={c.l} style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px" }}>
-                    <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>{c.l}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{c.l}</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "#0B1E35" }}>{c.v}</div>
                   </div>
                 ))}
               </div>
 
               {beneficiamentos.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa" }}>Nenhum beneficiamento registrado.</div>
+                <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhum beneficiamento registrado.</div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F3F6F9" }}>
                       {["Algodoeira","Entrada","Benefic.","Módulos","Peso Caroço (kg)","Fardos","Pluma (kg)","Rend.%","Caroço Ret. (kg)","Custo","Status","Ações"].map(h => (
-                        <th key={h} style={{ padding: "8px 8px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "8px 8px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {beneficiamentos.map((b, i) => {
-                      const st = STATUS_BENEF_LABEL[b.status] ?? { label: b.status, cor: "#888" };
+                      const st = STATUS_BENEF_LABEL[b.status] ?? { label: b.status, cor: "var(--text-3)" };
                       return (
                         <tr key={b.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                           <td style={{ padding: "8px 8px", fontWeight: 600 }}>{b.algodoeira_nome ?? "—"}</td>
@@ -824,26 +824,26 @@ export default function AlgodaoPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35" }}>Laudos HVI por Lote</div>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>🟢 Excelente  🟡 Bom  🔴 Abaixo da referência MT</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>🟢 Excelente  🟡 Bom  🔴 Abaixo da referência MT</div>
                 </div>
                 <button style={btnPrimary} onClick={() => setModalHVI({ beneficiamento_id: "" })}>+ Registrar Laudo</button>
               </div>
 
               {/* Referências */}
-              <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 11, color: "#555" }}>
+              <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 11, color: "var(--text-2)" }}>
                 <strong>Referências MT:</strong>{" "}
                 Comprimento ≥ 28,5mm · Uniformidade ≥ 82% · Resistência ≥ 30 g/tex · Micronaire 3,5–4,9 · Rd ≥ 72% · +b &lt; 9 · SFI &lt; 10%
               </div>
 
               {laudosHVI.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "32px 0", color: "#aaa" }}>Nenhum laudo HVI registrado.</div>
+                <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Nenhum laudo HVI registrado.</div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "#F3F6F9" }}>
                         {["Algodoeira","Fardos","Tipo","Compr.\n(mm)","Unif.\n(%)","Resist.\n(g/tex)","Micro\n(μg/pol)","Elongação","Rd (%)","Amar.\n(+b)","SFI\n(%)","Neps","Prêmio/\nDesconto",""].map(h => (
-                          <th key={h} style={{ padding: "7px 8px", textAlign: "left", fontSize: 10, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "pre" }}>{h}</th>
+                          <th key={h} style={{ padding: "7px 8px", textAlign: "left", fontSize: 10, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "pre" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -868,7 +868,7 @@ export default function AlgodaoPage() {
                               const sem = param !== "—" ? hviSemaforo(param, val) : "amarelo";
                               return (
                                 <td key={pi} style={{ padding: "7px 8px" }}>
-                                  <span style={{ fontWeight: 600, color: val != null ? COR_SEMAFORO[sem] : "#aaa" }}>{fmt}</span>
+                                  <span style={{ fontWeight: 600, color: val != null ? COR_SEMAFORO[sem] : "var(--text-muted)" }}>{fmt}</span>
                                 </td>
                               );
                             })}
@@ -905,9 +905,9 @@ export default function AlgodaoPage() {
                   { l: "Rendimento Médio", v: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—", cor: "#C9921B", sub: "pluma / algodão caroço" },
                 ].map(c => (
                   <div key={c.l} style={{ ...card, borderTop: `4px solid ${c.cor}` }}>
-                    <div style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{c.l}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{c.l}</div>
                     <div style={{ fontSize: 24, fontWeight: 800, color: c.cor }}>{c.v}</div>
-                    <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>{c.sub}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{c.sub}</div>
                   </div>
                 ))}
               </div>
@@ -922,10 +922,10 @@ export default function AlgodaoPage() {
                       { l: "Módulos em transporte", v: `${modulos.filter(m => m.status === "em_transporte").length} módulos`, cor: "#EF9F27" },
                       { l: "Entregues na algodoeira", v: `${modulosEntregues} módulos  ≈  ${fmtN(pesoEstimadoKg / 1000, 1)} ton caroço`, cor: "#1A4870" },
                       { l: "Fardos produzidos", v: `${fmtN(totalFardos)} fardos  (${fmtN(totalPlumaKg / 1000, 1)} ton pluma)`, cor: "#0B1E35" },
-                      { l: "Caroço retornado", v: `${fmtN(totalCarocoKg / 1000, 1)} ton`, cor: "#888" },
+                      { l: "Caroço retornado", v: `${fmtN(totalCarocoKg / 1000, 1)} ton`, cor: "var(--text-3)" },
                     ].map(r => (
                       <div key={r.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "#F3F6F9", borderRadius: 8, borderLeft: `4px solid ${r.cor}` }}>
-                        <span style={{ fontSize: 12, color: "#555" }}>{r.l}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-2)" }}>{r.l}</span>
                         <span style={{ fontWeight: 700, color: r.cor, fontSize: 14 }}>{r.v}</span>
                       </div>
                     ))}
@@ -937,22 +937,22 @@ export default function AlgodaoPage() {
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35", marginBottom: 14 }}>Análise de Mercado</div>
 
                   <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Equivalências de Preço Hoje</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Equivalências de Preço Hoje</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "#555", fontSize: 12 }}>ICE Cotton (¢/lb)</span>
+                        <span style={{ color: "var(--text-2)", fontSize: 12 }}>ICE Cotton (¢/lb)</span>
                         <span style={{ fontWeight: 700 }}>{fmtN(preco_cbot_cents, 2)}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "#555", fontSize: 12 }}>R$ por arroba (@)</span>
+                        <span style={{ color: "var(--text-2)", fontSize: 12 }}>R$ por arroba (@)</span>
                         <span style={{ fontWeight: 700 }}>{fmtR(preco_arroba)}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "#555", fontSize: 12 }}>R$ por fardo ({PESO_FARDO_KG}kg pluma)</span>
+                        <span style={{ color: "var(--text-2)", fontSize: 12 }}>R$ por fardo ({PESO_FARDO_KG}kg pluma)</span>
                         <span style={{ fontWeight: 700, color: "#1A4870" }}>{fmtR(preco_arroba / 15 * PESO_FARDO_KG)}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "#555", fontSize: 12 }}>USD/BRL</span>
+                        <span style={{ color: "var(--text-2)", fontSize: 12 }}>USD/BRL</span>
                         <span style={{ fontWeight: 700 }}>{fmtN(usdBrl, 4)}</span>
                       </div>
                     </div>
@@ -973,7 +973,7 @@ export default function AlgodaoPage() {
                     </div>
                   )}
 
-                  <div style={{ marginTop: 10, fontSize: 11, color: "#888" }}>
+                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-3)" }}>
                     Variação dia: <span style={{ fontWeight: 700, color: variacaoAlg >= 0 ? "#16A34A" : "#E24B4A" }}>
                       {variacaoAlg >= 0 ? "▲" : "▼"} {Math.abs(variacaoAlg).toFixed(1)}%
                     </span>{" "}
@@ -1000,7 +1000,7 @@ export default function AlgodaoPage() {
                         <thead>
                           <tr style={{ background: "#F3F6F9" }}>
                             {["Algodoeira","Fardos","Pluma (ton)","Caroço (ton)","Valor Estimado"].map(h => (
-                              <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "#555", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                              <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -1032,7 +1032,7 @@ export default function AlgodaoPage() {
       {/* ── Modal: Operação Especial ── */}
       {modalOp !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 600, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 600, maxHeight: "90vh", overflowY: "auto" }}>
             <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalOp.id ? "Editar Operação" : "Nova Operação Especial"}
             </h2>
@@ -1099,7 +1099,7 @@ export default function AlgodaoPage() {
       {/* ── Modal: Armadilha ── */}
       {modalArm !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 520 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 520 }}>
             <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalArm.id ? "Editar Armadilha" : "Nova Armadilha de Bicudo"}
             </h2>
@@ -1135,9 +1135,9 @@ export default function AlgodaoPage() {
       {/* ── Modal: Leitura Semanal ── */}
       {modalCap !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 400 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 400 }}>
             <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>Registrar Leitura</h2>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 16 }}>Armadilha: <strong>{modalCap.armadilha_nome}</strong></div>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 16 }}>Armadilha: <strong>{modalCap.armadilha_nome}</strong></div>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
             <CapForm
               armadilhaId={modalCap.armadilha_id}
@@ -1153,7 +1153,7 @@ export default function AlgodaoPage() {
       {/* ── Modal: Módulo ── */}
       {modalMod !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 640, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 640, maxHeight: "90vh", overflowY: "auto" }}>
             <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalMod.id ? "Editar Módulo" : "Novo Módulo de Algodão"}
             </h2>
@@ -1211,7 +1211,7 @@ export default function AlgodaoPage() {
       {/* ── Modal: Beneficiamento ── */}
       {modalBenef !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
             <h2 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalBenef.id ? "Editar Beneficiamento" : "Novo Lote de Beneficiamento"}
             </h2>
@@ -1277,11 +1277,11 @@ export default function AlgodaoPage() {
       {/* ── Modal: Laudo HVI ── */}
       {modalHVI !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "28px 32px", width: 720, maxHeight: "90vh", overflowY: "auto" }}>
             <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#0B1E35" }}>
               {modalHVI.id ? "Editar Laudo HVI" : "Registrar Laudo HVI"}
             </h2>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>Referências MT: Comp ≥ 28,5mm · Unif ≥ 82% · Resist ≥ 30 g/tex · Micro 3,5–4,9 · Rd ≥ 72% · +b &lt; 9 · SFI &lt; 10%</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>Referências MT: Comp ≥ 28,5mm · Unif ≥ 82% · Resist ≥ 30 g/tex · Micro 3,5–4,9 · Rd ≥ 72% · +b &lt; 9 · SFI &lt; 10%</div>
             {msg && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, marginBottom: 12, color: "#B91C1C", fontSize: 12 }}>{msg}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Beneficiamento *</label>
@@ -1320,7 +1320,7 @@ export default function AlgodaoPage() {
                 { f: "premium_desconto_pct",l: "Prêmio/Desconto (%)",   ref: "+ prêmio / – desconto", step: "0.1" },
               ].map(({ f, l, ref, step }) => (
                 <div key={f}>
-                  <label style={lbl}>{l}{ref && <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 4 }}>{ref}</span>}</label>
+                  <label style={lbl}>{l}{ref && <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: 4 }}>{ref}</span>}</label>
                   <input type="number" step={step} style={inp}
                     value={(modalHVI as Record<string, unknown>)[f] as number ?? ""}
                     onChange={e => setModalHVI(p => ({ ...p, [f]: parseFloat(e.target.value) || undefined }))} />
@@ -1355,8 +1355,8 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
   const [data, setData]   = useState(hoje);
   const [qtd,  setQtd]    = useState(0);
   const alerta = qtd >= threshold;
-  const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-  const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600 };
+  const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+  const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -1373,7 +1373,7 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
         </div>
       )}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button style={{ padding: "8px 14px", background: "#fff", color: "#555", border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
+        <button style={{ padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
         <button style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }} disabled={salvando} onClick={() => onSalvar(armadilhaId, data, qtd)}>
           {salvando ? "Salvando…" : "Salvar Leitura"}
         </button>

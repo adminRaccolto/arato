@@ -36,7 +36,7 @@ const GRUPOS = ["Campo", "Comercial", "Financeiro", "Fiscal", "Sistema"];
 const PLANO_IDS: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR: Record<PlanoId, { label: string; borda: string }> = {
-  essencial:   { label: "#555",    borda: "#D4DCE8" },
+  essencial:   { label: "var(--text-2)",    borda: "var(--border-table)" },
   gestao:      { label: "#1A4870", borda: "#1A4870" },
   performance: { label: "#7A5A12", borda: "#C9921B" },
 };
@@ -59,7 +59,7 @@ export default function PlanosPage() {
           const cor = COR[pid];
           return (
             <div key={pid} style={{
-              background: "#fff",
+              background: "var(--bg-card)",
               border: `1.5px solid ${cor.borda}40`,
               borderRadius: 14,
               padding: "24px 22px",
@@ -78,9 +78,9 @@ export default function PlanosPage() {
               <p style={{ fontSize: 12, color: "#666", margin: "0 0 16px", lineHeight: 1.5 }}>{p.descricao}</p>
               <div style={{ marginBottom: 4 }}>
                 <span style={{ fontSize: 26, fontWeight: 900, color: "#0B2D50" }}>{fmtPreco(p.preco_mensal)}</span>
-                <span style={{ fontSize: 13, color: "#888" }}>/mês</span>
+                <span style={{ fontSize: 13, color: "var(--text-3)" }}>/mês</span>
               </div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 16 }}>
                 Trial: {p.trial_dias} dias · Usuários: {p.limite_usuarios ?? "ilimitados"}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -100,7 +100,7 @@ export default function PlanosPage() {
       </div>
 
       {/* Tabela comparativa */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFC" }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Tabela Comparativa de Módulos</h2>
         </div>
@@ -108,11 +108,11 @@ export default function PlanosPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", width: 220 }}>Módulo</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", width: 220 }}>Módulo</th>
                 {PLANO_IDS.map(pid => (
                   <th key={pid} style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, fontWeight: 700, borderBottom: "0.5px solid #DDE2EE", color: COR[pid].label }}>
                     {PLANOS_DEFAULT[pid].nome}
-                    <div style={{ fontSize: 11, fontWeight: 400, color: "#888", marginTop: 2 }}>{fmtPreco(PLANOS_DEFAULT[pid].preco_mensal)}/mês</div>
+                    <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginTop: 2 }}>{fmtPreco(PLANOS_DEFAULT[pid].preco_mensal)}/mês</div>
                   </th>
                 ))}
               </tr>
@@ -124,16 +124,16 @@ export default function PlanosPage() {
                   <tr key={`hdr-${grupo}`}>
                     <td colSpan={4} style={{
                       padding: "10px 16px 4px",
-                      fontSize: 10, fontWeight: 700, color: "#888",
+                      fontSize: 10, fontWeight: 700, color: "var(--text-3)",
                       textTransform: "uppercase", letterSpacing: 1,
-                      background: "#F4F6FA",
+                      background: "var(--bg-page)",
                     }}>
                       {grupo}
                     </td>
                   </tr>,
                   ...mods.map((mod, idx) => (
                     <tr key={mod.id} style={{ background: idx % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                      <td style={{ padding: "10px 16px", fontSize: 13, color: "#1a1a1a", borderBottom: "0.5px solid #F0F2F7" }}>
+                      <td style={{ padding: "10px 16px", fontSize: 13, color: "var(--text-1)", borderBottom: "0.5px solid #F0F2F7" }}>
                         {mod.label}
                       </td>
                       {PLANO_IDS.map(pid => {
@@ -142,7 +142,7 @@ export default function PlanosPage() {
                           <td key={pid} style={{ padding: "10px 16px", textAlign: "center", fontSize: 16, borderBottom: "0.5px solid #F0F2F7" }}>
                             {inc
                               ? <span style={{ color: "#16A34A" }}>✓</span>
-                              : <span style={{ color: "#DDE2EE" }}>—</span>}
+                              : <span style={{ color: "var(--border)" }}>—</span>}
                           </td>
                         );
                       })}

@@ -28,8 +28,8 @@ interface Props {
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "7px 10px", border: "0.5px solid #C8D6E8",
-  borderRadius: 6, fontSize: 13, background: "#fff",
-  boxSizing: "border-box" as const, color: "#1a1a1a",
+  borderRadius: 6, fontSize: 13, background: "var(--bg-card)",
+  boxSizing: "border-box" as const, color: "var(--text-1)",
 };
 const lbl: React.CSSProperties = {
   fontSize: 11, fontWeight: 700, color: "#1A4870",

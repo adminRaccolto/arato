@@ -10,10 +10,10 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -68,7 +68,7 @@ interface ParcelaConsorcio {
 const STATUS_META: Record<StatusConsorcio, { label: string; bg: string; cl: string }> = {
   a_contemplar: { label: "A contemplar", bg: "#FBF3E0", cl: "#7B4A00" },
   contemplado:  { label: "Contemplado",  bg: "#E8F5E9", cl: "#1A6B3C" },
-  encerrado:    { label: "Encerrado",    bg: "#F3F6F9", cl: "#555"    },
+  encerrado:    { label: "Encerrado",    bg: "#F3F6F9", cl: "var(--text-2)"    },
   cancelado:    { label: "Cancelado",    bg: "#FCEBEB", cl: "#791F1F" },
 };
 
@@ -77,7 +77,7 @@ const TIPO_BEM_META: Record<TipoBem, { label: string; bg: string; cl: string }> 
   imovel:   { label: "Imóvel",      bg: "#E8F5E9", cl: "#1A6B3C" },
   maquina:  { label: "Máquina",     bg: "#FBF3E0", cl: "#7B4A00" },
   caminhao: { label: "Caminhão",    bg: "#F3E8FF", cl: "#6B21A8" },
-  outro:    { label: "Outro",       bg: "#F3F6F9", cl: "#555"    },
+  outro:    { label: "Outro",       bg: "#F3F6F9", cl: "var(--text-2)"    },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -310,14 +310,14 @@ export default function ConsorciosPage() {
 
   if (!podeAcessarPlano("fin_tesouraria")) return <PlanoGate modulo="fin_tesouraria" />;
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Controle de Consórcios</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Consórcios</h1>
           <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
             Cotas em andamento — acompanhe parcelas, contemplações e migração para financiamento
           </p>
@@ -329,12 +329,12 @@ export default function ConsorciosPage() {
             { label: "A Contemplar",      value: aContemplar.length.toString(),    sub: "cotas ativas",       color: "#C9921B" },
             { label: "Contemplados",       value: contemplados.length.toString(),   sub: "em uso",             color: "#1A6B3C" },
             { label: "Crédito Disponível", value: fmtBRL(totalCredito),            sub: "a contemplar",       color: "#1A4870" },
-            { label: "Parcelas Atrasadas", value: parcelasAtrasadas.length.toString(), sub: "requer atenção",  color: parcelasAtrasadas.length > 0 ? "#E24B4A" : "#555" },
+            { label: "Parcelas Atrasadas", value: parcelasAtrasadas.length.toString(), sub: "requer atenção",  color: parcelasAtrasadas.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
             </div>
           ))}
         </div>
@@ -370,7 +370,7 @@ export default function ConsorciosPage() {
             </div>
 
             {consorcios.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum consórcio cadastrado.
               </div>
             ) : (
@@ -383,7 +383,7 @@ export default function ConsorciosPage() {
                   const exp = expandido === c.id;
                   const saldoRestante = (c.total_parcelas - c.parcelas_pagas) * c.valor_parcela_mensal;
                   return (
-                    <div key={c.id} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+                    <div key={c.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
                       {/* Linha resumo */}
                       <div
                         onClick={() => setExpandido(exp ? null : c.id)}
@@ -391,7 +391,7 @@ export default function ConsorciosPage() {
                       >
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                               {c.administradora} — Cota {c.numero_cota}
                             </span>
                             {badge(tb.label, tb.bg, tb.cl)}
@@ -417,10 +417,10 @@ export default function ConsorciosPage() {
                         </div>
                         <div>
                           <div style={{ fontSize: 11, color: "#666", marginBottom: 3 }}>Progresso</div>
-                          <div style={{ height: 6, background: "#EEF1F6", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ height: 6, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden" }}>
                             <div style={{ height: "100%", width: `${Math.min(100, progresso)}%`, background: c.status === "contemplado" ? "#16A34A" : "#1A4870", borderRadius: 3 }} />
                           </div>
-                          <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{c.parcelas_pagas}/{c.total_parcelas} parcelas</div>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{c.parcelas_pagas}/{c.total_parcelas} parcelas</div>
                         </div>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center", flexWrap: "wrap" }}>
                           {badge(sm.label, sm.bg, sm.cl)}
@@ -434,7 +434,7 @@ export default function ConsorciosPage() {
                               Gerar Parcelas
                             </button>
                           )}
-                          <button onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>
+                          <button onClick={e => { e.stopPropagation(); abrirConsorcio(c); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                             Editar
                           </button>
                         </div>
@@ -444,24 +444,24 @@ export default function ConsorciosPage() {
                       {exp && (
                         <div style={{ borderTop: "0.5px solid #EEF1F6", padding: "12px 18px", background: "#F8FAFB" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
                               Parcelas ({parcelasC.length}) — mensalidade mensal {fmtBRL(c.valor_parcela_mensal)}
                             </div>
                             {parcelasC.length > 0 && (
-                              <button onClick={() => gerarParcelas(c)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>
+                              <button onClick={() => gerarParcelas(c)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                                 Regenerar
                               </button>
                             )}
                           </div>
                           {parcelasC.length === 0 ? (
-                            <div style={{ fontSize: 12, color: "#aaa" }}>Clique em "Gerar Parcelas" para criar o cronograma.</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Clique em "Gerar Parcelas" para criar o cronograma.</div>
                           ) : (
                             <div style={{ maxHeight: 240, overflowY: "auto" }}>
                               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                 <thead>
-                                  <tr style={{ background: "#EEF1F6", position: "sticky", top: 0 }}>
+                                  <tr style={{ background: "var(--bg-tag)", position: "sticky", top: 0 }}>
                                     {["Nº", "Vencimento", "Valor", "Status", ""].map(h => (
-                                      <th key={h} style={{ padding: "6px 10px", textAlign: h === "Valor" ? "right" : "left", color: "#555", fontWeight: 600 }}>{h}</th>
+                                      <th key={h} style={{ padding: "6px 10px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>
                                     ))}
                                   </tr>
                                 </thead>
@@ -469,9 +469,9 @@ export default function ConsorciosPage() {
                                   {parcelasC.slice(0, 36).map(p => {
                                     const vencido = !p.pago && new Date(p.data_vencimento) < new Date();
                                     return (
-                                      <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "#fff" }}>
-                                        <td style={{ padding: "5px 10px", color: "#888" }}>{p.numero_parcela}</td>
-                                        <td style={{ padding: "5px 10px", color: vencido ? "#E24B4A" : "#1a1a1a" }}>{fmtData(p.data_vencimento)}</td>
+                                      <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "var(--bg-card)" }}>
+                                        <td style={{ padding: "5px 10px", color: "var(--text-3)" }}>{p.numero_parcela}</td>
+                                        <td style={{ padding: "5px 10px", color: vencido ? "#E24B4A" : "var(--text-1)" }}>{fmtData(p.data_vencimento)}</td>
                                         <td style={{ padding: "5px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor)}</td>
                                         <td style={{ padding: "5px 10px" }}>
                                           {p.pago ? badge("Pago", "#E8F5E9", "#1A6B3C") : vencido ? badge("Atrasado", "#FCEBEB", "#791F1F") : badge("Pendente", "#FBF3E0", "#7B4A00")}
@@ -487,7 +487,7 @@ export default function ConsorciosPage() {
                                     );
                                   })}
                                   {parcelasC.length > 36 && (
-                                    <tr><td colSpan={5} style={{ padding: "6px 10px", textAlign: "center", fontSize: 11, color: "#888" }}>+ {parcelasC.length - 36} parcelas futuras</td></tr>
+                                    <tr><td colSpan={5} style={{ padding: "6px 10px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>+ {parcelasC.length - 36} parcelas futuras</td></tr>
                                   )}
                                 </tbody>
                               </table>
@@ -507,28 +507,28 @@ export default function ConsorciosPage() {
         {aba === "parcelas" && (
           <div>
             {/* Resumo mensal */}
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "14px 18px", marginBottom: 16, display: "flex", gap: 24, alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 11, color: "#666" }}>Compromisso mensal total</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#1A4870" }}>{fmtBRL(totalMensal)}</div>
               </div>
-              <div style={{ width: 1, height: 40, background: "#EEF1F6" }} />
-              <div style={{ fontSize: 12, color: "#555" }}>
+              <div style={{ width: 1, height: 40, background: "var(--bg-tag)" }} />
+              <div style={{ fontSize: 12, color: "var(--text-2)" }}>
                 {consorcios.filter(c => c.status === "a_contemplar" || c.status === "contemplado").length} consórcio(s) ativo(s)
               </div>
             </div>
 
             {parcelasVisiveis.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhuma parcela pendente.
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#F8FAFB" }}>
                       {["Vencimento", "Consórcio", "Cota", "Parcela Nº", "Valor", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "#555", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -537,11 +537,11 @@ export default function ConsorciosPage() {
                       const c = consorcios.find(c => c.id === p.consorcio_id);
                       const vencido = new Date(p.data_vencimento) < new Date();
                       return (
-                        <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "#fff" }}>
-                          <td style={{ padding: "10px 14px", color: vencido ? "#E24B4A" : "#1a1a1a", fontWeight: vencido ? 600 : 400 }}>{fmtData(p.data_vencimento)}</td>
+                        <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "var(--bg-card)" }}>
+                          <td style={{ padding: "10px 14px", color: vencido ? "#E24B4A" : "var(--text-1)", fontWeight: vencido ? 600 : 400 }}>{fmtData(p.data_vencimento)}</td>
                           <td style={{ padding: "10px 14px" }}>{c?.administradora ?? "—"}</td>
                           <td style={{ padding: "10px 14px", color: "#666" }}>{c?.numero_cota ?? "—"}</td>
-                          <td style={{ padding: "10px 14px", color: "#888" }}>{p.numero_parcela}</td>
+                          <td style={{ padding: "10px 14px", color: "var(--text-3)" }}>{p.numero_parcela}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor)}</td>
                           <td style={{ padding: "10px 14px" }}>
                             {p.pago ? badge("Pago", "#E8F5E9", "#1A6B3C") : vencido ? badge("Atrasado", "#FCEBEB", "#791F1F") : badge("Pendente", "#FBF3E0", "#7B4A00")}
@@ -569,10 +569,10 @@ export default function ConsorciosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalConsor && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 620, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{consorEdit ? "Editar Consórcio" : "Novo Consórcio"}</div>
-              <button onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{consorEdit ? "Editar Consórcio" : "Novo Consórcio"}</div>
+              <button onClick={() => setModalConsor(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px" }}>
               {cErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 14 }}>{cErr}</div>}
@@ -633,7 +633,7 @@ export default function ConsorciosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalConsor(false)}>Cancelar</button>
-              <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "#aaa" : "#1A4870", cursor: cSaving ? "default" : "pointer" }}>
+              <button onClick={salvarConsorcio} disabled={cSaving} style={{ ...btnV, background: cSaving ? "var(--text-muted)" : "#1A4870", cursor: cSaving ? "default" : "pointer" }}>
                 {cSaving ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -646,15 +646,15 @@ export default function ConsorciosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalContempl && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 500, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Registrar Contemplação</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Contemplação</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {modalContempl.administradora} — Cota {modalContempl.numero_cota} · Crédito {fmtBRL(modalContempl.valor_credito)}
                 </div>
               </div>
-              <button onClick={() => setModalContempl(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModalContempl(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {contemplErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{contemplErr}</div>}
@@ -688,7 +688,7 @@ export default function ConsorciosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalContempl(null)}>Cancelar</button>
-              <button onClick={confirmarContemplacao} disabled={contemplSaving} style={{ ...btnV, background: contemplSaving ? "#aaa" : "#16A34A", cursor: contemplSaving ? "default" : "pointer" }}>
+              <button onClick={confirmarContemplacao} disabled={contemplSaving} style={{ ...btnV, background: contemplSaving ? "var(--text-muted)" : "#16A34A", cursor: contemplSaving ? "default" : "pointer" }}>
                 {contemplSaving ? "Confirmando…" : "Confirmar Contemplação"}
               </button>
             </div>
@@ -701,13 +701,13 @@ export default function ConsorciosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalParcela && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Confirmar Pagamento</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Parcela {modalParcela.numero_parcela} — {fmtBRL(modalParcela.valor)} — venc. {fmtData(modalParcela.data_vencimento)}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Confirmar Pagamento</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Parcela {modalParcela.numero_parcela} — {fmtBRL(modalParcela.valor)} — venc. {fmtData(modalParcela.data_vencimento)}</div>
               </div>
-              <button onClick={() => setModalParcela(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModalParcela(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px" }}>
               <label style={lbl}>Data do Pagamento</label>
@@ -715,7 +715,7 @@ export default function ConsorciosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalParcela(null)}>Cancelar</button>
-              <button onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "#aaa" : "#1A4870", cursor: parcelaSaving ? "default" : "pointer" }}>
+              <button onClick={pagarParcela} disabled={parcelaSaving} style={{ ...btnV, background: parcelaSaving ? "var(--text-muted)" : "#1A4870", cursor: parcelaSaving ? "default" : "pointer" }}>
                 {parcelaSaving ? "Salvando…" : "Confirmar Pagamento"}
               </button>
             </div>

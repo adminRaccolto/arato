@@ -118,7 +118,7 @@ export default function RaccotloHub() {
       {/* Badge perfil */}
       <div style={{
         marginTop: 48, padding: "5px 14px",
-        background: raccotloGestor ? "rgba(201,146,27,0.15)" : "rgba(255,255,255,0.06)",
+        background: raccotloGestor ? "rgba(201,146,27,0.15)" : "var(--border-table)",
         border: `0.5px solid ${raccotloGestor ? "rgba(201,146,27,0.3)" : "rgba(255,255,255,0.12)"}`,
         borderRadius: 20, fontSize: 11, fontWeight: 600,
         color: raccotloGestor ? "#FDE9BB" : "rgba(255,255,255,0.45)",

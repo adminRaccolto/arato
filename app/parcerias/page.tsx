@@ -15,9 +15,9 @@ import type {
 const C = {
   azul:     "#1A4870", azulEsc:  "#0B2D50", azulClr: "#D5E8F5",
   mostr:    "#C9921B", mostrClr: "#FBF3E0",
-  fundo:    "#F4F6FA", branco:   "#ffffff",
-  borda:    "#DDE2EE", txt:      "#1a1a1a", sub:     "#555555",
-  ter:      "#666666", fraco:    "#888888",
+  fundo:    "var(--bg-page)", branco:   "#ffffff",
+  borda:    "var(--border)", txt:      "var(--text-1)", sub:     "var(--text-2)",
+  ter:      "#666666", fraco:    "var(--text-3)",
   verde:    "#16A34A", verdeClr: "#DCFCE7",
   verm:     "#E24B4A", vermClr:  "#FEE2E2",
   larClr:   "#FEF3C7", lar:      "#D97706",

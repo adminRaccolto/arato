@@ -9,11 +9,11 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
-const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid #EEF1F6", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid #EEF1F6", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -511,14 +511,14 @@ export default function CtePage() {
 
   if (!podeAcessarPlano("transporte")) return <PlanoGate modulo="transporte" />;
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>CT-e — Conhecimento de Transporte Eletrônico</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>CT-e — Conhecimento de Transporte Eletrônico</h1>
           <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
             Frota própria · Modal rodoviário · Motoristas CLT
           </p>
@@ -532,10 +532,10 @@ export default function CtePage() {
             { label: "Rascunho",            value: ctes.filter(c => c.status === "rascunho").length.toString(), sub: "aguardando autorização", color: "#C9921B" },
             { label: "Valor Total Fretes",  value: fmtBRL(totalFretes),           sub: "autorizados",           color: "#1A4870" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
             </div>
           ))}
         </div>
@@ -558,16 +558,16 @@ export default function CtePage() {
 
         {/* Tabela */}
         {ctesFiltrados.length === 0 ? (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             {ctes.length === 0 ? "Nenhum CT-e emitido." : "Nenhum CT-e encontrado para o filtro aplicado."}
           </div>
         ) : (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#F8FAFB" }}>
                   {["Nº/Série","Data","Remetente → Destinatário","Percurso","Veículo","Motorista","Valor Frete","Status",""].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor Frete" ? "right" : "left", color: "#555", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor Frete" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -578,22 +578,22 @@ export default function CtePage() {
                     <tr key={c.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
                       <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1A4870" }}>
                         {c.numero_cte}/{c.serie}
-                        <div style={{ fontSize: 10, color: "#aaa", fontWeight: 400 }}>{c.cfop}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{c.cfop}</div>
                       </td>
                       <td style={{ padding: "10px 12px" }}>{fmtData(c.data_emissao)}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <div style={{ fontSize: 12 }}>{c.remetente_nome}</div>
-                        <div style={{ fontSize: 11, color: "#888" }}>→ {c.destinatario_nome}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>→ {c.destinatario_nome}</div>
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>
                         <div>{c.municipio_origem}/{c.uf_origem}</div>
-                        <div style={{ color: "#888" }}>→ {c.municipio_destino}/{c.uf_destino}</div>
+                        <div style={{ color: "var(--text-3)" }}>→ {c.municipio_destino}/{c.uf_destino}</div>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "#555" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>
                         {c.veiculo_placa || "—"}
-                        {c.veiculo_tipo && <div style={{ fontSize: 10, color: "#aaa" }}>{c.veiculo_tipo}</div>}
+                        {c.veiculo_tipo && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{c.veiculo_tipo}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "#555" }}>{c.motorista_nome || "—"}</td>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>{c.motorista_nome || "—"}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(c.valor_frete)}</td>
                       <td style={{ padding: "10px 12px" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
@@ -607,7 +607,7 @@ export default function CtePage() {
                             DACTE
                           </button>
                           {c.status !== "cancelado" && (
-                            <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>
+                            <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Editar
                             </button>
                           )}
@@ -632,15 +632,15 @@ export default function CtePage() {
       ══════════════════════════════════════════════════════ */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 800, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 800, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
             <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{cteEdit ? `CT-e ${cteEdit.numero_cte}/${cteEdit.serie}` : "Emitir CT-e"}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Conhecimento de Transporte Eletrônico — Modal Rodoviário</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{cteEdit ? `CT-e ${cteEdit.numero_cte}/${cteEdit.serie}` : "Emitir CT-e"}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Conhecimento de Transporte Eletrônico — Modal Rodoviário</div>
               </div>
-              <button onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
             <div style={{ padding: "20px 24px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -824,12 +824,12 @@ export default function CtePage() {
 
             {/* Rodapé modal */}
             <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 12, color: "#888" }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                 Transmissão à SEFAZ via integração com biblioteca NF-e · Fluxo simulado por enquanto
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={btnR} onClick={() => setModal(false)}>Cancelar</button>
-                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "#aaa" : "#1A4870", cursor: saving ? "default" : "pointer" }}>
+                <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#1A4870", cursor: saving ? "default" : "pointer" }}>
                   {saving ? "Salvando…" : (cteEdit ? "Salvar alterações" : "Salvar CT-e")}
                 </button>
               </div>

@@ -106,7 +106,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
   return (
     <aside style={{
       width: aberto ? 220 : 52,
-      background: "#ffffff",
+      background: "var(--bg-card)",
       borderRight: "0.5px solid #D4DCE8",
       display: "flex",
       flexDirection: "column",
@@ -122,10 +122,10 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
         }}>
           <span style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>RT</span>
         </div>
-        {aberto && <span style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>Arato</span>}
+        {aberto && <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Arato</span>}
         <button
           onClick={() => setAberto(a => !a)}
-          style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#555", fontSize: 16, padding: 0, flexShrink: 0 }}
+          style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--text-2)", fontSize: 16, padding: 0, flexShrink: 0 }}
         >
           {aberto ? "←" : "→"}
         </button>
@@ -137,8 +137,8 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
           <div style={{ fontSize: 10, color: "#444", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Fazenda ativa
           </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fazenda.nome}</div>
-          <div style={{ fontSize: 11, color: "#555" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{fazenda.nome}</div>
+          <div style={{ fontSize: 11, color: "var(--text-2)" }}>
             {fazenda.municipio} · {fazenda.estado} · {(fazenda.area_total_ha ?? 0).toLocaleString("pt-BR")} ha
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
         </div>
         {aberto && (
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 12, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {nomeUsuario ?? "Usuário"}
             </div>
           </div>

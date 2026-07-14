@@ -54,12 +54,12 @@ const PLANOS_CFG: Record<Pacote, { label: string; preco: number }> = {
 const inp: React.CSSProperties = {
   width: "100%", padding: "9px 11px",
   border: "0.5px solid #D4DCE8", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff",
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 
 const lbl: React.CSSProperties = {
-  fontSize: 11, color: "#555", marginBottom: 5, display: "block", fontWeight: 600,
+  fontSize: 11, color: "var(--text-2)", marginBottom: 5, display: "block", fontWeight: 600,
 };
 
 const secTitle: React.CSSProperties = {
@@ -73,7 +73,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSecondary: React.CSSProperties = {
-  padding: "10px 22px", background: "#fff", color: "#555",
+  padding: "10px 22px", background: "var(--bg-card)", color: "var(--text-2)",
   border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
@@ -201,30 +201,30 @@ export default function NovoClientePage() {
           <div style={{ fontSize: 20, fontWeight: 800, color: "#16A34A", marginBottom: 6 }}>
             Cliente criado com sucesso!
           </div>
-          <div style={{ fontSize: 13, color: "#555", marginBottom: 24 }}>
+          <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 24 }}>
             O acesso foi configurado e o cliente já pode fazer login.
           </div>
 
-          <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "18px 20px", textAlign: "left", marginBottom: 20 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "18px 20px", textAlign: "left", marginBottom: 20 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35", marginBottom: 14, borderBottom: "0.5px solid #EEF1F6", paddingBottom: 10 }}>
               Dados da conta criada
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Conta ID</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Conta ID</div>
                 <div style={{ fontSize: 12, fontFamily: "monospace", color: "#333", background: "#F3F6F9", padding: "4px 8px", borderRadius: 6 }}>{resultado.conta_id}</div>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Fazenda ID</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Fazenda ID</div>
                 <div style={{ fontSize: 12, fontFamily: "monospace", color: "#333", background: "#F3F6F9", padding: "4px 8px", borderRadius: 6 }}>{resultado.fazenda_id}</div>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>E-mail de acesso</div>
+                <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>E-mail de acesso</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#0B1E35" }}>{resultado.user_email}</div>
               </div>
               {resultado.link && (
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Link de acesso</div>
+                  <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Link de acesso</div>
                   <a href={resultado.link} target="_blank" rel="noopener noreferrer"
                     style={{ fontSize: 12, color: "#378ADD", wordBreak: "break-all", textDecoration: "none" }}>
                     {resultado.link} ↗
@@ -258,7 +258,7 @@ export default function NovoClientePage() {
           <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Novo Cliente
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#888" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
             Criação manual de conta pelo painel admin
           </p>
         </div>
@@ -274,7 +274,7 @@ export default function NovoClientePage() {
         <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16 }}>
 
           {/* Seção 1 — Dados do cliente */}
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
             <div style={secTitle}>Identificação do Cliente</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
@@ -309,7 +309,7 @@ export default function NovoClientePage() {
           </div>
 
           {/* Seção 2 — Fazenda */}
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
             <div style={secTitle}>Fazenda Principal</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1 / -1" }}>
@@ -333,7 +333,7 @@ export default function NovoClientePage() {
         </div>
 
         {/* Linha 2 — Acesso & Assinatura (largura total) */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
           <div style={secTitle}>Acesso & Assinatura</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1 / 3" }}>

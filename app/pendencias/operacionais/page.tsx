@@ -141,7 +141,7 @@ export default function PendenciasOperacionais() {
   const dadosOriginais = (p: PendenciaRow) => p.dados_originais ?? {};
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px", width: "100%" }}>
@@ -149,7 +149,7 @@ export default function PendenciasOperacionais() {
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Pendências Operacionais</h1>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Pendências Operacionais</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
               Operações registradas pelo WhatsApp que precisam de vinculação de insumo
             </p>
@@ -184,9 +184,9 @@ export default function PendenciasOperacionais() {
               onClick={() => setFiltroStatus(s)}
               style={{
                 border: "0.5px solid", borderRadius: 6, padding: "5px 14px", fontSize: 12, cursor: "pointer", fontWeight: 600,
-                background: filtroStatus === s ? "#1A5C38" : "#fff",
-                color:      filtroStatus === s ? "#fff" : "#555",
-                borderColor: filtroStatus === s ? "#1A5C38" : "#D4DCE8",
+                background: filtroStatus === s ? "#1A5C38" : "var(--bg-card)",
+                color:      filtroStatus === s ? "#fff" : "var(--text-2)",
+                borderColor: filtroStatus === s ? "#1A5C38" : "var(--border-table)",
               }}
             >
               {s === "todos" ? "Todos" : s === "pendente" ? "Pendentes" : s === "resolvida" ? "Resolvidas" : "Canceladas"}
@@ -197,7 +197,7 @@ export default function PendenciasOperacionais() {
             <select
               value={filtroTipo}
               onChange={e => setFiltroTipo(e.target.value)}
-              style={{ border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 10px", fontSize: 12, background: "#fff", color: "#333" }}
+              style={{ border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 10px", fontSize: 12, background: "var(--bg-card)", color: "#333" }}
             >
               <option value="todos">Todos</option>
               {Object.entries(subtipoLabel).map(([k, v]) => (
@@ -209,12 +209,12 @@ export default function PendenciasOperacionais() {
 
         {/* Lista */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: "60px 0", color: "#888", fontSize: 14 }}>Carregando...</div>
+          <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-3)", fontSize: 14 }}>Carregando...</div>
         ) : pendenciasFiltradas.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+          <div style={{ textAlign: "center", padding: "60px 0", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a1a" }}>Sem pendências!</div>
-            <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)" }}>Sem pendências!</div>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
               {filtroStatus === "pendente" ? "Todas as operações foram resolvidas." : "Nenhum registro encontrado com estes filtros."}
             </div>
           </div>
@@ -229,7 +229,7 @@ export default function PendenciasOperacionais() {
                 <div
                   key={p.id}
                   style={{
-                    background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12,
+                    background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12,
                     padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 16,
                     borderLeft: p.status === "pendente" ? "4px solid #F59E0B" : p.status === "resolvida" ? "4px solid #10B981" : "4px solid #D4DCE8",
                   }}
@@ -240,49 +240,49 @@ export default function PendenciasOperacionais() {
                   {/* Conteúdo */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{label}</span>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{label}</span>
                       <span style={{ background: badge.bg, color: badge.color, borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
                         {badge.label}
                       </span>
-                      <span style={{ fontSize: 11, color: "#888", marginLeft: "auto" }}>{fmtData(p.criado_em)}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>{fmtData(p.criado_em)}</span>
                     </div>
 
                     {/* Produto pendente */}
                     {p.produto_nome_pendente && (
                       <div style={{ fontSize: 13, color: "#444", marginBottom: 4 }}>
-                        <span style={{ color: "#888" }}>Produto informado: </span>
+                        <span style={{ color: "var(--text-3)" }}>Produto informado: </span>
                         <span style={{ fontWeight: 600, color: "#92400E" }}>"{p.produto_nome_pendente}"</span>
-                        <span style={{ fontSize: 11, color: "#888", marginLeft: 6 }}>não encontrado no cadastro</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 6 }}>não encontrado no cadastro</span>
                       </div>
                     )}
 
                     {/* Talhão */}
                     {p.talhao_nome_pendente && (
                       <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
-                        <span style={{ color: "#aaa" }}>Talhão: </span>{p.talhao_nome_pendente}
+                        <span style={{ color: "var(--text-muted)" }}>Talhão: </span>{p.talhao_nome_pendente}
                       </div>
                     )}
 
                     {/* Dados originais resumidos */}
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 6 }}>
                       {!!dados.data_op && (
-                        <span style={{ fontSize: 11, color: "#555" }}>
-                          <span style={{ color: "#aaa" }}>Data: </span>{fmtDataCurta(String(dados.data_op))}
+                        <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                          <span style={{ color: "var(--text-muted)" }}>Data: </span>{fmtDataCurta(String(dados.data_op))}
                         </span>
                       )}
                       {!!dados.area_ha && (
-                        <span style={{ fontSize: 11, color: "#555" }}>
-                          <span style={{ color: "#aaa" }}>Área: </span>{Number(dados.area_ha as number).toLocaleString("pt-BR")} ha
+                        <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                          <span style={{ color: "var(--text-muted)" }}>Área: </span>{Number(dados.area_ha as number).toLocaleString("pt-BR")} ha
                         </span>
                       )}
                       {!!dados.dose && (
-                        <span style={{ fontSize: 11, color: "#555" }}>
-                          <span style={{ color: "#aaa" }}>Dose: </span>{String(dados.dose)} {String(dados.unidade ?? "")}
+                        <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                          <span style={{ color: "var(--text-muted)" }}>Dose: </span>{String(dados.dose)} {String(dados.unidade ?? "")}
                         </span>
                       )}
                       {!!dados.safra && (
-                        <span style={{ fontSize: 11, color: "#555" }}>
-                          <span style={{ color: "#aaa" }}>Safra: </span>{String(dados.safra)}
+                        <span style={{ fontSize: 11, color: "var(--text-2)" }}>
+                          <span style={{ color: "var(--text-muted)" }}>Safra: </span>{String(dados.safra)}
                         </span>
                       )}
                     </div>
@@ -345,18 +345,18 @@ export default function PendenciasOperacionais() {
       {/* ── Modal: Resolver Pendência ── */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>
                   {subtipoIcon[modal.subtipo ?? ""]} Resolver Pendência — {subtipoLabel[modal.subtipo ?? ""] ?? modal.subtipo}
                 </h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#666" }}>
                   Vincule o insumo correto para reprocessar a operação completa.
                 </p>
               </div>
-              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", padding: "0 4px" }}>×</button>
+              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", padding: "0 4px" }}>×</button>
             </div>
 
             {/* Quem enviou */}
@@ -386,7 +386,7 @@ export default function PendenciasOperacionais() {
                   ["Safra", String(modal.dados_originais?.safra ?? "—")],
                 ].map(([k, v]) => (
                   <div key={k}>
-                    <span style={{ fontSize: 11, color: "#888" }}>{k}: </span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{k}: </span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>{v}</span>
                   </div>
                 ))}
@@ -410,7 +410,7 @@ export default function PendenciasOperacionais() {
             {/* Lista de insumos filtrados */}
             <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid #D4DCE8", borderRadius: 8, marginBottom: 16 }}>
               {insumosFiltrados.length === 0 ? (
-                <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "#888" }}>
+                <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-3)" }}>
                   Nenhum insumo encontrado
                 </div>
               ) : (
@@ -429,8 +429,8 @@ export default function PendenciasOperacionais() {
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: sel ? 700 : 500, color: "#1a1a1a" }}>{ins.nome}</div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: sel ? 700 : 500, color: "var(--text-1)" }}>{ins.nome}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
                           Unidade: {ins.unidade} · Estoque: {Number(ins.estoque ?? 0).toLocaleString("pt-BR")} · Custo médio: R$ {Number(ins.custo_medio ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                       </div>
@@ -472,7 +472,7 @@ export default function PendenciasOperacionais() {
               <button
                 onClick={() => setModal(null)}
                 disabled={resolving}
-                style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "9px 20px", fontSize: 13, cursor: "pointer", color: "#555" }}
+                style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "9px 20px", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Fechar
               </button>
@@ -496,9 +496,9 @@ export default function PendenciasOperacionais() {
       {/* ── Modal: Confirmar Cancelamento ── */}
       {cancelId && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 420, padding: "28px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <h2 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>Cancelar pendência?</h2>
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 420, padding: "28px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <h2 style={{ margin: "0 0 10px", fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Cancelar pendência?</h2>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>
               A operação continuará registrada mas sem o item de insumo. O custo e o estoque <strong>não</strong> serão afetados. Esta ação não pode ser desfeita.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>

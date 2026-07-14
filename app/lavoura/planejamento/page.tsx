@@ -59,37 +59,37 @@ const diasAte = (iso?: string | null) => {
 };
 
 // ── estilos ───────────────────────────────────────────────
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties  = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
 const PRIORIDADE: Record<Prioridade, { label: string; bg: string; color: string }> = {
   urgente: { label: "Urgente", bg: "#FCEBEB",  color: "#791F1F" },
   normal:  { label: "Normal",  bg: "#EBF3FC",  color: "#0C447C" },
-  baixa:   { label: "Baixa",   bg: "#F4F6FA",  color: "#555"    },
+  baixa:   { label: "Baixa",   bg: "var(--bg-page)",  color: "var(--text-2)"    },
 };
 const STATUS_TAREFA: Record<StatusTarefa, { label: string; bg: string; color: string }> = {
   pendente:     { label: "Pendente",     bg: "#FBF3E0", color: "#7A5A12" },
   em_andamento: { label: "Em andamento", bg: "#EBF3FC", color: "#0C447C" },
   concluida:    { label: "Concluída",    bg: "#ECFDF5", color: "#14532D" },
-  cancelada:    { label: "Cancelada",    bg: "#F4F6FA", color: "#888"    },
+  cancelada:    { label: "Cancelada",    bg: "var(--bg-page)", color: "var(--text-3)"    },
 };
 const STATUS_REC: Record<StatusRec, { label: string; bg: string; color: string }> = {
   pendente: { label: "Pendente", bg: "#FBF3E0", color: "#7A5A12" },
   aplicada: { label: "Aplicada", bg: "#ECFDF5", color: "#14532D" },
-  ignorada: { label: "Ignorada", bg: "#F4F6FA", color: "#888"    },
+  ignorada: { label: "Ignorada", bg: "var(--bg-page)", color: "var(--text-3)"    },
 };
 const CAT_ORC: { value: CatOrc; label: string; cor: string }[] = [
   { value: "sementes",      label: "Sementes",             cor: "#14532D" },
   { value: "fertilizantes", label: "Fertilizantes",        cor: "#1A5C38" },
   { value: "defensivos",    label: "Defensivos",           cor: "#0C447C" },
   { value: "correcao_solo", label: "Correção de Solo",     cor: "#7C5F2A" },
-  { value: "operacoes",     label: "Operações / Máquinas", cor: "#555"    },
+  { value: "operacoes",     label: "Operações / Máquinas", cor: "var(--text-2)"    },
   { value: "arrendamento",  label: "Arrendamento",         cor: "#6B3FAD" },
-  { value: "outros",        label: "Outros",               cor: "#888"    },
+  { value: "outros",        label: "Outros",               cor: "var(--text-3)"    },
 ];
 const TIPOS_TAREFA: { value: TipoTarefa; label: string }[] = [
   { value: "correcao_solo",  label: "Correção de Solo"  },
@@ -108,7 +108,7 @@ const TIPOS_TAREFA_ICON: Record<TipoTarefa, string> = {
 };
 const TIPOS_TAREFA_COLOR: Record<TipoTarefa, string> = {
   correcao_solo: "#7C5F2A", adubacao: "#1A5C38", plantio: "#14532D", pulverizacao: "#0C447C",
-  colheita: "#C9921B", visita_tecnica: "#6B3FAD", compra_insumo: "#555", manutencao: "#C0392B", outro: "#888",
+  colheita: "#C9921B", visita_tecnica: "#6B3FAD", compra_insumo: "var(--text-2)", manutencao: "#C0392B", outro: "var(--text-3)",
 };
 const TIPOS_REC: { value: TipoRec; label: string }[] = [
   { value: "fungicida",     label: "Fungicida"       },
@@ -127,9 +127,9 @@ function Modal({ titulo, subtitulo, onClose, width = 640, children }: {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
-      <div style={{ background: "#fff", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
-        {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
+        {subtitulo && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
     </div>
@@ -483,14 +483,14 @@ export default function Planejamento() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ padding: "28px 32px" }}>
 
         {/* cabeçalho */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Planejamento de Safra</h1>
+            <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Planejamento de Safra</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Orçamento, comparativo planejado × realizado, agenda e recomendações técnicas</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -516,7 +516,7 @@ export default function Planejamento() {
             e crie um Ano Safra e pelo menos um Ciclo.
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ minWidth: 180 }}>
               <label style={lbl}>Ano Safra</label>
               <select style={inp} value={anoSelOrc} onChange={e => { setAnoSelOrc(e.target.value); setCicloSelOrc(""); }}>
@@ -555,20 +555,20 @@ export default function Planejamento() {
         {aba === "orcamento" && (
           <div>
             {!cicloSelOrc && (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "#888", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "var(--text-3)", fontSize: 13 }}>
                 Selecione um Ano Safra e um Ciclo acima para ver ou criar o orçamento
               </div>
             )}
 
             {cicloSelOrc && loadingOrc && (
-              <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 13 }}>Carregando...</div>
+              <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             )}
 
             {cicloSelOrc && !loadingOrc && !orcamento && (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
                 <div style={{ fontSize: 34, marginBottom: 12 }}>◻</div>
-                <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Nenhum orçamento para este ciclo</div>
-                <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Crie o orçamento informando área, produtividade esperada e preço de referência</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhum orçamento para este ciclo</div>
+                <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Crie o orçamento informando área, produtividade esperada e preço de referência</div>
                 <button style={btnV} onClick={() => { setFOH(initOH()); setModalOrcHeader(true); }}>Criar Orçamento</button>
               </div>
             )}
@@ -588,7 +588,7 @@ export default function Planejamento() {
                       { label: "Receita Bruta Esperada",valor: recBruta > 0 ? fmtR(recBruta) : "—",     bg: "#ECFDF5", color: "#14532D" },
                       { label: "Receita Líquida (após Funrural+SENAR)", valor: recLiq > 0 ? fmtR(recLiq) : "—", bg: "#F0FDF4", color: "#166534" },
                     ].map(k => (
-                      <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                      <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.valor}</div>
                       </div>
@@ -599,22 +599,22 @@ export default function Planejamento() {
                   {recBruta > 0 && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
                       {/* Margem líquida */}
-                      <div style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${viavel ? "#BBFFD4" : "#FFBBBB"}` }}>
+                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${viavel ? "#BBFFD4" : "#FFBBBB"}` }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Margem Líquida</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: viavel ? "#14532D" : "#791F1F" }}>{fmtR(margem)}</div>
                         <div style={{ fontSize: 11, color: viavel ? "#16A34A" : "#E24B4A", marginTop: 2 }}>{fmtN(lucrativ, 1)}% sobre receita líquida</div>
                       </div>
                       {/* Deduções */}
-                      <div style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Deduções Fiscais</div>
-                        <div style={{ fontSize: 17, fontWeight: 700, color: "#555" }}>{fmtR(deducoes)}</div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Funrural 1,5% + SENAR 0,2%</div>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-2)" }}>{fmtR(deducoes)}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Funrural 1,5% + SENAR 0,2%</div>
                       </div>
                       {/* Ponto de equilíbrio */}
-                      <div style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Ponto de Equilíbrio</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: "#0C447C" }}>{peSacHa > 0 ? `${fmtN(peSacHa, 1)} sc/ha` : "—"}</div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>para cobrir os custos</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>para cobrir os custos</div>
                       </div>
                       {/* Folga acima do PE / viabilidade */}
                       <div style={{ background: viavel ? "#ECFDF5" : "#FCEBEB", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${viavel ? "#BBF7D0" : "#FECACA"}` }}>
@@ -635,10 +635,10 @@ export default function Planejamento() {
                   )}
 
                   {/* header do orçamento */}
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 18px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 18px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>{orcamento.nome}</span>
-                      <span style={{ fontSize: 11, color: "#888", marginLeft: 10 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>{orcamento.nome}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 10 }}>
                         {areaHa > 0 ? `${fmtN(areaHa)} ha` : ""}
                         {prodEsp > 0 ? ` · ${fmtN(prodEsp)} sc/ha` : ""}
                         {precEsp > 0 ? ` · R$ ${fmtN(precEsp)}/sc` : ""}
@@ -654,12 +654,12 @@ export default function Planejamento() {
                   </div>
 
                   {/* tabela agrupada por categoria */}
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F3F6F9" }}>
                           {["Descrição", "Qtd", "Un.", "Valor Unit.", "Total", ""].map((h, i) => (
-                            <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : i < 5 ? "right" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                            <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : i < 5 ? "right" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -680,14 +680,14 @@ export default function Planejamento() {
                               </tr>
                               {itens.map((it, idx) => (
                                 <tr key={it.id} style={{ borderBottom: idx < itens.length - 1 ? "0.5px solid #F0F3F8" : "0.5px solid #E4E9F0" }}>
-                                  <td style={{ padding: "9px 14px 9px 24px", fontSize: 13, color: "#1a1a1a" }}>
+                                  <td style={{ padding: "9px 14px 9px 24px", fontSize: 13, color: "var(--text-1)" }}>
                                     {it.descricao}
-                                    {it.subcategoria && <span style={{ fontSize: 11, color: "#888", marginLeft: 6 }}>{it.subcategoria}</span>}
+                                    {it.subcategoria && <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 6 }}>{it.subcategoria}</span>}
                                   </td>
-                                  <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, color: "#1a1a1a" }}>{it.quantidade != null ? fmtN(it.quantidade, 4).replace(/,?0+$/, "") : "—"}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, color: "var(--text-1)" }}>{it.quantidade != null ? fmtN(it.quantidade, 4).replace(/,?0+$/, "") : "—"}</td>
                                   <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, color: "#666" }}>{it.unidade ?? "—"}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, color: "#1a1a1a" }}>{it.valor_unitario != null ? fmtR(it.valor_unitario) : "—"}</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{it.valor_total != null ? fmtR(it.valor_total) : "—"}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, color: "var(--text-1)" }}>{it.valor_unitario != null ? fmtR(it.valor_unitario) : "—"}</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{it.valor_total != null ? fmtR(it.valor_total) : "—"}</td>
                                   <td style={{ padding: "9px 10px", textAlign: "center" }}>
                                     <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
                                       <button style={btnE} onClick={() => {
@@ -719,7 +719,7 @@ export default function Planejamento() {
                       </tbody>
                     </table>
                     {orcItens.length === 0 && (
-                      <div style={{ padding: "40px 24px", textAlign: "center", color: "#888", fontSize: 13 }}>
+                      <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                         Orçamento criado. Use "+ Item" para adicionar os custos planejados.
                       </div>
                     )}
@@ -734,11 +734,11 @@ export default function Planejamento() {
         {aba === "comparativo" && (
           <div>
             {!cicloSelOrc ? (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "#888", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "var(--text-3)", fontSize: 13 }}>
                 Selecione um Ano Safra e um Ciclo acima para ver o comparativo
               </div>
             ) : loadingOrc || loadingComp ? (
-              <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 13 }}>Carregando...</div>
+              <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             ) : (
               <div>
                 {/* KPIs */}
@@ -747,9 +747,9 @@ export default function Planejamento() {
                     { label: "Total Planejado",  valor: fmtR(totalPlanejado), bg: "#EBF3FC", color: "#0C447C" },
                     { label: "Total Realizado",  valor: fmtR(totalRealizado), bg: "#FBF3E0", color: "#7A5A12" },
                     { label: "Desvio",           valor: fmtR(totalRealizado - totalPlanejado), bg: totalRealizado > totalPlanejado ? "#FCEBEB" : "#ECFDF5", color: totalRealizado > totalPlanejado ? "#791F1F" : "#14532D" },
-                    { label: "Execução",         valor: totalPlanejado > 0 ? `${fmtN(totalRealizado / totalPlanejado * 100, 1)}%` : "—", bg: "#F4F6FA", color: "#555" },
+                    { label: "Execução",         valor: totalPlanejado > 0 ? `${fmtN(totalRealizado / totalPlanejado * 100, 1)}%` : "—", bg: "var(--bg-page)", color: "var(--text-2)" },
                   ].map(k => (
-                    <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                    <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
                       <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
                       <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.valor}</div>
                     </div>
@@ -757,12 +757,12 @@ export default function Planejamento() {
                 </div>
 
                 {/* tabela */}
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                       <tr style={{ background: "#F3F6F9" }}>
                         {["Categoria", "Planejado", "Realizado", "Desvio (R$)", "Desvio (%)", "Execução"].map((h, i) => (
-                          <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                          <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -778,9 +778,9 @@ export default function Planejamento() {
                         return (
                           <tr key={cat.value} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
                             <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: cat.cor }}>{cat.label}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: "#1a1a1a" }}>{fmtR(plan)}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: "#1a1a1a" }}>{fmtR(real)}</td>
-                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, fontWeight: 600, color: desv > 0 ? "#E24B4A" : desv < 0 ? "#16A34A" : "#888" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: "var(--text-1)" }}>{fmtR(plan)}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: "var(--text-1)" }}>{fmtR(real)}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, fontWeight: 600, color: desv > 0 ? "#E24B4A" : desv < 0 ? "#16A34A" : "var(--text-3)" }}>
                               {desv > 0 ? "+" : ""}{fmtR(desv)}
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: desvPct > 10 ? "#E24B4A" : desvPct > 0 ? "#EF9F27" : "#16A34A" }}>
@@ -788,10 +788,10 @@ export default function Planejamento() {
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "right" }}>
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
-                                <div style={{ width: 80, height: 6, background: "#EEF1F6", borderRadius: 3, overflow: "hidden" }}>
+                                <div style={{ width: 80, height: 6, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden" }}>
                                   <div style={{ width: `${Math.min(barW, 100)}%`, height: "100%", background: exec > 110 ? "#E24B4A" : exec > 90 ? "#EF9F27" : "#16A34A", borderRadius: 3 }} />
                                 </div>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "#555", minWidth: 40, textAlign: "right" }}>{fmtN(exec, 1)}%</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", minWidth: 40, textAlign: "right" }}>{fmtN(exec, 1)}%</span>
                               </div>
                             </td>
                           </tr>
@@ -835,7 +835,7 @@ export default function Planejamento() {
                 { label: "Concluídas", valor: concluidas, bg: "#ECFDF5", color: "#14532D" },
                 { label: "Rec. Técnicas Pendentes", valor: recPend, bg: "#EDE9F8", color: "#4A2C8A" },
               ].map(k => (
-                <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
                   <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
                   <div style={{ fontSize: 26, fontWeight: 700, color: k.color }}>{k.valor}</div>
                 </div>
@@ -861,12 +861,12 @@ export default function Planejamento() {
               </select>
             </div>
             {loading ? (
-              <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 13 }}>Carregando...</div>
+              <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             ) : tarefasFiltradas.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>◻</div>
-                <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Nenhuma tarefa encontrada</div>
-                <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Use "+ Nova Tarefa" para criar a agenda do ciclo</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma tarefa encontrada</div>
+                <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Use "+ Nova Tarefa" para criar a agenda do ciclo</div>
                 <button style={btnV} onClick={() => { setEditTarefa(null); setFT(initFT()); setModalTarefa(true); }}>+ Nova Tarefa</button>
               </div>
             ) : (
@@ -876,13 +876,13 @@ export default function Planejamento() {
                   const pr = PRIORIDADE[t.prioridade];
                   const concluida = t.status === "concluida";
                   return (
-                    <div key={t.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${t.prioridade === "urgente" && !concluida ? "#E24B4A50" : "#DDE2EE"}`, display: "flex", alignItems: "flex-start", gap: 14, opacity: concluida ? 0.7 : 1 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: concluida ? "#F4F6FA" : "#EBF3FC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: concluida ? "#888" : TIPOS_TAREFA_COLOR[t.tipo] }}>
+                    <div key={t.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${t.prioridade === "urgente" && !concluida ? "#E24B4A50" : "var(--border)"}`, display: "flex", alignItems: "flex-start", gap: 14, opacity: concluida ? 0.7 : 1 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: concluida ? "var(--bg-page)" : "#EBF3FC", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: concluida ? "var(--text-3)" : TIPOS_TAREFA_COLOR[t.tipo] }}>
                         {TIPOS_TAREFA_ICON[t.tipo]}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-                          <span style={{ fontWeight: 600, fontSize: 14, color: concluida ? "#888" : "#1a1a1a", textDecoration: concluida ? "line-through" : "none" }}>{t.titulo}</span>
+                          <span style={{ fontWeight: 600, fontSize: 14, color: concluida ? "var(--text-3)" : "var(--text-1)", textDecoration: concluida ? "line-through" : "none" }}>{t.titulo}</span>
                           <Badge label={st.label} bg={st.bg} color={st.color} />
                           <Badge label={pr.label} bg={pr.bg} color={pr.color} />
                           {!concluida && <BadgePrazo data={t.data_prevista} />}
@@ -894,7 +894,7 @@ export default function Planejamento() {
                           {t.responsavel && <span>Resp.: {t.responsavel}</span>}
                           {t.ciclo_id && <span style={{ color: "#1A4870" }}>{labelCiclo(t.ciclo_id)}</span>}
                         </div>
-                        {t.descricao && <div style={{ marginTop: 4, fontSize: 12, color: "#555" }}>{t.descricao}</div>}
+                        {t.descricao && <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-2)" }}>{t.descricao}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         {t.status !== "concluida" && t.status !== "cancelada" && (
@@ -915,12 +915,12 @@ export default function Planejamento() {
         {aba === "recomendacoes" && (
           <>
             {loading ? (
-              <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 13 }}>Carregando...</div>
+              <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             ) : recomendacoes.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>◇</div>
-                <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Nenhuma recomendação técnica</div>
-                <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>Registre recomendações do agrônomo para cada ciclo</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma recomendação técnica</div>
+                <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Registre recomendações do agrônomo para cada ciclo</div>
                 <button style={{ ...btnV, background: "#6B3FAD" }} onClick={() => { setEditRec(null); setFR(initFR()); setModalRec(true); }}>+ Nova Recomendação</button>
               </div>
             ) : (
@@ -930,11 +930,11 @@ export default function Planejamento() {
                   const pr = PRIORIDADE[r.prioridade];
                   const aplicada = r.status === "aplicada";
                   return (
-                    <div key={r.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE", display: "flex", alignItems: "flex-start", gap: 14, opacity: aplicada ? 0.75 : 1 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: aplicada ? "#F4F6FA" : "#EDE9F8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: aplicada ? "#888" : "#6B3FAD" }}>◇</div>
+                    <div key={r.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE", display: "flex", alignItems: "flex-start", gap: 14, opacity: aplicada ? 0.75 : 1 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: aplicada ? "var(--bg-page)" : "#EDE9F8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: aplicada ? "var(--text-3)" : "#6B3FAD" }}>◇</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-                          <span style={{ fontWeight: 600, fontSize: 14, color: aplicada ? "#888" : "#1a1a1a" }}>{r.titulo}</span>
+                          <span style={{ fontWeight: 600, fontSize: 14, color: aplicada ? "var(--text-3)" : "var(--text-1)" }}>{r.titulo}</span>
                           <Badge label={st.label} bg={st.bg} color={st.color} />
                           <Badge label={pr.label} bg={pr.bg} color={pr.color} />
                           <Badge label={TIPOS_REC.find(x => x.value === r.tipo)?.label ?? r.tipo} bg="#EDE9F8" color="#4A2C8A" />
@@ -945,7 +945,7 @@ export default function Planejamento() {
                           {r.responsavel_tecnico && <span>Técnico: {r.responsavel_tecnico}</span>}
                           {r.ciclo_id && <span style={{ color: "#1A4870" }}>{labelCiclo(r.ciclo_id)}</span>}
                         </div>
-                        {r.descricao && <div style={{ marginTop: 4, fontSize: 12, color: "#555" }}>{r.descricao}</div>}
+                        {r.descricao && <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-2)" }}>{r.descricao}</div>}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         {r.status === "pendente" && (
@@ -991,11 +991,11 @@ export default function Planejamento() {
             </div>
             {fOH.area_ha && fOH.produtividade_esperada && fOH.preco_esperado_sc && (
               <div style={{ gridColumn: "1/-1", background: "#ECFDF5", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
-                <span style={{ color: "#555" }}>Receita esperada: </span>
+                <span style={{ color: "var(--text-2)" }}>Receita esperada: </span>
                 <span style={{ fontWeight: 700, color: "#14532D" }}>
                   {fmtR(fOH.area_ha * parseFloat(fOH.produtividade_esperada) * fOH.preco_esperado_sc)}
                 </span>
-                <span style={{ color: "#555", marginLeft: 16 }}>({fmtN(fOH.area_ha * parseFloat(fOH.produtividade_esperada))} sc totais)</span>
+                <span style={{ color: "var(--text-2)", marginLeft: 16 }}>({fmtN(fOH.area_ha * parseFloat(fOH.produtividade_esperada))} sc totais)</span>
               </div>
             )}
           </div>
@@ -1042,7 +1042,7 @@ export default function Planejamento() {
             </div>
             {fOI.quantidade && fOI.valor_unitario && (
               <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
-                <span style={{ color: "#555" }}>Total calculado: </span>
+                <span style={{ color: "var(--text-2)" }}>Total calculado: </span>
                 <span style={{ fontWeight: 700, color: "#0C447C" }}>
                   {fmtR(parseFloat(fOI.quantidade) * fOI.valor_unitario)}
                 </span>

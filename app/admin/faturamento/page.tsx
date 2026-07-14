@@ -72,7 +72,7 @@ const STATUS_ASS: Record<StatusAssinatura, { label: string; cor: string; bg: str
   trial:       { label: "Trial",        cor: "#C9921B", bg: "#FBF3E0" },
   ativa:       { label: "Ativa",        cor: "#16A34A", bg: "#F0FDF4" },
   inadimplente:{ label: "Inadimplente", cor: "#E24B4A", bg: "#FEF2F2" },
-  cancelada:   { label: "Cancelada",    cor: "#888",    bg: "#F3F4F6" },
+  cancelada:   { label: "Cancelada",    cor: "var(--text-3)",    bg: "#F3F4F6" },
   suspensa:    { label: "Suspensa",     cor: "#EF9F27", bg: "#FFF7ED" },
 };
 
@@ -80,7 +80,7 @@ const STATUS_PAG: Record<StatusPagamento, { label: string; cor: string; bg: stri
   pendente:  { label: "Pendente",  cor: "#EF9F27", bg: "#FFF7ED" },
   pago:      { label: "Pago",      cor: "#16A34A", bg: "#F0FDF4" },
   vencido:   { label: "Vencido",   cor: "#E24B4A", bg: "#FEF2F2" },
-  cancelado: { label: "Cancelado", cor: "#888",    bg: "#F3F4F6" },
+  cancelado: { label: "Cancelado", cor: "var(--text-3)",    bg: "#F3F4F6" },
   estornado: { label: "Estornado", cor: "#378ADD", bg: "#EFF6FF" },
 };
 
@@ -96,12 +96,12 @@ const METODO_LABEL: Record<MetodoPagamento, string> = {
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
   border: "0.5px solid #D4DCE8", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff",
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 
 const lbl: React.CSSProperties = {
-  fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600,
+  fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600,
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -110,7 +110,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSecondary: React.CSSProperties = {
-  padding: "8px 18px", background: "#fff", color: "#555",
+  padding: "8px 18px", background: "var(--bg-card)", color: "var(--text-2)",
   border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
@@ -155,10 +155,10 @@ function ModalPagManual({ contas, onClose, onSalvo }: ModalPagManualProps) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 14, width: 480, boxShadow: "0 12px 48px #0004" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 480, boxShadow: "0 12px 48px #0004" }}>
         <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>Registrar Pagamento Manual</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
         </div>
         <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
@@ -263,8 +263,8 @@ function AbaAssinaturas() {
     { label: "Total Ativas",     valor: ativas.length,                                             cor: "#16A34A", bg: "#F0FDF4" },
     { label: "Em Trial",         valor: lista.filter(a => a.status === "trial").length,            cor: "#C9921B", bg: "#FBF3E0" },
     { label: "Inadimplentes",    valor: lista.filter(a => a.status === "inadimplente").length,     cor: "#E24B4A", bg: "#FEF2F2" },
-    { label: "MRR",              valor: fmtBRL(mrr),                                               cor: "#0B1E35", bg: "#fff"    },
-    { label: "ARR (projetado)",  valor: fmtBRL(arr),                                               cor: "#0B1E35", bg: "#fff"    },
+    { label: "MRR",              valor: fmtBRL(mrr),                                               cor: "#0B1E35", bg: "var(--bg-card)"    },
+    { label: "ARR (projetado)",  valor: fmtBRL(arr),                                               cor: "#0B1E35", bg: "var(--bg-card)"    },
   ];
 
   const planosDistintos = Array.from(new Set(lista.map(a => a.plano_id))).filter(Boolean);
@@ -275,14 +275,14 @@ function AbaAssinaturas() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map(k => (
           <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
-            <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: k.cor }}>{k.valor}</div>
           </div>
         ))}
       </div>
 
       {/* Filtros */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input style={{ ...inp, width: 220 }} placeholder="Buscar por conta..." value={busca} onChange={e => setBusca(e.target.value)} />
         <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusAssinatura | "")}>
           <option value="">Todos os status</option>
@@ -295,21 +295,21 @@ function AbaAssinaturas() {
           {planosDistintos.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
         <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
-        <div style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>{filtradas.length} de {lista.length}</div>
+        <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>{filtradas.length} de {lista.length}</div>
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Carregando…</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
         ) : filtradas.length === 0 ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Nenhuma assinatura encontrada</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Nenhuma assinatura encontrada</div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
                 {["Conta", "Plano", "Período", "Preço", "Status", "Início", "Vencimento", "Próx. Cobr.", ""].map((h, i) => (
-                  <th key={i} style={{ padding: "10px 14px", textAlign: i >= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #D4DCE8", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={i} style={{ padding: "10px 14px", textAlign: i >= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid #D4DCE8", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -319,15 +319,15 @@ function AbaAssinaturas() {
                 return (
                   <tr key={a.id} style={{ borderBottom: i < filtradas.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
                     <td style={{ padding: "11px 14px" }}>
-                      <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{a.conta_nome}</div>
-                      {a.asaas_customer_id && <div style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace" }}>{a.asaas_customer_id}</div>}
+                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{a.conta_nome}</div>
+                      {a.asaas_customer_id && <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace" }}>{a.asaas_customer_id}</div>}
                     </td>
                     <td style={{ padding: "11px 14px" }}>
                       <span style={{ background: "#EFF6FF", color: "#1A4870", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>
                         {a.plano_id}
                       </span>
                     </td>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#555" }}>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--text-2)" }}>
                       {a.periodo === "anual" ? "Anual" : "Mensal"}
                     </td>
                     <td style={{ padding: "11px 14px", fontSize: 12, fontWeight: 600, color: "#0B1E35" }}>
@@ -338,9 +338,9 @@ function AbaAssinaturas() {
                         {sCfg.label}
                       </span>
                     </td>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#555" }}>{fmtDate(a.data_inicio)}</td>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#555", textAlign: "center" }}>{fmtDate(a.data_vencimento)}</td>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#555", textAlign: "center" }}>{fmtDate(a.data_proximo_pagamento)}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--text-2)" }}>{fmtDate(a.data_inicio)}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--text-2)", textAlign: "center" }}>{fmtDate(a.data_vencimento)}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--text-2)", textAlign: "center" }}>{fmtDate(a.data_proximo_pagamento)}</td>
                     <td style={{ padding: "11px 14px", textAlign: "center" }}>
                       {a.status !== "cancelada" && (
                         <button
@@ -411,7 +411,7 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
       )}
 
       {/* Filtros */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusPagamento | "")}>
           <option value="">Todos os status</option>
           {(Object.keys(STATUS_PAG) as StatusPagamento[]).map(s => (
@@ -426,7 +426,7 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
         </select>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <input style={{ ...inp, width: 140 }} type="date" value={periodoIni} onChange={e => setPeriodoIni(e.target.value)} placeholder="De" />
-          <span style={{ color: "#aaa", fontSize: 12 }}>até</span>
+          <span style={{ color: "var(--text-muted)", fontSize: 12 }}>até</span>
           <input style={{ ...inp, width: 140 }} type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)} placeholder="Até" />
         </div>
         <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
@@ -436,17 +436,17 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Carregando…</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
         ) : filtrados.length === 0 ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Nenhum pagamento encontrado</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Nenhum pagamento encontrado</div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F8FAFC" }}>
                 {["Vencimento", "Conta", "Valor", "Status", "Método", "Data Pag.", "Invoice"].map((h, i) => (
-                  <th key={i} style={{ padding: "10px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #D4DCE8", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={i} style={{ padding: "10px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid #D4DCE8", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -455,10 +455,10 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
                 const sCfg = STATUS_PAG[p.status] ?? STATUS_PAG.pendente;
                 return (
                   <tr key={p.id} style={{ borderBottom: i < filtrados.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#555" }}>{fmtDate(p.data_vencimento)}</td>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "var(--text-2)" }}>{fmtDate(p.data_vencimento)}</td>
                     <td style={{ padding: "11px 14px" }}>
-                      <div style={{ fontWeight: 600, color: "#1a1a1a", fontSize: 13 }}>{p.conta_nome}</div>
-                      {p.descricao && <div style={{ fontSize: 11, color: "#888" }}>{p.descricao}</div>}
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", fontSize: 13 }}>{p.conta_nome}</div>
+                      {p.descricao && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{p.descricao}</div>}
                     </td>
                     <td style={{ padding: "11px 14px", textAlign: "center", fontWeight: 700, color: "#0B1E35", fontSize: 13 }}>
                       {fmtBRL(p.valor)}
@@ -468,10 +468,10 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
                         {sCfg.label}
                       </span>
                     </td>
-                    <td style={{ padding: "11px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                    <td style={{ padding: "11px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
                       {p.metodo_pagamento ? METODO_LABEL[p.metodo_pagamento] : "—"}
                     </td>
-                    <td style={{ padding: "11px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                    <td style={{ padding: "11px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
                       {fmtDate(p.data_pagamento)}
                     </td>
                     <td style={{ padding: "11px 14px", textAlign: "center" }}>
@@ -480,7 +480,7 @@ function AbaPagamentos({ contas }: { contas: ContaSimples[] }) {
                           style={{ fontSize: 11, color: "#378ADD", fontWeight: 600, textDecoration: "none" }}>
                           Abrir ↗
                         </a>
-                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                      ) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}
                     </td>
                   </tr>
                 );
@@ -548,15 +548,15 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
       {/* Sumário */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
         <div style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
-          <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Total pendente</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Total pendente</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{fmtBRL(totalPendente)}</div>
         </div>
         <div style={{ background: "#FFF7ED", borderRadius: 12, border: "0.5px solid #EF9F2730", padding: "14px 16px" }}>
-          <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Cobranças abertas</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Cobranças abertas</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#EF9F27" }}>{lista.filter(p => p.status === "pendente").length}</div>
         </div>
         <div style={{ background: "#FEF2F2", borderRadius: 12, border: "0.5px solid #E24B4A30", padding: "14px 16px" }}>
-          <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Vencidas</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Vencidas</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#E24B4A" }}>{lista.filter(p => p.status === "vencido").length}</div>
         </div>
       </div>
@@ -576,18 +576,18 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
       </div>
 
       {loading ? (
-        <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Carregando…</div>
+        <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
       ) : Object.keys(porConta).length === 0 ? (
         <div style={{ padding: "48px 0", textAlign: "center", color: "#16A34A", fontSize: 14, fontWeight: 600 }}>
           ✓ Nenhuma cobrança pendente
         </div>
       ) : (
         Object.entries(porConta).map(([contaId, grupo]) => (
-          <div key={contaId} style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", marginBottom: 12, overflow: "hidden" }}>
+          <div key={contaId} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", marginBottom: 12, overflow: "hidden" }}>
             <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#F8FAFC" }}>
               <div>
                 <span style={{ fontWeight: 700, color: "#0B1E35", fontSize: 14 }}>{grupo.nome}</span>
-                <span style={{ marginLeft: 10, fontSize: 11, color: "#888" }}>{grupo.pagamentos.length} cobrança{grupo.pagamentos.length !== 1 ? "s" : ""}</span>
+                <span style={{ marginLeft: 10, fontSize: 11, color: "var(--text-3)" }}>{grupo.pagamentos.length} cobrança{grupo.pagamentos.length !== 1 ? "s" : ""}</span>
               </div>
               <div style={{ fontWeight: 700, color: "#E24B4A", fontSize: 13 }}>
                 {fmtBRL(grupo.pagamentos.reduce((s, p) => s + (p.valor ?? 0), 0))}
@@ -597,7 +597,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
               <thead>
                 <tr style={{ background: "#FAFBFD" }}>
                   {["Vencimento", "Valor", "Status", "Descrição", ""].map((h, i) => (
-                    <th key={i} style={{ padding: "8px 14px", textAlign: i >= 1 && i <= 3 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#888", borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={i} style={{ padding: "8px 14px", textAlign: i >= 1 && i <= 3 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -606,7 +606,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
                   const sCfg = STATUS_PAG[p.status] ?? STATUS_PAG.pendente;
                   return (
                     <tr key={p.id} style={{ borderBottom: i < grupo.pagamentos.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
-                      <td style={{ padding: "10px 14px", fontSize: 12, color: p.status === "vencido" ? "#E24B4A" : "#555", fontWeight: p.status === "vencido" ? 600 : 400 }}>
+                      <td style={{ padding: "10px 14px", fontSize: 12, color: p.status === "vencido" ? "#E24B4A" : "var(--text-2)", fontWeight: p.status === "vencido" ? 600 : 400 }}>
                         {fmtDate(p.data_vencimento)}
                       </td>
                       <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, color: "#0B1E35" }}>
@@ -617,7 +617,7 @@ function AbaCobPendentes({ contas }: { contas: ContaSimples[] }) {
                           {sCfg.label}
                         </span>
                       </td>
-                      <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                      <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
                         {p.descricao ?? "—"}
                       </td>
                       <td style={{ padding: "10px 14px", textAlign: "right" }}>
@@ -669,7 +669,7 @@ export default function FaturamentoPage() {
         <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           Faturamento
         </h1>
-        <p style={{ margin: 0, fontSize: 13, color: "#888" }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
           Assinaturas, pagamentos e cobranças via Asaas
         </p>
       </div>

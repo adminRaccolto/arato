@@ -65,11 +65,11 @@ const desmascarar = (masked: string): number =>
   Number(masked.replace(/\./g, "").replace(",", ".")) || 0;
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
-  borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff",
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
+  borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)",
   boxSizing: "border-box", outline: "none",
 };
-const labelStyle: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const labelStyle: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
 
 // ─── Componente principal ─────────────────────────────────────
@@ -276,9 +276,9 @@ function FinanceiroRelatoriosInner() {
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
               {{ fluxo: "Fluxo de Caixa", cpcr: "CP / CR — Contas", dfc: "DFC — Demonstrativo", posicao: "Posição por Conta" }[aba]}
             </h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Relatórios Financeiros</p>
@@ -291,7 +291,7 @@ function FinanceiroRelatoriosInner() {
               // Gera HTML limpo — tabela de categorias × anos sem elementos interativos
               const d = printAnualRef.current;
               const fmtV = (v: number) => v === 0 ? "—" : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-              const corV = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#aaa" : "#1A4870";
+              const corV = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "var(--text-muted)" : "#1A4870";
               // Com muitas colunas, reduz fonte e padding para maximizar aproveitamento da página
               const nCols = d.anosPresentes.length + 2; // anos + Categoria + Total
               const compacto = nCols > 8;
@@ -304,7 +304,7 @@ function FinanceiroRelatoriosInner() {
               const th = (txt: string, align = "right") =>
                 `<th style="padding:${pad};text-align:${align};font-size:${fs};font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">${txt}</th>`;
               const td = (txt: string, opts2: { color?: string; bold?: boolean; align?: string; bg?: string } = {}) =>
-                `<td style="padding:${pad};text-align:${opts2.align ?? "right"};color:${opts2.color ?? "#1a1a1a"};font-weight:${opts2.bold ? 700 : 400};background:${opts2.bg ?? "transparent"};white-space:nowrap;font-size:${fs}">${txt}</td>`;
+                `<td style="padding:${pad};text-align:${opts2.align ?? "right"};color:${opts2.color ?? "var(--text-1)"};font-weight:${opts2.bold ? 700 : 400};background:${opts2.bg ?? "transparent"};white-space:nowrap;font-size:${fs}">${txt}</td>`;
 
               const catRows = (rows: typeof d.entradasA, cor: string) => rows
                 .filter(r => r.anos.some(c => c.real + c.prev > 0))
@@ -327,8 +327,8 @@ function FinanceiroRelatoriosInner() {
               const secHeader = (label: string, bg: string, cor: string) =>
                 `<tr style="background:${bg}"><td colspan="${d.anosPresentes.length + 2}" style="padding:${padSec};font-weight:700;font-size:${fsSm};color:${cor};letter-spacing:.06em;text-transform:uppercase">${label}</td></tr>`;
 
-              const totalRow = (label: string, vals: number[], cor: string, bg = "#F4F6FA", bold = true) =>
-                `<tr style="background:${bg};border-top:0.5px solid #DDE2EE">
+              const totalRow = (label: string, vals: number[], cor: string, bg = "var(--bg-page)", bold = true) =>
+                `<tr style="background:${bg};border-top:0.5px solid var(--border)">
                   ${td(label, { align: "left", bold, color: "#1A4870", bg })}
                   ${vals.map(v => td(v === 0 ? "—" : fmtV(v), { color: v === 0 ? "#bbb" : cor, bold, bg })).join("")}
                   ${td(fmtV(vals.reduce((s, v) => s + v, 0)), { color: corV(vals.reduce((s, v) => s + v, 0)), bold, bg })}
@@ -341,19 +341,19 @@ function FinanceiroRelatoriosInner() {
                 <div class="auto-fit-table">
                 <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
                   <thead>
-                    <tr style="background:#F4F6FA">
+                    <tr style="background:var(--bg-page)">
                       ${th("Categoria", "left")}
                       ${d.anosPresentes.map(a => th(a)).join("")}
                       ${th("Total Geral")}
                     </tr>
                   </thead>
                   <tbody>
-                    ${secHeader("Entradas", "#F4F6FA", "#1A4870")}
+                    ${secHeader("Entradas", "var(--bg-page)", "#1A4870")}
                     ${d.entradasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.entradasA, "#1A4870") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma entrada.</td></tr>`}
                     ${totalRow("Total Entradas", d.totEntA, "#1A4870")}
-                    ${secHeader("Saídas", "#F4F6FA", "#555")}
-                    ${d.saidasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.saidasA, "#1a1a1a") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma saída.</td></tr>`}
-                    ${totalRow("Total Saídas", d.totSaiA, "#1a1a1a")}
+                    ${secHeader("Saídas", "var(--bg-page)", "var(--text-2)")}
+                    ${d.saidasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.saidasA, "var(--text-1)") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma saída.</td></tr>`}
+                    ${totalRow("Total Saídas", d.totSaiA, "var(--text-1)")}
                     ${totalRow("Saldo do Ano", d.saldoAnoA, "", "#EFF3FA")}
                     ${totalRow("Saldo Acumulado", d.saldoAcA, "", "#EFF3FA")}
                   </tbody>
@@ -518,11 +518,11 @@ function FinanceiroRelatoriosInner() {
                     {simPopupAberto && (
                       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
                         onClick={e => { if (e.target === e.currentTarget) setSimPopupAberto(false); }}>
-                        <div style={{ background: "#fff", borderRadius: 12, width: 1080, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+                        <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 1080, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
                           <div style={{ padding: "18px 28px", borderBottom: "0.5px solid #DDD6FE", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F5F3FF", borderRadius: "12px 12px 0 0" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#7C3AED" }} />
-                              <span style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>Simulador de Cenários</span>
+                              <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Simulador de Cenários</span>
                               {simEntries.length > 0 && <span style={{ fontSize: 12, background: "#EDE9FE", color: "#7C3AED", padding: "2px 10px", borderRadius: 10, fontWeight: 600 }}>{simEntries.length}</span>}
                             </div>
                             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -545,7 +545,7 @@ function FinanceiroRelatoriosInner() {
                                 </button>
                               )}
                               <button onClick={() => setSimPopupAberto(false)}
-                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#555", lineHeight: 1, marginLeft: 6 }}>✕</button>
+                                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "var(--text-2)", lineHeight: 1, marginLeft: 6 }}>✕</button>
                             </div>
                           </div>
                           <div style={{ padding: "18px 28px", borderBottom: "0.5px solid #EDE9FE" }}>
@@ -586,7 +586,7 @@ function FinanceiroRelatoriosInner() {
                                 </button>
                                 {simEditId && (
                                   <button onClick={() => { setSimEditId(null); setSimForm({ descricao: "", valor: "", data: "", tipo: "entrada", fornecedor: "" }); }}
-                                    style={{ padding: "10px 12px", background: "#F4F6FA", color: "#555", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>✕</button>
+                                    style={{ padding: "10px 12px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>✕</button>
                                 )}
                               </div>
                             </div>
@@ -650,10 +650,10 @@ function FinanceiroRelatoriosInner() {
                     )}
 
                     {/* Sub-abas Diário / Mensal */}
-                    <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
+                    <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 0 }}>
                       {(["diario", "mensal", "anual"] as const).map(t => (
                         <button key={t} onClick={() => setSubAbaFluxo(t)}
-                          style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #1A4870" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "#fff", color: subAbaFluxo === t ? "#1A4870" : "#888", transition: "all 0.15s" }}>
+                          style={{ flex: 1, padding: "10px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", borderBottom: subAbaFluxo === t ? "2.5px solid #1A4870" : "2.5px solid transparent", background: subAbaFluxo === t ? "#F0F4FA" : "var(--bg-card)", color: subAbaFluxo === t ? "#1A4870" : "var(--text-3)", transition: "all 0.15s" }}>
                           {t === "diario" ? "Diário" : t === "mensal" ? "Mensal" : "Anual"}
                         </button>
                       ))}
@@ -661,7 +661,7 @@ function FinanceiroRelatoriosInner() {
 
                     {/* ── DIÁRIO ── */}
                     {subAbaFluxo === "diario" && (
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
                       {/* Filtros — linha 1: período + produtores */}
                       <div style={{ padding: "12px 20px 8px", borderBottom: "none", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -674,7 +674,7 @@ function FinanceiroRelatoriosInner() {
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "flex-end" }}>
                           <label style={labelStyle}>&nbsp;</label>
-                          <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#1A4870" : "#D4DCE8"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#D5E8F5" : "#fff", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0B2D50" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                          <button onClick={() => setFiltroAberto(v => !v)} style={{ padding: "7px 14px", borderRadius: 8, border: `0.5px solid ${filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#1A4870" : "var(--border-table)"}`, background: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#D5E8F5" : "var(--bg-card)", color: filtro.produtoresSel.length + filtro.contasSel.length > 0 ? "#0B2D50" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                             ⊞ Produtores / Contas {filtro.produtoresSel.length + filtro.contasSel.length > 0 ? `(${filtro.produtoresSel.length + filtro.contasSel.length} selecionados)` : ""}
                           </button>
                         </div>
@@ -688,31 +688,31 @@ function FinanceiroRelatoriosInner() {
                         )}
                       </div>
                       {/* Filtros — linha 2: tipo + moeda + toggles */}
-                      <div style={{ padding: "8px 20px 10px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: "#888", marginRight: 2 }}>Tipo:</span>
+                      <div style={{ padding: "8px 20px 10px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginRight: 2 }}>Tipo:</span>
                         {(["ambos", "previsto", "realizado"] as const).map(t => (
                           <button key={t} onClick={() => setFiltro(f => ({ ...f, tipoVis: t }))}
-                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.tipoVis === t ? "#1A4870" : "#D4DCE8"}`, background: filtro.tipoVis === t ? "#1A4870" : "#fff", color: filtro.tipoVis === t ? "#fff" : "#555" }}>
+                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.tipoVis === t ? "#1A4870" : "var(--border-table)"}`, background: filtro.tipoVis === t ? "#1A4870" : "var(--bg-card)", color: filtro.tipoVis === t ? "#fff" : "var(--text-2)" }}>
                             {t === "ambos" ? "Ambos" : t === "previsto" ? "Previsto" : "Realizado"}
                           </button>
                         ))}
-                        <div style={{ width: 1, height: 22, background: "#D4DCE8", margin: "0 4px" }} />
-                        <span style={{ fontSize: 11, color: "#888", marginRight: 2 }}>Moeda:</span>
+                        <div style={{ width: 1, height: 22, background: "var(--border-table)", margin: "0 4px" }} />
+                        <span style={{ fontSize: 11, color: "var(--text-3)", marginRight: 2 }}>Moeda:</span>
                         {(["BRL", "USD"] as const).map(m => (
                           <button key={m} onClick={() => setFiltro(f => ({ ...f, moedasSel: f.moedasSel.includes(m) ? f.moedasSel.filter(x => x !== m) : [...f.moedasSel, m] }))}
-                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.moedasSel.includes(m) ? "#C9921B" : "#D4DCE8"}`, background: filtro.moedasSel.includes(m) ? "#FBF3E0" : "#fff", color: filtro.moedasSel.includes(m) ? "#7A4300" : "#555" }}>
+                            style={{ padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `0.5px solid ${filtro.moedasSel.includes(m) ? "#C9921B" : "var(--border-table)"}`, background: filtro.moedasSel.includes(m) ? "#FBF3E0" : "var(--bg-card)", color: filtro.moedasSel.includes(m) ? "#7A4300" : "var(--text-2)" }}>
                             {m}
                           </button>
                         ))}
-                        <div style={{ width: 1, height: 22, background: "#D4DCE8", margin: "0 4px" }} />
+                        <div style={{ width: 1, height: 22, background: "var(--border-table)", margin: "0 4px" }} />
                         {filtro.tipoVis !== "realizado" && (
                           <button onClick={() => setIncluirPrevisoes(v => !v)}
-                            style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${incluirPrevisoes ? "#16A34A" : "#D4DCE8"}`, background: incluirPrevisoes ? "#F0FDF4" : "#fff", color: incluirPrevisoes ? "#16A34A" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                            style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${incluirPrevisoes ? "#16A34A" : "var(--border-table)"}`, background: incluirPrevisoes ? "#F0FDF4" : "var(--bg-card)", color: incluirPrevisoes ? "#16A34A" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                             {incluirPrevisoes ? "✓" : "○"} Previsões
                           </button>
                         )}
                         <button onClick={() => setSimulacoesAtivas(v => !v)}
-                          style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${simulacoesAtivas ? "#7C3AED" : "#D4DCE8"}`, background: simulacoesAtivas ? "#F5F3FF" : "#fff", color: simulacoesAtivas ? "#7C3AED" : "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                          style={{ padding: "5px 12px", borderRadius: 8, border: `0.5px solid ${simulacoesAtivas ? "#7C3AED" : "var(--border-table)"}`, background: simulacoesAtivas ? "#F5F3FF" : "var(--bg-card)", color: simulacoesAtivas ? "#7C3AED" : "var(--text-2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                           {simulacoesAtivas ? "✓" : "○"} Simulações
                         </button>
                         <button onClick={() => setSimPopupAberto(true)}
@@ -723,7 +723,7 @@ function FinanceiroRelatoriosInner() {
 
                       {/* Painel de checkboxes Produtores / Contas */}
                       {filtroAberto && (
-                        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFC", display: "flex", gap: 32, flexWrap: "wrap" }}>
+                        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFC", display: "flex", gap: 32, flexWrap: "wrap" }}>
                           {/* Produtores */}
                           {produtores.length > 0 && (
                             <div>
@@ -733,7 +733,7 @@ function FinanceiroRelatoriosInner() {
                                   <label key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
                                     <input type="checkbox" checked={filtro.produtoresSel.includes(p.id)}
                                       onChange={e => setFiltro(f => ({ ...f, produtoresSel: e.target.checked ? [...f.produtoresSel, p.id] : f.produtoresSel.filter(x => x !== p.id), contasSel: [] }))} />
-                                    {p.nome} {p.cpf_cnpj && <span style={{ color: "#888", fontSize: 10 }}>{p.cpf_cnpj}</span>}
+                                    {p.nome} {p.cpf_cnpj && <span style={{ color: "var(--text-3)", fontSize: 10 }}>{p.cpf_cnpj}</span>}
                                   </label>
                                 ))}
                               </div>
@@ -743,7 +743,7 @@ function FinanceiroRelatoriosInner() {
                           <div>
                             <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>
                               Contas Bancárias
-                              {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "#888", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
+                              {filtro.produtoresSel.length > 0 && <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>(filtradas pelo produtor)</span>}
                             </div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               {(filtro.produtoresSel.length > 0 ? contasFiltProd : contasFluxo).map(c => {
@@ -752,7 +752,7 @@ function FinanceiroRelatoriosInner() {
                                   <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, cursor: "pointer" }}>
                                     <input type="checkbox" checked={filtro.contasSel.includes(c.id)}
                                       onChange={e => setFiltro(f => ({ ...f, contasSel: e.target.checked ? [...f.contasSel, c.id] : f.contasSel.filter(x => x !== c.id) }))} />
-                                    {c.nome} <span style={{ fontSize: 10, color: "#888" }}>{tp}{c.banco ? ` · ${c.banco}` : ""}</span>
+                                    {c.nome} <span style={{ fontSize: 10, color: "var(--text-3)" }}>{tp}{c.banco ? ` · ${c.banco}` : ""}</span>
                                   </label>
                                 );
                               })}
@@ -777,20 +777,20 @@ function FinanceiroRelatoriosInner() {
                           {crAntPeriodo > 0 && (
                             <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>CR em aberto: <strong>{fmtBRL(crAntPeriodo, 2)}</strong></span>
                           )}
-                          <span style={{ fontSize: 11, color: "#888" }}>Esses valores afetarão o saldo quando forem baixados.</span>
+                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>Esses valores afetarão o saldo quando forem baixados.</span>
                         </div>
                       )}
 
                       {/* KPIs */}
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid #DEE5EE", marginTop: mostrarAntPeriodo ? 12 : 0 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)", marginTop: mostrarAntPeriodo ? 12 : 0 }}>
                         {[
-                          ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "#555" : "#E24B4A" }] : []),
+                          ...(saldoInicial !== 0 ? [{ label: "Saldo Inicial", valor: fmtBRL(saldoInicial), cor: saldoInicial >= 0 ? "var(--text-2)" : "#E24B4A" }] : []),
                           { label: "Total Entradas",           valor: fmtBRL(totalEntradas), cor: "#16A34A" },
                           { label: "Total Saídas",             valor: fmtBRL(totalSaidas),   cor: "#E24B4A" },
                           { label: `Saldo Final${simsAtivas.length > 0 ? " (c/ sim)" : ""}`, valor: fmtBRL(saldoFinal), cor: saldoFinal >= 0 ? "#1A4870" : "#E24B4A" },
                         ].map((k, i) => (
-                          <div key={i} style={{ padding: "12px 20px", borderRight: i < 2 ? "0.5px solid #DEE5EE" : "none" }}>
-                            <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{k.label}</div>
+                          <div key={i} style={{ padding: "12px 20px", borderRight: i < 2 ? "0.5px solid var(--border-row)" : "none" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{k.label}</div>
                             <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                           </div>
                         ))}
@@ -798,23 +798,23 @@ function FinanceiroRelatoriosInner() {
 
                       {/* Tabela agrupada por dia */}
                       {rows.length === 0 ? (
-                        <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>
+                        <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                           Nenhum lançamento no período. Ajuste os filtros ou adicione simulações.
                         </div>
                       ) : (
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
-                              <tr style={{ background: "#F4F6FA" }}>
+                              <tr style={{ background: "var(--bg-page)" }}>
                                 <th style={{ padding: "7px 14px", width: 28 }} />
-                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>Data</th>
-                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555" }}>Fornecedor / Pagador</th>
-                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555" }}>Descrição</th>
-                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555" }}>Origem</th>
+                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Data</th>
+                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Fornecedor / Pagador</th>
+                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Descrição</th>
+                                <th style={{ padding: "7px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)" }}>Origem</th>
                                 <th style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#16A34A", whiteSpace: "nowrap" }}>Entrada</th>
                                 <th style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#E24B4A", whiteSpace: "nowrap" }}>Saída</th>
                                 <th style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#7C3AED", whiteSpace: "nowrap" }}>Simulação</th>
-                                <th style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>Saldo Acumulado</th>
+                                <th style={{ padding: "7px 14px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Saldo Acumulado</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -831,11 +831,11 @@ function FinanceiroRelatoriosInner() {
                                   <React.Fragment key={dia}>
                                     <tr
                                       onClick={() => toggleMes(dia)}
-                                      style={{ background: expandido ? "#F0F4FA" : "#F8FAFC", borderBottom: "0.5px solid #DEE5EE", cursor: "pointer", userSelect: "none" }}>
-                                      <td style={{ padding: "8px 14px", textAlign: "center", color: "#888", fontSize: 12 }}>{expandido ? "▼" : "+"}</td>
-                                      <td style={{ padding: "8px 14px", fontWeight: 600, fontSize: 12, color: "#1a1a1a", whiteSpace: "nowrap" }}>{fmtDia(dia)}</td>
+                                      style={{ background: expandido ? "#F0F4FA" : "#F8FAFC", borderBottom: "0.5px solid var(--border-row)", cursor: "pointer", userSelect: "none" }}>
+                                      <td style={{ padding: "8px 14px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{expandido ? "▼" : "+"}</td>
+                                      <td style={{ padding: "8px 14px", fontWeight: 600, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtDia(dia)}</td>
                                       <td style={{ padding: "8px 14px" }}>
-                                        <span style={{ fontSize: 10, color: "#888" }}>{diaRows.length} lançamento{diaRows.length !== 1 ? "s" : ""}</span>
+                                        <span style={{ fontSize: 10, color: "var(--text-3)" }}>{diaRows.length} lançamento{diaRows.length !== 1 ? "s" : ""}</span>
                                         {temSim  && <span style={{ marginLeft: 6, fontSize: 10, background: "#EDE9FE", color: "#7C3AED", padding: "1px 5px", borderRadius: 8 }}>sim</span>}
                                         {temPrev && <span style={{ marginLeft: 4, fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "1px 5px", borderRadius: 8 }}>prev</span>}
                                       </td>
@@ -851,9 +851,9 @@ function FinanceiroRelatoriosInner() {
                                       const isPend = r.tipo_row === "pendente";
                                       const isReal = r.tipo_row === "real";
                                       return (
-                                        <tr key={`${dia}-${idx}`} style={{ background: isSim ? "#FAF5FF" : isPrev ? "#F0FDF4" : isPend ? "#FFFBF0" : "#fff", borderBottom: "0.5px solid #F4F6FA" }}>
+                                        <tr key={`${dia}-${idx}`} style={{ background: isSim ? "#FAF5FF" : isPrev ? "#F0FDF4" : isPend ? "#FFFBF0" : "var(--bg-card)", borderBottom: "0.5px solid var(--bg-page)" }}>
                                           <td />
-                                          <td style={{ padding: "6px 14px 6px 28px", color: "#888", fontSize: 11, whiteSpace: "nowrap" }}>
+                                          <td style={{ padding: "6px 14px 6px 28px", color: "var(--text-3)", fontSize: 11, whiteSpace: "nowrap" }}>
                                             {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
                                           </td>
                                           <td style={{ padding: "6px 14px", color: "#444", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.fornecedor || "—"}</td>
@@ -873,11 +873,11 @@ function FinanceiroRelatoriosInner() {
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
                                             {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada, 2)}</div>}
-                                            {r.entrada > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{r.subMoeda}</div>}
+                                            {r.entrada > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{r.subMoeda}</div>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
                                             {r.saida > 0 && <div style={{ color: "#E24B4A", fontWeight: 600 }}>{fmtBRL(r.saida, 2)}</div>}
-                                            {r.saida > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "#888" }}>{r.subMoeda}</div>}
+                                            {r.saida > 0 && r.subMoeda && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{r.subMoeda}</div>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right", color: "#7C3AED", fontWeight: 700 }}>
                                             {isSim ? ((r.simEntrada > 0 ? "+" : "−") + " " + fmtBRL(Math.max(r.simEntrada, r.simSaida), 2)) : ""}
@@ -967,7 +967,7 @@ function FinanceiroRelatoriosInner() {
                       const totLiqAnual = totEntAnual - totSaiAnual;
                       const isSim = (cat: string) => cat.startsWith("◆ ");
                       const corM = (tipo: "receber"|"pagar", sim: boolean) =>
-                        sim ? "#7C3AED" : tipo === "receber" ? "#1A4870" : "#1a1a1a";
+                        sim ? "#7C3AED" : tipo === "receber" ? "#1A4870" : "var(--text-1)";
                       const corSaldo = (v: number) => v < 0 ? "#B91C1C" : v === 0 ? "#bbb" : "#1A4870";
                       const CatRowMEl = ({ row }: { row: CatRowM }) => {
                         const totRow = row.meses.reduce((s, c) => s + c.real + c.prev + c.sim, 0);
@@ -988,7 +988,7 @@ function FinanceiroRelatoriosInner() {
                                       {c.prev > 0 && (c.real > 0 || c.sim > 0) && <div style={{ fontSize: 9, color: "#C9921B" }}>+{fmtBRL(c.prev, 2)} prev</div>}
                                       {c.sim > 0 && c.real === 0 && c.prev === 0 && <div style={{ fontSize: 9, color: "#7C3AED" }}>sim</div>}
                                     </>
-                                  ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
+                                  ) : <span style={{ color: "var(--border)", fontSize: 10 }}>—</span>}
                                 </td>
                               );
                             })}
@@ -997,37 +997,37 @@ function FinanceiroRelatoriosInner() {
                         );
                       };
                       return (
-                        <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                           {/* Cabeçalho */}
-                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                            <div style={{ fontSize: 11, color: "#555" }}>
+                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                               Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
                             </div>
                             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                               <button onClick={() => setIncluirPrevisoes(v => !v)}
-                                style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer", background: incluirPrevisoes ? "#FBF3E0" : "#F4F6FA", color: incluirPrevisoes ? "#7A4300" : "#555", borderColor: incluirPrevisoes ? "#C9921B" : "#D4DCE8" }}>
+                                style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer", background: incluirPrevisoes ? "#FBF3E0" : "var(--bg-page)", color: incluirPrevisoes ? "#7A4300" : "var(--text-2)", borderColor: incluirPrevisoes ? "#C9921B" : "var(--border-table)" }}>
                                 {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
                               </button>
                               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                <label style={{ fontSize: 12, color: "#555" }}>Exercício:</label>
+                                <label style={{ fontSize: 12, color: "var(--text-2)" }}>Exercício:</label>
                                 <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
-                                  style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                                  style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                                   {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
                                 </select>
                               </div>
                             </div>
                           </div>
                           {/* KPIs */}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                             {[
                               { label: "Total Entradas",    v: totEntAnual },
                               { label: "Total Saídas",      v: totSaiAnual },
                               { label: "Resultado Líquido", v: totLiqAnual },
                               { label: "Saldo Acumulado",   v: saldoAcM[11] ?? totLiqAnual },
                             ].map((k, i) => (
-                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none", background: "#F8FAFD" }}>
-                                <div style={{ fontSize: 10, color: "#888", marginBottom: 3 }}>{k.label}</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: i === 0 ? "#1A4870" : i === 1 ? "#1a1a1a" : (k.v < 0 ? "#B91C1C" : "#1A4870") }}>{fmtBRL(k.v, 2)}</div>
+                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: "#F8FAFD" }}>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div>
+                                <div style={{ fontSize: 16, fontWeight: 700, color: i === 0 ? "#1A4870" : i === 1 ? "var(--text-1)" : (k.v < 0 ? "#B91C1C" : "#1A4870") }}>{fmtBRL(k.v, 2)}</div>
                               </div>
                             ))}
                           </div>
@@ -1035,26 +1035,26 @@ function FinanceiroRelatoriosInner() {
                           <div style={{ overflowX: "auto" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
                               <thead>
-                                <tr style={{ background: "#F4F6FA" }}>
-                                  <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 200, borderBottom: "0.5px solid #DDE2EE" }}>Categoria</th>
-                                  {MESES.map(m => <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>)}
-                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
+                                <tr style={{ background: "var(--bg-page)" }}>
+                                  <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
+                                  {MESES.map(m => <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>)}
+                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr style={{ background: "#F4F6FA" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
-                                {entradasM.length > 0 ? entradasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
-                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                <tr style={{ background: "var(--bg-page)" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
+                                {entradasM.length > 0 ? entradasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
+                                <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
                                   <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Entradas</td>
                                   {totEntM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{totEntAnual === 0 ? "—" : fmtBRL(totEntAnual, 2)}</td>
                                 </tr>
-                                <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
-                                {saidasM.length > 0 ? saidasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída.</td></tr>}
-                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
-                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#555" }}>Total Saídas</td>
-                                  {totSaiM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "#1a1a1a", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
-                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1a1a1a", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual, 2)}</td>
+                                <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border)" }}><td colSpan={14} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "var(--text-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
+                                {saidasM.length > 0 ? saidasM.map(r => <CatRowMEl key={r.cat} row={r} />) : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma saída.</td></tr>}
+                                <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "var(--text-2)" }}>Total Saídas</td>
+                                  {totSaiM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "var(--text-1)", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual, 2)}</td>
                                 </tr>
                                 <tr style={{ background: "#EFF3FA", borderTop: "1px solid #C7D7EC" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Mês</td>
@@ -1069,7 +1069,7 @@ function FinanceiroRelatoriosInner() {
                               </tbody>
                             </table>
                           </div>
-                          <div style={{ padding: "8px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
+                          <div style={{ padding: "8px 20px", fontSize: 10, color: "var(--text-3)", borderTop: "0.5px solid var(--border-row)" }}>
                             {incluirPrevisoes ? "Baixados + pendentes (em aberto/vencidos/previsões). Prev em mostarda." : "Apenas lançamentos com status Baixado."}
                           </div>
                         </div>
@@ -1105,30 +1105,30 @@ function FinanceiroRelatoriosInner() {
 
                       // ── Barra de filtros do modo Anual ──────────────────────
                       const STATUS_OPTS: { key: string; label: string; cor: string; bg: string; bgA: string; corA: string }[] = [
-                        { key: "baixado",   label: "Baixados",  cor: "#555",    bg: "#F4F6FA", bgA: "#1A5C38", corA: "#fff" },
-                        { key: "em_aberto", label: "Em Aberto", cor: "#555",    bg: "#F4F6FA", bgA: "#1A4870", corA: "#fff" },
-                        { key: "vencido",   label: "Vencidos",  cor: "#555",    bg: "#F4F6FA", bgA: "#B91C1C", corA: "#fff" },
-                        { key: "vencendo",  label: "A Vencer",  cor: "#555",    bg: "#F4F6FA", bgA: "#C9921B", corA: "#fff" },
+                        { key: "baixado",   label: "Baixados",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#1A5C38", corA: "#fff" },
+                        { key: "em_aberto", label: "Em Aberto", cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#1A4870", corA: "#fff" },
+                        { key: "vencido",   label: "Vencidos",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#B91C1C", corA: "#fff" },
+                        { key: "vencendo",  label: "A Vencer",  cor: "var(--text-2)",    bg: "var(--bg-page)", bgA: "#C9921B", corA: "#fff" },
                       ];
-                      const inpA: React.CSSProperties = { padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 12, color: "#1a1a1a", background: "#fff", outline: "none" };
+                      const inpA: React.CSSProperties = { padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" };
                       const barraFiltros = (
-                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFD", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                           {/* Intervalo de vencimento */}
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>Vencimento de</span>
+                            <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Vencimento de</span>
                             <input type="date" value={anualInicio} onChange={e => setAnualInicio(e.target.value)} style={inpA} />
-                            <span style={{ fontSize: 11, color: "#555" }}>até</span>
+                            <span style={{ fontSize: 11, color: "var(--text-2)" }}>até</span>
                             <input type="date" value={anualFim} onChange={e => setAnualFim(e.target.value)} style={inpA} />
                             {(anualInicio || anualFim) && (
                               <button onClick={() => { setAnualInicio(""); setAnualFim(""); }}
-                                style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", color: "#888", cursor: "pointer" }}>✕</button>
+                                style={{ fontSize: 11, padding: "4px 8px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}>✕</button>
                             )}
                           </div>
                           {/* Separador */}
-                          <div style={{ width: 1, height: 20, background: "#D4DCE8" }} />
+                          <div style={{ width: 1, height: 20, background: "var(--border-table)" }} />
                           {/* Status */}
                           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                            <span style={{ fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>Status:</span>
+                            <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Status:</span>
                             {STATUS_OPTS.map(s => {
                               const ativo = anualStatus.has(s.key);
                               return (
@@ -1136,14 +1136,14 @@ function FinanceiroRelatoriosInner() {
                                   const ns = new Set(prev);
                                   if (ns.has(s.key)) ns.delete(s.key); else ns.add(s.key);
                                   return ns;
-                                })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 7, border: `0.5px solid ${ativo ? s.bgA : "#D4DCE8"}`, background: ativo ? s.bgA : s.bg, color: ativo ? s.corA : s.cor, cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
+                                })} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 7, border: `0.5px solid ${ativo ? s.bgA : "var(--border-table)"}`, background: ativo ? s.bgA : s.bg, color: ativo ? s.corA : s.cor, cursor: "pointer", fontWeight: ativo ? 600 : 400 }}>
                                   {s.label}
                                 </button>
                               );
                             })}
                             {anualStatus.size < ALL_STATUS_A.length && (
                               <button onClick={() => setAnualStatus(new Set(ALL_STATUS_A))}
-                                style={{ fontSize: 10, padding: "3px 7px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "#fff", color: "#888", cursor: "pointer" }}>Todos</button>
+                                style={{ fontSize: 10, padding: "3px 7px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", color: "var(--text-3)", cursor: "pointer" }}>Todos</button>
                             )}
                           </div>
                         </div>
@@ -1158,9 +1158,9 @@ function FinanceiroRelatoriosInner() {
 
                       if (anosPresentes.length === 0) {
                         return (
-                          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                             {barraFiltros}
-                            <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Nenhum lançamento encontrado com os filtros aplicados.</div>
+                            <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Nenhum lançamento encontrado com os filtros aplicados.</div>
                           </div>
                         );
                       }
@@ -1213,7 +1213,7 @@ function FinanceiroRelatoriosInner() {
                       const CatRowAEl = ({ row }: { row: CatRowA }) => {
                         const totRow = row.anos.reduce((s, c) => s + c.real + c.prev, 0);
                         if (totRow === 0) return null;
-                        const cor = row.tipo === "receber" ? "#1A4870" : "#1a1a1a";
+                        const cor = row.tipo === "receber" ? "#1A4870" : "var(--text-1)";
                         const catKey = `${row.tipo}__${row.cat}`;
                         const expandido = expandidosA.has(catKey);
                         const detItems = Array.from(detMapA.get(catKey)?.values() ?? [])
@@ -1232,7 +1232,7 @@ function FinanceiroRelatoriosInner() {
                               <td style={{ padding: "6px 14px 6px 10px", fontSize: 12, color: cor, maxWidth: 240 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
                                   {temDetalhe ? (
-                                    <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, background: expandido ? "#D5E8F5" : "#F4F6FA", border: "0.5px solid #C0CEDF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#1A4870", lineHeight: 1 }}>
+                                    <span style={{ flexShrink: 0, width: 16, height: 16, borderRadius: 4, background: expandido ? "#D5E8F5" : "var(--bg-page)", border: "0.5px solid #C0CEDF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#1A4870", lineHeight: 1 }}>
                                       {expandido ? "−" : "+"}
                                     </span>
                                   ) : (
@@ -1250,7 +1250,7 @@ function FinanceiroRelatoriosInner() {
                                         <div style={{ fontSize: 12, fontWeight: 600, color: cor }}>{fmtBRL(total, 2)}</div>
                                         {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 9, color: "#C9921B" }}>prev</div>}
                                       </>
-                                    ) : <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>}
+                                    ) : <span style={{ color: "var(--border)", fontSize: 10 }}>—</span>}
                                   </td>
                                 );
                               })}
@@ -1260,7 +1260,7 @@ function FinanceiroRelatoriosInner() {
                               const totDet = d.anos.reduce((s, c) => s + c.real + c.prev, 0);
                               return (
                                 <tr key={d.label} style={{ background: "#F8FAFD", borderBottom: "0.5px solid #EEF1F8" }}>
-                                  <td style={{ padding: "4px 14px 4px 34px", fontSize: 11, color: "#555", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  <td style={{ padding: "4px 14px 4px 34px", fontSize: 11, color: "var(--text-2)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {d.label}
                                   </td>
                                   {d.anos.map((c, i) => {
@@ -1269,14 +1269,14 @@ function FinanceiroRelatoriosInner() {
                                       <td key={i} style={{ padding: "4px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                                         {total > 0 ? (
                                           <>
-                                            <div style={{ fontSize: 11, color: "#555" }}>{fmtBRL(total, 2)}</div>
+                                            <div style={{ fontSize: 11, color: "var(--text-2)" }}>{fmtBRL(total, 2)}</div>
                                             {c.prev > 0 && c.real === 0 && <div style={{ fontSize: 8, color: "#C9921B" }}>prev</div>}
                                           </>
                                         ) : <span style={{ color: "#E5E8EE", fontSize: 10 }}>—</span>}
                                       </td>
                                     );
                                   })}
-                                  <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>{fmtBRL(totDet, 2)}</td>
+                                  <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtBRL(totDet, 2)}</td>
                                 </tr>
                               );
                             })}
@@ -1292,9 +1292,9 @@ function FinanceiroRelatoriosInner() {
                         .join(", ");
 
                       return (
-                        <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                           {barraFiltros}
-                          <div style={{ padding: "8px 16px", borderBottom: "0.5px solid #DEE5EE", background: "#F4F6FA", fontSize: 11, color: "#555" }}>
+                          <div style={{ padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-page)", fontSize: 11, color: "var(--text-2)" }}>
                             Visão plurianual · {anosPresentes.join(", ")}
                             {(anualInicio || anualFim) && <> · Vencimento: {anualInicio || "…"} → {anualFim || "…"}</>}
                             {" · "}{descFiltroStatus}
@@ -1302,28 +1302,28 @@ function FinanceiroRelatoriosInner() {
                           <div style={{ overflowX: "auto" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 600 }}>
                               <thead>
-                                <tr style={{ background: "#F4F6FA" }}>
-                                  <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 220, borderBottom: "0.5px solid #DDE2EE" }}>Categoria</th>
+                                <tr style={{ background: "var(--bg-page)" }}>
+                                  <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 220, borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
                                   {anosPresentes.map(a => (
-                                    <th key={a} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", minWidth: 110 }}>{a}</th>
+                                    <th key={a} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 110 }}>{a}</th>
                                   ))}
-                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Total Geral</th>
+                                  <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total Geral</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr style={{ background: "#F4F6FA" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
-                                {entradasA.length > 0 ? entradasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
-                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
+                                <tr style={{ background: "var(--bg-page)" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#1A4870", letterSpacing: "0.06em", textTransform: "uppercase" }}>Entradas</td></tr>
+                                {entradasA.length > 0 ? entradasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma entrada.</td></tr>}
+                                <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
                                   <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Total Entradas</td>
                                   {totEntA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "#1A4870", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{fmtBRL(totEntA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
-                                <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
-                                {saidasA.length > 0 ? saidasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída.</td></tr>}
-                                <tr style={{ background: "#F4F6FA", borderTop: "0.5px solid #DDE2EE" }}>
-                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#555" }}>Total Saídas</td>
-                                  {totSaiA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "#1a1a1a", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
-                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "#1a1a1a", whiteSpace: "nowrap" }}>{fmtBRL(totSaiA.reduce((s, v) => s + v, 0), 2)}</td>
+                                <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border)" }}><td colSpan={anosPresentes.length + 2} style={{ padding: "7px 16px", fontWeight: 700, fontSize: 10, color: "var(--text-2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Saídas</td></tr>
+                                {saidasA.length > 0 ? saidasA.map(r => <CatRowAEl key={r.cat} row={r} />) : <tr><td colSpan={anosPresentes.length + 2} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma saída.</td></tr>}
+                                <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
+                                  <td style={{ padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "var(--text-2)" }}>Total Saídas</td>
+                                  {totSaiA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "var(--text-1)", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
+                                  <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtBRL(totSaiA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
                                 <tr style={{ background: "#EFF3FA", borderTop: "1px solid #C7D7EC" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Ano</td>
@@ -1338,7 +1338,7 @@ function FinanceiroRelatoriosInner() {
                               </tbody>
                             </table>
                           </div>
-                          <div style={{ padding: "8px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
+                          <div style={{ padding: "8px 20px", fontSize: 10, color: "var(--text-3)", borderTop: "0.5px solid var(--border-row)" }}>
                             {descFiltroStatus}
                             {(anualInicio || anualFim) ? ` · Vencimento: ${anualInicio || "início"} até ${anualFim || "hoje"}` : ""}
                             {(anualStatus.has("em_aberto") || anualStatus.has("vencido") || anualStatus.has("vencendo")) ? " · Pendentes em mostarda." : ""}
@@ -1437,9 +1437,9 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 return (
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12 }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12 }}>
                     {/* Filtros CP/CR */}
-                    <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+                    <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                         <label style={labelStyle}>Início</label>
                         <input type="date" value={inicioCPCR} onChange={e => setInicioCPCR(e.target.value)} style={{ ...inputStyle, width: 140 }} />
@@ -1481,15 +1481,15 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     {/* KPIs */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0, borderBottom: "0.5px solid #DEE5EE" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 0, borderBottom: "0.5px solid var(--border-row)" }}>
                       {[
                         { label: "Total a Receber (CR)", valor: fmtBRL(totalCR), cor: "#16A34A" },
                         { label: "Total a Pagar (CP)",   valor: fmtBRL(totalCP), cor: "#E24B4A" },
                         { label: "Vencidos",             valor: fmtBRL(totalVenc), cor: "#E24B4A" },
-                        { label: "Já Baixados / Pagos",  valor: fmtBRL(totalBaixado), cor: "#555" },
+                        { label: "Já Baixados / Pagos",  valor: fmtBRL(totalBaixado), cor: "var(--text-2)" },
                       ].map((k, i) => (
-                        <div key={i} style={{ padding: "12px 20px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none" }}>
-                          <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{k.label}</div>
+                        <div key={i} style={{ padding: "12px 20px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{k.label}</div>
                           <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                         </div>
                       ))}
@@ -1497,14 +1497,14 @@ function FinanceiroRelatoriosInner() {
 
                     {/* Tabela */}
                     {lancsCPCR.length === 0 ? (
-                      <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhum lançamento no período com os filtros selecionados.</div>
+                      <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhum lançamento no período com os filtros selecionados.</div>
                     ) : (
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead>
-                            <tr style={{ background: "#F4F6FA" }}>
+                            <tr style={{ background: "var(--bg-page)" }}>
                               {["Tipo", "Vencimento", "Descrição", "Categoria", "Conta Bancária", "Status", "Valor (BRL)", ""].map(h => (
-                                <th key={h} style={{ padding: "8px 12px", textAlign: h === "Valor (BRL)" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                                <th key={h} style={{ padding: "8px 12px", textAlign: h === "Valor (BRL)" ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                               ))}
                             </tr>
                           </thead>
@@ -1518,16 +1518,16 @@ function FinanceiroRelatoriosInner() {
                                   <td style={{ padding: "9px 12px" }}>
                                     <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: l.tipo === "receber" ? "#D5E8F5" : "#FCEBEB", color: l.tipo === "receber" ? "#0B2D50" : "#791F1F", fontWeight: 600 }}>{l.tipo === "receber" ? "CR" : "CP"}</span>
                                   </td>
-                                  <td style={{ padding: "9px 12px", color: l.status === "vencido" ? "#E24B4A" : "#555", whiteSpace: "nowrap" }}>
+                                  <td style={{ padding: "9px 12px", color: l.status === "vencido" ? "#E24B4A" : "var(--text-2)", whiteSpace: "nowrap" }}>
                                     {l.data_vencimento ? new Date(l.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}
                                   </td>
-                                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "#1a1a1a", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "#555" }}>{l.categoria || "—"}</td>
-                                  <td style={{ padding: "9px 12px", color: "#555" }}>{contaNome || "—"}</td>
+                                  <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.descricao ?? ""}>{l.descricao || "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{l.categoria || "—"}</td>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-2)" }}>{contaNome || "—"}</td>
                                   <td style={{ padding: "9px 12px" }}><span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: st.bg, color: st.color, fontWeight: 600 }}>{st.label}</span></td>
                                   <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: l.tipo === "receber" ? "#16A34A" : "#E24B4A" }}>
                                     <div>{fmtBRL(brl)}</div>
-                                    {l.moeda === "USD" && <div style={{ fontSize: 9, color: "#888" }}>{subMoedaRel(l, cotacaoUSD)}</div>}
+                                    {l.moeda === "USD" && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{subMoedaRel(l, cotacaoUSD)}</div>}
                                   </td>
                                   <td style={{ padding: "9px 12px", textAlign: "right" }}>
                                     {l.auto && <span style={{ fontSize: 9, background: "#D5E8F5", color: "#0B2D50", padding: "1px 5px", borderRadius: 4 }}>auto</span>}
@@ -1537,7 +1537,7 @@ function FinanceiroRelatoriosInner() {
                             })}
                           </tbody>
                           <tfoot>
-                            <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid #D4DCE8" }}>
+                            <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid var(--border-table)" }}>
                               <td colSpan={6} style={{ padding: "10px 12px" }}>{lancsCPCR.length} lançamentos</td>
                               <td style={{ padding: "10px 12px", textAlign: "right" }}>
                                 <div style={{ color: "#16A34A" }}>+ {fmtBRL(totalCR)}</div>
@@ -1616,7 +1616,7 @@ function FinanceiroRelatoriosInner() {
                   const cor = row.tipo === "receber" ? "#16A34A" : "#E24B4A";
                   return (
                     <tr style={{ borderBottom: "0.5px solid #F0F3FA" }}>
-                      <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: "#1a1a1a", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "6px 14px 6px 24px", fontSize: 12, color: "var(--text-1)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.cat}
                       </td>
                       {row.meses.map((c, i) => {
@@ -1634,7 +1634,7 @@ function FinanceiroRelatoriosInner() {
                                 )}
                               </>
                             ) : (
-                              <span style={{ color: "#DDE2EE", fontSize: 10 }}>—</span>
+                              <span style={{ color: "var(--border)", fontSize: 10 }}>—</span>
                             )}
                           </td>
                         );
@@ -1659,7 +1659,7 @@ function FinanceiroRelatoriosInner() {
                 const TotRow = ({ label, vals, bg, cor, bold = false }: { label: string; vals: number[]; bg: string; cor: string; bold?: boolean }) => {
                   const totR = vals.reduce((s, v) => s + v, 0);
                   return (
-                    <tr style={{ background: bg, borderTop: "0.5px solid #DDE2EE" }}>
+                    <tr style={{ background: bg, borderTop: "0.5px solid var(--border)" }}>
                       <td style={{ padding: "8px 14px", fontWeight: bold ? 800 : 700, fontSize: bold ? 13 : 12, color: cor }}>{label}</td>
                       {vals.map((v, i) => (
                         <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: bold ? 800 : 700, fontSize: 11, color: v === 0 ? "#bbb" : cor, whiteSpace: "nowrap" }}>
@@ -1674,13 +1674,13 @@ function FinanceiroRelatoriosInner() {
                 };
 
                 return (
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
 
                     {/* Cabeçalho */}
-                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Fluxo de Caixa Mensal</div>
-                        <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Fluxo de Caixa Mensal</div>
+                        <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                           Estruturado por categoria · Entradas e saídas por mês
                         </div>
                       </div>
@@ -1688,15 +1688,15 @@ function FinanceiroRelatoriosInner() {
                         <button
                           onClick={() => setIncluirPrevisoes(v => !v)}
                           style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, border: "0.5px solid", cursor: "pointer",
-                            background: incluirPrevisoes ? "#FBF3E0" : "#F4F6FA",
-                            color:      incluirPrevisoes ? "#7A4300" : "#555",
-                            borderColor: incluirPrevisoes ? "#C9921B" : "#D4DCE8" }}>
+                            background: incluirPrevisoes ? "#FBF3E0" : "var(--bg-page)",
+                            color:      incluirPrevisoes ? "#7A4300" : "var(--text-2)",
+                            borderColor: incluirPrevisoes ? "#C9921B" : "var(--border-table)" }}>
                           {incluirPrevisoes ? "◉ Incluindo pendentes" : "○ Só realizados"}
                         </button>
                         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                          <label style={{ fontSize: 12, color: "#555" }}>Exercício:</label>
+                          <label style={{ fontSize: 12, color: "var(--text-2)" }}>Exercício:</label>
                           <select value={dfcAno} onChange={e => setDfcAno(e.target.value)}
-                            style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                            style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                             {anosDispo.map(a => <option key={a} value={a}>{a}</option>)}
                           </select>
                         </div>
@@ -1704,15 +1704,15 @@ function FinanceiroRelatoriosInner() {
                     </div>
 
                     {/* KPI cards */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                       {[
                         { label: "Total Entradas",  v: totEnt, cor: "#0B2D50", bg: "#D5E8F5" },
                         { label: "Total Saídas",    v: totSai, cor: "#791F1F", bg: "#FCEBEB" },
                         { label: "Resultado Líquido", v: totLiq, cor: totLiq >= 0 ? "#0B2D50" : "#791F1F", bg: totLiq >= 0 ? "#D5E8F5" : "#FCEBEB" },
                         { label: "Saldo Acumulado", v: saldoAcMensal[11] ?? totLiq, cor: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#0B2D50" : "#791F1F", bg: (saldoAcMensal[11] ?? totLiq) >= 0 ? "#D5E8F5" : "#FCEBEB" },
                       ].map((k, i) => (
-                        <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none", background: k.bg }}>
-                          <div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>{k.label}</div>
+                        <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: k.bg }}>
+                          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                           <div style={{ fontSize: 17, fontWeight: 700, color: k.cor }}>{fmtBRL(k.v)}</div>
                         </div>
                       ))}
@@ -1722,12 +1722,12 @@ function FinanceiroRelatoriosInner() {
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 1100 }}>
                         <thead>
-                          <tr style={{ background: "#F4F6FA" }}>
-                            <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 200, position: "sticky", left: 0, background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>Categoria</th>
+                          <tr style={{ background: "var(--bg-page)" }}>
+                            <th style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, position: "sticky", left: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>Categoria</th>
                             {MESES.map(m => (
-                              <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>
+                              <th key={m} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap", minWidth: 64 }}>{m}</th>
                             ))}
-                            <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
+                            <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "#1A4870", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>Total {dfcAno}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1736,7 +1736,7 @@ function FinanceiroRelatoriosInner() {
                           <SecRow label="ENTRADAS" bg="#DCFCE7" cor="#14532D" />
                           {entradas.length > 0
                             ? entradas.map(r => <CatRowEl key={r.cat} row={r} />)
-                            : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma entrada no período.</td></tr>
+                            : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma entrada no período.</td></tr>
                           }
                           <TotRow label="Total Entradas" vals={totEntMes} bg="#ECFDF5" cor="#16A34A" />
 
@@ -1744,13 +1744,13 @@ function FinanceiroRelatoriosInner() {
                           <SecRow label="SAÍDAS" bg="#FCEBEB" cor="#791F1F" />
                           {saidas.length > 0
                             ? saidas.map(r => <CatRowEl key={r.cat} row={r} />)
-                            : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "#888", fontSize: 11 }}>Nenhuma saída no período.</td></tr>
+                            : <tr><td colSpan={14} style={{ padding: "10px 24px", color: "var(--text-3)", fontSize: 11 }}>Nenhuma saída no período.</td></tr>
                           }
                           <TotRow label="Total Saídas" vals={totSaiMes} bg="#FEF3F2" cor="#E24B4A" />
 
                           {/* ── SALDO DO MÊS ── */}
-                          <tr style={{ background: "#F4F6FA", borderTop: "1px solid #DDE2EE" }}>
-                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "#F4F6FA" }}>Saldo do Mês</td>
+                          <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border)" }}>
+                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "var(--bg-page)" }}>Saldo do Mês</td>
                             {saldoMes.map((v, i) => (
                               <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#16A34A" : "#E24B4A", whiteSpace: "nowrap" }}>
                                 {fmtK(v)}
@@ -1778,7 +1778,7 @@ function FinanceiroRelatoriosInner() {
                       </table>
                     </div>
 
-                    <div style={{ padding: "10px 20px", fontSize: 10, color: "#888", borderTop: "0.5px solid #DEE5EE" }}>
+                    <div style={{ padding: "10px 20px", fontSize: 10, color: "var(--text-3)", borderTop: "0.5px solid var(--border-row)" }}>
                       {incluirPrevisoes
                         ? "Inclui lançamentos baixados + pendentes (em aberto, vencidos, previsões). Valores de previsão aparecem em mostarda."
                         : "Inclui apenas lançamentos com status Baixado (realizados). Ative 'Incluindo pendentes' para ver projetado."
@@ -1794,7 +1794,7 @@ function FinanceiroRelatoriosInner() {
                   corrente:    { bg: "#D5E8F5", color: "#0B2D50", label: "Corrente" },
                   investimento:{ bg: "#DCF5E8", color: "#14532D", label: "Investimento" },
                   caixa:       { bg: "#FBF3E0", color: "#7A5A12", label: "Caixa" },
-                  transitoria: { bg: "#F4F6FA", color: "#555",    label: "Transitória" },
+                  transitoria: { bg: "var(--bg-page)", color: "var(--text-2)",    label: "Transitória" },
                 };
                 const contasAtivas = contas.filter(c => c.ativa);
 
@@ -1813,7 +1813,7 @@ function FinanceiroRelatoriosInner() {
                 const totalProj  = posicoes.reduce((s, p) => s + p.saldoProj, 0);
 
                 return (
-                  <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 20 }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 20 }}>
                     {/* KPIs */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
                       {[
@@ -1821,8 +1821,8 @@ function FinanceiroRelatoriosInner() {
                         { label: "Entradas Projetadas",      valor: fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0)), cor: "#16A34A" },
                         { label: "Saldo Projetado",          valor: fmtBRL(totalProj), cor: totalProj >= 0 ? "#1A4870" : "#E24B4A" },
                       ].map(k => (
-                        <div key={k.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DEE5EE" }}>
-                          <div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>{k.label}</div>
+                        <div key={k.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border-row)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                           <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                         </div>
                       ))}
@@ -1832,9 +1832,9 @@ function FinanceiroRelatoriosInner() {
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
-                          <tr style={{ background: "#F4F6FA" }}>
+                          <tr style={{ background: "var(--bg-page)" }}>
                             {["Conta", "Tipo", "Banco", "Saldo Inicial", "Entradas Realizadas", "Saídas Realizadas", "Saldo Atual", "Entradas Proj.", "Saídas Proj.", "Saldo Projetado"].map(h => (
-                              <th key={h} style={{ padding: "8px 12px", textAlign: h === "Conta" || h === "Tipo" || h === "Banco" ? "left" : "right", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                              <th key={h} style={{ padding: "8px 12px", textAlign: h === "Conta" || h === "Tipo" || h === "Banco" ? "left" : "right", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -1843,10 +1843,10 @@ function FinanceiroRelatoriosInner() {
                             const tp = tipoCor[p.conta.tipo_conta ?? "corrente"] ?? tipoCor.corrente;
                             return (
                               <tr key={p.conta.id} style={{ borderBottom: "0.5px solid #EEF1F7", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                                <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1a1a1a", whiteSpace: "nowrap" }}>{p.conta.nome}</td>
+                                <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>{p.conta.nome}</td>
                                 <td style={{ padding: "10px 12px" }}><span style={{ background: tp.bg, color: tp.color, borderRadius: 6, padding: "2px 7px", fontSize: 10, fontWeight: 600 }}>{tp.label}</span></td>
-                                <td style={{ padding: "10px 12px", color: "#555" }}>{p.conta.banco || "—"}</td>
-                                <td style={{ padding: "10px 12px", textAlign: "right", color: "#555" }}>{(p.conta.saldo_inicial ?? 0) !== 0 ? fmtBRL(p.conta.saldo_inicial!) : "—"}</td>
+                                <td style={{ padding: "10px 12px", color: "var(--text-2)" }}>{p.conta.banco || "—"}</td>
+                                <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{(p.conta.saldo_inicial ?? 0) !== 0 ? fmtBRL(p.conta.saldo_inicial!) : "—"}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A", fontWeight: 600 }}>{p.entradasReal > 0 ? fmtBRL(p.entradasReal) : "—"}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", color: "#E24B4A", fontWeight: 600 }}>{p.saidasReal > 0 ? fmtBRL(p.saidasReal) : "—"}</td>
                                 <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: p.saldoAtual >= 0 ? "#1A4870" : "#E24B4A" }}>{fmtBRL(p.saldoAtual)}</td>
@@ -1857,7 +1857,7 @@ function FinanceiroRelatoriosInner() {
                             );
                           })}
                           {/* Totalizador */}
-                          <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid #D4DCE8" }}>
+                          <tr style={{ background: "#EEF3FA", fontWeight: 700, borderTop: "1.5px solid var(--border-table)" }}>
                             <td colSpan={3} style={{ padding: "10px 12px", fontWeight: 700, fontSize: 12 }}>TOTAL ({posicoes.length} contas)</td>
                             <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtBRL(posicoes.reduce((s, p) => s + (p.conta.saldo_inicial ?? 0), 0))}</td>
                             <td style={{ padding: "10px 12px", textAlign: "right", color: "#16A34A" }}>{fmtBRL(posicoes.reduce((s, p) => s + p.entradasReal, 0))}</td>
@@ -1870,7 +1870,7 @@ function FinanceiroRelatoriosInner() {
                         </tbody>
                       </table>
                     </div>
-                    <div style={{ marginTop: 10, fontSize: 10, color: "#888" }}>
+                    <div style={{ marginTop: 10, fontSize: 10, color: "var(--text-3)" }}>
                       Saldo Atual = Saldo Inicial + Entradas Realizadas − Saídas Realizadas (lançamentos baixados).
                       Saldo Projetado inclui também lançamentos em aberto/vencidos.
                     </div>

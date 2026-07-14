@@ -10,7 +10,7 @@ const PALETA_DEFAULT = [
   { key: "azul_claro",     nome: "Azul claro",     hex: "#D5E8F5", desc: "Fundo de itens ativos" },
   { key: "mostarda",       nome: "Mostarda",       hex: "#C9921B", desc: "Ação do usuário, accent" },
   { key: "mostarda_claro", nome: "Mostarda claro", hex: "#FBF3E0", desc: "Fundo de badges mostarda" },
-  { key: "fundo_geral",    nome: "Fundo geral",    hex: "#F4F6FA", desc: "Background da página" },
+  { key: "fundo_geral",    nome: "Fundo geral",    hex: "var(--bg-page)", desc: "Background da página" },
   { key: "vermelho",       nome: "Vermelho",       hex: "#E24B4A", desc: "Erros, urgência alta" },
   { key: "verde",          nome: "Verde",          hex: "#16A34A", desc: "Colheita, positivo" },
 ];
@@ -197,7 +197,7 @@ export default function IdentidadePage() {
 
       {/* ── Logo ── */}
       <div style={{
-        background: "#fff", borderRadius: 12,
+        background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid #DDE2EE",
         padding: "24px 28px", marginBottom: 20,
       }}>
@@ -210,11 +210,11 @@ export default function IdentidadePage() {
           }}>
             {logoUrl
               ? <img src={logoUrl} alt="Logo" style={{ maxHeight: 62, maxWidth: 180, objectFit: "contain" }} />
-              : <span style={{ fontSize: 12, color: "#888" }}>Prévia da logo</span>
+              : <span style={{ fontSize: 12, color: "var(--text-3)" }}>Prévia da logo</span>
             }
           </div>
           <div>
-            <div style={{ fontSize: 13, color: "#555", marginBottom: 12, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 12, lineHeight: 1.5 }}>
               A logo é exibida no TopNav e na tela de login.<br />
               Formatos aceitos: PNG, SVG, WebP. Tamanho ideal: 280×80px.
             </div>
@@ -224,7 +224,7 @@ export default function IdentidadePage() {
               disabled={uploading}
               style={{
                 padding: "8px 20px", borderRadius: 8,
-                border: "0.5px solid #1A4870", background: "#fff",
+                border: "0.5px solid #1A4870", background: "var(--bg-card)",
                 fontSize: 13, cursor: "pointer", color: "#1A4870", fontWeight: 600,
               }}
             >
@@ -246,7 +246,7 @@ export default function IdentidadePage() {
 
       {/* ── Paleta de Cores ── */}
       <div style={{
-        background: "#fff", borderRadius: 12,
+        background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid #DDE2EE",
         padding: "24px 28px", marginBottom: 20,
       }}>
@@ -258,8 +258,8 @@ export default function IdentidadePage() {
                 onClick={cancelarPaleta}
                 style={{
                   padding: "7px 14px", borderRadius: 8,
-                  border: "0.5px solid #DDE2EE", background: "#fff",
-                  fontSize: 12, cursor: "pointer", color: "#555",
+                  border: "0.5px solid #DDE2EE", background: "var(--bg-card)",
+                  fontSize: 12, cursor: "pointer", color: "var(--text-2)",
                 }}
               >
                 Cancelar
@@ -280,7 +280,7 @@ export default function IdentidadePage() {
             </button>
           </div>
         </div>
-        <p style={{ fontSize: 12, color: "#888", margin: "0 0 16px" }}>
+        <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 16px" }}>
           Clique em qualquer cor para editar o valor hexadecimal. As cores afetam o design system do app.
         </p>
 
@@ -319,7 +319,7 @@ export default function IdentidadePage() {
                     <div style={{
                       position: "absolute", top: 6, right: 6,
                       background: "rgba(255,255,255,0.85)", borderRadius: 4,
-                      padding: "2px 6px", fontSize: 10, color: "#555",
+                      padding: "2px 6px", fontSize: 10, color: "var(--text-2)",
                     }}>
                       ✎
                     </div>
@@ -327,7 +327,7 @@ export default function IdentidadePage() {
                 </div>
 
                 <div style={{ padding: "10px 12px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{cor.nome}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>{cor.nome}</div>
 
                   {editando ? (
                     <input
@@ -345,7 +345,7 @@ export default function IdentidadePage() {
                       }}
                     />
                   ) : (
-                    <div style={{ fontSize: 11, color: "#888", fontFamily: "monospace", marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontFamily: "monospace", marginTop: 2 }}>
                       {cor.hex}
                     </div>
                   )}
@@ -360,7 +360,7 @@ export default function IdentidadePage() {
 
       {/* ── Identificação do Produto ── */}
       <div style={{
-        background: "#fff", borderRadius: 12,
+        background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid #DDE2EE",
         padding: "24px 28px", marginBottom: 20,
       }}>
@@ -378,8 +378,8 @@ export default function IdentidadePage() {
                   onClick={() => { setIdentidadeEdit(false); carregar(); }}
                   style={{
                     padding: "7px 14px", borderRadius: 8,
-                    border: "0.5px solid #DDE2EE", background: "#fff",
-                    fontSize: 12, cursor: "pointer", color: "#555",
+                    border: "0.5px solid #DDE2EE", background: "var(--bg-card)",
+                    fontSize: 12, cursor: "pointer", color: "var(--text-2)",
                   }}
                 >
                   Cancelar
@@ -401,7 +401,7 @@ export default function IdentidadePage() {
                 onClick={() => setIdentidadeEdit(true)}
                 style={{
                   padding: "7px 16px", borderRadius: 8,
-                  border: "0.5px solid #1A4870", background: "#fff",
+                  border: "0.5px solid #1A4870", background: "var(--bg-card)",
                   fontSize: 12, cursor: "pointer", color: "#1A4870", fontWeight: 600,
                 }}
               >
@@ -421,7 +421,7 @@ export default function IdentidadePage() {
               transition: "all 0.15s",
             }}>
               <div style={{
-                fontSize: 11, fontWeight: 700, color: identidadeEdit ? "#1A4870" : "#888",
+                fontSize: 11, fontWeight: 700, color: identidadeEdit ? "#1A4870" : "var(--text-3)",
                 textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6,
               }}>
                 {label}
@@ -432,13 +432,13 @@ export default function IdentidadePage() {
                   value={identidade[key]}
                   onChange={e => setIdentidade(prev => ({ ...prev, [key]: e.target.value }))}
                   style={{
-                    width: "100%", fontSize: 13, color: "#1a1a1a",
+                    width: "100%", fontSize: 13, color: "var(--text-1)",
                     border: "none", outline: "none", background: "transparent",
                     fontWeight: 600, padding: 0,
                   }}
                 />
               ) : (
-                <div style={{ fontSize: 13, color: "#1a1a1a", fontWeight: 600 }}>
+                <div style={{ fontSize: 13, color: "var(--text-1)", fontWeight: 600 }}>
                   {identidade[key]}
                 </div>
               )}
@@ -449,20 +449,20 @@ export default function IdentidadePage() {
 
       {/* ── Variáveis de Ambiente ── */}
       <div style={{
-        background: "#fff", borderRadius: 12,
+        background: "var(--bg-card)", borderRadius: 12,
         border: "0.5px solid #DDE2EE",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: "0 0 4px" }}>Variáveis de Ambiente</h2>
-        <p style={{ fontSize: 12, color: "#888", margin: "0 0 16px" }}>
+        <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 16px" }}>
           Configure em <strong>Vercel → Settings → Environment Variables</strong>. Obrigatórias bloqueiam o funcionamento se ausentes.
         </p>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#F8FAFC" }}>
-              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Variável</th>
-              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Descrição</th>
-              <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#555", borderBottom: "0.5px solid #DDE2EE", width: 110 }}>Status</th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Variável</th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Descrição</th>
+              <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", width: 110 }}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -471,15 +471,15 @@ export default function IdentidadePage() {
                 <td style={{ padding: "10px 12px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", borderBottom: "0.5px solid #F0F2F7" }}>
                   {v.key}
                 </td>
-                <td style={{ padding: "10px 12px", fontSize: 12, color: "#555", borderBottom: "0.5px solid #F0F2F7" }}>
+                <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)", borderBottom: "0.5px solid #F0F2F7" }}>
                   {v.desc}
                 </td>
                 <td style={{ padding: "10px 12px", textAlign: "center", borderBottom: "0.5px solid #F0F2F7" }}>
                   <span style={{
                     display: "inline-block", fontSize: 10, fontWeight: 700,
                     padding: "2px 8px", borderRadius: 20,
-                    background: v.obrigatorio ? "#FEF2F2" : "#F4F6FA",
-                    color: v.obrigatorio ? "#E24B4A" : "#888",
+                    background: v.obrigatorio ? "#FEF2F2" : "var(--bg-page)",
+                    color: v.obrigatorio ? "#E24B4A" : "var(--text-3)",
                   }}>
                     {v.obrigatorio ? "Obrigatório" : "Opcional"}
                   </span>

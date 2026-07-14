@@ -27,7 +27,7 @@ const CULTURAS: Record<string, { label: string; bg: string; color: string; borda
   trigo:   { label: "Trigo",    bg: "#FAF0D8", color: "#5A3E0A", borda: "#C9921A" },
   sorgo:   { label: "Sorgo",    bg: "#FBF3E0", color: "#8B5E14", borda: "#C9921A" },
 };
-const cc = (c: string) => CULTURAS[c] ?? { label: c, bg: "#F1EFE8", color: "#555", borda: "#666" };
+const cc = (c: string) => CULTURAS[c] ?? { label: c, bg: "#F1EFE8", color: "var(--text-2)", borda: "#666" };
 
 const STATUS_OP: Record<string, { bg: string; color: string; label: string }> = {
   concluida:    { bg: "#D5E8F5", color: "#0B2D50", label: "Concluída"    },
@@ -74,19 +74,19 @@ const fmtData = (iso?: string | null) => {
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 // ── estilos ───────────────────────────────────────────────
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties  = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
-const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
 function Modal({ titulo, subtitulo, onClose, width = 520, children }: { titulo: string; subtitulo?: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
-      <div style={{ background: "#fff", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
-        {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto" }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
+        {subtitulo && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
     </div>
@@ -275,9 +275,9 @@ export default function PlanoAgricola() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* ── Header ── */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Planejamento Agrícola</h1>
+            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Planejamento Agrícola</h1>
             <p style={{ margin: "2px 0 0", fontSize: 11, color: "#444" }}>
               Operações por ciclo · Ciclos cadastrados em <strong>Cadastros → Safras &amp; Ciclos</strong>
             </p>
@@ -285,11 +285,11 @@ export default function PlanoAgricola() {
         </header>
 
         {/* ── Abas ── */}
-        <div style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "0 22px", display: "flex", gap: 4 }}>
+        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 4 }}>
           {([["ciclos", "Ciclos"] , ["analise", "Análise"]] as const).map(([k, l]) => (
             <button key={k} onClick={() => setAba(k)} style={{
               padding: "10px 16px", border: "none", background: "transparent", cursor: "pointer",
-              fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "#1a1a1a" : "#555",
+              fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)",
               borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent",
             }}>{l}</button>
           ))}
@@ -311,10 +311,10 @@ export default function PlanoAgricola() {
                       { label: "Ops pendentes",        valor: String(opsPendentes.length),                    unidade: "",      cor: opsAtrasadas.length > 0 ? "#E24B4A" : "#EF9F27" },
                       { label: "Produtividade média",  valor: prodMedia > 0 ? prodMedia.toFixed(1) : "—",     unidade: prodMedia > 0 ? "sc/ha" : "", cor: prodMedia >= 65 ? "#1A4870" : "#EF9F27" },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-                        <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+                      <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                         <div style={{ fontSize: 22, fontWeight: 600, color: s.cor }}>
-                          {s.valor}{s.unidade && <span style={{ fontSize: 12, color: "#555", marginLeft: 4 }}>{s.unidade}</span>}
+                          {s.valor}{s.unidade && <span style={{ fontSize: 12, color: "var(--text-2)", marginLeft: 4 }}>{s.unidade}</span>}
                         </div>
                       </div>
                     ))}
@@ -336,19 +336,19 @@ export default function PlanoAgricola() {
                     ] as { key: Filtro; label: string; count: number }[]).map(f => (
                       <button key={f.key} onClick={() => setFiltro(f.key)} style={{
                         padding: "5px 14px", borderRadius: 20, border: "0.5px solid",
-                        borderColor: filtro === f.key ? "#1A4870" : "#D4DCE8",
-                        background: filtro === f.key ? "#D5E8F5" : "#fff",
+                        borderColor: filtro === f.key ? "#1A4870" : "var(--border-table)",
+                        background: filtro === f.key ? "#D5E8F5" : "var(--bg-card)",
                         color: filtro === f.key ? "#0B2D50" : "#666",
                         fontWeight: filtro === f.key ? 600 : 400, fontSize: 12, cursor: "pointer",
                       }}>
                         {f.label}
-                        <span style={{ marginLeft: 6, background: filtro === f.key ? "#1A4870" : "#DEE5EE", color: filtro === f.key ? "#fff" : "#555", fontSize: 10, padding: "1px 6px", borderRadius: 8 }}>{f.count}</span>
+                        <span style={{ marginLeft: 6, background: filtro === f.key ? "#1A4870" : "var(--border-row)", color: filtro === f.key ? "#fff" : "var(--text-2)", fontSize: 10, padding: "1px 6px", borderRadius: 8 }}>{f.count}</span>
                       </button>
                     ))}
                   </div>
 
                   {ciclosFiltrados.length === 0 && (
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
                       {ciclos.length === 0
                         ? "Nenhum ciclo cadastrado. Acesse Cadastros → Safras & Ciclos para criar Ano Agrícola e Ciclos."
                         : "Nenhum ciclo nesta categoria."}
@@ -364,8 +364,8 @@ export default function PlanoAgricola() {
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#D5E8F5", padding: "4px 14px", borderRadius: 20, border: "0.5px solid #1A487040" }}>
                             Ano Agrícola {grupo.anoLabel}
                           </div>
-                          <div style={{ flex: 1, height: "0.5px", background: "#D4DCE8" }} />
-                          <span style={{ fontSize: 11, color: "#555" }}>{grupo.ciclos.length} ciclo{grupo.ciclos.length !== 1 ? "s" : ""}</span>
+                          <div style={{ flex: 1, height: "0.5px", background: "var(--border-table)" }} />
+                          <span style={{ fontSize: 11, color: "var(--text-2)" }}>{grupo.ciclos.length} ciclo{grupo.ciclos.length !== 1 ? "s" : ""}</span>
                         </div>
 
                         {/* Cards dos ciclos */}
@@ -381,7 +381,7 @@ export default function PlanoAgricola() {
                             const pendAtrasadas = ciclo.operacoes.filter(o => o.status === "pendente" && o.data_prev && o.data_prev < hoje());
 
                             return (
-                              <div key={ciclo.id} style={{ background: "#fff", border: `0.5px solid ${ciclo.status === "em_andamento" ? cul.borda + "60" : "#D4DCE8"}`, borderRadius: 12, overflow: "hidden" }}>
+                              <div key={ciclo.id} style={{ background: "var(--bg-card)", border: `0.5px solid ${ciclo.status === "em_andamento" ? cul.borda + "60" : "var(--border-table)"}`, borderRadius: 12, overflow: "hidden" }}>
 
                                 {/* Cabeçalho do card */}
                                 <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
@@ -393,11 +393,11 @@ export default function PlanoAgricola() {
 
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2, flexWrap: "wrap" }}>
-                                      <span style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>{cul.label}</span>
+                                      <span style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>{cul.label}</span>
                                       <span style={{ fontSize: 10, background: sSt.bg, color: sSt.color, padding: "2px 8px", borderRadius: 8 }}>{sSt.label}</span>
                                       {pendAtrasadas.length > 0 && <span style={{ fontSize: 10, background: "#FCEBEB", color: "#791F1F", padding: "2px 8px", borderRadius: 8 }}>⚠ {pendAtrasadas.length} op. atrasada(s)</span>}
                                     </div>
-                                    <div style={{ fontSize: 11, color: "#555" }}>
+                                    <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                                       {(ciclo.area_ha ?? 0).toLocaleString("pt-BR")} ha
                                       {ciclo.data_plantio  ? ` · Plantio: ${fmtData(ciclo.data_plantio)}`  : ""}
                                       {ciclo.data_colheita ? ` · Colheita: ${fmtData(ciclo.data_colheita)}` : ""}
@@ -407,11 +407,11 @@ export default function PlanoAgricola() {
                                   {/* Barra de progresso */}
                                   {total > 0 && (
                                     <div style={{ width: 110, flexShrink: 0 }}>
-                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555", marginBottom: 4 }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>
                                         <span>Operações</span>
-                                        <span style={{ fontWeight: 600, color: pct === 100 ? "#1A4870" : "#1a1a1a" }}>{pct}%</span>
+                                        <span style={{ fontWeight: 600, color: pct === 100 ? "#1A4870" : "var(--text-1)" }}>{pct}%</span>
                                       </div>
-                                      <div style={{ height: 6, background: "#DEE5EE", borderRadius: 3 }}>
+                                      <div style={{ height: 6, background: "var(--border-row)", borderRadius: 3 }}>
                                         <div style={{ height: 6, background: pct === 100 ? "#1A4870" : "#EF9F27", borderRadius: 3, width: `${pct}%`, transition: "width 0.3s" }} />
                                       </div>
                                       <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>{concluidas}/{total} ops</div>
@@ -441,9 +441,9 @@ export default function PlanoAgricola() {
 
                                 {/* ── Conteúdo expandido ── */}
                                 {exp && (
-                                  <div style={{ borderTop: "0.5px solid #DEE5EE" }}>
+                                  <div style={{ borderTop: "0.5px solid var(--border-row)" }}>
                                     {/* Barra de ações */}
-                                    <div style={{ padding: "8px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                    <div style={{ padding: "8px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                                       <button style={{ ...btnE, fontSize: 12 }} onClick={() => { setModalAddOp(ciclo.id); setFOp({ nome: "", tipo: "operacao", data_prev: "", custo_ha: 0 }); }}>
                                         + Lançar Operação
                                       </button>
@@ -456,7 +456,7 @@ export default function PlanoAgricola() {
                                     </div>
 
                                     {ciclo.operacoes.length === 0 ? (
-                                      <div style={{ padding: "24px 16px", textAlign: "center", color: "#888", fontSize: 12 }}>
+                                      <div style={{ padding: "24px 16px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
                                         Nenhuma operação registrada. Use "+ Lançar Operação" para adicionar.
                                       </div>
                                     ) : (
@@ -464,7 +464,7 @@ export default function PlanoAgricola() {
                                         <thead>
                                           <tr style={{ background: "#F3F6F9" }}>
                                             {["Tipo", "Operação / Descrição", "Data prevista", "Data realizada", "Custo/ha", "Status", ""].map((h, i) => (
-                                              <th key={i} style={{ padding: "7px 14px", textAlign: i <= 1 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                                              <th key={i} style={{ padding: "7px 14px", textAlign: i <= 1 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                                             ))}
                                           </tr>
                                         </thead>
@@ -473,20 +473,20 @@ export default function PlanoAgricola() {
                                             const st = cs(op.status);
                                             const atrasada = op.status === "pendente" && op.data_prev && op.data_prev < hoje();
                                             return (
-                                              <tr key={op.id} style={{ borderBottom: oi < arr.length - 1 ? "0.5px solid #DEE5EE" : "none", background: atrasada ? "#FFFBF5" : "transparent" }}>
+                                              <tr key={op.id} style={{ borderBottom: oi < arr.length - 1 ? "0.5px solid var(--border-row)" : "none", background: atrasada ? "#FFFBF5" : "transparent" }}>
                                                 <td style={{ padding: "8px 14px" }}>
                                                   <span style={{ fontSize: 16, color: cul.color }}>{iconeOp(op.tipo)}</span>
                                                 </td>
                                                 <td style={{ padding: "8px 14px" }}>
-                                                  <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 12 }}>{labelOp(op.tipo)}</div>
-                                                  {op.nome && op.nome !== op.tipo && op.nome !== normTipo(op.tipo) && <div style={{ fontSize: 11, color: "#555" }}>{op.nome}</div>}
+                                                  <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 12 }}>{labelOp(op.tipo)}</div>
+                                                  {op.nome && op.nome !== op.tipo && op.nome !== normTipo(op.tipo) && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{op.nome}</div>}
                                                 </td>
                                                 <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: atrasada ? "#E24B4A" : "#666" }}>
                                                   {fmtData(op.data_prev)}
                                                   {atrasada && <div style={{ fontSize: 10 }}>⚠ atrasada</div>}
                                                 </td>
                                                 <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: op.data_real ? "#1A4870" : "#444" }}>{fmtData(op.data_real)}</td>
-                                                <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>
+                                                <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-1)" }}>
                                                   {op.custo_ha ? `R$ ${op.custo_ha.toLocaleString("pt-BR")}` : "—"}
                                                 </td>
                                                 <td style={{ padding: "8px 14px", textAlign: "center" }}>
@@ -507,7 +507,7 @@ export default function PlanoAgricola() {
 
                                     {/* Rodapé */}
                                     {custoTotal > 0 && (
-                                      <div style={{ padding: "8px 14px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#444" }}>
+                                      <div style={{ padding: "8px 14px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", fontSize: 11, color: "#444" }}>
                                         <span>
                                           Custo estimado: <strong style={{ color: "#C9921B" }}>R$ {custoTotal.toLocaleString("pt-BR")}/ha</strong>
                                           {ciclo.area_ha ? <> · <strong style={{ color: "#C9921B" }}>R$ {(custoTotal * ciclo.area_ha).toLocaleString("pt-BR")} total</strong></> : ""}
@@ -532,31 +532,31 @@ export default function PlanoAgricola() {
                 <div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
                     {[
-                      { label: "Total de ciclos",      valor: String(ciclos.length),                                                                                                                                              cor: "#1a1a1a" },
+                      { label: "Total de ciclos",      valor: String(ciclos.length),                                                                                                                                              cor: "var(--text-1)" },
                       { label: "Área total histórica", valor: ciclos.reduce((a, s) => a + (s.area_ha ?? 0), 0).toLocaleString("pt-BR"), unidade: "ha",                                                                            cor: "#C9921B" },
                       { label: "Ciclos colhidos",      valor: String(colhidos.length),                                                                                                                                            cor: "#1A4870" },
                       { label: "Maior produtividade",  valor: colhidos.filter(s => s.produtividade_sc_ha).length > 0 ? Math.max(...colhidos.filter(s => s.produtividade_sc_ha).map(s => s.produtividade_sc_ha!)).toFixed(1) : "—", unidade: "sc/ha", cor: "#1A4870" },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-                        <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+                      <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                         <div style={{ fontSize: 22, fontWeight: 600, color: s.cor }}>
-                          {s.valor}{"unidade" in s && s.unidade && <span style={{ fontSize: 12, color: "#555", marginLeft: 4 }}>{s.unidade}</span>}
+                          {s.valor}{"unidade" in s && s.unidade && <span style={{ fontSize: 12, color: "var(--text-2)", marginLeft: 4 }}>{s.unidade}</span>}
                         </div>
                       </div>
                     ))}
                   </div>
 
                   {ciclos.length === 0 ? (
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
                       Nenhum ciclo cadastrado ainda.
                     </div>
                   ) : (
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr style={{ background: "#F3F6F9" }}>
                             {["Ano / Cultura", "Área", "Plantio", "Colheita", "Ciclo", "Produtiv.", "Custo/ha", "Sacas Totais", "Status"].map((h, i) => (
-                              <th key={i} style={{ padding: "8px 14px", textAlign: i <= 1 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                              <th key={i} style={{ padding: "8px 14px", textAlign: i <= 1 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -571,9 +571,9 @@ export default function PlanoAgricola() {
                               : null;
                             const anoLabel = anosSafra.find(a => a.id === s.ano_safra_id)?.descricao ?? s.ano_agricola;
                             return (
-                              <tr key={s.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                              <tr key={s.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                                 <td style={{ padding: "10px 14px" }}>
-                                  <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>{anoLabel}</div>
+                                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{anoLabel}</div>
                                   <span style={{ fontSize: 10, background: cul2.bg, color: cul2.color, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{cul2.label}</span>
                                 </td>
                                 <td style={{ padding: "10px 14px" }}><strong>{(s.area_ha ?? 0).toLocaleString("pt-BR")}</strong> ha</td>

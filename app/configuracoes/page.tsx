@@ -28,11 +28,11 @@ const BASIS_DEFAULT: BasisConfig = { soja: 0, milho: 0, algodao: 0, praca: "" };
 
 // ── Helpers ───────────────────────────────────────────────────
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
-  borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff",
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
+  borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
 const corTipoConta = (t: ContaContabil["tipo"]) => ({
   ativo:   { bg: "#EAF3DE", color: "#1A5C38", label: "ATIVO"   },
@@ -199,15 +199,15 @@ function ConfiguracoesInner() {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>
+              <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
                 {aba === "plano_contas" ? "Plano de Contas" : aba === "certificado" ? "Certificado A1" : "Configurações"}
               </h1>
               {aba === "hub" && <p style={{ margin: 0, fontSize: 11, color: "#666" }}>Acesso de suporte e cotações</p>}
@@ -229,20 +229,20 @@ function ConfiguracoesInner() {
           {aba === "hub" && (
             <>
               {/* Acesso Raccolto */}
-              <div style={{ background: "#fff", border: `1px solid ${raccoltoAcesso ? "#1A4870" : "#D4DCE8"}`, borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ background: "var(--bg-card)", border: `1px solid ${raccoltoAcesso ? "#1A4870" : "var(--border-table)"}`, borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Acesso de Suporte Raccolto</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: raccoltoAcesso ? "#1A4870" : "#DEE5EE", color: raccoltoAcesso ? "#fff" : "#666" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Acesso de Suporte Raccolto</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 8, background: raccoltoAcesso ? "#1A4870" : "var(--border-row)", color: raccoltoAcesso ? "#fff" : "#666" }}>
                       {raccoltoAcesso ? "ATIVO" : "INATIVO"}
                     </span>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
                     {raccoltoAcesso
                       ? "A Raccolto possui acesso de visualização para consultoria e suporte. Você pode revogar a qualquer momento."
                       : "Ative para permitir que a equipe Raccolto visualize os dados desta fazenda. Somente leitura, conforme LGPD."}
                   </p>
-                  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#aaa" }}>LGPD Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação</p>
+                  <p style={{ margin: "5px 0 0", fontSize: 10, color: "var(--text-muted)" }}>LGPD Art. 7º, I — consentimento do titular · Art. 18 — direito de revogação</p>
                 </div>
                 <button
                   onClick={toggleRaccolto}
@@ -254,11 +254,11 @@ function ConfiguracoesInner() {
               </div>
 
               {/* Cotação e Basis */}
-              <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px", marginBottom: 4 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#888", paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE", marginBottom: 14 }}>
+              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 4 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", paddingBottom: 6, borderBottom: "0.5px solid var(--border)", marginBottom: 14 }}>
                   Cotação e Basis
                 </div>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 14 }}>
                   O basis é a diferença entre o preço local e a referência de mercado (CBOT/B3). Negativo = preço local menor. Ex: Soja CBOT R$ 129/sc + Basis −3,50 = preço local R$ 125,50/sc.
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 14 }}>
@@ -284,7 +284,7 @@ function ConfiguracoesInner() {
                     Salvar
                   </button>
                   {basisSalvo && <span style={{ fontSize: 12, color: "#1A5C38", fontWeight: 600 }}>Salvo — dashboard atualizado</span>}
-                  <span style={{ fontSize: 11, color: "#888", marginLeft: "auto" }}>Configuração salva localmente neste navegador</span>
+                  <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: "auto" }}>Configuração salva localmente neste navegador</span>
                 </div>
               </div>
             </>
@@ -292,8 +292,8 @@ function ConfiguracoesInner() {
 
           {/* ── PLANO DE CONTAS ── */}
           {aba === "plano_contas" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 6, alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {([
                     { key: "todos",   label: "Todos",    count: contas.length },
@@ -306,17 +306,17 @@ function ConfiguracoesInner() {
                   ] as { key: typeof filtroContas; label: string; count: number }[]).map(f => (
                     <button key={f.key} onClick={() => setFiltroContas(f.key)} style={{
                       padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
-                      borderColor: filtroContas === f.key ? "#1A4870" : "#D4DCE8",
+                      borderColor: filtroContas === f.key ? "#1A4870" : "var(--border-table)",
                       background: filtroContas === f.key ? "#D5E8F5" : "transparent",
                       color: filtroContas === f.key ? "#0B2D50" : "#666",
                       fontWeight: filtroContas === f.key ? 600 : 400, fontSize: 12, cursor: "pointer",
                     }}>
-                      {f.label} <span style={{ fontSize: 10, marginLeft: 3, background: filtroContas === f.key ? "#1A4870" : "#DEE5EE", color: filtroContas === f.key ? "#fff" : "#555", padding: "1px 5px", borderRadius: 6 }}>{f.count}</span>
+                      {f.label} <span style={{ fontSize: 10, marginLeft: 3, background: filtroContas === f.key ? "#1A4870" : "var(--border-row)", color: filtroContas === f.key ? "#fff" : "var(--text-2)", padding: "1px 5px", borderRadius: 6 }}>{f.count}</span>
                     </button>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: 11, color: "#555" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-2)" }}>
                     <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 6px", borderRadius: 5, fontWeight: 600, marginRight: 4 }}>{contas.filter(c => c.lcdpr).length}</span>
                     vinculadas ao LCDPR
                   </span>
@@ -351,7 +351,7 @@ function ConfiguracoesInner() {
                       w.document.close();
                     }}
                     className="no-print"
-                    style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", cursor: "pointer" }}
+                    style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}
                   >Imprimir</button>
                   <button onClick={abrirNovaConta} style={{ fontSize: 11, padding: "5px 12px", border: "0.5px solid #1A5C38", borderRadius: 8, background: "#EAF3DE", color: "#1A5C38", cursor: "pointer", fontWeight: 600 }}>
                     + Nova conta
@@ -361,9 +361,9 @@ function ConfiguracoesInner() {
 
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F4F6FA" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Código", "Nome da conta", "Tipo", "Natureza", "Operacional", "LCDPR", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 16px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "8px 16px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -373,18 +373,18 @@ function ConfiguracoesInner() {
                     const depth = c.codigo ? c.codigo.split('.').length - 1 : 0;
                     const isGrupo = depth === 0;
                     return (
-                      <tr key={ci} style={{ borderBottom: "0.5px solid #EEF1F6", background: isGrupo ? "#F8FAFD" : "transparent" }}>
-                        <td style={{ padding: "8px 16px", fontFamily: "monospace", fontSize: 12, color: "#1a1a1a", width: 90 }}>{c.codigo}</td>
+                      <tr key={ci} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: isGrupo ? "#F8FAFD" : "transparent" }}>
+                        <td style={{ padding: "8px 16px", fontFamily: "monospace", fontSize: 12, color: "var(--text-1)", width: 90 }}>{c.codigo}</td>
                         <td style={{ padding: "8px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ paddingLeft: depth * 14, fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 700 : 400, color: "#1a1a1a" }}>{c.nome}</span>
+                            <span style={{ paddingLeft: depth * 14, fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 700 : 400, color: "var(--text-1)" }}>{c.nome}</span>
                             {c.transitoria && <span style={{ fontSize: 9, background: "#FBF3E0", color: "#8B5E14", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>TRANSITÓRIA</span>}
                           </div>
                         </td>
                         <td style={{ padding: "8px 16px", textAlign: "center" }}>
                           <span style={{ fontSize: 10, background: ct.bg, color: ct.color, padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>{ct.label}</span>
                         </td>
-                        <td style={{ padding: "8px 16px", textAlign: "center", fontSize: 11, color: "#555" }}>{c.natureza ?? "—"}</td>
+                        <td style={{ padding: "8px 16px", textAlign: "center", fontSize: 11, color: "var(--text-2)" }}>{c.natureza ?? "—"}</td>
                         <td style={{ padding: "8px 16px", textAlign: "center" }}>
                           <span style={{ fontSize: 11, color: c.operacional ? "#1A5C38" : "#999" }}>{c.operacional ? "Sim" : "Não"}</span>
                         </td>
@@ -394,7 +394,7 @@ function ConfiguracoesInner() {
                             : <span style={{ fontSize: 10, color: "#ccc" }}>—</span>}
                         </td>
                         <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                          <button onClick={() => abrirEditarConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>
+                          <button onClick={() => abrirEditarConta(c.codigo)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
                           </button>
                           {!isGrupo && (
@@ -413,11 +413,11 @@ function ConfiguracoesInner() {
 
           {/* ── CERTIFICADO A1 ── */}
           {aba === "certificado" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "20px", maxWidth: 720 }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "20px", maxWidth: 720 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 2 }}>Certificados A1</div>
-                  <div style={{ fontSize: 11, color: "#555" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", marginBottom: 2 }}>Certificados A1</div>
+                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                     {certs.length === 0 ? "Nenhum certificado configurado" : `${certs.length} certificado${certs.length > 1 ? "s" : ""} — um por produtor/titular`}
                   </div>
                 </div>
@@ -431,8 +431,8 @@ function ConfiguracoesInner() {
 
               {certs.length === 0 ? (
                 <div style={{ border: "0.5px dashed #1A4870", borderRadius: 10, padding: "36px", textAlign: "center", background: "#F5F9FF", marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Nenhum certificado configurado</div>
-                  <div style={{ fontSize: 12, color: "#555" }}>Carregue um arquivo .pfx ou .p12 para assinar NF-e automaticamente</div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>Nenhum certificado configurado</div>
+                  <div style={{ fontSize: 12, color: "var(--text-2)" }}>Carregue um arquivo .pfx ou .p12 para assinar NF-e automaticamente</div>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
@@ -440,14 +440,14 @@ function ConfiguracoesInner() {
                     const dias = calcDias(cert.data_vencimento);
                     const corDias = dias !== null && dias <= 7 ? "#E24B4A" : dias !== null && dias <= 15 ? "#EF9F27" : "#1A5C38";
                     return (
-                      <div key={cert.modulo} style={{ border: `0.5px solid ${dias !== null && dias <= 7 ? "#E24B4A" : dias !== null && dias <= 15 ? "#EF9F27" : "#D4DCE8"}`, borderRadius: 10, padding: "16px 20px", display: "flex", alignItems: "center", gap: 20 }}>
+                      <div key={cert.modulo} style={{ border: `0.5px solid ${dias !== null && dias <= 7 ? "#E24B4A" : dias !== null && dias <= 15 ? "#EF9F27" : "var(--border-table)"}`, borderRadius: 10, padding: "16px 20px", display: "flex", alignItems: "center", gap: 20 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{cert.produtor_nome || "Titular não informado"}</span>
-                            {cert.cpf_cnpj && <span style={{ fontSize: 11, color: "#888" }}>{cert.cpf_cnpj}</span>}
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{cert.produtor_nome || "Titular não informado"}</span>
+                            {cert.cpf_cnpj && <span style={{ fontSize: 11, color: "var(--text-3)" }}>{cert.cpf_cnpj}</span>}
                             <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "1px 6px", borderRadius: 5 }}>A1 · .pfx</span>
                           </div>
-                          <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>{cert.arquivo_nome}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{cert.arquivo_nome}</div>
                           {cert.data_vencimento ? (
                             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                               <span style={{ fontSize: 12, fontWeight: 600, color: corDias }}>
@@ -483,8 +483,8 @@ function ConfiguracoesInner() {
       {modalConta && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalConta(false); }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 26, width: 480, maxWidth: "92vw", border: "0.5px solid #DDE2EE", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 20 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 480, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 20 }}>
               {contaEditCod ? "Editar conta" : "Nova conta"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14, marginBottom: 14 }}>
@@ -535,11 +535,11 @@ function ConfiguracoesInner() {
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 4 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "#555" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
                   <input type="checkbox" checked={!!formConta.operacional} onChange={e => setFormConta(p => ({ ...p, operacional: e.target.checked }))} style={{ width: 14, height: 14 }} />
                   Disponível para operadores
                 </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "#555" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}>
                   <input type="checkbox" checked={!!formConta.transitoria} onChange={e => setFormConta(p => ({ ...p, transitoria: e.target.checked }))} style={{ width: 14, height: 14 }} />
                   Conta transitória
                 </label>
@@ -557,7 +557,7 @@ function ConfiguracoesInner() {
               </div>
             )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => { setModalConta(false); setErroConta(null); }} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={() => { setModalConta(false); setErroConta(null); }} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={salvarConta} disabled={!formConta.codigo.trim() || !formConta.nome.trim() || salvConta}
                 style={{ padding: "8px 20px", background: formConta.codigo.trim() && formConta.nome.trim() ? "#1A5C38" : "#999", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvConta ? "Salvando…" : contaEditCod ? "Salvar alterações" : "Criar conta"}
@@ -571,9 +571,9 @@ function ConfiguracoesInner() {
       {modalCert && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) fecharModalCert(); }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 26, width: 460, maxWidth: "92vw", border: "0.5px solid #DDE2EE", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 4 }}>Carregar certificado A1</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 26, width: 460, maxWidth: "92vw", border: "0.5px solid var(--border)", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 4 }}>Carregar certificado A1</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 20 }}>Arquivo .pfx ou .p12 do e-CNPJ ou e-CPF</div>
 
             <div style={{ display: "grid", gap: 14 }}>
               {produtores.length > 1 && (
@@ -586,10 +586,10 @@ function ConfiguracoesInner() {
                 </div>
               )}
               {produtores.length === 1 && (
-                <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#555" }}>
-                  <span style={{ color: "#888", fontSize: 11 }}>Titular: </span>
+                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--text-2)" }}>
+                  <span style={{ color: "var(--text-3)", fontSize: 11 }}>Titular: </span>
                   <strong>{produtores[0].nome}</strong>
-                  <span style={{ color: "#888", marginLeft: 8, fontSize: 12 }}>{produtores[0].tipo === "pf" ? "CPF" : "CNPJ"}: {produtores[0].cpf_cnpj ?? "—"}</span>
+                  <span style={{ color: "var(--text-3)", marginLeft: 8, fontSize: 12 }}>{produtores[0].tipo === "pf" ? "CPF" : "CNPJ"}: {produtores[0].cpf_cnpj ?? "—"}</span>
                 </div>
               )}
 
@@ -619,7 +619,7 @@ function ConfiguracoesInner() {
                     style={{ border: `0.5px dashed ${certArrastando ? "#1A4870" : "#aab"}`, borderRadius: 8, padding: "28px 20px", textAlign: "center", background: certArrastando ? "#EEF4FF" : "#F7FDFA", cursor: "pointer" }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>{certArrastando ? "Solte o arquivo aqui" : "Clique para selecionar"}</div>
-                    <div style={{ fontSize: 11, color: "#888" }}>ou arraste o arquivo .pfx / .p12 aqui</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>ou arraste o arquivo .pfx / .p12 aqui</div>
                   </div>
                 )}
               </div>
@@ -644,7 +644,7 @@ function ConfiguracoesInner() {
             )}
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-              <button onClick={fecharModalCert} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={fecharModalCert} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={carregarCertificado} disabled={!certFile || !certSenha.trim() || certCarregando || certSucesso}
                 style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: (!certFile || !certSenha.trim() || certCarregando) ? "not-allowed" : "pointer", fontSize: 13, opacity: (!certFile || !certSenha.trim() || certCarregando) ? 0.5 : 1 }}>
                 {certCarregando ? "Carregando..." : "Carregar certificado"}

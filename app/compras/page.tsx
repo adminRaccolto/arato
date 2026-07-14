@@ -17,11 +17,11 @@ import PlanoGate from "../../components/PlanoGate";
 import AnexoDocumentos from "../../components/AnexoDocumentos";
 
 // ── Estilos base ─────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 3, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
 const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#555" };
+const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
 function SearchableSelect({
@@ -60,9 +60,9 @@ function SearchableSelect({
       />
       <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#999", pointerEvents: "none" }}>▾</span>
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: "#fff", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 220, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)" }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 220, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)" }}>
           <div
-            style={{ padding: "6px 10px", fontSize: 13, color: "#aaa", cursor: "pointer", borderBottom: "0.5px solid #F0F0F0" }}
+            style={{ padding: "6px 10px", fontSize: 13, color: "var(--text-muted)", cursor: "pointer", borderBottom: "0.5px solid #F0F0F0" }}
             onMouseDown={() => { onChange(""); setOpen(false); setQuery(""); }}
           >{placeholder}</div>
           {filtered.length === 0 && (
@@ -71,10 +71,10 @@ function SearchableSelect({
           {filtered.map(o => (
             <div
               key={o.id}
-              style={{ padding: "7px 10px", fontSize: 13, cursor: "pointer", background: o.id === value ? "#D5E8F5" : "#fff", color: o.id === value ? "#0B2D50" : "#1a1a1a", fontWeight: o.id === value ? 600 : 400 }}
+              style={{ padding: "7px 10px", fontSize: 13, cursor: "pointer", background: o.id === value ? "#D5E8F5" : "var(--bg-card)", color: o.id === value ? "#0B2D50" : "var(--text-1)", fontWeight: o.id === value ? 600 : 400 }}
               onMouseDown={() => { onChange(o.id); setOpen(false); setQuery(""); }}
-              onMouseEnter={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "#F4F6FA"; }}
-              onMouseLeave={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "#fff"; }}
+              onMouseEnter={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-page)"; }}
+              onMouseLeave={e => { if (o.id !== value) (e.currentTarget as HTMLElement).style.background = "var(--bg-card)"; }}
             >{o.label}</div>
           ))}
         </div>
@@ -91,7 +91,7 @@ const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
 
 const STATUS_MAP: Record<PedidoCompra["status"], { label: string; bg: string; color: string }> = {
-  rascunho:               { label: "Rascunho",          bg: "#F3F6F9", color: "#555"    },
+  rascunho:               { label: "Rascunho",          bg: "#F3F6F9", color: "var(--text-2)"    },
   aprovado:               { label: "Aprovado",           bg: "#D5E8F5", color: "#0B2D50" },
   parcialmente_entregue:  { label: "Parc. Entregue",    bg: "#FBF3E0", color: "#7A5200" },
   entregue:               { label: "Entregue",           bg: "#DCFCE7", color: "#166534" },
@@ -579,7 +579,7 @@ export default function ComprasPage() {
   const tabAba = (id: typeof abaModal, label: string) => (
     <button onClick={() => setAbaModal(id)} style={{
       padding: "7px 16px", fontSize: 12, fontWeight: abaModal === id ? 600 : 400,
-      color: abaModal === id ? "#1A5CB8" : "#555", background: "none", border: "none",
+      color: abaModal === id ? "#1A5CB8" : "var(--text-2)", background: "none", border: "none",
       borderBottom: abaModal === id ? "2px solid #1A5CB8" : "2px solid transparent",
       cursor: "pointer", whiteSpace: "nowrap",
     }}>{label}</button>
@@ -589,22 +589,22 @@ export default function ComprasPage() {
     <button onClick={() => setAbaItens(id)} style={{
       padding: "5px 14px", fontSize: 11, fontWeight: abaItens === id ? 600 : 400,
       color: abaItens === id ? "#1A5CB8" : "#666", background: abaItens === id ? "#EBF3FD" : "none",
-      border: "0.5px solid " + (abaItens === id ? "#1A5CB880" : "#D4DCE8"),
+      border: "0.5px solid " + (abaItens === id ? "#1A5CB880" : "var(--border-table)"),
       borderRadius: "6px 6px 0 0", cursor: "pointer",
     }}>{label}</button>
   );
 
   if (!podeAcessarPlano("compras")) return <PlanoGate modulo="compras" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Pedidos de Compra</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#555" }}>Controle de compras de insumos, serviços e materiais</p>
+            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pedidos de Compra</h1>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Controle de compras de insumos, serviços e materiais</p>
           </div>
           <button style={btnV} onClick={abrirNovo}>+ Novo Pedido</button>
         </header>
@@ -630,8 +630,8 @@ export default function ComprasPage() {
               { label: "Valor em aberto",    valor: fmtBRL(valorAberto),        cor: "#E24B4A" },
               { label: "Pedidos entregues",  valor: String(totalEntregues),     cor: "#16A34A" },
             ].map((s, i) => (
-              <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: s.cor }}>{s.valor}</div>
               </div>
             ))}
@@ -648,15 +648,15 @@ export default function ComprasPage() {
             <input
               placeholder="Buscar fornecedor, nº pedido..."
               value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)}
-              style={{ flex: 1, minWidth: 200, padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff" }}
+              style={{ flex: 1, minWidth: 200, padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)" }}
             />
             <select value={filtroSafra} onChange={e => setFiltroSafra(e.target.value)}
-              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
               <option value="">Todas as safras</option>
               {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
             </select>
             <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
-              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 150 }}>
+              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 150 }}>
               <option value="">Todos os status</option>
               <option value="rascunho">Rascunho</option>
               <option value="aprovado">Aprovado</option>
@@ -665,7 +665,7 @@ export default function ComprasPage() {
               <option value="cancelado">Cancelado</option>
             </select>
             <select value={filtroMoeda} onChange={e => setFiltroMoeda(e.target.value)}
-              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 120 }}>
+              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 120 }}>
               <option value="">Todas as moedas</option>
               <option value="R$">R$ (Real)</option>
               <option value="USD">US$ (Dólar)</option>
@@ -673,14 +673,14 @@ export default function ComprasPage() {
             </select>
             {fazendas.length > 1 && (
               <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-                style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+                style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
               </select>
             )}
             {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda || fazendaFiltro) && (
               <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFazendaFiltro(""); }}
-                style={{ padding: "7px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, background: "#fff", cursor: "pointer", color: "#555" }}>
+                style={{ padding: "7px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)" }}>
                 Limpar filtros
               </button>
             )}
@@ -688,18 +688,18 @@ export default function ComprasPage() {
 
           {/* Tabela */}
           {loading ? (
-            <div style={{ textAlign: "center", padding: 48, color: "#555" }}>Carregando...</div>
+            <div style={{ textAlign: "center", padding: 48, color: "var(--text-2)" }}>Carregando...</div>
           ) : pedidosFiltrados.length === 0 ? (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "#555" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-2)" }}>
               {pedidos.length === 0 ? "Nenhum pedido de compra cadastrado." : "Nenhum pedido encontrado para os filtros selecionados."}
             </div>
           ) : (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
                     {["Nº", "Fornecedor", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 || i === 5 || i === 6 || i === 7 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 || i === 5 || i === 6 || i === 7 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -707,17 +707,17 @@ export default function ComprasPage() {
                   {pedidosFiltrados.map((ped, i) => {
                     const st = STATUS_MAP[ped.status];
                     return (
-                      <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={ped.id} style={{ borderBottom: i < pedidosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1A4870" }}>#{ped.numero ?? "—"}</td>
                         <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{nomePessoa(ped.fornecedor_id)}</div>
-                          {ped.nr_pedido && <div style={{ fontSize: 11, color: "#555" }}>Ped.: {ped.nr_pedido}</div>}
+                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{nomePessoa(ped.fornecedor_id)}</div>
+                          {ped.nr_pedido && <div style={{ fontSize: 11, color: "var(--text-2)" }}>Ped.: {ped.nr_pedido}</div>}
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#555" }}>{nomeAnoSafra(ped.ano_safra_id) || "—"}</td>
-                        <td style={{ padding: "10px 14px", color: "#555", maxWidth: 180 }}>
+                        <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{nomeAnoSafra(ped.ano_safra_id) || "—"}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--text-2)", maxWidth: 180 }}>
                           <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nomeOp(ped.operacao) !== "—" ? nomeOp(ped.operacao) : <span style={{ color: "#bbb" }}>—</span>}</div>
                         </td>
-                        <td style={{ padding: "10px 14px", color: "#1a1a1a" }}>{fmtData(ped.data_registro)}</td>
+                        <td style={{ padding: "10px 14px", color: "var(--text-1)" }}>{fmtData(ped.data_registro)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           {ped.meio_pagamento === "barter"
                             ? <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5200", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Barter</span>
@@ -758,13 +758,13 @@ export default function ComprasPage() {
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 1180, maxWidth: "98vw", maxHeight: "95vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 1180, maxWidth: "98vw", maxHeight: "95vh", overflowY: "auto" }}>
 
             {/* Header modal */}
             <div style={{ padding: "16px 22px 0", borderBottom: "0.5px solid #D4DCE8" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>{pedidoEdit ? "Editar Pedido de Compra" : "Novo Pedido de Compra"}</div>
-                <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>{pedidoEdit ? "Editar Pedido de Compra" : "Novo Pedido de Compra"}</div>
+                <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
               </div>
               {/* Abas */}
               <div style={{ display: "flex", gap: 0, overflowX: "auto" }}>
@@ -903,7 +903,7 @@ export default function ComprasPage() {
                     <label style={lbl}>
                       Fornecedor *
                       {pessoas.length === 0 && (
-                        <span style={{ marginLeft: 6, fontSize: 10, color: "#888", fontWeight: 400 }}>
+                        <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>
                           — <a href="/cadastros?tab=pessoas" target="_blank" style={{ color: "#1A4870" }}>Cadastrar em Pessoas</a>
                         </span>
                       )}
@@ -934,7 +934,7 @@ export default function ComprasPage() {
                   <div>
                     <label style={lbl}>
                       Produtor responsável
-                      <span style={{ marginLeft: 6, fontSize: 10, color: "#888", fontWeight: 400 }}>— a quem o custo pertence</span>
+                      <span style={{ marginLeft: 6, fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>— a quem o custo pertence</span>
                     </label>
                     <select style={inp} value={f.produtor_id} onChange={e => setF(p => ({ ...p, produtor_id: e.target.value }))}>
                       <option value="">— Todos / não identificado —</option>
@@ -966,11 +966,11 @@ export default function ComprasPage() {
                     </label>
                     {f.operacao_nf_auto && f.operacao_nf ? (
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <div style={{ ...inp, flex: 1, background: "#F4F6FA", color: "#555", fontSize: 12 }}>
+                        <div style={{ ...inp, flex: 1, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 12 }}>
                           {nomeOp(f.operacao_nf)}
                         </div>
                         <button type="button" onClick={() => setF(p => ({ ...p, operacao_nf_auto: false }))}
-                          style={{ fontSize: 11, padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, background: "#fff", cursor: "pointer", color: "#555", whiteSpace: "nowrap" }}>
+                          style={{ fontSize: 11, padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                           Alterar
                         </button>
                       </div>
@@ -1005,9 +1005,9 @@ export default function ComprasPage() {
                           style={{
                             padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
                             border: "0.5px solid",
-                            borderColor: f.meio_pagamento === v ? (v === "barter" ? "#C9921B" : "#1A5CB8") : "#D4DCE8",
+                            borderColor: f.meio_pagamento === v ? (v === "barter" ? "#C9921B" : "#1A5CB8") : "var(--border-table)",
                             background:  f.meio_pagamento === v ? (v === "barter" ? "#FBF3E0" : "#D5E8F5") : "#fff",
-                            color:       f.meio_pagamento === v ? (v === "barter" ? "#7A5200" : "#0B2D50") : "#555",
+                            color:       f.meio_pagamento === v ? (v === "barter" ? "#7A5200" : "#0B2D50") : "var(--text-2)",
                           }}>
                           {label}
                         </button>
@@ -1089,15 +1089,15 @@ export default function ComprasPage() {
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "#F3F6F9" }}>
                             {["Tipo Item","Item","Un.","Quantidade","Valor Unitário","Valor Total","Qtd. Cancel.",""].map((h, i) => (
-                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                             ))}
                           </tr></thead>
                           <tbody>
                             {lista.length === 0 && (
-                              <tr><td colSpan={8} style={{ padding: "16px 8px", textAlign: "center", color: "#888", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
+                              <tr><td colSpan={8} style={{ padding: "16px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
                             )}
                             {lista.map(it => (
-                              <tr key={it._idx} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                              <tr key={it._idx} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                                 <td style={{ padding: "5px 6px", width: 90 }}>
                                   <span style={{ fontSize: 10, background: it.tipo_item === "produto" ? "#D5E8F5" : "#FBF3E0", color: it.tipo_item === "produto" ? "#0B2D50" : "#7A5200", padding: "2px 6px", borderRadius: 6, fontWeight: 600 }}>{it.tipo_item === "produto" ? "Produto" : "Serviço"}</span>
                                 </td>
@@ -1152,7 +1152,7 @@ export default function ComprasPage() {
                           </tbody>
                           <tfoot>
                             <tr style={{ background: "#F3F6F9" }}>
-                              <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "#555", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
+                              <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
                               <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
                               <td colSpan={2} />
                             </tr>
@@ -1163,10 +1163,10 @@ export default function ComprasPage() {
                     })()}
                     {abaItens === "cc" && (
                       <div>
-                        <div style={{ fontSize: 12, color: "#555", marginBottom: 10 }}>Vincule cada item a um centro de custo:</div>
+                        <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 10 }}>Vincule cada item a um centro de custo:</div>
                         {itens.filter(it => it.nome_item || it.insumo_id).map((it, idx) => (
                           <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8, padding: "8px 10px", background: "#F8FAFD", borderRadius: 7, border: "0.5px solid #D4DCE8" }}>
-                            <div style={{ fontSize: 12, color: "#1a1a1a", display: "flex", alignItems: "center" }}>{it.nome_item || insumos.find(i => i.id === it.insumo_id)?.nome || "Item sem nome"}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-1)", display: "flex", alignItems: "center" }}>{it.nome_item || insumos.find(i => i.id === it.insumo_id)?.nome || "Item sem nome"}</div>
                             <div>
                               <label style={lbl}>Centro de Custo</label>
                               <select style={inp} value={it.centro_custo_id} onChange={e => setItens(prev => prev.map((x, j) => j === idx ? { ...x, centro_custo_id: e.target.value } : x))}>
@@ -1177,7 +1177,7 @@ export default function ComprasPage() {
                           </div>
                         ))}
                         {itens.filter(it => it.nome_item || it.insumo_id).length === 0 && (
-                          <div style={{ color: "#888", fontSize: 12, textAlign: "center", padding: 16 }}>Adicione itens na aba "Itens" primeiro.</div>
+                          <div style={{ color: "var(--text-3)", fontSize: 12, textAlign: "center", padding: 16 }}>Adicione itens na aba "Itens" primeiro.</div>
                         )}
                       </div>
                     )}
@@ -1272,7 +1272,7 @@ export default function ComprasPage() {
 
               {/* Footer */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid #D4DCE8" }}>
-                <div style={{ fontSize: 13, color: "#555" }}>
+                <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                   {f.meio_pagamento === "barter" ? (() => {
                     const cicloB = ciclos.find(c => c.id === f.barter_ciclo_id);
                     const preco  = parseFloat(f.barter_preco_saca) || cicloB?.preco_esperado_sc || 0;
@@ -1282,7 +1282,7 @@ export default function ComprasPage() {
                       <strong style={{ color: "#C9921B", fontSize: 15 }}>
                         {sacas != null ? `≈ ${fmtN(sacas, 2)} sc` : "— sc"}
                       </strong>
-                      <span style={{ color: "#888", fontSize: 12, marginLeft: 8 }}>
+                      <span style={{ color: "var(--text-3)", fontSize: 12, marginLeft: 8 }}>
                         (ref. {fmtBRL(totalItens)})
                       </span>
                     </>;
@@ -1309,13 +1309,13 @@ export default function ComprasPage() {
       {modalEntrega && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalEntrega(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 720, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 720, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Entregas — {nomePessoa(modalEntrega.pedido.fornecedor_id)}</div>
-                <div style={{ fontSize: 11, color: "#555" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
               </div>
-              <button onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
+              <button onClick={() => setModalEntrega(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
             <div style={{ padding: 22 }}>
 
@@ -1324,7 +1324,7 @@ export default function ComprasPage() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
                 <thead><tr style={{ background: "#F3F6F9" }}>
                   {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Status"].map((h, i) => (
-                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
@@ -1334,7 +1334,7 @@ export default function ComprasPage() {
                     const pendente = Math.max(0, it.quantidade - cancelada - entregue);
                     const pct = it.quantidade > 0 ? (entregue / (it.quantidade - cancelada)) * 100 : 0;
                     return (
-                      <tr key={it.id} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                      <tr key={it.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                         <td style={{ padding: "8px 10px" }}>{it.nome_item}</td>
                         <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
                         <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
@@ -1342,10 +1342,10 @@ export default function ComprasPage() {
                         <td style={{ padding: "8px 10px", textAlign: "right", color: pendente > 0 ? "#C9921B" : "#16A34A", fontWeight: 600 }}>{fmtN(pendente)}</td>
                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-                            <div style={{ width: 60, height: 6, background: "#D4DCE8", borderRadius: 3, overflow: "hidden" }}>
+                            <div style={{ width: 60, height: 6, background: "var(--border-table)", borderRadius: 3, overflow: "hidden" }}>
                               <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: pct >= 100 ? "#16A34A" : "#1A5CB8", borderRadius: 3 }} />
                             </div>
-                            <span style={{ fontSize: 10, color: "#555" }}>{Math.round(pct)}%</span>
+                            <span style={{ fontSize: 10, color: "var(--text-2)" }}>{Math.round(pct)}%</span>
                           </div>
                         </td>
                       </tr>
@@ -1387,16 +1387,16 @@ export default function ComprasPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead><tr style={{ background: "#F3F6F9" }}>
                     {["Item","Data","Qtd. Entregue","Obs."].map((h, i) => (
-                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>
                     {entregas.map((e, i) => (
-                      <tr key={e.id} style={{ borderBottom: i < entregas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={e.id} style={{ borderBottom: i < entregas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "7px 10px" }}>{modalEntrega.itens.find(it => it.id === e.item_id)?.nome_item ?? "—"}</td>
                         <td style={{ padding: "7px 10px" }}>{fmtData(e.data_entrega)}</td>
                         <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>{fmtN(e.quantidade_entregue)}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right", color: "#555" }}>{e.observacao ?? "—"}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)" }}>{e.observacao ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1411,25 +1411,25 @@ export default function ComprasPage() {
       {modalRelatorio && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalRelatorio(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 700, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 700, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Relatório do Pedido #{modalRelatorio.pedido.numero}</div>
-                <div style={{ fontSize: 11, color: "#555" }}>{nomePessoa(modalRelatorio.pedido.fornecedor_id)} · {fmtData(modalRelatorio.pedido.data_registro)}</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>{nomePessoa(modalRelatorio.pedido.fornecedor_id)} · {fmtData(modalRelatorio.pedido.data_registro)}</div>
               </div>
-              <button onClick={() => setModalRelatorio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
+              <button onClick={() => setModalRelatorio(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
             <div style={{ padding: 22 }}>
               <div style={secTit}>Itens do Pedido</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead><tr style={{ background: "#F3F6F9" }}>
                   {["Item","Un.","Qtd.","Valor Unit.","Valor Total","Qtd. Entregue","Saldo"].map((h, i) => (
-                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
                   {modalRelatorio.itens.map((it, i) => (
-                    <tr key={it.id} style={{ borderBottom: i < modalRelatorio.itens.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                    <tr key={it.id} style={{ borderBottom: i < modalRelatorio.itens.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                       <td style={{ padding: "8px 10px", fontWeight: 600 }}>{it.nome_item}</td>
                       <td style={{ padding: "8px 10px" }}>{it.unidade}</td>
                       <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmtN(it.quantidade)}</td>
@@ -1442,7 +1442,7 @@ export default function ComprasPage() {
                 </tbody>
                 <tfoot>
                   <tr style={{ background: "#F3F6F9", fontWeight: 600 }}>
-                    <td colSpan={4} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAL PEDIDO</td>
+                    <td colSpan={4} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL PEDIDO</td>
                     <td style={{ padding: "8px 10px", textAlign: "right", color: "#1A4870" }}>{fmtBRL(modalRelatorio.itens.reduce((s, it) => s + (it.valor_total ?? it.quantidade * it.valor_unitario), 0))}</td>
                     <td colSpan={2} />
                   </tr>
@@ -1454,16 +1454,16 @@ export default function ComprasPage() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead><tr style={{ background: "#F3F6F9" }}>
                     {["Item","Data Entrega","Qtd. Entregue","Obs."].map((h, i) => (
-                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>
                     {modalRelatorio.entregas.map((e, i) => (
-                      <tr key={e.id} style={{ borderBottom: i < modalRelatorio.entregas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={e.id} style={{ borderBottom: i < modalRelatorio.entregas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "7px 10px" }}>{modalRelatorio.itens.find(it => it.id === e.item_id)?.nome_item ?? "—"}</td>
                         <td style={{ padding: "7px 10px" }}>{fmtData(e.data_entrega)}</td>
                         <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#16A34A" }}>{fmtN(e.quantidade_entregue)}</td>
-                        <td style={{ padding: "7px 10px", textAlign: "right", color: "#555" }}>{e.observacao ?? "—"}</td>
+                        <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)" }}>{e.observacao ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>

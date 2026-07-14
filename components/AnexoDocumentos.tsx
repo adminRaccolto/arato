@@ -128,12 +128,12 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
       {!semStorage && cotaBytes > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: "#888" }}>Armazenamento usado</span>
-            <span style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>Armazenamento usado</span>
+            <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>
               {fmtStorage(usadoBytes)} / {fmtStorage(cotaBytes)}
             </span>
           </div>
-          <div style={{ background: "#DDE2EE", borderRadius: 4, height: 6, overflow: "hidden" }}>
+          <div style={{ background: "var(--border)", borderRadius: 4, height: 6, overflow: "hidden" }}>
             <div style={{ background: barColor, height: "100%", width: `${cotaPct}%`, transition: "width .3s" }} />
           </div>
         </div>
@@ -181,14 +181,14 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             style={{
-              background: uploading ? "#DDE2EE" : "#1A4870", color: "#fff",
+              background: uploading ? "var(--border)" : "#1A4870", color: "#fff",
               border: "none", borderRadius: 6, padding: "7px 16px", fontSize: 12,
               fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer"
             }}
           >
             {uploading ? "Enviando…" : "↑ Anexar arquivo"}
           </button>
-          <span style={{ fontSize: 11, color: "#888", marginLeft: 10 }}>
+          <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 10 }}>
             PDF, Word, Excel, imagens — máx. 5 MB por arquivo
           </span>
         </div>
@@ -196,9 +196,9 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
 
       {/* Lista de anexos */}
       {loading ? (
-        <div style={{ fontSize: 12, color: "#888", padding: "8px 0" }}>Carregando…</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)", padding: "8px 0" }}>Carregando…</div>
       ) : anexos.length === 0 ? (
-        <div style={{ fontSize: 12, color: "#aaa", padding: "12px 0", textAlign: "center", background: "#F4F6FA", borderRadius: 8 }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "12px 0", textAlign: "center", background: "var(--bg-page)", borderRadius: 8 }}>
           {semStorage ? "Nenhum documento disponível" : "Nenhum documento anexado"}
         </div>
       ) : (
@@ -206,15 +206,15 @@ export default function AnexoDocumentos({ entidade_tipo, entidade_id, fazenda_id
           {anexos.map(a => (
             <div key={a.id} style={{
               display: "flex", alignItems: "center", gap: 10,
-              background: "#F4F6FA", borderRadius: 8, padding: "8px 12px",
-              border: "0.5px solid #DDE2EE"
+              background: "var(--bg-page)", borderRadius: 8, padding: "8px 12px",
+              border: "0.5px solid var(--border)"
             }}>
               <span style={{ fontSize: 20, lineHeight: 1 }}>{iconeMime(a.mime_type)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {a.nome_original}
                 </div>
-                <div style={{ fontSize: 11, color: "#888" }}>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
                   {fmtSize(a.tamanho_bytes)} · {new Date(a.created_at).toLocaleDateString("pt-BR")}
                 </div>
               </div>

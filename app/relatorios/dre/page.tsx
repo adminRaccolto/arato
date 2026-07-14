@@ -487,9 +487,9 @@ export default function DrePage() {
   // ── KPIs ──
   function KpiCard({ label, valor, sub, cor }: { label: string; valor: string; sub?: string; cor?: string }) {
     return (
-      <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 18px", minWidth: 160, flex: 1 }}>
-        <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{label}</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: cor ?? "#1a1a1a", lineHeight: 1.2 }}>{valor}</div>
+      <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 18px", minWidth: 160, flex: 1 }}>
+        <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: cor ?? "var(--text-1)", lineHeight: 1.2 }}>{valor}</div>
         {sub && <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{sub}</div>}
       </div>
     );
@@ -502,8 +502,8 @@ export default function DrePage() {
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
           <span style={{ fontSize: 12, color: "#444" }}>{label}</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
-            {fmtReal(valor)} <span style={{ color: "#888", fontWeight: 400 }}>({fmt(pctVal, 1)}%)</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+            {fmtReal(valor)} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({fmt(pctVal, 1)}%)</span>
           </span>
         </div>
         <div style={{ height: 6, borderRadius: 3, background: "#F0F2F8", overflow: "hidden" }}>
@@ -519,12 +519,12 @@ export default function DrePage() {
   return (
     <>
       <TopNav />
-      <main id="dre-print-content" style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
+      <main id="dre-print-content" style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* ── Cabeçalho ── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>DRE Agrícola</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>DRE Agrícola</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Demonstrativo de Resultado do Exercício — análise econômica por ciclo de produção
             </p>
@@ -535,7 +535,7 @@ export default function DrePage() {
                 const el = document.getElementById("dre-print-content");
                 abrirPreviewImpressao("DRE Agrícola", el?.innerHTML ?? "", "landscape", "Demonstrativo de Resultado do Exercício");
               }}
-              style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", cursor: "pointer", fontSize: 13, color: "#444" }}
+              style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "#444" }}
             >
               Visualizar / PDF
             </button>
@@ -543,12 +543,12 @@ export default function DrePage() {
         </div>
 
         {/* ── Filtros ── */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginBottom: 20, display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
 
           {/* Fazenda (só mostra se múltiplas fazendas) */}
           {todasFazendas.length > 1 && (
             <div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Fazenda</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Fazenda</div>
               <select
                 value={filtroFazenda || fazendaId || ""}
                 onChange={e => { setFiltroFazenda(e.target.value); setAnoLabel(""); setCiclosSel([]); }}
@@ -561,18 +561,18 @@ export default function DrePage() {
           )}
 
           <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Ano Safra</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Ano Safra</div>
             <select
               value={anoLabel}
               onChange={e => { setAnoLabel(e.target.value); setCiclosSel([]); }}
-              style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, minWidth: 140 }}
+              style={{ padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, minWidth: 140 }}
             >
               {anosArr.map(a => <option key={a.id} value={a.ano}>{a.ano}</option>)}
             </select>
           </div>
 
           <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Ciclos / Culturas</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Ciclos / Culturas</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {ciclosArr.map(c => {
                 const sel = ciclosSel.includes(c.id);
@@ -585,7 +585,7 @@ export default function DrePage() {
                       padding: "5px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer",
                       background: sel ? "#1A4870" : "#F3F6F9",
                       color: sel ? "#fff" : "#333",
-                      border: sel ? "none" : "0.5px solid #DDE2EE",
+                      border: sel ? "none" : "0.5px solid var(--border)",
                       fontWeight: sel ? 600 : 400,
                     }}
                   >
@@ -594,7 +594,7 @@ export default function DrePage() {
                   </button>
                 );
               })}
-              {ciclosArr.length === 0 && <span style={{ fontSize: 12, color: "#aaa" }}>Nenhum ciclo neste ano</span>}
+              {ciclosArr.length === 0 && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum ciclo neste ano</span>}
             </div>
           </div>
 
@@ -607,7 +607,7 @@ export default function DrePage() {
                   padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer",
                   background: viewMode === m ? "#1A4870" : "#F3F6F9",
                   color: viewMode === m ? "#fff" : "#333",
-                  border: viewMode === m ? "none" : "0.5px solid #DDE2EE",
+                  border: viewMode === m ? "none" : "0.5px solid var(--border)",
                 }}
               >
                 {m === "consolidado" ? "Consolidado" : "Por Cultura"}
@@ -616,11 +616,11 @@ export default function DrePage() {
           </div>
 
           <div style={{ display: "flex", gap: 6 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555", cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
               <input type="checkbox" checked={showPct} onChange={e => setShowPct(e.target.checked)} />
               % da Receita
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555", cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
               <input type="checkbox" checked={showHa} onChange={e => setShowHa(e.target.checked)} />
               R$/ha
             </label>
@@ -639,7 +639,7 @@ export default function DrePage() {
         </div>
 
         {dres.length === 0 && !loading && (
-          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 40, textAlign: "center", color: "#888", fontSize: 14 }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 14 }}>
             Selecione os ciclos e clique em "Gerar DRE"
           </div>
         )}
@@ -658,7 +658,7 @@ export default function DrePage() {
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
                   {viewMode === "individual" ? `${cultLabel} — Safra ${anoLabel}` : `Safra ${anoLabel} — Consolidado`}
-                  {" "}<span style={{ fontWeight: 400, color: "#888", fontSize: 12 }}>{fmt(d.area_ha)} ha</span>
+                  {" "}<span style={{ fontWeight: 400, color: "var(--text-3)", fontSize: 12 }}>{fmt(d.area_ha)} ha</span>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <KpiCard label="Receita Total" valor={fmtReal(d.receita_total)} sub={`${fmtReal(d.receita_ha)}/ha`} cor="#1A4870" />
@@ -673,12 +673,12 @@ export default function DrePage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 16 }}>
 
                 {/* ── Tabela DRE ── */}
-                <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", gap: 12 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", flex: 1 }}>Demonstrativo de Resultado</span>
-                    <span style={{ fontSize: 11, color: "#888", minWidth: 120, textAlign: "right" }}>Valor (R$)</span>
-                    {showPct && <span style={{ fontSize: 11, color: "#888", minWidth: 60, textAlign: "right" }}>% Rec. Líq.</span>}
-                    {showHa  && <span style={{ fontSize: 11, color: "#888", minWidth: 80, textAlign: "right" }}>R$/ha</span>}
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", gap: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", flex: 1 }}>Demonstrativo de Resultado</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 120, textAlign: "right" }}>Valor (R$)</span>
+                    {showPct && <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 60, textAlign: "right" }}>% Rec. Líq.</span>}
+                    {showHa  && <span style={{ fontSize: 11, color: "var(--text-3)", minWidth: 80, textAlign: "right" }}>R$/ha</span>}
                   </div>
 
                   <div>
@@ -699,7 +699,7 @@ export default function DrePage() {
                         : isSubtotal ? "#1A4870"
                         : isHeader ? "#333"
                         : isZero ? "#ccc"
-                        : "#1a1a1a";
+                        : "var(--text-1)";
 
                       return (
                         <div
@@ -713,7 +713,7 @@ export default function DrePage() {
                             borderTop: (isSubtotal || isHeader) ? "0.5px solid #E8EDF5" : "none",
                           }}
                         >
-                          <span style={{ fontSize: 10, color: "#aaa", minWidth: 32 }}>{l.codigo}</span>
+                          <span style={{ fontSize: 10, color: "var(--text-muted)", minWidth: 32 }}>{l.codigo}</span>
                           <span style={{ flex: 1, fontSize: isSubtotal || isHeader ? 13 : 12.5, fontWeight: isSubtotal || isHeader ? 700 : 400, color: textColor }}>
                             {l.label}
                           </span>
@@ -725,7 +725,7 @@ export default function DrePage() {
                             {isZero ? "—" : `${isMinus ? "(" : ""}R$ ${fmt(Math.abs(l.valor))}${isMinus ? ")" : ""}`}
                           </span>
                           {showPct && (
-                            <span style={{ fontSize: 12, color: isZero ? "#ddd" : "#888", minWidth: 60, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                            <span style={{ fontSize: 12, color: isZero ? "#ddd" : "var(--text-3)", minWidth: 60, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                               {isZero ? "—" : `${fmt(Math.abs(l.percentual), 1)}%`}
                             </span>
                           )}
@@ -744,8 +744,8 @@ export default function DrePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
                   {/* Composição de custos */}
-                  <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 12 }}>Composição de Custos</div>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 12 }}>Composição de Custos</div>
                     <BarraCusto label="Fertilizantes"          valor={d.fertilizantes}          total={custoTotal} cor="#1A4870" />
                     <BarraCusto label="Defensivos"             valor={d.defensivos}             total={custoTotal} cor="#2176AE" />
                     <BarraCusto label="Sementes"               valor={d.sementes}               total={custoTotal} cor="#378ADD" />
@@ -756,8 +756,8 @@ export default function DrePage() {
                   </div>
 
                   {/* Ponto de equilíbrio */}
-                  <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>Ponto de Equilíbrio</div>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 10 }}>Ponto de Equilíbrio</div>
                     {d.preco_medio_sc > 0 ? (() => {
                       const peScTotal = custoTotal / d.preco_medio_sc;
                       const peHa = d.area_ha > 0 ? peScTotal / d.area_ha : 0;
@@ -777,7 +777,7 @@ export default function DrePage() {
                             <span style={{ fontSize: 12, color: "#666" }}>Produtividade real</span>
                             <span style={{ fontSize: 13, fontWeight: 700 }}>{fmt(prodReal)} sc/ha</span>
                           </div>
-                          <div style={{ height: 1, background: "#EEF1F6", margin: "8px 0" }} />
+                          <div style={{ height: 1, background: "var(--bg-tag)", margin: "8px 0" }} />
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ fontSize: 12, color: "#666" }}>Folga acima do PE</span>
                             <span style={{ fontSize: 13, fontWeight: 700, color: folga >= 0 ? "#16A34A" : "#E24B4A" }}>
@@ -795,14 +795,14 @@ export default function DrePage() {
                               }} />
                             </div>
                             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
-                              <span style={{ fontSize: 10, color: "#aaa" }}>0</span>
-                              <span style={{ fontSize: 10, color: "#aaa" }}>{fmt(prodReal)} sc/ha</span>
+                              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>0</span>
+                              <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{fmt(prodReal)} sc/ha</span>
                             </div>
                           </div>
                         </>
                       );
                     })() : (
-                      <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: "10px 0" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", padding: "10px 0" }}>
                         Informe o preço médio no orçamento
                       </div>
                     )}
@@ -841,15 +841,15 @@ export default function DrePage() {
 
         {/* ── Comparativo lado a lado (individual, múltiplos ciclos) ── */}
         {viewMode === "individual" && dres.length > 1 && (
-          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px", marginTop: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 14 }}>Comparativo entre Culturas</div>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px", marginTop: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 14 }}>Comparativo entre Culturas</div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "#555", fontSize: 12, border: "0.5px solid #EEF1F6" }}>Indicador</th>
+                    <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>Indicador</th>
                     {dres.map(d => (
-                      <th key={d.ciclo.id} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontSize: 12, border: "0.5px solid #EEF1F6" }}>
+                      <th key={d.ciclo.id} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>
                         {d.ciclo.cultura}
                       </th>
                     ))}
@@ -874,12 +874,12 @@ export default function DrePage() {
                     { label: "Preço Médio",         fn: (d: DreData) => fmtReal(d.preco_medio_sc) + "/sc" },
                   ].map((row, ri) => (
                     <tr key={ri} style={{ background: ri % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                      <td style={{ padding: "7px 12px", fontSize: 12, fontWeight: row.bold ? 700 : 400, color: "#333", border: "0.5px solid #EEF1F6" }}>{row.label}</td>
+                      <td style={{ padding: "7px 12px", fontSize: 12, fontWeight: row.bold ? 700 : 400, color: "#333", border: "0.5px solid var(--bg-tag)" }}>{row.label}</td>
                       {dres.map(d => {
                         const val = row.fn(d);
                         const isNeg = val.startsWith("-") || val.startsWith("(");
                         return (
-                          <td key={d.ciclo.id} style={{ padding: "7px 12px", fontSize: 12, fontWeight: row.bold ? 700 : 400, textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.bold ? (isNeg ? "#E24B4A" : "#1A4870") : "#1a1a1a", border: "0.5px solid #EEF1F6" }}>
+                          <td key={d.ciclo.id} style={{ padding: "7px 12px", fontSize: 12, fontWeight: row.bold ? 700 : 400, textAlign: "right", fontVariantNumeric: "tabular-nums", color: row.bold ? (isNeg ? "#E24B4A" : "#1A4870") : "var(--text-1)", border: "0.5px solid var(--bg-tag)" }}>
                             {val}
                           </td>
                         );

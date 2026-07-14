@@ -101,7 +101,7 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
         <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center", color: "#444" }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>◎</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#555", marginBottom: 6 }}>Página não encontrada</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Página não encontrada</div>
             <div style={{ fontSize: 12 }}>Este módulo não existe.</div>
           </div>
         </main>
@@ -120,9 +120,9 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>{info.titulo}</h1>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>{info.titulo}</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>{info.descricao}</p>
           </div>
           <span style={{ background: "#FBF0D8", color: "#7A5A12", fontSize: 11, padding: "5px 12px", borderRadius: 20, border: "0.5px solid #C9921B50" }}>
@@ -133,12 +133,12 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
         <div style={{ padding: "16px 22px", flex: 1, overflowY: "auto" }}>
 
           {/* Banner */}
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "28px 32px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "28px 32px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24 }}>
             <div style={{ width: 64, height: 64, background: "#D5E8F5", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
               {info.icone}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)", marginBottom: 6 }}>
                 Módulo {info.titulo} em construção
               </div>
               <div style={{ fontSize: 13, color: "#666", lineHeight: 1.6, marginBottom: 10 }}>
@@ -158,9 +158,9 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
           </div>
 
           {/* Lista de funcionalidades */}
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
             <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #DEE5EE" }}>
-              <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>O que este módulo vai ter</span>
+              <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>O que este módulo vai ter</span>
             </div>
             {info.funcionalidades.map((f, i) => (
               <div
@@ -181,8 +181,8 @@ export default function ModuloEmConstrucao({ params }: { params: Promise<{ modul
                   {f.auto ? "⟳" : "◈"}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 2 }}>{f.nome}</div>
-                  <div style={{ fontSize: 11, color: "#555" }}>{f.descricao}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 2 }}>{f.nome}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>{f.descricao}</div>
                 </div>
                 <span style={{
                   fontSize: 10, padding: "2px 8px", borderRadius: 8, flexShrink: 0,

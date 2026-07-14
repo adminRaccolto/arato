@@ -134,9 +134,9 @@ export default function DadosAdminPage() {
 
   if (!raccotloGestor) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "#888" }}>
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-        <div style={{ fontWeight: 600, fontSize: 16, color: "#1a1a1a" }}>Acesso restrito a Gestores</div>
+        <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text-1)" }}>Acesso restrito a Gestores</div>
       </div>
     );
   }
@@ -296,7 +296,7 @@ export default function DadosAdminPage() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Dados & Limpeza de Clientes</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Dados & Limpeza de Clientes</h1>
           <span style={{ padding: "2px 10px", background: "#E24B4A", color: "white", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>ZONA DE PERIGO</span>
         </div>
         <p style={{ margin: 0, fontSize: 13, color: "#666" }}>Ações irreversíveis de gestão de dados. Todas as exclusões são permanentes e não podem ser desfeitas.</p>
@@ -309,10 +309,10 @@ export default function DadosAdminPage() {
           { id: "limpar_dados"    as Aba, icon: "🧹", label: "Limpar Dados",     desc: "Selecione exatamente quais dados excluir" },
         ]).map(a => (
           <button key={a.id} onClick={() => { setAba(a.id); setResultadoCliente(null); setResultadoLimpeza(null); }}
-            style={{ padding: "12px 20px", borderRadius: 10, cursor: "pointer", border: `2px solid ${aba === a.id ? "#E24B4A" : "#DDE2EE"}`, background: aba === a.id ? "#FFF0F0" : "white", textAlign: "left", minWidth: 220 }}>
+            style={{ padding: "12px 20px", borderRadius: 10, cursor: "pointer", border: `2px solid ${aba === a.id ? "#E24B4A" : "var(--border)"}`, background: aba === a.id ? "#FFF0F0" : "white", textAlign: "left", minWidth: 220 }}>
             <div style={{ fontSize: 18, marginBottom: 4 }}>{a.icon}</div>
-            <div style={{ fontWeight: 700, fontSize: 13, color: aba === a.id ? "#E24B4A" : "#1a1a1a" }}>{a.label}</div>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{a.desc}</div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: aba === a.id ? "#E24B4A" : "var(--text-1)" }}>{a.label}</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{a.desc}</div>
           </button>
         ))}
       </div>
@@ -321,21 +321,21 @@ export default function DadosAdminPage() {
       {aba === "excluir_cliente" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ ...card, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontWeight: 600, fontSize: 12, color: "#555", whiteSpace: "nowrap" }}>1. Cliente</span>
+            <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>1. Cliente</span>
             <select value={contaSelecionada}
               onChange={e => { setContaSelecionada(e.target.value); setConfirmaTexto(""); setResultadoCliente(null); }}
               style={{ flex: 1, padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
               <option value="">— selecione —</option>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.fazendas.length} faz.)</option>)}
             </select>
-            <button onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "#555" }}>
+            <button onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
               {carregandoContas ? "⏳" : "↺"}
             </button>
           </div>
 
           <div>
             {!contaExcluirObj ? (
-              <div style={{ ...card, padding: 40, textAlign: "center", color: "#aaa", fontSize: 14 }}>Selecione um cliente à esquerda.</div>
+              <div style={{ ...card, padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>Selecione um cliente à esquerda.</div>
             ) : (
               <>
                 <div style={{ background: "#FFF0F0", border: "1.5px solid #E24B4A", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
@@ -355,12 +355,12 @@ export default function DadosAdminPage() {
                   <div style={{ marginTop: 10, fontSize: 11, color: "#999" }}>Usuários de autenticação NÃO são excluídos — remova-os em Supabase → Authentication se necessário.</div>
                 </div>
                 <div style={{ ...card, padding: "18px 22px" }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 8 }}>Para confirmar, digite exatamente o nome da conta:</div>
-                  <code style={{ display: "block", background: "#F4F6FA", padding: "6px 12px", borderRadius: 6, fontSize: 14, color: "#1A4870", fontWeight: 700, marginBottom: 10 }}>{contaExcluirObj.nome}</code>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>Para confirmar, digite exatamente o nome da conta:</div>
+                  <code style={{ display: "block", background: "var(--bg-page)", padding: "6px 12px", borderRadius: 6, fontSize: 14, color: "#1A4870", fontWeight: 700, marginBottom: 10 }}>{contaExcluirObj.nome}</code>
                   <input value={confirmaTexto} onChange={e => setConfirmaTexto(e.target.value)} placeholder="Digite o nome da conta aqui..."
-                    style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaTexto === contaExcluirObj.nome ? "#E24B4A" : "#DDE2EE"}`, borderRadius: 8, outline: "none" }} />
+                    style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaTexto === contaExcluirObj.nome ? "#E24B4A" : "var(--border)"}`, borderRadius: 8, outline: "none" }} />
                   <button onClick={excluirClienteCompleto} disabled={confirmaTexto !== contaExcluirObj.nome || deletandoCliente}
-                    style={{ marginTop: 14, width: "100%", padding: "11px 0", borderRadius: 8, border: "none", background: confirmaTexto !== contaExcluirObj.nome ? "#DDE2EE" : "#E24B4A", color: confirmaTexto !== contaExcluirObj.nome ? "#888" : "white", fontWeight: 700, fontSize: 14, cursor: confirmaTexto !== contaExcluirObj.nome ? "default" : "pointer" }}>
+                    style={{ marginTop: 14, width: "100%", padding: "11px 0", borderRadius: 8, border: "none", background: confirmaTexto !== contaExcluirObj.nome ? "var(--border)" : "#E24B4A", color: confirmaTexto !== contaExcluirObj.nome ? "var(--text-3)" : "white", fontWeight: 700, fontSize: 14, cursor: confirmaTexto !== contaExcluirObj.nome ? "default" : "pointer" }}>
                     {deletandoCliente ? "⏳ Excluindo..." : `🗑️ Excluir "${contaExcluirObj.nome}" permanentemente`}
                   </button>
                 </div>
@@ -385,7 +385,7 @@ export default function DadosAdminPage() {
           {/* Painel esquerdo */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ ...card, padding: "14px 16px" }}>
-              <div style={{ fontWeight: 600, fontSize: 12, color: "#555", marginBottom: 6 }}>1. Cliente</div>
+              <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>1. Cliente</div>
               <select value={contaLimpar}
                 onChange={e => { setContaLimpar(e.target.value); setFazendaLimpar(""); setContagens({}); setSubSelecionados(new Set()); setResultadoLimpeza(null); }}
                 style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
@@ -396,7 +396,7 @@ export default function DadosAdminPage() {
 
             {contaLimparObj && (
               <div style={{ ...card, padding: "14px 16px" }}>
-                <div style={{ fontWeight: 600, fontSize: 12, color: "#555", marginBottom: 6 }}>2. Fazenda</div>
+                <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>2. Fazenda</div>
                 <select value={fazendaLimpar}
                   onChange={e => { setFazendaLimpar(e.target.value); setContagens({}); setSubSelecionados(new Set()); setResultadoLimpeza(null); }}
                   style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
@@ -445,7 +445,7 @@ export default function DadosAdminPage() {
           {/* Painel direito — accordion */}
           <div>
             {!fazendaLimpar ? (
-              <div style={{ ...card, padding: 40, textAlign: "center", color: "#aaa", fontSize: 13 }}>
+              <div style={{ ...card, padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
                 Selecione cliente e fazenda para ver os grupos disponíveis.
               </div>
             ) : (
@@ -453,18 +453,18 @@ export default function DadosAdminPage() {
                 {/* Header */}
                 <div style={{ ...card, padding: "12px 18px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{fazLimparNome}</div>
-                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{fazLimparNome}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                       {Object.keys(contagens).length > 0 ? "Clique em um grupo para expandir e selecionar itens" : "Clique em ↺ Carregar contagens"}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={selecionarTudo}
-                      style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "#555" }}>
+                      style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                       Marcar tudo
                     </button>
                     <button onClick={() => { setSubSelecionados(new Set()); setGruposExpandidos(new Set()); }}
-                      style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "#555" }}>
+                      style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                       Limpar
                     </button>
                   </div>
@@ -481,7 +481,7 @@ export default function DadosAdminPage() {
                     const algumSelecionado = subKeys.some(k => subSelecionados.has(k));
 
                     return (
-                      <div key={grupo.id} style={{ border: `1.5px solid ${algumSelecionado ? grupo.cor : expandido ? grupo.cor + "60" : "#DDE2EE"}`, borderRadius: 10, overflow: "hidden", background: "white" }}>
+                      <div key={grupo.id} style={{ border: `1.5px solid ${algumSelecionado ? grupo.cor : expandido ? grupo.cor + "60" : "var(--border)"}`, borderRadius: 10, overflow: "hidden", background: "white" }}>
 
                         {/* Cabeçalho do grupo — clica para expandir */}
                         <div
@@ -495,14 +495,14 @@ export default function DadosAdminPage() {
                           <span style={{ fontSize: 16 }}>{grupo.icon}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontWeight: 700, fontSize: 13, color: algumSelecionado ? grupo.cor : "#1a1a1a" }}>{grupo.label}</span>
+                              <span style={{ fontWeight: 700, fontSize: 13, color: algumSelecionado ? grupo.cor : "var(--text-1)" }}>{grupo.label}</span>
                               {qtdSelecionados > 0 && (
                                 <span style={{ padding: "1px 7px", background: grupo.cor, color: "white", borderRadius: 12, fontSize: 10, fontWeight: 700 }}>
                                   {qtdSelecionados}/{grupo.subitens.length}
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
                               {grupo.subitens.length} categoria{grupo.subitens.length !== 1 ? "s" : ""}
                               {Object.keys(contagens).length > 0 && qtdTotal > 0 && (
                                 <span style={{ marginLeft: 6, color: grupo.cor, fontWeight: 600 }}>· {qtdTotal.toLocaleString("pt-BR")} registros</span>
@@ -518,7 +518,7 @@ export default function DadosAdminPage() {
                                 {todosSelecionados ? "Desmarcar todos" : "Selecionar todos"}
                               </button>
                             )}
-                            <span style={{ color: "#aaa", fontSize: 14, transform: expandido ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>›</span>
+                            <span style={{ color: "var(--text-muted)", fontSize: 14, transform: expandido ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}>›</span>
                           </div>
                         </div>
 
@@ -543,14 +543,14 @@ export default function DadosAdminPage() {
                                   }}
                                 >
                                   {/* Checkbox */}
-                                  <div style={{ marginTop: 1, width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? grupo.cor : "#DDE2EE"}`, background: sel ? grupo.cor : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <div style={{ marginTop: 1, width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? grupo.cor : "var(--border)"}`, background: sel ? grupo.cor : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     {sel && <span style={{ color: "white", fontSize: 10 }}>✓</span>}
                                   </div>
 
                                   <span style={{ fontSize: 14, flexShrink: 0 }}>{sub.icon}</span>
 
                                   <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: sel ? 600 : 400, fontSize: 13, color: sel ? grupo.cor : "#1a1a1a" }}>{sub.label}</div>
+                                    <div style={{ fontWeight: sel ? 600 : 400, fontSize: 13, color: sel ? grupo.cor : "var(--text-1)" }}>{sub.label}</div>
                                     {sub.aviso && sel && (
                                       <div style={{ marginTop: 4, padding: "4px 8px", background: "#FBF3E0", borderRadius: 5, fontSize: 11, color: "#7A5A12", lineHeight: 1.4 }}>
                                         ⚠️ {sub.aviso}
@@ -559,11 +559,11 @@ export default function DadosAdminPage() {
                                   </div>
 
                                   {qtd !== null ? (
-                                    <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 700, background: qtd > 0 ? (sel ? grupo.cor : grupo.bg) : "#F4F6FA", color: qtd > 0 ? (sel ? "white" : grupo.cor) : "#aaa", border: `0.5px solid ${qtd > 0 ? grupo.cor + "40" : "#DDE2EE"}`, flexShrink: 0 }}>
+                                    <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 700, background: qtd > 0 ? (sel ? grupo.cor : grupo.bg) : "var(--bg-page)", color: qtd > 0 ? (sel ? "white" : grupo.cor) : "var(--text-muted)", border: `0.5px solid ${qtd > 0 ? grupo.cor + "40" : "var(--border)"}`, flexShrink: 0 }}>
                                       {qtd.toLocaleString("pt-BR")}
                                     </span>
                                   ) : carregandoContagens ? (
-                                    <span style={{ fontSize: 11, color: "#aaa" }}>...</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>...</span>
                                   ) : null}
                                 </div>
                               );
@@ -578,13 +578,13 @@ export default function DadosAdminPage() {
                 {/* Confirmação */}
                 {subSelecionados.size > 0 && (
                   <div style={{ ...card, border: "1.5px solid #E24B4A", padding: "18px 22px" }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 8 }}>
-                      Digite <code style={{ background: "#F4F6FA", padding: "2px 7px", borderRadius: 4, color: "#E24B4A", fontWeight: 700 }}>CONFIRMO</code> para habilitar:
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 8 }}>
+                      Digite <code style={{ background: "var(--bg-page)", padding: "2px 7px", borderRadius: 4, color: "#E24B4A", fontWeight: 700 }}>CONFIRMO</code> para habilitar:
                     </div>
                     <input value={confirmaDeletar} onChange={e => setConfirmaDeletar(e.target.value)} placeholder="Digite CONFIRMO"
-                      style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaDeletar === "CONFIRMO" ? "#E24B4A" : "#DDE2EE"}`, borderRadius: 8, outline: "none" }} />
+                      style={{ width: "100%", padding: "9px 12px", fontSize: 13, boxSizing: "border-box", border: `1.5px solid ${confirmaDeletar === "CONFIRMO" ? "#E24B4A" : "var(--border)"}`, borderRadius: 8, outline: "none" }} />
                     <button onClick={executarLimpeza} disabled={confirmaDeletar !== "CONFIRMO" || deletandoDados}
-                      style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 8, border: "none", background: confirmaDeletar !== "CONFIRMO" ? "#DDE2EE" : "#E24B4A", color: confirmaDeletar !== "CONFIRMO" ? "#888" : "white", fontWeight: 700, fontSize: 14, cursor: confirmaDeletar !== "CONFIRMO" ? "default" : "pointer" }}>
+                      style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 8, border: "none", background: confirmaDeletar !== "CONFIRMO" ? "var(--border)" : "#E24B4A", color: confirmaDeletar !== "CONFIRMO" ? "var(--text-3)" : "white", fontWeight: 700, fontSize: 14, cursor: confirmaDeletar !== "CONFIRMO" ? "default" : "pointer" }}>
                       {deletandoDados
                         ? "⏳ Limpando..."
                         : `🧹 Limpar ${subSelecionados.size} item${subSelecionados.size !== 1 ? "s" : ""} · ${totalSelecionado.toLocaleString("pt-BR")} registros`}
@@ -595,22 +595,22 @@ export default function DadosAdminPage() {
                 {/* Resultado */}
                 {resultadoLimpeza && (
                   <div style={{ marginTop: 14, ...card, overflow: "hidden" }}>
-                    <div style={{ padding: "10px 18px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>Resultado da limpeza</div>
+                    <div style={{ padding: "10px 18px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Resultado da limpeza</div>
                     {resultadoLimpeza.map((r, i) => (
                       <div key={i} style={{ padding: "10px 18px", borderBottom: "0.5px solid #DDE2EE", display: "flex", gap: 10, alignItems: "flex-start" }}>
                         <span style={{ fontSize: 14 }}>{r.ok ? "✅" : "⚠️"}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 13, color: r.ok ? "#15803D" : "#C9921B" }}>
                             {r.label}
-                            {r.deletados > 0 && <span style={{ fontWeight: 400, color: "#888", marginLeft: 8 }}>— {r.deletados.toLocaleString("pt-BR")} registros removidos</span>}
+                            {r.deletados > 0 && <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>— {r.deletados.toLocaleString("pt-BR")} registros removidos</span>}
                           </div>
                           {r.erros.map((e, j) => <div key={j} style={{ fontSize: 11, color: "#E24B4A", marginTop: 2 }}>✗ {e}</div>)}
                         </div>
                       </div>
                     ))}
-                    <div style={{ padding: "10px 18px", background: "#F4F6FA", display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                    <div style={{ padding: "10px 18px", background: "var(--bg-page)", display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                       <span style={{ color: "#16A34A", fontWeight: 600 }}>✓ {resultadoLimpeza.filter(r => r.ok).length}/{resultadoLimpeza.length} itens limpos</span>
-                      <span style={{ color: "#888" }}>{resultadoLimpeza.reduce((acc, r) => acc + r.deletados, 0).toLocaleString("pt-BR")} registros removidos</span>
+                      <span style={{ color: "var(--text-3)" }}>{resultadoLimpeza.reduce((acc, r) => acc + r.deletados, 0).toLocaleString("pt-BR")} registros removidos</span>
                     </div>
                   </div>
                 )}

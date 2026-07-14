@@ -93,7 +93,7 @@ export default function MapaLeaflet({ talhoes, selecionado, onSelect, corCultura
           <table style="width:100%;border-collapse:collapse;font-size:12px;">
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Área</td><td style="font-weight:600;">${t.area_ha?.toFixed(2)} ha</td></tr>
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Solo</td><td>${t.tipo_solo ?? "—"}</td></tr>
-            <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Cultura</td><td style="font-weight:600;color:${t.plantio ? cor : "#aaa"}">${t.plantio?.cultura ?? "Sem plantio"}</td></tr>
+            <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Cultura</td><td style="font-weight:600;color:${t.plantio ? cor : "var(--text-muted)"}">${t.plantio?.cultura ?? "Sem plantio"}</td></tr>
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Variedade</td><td>${t.plantio?.variedade ?? "—"}</td></tr>
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Plantio</td><td>${fmtData(t.plantio?.data_plantio)}</td></tr>
             <tr><td style="color:#888;padding:3px 0;padding-right:12px;">Colheita prev.</td><td>${fmtData(t.plantio?.data_colheita_prevista)}</td></tr>

@@ -89,12 +89,12 @@ export default function SeletorCliente() {
 
       {/* Cabeçalho */}
       <div style={{
-        background: "#fff", borderBottom: "0.5px solid #DDE2EE",
+        background: "var(--bg-card)", borderBottom: "0.5px solid #DDE2EE",
         padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src={logoUrl} alt="Arato" style={{ height: 32 }} />
-          <span style={{ fontSize: 13, color: "#888" }}>Acesso interno Raccolto</span>
+          <span style={{ fontSize: 13, color: "var(--text-3)" }}>Acesso interno Raccolto</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button
@@ -105,7 +105,7 @@ export default function SeletorCliente() {
           </button>
           <button
             onClick={() => supabase.auth.signOut()}
-            style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#555" }}
+            style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}
           >
             Sair
           </button>
@@ -114,7 +114,7 @@ export default function SeletorCliente() {
 
       {/* Conteúdo */}
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-1)", margin: "0 0 4px" }}>
           Selecionar cliente
         </h1>
         <p style={{ fontSize: 13, color: "#666", margin: "0 0 24px" }}>
@@ -129,18 +129,18 @@ export default function SeletorCliente() {
           style={{
             width: "100%", padding: "10px 14px", marginBottom: 24,
             border: "0.5px solid #D4DCE8", borderRadius: 8,
-            fontSize: 13, outline: "none", boxSizing: "border-box", background: "#fff",
+            fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-card)",
           }}
         />
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 13 }}>
+          <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>
             Carregando clientes...
           </div>
         ) : lista.length === 0 ? (
           <div style={{
-            textAlign: "center", padding: 60, color: "#888", fontSize: 13,
-            background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE",
+            textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13,
+            background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE",
           }}>
             {busca
               ? "Nenhum cliente encontrado para essa busca."
@@ -158,7 +158,7 @@ export default function SeletorCliente() {
                   key={c.conta_id}
                   onClick={() => acessarCliente(c)}
                   style={{
-                    background: "#fff",
+                    background: "var(--bg-card)",
                     border: "0.5px solid #DDE2EE",
                     borderRadius: 12,
                     padding: "16px",
@@ -175,7 +175,7 @@ export default function SeletorCliente() {
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)";
-                    e.currentTarget.style.borderColor = "#DDE2EE";
+                    e.currentTarget.style.borderColor = "var(--border)";
                     e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
@@ -190,10 +190,10 @@ export default function SeletorCliente() {
                       {initiais(nomeExibido)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {nomeExibido}
                       </div>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         {multiFazendas
                           ? `${c.fazendas.length} fazendas · ${c.area_total.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} ha`
                           : `${c.fazendas[0]?.nome ?? ""}${c.fazendas[0]?.municipio ? ` · ${c.fazendas[0].municipio}/${c.fazendas[0].estado ?? ""}` : ""}`
@@ -208,7 +208,7 @@ export default function SeletorCliente() {
                       {c.fazendas.slice(0, 3).map(f => (
                         <span key={f.id} style={{
                           fontSize: 10, padding: "2px 7px",
-                          background: "#F4F6FA", color: "#555",
+                          background: "var(--bg-page)", color: "var(--text-2)",
                           borderRadius: 99, border: "0.5px solid #DDE2EE",
                         }}>{f.nome}</span>
                       ))}

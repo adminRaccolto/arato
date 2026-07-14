@@ -56,9 +56,9 @@ export default function LearningPage() {
             themeVariables: {
               primaryColor: "#D5E8F5",
               primaryBorderColor: "#1A4870",
-              primaryTextColor: "#1a1a1a",
-              lineColor: "#555555",
-              background: "#ffffff",
+              primaryTextColor: "var(--text-1)",
+              lineColor: "var(--text-2)",
+              background: "var(--bg-card)",
               mainBkg: "#D5E8F5",
               nodeBorder: "#1A4870",
               fontFamily: "system-ui, -apple-system, sans-serif",
@@ -119,16 +119,16 @@ export default function LearningPage() {
     if (tipo === "video") return "#E24B4A";
     if (tipo === "pratica") return "#C9921B";
     if (tipo === "quiz") return "#378ADD";
-    return "#555";
+    return "var(--text-2)";
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 16px" }}>
 
         {/* Header com progresso */}
-        <div style={{ background: "#fff", borderRadius: 12, padding: 24, marginBottom: 20, border: "0.5px solid #DDE2EE" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 24, marginBottom: 20, border: "0.5px solid #DDE2EE" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1A4870", margin: 0 }}>Arato Academy</h1>
@@ -138,7 +138,7 @@ export default function LearningPage() {
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 28, fontWeight: 700, color: pct === 100 ? "#16A34A" : "#1A4870" }}>{pct}%</div>
-              <div style={{ fontSize: 12, color: "#888" }}>{completedIds.size} de {total} lições concluídas</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>{completedIds.size} de {total} lições concluídas</div>
             </div>
           </div>
           {/* Barra de progresso */}
@@ -160,9 +160,9 @@ export default function LearningPage() {
                 onClick={() => setVista(v)}
                 style={{
                   background: vista === v ? "#1A4870" : "transparent",
-                  color: vista === v ? "#fff" : "#555",
+                  color: vista === v ? "#fff" : "var(--text-2)",
                   border: "0.5px solid",
-                  borderColor: vista === v ? "#1A4870" : "#DDE2EE",
+                  borderColor: vista === v ? "#1A4870" : "var(--border)",
                   borderRadius: 8,
                   padding: "6px 16px",
                   fontSize: 13,
@@ -174,7 +174,7 @@ export default function LearningPage() {
               </button>
             ))}
             {vista === "fluxogramas" && (
-              <span style={{ marginLeft: 12, fontSize: 12, color: "#888", alignSelf: "center" }}>
+              <span style={{ marginLeft: 12, fontSize: 12, color: "var(--text-3)", alignSelf: "center" }}>
                 Azul = sistema automático · Mostarda = ação do usuário · Vermelho = alerta preditivo
               </span>
             )}
@@ -186,7 +186,7 @@ export default function LearningPage() {
           <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20, alignItems: "start" }}>
 
             {/* Lista de fluxos */}
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Processos do Sistema</div>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>{FLUXOS_BPMN.length} fluxos mapeados</div>
@@ -204,10 +204,10 @@ export default function LearningPage() {
                 >
                   <span style={{ fontSize: 20, flexShrink: 0 }}>{f.icone}</span>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: fluxoAtivo?.id === f.id ? 600 : 400, color: "#1a1a1a", marginBottom: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: fluxoAtivo?.id === f.id ? 600 : 400, color: "var(--text-1)", marginBottom: 2 }}>
                       {f.titulo}
                     </div>
-                    <div style={{ fontSize: 11, color: "#888", lineHeight: 1.4 }}>{f.descricao}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.4 }}>{f.descricao}</div>
                     <div style={{ marginTop: 4 }}>
                       <span style={{
                         fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 99,
@@ -222,13 +222,13 @@ export default function LearningPage() {
             {/* Área do diagrama */}
             <div>
               {fluxoAtivo ? (
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
                   {/* Cabeçalho */}
                   <div style={{ padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 22 }}>{fluxoAtivo.icone}</span>
-                        <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>{fluxoAtivo.titulo}</h2>
+                        <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>{fluxoAtivo.titulo}</h2>
                         <span style={{
                           fontSize: 11, padding: "2px 8px", borderRadius: 99, fontWeight: 600,
                           background: fluxoAtivo.corModulo + "20", color: fluxoAtivo.corModulo,
@@ -239,8 +239,8 @@ export default function LearningPage() {
                     <button
                       onClick={() => window.print()}
                       style={{
-                        background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8,
-                        padding: "7px 14px", fontSize: 12, color: "#555", cursor: "pointer", flexShrink: 0,
+                        background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                        padding: "7px 14px", fontSize: 12, color: "var(--text-2)", cursor: "pointer", flexShrink: 0,
                       }}
                     >
                       🖨️ Imprimir
@@ -250,7 +250,7 @@ export default function LearningPage() {
                   {/* Diagrama Mermaid */}
                   <div style={{ padding: "24px", overflowX: "auto", minHeight: 200 }}>
                     {carregandoFluxo ? (
-                      <div style={{ textAlign: "center", padding: 48, color: "#888", fontSize: 13 }}>
+                      <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)", fontSize: 13 }}>
                         Renderizando diagrama...
                       </div>
                     ) : (
@@ -282,16 +282,16 @@ export default function LearningPage() {
 
                   {/* Legenda */}
                   <div style={{ padding: "12px 24px 20px", borderTop: "0.5px solid #DDE2EE" }}>
-                    <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Legenda</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Legenda</div>
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                       {[
                         { cor: "#C9921B", bg: "#FBF3E0", label: "Ação do Usuário" },
                         { cor: "#1A4870", bg: "#D5E8F5", label: "Sistema Automático" },
                         { cor: "#E24B4A", bg: "#FCEBEB", label: "Alerta Preditivo" },
                         { cor: "#16A34A", bg: "#EAF3DE", label: "Estado Final" },
-                        { cor: "#999",    bg: "#F4F6FA", label: "Decisão (Gateway)" },
+                        { cor: "#999",    bg: "var(--bg-page)", label: "Decisão (Gateway)" },
                       ].map(item => (
-                        <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#555" }}>
+                        <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-2)" }}>
                           <div style={{ width: 14, height: 14, borderRadius: 3, background: item.bg, border: `1.5px solid ${item.cor}` }} />
                           {item.label}
                         </div>
@@ -300,7 +300,7 @@ export default function LearningPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 56, textAlign: "center" }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 56, textAlign: "center" }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
                   <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Fluxogramas BPMN</div>
                   <div style={{ fontSize: 14, color: "#666", maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>
@@ -312,13 +312,13 @@ export default function LearningPage() {
                         key={f.id}
                         onClick={() => setFluxoAtivo(f)}
                         style={{
-                          background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                          background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8,
                           padding: "14px", cursor: "pointer", textAlign: "left",
                         }}
                       >
                         <div style={{ fontSize: 22, marginBottom: 6 }}>{f.icone}</div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{f.titulo}</div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{f.modulo}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{f.titulo}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{f.modulo}</div>
                       </button>
                     ))}
                   </div>
@@ -333,7 +333,7 @@ export default function LearningPage() {
         <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 20, alignItems: "start" }}>
 
           {/* Sidebar — índice de fases e módulos */}
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
             <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>Conteúdo do Curso</div>
               <div style={{ fontSize: 11, opacity: 0.75 }}>{FASES.length} fases • {total} lições</div>
@@ -363,7 +363,7 @@ export default function LearningPage() {
                         <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870" }}>
                           Fase {fase.numero} — {fase.titulo}
                         </div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
                           {concluidasFase}/{licoesDaFase.length} lições
                         </div>
                       </div>
@@ -375,7 +375,7 @@ export default function LearningPage() {
                     {/* Módulos e lições */}
                     {aberta && fase.modulos.map(mod => (
                       <div key={mod.id} style={{ background: "#fafbfc" }}>
-                        <div style={{ padding: "6px 16px 4px 28px", fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        <div style={{ padding: "6px 16px 4px 28px", fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                           {mod.icone} {mod.titulo}
                         </div>
                         {mod.licoes.map(lic => {
@@ -404,7 +404,7 @@ export default function LearningPage() {
                                 }}>
                                   {lic.titulo}
                                 </div>
-                                <div style={{ fontSize: 11, color: "#aaa", display: "flex", gap: 6, marginTop: 1 }}>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", gap: 6, marginTop: 1 }}>
                                   <span style={{ color: corTipo(lic.tipo) }}>{iconeTipo(lic.tipo)}</span>
                                   <span>{lic.duracao}</span>
                                 </div>
@@ -423,7 +423,7 @@ export default function LearningPage() {
           {/* Área de conteúdo */}
           <div>
             {licaoAtiva ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
                 {/* Cabeçalho da lição */}
                 <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #DDE2EE" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -434,16 +434,16 @@ export default function LearningPage() {
                       {licaoAtiva.fase.titulo}
                     </span>
                     <span style={{ color: "#ccc" }}>›</span>
-                    <span style={{ fontSize: 11, color: "#888" }}>{licaoAtiva.modulo.titulo}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{licaoAtiva.modulo.titulo}</span>
                   </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>
                     {licaoAtiva.licao.titulo}
                   </h2>
                   <div style={{ display: "flex", gap: 12, marginTop: 8, alignItems: "center" }}>
                     <span style={{ fontSize: 12, color: corTipo(licaoAtiva.licao.tipo) }}>
                       {iconeTipo(licaoAtiva.licao.tipo)} {licaoAtiva.licao.tipo.charAt(0).toUpperCase() + licaoAtiva.licao.tipo.slice(1)}
                     </span>
-                    <span style={{ fontSize: 12, color: "#888" }}>⏱ {licaoAtiva.licao.duracao}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-3)" }}>⏱ {licaoAtiva.licao.duracao}</span>
                     {completedIds.has(licaoAtiva.licao.id) && (
                       <span style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>✓ Concluída</span>
                     )}
@@ -506,7 +506,7 @@ export default function LearningPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 48, textAlign: "center" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 48, textAlign: "center" }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Bem-vindo ao Arato Academy</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 400, margin: "0 auto" }}>
@@ -527,17 +527,17 @@ export default function LearningPage() {
                       key={fase.id}
                       onClick={() => { setFaseAberta(fase.id); }}
                       style={{
-                        background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10,
+                        background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10,
                         padding: "16px", textAlign: "left", cursor: "pointer",
                       }}
                     >
-                      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Fase {fase.numero}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{fase.titulo}</div>
-                      <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10 }}>{fase.subtitulo}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Fase {fase.numero}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{fase.titulo}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>{fase.subtitulo}</div>
                       <div style={{ background: "#f0f0f0", borderRadius: 99, height: 4, overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${pctFase}%`, background: pctFase === 100 ? "#16A34A" : "#1A4870", borderRadius: 99 }} />
                       </div>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>{concluidasFase}/{licoesDaFase.length} lições</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{concluidasFase}/{licoesDaFase.length} lições</div>
                     </button>
                   );
                 })}
@@ -597,8 +597,8 @@ function LicaoNavButton({
     <button
       onClick={() => { onFaseAberta(alvo.fase.id); onSelect(alvo); }}
       style={{
-        background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8,
-        padding: "7px 14px", fontSize: 12, color: "#555", cursor: "pointer",
+        background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8,
+        padding: "7px 14px", fontSize: 12, color: "var(--text-2)", cursor: "pointer",
         display: "flex", alignItems: "center", gap: 6,
       }}
     >

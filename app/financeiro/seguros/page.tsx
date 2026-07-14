@@ -9,10 +9,10 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -86,13 +86,13 @@ const RAMO_META: Record<RamoSeguro, { label: string; bg: string; cl: string }> =
   automovel:              { label: "Automóvel",            bg: "#F3E8FF", cl: "#6B21A8" },
   responsabilidade_civil: { label: "Resp. Civil",          bg: "#FFF3E0", cl: "#7B4A00" },
   maquinas:               { label: "Máquinas/Equip.",      bg: "#E6F1FB", cl: "#0C447C" },
-  outro:                  { label: "Outro",                bg: "#F3F6F9", cl: "#555"    },
+  outro:                  { label: "Outro",                bg: "#F3F6F9", cl: "var(--text-2)"    },
 };
 
 const STATUS_APOLICE_META: Record<StatusApolice, { label: string; bg: string; cl: string }> = {
   vigente:       { label: "Vigente",       bg: "#E8F5E9", cl: "#1A6B3C" },
   vencida:       { label: "Vencida",       bg: "#FCEBEB", cl: "#791F1F" },
-  cancelada:     { label: "Cancelada",     bg: "#F3F6F9", cl: "#555"    },
+  cancelada:     { label: "Cancelada",     bg: "#F3F6F9", cl: "var(--text-2)"    },
   em_renovacao:  { label: "Em Renovação",  bg: "#FBF3E0", cl: "#7B4A00" },
 };
 
@@ -309,14 +309,14 @@ export default function SegurosPage() {
 
   if (!podeAcessarPlano("fin_seguros")) return <PlanoGate modulo="fin_seguros" />;
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Controle de Seguros</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Controle de Seguros</h1>
           <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
             Apólices, vencimentos de prêmio e registro de sinistros
           </p>
@@ -328,12 +328,12 @@ export default function SegurosPage() {
             { label: "Apólices Vigentes",    value: vigentes.length.toString(),  sub: "ativas",           color: "#1A6B3C" },
             { label: "Importância Segurada", value: fmtBRL(totalIS),             sub: "total segurado",   color: "#1A4870" },
             { label: "Prêmio Anual Total",   value: fmtBRL(totalAnual),          sub: "custo do seguro",  color: "#C9921B" },
-            { label: "Vencendo em 30 dias",  value: vencendoEm30.length.toString(), sub: `+ ${premiosVencidos.length} prêmios atrasados`, color: vencendoEm30.length > 0 ? "#E24B4A" : "#555" },
+            { label: "Vencendo em 30 dias",  value: vencendoEm30.length.toString(), sub: `+ ${premiosVencidos.length} prêmios atrasados`, color: vencendoEm30.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
             </div>
           ))}
         </div>
@@ -380,7 +380,7 @@ export default function SegurosPage() {
             </div>
 
             {apolices.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhuma apólice cadastrada.
               </div>
             ) : (
@@ -393,14 +393,14 @@ export default function SegurosPage() {
                   const apolSinistros = sinistros.filter(s => s.apolice_id === a.id);
                   const exp = expandido === a.id;
                   return (
-                    <div key={a.id} style={{ background: "#fff", borderRadius: 12, border: `0.5px solid ${urgente ? "#C9921B60" : "#D4DCE8"}`, overflow: "hidden" }}>
+                    <div key={a.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: `0.5px solid ${urgente ? "#C9921B60" : "var(--border-table)"}`, overflow: "hidden" }}>
                       <div
                         onClick={() => setExpandido(exp ? null : a.id)}
                         style={{ display: "grid", gridTemplateColumns: "1fr 140px 130px 130px 160px", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer" }}
                       >
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{a.numero_apolice}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{a.numero_apolice}</span>
                             {badge(rm.label, rm.bg, rm.cl)}
                             {urgente && badge(`${dias}d`, "#FBF3E0", "#7B4A00")}
                           </div>
@@ -425,7 +425,7 @@ export default function SegurosPage() {
                           <button onClick={e => { e.stopPropagation(); abrirSinistro(a); }} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>
                             Sinistro
                           </button>
-                          <button onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>
+                          <button onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                             Editar
                           </button>
                         </div>
@@ -434,17 +434,17 @@ export default function SegurosPage() {
                       {/* Sinistros da apólice */}
                       {exp && (
                         <div style={{ borderTop: "0.5px solid #EEF1F6", padding: "12px 18px", background: "#F8FAFB" }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 8 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>
                             Sinistros ({apolSinistros.length})
                           </div>
                           {apolSinistros.length === 0 ? (
-                            <div style={{ fontSize: 12, color: "#aaa" }}>Nenhum sinistro registrado nesta apólice.</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum sinistro registrado nesta apólice.</div>
                           ) : (
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                               <thead>
-                                <tr style={{ background: "#EEF1F6" }}>
+                                <tr style={{ background: "var(--bg-tag)" }}>
                                   {["Ocorrência", "Protocolo", "Descrição", "Valor Reclamado", "Indenizado", "Status", ""].map(h => (
-                                    <th key={h} style={{ padding: "6px 10px", textAlign: ["Valor Reclamado", "Indenizado"].includes(h) ? "right" : "left", color: "#555", fontWeight: 600 }}>{h}</th>
+                                    <th key={h} style={{ padding: "6px 10px", textAlign: ["Valor Reclamado", "Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -457,10 +457,10 @@ export default function SegurosPage() {
                                       <td style={{ padding: "6px 10px", color: "#666" }}>{s.numero_protocolo ?? "—"}</td>
                                       <td style={{ padding: "6px 10px" }}>{s.descricao}</td>
                                       <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmtBRL(s.valor_reclamado)}</td>
-                                      <td style={{ padding: "6px 10px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "#aaa" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
+                                      <td style={{ padding: "6px 10px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                                       <td style={{ padding: "6px 10px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
                                       <td style={{ padding: "6px 10px" }}>
-                                        <button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>Editar</button>
+                                        <button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
                                       </td>
                                     </tr>
                                   );
@@ -482,16 +482,16 @@ export default function SegurosPage() {
         {aba === "vencimentos" && (
           <div>
             {premiosVisiveis.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum prêmio pendente.
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#F8FAFB" }}>
                       {["Vencimento", "Apólice", "Seguradora", "Valor", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "#555", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -500,8 +500,8 @@ export default function SegurosPage() {
                       const ap = apolices.find(a => a.id === p.apolice_id);
                       const vencido = new Date(p.data_vencimento) < new Date();
                       return (
-                        <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "#fff" }}>
-                          <td style={{ padding: "10px 14px", color: vencido ? "#E24B4A" : "#1a1a1a", fontWeight: vencido ? 600 : 400 }}>{fmtData(p.data_vencimento)}</td>
+                        <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "var(--bg-card)" }}>
+                          <td style={{ padding: "10px 14px", color: vencido ? "#E24B4A" : "var(--text-1)", fontWeight: vencido ? 600 : 400 }}>{fmtData(p.data_vencimento)}</td>
                           <td style={{ padding: "10px 14px" }}>{ap?.numero_apolice ?? "—"}</td>
                           <td style={{ padding: "10px 14px", color: "#666" }}>{ap?.seguradora ?? "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor)}</td>
@@ -529,16 +529,16 @@ export default function SegurosPage() {
         {aba === "sinistros" && (
           <div>
             {sinistrosVisiveis.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum sinistro registrado.
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: "#F8FAFB" }}>
                       {["Ocorrência", "Apólice", "Seguradora", "Protocolo", "Descrição", "Reclamado", "Indenizado", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 14px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "#555", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 14px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -554,10 +554,10 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", color: "#666" }}>{s.numero_protocolo ?? "—"}</td>
                           <td style={{ padding: "10px 14px" }}>{s.descricao}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>{fmtBRL(s.valor_reclamado)}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "#aaa" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                           <td style={{ padding: "10px 14px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            {ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>Editar</button>}
+                            {ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>}
                           </td>
                         </tr>
                       );
@@ -575,10 +575,10 @@ export default function SegurosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalApolice && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{apoliceEdit ? "Editar Apólice" : "Nova Apólice"}</div>
-              <button onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{apoliceEdit ? "Editar Apólice" : "Nova Apólice"}</div>
+              <button onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px" }}>
               {aErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F", marginBottom: 14 }}>{aErr}</div>}
@@ -646,7 +646,7 @@ export default function SegurosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
-              <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, background: aSaving ? "#aaa" : "#1A4870", cursor: aSaving ? "default" : "pointer" }}>
+              <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, background: aSaving ? "var(--text-muted)" : "#1A4870", cursor: aSaving ? "default" : "pointer" }}>
                 {aSaving ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -659,13 +659,13 @@ export default function SegurosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalSinistro && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{sinistroEdit ? "Editar Sinistro" : "Registrar Sinistro"}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Apólice {modalSinistro.numero_apolice} — {modalSinistro.seguradora}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{sinistroEdit ? "Editar Sinistro" : "Registrar Sinistro"}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Apólice {modalSinistro.numero_apolice} — {modalSinistro.seguradora}</div>
               </div>
-              <button onClick={() => setModalSinistro(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModalSinistro(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {sErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{sErr}</div>}
@@ -708,7 +708,7 @@ export default function SegurosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalSinistro(null)}>Cancelar</button>
-              <button onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "#aaa" : "#E24B4A", cursor: sSaving ? "default" : "pointer" }}>
+              <button onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "var(--text-muted)" : "#E24B4A", cursor: sSaving ? "default" : "pointer" }}>
                 {sSaving ? "Registrando…" : "Salvar Sinistro"}
               </button>
             </div>
@@ -721,13 +721,13 @@ export default function SegurosPage() {
       ══════════════════════════════════════════════════════ */}
       {modalPremio && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Confirmar Pagamento</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Venc. {fmtData(modalPremio.data_vencimento)} — {fmtBRL(modalPremio.valor)}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Confirmar Pagamento</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Venc. {fmtData(modalPremio.data_vencimento)} — {fmtBRL(modalPremio.valor)}</div>
               </div>
-              <button onClick={() => setModalPremio(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModalPremio(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px" }}>
               <label style={lbl}>Data do Pagamento</label>
@@ -735,7 +735,7 @@ export default function SegurosPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalPremio(null)}>Cancelar</button>
-              <button onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, background: premioSaving ? "#aaa" : "#1A4870", cursor: premioSaving ? "default" : "pointer" }}>
+              <button onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, background: premioSaving ? "var(--text-muted)" : "#1A4870", cursor: premioSaving ? "default" : "pointer" }}>
                 {premioSaving ? "Salvando…" : "Confirmar Pagamento"}
               </button>
             </div>

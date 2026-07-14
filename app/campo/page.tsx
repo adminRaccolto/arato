@@ -84,35 +84,35 @@ export default function CampoHome() {
           { label: "Talhões",    valor: resumo.talhoes,    icon: "🗺" },
           { label: "Ciclo ativo", valor: resumo.cicloAtivo, icon: "🌱", small: true },
         ].map(k => (
-          <div key={k.label} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
+          <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", border: "0.5px solid #DDE2EE" }}>
             <div style={{ fontSize: 20 }}>{k.icon}</div>
-            <div style={{ fontSize: k.small ? 14 : 22, fontWeight: 700, color: "#1a1a1a", marginTop: 6 }}>{k.valor}</div>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.label}</div>
+            <div style={{ fontSize: k.small ? 14 : 22, fontWeight: 700, color: "var(--text-1)", marginTop: 6 }}>{k.valor}</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.label}</div>
           </div>
         ))}
       </div>
 
       {/* Ações rápidas */}
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Operações de Campo</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Operações de Campo</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {ACOES.map(a => (
-            <Link key={a.href} href={a.href} style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "14px 16px", textDecoration: "none" }}>
+            <Link key={a.href} href={a.href} style={{ display: "flex", alignItems: "center", gap: 14, background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "14px 16px", textDecoration: "none" }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: a.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
                 {a.icon}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{a.label}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{a.sub}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{a.label}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{a.sub}</div>
               </div>
-              <span style={{ color: "#888", fontSize: 18 }}>›</span>
+              <span style={{ color: "var(--text-3)", fontSize: 18 }}>›</span>
             </Link>
           ))}
         </div>
       </div>
 
       {/* Rodapé */}
-      <div style={{ textAlign: "center", fontSize: 11, color: "#aaa", paddingTop: 8 }}>
+      <div style={{ textAlign: "center", fontSize: 11, color: "var(--text-muted)", paddingTop: 8 }}>
         RacTech Campo · Versão web · Funciona offline*
       </div>
     </div>

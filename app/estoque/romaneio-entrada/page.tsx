@@ -67,7 +67,7 @@ const FORM_VAZIO: FormRom = {
 };
 
 // ── Estilos ──────────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #CDD5E0", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box", background: "#fff" };
+const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #CDD5E0", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-input)" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: "#444", marginBottom: 4 };
 const btnV: React.CSSProperties = { background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { background: "#F0F4FA", color: "#444", border: "0.5px solid #CDD5E0", borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" };
@@ -77,10 +77,10 @@ const btnG: React.CSSProperties = { background: "#16A34A", color: "#fff", border
 function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onClose: () => void; children: React.ReactNode; width?: number }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
-      <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>×</button>
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: 20, overflowY: "auto" }}>{children}</div>
       </div>
@@ -341,23 +341,23 @@ export default function RomaneioEntradaPage() {
   const deposArmazem   = depositos.filter(d => d.tipo === "armazem_fazenda");
   const deposTerceiros = depositos.filter(d => d.tipo === "armazem_terceiro" || d.tipo === "terceiro");
 
-  if (loading) return (<><TopNav /><div style={{ padding: 40, textAlign: "center", color: "#555" }}>Carregando…</div></>);
+  if (loading) return (<><TopNav /><div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>Carregando…</div></>);
 
   return (
     <>
     <TopNav />
-    <div style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "100vh" }}>
+    <div style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Romaneio de Entrada</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Romaneio de Entrada</h1>
           <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Recebimento de grãos — pesagem própria ou ticket de terceiros</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {fazendas.length > 1 && (
             <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-              style={{ padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+              style={{ padding: "8px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
               <option value="">Todas as fazendas</option>
               {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
             </select>
@@ -374,7 +374,7 @@ export default function RomaneioEntradaPage() {
           { label: "Peso Classif.", value: fmt(pesoTotal / 1000, 1) + " t",      color: "#7C3AED", bg: "#F5F3FF" },
           { label: "Em Rascunho",   value: String(qRascunho) + " / " + String(qConfirmado) + " conf.", color: "#C9921B", bg: "#FBF3E0" },
         ].map(k => (
-          <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 16px", border: `0.5px solid ${k.bg === "#fff" ? "#DDE2EE" : k.bg}` }}>
+          <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 16px", border: `0.5px solid ${k.bg === "#fff" ? "var(--border)" : k.bg}` }}>
             <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
           </div>
@@ -382,7 +382,7 @@ export default function RomaneioEntradaPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         <input style={{ ...inp, width: 180 }} placeholder="Buscar placa, ticket, produto…" value={fBusca} onChange={e => setFBusca(e.target.value)} />
         <select style={{ ...inp, width: 160 }} value={fTipo} onChange={e => setFTipo(e.target.value as typeof fTipo)}>
           <option value="">Todos os tipos</option>
@@ -403,18 +403,18 @@ export default function RomaneioEntradaPage() {
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#F3F6FB" }}>
               {["Ticket / Data", "Tipo", "Produto / Ciclo", "Origem / Emissor", "Placa", "Peso Líq.", "Sacas", "Status", ""].map(h => (
-                <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtrados.length === 0 ? (
-              <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>
+              <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum romaneio de entrada encontrado. Clique em "+ Novo Romaneio" para registrar.
               </td></tr>
             ) : filtrados.map((r, ri) => {
@@ -425,9 +425,9 @@ export default function RomaneioEntradaPage() {
               return (
                 <tr key={r.id} style={{ borderBottom: ri < filtrados.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
                   <td style={{ padding: "9px 12px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
-                      {r.ticket_numero ?? <span style={{ color: "#aaa" }}>s/nº</span>}
-                      {r.ticket_terceiro && <span style={{ fontSize: 10, color: "#555", display: "block" }}>Terceiro: {r.ticket_terceiro}</span>}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
+                      {r.ticket_numero ?? <span style={{ color: "var(--text-muted)" }}>s/nº</span>}
+                      {r.ticket_terceiro && <span style={{ fontSize: 10, color: "var(--text-2)", display: "block" }}>Terceiro: {r.ticket_terceiro}</span>}
                     </div>
                     <div style={{ fontSize: 11, color: "#666" }}>{fmtData(r.data)}</div>
                   </td>
@@ -439,8 +439,8 @@ export default function RomaneioEntradaPage() {
                     </span>
                   </td>
                   <td style={{ padding: "9px 12px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{r.produto_nome ?? "—"}</div>
-                    {cicloNome && <div style={{ fontSize: 10, color: "#555" }}>{cicloNome}</div>}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{r.produto_nome ?? "—"}</div>
+                    {cicloNome && <div style={{ fontSize: 10, color: "var(--text-2)" }}>{cicloNome}</div>}
                   </td>
                   <td style={{ padding: "9px 12px", fontSize: 12, color: "#444" }}>
                     {r.tipo === "proprio"
@@ -448,7 +448,7 @@ export default function RomaneioEntradaPage() {
                       : (r.emitido_por ?? pessNome ?? "—")}
                   </td>
                   <td style={{ padding: "9px 12px", fontSize: 12, color: "#444" }}>{r.placa ?? "—"}</td>
-                  <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a1a", fontWeight: 600, textAlign: "right" }}>
+                  <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)", fontWeight: 600, textAlign: "right" }}>
                     {fmt(r.peso_classificado_kg ?? pl, 0)} kg
                     {r.peso_classificado_kg && r.peso_classificado_kg < pl - 1 && (
                       <div style={{ fontSize: 10, color: "#E24B4A" }}>−{fmt(pl - r.peso_classificado_kg, 0)} desc.</div>
@@ -471,7 +471,7 @@ export default function RomaneioEntradaPage() {
                         <button style={{ ...btnG, padding: "4px 10px", fontSize: 11 }} onClick={() => confirmarExistente(r)}>Confirmar</button>
                       )}
                       <button
-                        style={{ background: "#F4F6FA", color: "#1A4870", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
+                        style={{ background: "var(--bg-page)", color: "#1A4870", border: "0.5px solid #CDD5E0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
                         title="Imprimir ticket de balança"
                         onClick={() => {
                           const pl = (r.peso_bruto_kg ?? 0) - (r.tara_kg ?? 0);
@@ -527,7 +527,7 @@ export default function RomaneioEntradaPage() {
           {fazendas.length > 1 && (
             <div style={{ background:"#EFF6FF", border:"0.5px solid #B8D4F0", borderRadius:10, padding:"10px 16px", marginBottom:14 }}>
               <div style={{ fontSize:10, fontWeight:700, color:"#1A4870", textTransform:"uppercase", letterSpacing:1, marginBottom:6 }}>Este romaneio pertence a</div>
-              <select style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid #DDE2EE", fontSize:13, background:"#fff" }}
+              <select style={{ width:"100%", padding:"7px 10px", borderRadius:6, border:"0.5px solid var(--border)", fontSize:13, background:"var(--bg-card)" }}
                 value={form.fazenda_id || fazendaId || ""}
                 onChange={e => setForm(p => ({ ...p, fazenda_id: e.target.value }))}>
                 <option value="">— Selecionar fazenda —</option>
@@ -542,7 +542,7 @@ export default function RomaneioEntradaPage() {
               <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
                 flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
                 background: form.tipo === v ? c : "#F8FAFD",
-                color:      form.tipo === v ? "#fff" : "#555",
+                color:      form.tipo === v ? "#fff" : "var(--text-2)",
                 transition: "background .15s",
               }}>{l}</button>
             ))}
@@ -551,7 +551,7 @@ export default function RomaneioEntradaPage() {
           {/* Sub-toggle balança/manual (só para próprio) */}
           {form.tipo === "proprio" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span style={{ fontSize: 11, color: "#555", fontWeight: 600, minWidth: 80 }}>Modo:</span>
+              <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 600, minWidth: 80 }}>Modo:</span>
               {([["balanca", "⚖ Balança Física"], ["manual", "✎ Entrada Manual"]] as const).map(([v, l]) => (
                 <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
                   padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "0.5px solid",
@@ -656,7 +656,7 @@ export default function RomaneioEntradaPage() {
               </select>
             </div>
             <div>
-              <label style={lbl}>Talhão <span style={{ fontWeight: 400, color: "#888" }}>(produtividade)</span></label>
+              <label style={lbl}>Talhão <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(produtividade)</span></label>
               <select style={inp} value={form.talhao_id} onChange={e => setForm(p => ({ ...p, talhao_id: e.target.value }))} disabled={editRom?.status === "confirmado"}>
                 <option value="">— selecione —</option>
                 {talhoes
@@ -679,8 +679,8 @@ export default function RomaneioEntradaPage() {
           </div>
 
           {/* Pesagem */}
-          <div style={{ background: "#F8FAFD", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 16px", marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 12 }}>Pesagem</div>
+          <div style={{ background: "#F8FAFD", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 12 }}>Pesagem</div>
 
             {/* Integração balança Toledo PRIX — só no modo Balança Física (sua própria balança) */}
             {form.tipo === "proprio" && form.modo_pesagem === "balanca" && editRom?.status !== "confirmado" && (
@@ -711,8 +711,8 @@ export default function RomaneioEntradaPage() {
           </div>
 
           {/* Classificação */}
-          <div style={{ background: "#FAFAFA", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 16px", marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, color: "#1a1a1a", marginBottom: 12 }}>
+          <div style={{ background: "#FAFAFA", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
+            <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 12 }}>
               Classificação do Grão
               <span style={{ fontSize: 11, fontWeight: 400, color: "#666", marginLeft: 8 }}>
                 (padrão: umidade {fmt(calc.cls.umidade_padrao, 1)}% · impureza {fmt(calc.cls.impureza_padrao, 1)}% · avariados {fmt(calc.cls.avariados_padrao, 1)}%)
@@ -780,13 +780,13 @@ export default function RomaneioEntradaPage() {
             {calc.pl > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 12, padding: "12px 14px", background: "#EBF3FF", borderRadius: 8 }}>
                 {[
-                  { label: "Desc. Umidade",   value: calc.dUmid > 0 ? `−${fmt(calc.dUmid, 0)} kg` : "—", color: calc.dUmid > 0 ? "#E24B4A" : "#555" },
-                  { label: "Desc. Impureza",  value: calc.dImp  > 0 ? `−${fmt(calc.dImp,  0)} kg` : "—", color: calc.dImp > 0 ? "#E24B4A" : "#555" },
-                  { label: "Desc. Avariados", value: calc.dAvar > 0 ? `−${fmt(calc.dAvar, 0)} kg` : "—", color: calc.dAvar > 0 ? "#E24B4A" : "#555" },
+                  { label: "Desc. Umidade",   value: calc.dUmid > 0 ? `−${fmt(calc.dUmid, 0)} kg` : "—", color: calc.dUmid > 0 ? "#E24B4A" : "var(--text-2)" },
+                  { label: "Desc. Impureza",  value: calc.dImp  > 0 ? `−${fmt(calc.dImp,  0)} kg` : "—", color: calc.dImp > 0 ? "#E24B4A" : "var(--text-2)" },
+                  { label: "Desc. Avariados", value: calc.dAvar > 0 ? `−${fmt(calc.dAvar, 0)} kg` : "—", color: calc.dAvar > 0 ? "#E24B4A" : "var(--text-2)" },
                   { label: "Peso Classificado", value: `${fmt(calc.class_, 0)} kg`, color: "#1A5CB8" },
                 ].map(k => (
                   <div key={k.label} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#555", marginBottom: 2 }}>{k.label}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>{k.label}</div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: k.color }}>{k.value}</div>
                   </div>
                 ))}
@@ -796,9 +796,9 @@ export default function RomaneioEntradaPage() {
             {/* Sacas */}
             {calc.class_ > 0 && (
               <div style={{ marginTop: 10, textAlign: "center", padding: "10px", background: "#ECFDF5", borderRadius: 8 }}>
-                <span style={{ fontSize: 11, color: "#555" }}>Total em sacas: </span>
+                <span style={{ fontSize: 11, color: "var(--text-2)" }}>Total em sacas: </span>
                 <span style={{ fontSize: 22, fontWeight: 800, color: "#16A34A" }}>{fmt(calc.sacas, 3)}</span>
-                <span style={{ fontSize: 12, color: "#555" }}> sc ({calc.cls.kg_saca} kg/sc)</span>
+                <span style={{ fontSize: 12, color: "var(--text-2)" }}> sc ({calc.cls.kg_saca} kg/sc)</span>
               </div>
             )}
           </div>

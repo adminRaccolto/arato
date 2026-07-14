@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../lib/supabase";
+import { useTheme } from "../hooks/useTheme";
 import type { Fazenda } from "../lib/supabase";
 
 
@@ -310,6 +311,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   const pathname = usePathname();
   const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
+  const { toggle: toggleTheme, isDark } = useTheme();
   const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -397,7 +399,6 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   // ── Renderiza item do dropdown (link, divider ou subgroup) ──
   function renderChild(child: NavChild, idx: number) {
-    // Filtra links/subgroups com módulo sem acesso (por permissão de usuário OU por plano)
     if (child.type !== "divider") {
       const mid = (child as NavLink | NavSubgroup).moduleId;
       if (mid && !podeAcessar(mid)) return null;
@@ -409,9 +410,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       return (
         <div key={`div-${idx}`} style={{
           padding: idx === 0 ? "6px 14px 4px" : "10px 14px 4px",
-          fontSize: 10, fontWeight: 700, color: "#888",
+          fontSize: 10, fontWeight: 700, color: "var(--text-3)",
           textTransform: "uppercase", letterSpacing: "0.07em",
-          borderTop: idx > 0 ? "0.5px solid #EEF1F6" : "none",
+          borderTop: idx > 0 ? "0.5px solid rgba(255,255,255,0.07)" : "none",
           marginTop: idx > 0 ? 4 : 0,
         }}>
           {child.label}
@@ -434,31 +435,26 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           <div style={{
             display: "flex", alignItems: "center",
             padding: "8px 14px", cursor: "default", gap: 8, whiteSpace: "nowrap",
-            background: isOpen ? "#EBF5FF" : temAtivo ? "#F0F8FF" : "transparent",
-            borderLeft: temAtivo ? "3px solid #1A4870" : "3px solid transparent",
+            background: isOpen ? "rgba(59,130,246,0.12)" : temAtivo ? "rgba(59,130,246,0.08)" : "transparent",
+            borderLeft: temAtivo ? "3px solid #3B82F6" : "3px solid transparent",
           }}>
-            <span style={{ fontSize: 13, color: temAtivo ? "#0B2D50" : "#222", fontWeight: temAtivo ? 600 : 400 }}>
+            <span style={{ fontSize: 13, color: temAtivo ? "#FFFFFF" : "#CBD5E1", fontWeight: temAtivo ? 600 : 400 }}>
               {sg.label}
             </span>
-            <span style={{ fontSize: 9, color: isOpen ? "#1A4870" : "#aaa", flexShrink: 0 }}>▶</span>
+            <span style={{ fontSize: 9, color: isOpen ? "#60A5FA" : "var(--text-3)", flexShrink: 0 }}>▶</span>
           </div>
 
-          {/* Flyout lateral */}
           {isOpen && (
             <>
-            {/* Ponte invisível: cobre o gap de 4px entre o item e o flyout */}
-            <div style={{
-              position: "absolute", top: 0, left: "100%",
-              width: 8, height: "100%", background: "transparent",
-            }} />
+            <div style={{ position: "absolute", top: 0, left: "100%", width: 8, height: "100%", background: "transparent" }} />
             <div style={{
               position: "absolute", top: -6, left: "calc(100% + 4px)",
-              background: "#fff", borderRadius: 10,
-              border: "0.5px solid #D4DCE8",
-              boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
+              background: "#112236", borderRadius: 10,
+              border: "0.5px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
               minWidth: 210, zIndex: 1100, padding: "6px 0",
             }}>
-              <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
               </div>
               {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || podeAcessarPlano(gc.moduleId))).map(gc => {
@@ -472,10 +468,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                       display: "flex", alignItems: "center",
                       padding: "8px 14px", textDecoration: "none", fontSize: 13,
                       whiteSpace: "nowrap",
-                      color: ativoGc ? "#0B2D50" : "#222",
+                      color: ativoGc ? "#FFFFFF" : "#CBD5E1",
                       fontWeight: ativoGc ? 600 : 400,
-                      background: ativoGc ? "#D5E8F5" : "transparent",
-                      borderLeft: ativoGc ? "3px solid #1A4870" : "3px solid transparent",
+                      background: ativoGc ? "rgba(59,130,246,0.18)" : "transparent",
+                      borderLeft: ativoGc ? "3px solid #3B82F6" : "3px solid transparent",
                     }}
                   >
                     {gc.label}
@@ -501,10 +497,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           display: "flex", alignItems: "center",
           padding: "8px 14px", textDecoration: "none", fontSize: 13,
           whiteSpace: "nowrap",
-          color: ativoLink ? "#0B2D50" : "#222",
+          color: ativoLink ? "#FFFFFF" : "#CBD5E1",
           fontWeight: ativoLink ? 600 : 400,
-          background: ativoLink ? "#D5E8F5" : "transparent",
-          borderLeft: ativoLink ? "3px solid #1A4870" : "3px solid transparent",
+          background: ativoLink ? "rgba(59,130,246,0.18)" : "transparent",
+          borderLeft: ativoLink ? "3px solid #3B82F6" : "3px solid transparent",
         }}
       >
         {link.label}
@@ -517,70 +513,68 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       ref={navRef}
       style={{
         position: "sticky", top: 0, zIndex: 1000, flexShrink: 0,
-        background: "#ffffff",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        background: "#050D1A",
+        boxShadow: "0 1px 0 var(--border-table), 0 4px 24px rgba(0,0,0,0.5)",
         fontFamily: "system-ui, sans-serif",
         overflow: "visible",
       }}
     >
-      {/* ── Faixa 1 ── */}
+      {/* ── Faixa 1: identidade + usuário ── */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 16px", height: 56,
-        borderBottom: "0.5px solid #D4DCE8",
+        padding: "0 20px", height: 52,
+        background: "var(--bg-header)",
+        borderBottom: "0.5px solid rgba(255,255,255,0.07)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {logoArato ? (
-            <img src={logoArato} alt={nomeArato} style={{ height: 36, maxWidth: 130, objectFit: "contain" }} />
+            <img src={logoArato} alt={nomeArato} style={{ height: 32, maxWidth: 120, objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(255,255,255,0.55)) drop-shadow(0 0 2px rgba(255,255,255,0.9))" }} />
           ) : (
-            <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 36, width: "auto", objectFit: "contain" }} />
+            <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 32, width: "auto", objectFit: "contain", filter: "drop-shadow(0 0 8px rgba(255,255,255,0.55)) drop-shadow(0 0 2px rgba(255,255,255,0.9))" }} />
           )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {fazenda && !(userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada)) && (
-            <div style={{ position: "relative" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, borderRadius: 8, padding: "4px 8px" }}>
-                {logoCliente ? (
-                  <img src={logoCliente} alt="Logo fazenda" style={{ width: 36, height: 36, borderRadius: 9, objectFit: "contain", border: "0.5px solid #D4DCE8" }} />
-                ) : (
-                  <div style={{ width: 36, height: 36, borderRadius: 9, background: "#F3F6F9", border: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#1A4870" }}>
-                    {iniciaisFazenda}
-                  </div>
-                )}
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.25 }}>
-                    {produtorNome ?? fazenda.nome}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#666" }}>
-                    {produtorNome ? `${fazenda.nome} · ` : ""}
-                    {fazenda.municipio} · {fazenda.estado}
-                    {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
-                  </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 8px" }}>
+              {logoCliente ? (
+                <img src={logoCliente} alt="Logo fazenda" style={{ width: 30, height: 30, borderRadius: 7, objectFit: "contain", border: "0.5px solid rgba(255,255,255,0.15)" }} />
+              ) : (
+                <div style={{ width: 30, height: 30, borderRadius: 7, background: "var(--border)", border: "0.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#60A5FA" }}>
+                  {iniciaisFazenda}
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.25 }}>
+                  {produtorNome ?? fazenda.nome}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                  {produtorNome ? `${fazenda.nome} · ` : ""}
+                  {fazenda.municipio} · {fazenda.estado}
+                  {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
                 </div>
               </div>
             </div>
           )}
 
-          <div style={{ width: 1, height: 32, background: "#D4DCE8" }} />
+          <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.1)" }} />
 
-          {/* Nome + logo do cliente ativo (raccotlo navegando por um cliente) */}
           {userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada) && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {logoCliente
-                ? <img src={logoCliente} alt="" style={{ height: 26, width: 26, objectFit: "contain", borderRadius: 4, border: "0.5px solid #DDE2EE" }} />
+                ? <img src={logoCliente} alt="" style={{ height: 24, width: 24, objectFit: "contain", borderRadius: 4, border: "0.5px solid rgba(255,255,255,0.15)" }} />
                 : (
-                  <div style={{ width: 26, height: 26, borderRadius: 4, background: "#D5E8F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1A4870", flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 4, background: "rgba(59,130,246,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#60A5FA", flexShrink: 0 }}>
                     {(nomeProdutor || nomeFazendaSelecionada || "").substring(0, 2).toUpperCase()}
                   </div>
                 )
               }
               <div style={{ maxWidth: 200 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {nomeProdutor || nomeFazendaSelecionada}
                 </div>
                 {fazenda && (
-                  <div style={{ fontSize: 11, color: "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {nomeProdutor ? `${fazenda.nome} · ` : ""}{fazenda.municipio} · {fazenda.estado}
                   </div>
                 )}
@@ -588,27 +582,34 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               <button
                 onClick={clearFazenda}
                 style={{
-                  background: "none", border: "0.5px solid #D4DCE8",
+                  background: "var(--border-table)", border: "0.5px solid rgba(255,255,255,0.12)",
                   borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                  fontSize: 11, color: "#555", fontWeight: 600,
+                  fontSize: 11, color: "var(--text-2)", fontWeight: 600,
                 }}
               >
                 Trocar cliente
               </button>
-              <div style={{ width: 1, height: 24, background: "#D4DCE8" }} />
+              <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.1)" }} />
             </div>
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 30, height: 30, background: "#FDE9BB", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#7A5A12", flexShrink: 0 }}>
+            <button
+              onClick={toggleTheme}
+              title={isDark ? "Tema claro" : "Tema escuro"}
+              style={{ background: "var(--bg-input)", border: "0.5px solid rgba(255,255,255,0.12)", cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28 }}
+            >
+              {isDark ? "☀️" : "🌙"}
+            </button>
+            <div style={{ width: 28, height: 28, background: "#C9921B", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
               {nomeUsuario ? nomeUsuario.substring(0, 2).toUpperCase() : "—"}
             </div>
             {nomeUsuario && (
-              <span style={{ fontSize: 13, color: "#444", fontWeight: 500, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 13, color: "var(--text-2)", fontWeight: 500, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {nomeUsuario}
               </span>
             )}
-            <button onClick={signOut} style={{ background: "none", border: "0.5px solid #D4DCE8", cursor: "pointer", color: "#555", fontSize: 12, padding: "4px 10px", borderRadius: 6 }}>
+            <button onClick={signOut} style={{ background: "var(--bg-input)", border: "0.5px solid rgba(255,255,255,0.12)", cursor: "pointer", color: "var(--text-2)", fontSize: 12, padding: "4px 10px", borderRadius: 6 }}>
               Sair
             </button>
           </div>
@@ -616,27 +617,25 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       </div>
 
       {/* ── Faixa 2: navegação ── */}
-      <nav style={{ display: "flex", alignItems: "center", padding: "0 16px", height: 40, gap: 2, background: "#1A5C38", overflow: "visible" }}>
+      <nav style={{ display: "flex", alignItems: "center", padding: "0 20px", height: 38, gap: 1, background: "#050D1A", overflow: "visible" }}>
         {NAV.map(item => {
-          // Filtra por permissão de usuário E por plano: grupo visível se ≥1 módulo mapeado for acessível em ambos
           const navId  = item.type === "group" ? item.id : (item as NavLink).id;
           const modulos = NAV_MODULE_MAP[navId];
           if (modulos && !modulos.some(m => podeAcessar(m))) return null;
           if (modulos && !modulos.some(m => podeAcessarPlano(m))) return null;
 
-          // During onboarding, items with minStep > stepsCompletos are locked
           const isLocked = onboardingAtivo && (item.minStep ?? 0) > stepsCompletos;
           if (isLocked) {
             return (
               <div key={item.type === "group" ? item.id : (item as NavLink).id} style={{
                 display: "flex", alignItems: "center", gap: 4,
-                padding: "5px 12px", borderRadius: 6,
-                color: "rgba(255,255,255,0.35)",
+                padding: "4px 10px", borderRadius: 5,
+                color: "rgba(255,255,255,0.2)",
                 fontSize: 13, cursor: "not-allowed", userSelect: "none",
                 whiteSpace: "nowrap",
               }} title={`Disponível após a etapa ${item.minStep ?? 0} da implantação`}>
                 {"label" in item ? item.label : ""}
-                <span style={{ fontSize: 9, opacity: 0.6 }}>🔒</span>
+                <span style={{ fontSize: 9, opacity: 0.5 }}>🔒</span>
               </div>
             );
           }
@@ -645,7 +644,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             const ativo = grupoAtivo(item);
             const open  = dropdown === item.id;
 
-            // ── Painel duplo (Cadastros, Lavoura) ──
+            // ── Painel duplo ──
             if (item.panel) {
               const grupos     = extrairGrupos(item.children);
               const grupoAtual = grupos.find(g => g.label === panelGroup) ?? grupos[0];
@@ -655,25 +654,25 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                     onClick={() => { setDropdown(open ? null : item.id); setOpenSub(null); }}
                     style={{
                       display: "flex", alignItems: "center", gap: 4,
-                      padding: "5px 12px", borderRadius: 6, border: "none",
-                      background: ativo ? "rgba(255,255,255,0.20)" : open ? "rgba(255,255,255,0.10)" : "transparent",
+                      padding: "4px 10px", borderRadius: 5, border: "none",
+                      background: ativo ? "rgba(255,255,255,0.12)" : open ? "rgba(255,255,255,0.07)" : "transparent",
                       cursor: "pointer", whiteSpace: "nowrap",
-                      color: "#fff", fontWeight: ativo ? 600 : 400, fontSize: 13,
+                      color: ativo ? "#FFFFFF" : "rgba(255,255,255,0.62)", fontWeight: ativo ? 600 : 400, fontSize: 13,
                     }}
                   >
                     {item.label}
-                    <span style={{ fontSize: 7, color: "rgba(255,255,255,0.55)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", display: "inline-block" }}>▼</span>
+                    <span style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", display: "inline-block" }}>▼</span>
                   </button>
 
                   {open && (
                     <div style={{
                       position: "absolute", top: "calc(100% + 4px)", left: 0,
-                      background: "#fff", borderRadius: 10,
-                      border: "0.5px solid #D4DCE8",
-                      boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
+                      background: "#112236", borderRadius: 10,
+                      border: "0.5px solid rgba(255,255,255,0.1)",
+                      boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
                       zIndex: 1100, display: "flex", overflow: "hidden", minWidth: 360,
                     }}>
-                      <div style={{ width: 160, background: "#F3F6F9", borderRight: "0.5px solid #D4DCE8", padding: "6px 0" }}>
+                      <div style={{ width: 160, background: "var(--bg-nav)", borderRight: "0.5px solid rgba(255,255,255,0.07)", padding: "6px 0" }}>
                         {grupos.map(g => {
                           const sel = g.label === panelGroup;
                           const temAtivo = g.items.some(i => isAtivo(i.path));
@@ -684,22 +683,22 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                               style={{
                                 display: "flex", alignItems: "center", justifyContent: "space-between",
                                 padding: "9px 14px", cursor: "default",
-                                background: sel ? "#fff" : "transparent",
-                                borderLeft: sel ? "3px solid #1A4870" : "3px solid transparent",
-                                borderRight: sel ? "0.5px solid #fff" : "none",
+                                background: sel ? "#112236" : "transparent",
+                                borderLeft: sel ? "3px solid #3B82F6" : "3px solid transparent",
+                                borderRight: sel ? "0.5px solid #112236" : "none",
                                 marginRight: sel ? -1 : 0,
                               }}
                             >
-                              <span style={{ fontSize: 13, fontWeight: sel || temAtivo ? 600 : 400, color: temAtivo ? "#1A4870" : "#333" }}>
+                              <span style={{ fontSize: 13, fontWeight: sel || temAtivo ? 600 : 400, color: temAtivo ? "#60A5FA" : "#CBD5E1" }}>
                                 {g.label}
                               </span>
-                              <span style={{ fontSize: 9, color: sel ? "#1A4870" : "#666" }}>▶</span>
+                              <span style={{ fontSize: 9, color: sel ? "#3B82F6" : "var(--text-3)" }}>▶</span>
                             </div>
                           );
                         })}
                       </div>
                       <div style={{ flex: 1, padding: "6px 0", minWidth: 180 }}>
-                        <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                        <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                           {grupoAtual?.label}
                         </div>
                         {grupoAtual?.items.map(child => {
@@ -712,10 +711,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                               style={{
                                 display: "flex", alignItems: "center",
                                 padding: "8px 14px", textDecoration: "none", fontSize: 13,
-                                color: ativoChild ? "#0B2D50" : "#222",
+                                color: ativoChild ? "#FFFFFF" : "#CBD5E1",
                                 fontWeight: ativoChild ? 600 : 400,
-                                background: ativoChild ? "#D5E8F5" : "transparent",
-                                borderLeft: ativoChild ? "3px solid #1A4870" : "3px solid transparent",
+                                background: ativoChild ? "rgba(59,130,246,0.18)" : "transparent",
+                                borderLeft: ativoChild ? "3px solid #3B82F6" : "3px solid transparent",
                               }}
                             >
                               {child.label}
@@ -736,22 +735,22 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                   onClick={() => { setDropdown(open ? null : item.id); setOpenSub(null); }}
                   style={{
                     display: "flex", alignItems: "center", gap: 4,
-                    padding: "5px 12px", borderRadius: 6, border: "none",
-                    background: ativo ? "rgba(255,255,255,0.20)" : open ? "rgba(255,255,255,0.10)" : "transparent",
+                    padding: "4px 10px", borderRadius: 5, border: "none",
+                    background: ativo ? "rgba(255,255,255,0.12)" : open ? "rgba(255,255,255,0.07)" : "transparent",
                     cursor: "pointer", whiteSpace: "nowrap",
-                    color: "#fff", fontWeight: ativo ? 600 : 400, fontSize: 13,
+                    color: ativo ? "#FFFFFF" : "rgba(255,255,255,0.62)", fontWeight: ativo ? 600 : 400, fontSize: 13,
                   }}
                 >
                   {item.label}
-                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.55)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", display: "inline-block" }}>▼</span>
+                  <span style={{ fontSize: 7, color: "rgba(255,255,255,0.3)", transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s", display: "inline-block" }}>▼</span>
                 </button>
 
                 {open && (
                   <div style={{
                     position: "absolute", top: "calc(100% + 4px)", left: 0,
-                    background: "#fff", borderRadius: 10,
-                    border: "0.5px solid #D4DCE8",
-                    boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
+                    background: "#112236", borderRadius: 10,
+                    border: "0.5px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
                     minWidth: 220, zIndex: 1100, padding: "6px 0",
                   }}>
                     {item.children.map((child, idx) => renderChild(child, idx))}
@@ -769,9 +768,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               href={(item as NavLink).path}
               style={{
                 display: "flex", alignItems: "center", gap: 5,
-                padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-                background: ativo ? "rgba(255,255,255,0.20)" : "transparent",
-                color: "#fff", fontWeight: ativo ? 600 : 400, fontSize: 13, whiteSpace: "nowrap",
+                padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+                background: ativo ? "rgba(255,255,255,0.12)" : "transparent",
+                color: ativo ? "#FFFFFF" : "rgba(255,255,255,0.62)", fontWeight: ativo ? 600 : 400, fontSize: 13, whiteSpace: "nowrap",
               }}
             >
               {item.label}
@@ -779,21 +778,20 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           );
         })}
 
-        {/* Pendências — visível sempre que houver ≥1 pendente */}
         {qtdPendencias > 0 && (
           <Link
             href="/pendencias/operacionais"
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-              background: pathname.startsWith("/pendencias") ? "rgba(255,255,255,0.20)" : "rgba(245,158,11,0.18)",
-              color: "#FDE9BB", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap",
-              border: "0.5px solid rgba(245,158,11,0.55)",
+              padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+              background: pathname.startsWith("/pendencias") ? "rgba(255,255,255,0.12)" : "rgba(245,158,11,0.15)",
+              color: "#FCD34D", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap",
+              border: "0.5px solid rgba(245,158,11,0.3)",
             }}
           >
             Pendências
             <span style={{
-              background: "#F59E0B", color: "#1a1a1a", borderRadius: 20,
+              background: "#F59E0B", color: "#000", borderRadius: 20,
               fontSize: 10, fontWeight: 800, padding: "1px 6px", lineHeight: 1.5,
             }}>
               {qtdPendencias}
@@ -802,17 +800,17 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         )}
 
         {(userRole === "raccotlo" || userRole === "raccotlo_gestor" || userRole === "raccotlo_seletor") && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
             {raccotloGestor && (
               <Link
                 href="/admin"
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
-                  padding: "5px 14px", borderRadius: 6, textDecoration: "none",
-                  background: pathname.startsWith("/admin") ? "rgba(255,255,255,0.22)" : "rgba(201,146,27,0.30)",
-                  color: "#FDE9BB", fontWeight: pathname.startsWith("/admin") ? 700 : 600,
+                  padding: "4px 12px", borderRadius: 5, textDecoration: "none",
+                  background: pathname.startsWith("/admin") ? "rgba(201,146,27,0.25)" : "rgba(201,146,27,0.12)",
+                  color: "#FCD34D", fontWeight: pathname.startsWith("/admin") ? 700 : 600,
                   fontSize: 13, whiteSpace: "nowrap",
-                  border: "0.5px solid rgba(201,146,27,0.6)",
+                  border: "0.5px solid rgba(201,146,27,0.35)",
                 }}
               >
                 ⚙ Gestão Arato
@@ -823,11 +821,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 href="/bi"
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
-                  padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-                  background: pathname === "/bi" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.08)",
-                  color: "#FDE9BB", fontWeight: pathname === "/bi" ? 700 : 400,
+                  padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+                  background: pathname === "/bi" ? "rgba(255,255,255,0.12)" : "var(--bg-input)",
+                  color: "var(--text-2)", fontWeight: pathname === "/bi" ? 700 : 400,
                   fontSize: 13, whiteSpace: "nowrap",
-                  border: "0.5px solid rgba(255,255,255,0.2)",
+                  border: "0.5px solid rgba(255,255,255,0.1)",
                 }}
               >
                 BI Raccotlo
@@ -838,11 +836,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 href="/raccotlo"
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
-                  padding: "5px 12px", borderRadius: 6, textDecoration: "none",
-                  background: pathname === "/raccotlo" ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.55)", fontWeight: 400,
+                  padding: "4px 10px", borderRadius: 5, textDecoration: "none",
+                  background: pathname === "/raccotlo" ? "rgba(255,255,255,0.12)" : "transparent",
+                  color: "rgba(255,255,255,0.35)", fontWeight: 400,
                   fontSize: 12, whiteSpace: "nowrap",
-                  border: "0.5px solid rgba(255,255,255,0.12)",
+                  border: "0.5px solid var(--border)",
                 }}
               >
                 Hub

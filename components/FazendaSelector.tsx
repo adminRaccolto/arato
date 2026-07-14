@@ -27,7 +27,7 @@ export default function FazendaSelector({ contaId, value, onChange, style }: Pro
     background: "#F0F6FB", border: "0.5px solid #1A4870",
     borderRadius: 8, padding: "6px 12px", ...style,
   };
-  const lbl: React.CSSProperties = { fontSize: 11, color: "#555", fontWeight: 600, whiteSpace: "nowrap" };
+  const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", fontWeight: 600, whiteSpace: "nowrap" };
   const val: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#1A4870" };
   const sel: React.CSSProperties = {
     fontSize: 13, fontWeight: 700, color: "#1A4870", background: "transparent",

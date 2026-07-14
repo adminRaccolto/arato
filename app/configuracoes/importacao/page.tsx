@@ -879,12 +879,12 @@ function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
         onDrop={handleDrop}
         onClick={() => !busy && ref.current?.click()}
         style={{
-          border: `2px dashed ${drag ? "#1A4870" : erro ? "#E24B4A" : "#DDE2EE"}`,
+          border: `2px dashed ${drag ? "#1A4870" : erro ? "#E24B4A" : "var(--border)"}`,
           borderRadius: 10,
           padding: "40px 24px",
           textAlign: "center",
           cursor: busy ? "wait" : "pointer",
-          background: drag ? "#D5E8F5" : erro ? "#FFF5F5" : "#F4F6FA",
+          background: drag ? "#D5E8F5" : erro ? "#FFF5F5" : "var(--bg-page)",
           transition: "all 0.15s",
         }}
       >
@@ -896,10 +896,10 @@ function UploadZone({ onFile }: { onFile: (f: File) => void | Promise<void> }) {
           onChange={(e) => { if (e.target.files?.[0]) handle(e.target.files[0]); }}
         />
         <div style={{ fontSize: 32, marginBottom: 8 }}>{busy ? "⏳" : "📂"}</div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: busy ? "#888" : "#1A4870", marginBottom: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: busy ? "var(--text-3)" : "#1A4870", marginBottom: 4 }}>
           {busy ? "Lendo arquivo..." : "Arraste o arquivo XLSX aqui"}
         </div>
-        <div style={{ fontSize: 12, color: "#888" }}>{busy ? "aguarde" : "ou clique para selecionar"}</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)" }}>{busy ? "aguarde" : "ou clique para selecionar"}</div>
       </div>
       {erro && (
         <div style={{ marginTop: 10, padding: "10px 14px", background: "#FFF5F5", border: "0.5px solid #E24B4A", borderRadius: 8, fontSize: 13, color: "#B91C1C", whiteSpace: "pre-wrap" }}>
@@ -917,12 +917,12 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
     <div style={{ overflowX: "auto", marginTop: 16 }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
-          <tr style={{ background: "#F4F6FA" }}>
-            <th style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "#555" }}>#</th>
+          <tr style={{ background: "var(--bg-page)" }}>
+            <th style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>#</th>
             {colunas.map(c => (
-              <th key={c} style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "#555" }}>{c}</th>
+              <th key={c} style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>{c}</th>
             ))}
-            <th style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "#555" }}>Status</th>
+            <th style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -931,16 +931,16 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
             const msg    = (row as Record<string, unknown>)._msg as string;
             return (
               <tr key={i} style={{ background: status === "erro" ? "#FFF0F0" : status === "duplicado" ? "#FFFBE0" : status === "aviso" ? "#FFF8EC" : "white" }}>
-                <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "#888" }}>{i + 1}</td>
+                <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "var(--text-3)" }}>{i + 1}</td>
                 {colunas.map(c => (
-                  <td key={c} style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <td key={c} style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {String((row as Record<string, unknown>)[c] ?? "")}
                   </td>
                 ))}
                 <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE" }}>
                   {status === "ok"        && <span style={{ color: "#16A34A", fontWeight: 600 }}>✓ ok</span>}
                   {status === "aviso"     && <span style={{ color: "#C9921B", fontWeight: 600 }}>⚡ {msg}</span>}
-                  {status === "duplicado" && <span style={{ color: "#888",    fontWeight: 600 }}>⏭ {msg || "duplicado"}</span>}
+                  {status === "duplicado" && <span style={{ color: "var(--text-3)",    fontWeight: 600 }}>⏭ {msg || "duplicado"}</span>}
                   {status === "erro"      && <span style={{ color: "#E24B4A", fontWeight: 600 }}>✗ {msg}</span>}
                 </td>
               </tr>
@@ -976,7 +976,7 @@ function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados 
 // ─── Referência de categorias (Produtos) ─────────────────────
 function RefCategorias() {
   return (
-    <div style={{ marginTop: 16, background: "#F4F6FA", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
+    <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>
         Categorias de Produtos
       </div>
@@ -989,13 +989,13 @@ function RefCategorias() {
           { cat: "outros",      label: "Outros",        desc: "Demais itens não classificados" },
         ].map(({ cat, label, desc }) => (
           <div key={cat} style={{ padding: "8px 12px", background: "white", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{label}</div>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{desc}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{label}</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{desc}</div>
             <code style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", padding: "1px 5px", borderRadius: 4, marginTop: 4, display: "inline-block" }}>{cat}</code>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 10, fontSize: 11, color: "#888" }}>
+      <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-3)" }}>
         <strong>Unidades válidas:</strong> kg · g · L · mL · sc · t · un · m · m² · cx · pc · par · outros
         &nbsp;&nbsp;|&nbsp;&nbsp;
         <strong>NCM:</strong> 8 dígitos sem pontos (ex: 84212300) — consultar tabela TIPI
@@ -1067,9 +1067,9 @@ function ImportacaoInner() {
     return (
       <>
         <TopNav />
-        <div style={{ padding: 40, textAlign: "center", color: "#888" }}>
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>Acesso restrito</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-1)" }}>Acesso restrito</div>
           <div style={{ fontSize: 14, marginTop: 8 }}>Esta área é exclusiva para a equipe Raccolto.</div>
         </div>
       </>
@@ -2406,11 +2406,11 @@ function ImportacaoInner() {
   return (
     <>
     <TopNav />
-    <div style={{ background: "#F4F6FA", minHeight: "100vh", padding: "24px 28px" }}>
+    <div style={{ background: "var(--bg-page)", minHeight: "100vh", padding: "24px 28px" }}>
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>
           Importações
         </h1>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
@@ -2434,7 +2434,7 @@ function ImportacaoInner() {
                     width: "100%", padding: "12px 16px",
                     border: "none", borderBottom: "0.5px solid #DDE2EE",
                     background: aba === a ? "#D5E8F5" : "transparent",
-                    color: aba === a ? "#1A4870" : "#555",
+                    color: aba === a ? "#1A4870" : "var(--text-2)",
                     fontWeight: aba === a ? 700 : 400,
                     fontSize: 13, cursor: "pointer", textAlign: "left",
                   }}
@@ -2466,7 +2466,7 @@ function ImportacaoInner() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 24 }}>{cfg.icon}</span>
-                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>{cfg.label}</h2>
+                  <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{cfg.label}</h2>
                 </div>
                 <p style={{ margin: "4px 0 0 34px", fontSize: 13, color: "#666" }}>{cfg.desc}</p>
               </div>
@@ -2490,7 +2490,7 @@ function ImportacaoInner() {
               <>
                 {aba === "insumos" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#FFFBE0", border: "0.5px solid #C9921B", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
                       <input type="checkbox" checked={modoAtualizacaoInsumos} onChange={e => setModoAtualizacaoInsumos(e.target.checked)} style={{ width: 16, height: 16, accentColor: "#C9921B", cursor: "pointer" }} />
                       <span>
                         <strong style={{ color: "#7A5C00" }}>Modo Atualização</strong>
@@ -2502,7 +2502,7 @@ function ImportacaoInner() {
 
                 {aba === "contratos_fin" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
                       <input type="checkbox" checked={modoAtualizacaoContratoFin} onChange={e => {
                           const novoModo = e.target.checked;
                           setModoAtualizacaoContratoFin(novoModo);
@@ -2527,7 +2527,7 @@ function ImportacaoInner() {
 
                 {aba === "contratos_venda" && dupRows > 0 && (
                   <div style={{ marginTop: 16, padding: "10px 14px", background: "#EDE9FE", border: "0.5px solid #7C3AED", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#555", userSelect: "none" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)", userSelect: "none" }}>
                       <input type="checkbox" checked={modoAtualizacaoContratoVenda} onChange={e => {
                           const novoModo = e.target.checked;
                           setModoAtualizacaoContratoVenda(novoModo);
@@ -2550,7 +2550,7 @@ function ImportacaoInner() {
                   </div>
                 )}
                 <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: 13, color: "#555" }}>
+                  <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                     <strong>{totalRows}</strong> linha{totalRows !== 1 ? "s" : ""} lida{totalRows !== 1 ? "s" : ""}
                     {erroRows > 0 && <span style={{ marginLeft: 10, color: "#E24B4A", fontWeight: 600 }}>{erroRows} com erro</span>}
                     {okRows   > 0 && <span style={{ marginLeft: 10, color: "#16A34A", fontWeight: 600 }}>{okRows} prontas para importar</span>}
@@ -2558,7 +2558,7 @@ function ImportacaoInner() {
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={limpar}
-                      style={{ padding: "7px 14px", background: "white", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, color: "#888", cursor: "pointer" }}
+                      style={{ padding: "7px 14px", background: "white", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}
                     >
                       Limpar
                     </button>
@@ -2567,7 +2567,7 @@ function ImportacaoInner() {
                       disabled={cfg.loading || okRows === 0}
                       style={{
                         padding: "7px 20px",
-                        background: okRows === 0 ? "#DDE2EE" : "#1A4870",
+                        background: okRows === 0 ? "var(--border)" : "#1A4870",
                         border: "none", borderRadius: 8, color: "white",
                         fontSize: 13, fontWeight: 600, cursor: okRows === 0 ? "default" : "pointer",
                         display: "flex", alignItems: "center", gap: 6,
@@ -2594,7 +2594,7 @@ function ImportacaoInner() {
 
             {/* Empty state */}
             {totalRows === 0 && !cfg.result && (
-              <div style={{ marginTop: 20, textAlign: "center", color: "#aaa", fontSize: 13, padding: "16px 0" }}>
+              <div style={{ marginTop: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "16px 0" }}>
                 Faça o upload de um arquivo XLSX para visualizar os dados antes de importar.
               </div>
             )}

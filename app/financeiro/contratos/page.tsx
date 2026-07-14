@@ -26,10 +26,10 @@ import type {
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 18, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" };
@@ -127,7 +127,7 @@ const TIPO_META: Record<ContratoFinanceiro["tipo"], { label: string; bg: string;
   securitizacao: { label: "Securitização",  bg: "#FBF0D8", cl: "#7A5A12" },
   cpr:           { label: "CPR",            bg: "#FAEEDA", cl: "#633806" },
   egf:           { label: "EGF",            bg: "#FBF3E0", cl: "#8B5E14" },
-  outros:        { label: "Outros",         bg: "#F1EFE8", cl: "#555"    },
+  outros:        { label: "Outros",         bg: "#F1EFE8", cl: "var(--text-2)"    },
 };
 
 const TIPO_GAR_META: Record<NonNullable<GarantiaContrato["tipo_garantia"]>, { label: string; bg: string; cl: string }> = {
@@ -138,7 +138,7 @@ const TIPO_GAR_META: Record<NonNullable<GarantiaContrato["tipo_garantia"]>, { la
   nota_promissoria:     { label: "Nota Promissória",      bg: "#EDE9FB", cl: "#4B3B9B" },
   cpr_garantia:         { label: "CPR como Garantia",     bg: "#FEF3E2", cl: "#7A4300" },
   cessao_recebiveis:    { label: "Cessão de Recebíveis",  bg: "#E6F1FB", cl: "#0C447C" },
-  outros:               { label: "Outros",                bg: "#F1EFE8", cl: "#555"    },
+  outros:               { label: "Outros",                bg: "#F1EFE8", cl: "var(--text-2)"    },
 };
 
 const GRAU_META: Record<"1_grau"|"2_grau"|"3_grau", string> = { "1_grau": "1° Grau", "2_grau": "2° Grau", "3_grau": "3° Grau" };
@@ -149,7 +149,7 @@ const TIPO_BEM_META: Record<NonNullable<GarantiaContrato["tipo_bem"]>, string> =
 
 const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: string; cl: string }> = {
   ativo:     { label: "Ativo",     bg: "#D5E8F5", cl: "#0B2D50" },
-  quitado:   { label: "Quitado",   bg: "#F1EFE8", cl: "#555"    },
+  quitado:   { label: "Quitado",   bg: "#F1EFE8", cl: "var(--text-2)"    },
   cancelado: { label: "Cancelado", bg: "#FCEBEB", cl: "#791F1F" },
 };
 
@@ -1025,8 +1025,8 @@ export default function ContratosFinanceiros() {
     return (
       <div style={{ textAlign: "center", padding: "48px 0", color: "#999" }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
-        <div style={{ fontWeight: 600, fontSize: 13, color: "#555" }}>Salve o contrato primeiro</div>
-        <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Preencha a aba <strong>Principal</strong> e clique em <strong>Salvar</strong> para liberar a aba <strong>{nome}</strong>.</div>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-2)" }}>Salve o contrato primeiro</div>
+        <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>Preencha a aba <strong>Principal</strong> e clique em <strong>Salvar</strong> para liberar a aba <strong>{nome}</strong>.</div>
       </div>
     );
   }
@@ -1042,14 +1042,14 @@ export default function ContratosFinanceiros() {
           {/* Cabeçalho */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Contratos Financeiros</h1>
-              <div style={{ fontSize: 12, color: "#888", marginTop: 3 }}>Custeio, CPR, investimento, securitização, EGF</div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos Financeiros</h1>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>Custeio, CPR, investimento, securitização, EGF</div>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              {ptax && <span style={{ fontSize: 11, color: "#555", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
+              {ptax && <span style={{ fontSize: 11, color: "var(--text-2)", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
               {fazendas.length > 1 && (
                 <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-                  style={{ padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "#fff", minWidth: 160 }}>
+                  style={{ padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
                   <option value="">Todas as fazendas</option>
                   {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
                 </select>
@@ -1065,10 +1065,10 @@ export default function ContratosFinanceiros() {
               {[
                 { label: "Contratos Ativos",  valor: contratosFiltrados.filter(c => c.status === "ativo").length, fmt: (v: number) => String(v),        cor: "#1A4870", suf: "" },
                 { label: "Total Captado",     valor: totalFinanciado,                                      fmt: fmtBRL,                           cor: "#1A5C38", suf: ptax ? " (conv. PTAX)" : "" },
-                { label: "Quitados/Cancelados", valor: contratosFiltrados.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "#555",    suf: "" },
+                { label: "Quitados/Cancelados", valor: contratosFiltrados.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "var(--text-2)",    suf: "" },
               ].map((k, i) => (
-                <div key={i} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
-                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{k.label}{k.suf}</div>
+                <div key={i} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{k.label}{k.suf}</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.fmt(k.valor)}</div>
                 </div>
               ))}
@@ -1085,18 +1085,18 @@ export default function ContratosFinanceiros() {
               </button>
             </div>
           ) : contratosFiltrados.length === 0 ? (
-            <div style={{ background: "#fff", borderRadius: 14, border: "0.5px solid #DDE2EE", padding: "56px 0", textAlign: "center" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid #DDE2EE", padding: "56px 0", textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🏦</div>
-              <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
-              <div style={{ fontSize: 12, color: "#888" }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
             </div>
           ) : (
-            <div style={{ background: "#fff", borderRadius: 14, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
                     {["Descrição / Credor", "Nº Operação", "Tipo", "Cálculo", "Taxa a.a.", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 4 && i <= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 4 && i <= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1109,18 +1109,18 @@ export default function ContratosFinanceiros() {
                         onMouseEnter={e => (e.currentTarget.style.background = "#FAFBFD")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                         <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.descricao}</div>
-                          <div style={{ fontSize: 11, color: "#888" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
+                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)" }}>{c.credor}{c.linha_credito ? ` · ${c.linha_credito}` : ""}</div>
                         </td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
                         <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo_calculo.toUpperCase(), "#F1EFE8", "#555")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo_calculo.toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ fontWeight: 600 }}>{c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}</div>
-                          {c.moeda === "USD" && ptax && <div style={{ fontSize: 10, color: "#888" }}>≈ {fmtBRL(c.valor_financiado * ptax)}</div>}
+                          {c.moeda === "USD" && ptax && <div style={{ fontSize: 10, color: "var(--text-3)" }}>≈ {fmtBRL(c.valor_financiado * ptax)}</div>}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtData(c.data_contrato)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtData(c.data_contrato)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
@@ -1142,13 +1142,13 @@ export default function ContratosFinanceiros() {
       {modalImport && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) { setModalImport(false); setImportPreview(null); setImportLog([]); } }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "min(940px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(940px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>Importar Contratos Financeiros — XLSX</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Importar Contratos Financeiros — XLSX</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>AgroSoft · Formato alternativo · Formato livre (1 linha por contrato, qualquer fonte)</div>
               </div>
-              <button onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+              <button onClick={() => { setModalImport(false); setImportPreview(null); setImportLog([]); }} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</button>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
@@ -1171,25 +1171,25 @@ export default function ContratosFinanceiros() {
                   <div style={{ marginBottom: 16, background: "#E4F0F9", border: "0.5px solid #1A487040", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#0B2D50" }}>
                     <div style={{ fontWeight: 600, marginBottom: 8 }}>3 formatos aceitos — o sistema detecta automaticamente:</div>
                     <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato AgroSoft/Agrobase (N linhas por contrato, agrupadas por CD_DIVIDA):</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 3 }}>Formato AgroSoft/Agrobase (N linhas por contrato, agrupadas por CD_DIVIDA):</div>
                       <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
                         CD_DIVIDA · NR_CONTRATO · DESCRICAO · DATA_DIVIDA · ST_TIPO_DIVIDA · NOME_CREDOR_DEVEDOR · PERC_JUROS · VALOR_FINANCIADO · CD_MOEDA · VL_COTACAO · OPERACAO_CONTA · NUM_PARC · DATA_VENCIMENTO · VALOR_AMORTIZACAO · VALOR_JUROS_ENCARGOS · VALOR_ACESSORIOS · VALOR_PARCELAS · SALDO_DEVEDOR
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>ST_TIPO_DIVIDA: I = Investimento, C = Custeio, P = CPR, O = Outros &nbsp;|&nbsp; CD_MOEDA: 1 = BRL, 2 = USD</div>
                     </div>
                     <div style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 3 }}>Formato alternativo (N linhas por contrato, com acentos/espaços):</div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 3 }}>Formato alternativo (N linhas por contrato, com acentos/espaços):</div>
                       <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
                         Nº CONTRATO · DÍVIDA · CREDOR/DEVEDOR · DATA DÍVIDA · % JUROS · MOEDA · VALOR · DATA PARCELA · VALOR SALDO · TIPO PARC.
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>TIPO PARC.: C/R = crédito (liberação), D/P = débito (parcela) &nbsp;|&nbsp; MOEDA: BRL ou USD</div>
+                      <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>TIPO PARC.: C/R = crédito (liberação), D/P = débito (parcela) &nbsp;|&nbsp; MOEDA: BRL ou USD</div>
                     </div>
                     <div style={{ borderTop: "0.5px solid #1A487030", paddingTop: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 3 }}>Formato Livre — 1 linha por contrato (manual ou de qualquer sistema):</div>
                       <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
                         NUMERO_CONTRATO · DESCRICAO · CREDOR · TIPO · LINHA_CREDITO · TIPO_CALCULO · MOEDA · VALOR_FINANCIADO · VALOR_LIBERADO · COTACAO_USD · DATA_CONTRATO · DATA_LIBERACAO · DATA_VENCIMENTO · PRAZO_MESES · CARENCIA_MESES · TAXA_JUROS_AA · TAXA_JUROS_AM · IOF_PCT · TAC_VALOR · OUTROS_CUSTOS
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 10, color: "#555" }}>
+                      <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>
                         TIPO: Custeio, Investimento, CPR, Outros &nbsp;|&nbsp; TIPO_CALCULO: SAC ou PRICE &nbsp;|&nbsp; MOEDA: BRL ou USD
                         <br/>Se PRAZO_MESES &gt; 0: parcelas geradas pelo sistema (SAC/PRICE). Senão: parcela única em DATA_VENCIMENTO.
                       </div>
@@ -1211,7 +1211,7 @@ export default function ContratosFinanceiros() {
                         ].map(({ label, val }) => (
                           <div key={label} style={{ background: "white", borderRadius: 8, padding: "8px 12px", textAlign: "center", border: "0.5px solid #C9921B40" }}>
                             <div style={{ fontSize: 18, fontWeight: 700, color: val === 0 ? "#E24B4A" : "#C9921B" }}>{val}</div>
-                            <div style={{ fontSize: 11, color: "#555" }}>{label}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-2)" }}>{label}</div>
                           </div>
                         ))}
                       </div>
@@ -1224,26 +1224,26 @@ export default function ContratosFinanceiros() {
 
                       {importDiag.valoresOperacao.length > 0 && (
                         <div style={{ marginBottom: 10 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>Valores encontrados em OPERACAO_CONTA:</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Valores encontrados em OPERACAO_CONTA:</div>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {importDiag.valoresOperacao.map(v => (
                               <span key={v} style={{ padding: "2px 8px", background: "white", border: "0.5px solid #C9921B", borderRadius: 12, fontSize: 11, color: "#7A5C00", fontFamily: "monospace" }}>{v}</span>
                             ))}
                           </div>
-                          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Esperado: <code>Receber</code> (cabeçalho) e <code>Pagar</code> (parcelas)</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Esperado: <code>Receber</code> (cabeçalho) e <code>Pagar</code> (parcelas)</div>
                         </div>
                       )}
 
                       <div style={{ marginBottom: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>Colunas encontradas no arquivo:</div>
-                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "#555", lineHeight: 1.8, background: "white", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Colunas encontradas no arquivo:</div>
+                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "var(--text-2)", lineHeight: 1.8, background: "white", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
                           {importDiag.colunas.join(" · ") || "(nenhuma)"}
                         </div>
                       </div>
 
                       {importDiag.avisos.length > 0 && (
                         <div>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 4 }}>Avisos do parser:</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Avisos do parser:</div>
                           {importDiag.avisos.map((av, i) => (
                             <div key={i} style={{ fontSize: 11, color: "#7A5C00", marginBottom: 2 }}>• {av}</div>
                           ))}
@@ -1259,10 +1259,10 @@ export default function ContratosFinanceiros() {
 
                   <label style={{ display: "block", border: "2px dashed #D4DCE8", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = "#D4DCE8")}>
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border-table)")}>
                     <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Selecionar arquivo XLSX</div>
-                    <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>Clique para abrir ou arraste o arquivo aqui (.xlsx, .xls)</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Selecionar arquivo XLSX</div>
+                    <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>Clique para abrir ou arraste o arquivo aqui (.xlsx, .xls)</div>
                     <input type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={async e => {
                       const file = e.target.files?.[0];
                       if (!file) return;
@@ -1284,7 +1284,7 @@ export default function ContratosFinanceiros() {
               ) : (
                 <div>
                   <div style={{ marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>
                       {importPreview.length} contrato{importPreview.length !== 1 ? "s" : ""} encontrado{importPreview.length !== 1 ? "s" : ""} — total {importPreview.reduce((s, c) => s + c.parcelas.length, 0)} parcelas
                     </div>
                     <button style={{ ...btnR, fontSize: 12 }} onClick={() => setImportPreview(null)}>← Selecionar outro arquivo</button>
@@ -1294,7 +1294,7 @@ export default function ContratosFinanceiros() {
                       <thead>
                         <tr style={{ background: "#F3F6F9" }}>
                           {["Nº Contrato", "Descrição / Data", "Credor", "Tipo", "Taxa a.a.", "Valor Financiado", "Parcelas"].map((h, i) => (
-                            <th key={i} style={{ padding: "8px 10px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                            <th key={i} style={{ padding: "8px 10px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1307,22 +1307,22 @@ export default function ContratosFinanceiros() {
                             <tr key={idx} style={{ borderBottom: idx < importPreview.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
                               <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1A4870" }}>{c.nr_contrato || c.cd_divida}</td>
                               <td style={{ padding: "8px 10px" }}>
-                                <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.descricao}</div>
-                                <div style={{ fontSize: 11, color: "#888" }}>{fmtData(c.data_contrato)}</div>
+                                <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtData(c.data_contrato)}</div>
                               </td>
-                              <td style={{ padding: "8px 10px", color: "#555", maxWidth: 140 }}>{c.credor}</td>
+                              <td style={{ padding: "8px 10px", color: "var(--text-2)", maxWidth: 140 }}>{c.credor}</td>
                               <td style={{ padding: "8px 10px" }}>
                                 <span style={{ fontSize: 10, background: tm.bg, color: tm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
                               </td>
                               <td style={{ padding: "8px 10px", textAlign: "center" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}%` : "—"}</td>
                               <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600 }}>
                                 {c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}
-                                {c.cotacao ? <div style={{ fontSize: 10, color: "#888" }}>cotação {fmtNum(c.cotacao, 4)}</div> : null}
+                                {c.cotacao ? <div style={{ fontSize: 10, color: "var(--text-3)" }}>cotação {fmtNum(c.cotacao, 4)}</div> : null}
                               </td>
                               <td style={{ padding: "8px 10px", textAlign: "center" }}>
                                 <span style={{ fontWeight: 700, color: "#1A4870" }}>{c.parcelas.length}x</span>
                                 {primeiraParc && ultimaParc && (
-                                  <div style={{ fontSize: 10, color: "#888" }}>
+                                  <div style={{ fontSize: 10, color: "var(--text-3)" }}>
                                     {fmtData(primeiraParc.data_vencimento)} → {fmtData(ultimaParc.data_vencimento)}
                                   </div>
                                 )}
@@ -1343,7 +1343,7 @@ export default function ContratosFinanceiros() {
                         Somente os contratos e parcelas serão criados. Use esta opção se você já tem os lançamentos no Contas a Pagar para evitar duplicidade.
                       </div>
                     )}
-                    <div style={{ fontSize: 11, color: "#888" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
                       Contratos já existentes (mesmo Nº Contrato) serão automaticamente pulados.
                     </div>
                   </div>
@@ -1366,13 +1366,13 @@ export default function ContratosFinanceiros() {
       {modalAberto && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
-          <div style={{ background: "#fff", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Cabeçalho do modal */}
             <div style={{ padding: "18px 26px 0", borderBottom: "0.5px solid #D4DCE8", flexShrink: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>
                     {contratoModal ? contratoModal.descricao : "Novo Contrato Financeiro"}
                   </div>
                   {contratoModal && (
@@ -1386,7 +1386,7 @@ export default function ContratosFinanceiros() {
                     </div>
                   )}
                 </div>
-                <button onClick={fecharModal} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>✕</button>
+                <button onClick={fecharModal} style={{ border: "none", background: "transparent", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>✕</button>
               </div>
 
               {/* Abas */}
@@ -1403,7 +1403,7 @@ export default function ContratosFinanceiros() {
                   const bloqueada = k !== "principal" && !contratoModal;
                   return (
                     <button key={k} onClick={() => !bloqueada && setAbaModal(k)}
-                      style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#1A4870" : "#555", borderBottom: abaModal === k ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
+                      style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: bloqueada ? "not-allowed" : "pointer", fontSize: 13, fontWeight: abaModal === k ? 700 : 400, color: bloqueada ? "#ccc" : abaModal === k ? "#1A4870" : "var(--text-2)", borderBottom: abaModal === k ? "2.5px solid #1A4870" : "2.5px solid transparent", whiteSpace: "nowrap", transition: "color 0.1s" }}
                     >{l}{bloqueada ? " 🔒" : ""}</button>
                   );
                 })}
@@ -1630,10 +1630,10 @@ export default function ContratosFinanceiros() {
                     <button style={{ ...btnV, padding: "8px 14px" }} onClick={salvarLiberacao} disabled={salvando || !fLib.data_liberacao || !fLib.valor_liberado}>+ Adicionar</button>
                   </div>
                   {parcelasLiberacao.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
+                    <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Data", contratoModal.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", contratoModal.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th> : null)}</tr></thead>
+                      <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Data", contratoModal.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", contratoModal.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th> : null)}</tr></thead>
                       <tbody>
                         {parcelasLiberacao.map((p, i) => (
                           <tr key={p.id} style={{ borderBottom: i < parcelasLiberacao.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
@@ -1641,14 +1641,14 @@ export default function ContratosFinanceiros() {
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
                             {contratoModal.moeda === "USD" && <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.valor_liberado_brl ? fmtBRL(p.valor_liberado_brl) : "—"}</td>}
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#D5E8F5", "#0B2D50") : badge("—", "#F1EFE8", "#555")}</td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.lancamento_id ? badge("✓ CR", "#D5E8F5", "#0B2D50") : badge("—", "#F1EFE8", "var(--text-2)")}</td>
                             <td style={{ padding: "8px 12px", textAlign: "right" }}><button style={btnX} onClick={() => excluirParcelaLiberacao(p.id).then(() => setParcelasLiberacao(x => x.filter(r => r.id !== p.id)))}>✕</button></td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   )}
-                  <div style={{ marginTop: 10, fontSize: 11, color: "#555", textAlign: "right" }}>
+                  <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-2)", textAlign: "right" }}>
                     Total liberado: <strong>{fmtBRL(parcelasLiberacao.reduce((s, p) => s + (p.valor_liberado_brl ?? p.valor_liberado), 0))}</strong>
                     {" · "}Saldo a liberar: <strong style={{ color: "#EF9F27" }}>{fmtBRL(Math.max(0, (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado) - parcelasLiberacao.reduce((s, p) => s + (p.valor_liberado_brl ?? p.valor_liberado), 0)))}</strong>
                   </div>
@@ -1659,7 +1659,7 @@ export default function ContratosFinanceiros() {
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
                   <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
                       <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
                       <div><label style={lbl}>Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}</label><InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} /></div>
@@ -1672,14 +1672,14 @@ export default function ContratosFinanceiros() {
                     </div>
                   </div>
                   {parcelasPagamento.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 12 }}>Preencha a calculadora acima para gerar a tabela de parcelas</div>
+                    <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Preencha a calculadora acima para gerar a tabela de parcelas</div>
                   ) : (
                     <>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                        <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {parcelasPagamento.map((p, i) => {
-                            const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "#555";
+                            const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
                             return (
                               <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid #DEE5EE" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
                                 <td style={{ padding: "7px 10px", textAlign: "center" }}>{p.num_parcela}</td>
@@ -1698,7 +1698,7 @@ export default function ContratosFinanceiros() {
                         </tbody>
                         <tfoot>
                           <tr style={{ background: "#F3F6F9", fontWeight: 600 }}>
-                            <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAIS</td>
+                            <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
                             <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
                             <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
                             <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
@@ -1707,7 +1707,7 @@ export default function ContratosFinanceiros() {
                           </tr>
                         </tfoot>
                       </table>
-                      <div style={{ marginTop: 8, fontSize: 11, color: "#555", display: "flex", gap: 16 }}>
+                      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16 }}>
                         <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0))}</strong></span>
                         <span>CET estimado: <strong>{fmtNum((parcelasPagamento.reduce((s, p) => s + p.juros, 0) / contratoModal.valor_financiado) * 100, 2)}% a.p.</strong></span>
                         <span>Pagas: <strong style={{ color: "#1A4870" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
@@ -1766,11 +1766,11 @@ export default function ContratosFinanceiros() {
                     </div>
                   </div>
                   {garantias.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "24px 0", color: "#888", fontSize: 12 }}>Nenhuma garantia cadastrada para este contrato.</div>
+                    <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma garantia cadastrada para este contrato.</div>
                   ) : (
                     <>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead><tr style={{ background: "#F3F6F9" }}>{["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <thead><tr style={{ background: "#F3F6F9" }}>{["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {garantias.map((g, i) => {
                             const tipoMeta = g.tipo_garantia ? TIPO_GAR_META[g.tipo_garantia] : null;
@@ -1781,7 +1781,7 @@ export default function ContratosFinanceiros() {
                                 <td style={{ padding: "9px 12px" }}>{tipoMeta ? <span style={{ fontSize: 11, background: tipoMeta.bg, color: tipoMeta.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{tipoMeta.label}</span> : "—"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, fontWeight: 600 }}>{g.grau ? GRAU_META[g.grau as keyof typeof GRAU_META] : "—"}</td>
                                 <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 600 }}>{bemDesc}</td>
-                                <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, color: "#555" }}>{g.tipo_bem ? TIPO_BEM_META[g.tipo_bem] : "—"}</td>
+                                <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, color: "var(--text-2)" }}>{g.tipo_bem ? TIPO_BEM_META[g.tipo_bem] : "—"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center" }}>{g.percentual_bem ? `${g.percentual_bem}%` : "100%"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center", fontWeight: 600 }}>{g.valor_avaliacao ? fmtBRL(g.valor_avaliacao) : "—"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center" }}>{cobertura !== null ? <span style={{ fontWeight: 700, color: cobertura >= 130 ? "#16A34A" : cobertura >= 100 ? "#EF9F27" : "#E24B4A" }}>{fmtNum(cobertura, 1)}%</span> : "—"}</td>
@@ -1809,9 +1809,9 @@ export default function ContratosFinanceiros() {
               {/* ── Centro de Custo ── */}
               {abaModal === "centrocusto" && (!contratoModal ? <AbaDisabled nome="Centro de Custo" /> : (
                 <div>
-                  <div style={{ marginBottom: 10, fontSize: 12, color: "#555" }}>Defina como o valor captado é rateado entre centros de custo / safras (deve totalizar 100%).</div>
+                  <div style={{ marginBottom: 10, fontSize: 12, color: "var(--text-2)" }}>Defina como o valor captado é rateado entre centros de custo / safras (deve totalizar 100%).</div>
                   <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
-                    <thead><tr style={{ background: "#F3F6F9" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                    <thead><tr style={{ background: "#F3F6F9" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {centrosForm.map((c, i) => (
                         <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
@@ -1833,7 +1833,7 @@ export default function ContratosFinanceiros() {
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
                     <button style={{ ...btnV, opacity: salvando ? 0.5 : 1 }} disabled={salvando} onClick={salvarCentroCusto}>Salvar Rateio</button>
                   </div>
-                  {centrosCusto.length > 0 && <div style={{ marginTop: 14, fontSize: 11, color: "#555" }}>Último rateio salvo: {centrosCusto.map(c => `${c.descricao} (${fmtNum(c.percentual, 1)}%)`).join(" · ")}</div>}
+                  {centrosCusto.length > 0 && <div style={{ marginTop: 14, fontSize: 11, color: "var(--text-2)" }}>Último rateio salvo: {centrosCusto.map(c => `${c.descricao} (${fmtNum(c.percentual, 1)}%)`).join(" · ")}</div>}
                 </div>
               ))}
 
@@ -1845,7 +1845,7 @@ export default function ContratosFinanceiros() {
                   capitalizacao:   { label: "Capitalização",      bg: "#FCF0F0", cl: "#7A1A1A" },
                   reducao_taxa:    { label: "Redução de Taxa",    bg: "#E8F5EB", cl: "#1A5C35" },
                   ampliacao_valor: { label: "Ampliação de Valor", bg: "#EDE9FB", cl: "#4B3B9B" },
-                  outros:          { label: "Outros",             bg: "#F3F4F6", cl: "#555"    },
+                  outros:          { label: "Outros",             bg: "#F3F4F6", cl: "var(--text-2)"    },
                 };
                 return (
                   <div>
@@ -1873,10 +1873,10 @@ export default function ContratosFinanceiros() {
                       </div>
                     </div>
                     {aditivos.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "28px 0", color: "#888", fontSize: 12 }}>Nenhum aditivo registrado.</div>
+                      <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhum aditivo registrado.</div>
                     ) : (
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead><tr style={{ background: "#F3F6F9" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                        <thead><tr style={{ background: "#F3F6F9" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {aditivos.map((a, i) => {
                             const meta = TIPO_ADIT[a.tipo];
@@ -1889,8 +1889,8 @@ export default function ContratosFinanceiros() {
                               <tr key={a.id} style={{ borderBottom: i < aditivos.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                                 <td style={{ padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(a.data_aditivo)}</td>
                                 <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, background: meta.bg, color: meta.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{meta.label}</span></td>
-                                <td style={{ padding: "8px 10px", fontSize: 12 }}><div>{a.descricao}</div>{a.obs && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{a.obs}</div>}</td>
-                                <td style={{ padding: "8px 10px", fontSize: 11, color: "#555" }}>{termos.length > 0 ? termos.map((t, ti) => <div key={ti}>{t}</div>) : <span style={{ color: "#bbb" }}>—</span>}</td>
+                                <td style={{ padding: "8px 10px", fontSize: 12 }}><div>{a.descricao}</div>{a.obs && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{a.obs}</div>}</td>
+                                <td style={{ padding: "8px 10px", fontSize: 11, color: "var(--text-2)" }}>{termos.length > 0 ? termos.map((t, ti) => <div key={ti}>{t}</div>) : <span style={{ color: "#bbb" }}>—</span>}</td>
                                 <td style={{ padding: "8px 10px" }}><button style={btnX} onClick={() => { if (confirm("Excluir este aditivo?")) excluirAditivo(a.id).then(() => setAditivos(p => p.filter(x => x.id !== a.id))); }}>✕</button></td>
                               </tr>
                             );
@@ -1919,13 +1919,13 @@ export default function ContratosFinanceiros() {
                 return (
                   <div>
                     {movs.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "48px 0", color: "#888", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma movimentação. Registre uma liberação ou gere o plano de pagamento.</div>
                     ) : (
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                           <tr style={{ background: "#F3F6F9" }}>
                             {["Data", "Evento", "Amortização", "Juros", "Acessórios", "Valor", "Saldo Devedor", "Status"].map((h, i) => (
-                              <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                              <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -1950,7 +1950,7 @@ export default function ContratosFinanceiros() {
                                 <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: m.juros > 0 ? "#C9921B" : "#bbb" }}>{m.juros > 0 ? fmtBRL(m.juros) : "—"}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right" }}>{m.acessorios > 0 ? fmtBRL(m.acessorios) : "—"}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 13, textAlign: "right", fontWeight: 600, color: isLib ? "#1A4870" : "#1A1A1A" }}>{fmtBRL(m.valor)}</td>
-                                <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: "#555" }}>{fmtBRL(Math.max(0, m.saldo))}</td>
+                                <td style={{ padding: "7px 8px", fontSize: 12, textAlign: "right", color: "var(--text-2)" }}>{fmtBRL(Math.max(0, m.saldo))}</td>
                                 <td style={{ padding: "7px 8px" }}>{sm ? <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
                               </tr>
                             );

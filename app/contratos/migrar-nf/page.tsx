@@ -142,22 +142,22 @@ export default function MigrarNF() {
     setContratoDestinoId(""); setMotivo(""); setSucesso(false);
   }
 
-  const inp: React.CSSProperties = { padding: "8px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff", width: "100%", boxSizing: "border-box" };
+  const inp: React.CSSProperties = { padding: "8px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", width: "100%", boxSizing: "border-box" };
   const btn = (active: boolean): React.CSSProperties => ({
     padding: "10px 24px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer",
     background: active ? "#1A4870" : "#EEE", color: active ? "#fff" : "#999",
   });
 
   return (
-    <div style={{ padding: "24px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
+    <div style={{ padding: "24px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#1a1a1a" }}>Migração de NF entre Contratos</h1>
-        <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>Transfere romaneios e NFs emitidas de um contrato para outro, recalculando os saldos</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--text-1)" }}>Migração de NF entre Contratos</h1>
+        <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>Transfere romaneios e NFs emitidas de um contrato para outro, recalculando os saldos</div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>
         {/* ── Wizard ── */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
           {/* Steps header */}
           <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #EEF1F6", display: "flex", gap: 0 }}>
             {[
@@ -171,14 +171,14 @@ export default function MigrarNF() {
                   width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
                   fontWeight: 700, fontSize: 13, flexShrink: 0,
                   background: passo > s.n ? "#16A34A" : passo === s.n ? "#1A4870" : "#EEE",
-                  color: passo >= s.n ? "#fff" : "#888",
+                  color: passo >= s.n ? "#fff" : "var(--text-3)",
                 }}>
                   {passo > s.n ? "✓" : s.n}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: passo === s.n ? 700 : 400, color: passo === s.n ? "#1A4870" : "#888", marginLeft: 8, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, fontWeight: passo === s.n ? 700 : 400, color: passo === s.n ? "#1A4870" : "var(--text-3)", marginLeft: 8, whiteSpace: "nowrap" }}>
                   {s.label}
                 </span>
-                {i < 3 && <div style={{ flex: 1, height: 1, background: passo > s.n ? "#16A34A" : "#DDE2EE", margin: "0 10px" }} />}
+                {i < 3 && <div style={{ flex: 1, height: 1, background: passo > s.n ? "#16A34A" : "var(--border)", margin: "0 10px" }} />}
               </div>
             ))}
           </div>
@@ -187,7 +187,7 @@ export default function MigrarNF() {
             <div style={{ padding: 40, textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>Migração concluída com sucesso!</div>
-              <div style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20 }}>
                 Romaneio {romaneioSel?.numero} — NF-e {romaneioSel?.nfe_numero ?? "s/n"} foi migrado de{" "}
                 <strong>{contratoOrigem?.numero}</strong> para <strong>{contratoDestino?.numero}</strong>.
               </div>
@@ -198,7 +198,7 @@ export default function MigrarNF() {
               {/* Passo 1: Contrato Origem */}
               {passo === 1 && (
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#1a1a1a" }}>Qual contrato contém a NF a migrar?</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-1)" }}>Qual contrato contém a NF a migrar?</div>
                   <select value={contratoOrigemId} onChange={e => setContratoOrigemId(e.target.value)} style={inp}>
                     <option value="">— selecione —</option>
                     {contratos.filter(c => c.status !== "cancelado").map(c => (
@@ -208,10 +208,10 @@ export default function MigrarNF() {
                     ))}
                   </select>
                   {contratoOrigemId && (
-                    <div style={{ marginTop: 16, padding: "12px 16px", background: "#F4F6FA", borderRadius: 10 }}>
-                      <div style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>Contrato selecionado</div>
+                    <div style={{ marginTop: 16, padding: "12px 16px", background: "var(--bg-page)", borderRadius: 10 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>Contrato selecionado</div>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{contratoOrigem?.numero} — {contratoOrigem?.comprador}</div>
-                      <div style={{ fontSize: 12, color: "#888" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                         {contratoOrigem?.produto} · Entregue: {fmtN(contratoOrigem?.entregue_sc ?? 0, 0)} sc / {fmtN(contratoOrigem?.quantidade_sc ?? 0, 0)} sc
                       </div>
                     </div>
@@ -227,9 +227,9 @@ export default function MigrarNF() {
               {/* Passo 2: Selecionar NF/Romaneio */}
               {passo === 2 && (
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#1a1a1a" }}>Selecione o romaneio / NF-e a migrar</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-1)" }}>Selecione o romaneio / NF-e a migrar</div>
                   {loadRoms ? (
-                    <div style={{ color: "#888", textAlign: "center", padding: 20 }}>Carregando romaneios...</div>
+                    <div style={{ color: "var(--text-3)", textAlign: "center", padding: 20 }}>Carregando romaneios...</div>
                   ) : romaneiosOrigem.length === 0 ? (
                     <div style={{ padding: 20, background: "#FEE2E2", borderRadius: 10, color: "#7F1D1D", fontSize: 13 }}>
                       Nenhum romaneio com NF autorizada encontrado neste contrato.
@@ -239,8 +239,8 @@ export default function MigrarNF() {
                       {romaneiosOrigem.map(r => (
                         <label key={r.id} style={{
                           display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
-                          border: `0.5px solid ${romaneioId === r.id ? "#1A4870" : "#DDE2EE"}`,
-                          background: romaneioId === r.id ? "#F0F5FA" : "#fff",
+                          border: `0.5px solid ${romaneioId === r.id ? "#1A4870" : "var(--border)"}`,
+                          background: romaneioId === r.id ? "#F0F5FA" : "var(--bg-card)",
                           borderRadius: 10, cursor: "pointer",
                         }}>
                           <input type="radio" name="rom" value={r.id} checked={romaneioId === r.id}
@@ -250,7 +250,7 @@ export default function MigrarNF() {
                               Romaneio {r.numero}
                               {r.nfe_numero && <span style={{ marginLeft: 8, fontSize: 11, padding: "1px 8px", background: "#D5E8F5", color: "#1A4870", borderRadius: 8, fontWeight: 700 }}>NF-e {r.nfe_numero}</span>}
                             </div>
-                            <div style={{ fontSize: 12, color: "#888" }}>
+                            <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                               {fmtData(r.data)} · {fmtN(r.sacas ?? 0, 3)} sc · PL: {fmtN((r.peso_liquido_kg ?? (r.peso_bruto_kg - r.tara_kg)) / 1000, 3)} t
                             </div>
                           </div>
@@ -266,7 +266,7 @@ export default function MigrarNF() {
                     </div>
                   )}
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-                    <button onClick={() => setPasso(1)} style={{ ...btn(true), background: "#EEE", color: "#555" }}>← Voltar</button>
+                    <button onClick={() => setPasso(1)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
                     <button onClick={() => setPasso(3)} style={btn(!!romaneioId)} disabled={!romaneioId}>Próximo →</button>
                   </div>
                 </div>
@@ -275,7 +275,7 @@ export default function MigrarNF() {
               {/* Passo 3: Contrato Destino */}
               {passo === 3 && (
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#1a1a1a" }}>Para qual contrato migrar?</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-1)" }}>Para qual contrato migrar?</div>
                   {contratosDestino.length === 0 ? (
                     <div style={{ padding: 16, background: "#FBF3E0", borderRadius: 10, color: "#7A4300", fontSize: 13 }}>
                       Nenhum outro contrato ativo com mesmo comprador e produto encontrado.
@@ -293,16 +293,16 @@ export default function MigrarNF() {
                   )}
                   {contratoDestinoId && (
                     <div style={{ marginTop: 12, padding: "12px 16px", background: "#F0FFF4", borderRadius: 10, border: "0.5px solid #86EFAC" }}>
-                      <div style={{ fontSize: 12, color: "#555", marginBottom: 4 }}>Destino selecionado</div>
+                      <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 4 }}>Destino selecionado</div>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{contratoDestino?.numero} — {contratoDestino?.comprador}</div>
-                      <div style={{ fontSize: 12, color: "#888" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                         Entregue: {fmtN(contratoDestino?.entregue_sc ?? 0, 0)} sc / {fmtN(contratoDestino?.quantidade_sc ?? 0, 0)} sc ·
                         Saldo: {fmtN((contratoDestino?.quantidade_sc ?? 0) - (contratoDestino?.entregue_sc ?? 0), 0)} sc
                       </div>
                     </div>
                   )}
                   <div style={{ marginTop: 16 }}>
-                    <label style={{ display: "block", fontSize: 12, color: "#555", fontWeight: 600, marginBottom: 4 }}>
+                    <label style={{ display: "block", fontSize: 12, color: "var(--text-2)", fontWeight: 600, marginBottom: 4 }}>
                       Motivo da migração
                     </label>
                     <textarea value={motivo} onChange={e => setMotivo(e.target.value)}
@@ -311,7 +311,7 @@ export default function MigrarNF() {
                       style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
                   </div>
                   <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
-                    <button onClick={() => setPasso(2)} style={{ ...btn(true), background: "#EEE", color: "#555" }}>← Voltar</button>
+                    <button onClick={() => setPasso(2)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
                     <button onClick={() => setPasso(4)} style={btn(!!contratoDestinoId)} disabled={!contratoDestinoId}>Revisar →</button>
                   </div>
                 </div>
@@ -320,16 +320,16 @@ export default function MigrarNF() {
               {/* Passo 4: Confirmação */}
               {passo === 4 && romaneioSel && contratoOrigem && contratoDestino && (
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#1a1a1a" }}>Revisar e confirmar migração</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-1)" }}>Revisar e confirmar migração</div>
 
                   {/* Resumo da migração */}
                   <div style={{ padding: "14px 18px", background: "#F8FAFF", border: "0.5px solid #D5E8F5", borderRadius: 10, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 8 }}>ROMANEIO A MIGRAR</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
-                      <div><span style={{ color: "#888" }}>Romaneio: </span><strong>{romaneioSel.numero}</strong></div>
-                      <div><span style={{ color: "#888" }}>NF-e: </span><strong>{romaneioSel.nfe_numero ?? "—"}</strong></div>
-                      <div><span style={{ color: "#888" }}>Data: </span><strong>{fmtData(romaneioSel.data)}</strong></div>
-                      <div><span style={{ color: "#888" }}>Sacas: </span><strong>{fmtN(sacas, 3)} sc</strong></div>
+                      <div><span style={{ color: "var(--text-3)" }}>Romaneio: </span><strong>{romaneioSel.numero}</strong></div>
+                      <div><span style={{ color: "var(--text-3)" }}>NF-e: </span><strong>{romaneioSel.nfe_numero ?? "—"}</strong></div>
+                      <div><span style={{ color: "var(--text-3)" }}>Data: </span><strong>{fmtData(romaneioSel.data)}</strong></div>
+                      <div><span style={{ color: "var(--text-3)" }}>Sacas: </span><strong>{fmtN(sacas, 3)} sc</strong></div>
                     </div>
                   </div>
 
@@ -339,9 +339,9 @@ export default function MigrarNF() {
                     <div style={{ padding: 14, background: "#FEF2F2", border: "0.5px solid #FECACA", borderRadius: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#E24B4A", marginBottom: 8 }}>CONTRATO ORIGEM (perderá)</div>
                       <div style={{ fontSize: 13, fontWeight: 700 }}>{contratoOrigem.numero}</div>
-                      <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>{contratoOrigem.comprador}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{contratoOrigem.comprador}</div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                        <span style={{ color: "#888" }}>Antes:</span>
+                        <span style={{ color: "var(--text-3)" }}>Antes:</span>
                         <span style={{ fontWeight: 600 }}>{fmtN(contratoOrigem.entregue_sc, 3)} sc</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#E24B4A" }}>
@@ -353,9 +353,9 @@ export default function MigrarNF() {
                     <div style={{ padding: 14, background: "#F0FFF4", border: "0.5px solid #86EFAC", borderRadius: 10 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>CONTRATO DESTINO (receberá)</div>
                       <div style={{ fontSize: 13, fontWeight: 700 }}>{contratoDestino.numero}</div>
-                      <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>{contratoDestino.comprador}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{contratoDestino.comprador}</div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                        <span style={{ color: "#888" }}>Antes:</span>
+                        <span style={{ color: "var(--text-3)" }}>Antes:</span>
                         <span style={{ fontWeight: 600 }}>{fmtN(contratoDestino.entregue_sc, 3)} sc</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#16A34A" }}>
@@ -366,7 +366,7 @@ export default function MigrarNF() {
                   </div>
 
                   {motivo && (
-                    <div style={{ padding: "10px 14px", background: "#FFFDF7", border: "0.5px solid #FDE9BB", borderRadius: 8, fontSize: 12, color: "#555", marginBottom: 16 }}>
+                    <div style={{ padding: "10px 14px", background: "#FFFDF7", border: "0.5px solid #FDE9BB", borderRadius: 8, fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>
                       <strong>Motivo registrado:</strong> {motivo}
                     </div>
                   )}
@@ -376,7 +376,7 @@ export default function MigrarNF() {
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <button onClick={() => setPasso(3)} style={{ ...btn(true), background: "#EEE", color: "#555" }}>← Voltar</button>
+                    <button onClick={() => setPasso(3)} style={{ ...btn(true), background: "#EEE", color: "var(--text-2)" }}>← Voltar</button>
                     <button onClick={executarMigracao} disabled={executando} style={{ ...btn(true), background: "#16A34A", opacity: executando ? 0.7 : 1 }}>
                       {executando ? "Migrando…" : "✓ Confirmar Migração"}
                     </button>
@@ -388,15 +388,15 @@ export default function MigrarNF() {
         </div>
 
         {/* ── Log de Auditoria ── */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>Log de Auditoria</span>
-            <span style={{ fontSize: 11, color: "#888" }}>{logs.length} migração{logs.length !== 1 ? "ões" : ""}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Log de Auditoria</span>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>{logs.length} migração{logs.length !== 1 ? "ões" : ""}</span>
           </div>
           {loadLogs ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#888", fontSize: 12 }}>Carregando...</div>
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>Carregando...</div>
           ) : logs.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#888", fontSize: 12 }}>
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
               Nenhuma migração realizada ainda.
             </div>
           ) : (
@@ -404,20 +404,20 @@ export default function MigrarNF() {
               {logs.map((l, i) => (
                 <div key={l.id} style={{ padding: "12px 16px", borderBottom: "0.5px solid #F3F5F9", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>
                       Romaneio {l.romaneio_numero}
                       {l.nfe_numero && <span style={{ marginLeft: 6, fontSize: 10, padding: "1px 6px", background: "#D5E8F5", color: "#1A4870", borderRadius: 6 }}>NF-e {l.nfe_numero}</span>}
                     </span>
-                    <span style={{ fontSize: 10, color: "#888" }}>{fmtData(l.created_at)}</span>
+                    <span style={{ fontSize: 10, color: "var(--text-3)" }}>{fmtData(l.created_at)}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: "#555" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                     <span style={{ color: "#E24B4A" }}>{l.contrato_origem_numero}</span>
                     {" → "}
                     <span style={{ color: "#16A34A" }}>{l.contrato_destino_numero}</span>
-                    <span style={{ marginLeft: 8, color: "#888" }}>{fmtN(l.sacas, 3)} sc</span>
+                    <span style={{ marginLeft: 8, color: "var(--text-3)" }}>{fmtN(l.sacas, 3)} sc</span>
                   </div>
-                  {l.motivo && <div style={{ fontSize: 11, color: "#888", marginTop: 4, fontStyle: "italic" }}>{l.motivo}</div>}
-                  <div style={{ fontSize: 10, color: "#aaa", marginTop: 2 }}>por {l.usuario}</div>
+                  {l.motivo && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4, fontStyle: "italic" }}>{l.motivo}</div>}
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>por {l.usuario}</div>
                 </div>
               ))}
             </div>

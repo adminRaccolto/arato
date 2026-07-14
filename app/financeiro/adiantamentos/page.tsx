@@ -14,15 +14,15 @@ import type {
 } from "../../../lib/supabase";
 
 // ── Estilos base ──────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnAzul: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" };
+const btnSm: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" };
 const btnSmX: React.CSSProperties = { ...btnSm, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F" };
-const thS: React.CSSProperties = { padding: "8px 12px", fontSize: 11, fontWeight: 600, color: "#555", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" };
-const tdS: React.CSSProperties = { padding: "10px 12px", fontSize: 13, color: "#1a1a1a", borderBottom: "0.5px solid #F0F4F8", verticalAlign: "middle" };
+const thS: React.CSSProperties = { padding: "8px 12px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textAlign: "left", textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" };
+const tdS: React.CSSProperties = { padding: "10px 12px", fontSize: 13, color: "var(--text-1)", borderBottom: "0.5px solid #F0F4F8", verticalAlign: "middle" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
@@ -37,7 +37,7 @@ const STATUS_COLOR: Record<AdiantamentoFornecedor["status"], { bg: string; color
   em_aberto: { bg: "#D5E8F5", color: "#0B2D50" },
   parcial:   { bg: "#FBF3E0", color: "#7A5520" },
   aplicado:  { bg: "#D5F0DD", color: "#1A5C38" },
-  cancelado: { bg: "#F1EFE8", color: "#555"    },
+  cancelado: { bg: "#F1EFE8", color: "var(--text-2)"    },
 };
 
 function badge(status: AdiantamentoFornecedor["status"]) {
@@ -48,9 +48,9 @@ function badge(status: AdiantamentoFornecedor["status"]) {
 function Modal({ titulo, onClose, width = 640, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-        <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{titulo}</span>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: width, maxHeight: "90vh", overflow: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666", lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: "20px 24px" }}>{children}</div>
@@ -190,14 +190,14 @@ export default function AdiantamentosPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Adiantamentos a Fornecedores</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Adiantamentos a Fornecedores</div>
             <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Pré-pagamentos de insumos, serviços e contratos</div>
           </div>
           <button style={btnAzul} onClick={() => { setForm({ ...VAZIO_FORM, data_emissao: new Date().toISOString().slice(0,10) }); setModalNovo(true); }}>
@@ -212,10 +212,10 @@ export default function AdiantamentosPage() {
           {[
             { label: "Total Adiantado (ativos)", valor: fmtBRL(totalAdiantado), cor: "#1A4870", bg: "#D5E8F5" },
             { label: "Total Aplicado",           valor: fmtBRL(totalAplicado),  cor: "#1A5C38", bg: "#D5F0DD" },
-            { label: "Saldo Disponível",         valor: fmtBRL(saldoDisp),      cor: saldoDisp > 0 ? "#7A5520" : "#555", bg: saldoDisp > 0 ? "#FBF3E0" : "#F4F6FA" },
-            { label: "Fornecedores c/ saldo",    valor: String(nFornecedores),  cor: "#555", bg: "#F4F6FA" },
+            { label: "Saldo Disponível",         valor: fmtBRL(saldoDisp),      cor: saldoDisp > 0 ? "#7A5520" : "var(--text-2)", bg: saldoDisp > 0 ? "#FBF3E0" : "var(--bg-page)" },
+            { label: "Fornecedores c/ saldo",    valor: String(nFornecedores),  cor: "var(--text-2)", bg: "var(--bg-page)" },
           ].map(c => (
-            <div key={c.label} style={{ background: "#fff", borderRadius: 10, padding: "16px 18px", border: "0.5px solid #DDE2EE" }}>
+            <div key={c.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{c.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: c.cor }}>{c.valor}</div>
               <div style={{ height: 3, borderRadius: 2, background: c.bg, marginTop: 8 }} />
@@ -224,13 +224,13 @@ export default function AdiantamentosPage() {
         </div>
 
         {/* Tabela */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
 
           {/* Tabs + Busca */}
-          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 0, border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
               {TABS.map(t => (
-                <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#1A4870" : "transparent", color: tab === t.key ? "#fff" : "#555", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid #DDE2EE" }}>
+                <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: "6px 14px", border: "none", background: tab === t.key ? "#1A4870" : "transparent", color: tab === t.key ? "#fff" : "var(--text-2)", cursor: "pointer", fontSize: 12, fontWeight: tab === t.key ? 600 : 400, borderRight: "0.5px solid var(--border)" }}>
                   {t.label}
                   <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>
                     ({t.key === "todos" ? adiantamentos.length : adiantamentos.filter(a => a.status === t.key).length})
@@ -244,7 +244,7 @@ export default function AdiantamentosPage() {
           {carregando ? (
             <div style={{ padding: 40, textAlign: "center", color: "#666" }}>Carregando…</div>
           ) : lista.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
               {tab === "em_aberto" ? "Nenhum adiantamento em aberto." : "Nenhum registro encontrado."}
             </div>
           ) : (
@@ -267,20 +267,20 @@ export default function AdiantamentosPage() {
                       </td>
                       <td style={tdS}>
                         <div>{a.descricao}</div>
-                        {a.observacao && <div style={{ fontSize: 11, color: "#888" }}>{a.observacao}</div>}
+                        {a.observacao && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{a.observacao}</div>}
                       </td>
-                      <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "#555" }}>{a.nr_documento || "—"}</td>
+                      <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>{a.nr_documento || "—"}</td>
                       <td style={tdS}>{fmtData(a.data_emissao)}</td>
-                      <td style={{ ...tdS, color: a.data_previsao ? "#1a1a1a" : "#aaa" }}>
+                      <td style={{ ...tdS, color: a.data_previsao ? "var(--text-1)" : "var(--text-muted)" }}>
                         {a.data_previsao ? (() => {
                           const dias = Math.ceil((new Date(a.data_previsao).getTime() - Date.now()) / 86400000);
-                          const cor = dias < 0 ? "#E24B4A" : dias <= 7 ? "#EF9F27" : "#1a1a1a";
+                          const cor = dias < 0 ? "#E24B4A" : dias <= 7 ? "#EF9F27" : "var(--text-1)";
                           return <span style={{ color: cor }}>{fmtData(a.data_previsao)}{dias < 0 ? " (atrasado)" : dias <= 7 ? ` (${dias}d)` : ""}</span>;
                         })() : "—"}
                       </td>
                       <td style={{ ...tdS, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{fmtBRL(a.valor)}</td>
                       <td style={{ ...tdS, textAlign: "right" }}>
-                        <div style={{ fontVariantNumeric: "tabular-nums", color: pctApliq > 0 ? "#1A5C38" : "#aaa" }}>{fmtBRL(a.valor_aplicado ?? 0)}</div>
+                        <div style={{ fontVariantNumeric: "tabular-nums", color: pctApliq > 0 ? "#1A5C38" : "var(--text-muted)" }}>{fmtBRL(a.valor_aplicado ?? 0)}</div>
                         {pctApliq > 0 && (
                           <div style={{ height: 3, borderRadius: 2, background: "#D5F0DD", marginTop: 3, position: "relative", overflow: "hidden" }}>
                             <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${Math.min(pctApliq, 100)}%`, background: "#1A5C38" }} />
@@ -383,9 +383,9 @@ export default function AdiantamentosPage() {
               <input style={inp} placeholder="Opcional — notas internas" value={form.observacao} onChange={e => setForm(p => ({ ...p, observacao: e.target.value }))} />
             </div>
 
-            <div style={{ gridColumn: "1/-1", background: "#F4F6FA", borderRadius: 8, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ gridColumn: "1/-1", background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <input type="checkbox" id="jaQuitado" checked={form.ja_quitado} onChange={e => setForm(p => ({ ...p, ja_quitado: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
-              <label htmlFor="jaQuitado" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>
+              <label htmlFor="jaQuitado" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>
                 Pagamento já realizado — gera CP como <strong>baixado</strong> (saída de caixa já ocorreu)
               </label>
             </div>
@@ -404,7 +404,7 @@ export default function AdiantamentosPage() {
       {/* ── Modal Aplicar ──────────────────────────────────────── */}
       {modalApliq && (
         <Modal titulo="Aplicar Adiantamento" onClose={() => { setModalApliq(null); setErro(""); }} width={560}>
-          <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Fornecedor</div><div style={{ fontWeight: 600 }}>{nomePessoa(modalApliq.pessoa_id)}</div></div>
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Valor Total</div><div style={{ fontWeight: 600 }}>{fmtBRL(modalApliq.valor)}</div></div>
             <div><div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em" }}>Saldo Disponível</div><div style={{ fontWeight: 700, color: "#7A5520", fontSize: 16 }}>{fmtBRL(modalApliq.valor - (modalApliq.valor_aplicado ?? 0))}</div></div>
@@ -483,9 +483,9 @@ export default function AdiantamentosPage() {
           {/* Histórico de Aplicações */}
           <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Histórico de Aplicações</div>
           {loadAplic ? (
-            <div style={{ color: "#888", fontSize: 13, padding: 12 }}>Carregando…</div>
+            <div style={{ color: "var(--text-3)", fontSize: 13, padding: 12 }}>Carregando…</div>
           ) : aplicacoes.length === 0 ? (
-            <div style={{ color: "#888", fontSize: 13, padding: "12px 0" }}>Nenhuma aplicação registrada.</div>
+            <div style={{ color: "var(--text-3)", fontSize: 13, padding: "12px 0" }}>Nenhuma aplicação registrada.</div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
@@ -500,7 +500,7 @@ export default function AdiantamentosPage() {
                   <tr key={apl.id} style={{ borderBottom: "0.5px solid #F0F4F8" }}>
                     <td style={tdS}>{fmtData(apl.data_aplicacao)}</td>
                     <td style={tdS}>{apl.descricao}</td>
-                    <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "#555" }}>{apl.nr_nf || "—"}</td>
+                    <td style={{ ...tdS, fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>{apl.nr_nf || "—"}</td>
                     <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: "#1A5C38" }}>{fmtBRL(apl.valor_aplicado)}</td>
                   </tr>
                 ))}
@@ -509,7 +509,7 @@ export default function AdiantamentosPage() {
           )}
 
           {modalDetalhe.observacao && (
-            <div style={{ marginTop: 16, background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
+            <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>
               <strong>Obs:</strong> {modalDetalhe.observacao}
             </div>
           )}

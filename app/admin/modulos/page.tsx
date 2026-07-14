@@ -94,12 +94,12 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
   border: "0.5px solid #D4DCE8", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff",
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 
 const lbl: React.CSSProperties = {
-  fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600,
+  fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600,
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -108,7 +108,7 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSecondary: React.CSSProperties = {
-  padding: "9px 18px", background: "#fff", color: "#555",
+  padding: "9px 18px", background: "var(--bg-card)", color: "var(--text-2)",
   border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
@@ -208,7 +208,7 @@ export default function ModulosPage() {
         <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
           Módulos por Conta
         </h1>
-        <p style={{ margin: 0, fontSize: 13, color: "#888" }}>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
           Habilite ou desabilite módulos individualmente por cliente
         </p>
       </div>
@@ -221,7 +221,7 @@ export default function ModulosPage() {
       )}
 
       {/* Seleção de conta */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "flex-end" }}>
           <div>
             <label style={lbl}>Selecionar conta *</label>
@@ -243,15 +243,15 @@ export default function ModulosPage() {
 
         {contaSel && (
           <div style={{ marginTop: 14, display: "flex", gap: 10, alignItems: "center" }}>
-            <div style={{ fontSize: 12, color: "#555" }}>Plano atual:</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)" }}>Plano atual:</div>
             {contaSel.pacote ? (
               <span style={{ padding: "3px 10px", background: "#D5E8F5", color: "#1A4870", borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
                 {PLANOS_DEFAULT[contaSel.pacote as PlanoId]?.nome ?? contaSel.pacote}
               </span>
             ) : (
-              <span style={{ fontSize: 12, color: "#aaa" }}>Sem plano definido</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem plano definido</span>
             )}
-            <div style={{ fontSize: 11, color: "#888", marginLeft: 4 }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 4 }}>
               — Módulos do plano aparecem marcados por padrão
             </div>
           </div>
@@ -261,11 +261,11 @@ export default function ModulosPage() {
       {/* Módulos */}
       {contaId && (
         carregando ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Carregando módulos…</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando módulos…</div>
         ) : (
           <>
             {GRUPOS_MODULOS.map(grupo => (
-              <div key={grupo.label} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", marginBottom: 14, overflow: "hidden" }}>
+              <div key={grupo.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", marginBottom: 14, overflow: "hidden" }}>
                 <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #EEF1F6", background: "#F8FAFC" }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {grupo.label}
@@ -287,7 +287,7 @@ export default function ModulosPage() {
                             onClick={() => toggleModulo(modulo)}
                             style={{
                               width: 40, height: 22, borderRadius: 11, cursor: "pointer",
-                              background: hab ? "#16A34A" : "#D4DCE8",
+                              background: hab ? "#16A34A" : "var(--border-table)",
                               position: "relative", transition: "background 0.2s",
                               flexShrink: 0,
                             }}
@@ -296,16 +296,16 @@ export default function ModulosPage() {
                               position: "absolute", top: 3,
                               left: hab ? 21 : 3,
                               width: 16, height: 16, borderRadius: "50%",
-                              background: "#fff",
+                              background: "var(--bg-card)",
                               boxShadow: "0 1px 3px #0003",
                               transition: "left 0.2s",
                             }} />
                           </div>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                               {MODULOS_LABEL[modulo] ?? modulo}
                             </div>
-                            <div style={{ fontSize: 11, color: "#aaa", marginTop: 1 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
                               {modulo}
                             </div>
                           </div>
@@ -363,9 +363,9 @@ export default function ModulosPage() {
       )}
 
       {!contaId && (
-        <div style={{ padding: "60px 0", textAlign: "center", color: "#aaa" }}>
+        <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-muted)" }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>⬡</div>
-          <div style={{ fontSize: 14, color: "#888" }}>Selecione uma conta para gerenciar seus módulos</div>
+          <div style={{ fontSize: 14, color: "var(--text-3)" }}>Selecione uma conta para gerenciar seus módulos</div>
         </div>
       )}
     </div>

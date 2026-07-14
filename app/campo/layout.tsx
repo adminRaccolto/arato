@@ -14,7 +14,7 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
   const path = usePathname();
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", background: "#F4F6FA", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", background: "var(--bg-page)", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
 
       {/* Faixa de topo */}
       <div style={{ background: "#1A4870", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
@@ -37,13 +37,13 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
       </div>
 
       {/* Barra inferior de navegação */}
-      <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#fff", borderTop: "0.5px solid #DDE2EE", display: "flex", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0)" }}>
+      <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "var(--bg-card)", borderTop: "0.5px solid #DDE2EE", display: "flex", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0)" }}>
         {NAV_ITEMS.map(item => {
           const active = path === item.href || (item.href !== "/campo" && path.startsWith(item.href));
           return (
             <Link key={item.href} href={item.href} style={{
               flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "10px 4px 8px",
-              textDecoration: "none", color: active ? "#1A4870" : "#888",
+              textDecoration: "none", color: active ? "#1A4870" : "var(--text-3)",
               borderTop: active ? "2.5px solid #1A4870" : "2.5px solid transparent",
               background: active ? "#EFF4FA" : "none",
             }}>

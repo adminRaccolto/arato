@@ -30,7 +30,7 @@ const MAN_CFG = [
 ] as const;
 
 const ST_CFG: Record<string, { label: string; cor: string; bg: string }> = {
-  pendente:        { label: "Pendente",        cor: "#888",    bg: "#F3F4F6" },
+  pendente:        { label: "Pendente",        cor: "var(--text-3)",    bg: "#F3F4F6" },
   ciencia:         { label: "Ciência",         cor: "#378ADD", bg: "#EFF6FF" },
   confirmada:      { label: "Confirmada",      cor: "#16A34A", bg: "#DCFCE7" },
   desconhecimento: { label: "Desconhecimento", cor: "#C9921B", bg: "#FBF3E0" },
@@ -180,25 +180,25 @@ export default function SiegManifestacao() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>NF-e Recebidas</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>NF-e Recebidas</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Consulta e manifestação de NF-e recebidas via SIEG</p>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {cnpjsDisponiveis.length > 1 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 11, color: "#555" }}>Destinatário:</span>
+              <span style={{ fontSize: 11, color: "var(--text-2)" }}>Destinatário:</span>
               <select value={cnpjDest} onChange={e => trocarCnpj(e.target.value)}
-                style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "#1a1a1a" }}>
+                style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "var(--text-1)" }}>
                 {cnpjsDisponiveis.map(d => <option key={d} value={d}>{fmtDoc(d)}</option>)}
               </select>
             </div>
           ) : cnpjDest ? (
-            <div style={{ fontSize: 11, color: "#555", background: "#D5E8F5", padding: "4px 10px", borderRadius: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--text-2)", background: "#D5E8F5", padding: "4px 10px", borderRadius: 6 }}>
               Destinatário: <strong>{fmtDoc(cnpjDest)}</strong>
             </div>
           ) : null}
           <button onClick={sincronizar} disabled={syncing}
-            style={{ padding: "8px 18px", background: syncing ? "#DDE2EE" : "#1A4870", color: syncing ? "#888" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: syncing ? "default" : "pointer" }}>
+            style={{ padding: "8px 18px", background: syncing ? "var(--border)" : "#1A4870", color: syncing ? "var(--text-3)" : "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: syncing ? "default" : "pointer" }}>
             {syncing ? "⏳ Sincronizando…" : "⟳ Sincronizar com SIEG"}
           </button>
         </div>
@@ -218,15 +218,15 @@ export default function SiegManifestacao() {
           { label: "Manifestadas",   v: manifestadas, cor: "#16A34A", fmtR: false },
           { label: "Valor Pendente", v: valorPend,    cor: "#E24B4A", fmtR: true  },
         ].map(({ label, v, cor, fmtR }) => (
-          <div key={label} style={{ background: "white", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{label}</div>
+          <div key={label} style={{ background: "white", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: cor }}>{fmtR ? fmtR$(v) : v.toLocaleString("pt-BR")}</div>
           </div>
         ))}
       </div>
 
       {/* Tabs + busca */}
-      <div style={{ background: "white", borderRadius: "12px 12px 0 0", border: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px" }}>
+      <div style={{ background: "white", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 14px" }}>
         <div style={{ display: "flex" }}>
           {([
             { id: "pendentes",       label: "Pendentes",       cnt: pendentes },
@@ -237,22 +237,22 @@ export default function SiegManifestacao() {
             { id: "nao_realizada",   label: "Não Realizada",   cnt: nfs.filter(n=>n.status==="nao_realizada").length },
           ] as { id: FiltroAba; label: string; cnt: number }[]).map(a => (
             <button key={a.id} onClick={() => setFiltroAba(a.id)}
-              style={{ padding: "12px 14px", border: "none", background: "transparent", fontWeight: filtroAba===a.id?700:400, fontSize: 13, color: filtroAba===a.id?"#1a1a1a":"#888", borderBottom: `2px solid ${filtroAba===a.id?"#1A4870":"transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ padding: "12px 14px", border: "none", background: "transparent", fontWeight: filtroAba===a.id?700:400, fontSize: 13, color: filtroAba===a.id?"var(--text-1)":"var(--text-3)", borderBottom: `2px solid ${filtroAba===a.id?"#1A4870":"transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
               {a.label}
-              {a.cnt > 0 && <span style={{ fontSize: 10, background: filtroAba===a.id?"#D5E8F5":"#F0F0F0", color: filtroAba===a.id?"#1A4870":"#888", padding: "1px 6px", borderRadius: 8 }}>{a.cnt}</span>}
+              {a.cnt > 0 && <span style={{ fontSize: 10, background: filtroAba===a.id?"#D5E8F5":"#F0F0F0", color: filtroAba===a.id?"#1A4870":"var(--text-3)", padding: "1px 6px", borderRadius: 8 }}>{a.cnt}</span>}
             </button>
           ))}
         </div>
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="🔍 NF, emitente, chave…"
-          style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 7, fontSize: 12, outline: "none", width: 220 }} />
+          style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 7, fontSize: 12, outline: "none", width: 220 }} />
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "white", border: "0.5px solid #DDE2EE", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+      <div style={{ background: "white", border: "0.5px solid var(--border)", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando…</div>
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando…</div>
         ) : nfsFilt.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#aaa", fontSize: 14 }}>
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
             {filtroAba === "pendentes" ? "Nenhuma NF pendente de manifestação." : "Nenhuma NF encontrada."}
             <div style={{ marginTop: 12 }}>
               <button onClick={sincronizar} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}>
@@ -264,9 +264,9 @@ export default function SiegManifestacao() {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr style={{ background: "#F8FAFC", borderBottom: "0.5px solid #DDE2EE" }}>
+                <tr style={{ background: "#F8FAFC", borderBottom: "0.5px solid var(--border)" }}>
                   {["NF / Série", "Emitente", "CNPJ Emit.", "Data Emissão", "Valor", "Manifestação", "Ações"].map((h, i) => (
-                    <th key={i} style={{ padding: "9px 12px", textAlign: i >= 3 ? "center" : "left", fontWeight: 600, color: "#555", fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={i} style={{ padding: "9px 12px", textAlign: i >= 3 ? "center" : "left", fontWeight: 600, color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -277,15 +277,15 @@ export default function SiegManifestacao() {
                   const erro   = erros[nf.id];
                   return (
                     <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: idx%2===0?"white":"#FAFBFD", verticalAlign: "top" }}>
-                      <td style={{ padding: "9px 12px", fontWeight: 600, color: "#1a1a1a", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                         {nf.numero}
-                        {nf.serie && <span style={{ color: "#888", fontWeight: 400 }}> /{nf.serie}</span>}
+                        {nf.serie && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> /{nf.serie}</span>}
                         {nf.chave_acesso && <div style={{ fontSize: 9, color: "#bbb", fontFamily: "monospace", marginTop: 2 }}>{nf.chave_acesso.slice(0, 22)}…</div>}
                       </td>
                       <td style={{ padding: "9px 12px", maxWidth: 200 }}>
                         <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nf.emitente_nome || "—"}</div>
                       </td>
-                      <td style={{ padding: "9px 12px", fontFamily: "monospace", fontSize: 11, color: "#555", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "9px 12px", fontFamily: "monospace", fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {nf.emitente_cnpj ? fmtDoc(nf.emitente_cnpj) : "—"}
                       </td>
                       <td style={{ padding: "9px 12px", textAlign: "center", whiteSpace: "nowrap" }}>{fmtData(nf.data_emissao)}</td>
@@ -294,7 +294,7 @@ export default function SiegManifestacao() {
                         <span style={{ padding: "3px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700, background: st.bg, color: st.cor }}>
                           {isBusy ? "⏳…" : st.label}
                         </span>
-                        {nf.manifestacao_data && <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>{fmtData(nf.manifestacao_data)}</div>}
+                        {nf.manifestacao_data && <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>{fmtData(nf.manifestacao_data)}</div>}
                         {erro && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 4, maxWidth: 180 }}>{erro}</div>}
                       </td>
                       <td style={{ padding: "9px 12px", textAlign: "center" }}>
@@ -312,7 +312,7 @@ export default function SiegManifestacao() {
                             ))}
                           </div>
                         ) : (
-                          <span style={{ fontSize: 10, color: "#aaa" }}>—</span>
+                          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>—</span>
                         )}
                       </td>
                     </tr>
@@ -320,9 +320,9 @@ export default function SiegManifestacao() {
                 })}
               </tbody>
             </table>
-            <div style={{ padding: "10px 14px", borderTop: "0.5px solid #EEF1F6", fontSize: 11, color: "#888", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "10px 14px", borderTop: "0.5px solid #EEF1F6", fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
               <span>{nfsFilt.length} NF{nfsFilt.length !== 1 ? "s" : ""} exibida{nfsFilt.length !== 1 ? "s" : ""}</span>
-              <span>Valor total: <strong style={{ color: "#1a1a1a" }}>{fmtR$(nfsFilt.reduce((s, n) => s + (n.valor_total ?? 0), 0))}</strong></span>
+              <span>Valor total: <strong style={{ color: "var(--text-1)" }}>{fmtR$(nfsFilt.reduce((s, n) => s + (n.valor_total ?? 0), 0))}</strong></span>
             </div>
           </div>
         )}
@@ -331,10 +331,10 @@ export default function SiegManifestacao() {
       {/* Legenda */}
       <div style={{ marginTop: 14, display: "flex", gap: 14, flexWrap: "wrap" }}>
         {MAN_CFG.map(m => (
-          <div key={m.tipo} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+          <div key={m.tipo} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-2)" }}>
             <span style={{ width: 10, height: 10, borderRadius: 2, background: m.cor, display: "inline-block" }} />
             <strong style={{ color: m.cor }}>{m.label}</strong> — {m.desc}
-            {m.justObrig && <span style={{ fontSize: 10, color: "#aaa" }}>(exige justificativa)</span>}
+            {m.justObrig && <span style={{ fontSize: 10, color: "var(--text-muted)" }}>(exige justificativa)</span>}
           </div>
         ))}
       </div>
@@ -348,16 +348,16 @@ export default function SiegManifestacao() {
             <div style={{ background: "white", borderRadius: 12, padding: 28, width: 480, maxWidth: "96vw" }}>
               <div style={{ fontWeight: 700, fontSize: 15, color: m.cor, marginBottom: 4 }}>{m.label}</div>
               <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>NF {justModal.nf.numero} · {justModal.nf.emitente_nome}</div>
-              <label style={{ fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 }}>Justificativa * (mín. 15 caracteres)</label>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Justificativa * (mín. 15 caracteres)</label>
               <textarea value={justText} onChange={e => setJustText(e.target.value)} rows={3}
                 placeholder="Informe o motivo…"
-                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
-              <div style={{ fontSize: 10, color: justText.length >= 15 ? "#16A34A" : "#aaa", marginBottom: 16 }}>{justText.length}/15 mínimos</div>
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
+              <div style={{ fontSize: 10, color: justText.length >= 15 ? "#16A34A" : "var(--text-muted)", marginBottom: 16 }}>{justText.length}/15 mínimos</div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "#555" }}>Cancelar</button>
+                <button onClick={() => setJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid var(--border)", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
                 <button disabled={justText.length < 15}
                   onClick={async () => { const { nf, tipo } = justModal; setJustModal(null); await executarManifestacao(nf, tipo, justText); }}
-                  style={{ padding: "8px 20px", background: justText.length < 15 ? "#DDE2EE" : m.cor, color: "white", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: justText.length < 15 ? "default" : "pointer" }}>
+                  style={{ padding: "8px 20px", background: justText.length < 15 ? "var(--border)" : m.cor, color: "white", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: justText.length < 15 ? "default" : "pointer" }}>
                   Confirmar {m.label}
                 </button>
               </div>

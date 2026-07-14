@@ -5,10 +5,10 @@ import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
 import InputMonetario from "../../../../components/InputMonetario";
 
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -120,13 +120,13 @@ export default function MutuoPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Mútuo entre Empresas</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Mútuo entre Empresas</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Contratos de empréstimo entre empresas do grupo</p>
           </div>
           <button onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
@@ -140,16 +140,16 @@ export default function MutuoPage() {
             { label: "Contratos Ativos",   value: String(ativos.length), sub: "contratos", color: "#0B2D50" },
             { label: "Em Atraso",          value: String(emAtraso),   sub: "contratos",  color: emAtraso > 0 ? "#E24B4A" : "#666" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
             </div>
           ))}
         </div>
 
         {mutuos.length === 0 ? (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 48, textAlign: "center", color: "#888", fontSize: 13 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             Nenhum contrato de mútuo cadastrado.
           </div>
         ) : (
@@ -161,11 +161,11 @@ export default function MutuoPage() {
               const progresso = m.valor_principal > 0 ? (totalPago / m.valor_principal) * 100 : 0;
               const exp = expand === m.id;
               return (
-                <div key={m.id} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+                <div key={m.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
                   <div onClick={() => setExpand(exp ? null : m.id)} style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px 120px 130px 180px", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer" }}>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{m.contraparte}</div>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{m.tipo === "concessao" ? "Concedido" : "Captado"} · {fmtData(m.data_inicio)} → {fmtData(m.data_vencimento)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.contraparte}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{m.tipo === "concessao" ? "Concedido" : "Captado"} · {fmtData(m.data_inicio)} → {fmtData(m.data_vencimento)}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 11, color: "#666" }}>Principal</div>
@@ -181,8 +181,8 @@ export default function MutuoPage() {
                     </div>
                     <div>
                       <div style={{ fontSize: 11, color: "#666", marginBottom: 3 }}>Amortizado</div>
-                      <div style={{ height: 6, background: "#EEF1F6", borderRadius: 3 }}><div style={{ height: "100%", width: `${Math.min(100, progresso)}%`, background: "#1A4870", borderRadius: 3 }} /></div>
-                      <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{progresso.toFixed(0)}%</div>
+                      <div style={{ height: 6, background: "var(--bg-tag)", borderRadius: 3 }}><div style={{ height: "100%", width: `${Math.min(100, progresso)}%`, background: "#1A4870", borderRadius: 3 }} /></div>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{progresso.toFixed(0)}%</div>
                     </div>
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                       <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span>
@@ -190,16 +190,16 @@ export default function MutuoPage() {
                         <button onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>Pagar</button>
                         <button onClick={e => { e.stopPropagation(); quitarMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Quitar</button>
                       </>}
-                      <button onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#555" }}>Editar</button>
+                      <button onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
                     </div>
                   </div>
                   {exp && (
                     <div style={{ borderTop: "0.5px solid #EEF1F6", padding: "12px 18px", background: "#F8FAFB" }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 8 }}>Histórico de Pagamentos</div>
-                      {pagsMutuo.length === 0 ? <div style={{ fontSize: 12, color: "#aaa" }}>Nenhum pagamento registrado.</div> : (
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Histórico de Pagamentos</div>
+                      {pagsMutuo.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum pagamento registrado.</div> : (
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead><tr style={{ background: "#EEF1F6" }}>
-                            {["Data", "Principal", "Juros", "Total", "Obs."].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." ? "left" : "right", color: "#555", fontWeight: 600 }}>{h}</th>)}
+                          <thead><tr style={{ background: "var(--bg-tag)" }}>
+                            {["Data", "Principal", "Juros", "Total", "Obs."].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}
                           </tr></thead>
                           <tbody>{pagsMutuo.map(p => (
                             <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
@@ -224,10 +224,10 @@ export default function MutuoPage() {
       {/* Modal Mútuo */}
       {modalMutuo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
-              <button onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
+              <button onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
               {mErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{mErr}</div>}
@@ -235,7 +235,7 @@ export default function MutuoPage() {
                 <label style={lbl}>Tipo</label>
                 <div style={{ display: "flex", gap: 10 }}>
                   {([{ v: "concessao", label: "Concessão (a receber)", desc: "Sua empresa emprestou" }, { v: "captacao", label: "Captação (a pagar)", desc: "Outra empresa emprestou" }] as { v: TipoMutuo; label: string; desc: string }[]).map(opt => (
-                    <button key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#1A4870" : "#D4DCE8"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#D5E8F5" : "#fff", cursor: "pointer", textAlign: "left" }}>
+                    <button key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#1A4870" : "var(--border-table)"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{opt.label}</div>
                       <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{opt.desc}</div>
                     </button>
@@ -271,7 +271,7 @@ export default function MutuoPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalMutuo(false)}>Cancelar</button>
-              <button onClick={salvarMutuo} disabled={mSaving} style={{ ...btnV, background: mSaving ? "#aaa" : "#1A4870", cursor: mSaving ? "default" : "pointer" }}>{mSaving ? "Salvando…" : "Salvar"}</button>
+              <button onClick={salvarMutuo} disabled={mSaving} style={{ ...btnV, background: mSaving ? "var(--text-muted)" : "#1A4870", cursor: mSaving ? "default" : "pointer" }}>{mSaving ? "Salvando…" : "Salvar"}</button>
             </div>
           </div>
         </div>
@@ -280,13 +280,13 @@ export default function MutuoPage() {
       {/* Modal Pagamento */}
       {modalPag && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 440, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Registrar Pagamento</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{modalPag.contraparte} · saldo {fmtBRL(modalPag.saldo_devedor)}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Pagamento</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalPag.contraparte} · saldo {fmtBRL(modalPag.saldo_devedor)}</div>
               </div>
-              <button onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {pagErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{pagErr}</div>}
@@ -305,7 +305,7 @@ export default function MutuoPage() {
                 </div>
               </div>
               {(parseFloat(pagForm.valor_principal) > 0 || parseFloat(pagForm.valor_juros) > 0) && (
-                <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
+                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                   Total: <strong style={{ color: "#1A4870" }}>{fmtBRL((parseFloat(pagForm.valor_principal) || 0) + (parseFloat(pagForm.valor_juros) || 0))}</strong>
                 </div>
               )}
@@ -316,7 +316,7 @@ export default function MutuoPage() {
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalPag(null)}>Cancelar</button>
-              <button onClick={registrarPagamento} disabled={pagSaving} style={{ ...btnV, background: pagSaving ? "#aaa" : "#1A4870", cursor: pagSaving ? "default" : "pointer" }}>{pagSaving ? "Registrando…" : "Registrar"}</button>
+              <button onClick={registrarPagamento} disabled={pagSaving} style={{ ...btnV, background: pagSaving ? "var(--text-muted)" : "#1A4870", cursor: pagSaving ? "default" : "pointer" }}>{pagSaving ? "Registrando…" : "Registrar"}</button>
             </div>
           </div>
         </div>

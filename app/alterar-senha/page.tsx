@@ -42,8 +42,8 @@ export default function AlterarSenha() {
           <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 38, marginBottom: 10 }} />
         </div>
 
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,0,0,0.09)", padding: "36px 40px" }}>
-          <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>Crie sua senha</h2>
+        <div style={{ background: "var(--bg-card)", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,0,0,0.09)", padding: "36px 40px" }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Crie sua senha</h2>
           <p style={{ margin: "0 0 28px", fontSize: 13, color: "#666", lineHeight: 1.5 }}>
             Este é seu primeiro acesso. Defina uma senha pessoal para continuar.
           </p>
@@ -56,7 +56,7 @@ export default function AlterarSenha() {
 
           <form onSubmit={salvar} style={{ display: "grid", gap: 16 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
                 NOVA SENHA
               </label>
               <div style={{ position: "relative" }}>
@@ -69,15 +69,15 @@ export default function AlterarSenha() {
                   placeholder="Mínimo 8 caracteres"
                   style={{
                     width: "100%", padding: "10px 44px 10px 12px", border: "0.5px solid #D4DCE8",
-                    borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff",
+                    borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
                     boxSizing: "border-box", outline: "none",
-                    borderColor: novaSenha && novaSenha.length < 8 ? "#E24B4A" : "#D4DCE8",
+                    borderColor: novaSenha && novaSenha.length < 8 ? "#E24B4A" : "var(--border-table)",
                   }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowSenha(s => !s)}
-                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 12 }}>
+                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 12 }}>
                   {showSenha ? "Ocultar" : "Ver"}
                 </button>
               </div>
@@ -87,7 +87,7 @@ export default function AlterarSenha() {
             </div>
 
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 5, display: "block", letterSpacing: "0.04em" }}>
                 CONFIRMAR SENHA
               </label>
               <input
@@ -98,9 +98,9 @@ export default function AlterarSenha() {
                 placeholder="Repita a nova senha"
                 style={{
                   width: "100%", padding: "10px 12px", border: "0.5px solid #D4DCE8",
-                  borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff",
+                  borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
                   boxSizing: "border-box", outline: "none",
-                  borderColor: confirmSenha && confirmSenha !== novaSenha ? "#E24B4A" : "#D4DCE8",
+                  borderColor: confirmSenha && confirmSenha !== novaSenha ? "#E24B4A" : "var(--border-table)",
                 }}
               />
               {confirmSenha && confirmSenha !== novaSenha && (
@@ -143,7 +143,7 @@ export default function AlterarSenha() {
           </form>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "#aaa" }}>
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "var(--text-muted)" }}>
           Arato — Menos clique, mais gestão
         </div>
       </div>

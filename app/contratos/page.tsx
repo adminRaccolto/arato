@@ -167,20 +167,20 @@ const corStatus = (s: string) => ({
   parcial:   { bg: "#FAEEDA", color: "#633806", label: "Parcial"    },
   encerrado: { bg: "#D5E8F5", color: "#0B2D50", label: "Encerrado"  },
   cancelado: { bg: "#FCEBEB", color: "#791F1F", label: "Cancelado"  },
-}[s] ?? { bg: "#F1EFE8", color: "#555", label: s });
+}[s] ?? { bg: "#F1EFE8", color: "var(--text-2)", label: s });
 
 const corProduto = (p: string) => {
   if (p === "Soja")          return { bg: "#D5E8F5", color: "#0B2D50" };
   if (p.startsWith("Milho")) return { bg: "#FAEEDA", color: "#633806" };
   if (p === "Algodão")       return { bg: "#E6F1FB", color: "#0C447C" };
-  return { bg: "#F1EFE8", color: "#555" };
+  return { bg: "#F1EFE8", color: "var(--text-2)" };
 };
 
 // ── estilos base ─────────────────────────────────────────────────
-const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", boxSizing:"border-box", outline:"none" };
-const lbl: React.CSSProperties = { fontSize:10, color:"#555", marginBottom:3, display:"block" };
+const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", boxSizing:"border-box", outline:"none" };
+const lbl: React.CSSProperties = { fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" };
 const btnV: React.CSSProperties = { padding:"8px 18px", background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
-const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid #D4DCE8", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13, color:"#1a1a1a" };
+const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13, color:"var(--text-1)" };
 const btnX: React.CSSProperties = { padding:"3px 8px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" };
 const badge = (t: string, bg="#D5E8F5", c="#0B2D50") => <span style={{ fontSize:10, background:bg, color:c, padding:"2px 7px", borderRadius:8, fontWeight:600 }}>{t}</span>;
 
@@ -1002,15 +1002,15 @@ export default function Contratos() {
       <TopNav />
       <main style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
 
-        <header style={{ background:"#fff", borderBottom:"0.5px solid #D4DCE8", padding:"10px 22px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <header style={{ background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)", padding:"10px 22px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div>
-            <h1 style={{ margin:0, fontSize:17, fontWeight:600, color:"#1a1a1a" }}>Comercialização de Grãos</h1>
+            <h1 style={{ margin:0, fontSize:17, fontWeight:600, color:"var(--text-1)" }}>Comercialização de Grãos</h1>
             <p style={{ margin:0, fontSize:11, color:"#444" }}>Contratos de venda, fixações, expedição e posição de estoque</p>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             <button onClick={abrirModalLote}
               title="Encerrar contratos ou safras em lote por ano safra"
-              style={{ background:"#fff", color:"#555", border:"0.5px solid #CCC", borderRadius:8, padding:"8px 12px", fontSize:12, cursor:"pointer" }}>
+              style={{ background:"var(--bg-card)", color:"var(--text-2)", border:"0.5px solid #CCC", borderRadius:8, padding:"8px 12px", fontSize:12, cursor:"pointer" }}>
               ⊘ Encerramento em Lote
             </button>
             <button onClick={() => { setFRom(ROM_VAZIO()); setModalRomaneio(true); }}
@@ -1036,20 +1036,20 @@ export default function Contratos() {
           {!loading && !erro && (
             <>
               {/* ── KPI único: contratos ativos filtrados ── */}
-              <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, padding:"12px 18px", marginBottom:14, display:"inline-flex", alignItems:"center", gap:14 }}>
+              <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:12, padding:"12px 18px", marginBottom:14, display:"inline-flex", alignItems:"center", gap:14 }}>
                 <div>
-                  <div style={{ fontSize:11, color:"#555" }}>Contratos ativos{hasAnyFilter ? " (filtrado)" : ""}</div>
+                  <div style={{ fontSize:11, color:"var(--text-2)" }}>Contratos ativos{hasAnyFilter ? " (filtrado)" : ""}</div>
                   <div style={{ fontSize:22, fontWeight:700, color:"#C9921B", lineHeight:1.2 }}>{contratosAtivos}</div>
                 </div>
-                <div style={{ width:"0.5px", height:36, background:"#D4DCE8" }} />
-                <div style={{ fontSize:12, color:"#888" }}>
-                  de <span style={{ color:"#1a1a1a", fontWeight:600 }}>{contratosFiltrados.length}</span> exibido{contratosFiltrados.length !== 1 ? "s" : ""}
-                  {hasAnyFilter && <span style={{ color:"#888" }}> · <span style={{ color:"#1a1a1a", fontWeight:600 }}>{contratos.length}</span> total</span>}
+                <div style={{ width:"0.5px", height:36, background:"var(--border-table)" }} />
+                <div style={{ fontSize:12, color:"var(--text-3)" }}>
+                  de <span style={{ color:"var(--text-1)", fontWeight:600 }}>{contratosFiltrados.length}</span> exibido{contratosFiltrados.length !== 1 ? "s" : ""}
+                  {hasAnyFilter && <span style={{ color:"var(--text-3)" }}> · <span style={{ color:"var(--text-1)", fontWeight:600 }}>{contratos.length}</span> total</span>}
                 </div>
               </div>
 
               {/* ── Abas ── */}
-              <div style={{ display:"flex", background:"#fff", borderRadius:"12px 12px 0 0", border:"0.5px solid #D4DCE8" }}>
+              <div style={{ display:"flex", background:"var(--bg-card)", borderRadius:"12px 12px 0 0", border:"0.5px solid var(--border-table)" }}>
                 {([
                   { key:"contratos", label:"Contratos",              count: contratos.length },
                   { key:"expedicao", label:"Expedição / Romaneios",  count: todosRomaneios.length },
@@ -1058,60 +1058,60 @@ export default function Contratos() {
                   <button key={a.key} onClick={() => setAbaLista(a.key)} style={{
                     padding:"11px 20px", border:"none", background:"transparent", cursor:"pointer",
                     fontWeight: abaLista===a.key ? 600 : 400, fontSize:13,
-                    color: abaLista===a.key ? "#1a1a1a" : "#555",
+                    color: abaLista===a.key ? "var(--text-1)" : "var(--text-2)",
                     borderBottom: abaLista===a.key ? "2px solid #1A4870" : "2px solid transparent",
                     display:"flex", alignItems:"center", gap:8,
                   }}>
                     {a.label}
-                    {a.count !== null && <span style={{ fontSize:10, background: abaLista===a.key?"#D5E8F5":"#DEE5EE", color: abaLista===a.key?"#0B2D50":"#555", padding:"1px 6px", borderRadius:8 }}>{a.count}</span>}
+                    {a.count !== null && <span style={{ fontSize:10, background: abaLista===a.key?"#D5E8F5":"var(--border-row)", color: abaLista===a.key?"#0B2D50":"var(--text-2)", padding:"1px 6px", borderRadius:8 }}>{a.count}</span>}
                   </button>
                 ))}
               </div>
 
               {/* ── ABA CONTRATOS ── */}
               {abaLista === "contratos" && (
-                <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
+                <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
                   {/* barra de filtros */}
-                  <div style={{ padding:"10px 14px", borderBottom:"0.5px solid #EEF1F6", background:"#FAFBFD", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                  <div style={{ padding:"10px 14px", borderBottom:"0.5px solid var(--bg-tag)", background:"#FAFBFD", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
                     {/* busca livre */}
                     <input value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)} placeholder="🔍 Buscar contrato, comprador…"
-                      style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", minWidth:190 }} />
+                      style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none", minWidth:190 }} />
                     {/* fazenda */}
                     {fazendas.length > 1 && (
                       <select value={filtroFazenda} onChange={e => setFiltroFazenda(e.target.value)}
-                        style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                        style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none" }}>
                         <option value="">Todas as fazendas</option>
                         {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
                       </select>
                     )}
                     {/* safra */}
                     <select value={filtroAno} onChange={e => { setFiltroAno(e.target.value); setFiltroCiclo(""); }}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                      style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none" }}>
                       <option value="">Todos os anos safra</option>
                       {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                     </select>
                     {/* ciclo */}
                     <select value={filtroCiclo} onChange={e => setFiltroCiclo(e.target.value)}
                       disabled={!filtroAno || ciclosFiltro.length === 0}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", opacity: !filtroAno ? 0.5 : 1 }}>
+                      style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none", opacity: !filtroAno ? 0.5 : 1 }}>
                       <option value="">Todos os ciclos</option>
                       {ciclosFiltro.map(c => <option key={c.id} value={c.id}>{c.cultura}{c.descricao ? ` — ${c.descricao}` : ""}</option>)}
                     </select>
                     {/* produto */}
                     <select value={filtroProduto} onChange={e => setFiltroProduto(e.target.value)}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                      style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none" }}>
                       <option value="">Todos os produtos</option>
                       {PRODUTOS_DIN.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     {/* comprador */}
                     <select value={filtroComprador} onChange={e => setFiltroComprador(e.target.value)}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none", maxWidth:160 }}>
+                      style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none", maxWidth:160 }}>
                       <option value="">Todos os compradores</option>
                       {compradores.map(cp => <option key={cp} value={cp}>{cp}</option>)}
                     </select>
                     {/* status */}
                     <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
-                      style={{ padding:"5px 8px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", outline:"none" }}>
+                      style={{ padding:"5px 8px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-input)", outline:"none" }}>
                       <option value="">Todos os status</option>
                       <option value="aberto">Aberto</option>
                       <option value="parcial">Parcial</option>
@@ -1120,11 +1120,11 @@ export default function Contratos() {
                     </select>
                     {hasAnyFilter && (
                       <button onClick={limparFiltros}
-                        style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:11, color:"#555", background:"#fff", cursor:"pointer" }}>
+                        style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:11, color:"var(--text-2)", background:"var(--bg-card)", cursor:"pointer" }}>
                         ✕ Limpar
                       </button>
                     )}
-                    <span style={{ marginLeft:"auto", fontSize:11, color:"#888" }}>
+                    <span style={{ marginLeft:"auto", fontSize:11, color:"var(--text-3)" }}>
                       {contratosFiltrados.length}{hasAnyFilter ? ` de ${contratos.length}` : ""} contrato{contratosFiltrados.length !== 1 ? "s" : ""}
                     </span>
                   </div>
@@ -1137,7 +1137,7 @@ export default function Contratos() {
                       <thead>
                         <tr style={{ background:"#F3F6F9" }}>
                           {["Contrato","Produtor / Cliente","Produto","Volume","Entregue","Saldo","Preço","Prazo","Status",""].map((h,i) => (
-                            <th key={i} style={{ padding:"8px 12px", textAlign: i>=3&&i<=7?"center":"left", fontSize:11, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                            <th key={i} style={{ padding:"8px 12px", textAlign: i>=3&&i<=7?"center":"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1149,9 +1149,9 @@ export default function Contratos() {
                           const exp = expandido.has(c.id);
                           return (
                             <React.Fragment key={c.id}>
-                              <tr style={{ borderBottom:"0.5px solid #DEE5EE", cursor:"pointer" }} onClick={() => toggleExpand(c.id)}>
+                              <tr style={{ borderBottom:"0.5px solid var(--border-row)", cursor:"pointer" }} onClick={() => toggleExpand(c.id)}>
                                 <td style={{ padding:"10px 12px" }}>
-                                  <div style={{ fontWeight:600, fontSize:12, color:"#1a1a1a", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                                  <div style={{ fontWeight:600, fontSize:12, color:"var(--text-1)", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                                     {c.numero}
                                     {(c as {is_arrendamento?:boolean}).is_arrendamento && (
                                       <span style={{ fontSize:9, background:"#FBF3E0", color:"#7A5A12", padding:"1px 6px", borderRadius:4, fontWeight:600, letterSpacing:"0.3px" }}>ARRENDAMENTO</span>
@@ -1162,23 +1162,23 @@ export default function Contratos() {
                                   </div>
                                   <div style={{ fontSize:10, color:"#444" }}>{c.tipo?.toUpperCase() ?? "VENDA"} · Safra {c.safra}</div>
                                 </td>
-                                <td style={{ padding:"10px 12px", fontSize:12, color:"#1a1a1a", maxWidth:200 }}>
+                                <td style={{ padding:"10px 12px", fontSize:12, color:"var(--text-1)", maxWidth:200 }}>
                                   <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.comprador || "—"}</div>
                                 </td>
                                 <td style={{ padding:"10px 12px" }}>
                                   <span style={{ fontSize:10, background:cp.bg, color:cp.color, padding:"2px 8px", borderRadius:8 }}>{c.produto}</span>
                                 </td>
-                                <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color:"#1a1a1a" }}>{(c.quantidade_sc??0).toLocaleString("pt-BR")} sc</td>
+                                <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color:"var(--text-1)" }}>{(c.quantidade_sc??0).toLocaleString("pt-BR")} sc</td>
                                 <td style={{ padding:"10px 12px", textAlign:"center" }}>
                                   <div style={{ fontWeight:600, color:"#1A4870" }}>{(c.entregue_sc??0).toLocaleString("pt-BR")} sc</div>
-                                  <div style={{ height:3, background:"#DEE5EE", borderRadius:2, marginTop:3, width:56, margin:"3px auto 0" }}>
+                                  <div style={{ height:3, background:"var(--border-row)", borderRadius:2, marginTop:3, width:56, margin:"3px auto 0" }}>
                                     <div style={{ height:"100%", width:`${pct}%`, background: pct===100?"#1A4870":"#EF9F27", borderRadius:2 }} />
                                   </div>
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"center", fontWeight:600, color: ((c.quantidade_sc??0)-(c.entregue_sc??0))>0?"#EF9F27":"#1A4870" }}>
                                   {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc
                                 </td>
-                                <td style={{ padding:"10px 12px", textAlign:"center", fontSize:12, whiteSpace:"nowrap", color:"#1a1a1a" }}>
+                                <td style={{ padding:"10px 12px", textAlign:"center", fontSize:12, whiteSpace:"nowrap", color:"var(--text-1)" }}>
                                   {c.modalidade==="fixo" && c.moeda==="USD" && (
                                     <div>
                                       <div style={{ fontWeight:600 }}>US$ {(c.preco??0).toLocaleString("pt-BR",{minimumFractionDigits:2})}/sc</div>
@@ -1195,7 +1195,7 @@ export default function Contratos() {
                                 </td>
                                 <td style={{ padding:"10px 12px", textAlign:"right" }}>
                                   <div style={{ display:"flex", gap:4, justifyContent:"flex-end" }} onClick={e => e.stopPropagation()}>
-                                    <button style={{ padding:"3px 9px", border:"0.5px solid #D4DCE8", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c)}>Editar</button>
+                                    <button style={{ padding:"3px 9px", border:"0.5px solid var(--border-table)", borderRadius:5, background:"transparent", cursor:"pointer", fontSize:11, color:"#666" }} onClick={() => abrirEditar(c)}>Editar</button>
                                     {c.status !== "encerrado" && c.status !== "cancelado" && (
                                       <button style={{ padding:"3px 9px", border:"0.5px solid #C9921B50", borderRadius:5, background:"#FBF3E0", cursor:"pointer", fontSize:11, color:"#7A5200" }}
                                         onClick={async () => {
@@ -1230,25 +1230,25 @@ export default function Contratos() {
                               </tr>
                               {exp && (
                                 <tr key={`${c.id}-exp`}>
-                                  <td colSpan={10} style={{ background:"#F8FAFD", padding:0, borderBottom:"0.5px solid #DEE5EE" }}>
+                                  <td colSpan={10} style={{ background:"#F8FAFD", padding:0, borderBottom:"0.5px solid var(--border-row)" }}>
                                     <div style={{ padding:"12px 16px" }}>
                                       {/* Itens do contrato */}
                                       {c.itens && c.itens.length > 0 && (
                                         <div style={{ marginBottom:12 }}>
-                                          <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:6 }}>Itens do Contrato</div>
-                                          <table style={{ width:"100%", borderCollapse:"collapse", background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:8, overflow:"hidden" }}>
+                                          <div style={{ fontSize:11, fontWeight:600, color:"var(--text-2)", marginBottom:6 }}>Itens do Contrato</div>
+                                          <table style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
                                             <thead>
                                               <tr style={{ background:"#F3F6F9" }}>
                                                 {["Tipo","Produto","Qtd","Unid","Vlr Unit.","Vlr Total","Classificação"].map((h,i) => (
-                                                  <th key={i} style={{ padding:"6px 10px", textAlign: i>=2?"center":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8" }}>{h}</th>
+                                                  <th key={i} style={{ padding:"6px 10px", textAlign: i>=2?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)" }}>{h}</th>
                                                 ))}
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {c.itens.map((it,ii) => (
                                                 <tr key={ii} style={{ borderBottom: ii<c.itens.length-1?"0.5px solid #eee":"none" }}>
-                                                  <td style={{ padding:"6px 10px", fontSize:11, color:"#555" }}>{it.tipo}</td>
-                                                  <td style={{ padding:"6px 10px", fontSize:11, fontWeight:600, color:"#1a1a1a" }}>{it.produto}</td>
+                                                  <td style={{ padding:"6px 10px", fontSize:11, color:"var(--text-2)" }}>{it.tipo}</td>
+                                                  <td style={{ padding:"6px 10px", fontSize:11, fontWeight:600, color:"var(--text-1)" }}>{it.produto}</td>
                                                   <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{(it.quantidade??0).toLocaleString("pt-BR")}</td>
                                                   <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{it.unidade}</td>
                                                   <td style={{ padding:"6px 10px", textAlign:"center", fontSize:11 }}>{fmtR$(it.valor_unitario??0)}</td>
@@ -1261,15 +1261,15 @@ export default function Contratos() {
                                         </div>
                                       )}
                                       {/* Romaneios */}
-                                      <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:6 }}>Expedição / Romaneios</div>
+                                      <div style={{ fontSize:11, fontWeight:600, color:"var(--text-2)", marginBottom:6 }}>Expedição / Romaneios</div>
                                       {c.romaneios.length === 0 ? (
-                                        <div style={{ fontSize:11, color:"#888", padding:"8px 0" }}>Nenhum romaneio lançado.</div>
+                                        <div style={{ fontSize:11, color:"var(--text-3)", padding:"8px 0" }}>Nenhum romaneio lançado.</div>
                                       ) : (
-                                        <table style={{ width:"100%", borderCollapse:"collapse", background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:8, overflow:"hidden" }}>
+                                        <table style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
                                           <thead>
                                             <tr style={{ background:"#FBF0D8" }}>
                                               {["Romaneio","Data","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e"].map((h,i) => (
-                                                <th key={i} style={{ padding:"6px 10px", textAlign: i>=3?"center":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8" }}>{h}</th>
+                                                <th key={i} style={{ padding:"6px 10px", textAlign: i>=3?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)" }}>{h}</th>
                                               ))}
                                             </tr>
                                           </thead>
@@ -1292,7 +1292,7 @@ export default function Contratos() {
                                         </table>
                                       )}
                                       <div style={{ marginTop:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                                        <span style={{ fontSize:11, color:"#555" }}>{c.romaneios.length} romaneio(s) · {(c.entregue_sc??0).toLocaleString("pt-BR")} sc expedidas · saldo {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc</span>
+                                        <span style={{ fontSize:11, color:"var(--text-2)" }}>{c.romaneios.length} romaneio(s) · {(c.entregue_sc??0).toLocaleString("pt-BR")} sc expedidas · saldo {((c.quantidade_sc??0)-(c.entregue_sc??0)).toLocaleString("pt-BR")} sc</span>
                                         <button onClick={e => { e.stopPropagation(); setFRom(p=>({...p,contratoId:c.id})); setModalRomaneio(true); }}
                                           style={{ fontSize:11, padding:"5px 12px", border:"0.5px solid #1A4870", borderRadius:6, background:"#D5E8F5", color:"#0B2D50", cursor:"pointer", fontWeight:600 }}>
                                           + Lançar Romaneio
@@ -1308,10 +1308,10 @@ export default function Contratos() {
                                         const statusCor   = (st: string) => st === "quitado" ? "#16A34A" : st === "parcial" ? "#C9921B" : "#1A4870";
                                         const statusLabel = (st: string) => st === "quitado" ? "Quitado" : st === "parcial" ? "Parcial" : "Disponível";
                                         return (
-                                          <div style={{ marginTop:16, borderTop:"0.5px solid #EEF1F6", paddingTop:12 }}>
+                                          <div style={{ marginTop:16, borderTop:"0.5px solid var(--bg-tag)", paddingTop:12 }}>
                                             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                                               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                                                <span style={{ fontSize:11, fontWeight:600, color:"#555" }}>💰 Adiantamentos</span>
+                                                <span style={{ fontSize:11, fontWeight:600, color:"var(--text-2)" }}>💰 Adiantamentos</span>
                                                 {saldo > 0 && (
                                                   <span style={{ background:"#D5E8F5", color:"#1A4870", fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:10 }}>
                                                     Saldo disponível: {fmtR$(saldo)}
@@ -1327,24 +1327,24 @@ export default function Contratos() {
                                               </button>
                                             </div>
                                             {adts.length === 0 ? (
-                                              <div style={{ fontSize:11, color:"#aaa", fontStyle:"italic" }}>Nenhum adiantamento registrado para este contrato.</div>
+                                              <div style={{ fontSize:11, color:"var(--text-muted)", fontStyle:"italic" }}>Nenhum adiantamento registrado para este contrato.</div>
                                             ) : (
                                               <>
-                                                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11, background:"#FAFBFD", border:"0.5px solid #EEF1F6", borderRadius:8, overflow:"hidden" }}>
+                                                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11, background:"#FAFBFD", border:"0.5px solid var(--bg-tag)", borderRadius:8, overflow:"hidden" }}>
                                                   <thead>
                                                     <tr style={{ background:"#FBF3E0" }}>
                                                       {["Data","Valor recebido","Aplicado","Saldo","Status"].map((h,i) => (
-                                                        <th key={i} style={{ padding:"5px 10px", textAlign:i===0?"left":"center", fontWeight:600, color:"#555", borderBottom:"0.5px solid #EEF1F6" }}>{h}</th>
+                                                        <th key={i} style={{ padding:"5px 10px", textAlign:i===0?"left":"center", fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--bg-tag)" }}>{h}</th>
                                                       ))}
                                                     </tr>
                                                   </thead>
                                                   <tbody>
                                                     {adts.map((a, ai) => (
-                                                      <tr key={a.id} style={{ borderBottom: ai<adts.length-1?"0.5px solid #EEF1F6":"none" }}>
+                                                      <tr key={a.id} style={{ borderBottom: ai<adts.length-1?"0.5px solid var(--bg-tag)":"none" }}>
                                                         <td style={{ padding:"6px 10px" }}>{fmtData(a.data)}</td>
                                                         <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600 }}>{fmtR$(a.valor)}</td>
-                                                        <td style={{ padding:"6px 10px", textAlign:"center", color:"#888" }}>{a.valor_aplicado > 0 ? fmtR$(a.valor_aplicado) : "—"}</td>
-                                                        <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600, color: a.valor-a.valor_aplicado>0?"#1A4870":"#888" }}>{fmtR$(a.valor - a.valor_aplicado)}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center", color:"var(--text-3)" }}>{a.valor_aplicado > 0 ? fmtR$(a.valor_aplicado) : "—"}</td>
+                                                        <td style={{ padding:"6px 10px", textAlign:"center", fontWeight:600, color: a.valor-a.valor_aplicado>0?"#1A4870":"var(--text-3)" }}>{fmtR$(a.valor - a.valor_aplicado)}</td>
                                                         <td style={{ padding:"6px 10px", textAlign:"center" }}>
                                                           <span style={{ background: statusCor(a.status)+"22", color: statusCor(a.status), fontWeight:600, padding:"2px 7px", borderRadius:8, fontSize:10 }}>{statusLabel(a.status)}</span>
                                                         </td>
@@ -1352,10 +1352,10 @@ export default function Contratos() {
                                                     ))}
                                                   </tbody>
                                                 </table>
-                                                <div style={{ display:"flex", gap:20, padding:"6px 10px", fontSize:11, color:"#555" }}>
+                                                <div style={{ display:"flex", gap:20, padding:"6px 10px", fontSize:11, color:"var(--text-2)" }}>
                                                   <span>Total recebido: <strong>{fmtR$(totalRec)}</strong></span>
                                                   <span>Aplicado em entregas: <strong>{fmtR$(totalApl)}</strong></span>
-                                                  <span style={{ fontWeight:700, color: saldo>0?"#1A4870":"#888" }}>Saldo: {fmtR$(saldo)}</span>
+                                                  <span style={{ fontWeight:700, color: saldo>0?"#1A4870":"var(--text-3)" }}>Saldo: {fmtR$(saldo)}</span>
                                                 </div>
                                               </>
                                             )}
@@ -1377,9 +1377,9 @@ export default function Contratos() {
 
               {/* ── ABA EXPEDIÇÃO ── */}
               {abaLista === "expedicao" && (
-                <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
-                  <div style={{ padding:"12px 16px", borderBottom:"0.5px solid #DEE5EE", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                    <span style={{ fontSize:12, color:"#555" }}>{todosRomaneios.length} romaneios · {todosRomaneios.reduce((a,r)=>a+(r.sacas??0),0).toLocaleString("pt-BR")} sc expedidas</span>
+                <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", overflow:"hidden" }}>
+                  <div style={{ padding:"12px 16px", borderBottom:"0.5px solid var(--border-row)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontSize:12, color:"var(--text-2)" }}>{todosRomaneios.length} romaneios · {todosRomaneios.reduce((a,r)=>a+(r.sacas??0),0).toLocaleString("pt-BR")} sc expedidas</span>
                     <button onClick={() => setModalRomaneio(true)} style={{ fontSize:12, padding:"5px 14px", border:"0.5px solid #1A4870", borderRadius:6, background:"#D5E8F5", color:"#0B2D50", cursor:"pointer", fontWeight:600 }}>+ Novo Romaneio</button>
                   </div>
                   {todosRomaneios.length === 0 ? (
@@ -1389,7 +1389,7 @@ export default function Contratos() {
                       <thead>
                         <tr style={{ background:"#F3F6F9" }}>
                           {["Romaneio","Data","Contrato","Comprador","Produto","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e"].map((h,i) => (
-                            <th key={i} style={{ padding:"8px 12px", textAlign:i>=6?"center":"left", fontSize:11, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                            <th key={i} style={{ padding:"8px 12px", textAlign:i>=6?"center":"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1397,7 +1397,7 @@ export default function Contratos() {
                         {[...todosRomaneios].sort((a,b) => (b.data??"").localeCompare(a.data??"")).map((r,ri,arr) => {
                           const cp = corProduto(r.produto);
                           return (
-                            <tr key={ri} style={{ borderBottom: ri<arr.length-1?"0.5px solid #DEE5EE":"none" }}>
+                            <tr key={ri} style={{ borderBottom: ri<arr.length-1?"0.5px solid var(--border-row)":"none" }}>
                               <td style={{ padding:"9px 12px", fontWeight:600, fontSize:12 }}>{r.numero}</td>
                               <td style={{ padding:"9px 12px", fontSize:11, whiteSpace:"nowrap" }}>{fmtData(r.data)}</td>
                               <td style={{ padding:"9px 12px", fontSize:11, fontWeight:600, color:"#C9921B" }}>{r.contratoNumero}</td>
@@ -1422,31 +1422,31 @@ export default function Contratos() {
 
               {/* ── ABA POSIÇÃO DE ESTOQUE ── */}
               {abaLista === "posicao" && (
-                <div style={{ background:"#F3F6F9", border:"0.5px solid #D4DCE8", borderTop:"none", borderRadius:"0 0 12px 12px", padding:20 }}>
+                <div style={{ background:"#F3F6F9", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", padding:20 }}>
                   {posicao.length === 0 ? (
-                    <div style={{ textAlign:"center", padding:48, color:"#888", fontSize:13 }}>Nenhum contrato ativo com saldo.</div>
+                    <div style={{ textAlign:"center", padding:48, color:"var(--text-3)", fontSize:13 }}>Nenhum contrato ativo com saldo.</div>
                   ) : (
-                    <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:10, overflow:"hidden" }}>
+                    <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden" }}>
                       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                         <thead>
-                          <tr style={{ background:"#F8FAFD", borderBottom:"0.5px solid #D4DCE8" }}>
-                            <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"#555" }}>Cultura</th>
-                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>Contratado (sc)</th>
-                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>Entregue (sc)</th>
-                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>Saldo (sc)</th>
-                            <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"#555" }}>Progresso</th>
-                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"#555" }}>% Entregue</th>
+                          <tr style={{ background:"#F8FAFD", borderBottom:"0.5px solid var(--border-table)" }}>
+                            <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Cultura</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Contratado (sc)</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Entregue (sc)</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Saldo (sc)</th>
+                            <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Progresso</th>
+                            <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>% Entregue</th>
                           </tr>
                         </thead>
                         <tbody>
                           {posicao.map((p, i) => (
-                            <tr key={p.produto} style={{ borderBottom:"0.5px solid #EEF1F6", background:i%2===0?"#fff":"#FAFBFD" }}>
-                              <td style={{ padding:"10px 16px", fontWeight:600, color:"#1a1a1a" }}>{p.produto}</td>
-                              <td style={{ padding:"10px 16px", textAlign:"right", color:"#1a1a1a" }}>{p.contratado.toLocaleString("pt-BR")}</td>
+                            <tr key={p.produto} style={{ borderBottom:"0.5px solid var(--bg-tag)", background:i%2===0?"var(--bg-card)":"#FAFBFD" }}>
+                              <td style={{ padding:"10px 16px", fontWeight:600, color:"var(--text-1)" }}>{p.produto}</td>
+                              <td style={{ padding:"10px 16px", textAlign:"right", color:"var(--text-1)" }}>{p.contratado.toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"10px 16px", textAlign:"right", color:"#16A34A", fontWeight:600 }}>{p.entregue.toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"10px 16px", textAlign:"right", color:p.saldo>0?"#E24B4A":"#16A34A", fontWeight:600 }}>{p.saldo.toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"10px 16px", minWidth:140 }}>
-                                <div style={{ height:8, background:"#EEF1F6", borderRadius:4, overflow:"hidden" }}>
+                                <div style={{ height:8, background:"var(--bg-tag)", borderRadius:4, overflow:"hidden" }}>
                                   <div style={{ height:"100%", width:p.pct+"%", background:p.pct===100?"#16A34A":"#1A4870", borderRadius:4 }} />
                                 </div>
                               </td>
@@ -1469,32 +1469,32 @@ export default function Contratos() {
       {modalContrato && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalContrato(false); }}>
-          <div style={{ background:"#fff", borderRadius:14, width:980, maxWidth:"97vw", maxHeight:"95vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, width:980, maxWidth:"97vw", maxHeight:"95vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
             {/* Cabeçalho do modal */}
-            <div style={{ padding:"14px 20px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-              <div style={{ fontWeight:600, fontSize:15, color:"#1a1a1a" }}>{editContrato ? `Editando ${editContrato.numero}` : "Novo Contrato"}</div>
+            <div style={{ padding:"14px 20px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div style={{ fontWeight:600, fontSize:15, color:"var(--text-1)" }}>{editContrato ? `Editando ${editContrato.numero}` : "Novo Contrato"}</div>
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 {/* Autorização */}
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:11, color:"#555" }}>Autorização:</span>
+                  <span style={{ fontSize:11, color:"var(--text-2)" }}>Autorização:</span>
                   <select style={{ ...inp, width:"auto", padding:"5px 8px" }} value={fC.autorizacao} onChange={e => setFC(p=>({...p,autorizacao:e.target.value as Contrato["autorizacao"]}))}>
                     <option value="pendente">Pendente</option>
                     <option value="autorizada">Autorizada</option>
                     <option value="recusada">Recusada</option>
                   </select>
                 </div>
-                <button onClick={() => setModalContrato(false)} style={{ padding:"5px 10px", border:"0.5px solid #D4DCE8", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:12 }}>✕ Fechar</button>
+                <button onClick={() => setModalContrato(false)} style={{ padding:"5px 10px", border:"0.5px solid var(--border-table)", borderRadius:6, background:"transparent", cursor:"pointer", fontSize:12 }}>✕ Fechar</button>
               </div>
             </div>
 
             {/* Abas Principal / Adicionais */}
-            <div style={{ display:"flex", borderBottom:"0.5px solid #D4DCE8", background:"#F8FAFD" }}>
+            <div style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"#F8FAFD" }}>
               {(["principal","adicionais"] as AbaForm[]).map(a => (
                 <button key={a} onClick={() => setAbaForm(a)} style={{
                   padding:"9px 20px", border:"none", background:"transparent", cursor:"pointer",
                   fontWeight: abaForm===a?600:400, fontSize:13,
-                  color: abaForm===a?"#1a1a1a":"#555",
+                  color: abaForm===a?"var(--text-1)":"var(--text-2)",
                   borderBottom: abaForm===a?"2px solid #1A4870":"2px solid transparent",
                 }}>
                   {a==="principal" ? "Principal" : "Adicionais"}
@@ -1526,15 +1526,15 @@ export default function Contratos() {
                   <div style={{ display:"grid", gridTemplateColumns:"120px 1fr 1fr 1fr 1fr", gap:12, marginBottom:12 }}>
                     <div>
                       <label style={lbl}>Nº Lançamento</label>
-                      <input style={{ ...inp, background:"#F4F6FA", color:"#888" }} value={editContrato?.num_lancamento ?? "—"} readOnly />
+                      <input style={{ ...inp, background:"var(--bg-page)", color:"var(--text-3)" }} value={editContrato?.num_lancamento ?? "—"} readOnly />
                     </div>
                     <div>
                       <label style={lbl}>Nº Contrato</label>
-                      <input style={{ ...inp, background:"#F4F6FA", color:"#888" }} value={editContrato?.numero ?? "(gerado ao salvar)"} readOnly />
+                      <input style={{ ...inp, background:"var(--bg-page)", color:"var(--text-3)" }} value={editContrato?.numero ?? "(gerado ao salvar)"} readOnly />
                     </div>
                     <div>
                       <label style={lbl}>Safra</label>
-                      <select style={{ ...inp, color: fC.ano_safra_id ? "#1a1a1a" : "#888" }}
+                      <select style={{ ...inp, color: fC.ano_safra_id ? "var(--text-1)" : "var(--text-3)" }}
                         value={fC.ano_safra_id}
                         onChange={e => {
                           const sel = anosSafra.find(a => a.id === e.target.value);
@@ -1565,7 +1565,7 @@ export default function Contratos() {
                   </div>
 
                   {/* Flags */}
-                  <div style={{ display:"flex", gap:20, marginBottom:14, padding:"8px 12px", background:"#F4F6FA", borderRadius:8 }}>
+                  <div style={{ display:"flex", gap:20, marginBottom:14, padding:"8px 12px", background:"var(--bg-page)", borderRadius:8 }}>
                     <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:12, fontWeight:600 }}>
                       <input type="checkbox" checked={fC.confirmado} onChange={e => setFC(p=>({...p,confirmado:e.target.checked}))} /> Confirmado
                     </label>
@@ -1622,7 +1622,7 @@ export default function Contratos() {
                     <div>
                       <label style={lbl}>Data de Pagamento</label>
                       <input style={inp} type="date" value={fC.data_pagamento ?? ""} onChange={e => setFC(p=>({...p,data_pagamento:e.target.value||undefined}))} />
-                      <span style={{ fontSize:10, color:"#888", marginTop:2, display:"block" }}>Gera CR ao confirmar</span>
+                      <span style={{ fontSize:10, color:"var(--text-3)", marginTop:2, display:"block" }}>Gera CR ao confirmar</span>
                     </div>
                   </div>
 
@@ -1646,7 +1646,7 @@ export default function Contratos() {
                     {fC.moeda === "USD" && (
                       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", background:"#FAEEDA", border:"0.5px solid #E8C97A", borderRadius:7, fontSize:12 }}>
                         <span style={{ color:"#633806" }}>PTAX D-1: <strong>R$ {ptaxAtual.toFixed(4)}</strong></span>
-                        <span style={{ color:"#888", fontSize:10 }}>· atualizado automaticamente</span>
+                        <span style={{ color:"var(--text-3)", fontSize:10 }}>· atualizado automaticamente</span>
                       </div>
                     )}
                   </div>
@@ -1680,7 +1680,7 @@ export default function Contratos() {
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>CFOP <span style={{ color:"#888", fontWeight:400 }}>(auto)</span></label>
+                      <label style={lbl}>CFOP <span style={{ color:"var(--text-3)", fontWeight:400 }}>(auto)</span></label>
                       <input style={inp} value={fC.cfop} onChange={e => setFC(p=>({...p,cfop:e.target.value}))} placeholder="6101" />
                     </div>
                     <div>
@@ -1714,15 +1714,15 @@ export default function Contratos() {
                           <span>CFOP Intra-Estadual: <strong>{nat.cfop_intra}</strong></span>
                           <span>CST ICMS: <strong>{nat.cst_icms}</strong></span>
                         </div>
-                        <div style={{ color:"#555", marginTop:4 }}>{nat.obs}</div>
+                        <div style={{ color:"var(--text-2)", marginTop:4 }}>{nat.obs}</div>
                       </div>
                     );
                   })()}
 
                   {/* ── GRID DE ITENS ── */}
-                  <div style={{ border:"0.5px solid #D4DCE8", borderRadius:10, overflow:"hidden", marginBottom:8 }}>
-                    <div style={{ padding:"8px 14px", background:"#F3F6F9", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                      <span style={{ fontSize:12, fontWeight:600, color:"#555" }}>Itens do Contrato</span>
+                  <div style={{ border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden", marginBottom:8 }}>
+                    <div style={{ padding:"8px 14px", background:"#F3F6F9", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                      <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens do Contrato</span>
                       <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #1A5CB8", borderRadius:5, background:"#E6F1FB", color:"#1A5CB8", cursor:"pointer" }}
                         onClick={() => setItens(p => [...p, itemVazio()])}>+ Item</button>
                     </div>
@@ -1730,7 +1730,7 @@ export default function Contratos() {
                       <thead>
                         <tr style={{ background:"#F8FAFD" }}>
                           {["Tipo","Item / Produto","Peso (kg)","Equiv. (sc)", fC.moeda === "USD" ? "Valor (US$/sc)" : "Valor (R$/sc)","Valor Total",""].map((h,i) => (
-                            <th key={i} style={{ padding:"6px 10px", textAlign: i>=2&&i<=5?"center":"left", fontSize:10, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                            <th key={i} style={{ padding:"6px 10px", textAlign: i>=2&&i<=5?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1754,7 +1754,7 @@ export default function Contratos() {
                                 value={it._qKg > 0 ? it._qKg : ""}
                                 onChange={v => atualizarItem(idx,"quantidade_kg",v)}
                                 placeholder="0 kg" />
-                              <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>kg</span>
+                              <span style={{ fontSize:9, color:"var(--text-3)", display:"block", textAlign:"right", marginTop:1 }}>kg</span>
                             </td>
                             {/* Sacas equivalentes — campo secundário */}
                             <td style={{ padding:"6px 8px", width:110 }}>
@@ -1762,13 +1762,13 @@ export default function Contratos() {
                                 value={it._qSc > 0 ? +it._qSc.toFixed(3) : ""}
                                 onChange={v => atualizarItem(idx,"quantidade_sc",v)}
                                 placeholder="0 sc" />
-                              <span style={{ fontSize:9, color:"#888", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodityDin(it.produto).kg_saca} kg/sc)</span>
+                              <span style={{ fontSize:9, color:"var(--text-3)", display:"block", textAlign:"right", marginTop:1 }}>sc ({classeCommodityDin(it.produto).kg_saca} kg/sc)</span>
                             </td>
                             <td style={{ padding:"6px 8px", width:120 }}>
                               <InputMonetario style={{ ...inp, textAlign:"right", fontSize:12 }} min="0" value={it.valor_unitario||""} onChange={v => atualizarItem(idx,"valor_unitario",v)} placeholder="0,00" />
                             </td>
                             <td style={{ padding:"6px 8px", width:130 }}>
-                              <input style={{ ...inp, background:"#F4F6FA", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }}
+                              <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }}
                                 value={(it.valor_total??0).toLocaleString("pt-BR",{style:"currency",currency: fC.moeda === "USD" ? "USD" : "BRL"})} readOnly />
                             </td>
                             <td style={{ padding:"6px 8px", width:34 }}>
@@ -1782,9 +1782,9 @@ export default function Contratos() {
                     {(() => {
                       const fmtValor = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
                       return (
-                        <div style={{ padding:"8px 14px", background:"#F3F6F9", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:32 }}>
-                          <span style={{ fontSize:12, color:"#555" }}>Valor Financeiro: <strong style={{ color:"#1a1a1a" }}>{fmtValor(valorFinanceiro)}</strong></span>
-                          <span style={{ fontSize:12, color:"#555" }}>Frete: <strong style={{ color:"#1a1a1a" }}>{fmtR$(fC.valor_frete||0)}</strong></span>
+                        <div style={{ padding:"8px 14px", background:"#F3F6F9", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:32 }}>
+                          <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor Financeiro: <strong style={{ color:"var(--text-1)" }}>{fmtValor(valorFinanceiro)}</strong></span>
+                          <span style={{ fontSize:12, color:"var(--text-2)" }}>Frete: <strong style={{ color:"var(--text-1)" }}>{fmtR$(fC.valor_frete||0)}</strong></span>
                           <span style={{ fontSize:13, fontWeight:600, color:"#1A4870" }}>Valor Total: {fmtValor(valorTotal)}</span>
                         </div>
                       );
@@ -1797,8 +1797,8 @@ export default function Contratos() {
                 <>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
                     <div>
-                      <label style={lbl}>Propriedade <span style={{ color:"#888", fontWeight:400 }}>(fazenda)</span></label>
-                      <select style={{ ...inp, color: fC.propriedade ? "#1a1a1a" : "#888" }}
+                      <label style={lbl}>Propriedade <span style={{ color:"var(--text-3)", fontWeight:400 }}>(fazenda)</span></label>
+                      <select style={{ ...inp, color: fC.propriedade ? "var(--text-1)" : "var(--text-3)" }}
                         value={fC.propriedade} onChange={e => setFC(p=>({...p,propriedade:e.target.value}))}>
                         {fazendas.length === 0
                           ? <option value="">Nenhuma fazenda cadastrada</option>
@@ -1810,8 +1810,8 @@ export default function Contratos() {
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>Empreendimento / Ciclo <span style={{ color:"#888", fontWeight:400 }}>(vinculado à safra selecionada)</span></label>
-                      <select style={{ ...inp, color: fC.ciclo_id ? "#1a1a1a" : "#888" }}
+                      <label style={lbl}>Empreendimento / Ciclo <span style={{ color:"var(--text-3)", fontWeight:400 }}>(vinculado à safra selecionada)</span></label>
+                      <select style={{ ...inp, color: fC.ciclo_id ? "var(--text-1)" : "var(--text-3)" }}
                         value={fC.ciclo_id} onChange={e => setFC(p=>({...p,ciclo_id:e.target.value}))}>
                         {!fC.ano_safra_id
                           ? <option value="">Selecione a Safra na aba Principal primeiro</option>
@@ -1838,7 +1838,7 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={lbl}>Terceiro</label>
-                      <select style={{ ...inp, color: fC.terceiro ? "#1a1a1a" : "#888" }}
+                      <select style={{ ...inp, color: fC.terceiro ? "var(--text-1)" : "var(--text-3)" }}
                         value={fC.terceiro} onChange={e => setFC(p=>({...p,terceiro:e.target.value}))}>
                         <option value="">— selecione (opcional) —</option>
                         {pessoas.map(p => <option key={p.id} value={p.nome}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
@@ -1846,7 +1846,7 @@ export default function Contratos() {
                     </div>
                     <div>
                       <label style={lbl}>Depósito de Carregamento</label>
-                      <select style={{ ...inp, color: fC.deposito_carregamento ? "#1a1a1a" : "#888" }}
+                      <select style={{ ...inp, color: fC.deposito_carregamento ? "var(--text-1)" : "var(--text-3)" }}
                         value={fC.deposito_carregamento}
                         onChange={e => setFC(p=>({...p, deposito_carregamento: e.target.value}))}>
                         {depositos.length === 0
@@ -1872,14 +1872,14 @@ export default function Contratos() {
                       <textarea style={{ ...inp, height:56, resize:"vertical" }} value={fC.observacao} onChange={e => setFC(p=>({...p,observacao:e.target.value}))} />
                     </div>
                     <div style={{ gridColumn:"1/-1" }}>
-                      <label style={lbl}>Obs. Contrato <span style={{ color:"#888" }}>(não constam nas notas fiscais)</span></label>
+                      <label style={lbl}>Obs. Contrato <span style={{ color:"var(--text-3)" }}>(não constam nas notas fiscais)</span></label>
                       <textarea style={{ ...inp, height:56, resize:"vertical" }} value={fC.observacao_interna} onChange={e => setFC(p=>({...p,observacao_interna:e.target.value}))} />
                     </div>
                   </div>
 
                   {/* ── Cessão ─────────────────────────────────────── */}
-                  <div style={{ borderTop:"0.5px solid #D4DCE8", paddingTop:14, marginTop:4 }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Cessão de Recebível</div>
+                  <div style={{ borderTop:"0.5px solid var(--border-table)", paddingTop:14, marginTop:4 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Cessão de Recebível</div>
                     <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", marginBottom:fC.dado_em_cessao?14:0 }}>
                       <input
                         type="checkbox"
@@ -1887,7 +1887,7 @@ export default function Contratos() {
                         onChange={e => setFC(p=>({...p, dado_em_cessao:e.target.checked, cessao_fornecedor_id:"", cessao_fornecedor_nome:""}))}
                       />
                       <span style={{ fontSize:13, fontWeight:600, color: fC.dado_em_cessao ? "#1A4870" : "#444" }}>Dado em Cessão</span>
-                      <span style={{ fontSize:11, color:"#888", fontWeight:400 }}>— o recebível deste contrato será cedido a um fornecedor</span>
+                      <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>— o recebível deste contrato será cedido a um fornecedor</span>
                     </label>
 
                     {fC.dado_em_cessao && (
@@ -1895,7 +1895,7 @@ export default function Contratos() {
                         <div>
                           <label style={lbl}>Fornecedor que recebe a cessão *</label>
                           <select
-                            style={{ ...inp, color: fC.cessao_fornecedor_id ? "#1a1a1a" : "#888" }}
+                            style={{ ...inp, color: fC.cessao_fornecedor_id ? "var(--text-1)" : "var(--text-3)" }}
                             value={fC.cessao_fornecedor_id}
                             onChange={e => {
                               const nome = pessoas.find(p=>p.id===e.target.value)?.nome ?? "";
@@ -1916,7 +1916,7 @@ export default function Contratos() {
                         </div>
                         <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                           <div>
-                            <span style={{ fontSize:12, color:"#555" }}>
+                            <span style={{ fontSize:12, color:"var(--text-2)" }}>
                               Débitos vinculados: <strong>{Object.keys(cessaoSelecionados).length}</strong>
                               {Object.keys(cessaoSelecionados).length > 0 && (
                                 <span style={{ marginLeft:8, color:"#1A4870" }}>
@@ -1931,8 +1931,8 @@ export default function Contratos() {
                             onClick={abrirModalCessao}
                             style={{
                               padding:"6px 14px", border:"0.5px solid #1A4870", borderRadius:7,
-                              background: fC.cessao_fornecedor_id ? "#EBF5FF" : "#F4F6FA",
-                              color: fC.cessao_fornecedor_id ? "#1A4870" : "#aaa",
+                              background: fC.cessao_fornecedor_id ? "#EBF5FF" : "var(--bg-page)",
+                              color: fC.cessao_fornecedor_id ? "#1A4870" : "var(--text-muted)",
                               fontSize:12, fontWeight:600, cursor: fC.cessao_fornecedor_id ? "pointer" : "not-allowed",
                             }}
                           >
@@ -1947,8 +1947,8 @@ export default function Contratos() {
             </div>
 
             {/* Rodapé do modal */}
-            <div style={{ padding:"12px 20px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#F8FAFD" }}>
-              <div style={{ fontSize:11, color:"#555" }}>
+            <div style={{ padding:"12px 20px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#F8FAFD" }}>
+              <div style={{ fontSize:11, color:"var(--text-2)" }}>
                 {(() => {
                   const fv = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
                   return <>Valor Financeiro: <strong>{fv(valorFinanceiro)}</strong><span style={{ marginLeft:20 }}>Valor Total: <strong style={{ color:"#1A4870" }}>{fv(valorTotal)}</strong></span></>;
@@ -1969,9 +1969,9 @@ export default function Contratos() {
       {modalRomaneio && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalRomaneio(false); }}>
-          <div style={{ background:"#fff", borderRadius:14, padding:26, width:780, maxWidth:"97vw", maxHeight:"95vh", overflowY:"auto" }}>
-            <div style={{ fontWeight:600, fontSize:15, color:"#1a1a1a", marginBottom:2 }}>Novo Romaneio de Expedição</div>
-            <div style={{ fontSize:12, color:"#555", marginBottom:16 }}>Pesagem + Classificação do grão. NF-e gerada automaticamente.</div>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, padding:26, width:780, maxWidth:"97vw", maxHeight:"95vh", overflowY:"auto" }}>
+            <div style={{ fontWeight:600, fontSize:15, color:"var(--text-1)", marginBottom:2 }}>Novo Romaneio de Expedição</div>
+            <div style={{ fontSize:12, color:"var(--text-2)", marginBottom:16 }}>Pesagem + Classificação do grão. NF-e gerada automaticamente.</div>
 
             {/* Contrato */}
             <div style={{ marginBottom:12 }}>
@@ -2016,10 +2016,10 @@ export default function Contratos() {
             {plCalc > 0 && (
               <>
                 {/* ── Cabeçalho da seção de classificação ── */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"0.5px solid #D4DCE8", paddingBottom:6, marginBottom:12 }}>
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"0.5px solid var(--border-table)", paddingBottom:6, marginBottom:12 }}>
                   <div>
-                    <span style={{ fontSize:12, fontWeight:600, color:"#555" }}>Classificação do Grão</span>
-                    <span style={{ marginLeft:10, fontSize:10, fontWeight:400, color:"#888" }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Classificação do Grão</span>
+                    <span style={{ marginLeft:10, fontSize:10, fontWeight:400, color:"var(--text-3)" }}>
                       Padrão {produto_rom}: Umidade {clsComm.umidade_padrao}% · Impureza {clsComm.impureza_padrao}% · Avariados {clsComm.avariados_padrao}%
                     </span>
                   </div>
@@ -2071,8 +2071,8 @@ export default function Contratos() {
                 </div>
 
                 {/* ── Avariados — detalhamento por commodity ── */}
-                <div style={{ background:"#F8F9FC", border:"0.5px solid #DDE2EE", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
-                  <div style={{ fontSize:11, fontWeight:600, color:"#555", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                <div style={{ background:"#F8F9FC", border:"0.5px solid var(--border)", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
+                  <div style={{ fontSize:11, fontWeight:600, color:"var(--text-2)", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <span>Avariados — detalhamento{isSoja ? " (ABIOVE / IN MAPA 11/2007)" : isMilho ? " (IN MAPA 60/2011)" : ""}</span>
                     {romAvariados > 0 && (
                       <span style={{ fontSize:11, fontWeight:700, color: romAvariados > clsComm.avariados_padrao ? "#E24B4A" : "#16A34A" }}>
@@ -2094,7 +2094,7 @@ export default function Contratos() {
                         { key:"outros_avariados",label:"Outros Avariados (%)" },
                       ] as {key: keyof typeof fRom; label: string}[]).map(({ key, label }) => (
                         <div key={key}>
-                          <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>{label}</label>
+                          <label style={{ fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" }}>{label}</label>
                           <InputNumerico style={{ ...inp, fontSize:12, padding:"5px 8px" }} min="0" max="100"
                             value={fRom[key] as string} onChange={v => setFRom(p=>({...p,[key]:v}))} />
                         </div>
@@ -2112,7 +2112,7 @@ export default function Contratos() {
                         { key:"outros_avariados", label:"Outros Avariados (%)" },
                       ] as {key: keyof typeof fRom; label: string}[]).map(({ key, label }) => (
                         <div key={key}>
-                          <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>{label}</label>
+                          <label style={{ fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" }}>{label}</label>
                           <InputNumerico style={{ ...inp, fontSize:12, padding:"5px 8px" }} min="0" max="100"
                             value={fRom[key] as string} onChange={v => setFRom(p=>({...p,[key]:v}))} />
                         </div>
@@ -2126,28 +2126,28 @@ export default function Contratos() {
                   <div style={{ fontSize:11, fontWeight:600, color:"#0B2D50", marginBottom:8 }}>Apuração — Balança de Saída (Fazenda)</div>
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
                     <div style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:10, color:"#555" }}>Peso Líquido</div>
-                      <div style={{ fontSize:13, fontWeight:600, color:"#1a1a1a" }}>{fmtPeso(plCalc)}</div>
+                      <div style={{ fontSize:10, color:"var(--text-2)" }}>Peso Líquido</div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>{fmtPeso(plCalc)}</div>
                     </div>
                     {temClassif && (
                       <div style={{ textAlign:"center" }}>
-                        <div style={{ fontSize:10, color:"#555" }}>Descontos (U+I+A)</div>
+                        <div style={{ fontSize:10, color:"var(--text-2)" }}>Descontos (U+I+A)</div>
                         <div style={{ fontSize:13, fontWeight:600, color:"#E24B4A" }}>−{fmtPeso(descUmid+descImpur+descAvar)}</div>
                       </div>
                     )}
                     <div style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:10, color:"#555" }}>Peso Classificado</div>
+                      <div style={{ fontSize:10, color:"var(--text-2)" }}>Peso Classificado</div>
                       <div style={{ fontSize:13, fontWeight:600, color:"#0B2D50" }}>{fmtPeso(temClassif?pesoClass:plCalc)}</div>
                     </div>
                     <div style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:10, color:"#555" }}>Sacas ({clsComm.kg_saca} kg)</div>
+                      <div style={{ fontSize:10, color:"var(--text-2)" }}>Sacas ({clsComm.kg_saca} kg)</div>
                       <div style={{ fontSize:15, fontWeight:600, color:"#1A4870" }}>{sacasCalc.toLocaleString("pt-BR")} sc</div>
                       {contratoSel?.modalidade==="fixo" && (
-                        <div style={{ fontSize:10, color:"#555" }}>{fmtR$(sacasCalc*(contratoSel.preco??0))}</div>
+                        <div style={{ fontSize:10, color:"var(--text-2)" }}>{fmtR$(sacasCalc*(contratoSel.preco??0))}</div>
                       )}
                     </div>
                   </div>
-                  {!temClassif && <div style={{ fontSize:10, color:"#888", marginTop:6 }}>Preencha a classificação para calcular descontos e peso líquido faturável.</div>}
+                  {!temClassif && <div style={{ fontSize:10, color:"var(--text-3)", marginTop:6 }}>Preencha a classificação para calcular descontos e peso líquido faturável.</div>}
                   <div style={{ marginTop:6, fontSize:10, color:"#1A4870" }}>NF-e gerada automaticamente após confirmação</div>
                 </div>
 
@@ -2155,11 +2155,11 @@ export default function Contratos() {
                 <div style={{ background:"#FBF3E0", border:"0.5px solid #F6C87A", borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
                   <div style={{ fontSize:11, fontWeight:600, color:"#7A5A12", marginBottom:8 }}>
                     Peso Recebido pelo Comprador
-                    <span style={{ fontSize:10, fontWeight:400, marginLeft:8, color:"#888" }}>Preencher após receber o ticket de pesagem do destino</span>
+                    <span style={{ fontSize:10, fontWeight:400, marginLeft:8, color:"var(--text-3)" }}>Preencher após receber o ticket de pesagem do destino</span>
                   </div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
                     <div>
-                      <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>Peso Classificado Destino (kg)</label>
+                      <label style={{ fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" }}>Peso Classificado Destino (kg)</label>
                       <InputNumerico style={{ ...inp, fontSize:12 }} decimais={0} placeholder="Ex: 26480"
                         value={fRom.peso_destino} onChange={v => setFRom(p=>({...p,peso_destino:v}))} />
                       {pesoDest > 0 && pesoClass > 0 && (
@@ -2170,12 +2170,12 @@ export default function Contratos() {
                       )}
                     </div>
                     <div>
-                      <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>Sacas Faturadas na NF Comprador</label>
+                      <label style={{ fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" }}>Sacas Faturadas na NF Comprador</label>
                       <InputNumerico style={{ ...inp, fontSize:12 }} decimais={3} placeholder={String(sacasCalc)}
                         value={fRom.sacas_faturadas} onChange={v => setFRom(p=>({...p,sacas_faturadas:v}))} />
                     </div>
                     <div>
-                      <label style={{ fontSize:10, color:"#555", marginBottom:3, display:"block" }}>Obs. Divergência</label>
+                      <label style={{ fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" }}>Obs. Divergência</label>
                       <input style={{ ...inp, fontSize:12 }} placeholder="Ex: rejeição por ardidos"
                         value={fRom.obs_divergencia} onChange={e => setFRom(p=>({...p,obs_divergencia:e.target.value}))} />
                     </div>
@@ -2238,8 +2238,8 @@ export default function Contratos() {
       {/* ── Modal Cessão: Vincular Débitos ── */}
       {modalCessao && (
         <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:640, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding:"20px 24px 16px", borderBottom:"0.5px solid #D4DCE8" }}>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, width:"100%", maxWidth:640, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div style={{ padding:"20px 24px 16px", borderBottom:"0.5px solid var(--border-table)" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                 <div>
                   <h2 style={{ margin:0, fontSize:16, fontWeight:700 }}>Vincular Débitos à Cessão</h2>
@@ -2247,7 +2247,7 @@ export default function Contratos() {
                     Selecione as Contas a Pagar do fornecedor <strong>{fC.cessao_fornecedor_nome}</strong> que serão quitadas por este contrato.
                   </p>
                 </div>
-                <button onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+                <button onClick={() => setModalCessao(false)} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
               </div>
               <div style={{ display:"flex", gap:16, marginTop:10, fontSize:12 }}>
                 <span>Valor do Contrato: <strong style={{ color:"#1A4870" }}>R$ {valorFinanceiro.toLocaleString("pt-BR",{minimumFractionDigits:2})}</strong></span>
@@ -2257,14 +2257,14 @@ export default function Contratos() {
 
             <div style={{ flex:1, overflowY:"auto", padding:"0 24px" }}>
               {cessaoLancs.length === 0 ? (
-                <div style={{ textAlign:"center", padding:"40px 0", color:"#888", fontSize:13 }}>
+                <div style={{ textAlign:"center", padding:"40px 0", color:"var(--text-3)", fontSize:13 }}>
                   Nenhum CP em aberto encontrado para este fornecedor.<br />
                   <span style={{ fontSize:11 }}>Verifique se o fornecedor está vinculado aos lançamentos em CP.</span>
                 </div>
               ) : (
                 <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                   <thead>
-                    <tr style={{ borderBottom:"0.5px solid #D4DCE8", color:"#666", textAlign:"left" }}>
+                    <tr style={{ borderBottom:"0.5px solid var(--border-table)", color:"#666", textAlign:"left" }}>
                       <th style={{ padding:"10px 8px 8px" }}>✓</th>
                       <th style={{ padding:"10px 8px 8px" }}>Descrição</th>
                       <th style={{ padding:"10px 8px 8px", textAlign:"right" }}>Vencimento</th>
@@ -2277,7 +2277,7 @@ export default function Contratos() {
                       const sel = l.id in cessaoSelecionados;
                       const valCessao = cessaoSelecionados[l.id] ?? l.valor;
                       return (
-                        <tr key={l.id} style={{ borderBottom:"0.5px solid #EEF1F6", background: sel ? "#EBF5FF" : "transparent" }}>
+                        <tr key={l.id} style={{ borderBottom:"0.5px solid var(--bg-tag)", background: sel ? "#EBF5FF" : "transparent" }}>
                           <td style={{ padding:"8px" }}>
                             <input type="checkbox" checked={sel}
                               onChange={e => {
@@ -2285,11 +2285,11 @@ export default function Contratos() {
                                 else setCessaoSelecionados(p => { const n={...p}; delete n[l.id]; return n; });
                               }} />
                           </td>
-                          <td style={{ padding:"8px", color:"#1a1a1a" }}>{l.descricao}</td>
+                          <td style={{ padding:"8px", color:"var(--text-1)" }}>{l.descricao}</td>
                           <td style={{ padding:"8px", textAlign:"right", color:"#666" }}>
                             {l.data_vencimento ? l.data_vencimento.split("T")[0].split("-").reverse().join("/") : "—"}
                           </td>
-                          <td style={{ padding:"8px", textAlign:"right", fontWeight:600, color:"#1a1a1a" }}>
+                          <td style={{ padding:"8px", textAlign:"right", fontWeight:600, color:"var(--text-1)" }}>
                             R$ {l.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})}
                           </td>
                           <td style={{ padding:"8px" }}>
@@ -2311,7 +2311,7 @@ export default function Contratos() {
               )}
             </div>
 
-            <div style={{ padding:"16px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:10 }}>
+            <div style={{ padding:"16px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:10 }}>
               <button style={btnR} onClick={() => setModalCessao(false)}>Fechar</button>
               <button style={btnV} onClick={() => setModalCessao(false)}>Confirmar Vínculos</button>
             </div>
@@ -2322,29 +2322,29 @@ export default function Contratos() {
       {/* ── Modal Encerramento em Lote ─────────────────────────────────────── */}
       {modalLote && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ background:"#fff", borderRadius:14, width:680, maxWidth:"96vw", maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, width:680, maxWidth:"96vw", maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* cabeçalho */}
-            <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+            <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
               <div>
-                <div style={{ fontWeight:700, fontSize:16, color:"#1a1a1a" }}>⊘ Encerramento em Lote</div>
-                <div style={{ fontSize:12, color:"#555", marginTop:3 }}>Selecione as safras e a ação a realizar</div>
+                <div style={{ fontWeight:700, fontSize:16, color:"var(--text-1)" }}>⊘ Encerramento em Lote</div>
+                <div style={{ fontSize:12, color:"var(--text-2)", marginTop:3 }}>Selecione as safras e a ação a realizar</div>
               </div>
-              <button onClick={() => setModalLote(false)} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#888", lineHeight:1 }}>✕</button>
+              <button onClick={() => setModalLote(false)} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"var(--text-3)", lineHeight:1 }}>✕</button>
             </div>
 
             {/* tipo de ação */}
             <div style={{ padding:"14px 24px 0" }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#555", marginBottom:8 }}>AÇÃO</div>
+              <div style={{ fontSize:12, fontWeight:600, color:"var(--text-2)", marginBottom:8 }}>AÇÃO</div>
               <div style={{ display:"flex", gap:10 }}>
                 {([
                   { id:"contratos" as const, label:"Encerrar contratos", sub:"Marca os contratos abertos como Encerrado. A safra permanece ativa." },
                   { id:"safra"     as const, label:"Encerrar safra completa", sub:"Encerra a safra e bloqueia novos lançamentos. Inclui todos os contratos abertos." },
                 ] as { id:"contratos"|"safra"; label:string; sub:string }[]).map(op => (
                   <button key={op.id} onClick={() => setLoteOp(op.id)}
-                    style={{ flex:1, textAlign:"left", padding:"12px 14px", borderRadius:10, border: loteOp===op.id ? "2px solid #1A5CB8" : "1.5px solid #D4DCE8", background: loteOp===op.id ? "#D5E8F5" : "#fff", cursor:"pointer" }}>
-                    <div style={{ fontWeight:600, fontSize:13, color: loteOp===op.id ? "#0B2D50" : "#1a1a1a" }}>{op.label}</div>
-                    <div style={{ fontSize:11, color:"#555", marginTop:3 }}>{op.sub}</div>
+                    style={{ flex:1, textAlign:"left", padding:"12px 14px", borderRadius:10, border: loteOp===op.id ? "2px solid #1A5CB8" : "1.5px solid var(--border-table)", background: loteOp===op.id ? "#D5E8F5" : "var(--bg-card)", cursor:"pointer" }}>
+                    <div style={{ fontWeight:600, fontSize:13, color: loteOp===op.id ? "#0B2D50" : "var(--text-1)" }}>{op.label}</div>
+                    <div style={{ fontSize:11, color:"var(--text-2)", marginTop:3 }}>{op.sub}</div>
                     {op.id === "safra" && loteOp === "safra" && (
                       <div style={{ marginTop:6, fontSize:11, background:"#FFF3CD", color:"#7A5A12", borderRadius:6, padding:"4px 8px", border:"0.5px solid #F0D080" }}>
                         ⚠ Safras encerradas não aceitam novos contratos, romaneios ou operações de lavoura.
@@ -2357,9 +2357,9 @@ export default function Contratos() {
 
             {/* lista de safras */}
             <div style={{ padding:"14px 24px", flex:1, overflowY:"auto" }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#555", marginBottom:8 }}>SAFRAS</div>
+              <div style={{ fontSize:12, fontWeight:600, color:"var(--text-2)", marginBottom:8 }}>SAFRAS</div>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                {anosSafra.length === 0 && <div style={{ fontSize:12, color:"#888", padding:10 }}>Nenhuma safra cadastrada.</div>}
+                {anosSafra.length === 0 && <div style={{ fontSize:12, color:"var(--text-3)", padding:10 }}>Nenhuma safra cadastrada.</div>}
                 {anosSafra.map(a => {
                   const st = safraStats(a.id);
                   const isEnc = a.status === "encerrada";
@@ -2370,17 +2370,17 @@ export default function Contratos() {
                         if (isEnc && loteOp === "safra") return; // já encerrada, skip
                         setLoteSafras(prev => { const s = new Set(prev); sel ? s.delete(a.id) : s.add(a.id); return s; });
                       }}
-                      style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", borderRadius:10, border: sel ? "1.5px solid #1A5CB8" : "0.5px solid #D4DCE8", background: sel ? "#EEF5FF" : isEnc ? "#F8F8F8" : "#fff", cursor: isEnc && loteOp==="safra" ? "default" : "pointer", opacity: isEnc && loteOp==="safra" ? 0.65 : 1 }}>
+                      style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", borderRadius:10, border: sel ? "1.5px solid #1A5CB8" : "0.5px solid var(--border-table)", background: sel ? "#EEF5FF" : isEnc ? "#F8F8F8" : "var(--bg-card)", cursor: isEnc && loteOp==="safra" ? "default" : "pointer", opacity: isEnc && loteOp==="safra" ? 0.65 : 1 }}>
                       <input type="checkbox" checked={sel} readOnly style={{ accentColor:"#1A5CB8", width:16, height:16, flexShrink:0 }} />
                       <div style={{ flex:1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                          <span style={{ fontWeight:600, fontSize:13, color:"#1a1a1a" }}>{a.descricao}</span>
+                          <span style={{ fontWeight:600, fontSize:13, color:"var(--text-1)" }}>{a.descricao}</span>
                           {isEnc
-                            ? <span style={{ fontSize:10, background:"#EEE", color:"#555", borderRadius:5, padding:"2px 7px", fontWeight:700 }}>ENCERRADA</span>
+                            ? <span style={{ fontSize:10, background:"#EEE", color:"var(--text-2)", borderRadius:5, padding:"2px 7px", fontWeight:700 }}>ENCERRADA</span>
                             : <span style={{ fontSize:10, background:"#D5F5E3", color:"#14532D", borderRadius:5, padding:"2px 7px", fontWeight:700 }}>ATIVA</span>
                           }
                         </div>
-                        <div style={{ fontSize:11, color:"#555", marginTop:2 }}>
+                        <div style={{ fontSize:11, color:"var(--text-2)", marginTop:2 }}>
                           {a.data_inicio} → {a.data_fim} &nbsp;·&nbsp;
                           <span style={{ color: st.abertos > 0 ? "#C9921B" : "#16A34A", fontWeight:600 }}>{st.abertos} aberto(s)</span>
                           &nbsp;·&nbsp; {st.encerrados} encerrado(s) &nbsp;·&nbsp; {st.total} total
@@ -2388,7 +2388,7 @@ export default function Contratos() {
                       </div>
                       {isEnc && loteOp === "contratos" && (
                         <button onClick={async e => { e.stopPropagation(); if (!confirm(`Reabrir a safra "${a.descricao}"?`)) return; await reabrirAnoSafra(a.id); setAnosSafra(prev => prev.map(x => x.id === a.id ? { ...x, status: "ativa" as const } : x)); }}
-                          style={{ fontSize:11, background:"#fff", color:"#1A4870", border:"0.5px solid #1A4870", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
+                          style={{ fontSize:11, background:"var(--bg-card)", color:"#1A4870", border:"0.5px solid #1A4870", borderRadius:6, padding:"4px 10px", cursor:"pointer" }}>
                           ↩ Reabrir
                         </button>
                       )}
@@ -2406,15 +2406,15 @@ export default function Contratos() {
             )}
 
             {/* footer */}
-            <div style={{ padding:"14px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
-              <div style={{ fontSize:12, color:"#555" }}>
+            <div style={{ padding:"14px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+              <div style={{ fontSize:12, color:"var(--text-2)" }}>
                 {loteSafras.size > 0
                   ? `${loteSafras.size} safra(s) selecionada(s) · ${[...loteSafras].reduce((s,id) => s + safraStats(id).abertos, 0)} contratos abertos`
                   : "Nenhuma safra selecionada"}
               </div>
               <div style={{ display:"flex", gap:10 }}>
                 <button onClick={() => setModalLote(false)}
-                  style={{ background:"#fff", color:"#555", border:"0.5px solid #CCC", borderRadius:8, padding:"9px 16px", fontSize:13, cursor:"pointer" }}>
+                  style={{ background:"var(--bg-card)", color:"var(--text-2)", border:"0.5px solid #CCC", borderRadius:8, padding:"9px 16px", fontSize:13, cursor:"pointer" }}>
                   Fechar
                 </button>
                 <button onClick={executarLote} disabled={loteSafras.size === 0 || loteSalvando}
@@ -2431,8 +2431,8 @@ export default function Contratos() {
       {modalAdiant && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.50)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000 }}
           onClick={e => { if (e.target===e.currentTarget) setModalAdiant(false); }}>
-          <div style={{ background:"#fff", borderRadius:14, padding:28, width:500, maxWidth:"96vw" }}>
-            <div style={{ fontWeight:700, fontSize:15, color:"#1a1a1a", marginBottom:4 }}>Registrar Adiantamento de Cliente</div>
+          <div style={{ background:"var(--bg-card)", borderRadius:14, padding:28, width:500, maxWidth:"96vw" }}>
+            <div style={{ fontWeight:700, fontSize:15, color:"var(--text-1)", marginBottom:4 }}>Registrar Adiantamento de Cliente</div>
             <div style={{ fontSize:12, color:"#666", marginBottom:18 }}>
               Um CR com status <strong>Liquidado</strong> é gerado automaticamente — o dinheiro já foi recebido.
               O saldo fica disponível para abater no próximo romaneio.

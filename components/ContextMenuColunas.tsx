@@ -40,8 +40,8 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
         left: Math.min(x, maxX),
         top: Math.min(y, maxY),
         zIndex: 9999,
-        background: "#fff",
-        border: "0.5px solid #DDE2EE",
+        background: "var(--bg-card)",
+        border: "0.5px solid var(--border)",
         borderRadius: 10,
         boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
         minWidth: 210,
@@ -55,7 +55,7 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
         <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           Colunas visíveis
         </span>
-        <span style={{ fontSize: 10, color: "#888" }}>{ativas}/{opcionais.length}</span>
+        <span style={{ fontSize: 10, color: "var(--text-3)" }}>{ativas}/{opcionais.length}</span>
       </div>
 
       {/* Colunas fixas (informativo) */}
@@ -66,8 +66,8 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
               <div style={{ width: 14, height: 14, borderRadius: 3, background: "#1A4870", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
-              <span style={{ fontSize: 12, color: "#555" }}>{c.label}</span>
-              <span style={{ fontSize: 10, color: "#aaa", marginLeft: "auto" }}>fixo</span>
+              <span style={{ fontSize: 12, color: "var(--text-2)" }}>{c.label}</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", marginLeft: "auto" }}>fixo</span>
             </div>
           ))}
         </div>
@@ -90,14 +90,14 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
             >
               <div style={{
                 width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                background: ativa ? "#1A4870" : "#fff",
+                background: ativa ? "#1A4870" : "var(--bg-card)",
                 border: ativa ? "none" : "1.5px solid #BCC8D8",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background 0.12s",
               }}>
                 {ativa && <svg width="9" height="9" viewBox="0 0 9 9"><polyline points="1,4.5 3.5,7 8,2" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
-              <span style={{ fontSize: 12, color: ativa ? "#1a1a1a" : "#888" }}>{c.label}</span>
+              <span style={{ fontSize: 12, color: ativa ? "var(--text-1)" : "var(--text-3)" }}>{c.label}</span>
             </div>
           );
         })}
@@ -113,7 +113,7 @@ export default function ContextMenuColunas({ x, y, colunas, visiveis, onToggle, 
         </button>
         <button
           onClick={onClose}
-          style={{ flex: 1, padding: "4px 0", fontSize: 11, color: "#555", background: "#F4F6FA", border: "none", borderRadius: 5, cursor: "pointer" }}
+          style={{ flex: 1, padding: "4px 0", fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "none", borderRadius: 5, cursor: "pointer" }}
         >
           Fechar
         </button>

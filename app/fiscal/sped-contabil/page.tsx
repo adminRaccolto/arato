@@ -234,9 +234,9 @@ function gerarSpedEcd(
 // ─────────────────────────────────────────────────────────────
 // Componente
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600 };
-const card: React.CSSProperties = { background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "20px 24px", marginBottom: 20 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "20px 24px", marginBottom: 20 };
 
 export default function SpedContabilPage() {
   const { fazendaId } = useAuth();
@@ -382,11 +382,11 @@ export default function SpedContabilPage() {
     { id: "rural",           label: "Atividade Rural",       cor: "#16A34A", bg: "#E8F5E9" },
     { id: "pessoa_fisica",   label: "Pessoa Física (não rural)", cor: "#1A5CB8", bg: "#D5E8F5" },
     { id: "investimento",    label: "Investimentos",         cor: "#C9921B", bg: "#FBF3E0" },
-    { id: "nao_tributavel",  label: "Não Tributável",        cor: "#888",    bg: "#F4F6FA" },
+    { id: "nao_tributavel",  label: "Não Tributável",        cor: "var(--text-3)",    bg: "var(--bg-page)" },
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
@@ -430,8 +430,8 @@ export default function SpedContabilPage() {
                     onClick={() => setEntidade(v as "pf" | "pj")}
                     style={{
                       flex: 1, padding: "9px 0", border: entidade === v ? "none" : "0.5px solid #D4DCE8",
-                      borderRadius: 8, background: entidade === v ? "#1A5CB8" : "#fff",
-                      color: entidade === v ? "#fff" : "#555", fontWeight: entidade === v ? 700 : 400,
+                      borderRadius: 8, background: entidade === v ? "#1A5CB8" : "var(--bg-card)",
+                      color: entidade === v ? "#fff" : "var(--text-2)", fontWeight: entidade === v ? 700 : 400,
                       cursor: "pointer", fontSize: 13,
                     }}
                   >
@@ -461,9 +461,9 @@ export default function SpedContabilPage() {
                   key={vd.id}
                   onClick={() => toggleVinculo(vd.id)}
                   style={{
-                    padding: "6px 14px", border: `0.5px solid ${vinculos.includes(vd.id) ? vd.cor : "#D4DCE8"}`,
-                    borderRadius: 8, background: vinculos.includes(vd.id) ? vd.bg : "#fff",
-                    color: vinculos.includes(vd.id) ? vd.cor : "#888",
+                    padding: "6px 14px", border: `0.5px solid ${vinculos.includes(vd.id) ? vd.cor : "var(--border-table)"}`,
+                    borderRadius: 8, background: vinculos.includes(vd.id) ? vd.bg : "var(--bg-card)",
+                    color: vinculos.includes(vd.id) ? vd.cor : "var(--text-3)",
                     cursor: "pointer", fontSize: 12, fontWeight: vinculos.includes(vd.id) ? 700 : 400,
                   }}
                 >
@@ -471,7 +471,7 @@ export default function SpedContabilPage() {
                 </button>
               ))}
             </div>
-            <p style={{ fontSize: 11, color: "#888", marginTop: 8 }}>
+            <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
               Selecione quais vínculos devem integrar este livro.
               Lançamentos sem vínculo definido <strong>não serão incluídos</strong>.
             </p>
@@ -487,11 +487,11 @@ export default function SpedContabilPage() {
             <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
               <div style={{ background: "#E8F5E9", border: "0.5px solid #16A34A40", borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: "#16A34A" }}>{preview.total}</div>
-                <div style={{ fontSize: 11, color: "#555" }}>lançamentos contábeis</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>lançamentos contábeis</div>
               </div>
               <div style={{ background: preview.erros.length > 0 ? "#FCEBEB" : "#E8F5E9", border: `0.5px solid ${preview.erros.length > 0 ? "#E24B4A40" : "#16A34A40"}`, borderRadius: 10, padding: "12px 20px", flex: 1, textAlign: "center" as const }}>
                 <div style={{ fontSize: 28, fontWeight: 700, color: preview.erros.length > 0 ? "#E24B4A" : "#16A34A" }}>{preview.erros.length}</div>
-                <div style={{ fontSize: 11, color: "#555" }}>ignorados (sem conta)</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)" }}>ignorados (sem conta)</div>
               </div>
             </div>
 
@@ -502,7 +502,7 @@ export default function SpedContabilPage() {
                   {preview.erros.slice(0, 20).map((e, i) => (
                     <li key={i} style={{ fontSize: 12, color: "#7B4A00", marginBottom: 4 }}>{e}</li>
                   ))}
-                  {preview.erros.length > 20 && <li style={{ fontSize: 12, color: "#888" }}>... e mais {preview.erros.length - 20}</li>}
+                  {preview.erros.length > 20 && <li style={{ fontSize: 12, color: "var(--text-3)" }}>... e mais {preview.erros.length - 20}</li>}
                 </ul>
               </div>
             )}
@@ -526,7 +526,7 @@ export default function SpedContabilPage() {
           <button
             onClick={() => gerar(false)}
             disabled={loading}
-            style={{ padding: "10px 24px", background: "#F4F6FA", border: "0.5px solid #1A5CB8", color: "#1A5CB8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
+            style={{ padding: "10px 24px", background: "var(--bg-page)", border: "0.5px solid #1A5CB8", color: "#1A5CB8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}
           >
             {loading ? "Analisando..." : "Analisar (sem baixar)"}
           </button>
@@ -544,10 +544,10 @@ export default function SpedContabilPage() {
         </div>
 
         {/* Nota rodapé */}
-        <div style={{ marginTop: 32, padding: "14px 18px", background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", fontSize: 12, color: "#666", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 32, padding: "14px 18px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", fontSize: 12, color: "#666", lineHeight: 1.6 }}>
           <strong style={{ color: "#1A4870" }}>Sobre o arquivo gerado:</strong>
           <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
-            <li>Formato: texto plano, separado por pipe <code style={{ background: "#F4F6FA", padding: "1px 4px", borderRadius: 4 }}>|</code>, CRLF, codificação UTF-8</li>
+            <li>Formato: texto plano, separado por pipe <code style={{ background: "var(--bg-page)", padding: "1px 4px", borderRadius: 4 }}>|</code>, CRLF, codificação UTF-8</li>
             <li>Leiaute: SPED ECD Leiaute 10 (vigente desde 2022)</li>
             <li>Transmissão: via <strong>PGE (Programa Gerador ECD)</strong> disponível no site da Receita Federal</li>
             <li>Compatibilidade: aceito pelo <strong>Domínio Sistemas</strong> para importação e pela Receita Federal para transmissão direta</li>

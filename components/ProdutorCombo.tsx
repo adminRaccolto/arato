@@ -43,8 +43,8 @@ export default function ProdutorCombo({
 
   const triggerStyle: React.CSSProperties = {
     width: "100%", textAlign: "left", padding: "6px 10px",
-    border: "0.5px solid #C9C9C9", borderRadius: 8, background: "#fff",
-    cursor: "pointer", fontSize: 13, color: sel ? "#1a1a1a" : "#888",
+    border: "0.5px solid #C9C9C9", borderRadius: 8, background: "var(--bg-card)",
+    cursor: "pointer", fontSize: 13, color: sel ? "var(--text-1)" : "var(--text-3)",
     display: "flex", justifyContent: "space-between", alignItems: "center",
     fontFamily: "inherit",
   };
@@ -55,7 +55,7 @@ export default function ProdutorCombo({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 6 }}>
           {sel ? sel.nome : placeholder}
         </span>
-        <span style={{ fontSize: 10, color: "#888", flexShrink: 0 }}>▾</span>
+        <span style={{ fontSize: 10, color: "var(--text-3)", flexShrink: 0 }}>▾</span>
       </button>
 
       {/* Resumo fixo após seleção */}
@@ -69,7 +69,7 @@ export default function ProdutorCombo({
           {sel.inscricao_est && <span>IE: <strong>{sel.inscricao_est}</strong></span>}
           {sel.cpf_cnpj && !sel.inscricao_est && <span>CPF/CNPJ: <strong>{sel.cpf_cnpj}</strong></span>}
           {(sel.municipio || sel.estado) && (
-            <span style={{ color: "#555" }}>{[sel.municipio, sel.estado].filter(Boolean).join(" / ")}</span>
+            <span style={{ color: "var(--text-2)" }}>{[sel.municipio, sel.estado].filter(Boolean).join(" / ")}</span>
           )}
         </div>
       )}
@@ -78,16 +78,16 @@ export default function ProdutorCombo({
         <div style={{
           position: "absolute", top: "calc(100% + 2px)", left: 0,
           minWidth: dropdownMinWidth,
-          background: "#fff", border: "0.5px solid #C9C9C9", borderRadius: 8,
+          background: "var(--bg-card)", border: "0.5px solid #C9C9C9", borderRadius: 8,
           boxShadow: "0 4px 16px rgba(0,0,0,0.14)", zIndex: 600,
           maxHeight: 300, overflowY: "auto",
         }}>
           {/* Cabeçalho colunas */}
           <div style={{
             display: "grid", gridTemplateColumns: "1fr 160px",
-            padding: "5px 10px", background: "#F4F6FA",
-            borderBottom: "0.5px solid #DDE2EE",
-            fontSize: 11, fontWeight: 600, color: "#555",
+            padding: "5px 10px", background: "var(--bg-page)",
+            borderBottom: "0.5px solid var(--border)",
+            fontSize: 11, fontWeight: 600, color: "var(--text-2)",
             position: "sticky", top: 0, zIndex: 1,
           }}>
             <span>Nome</span>
@@ -101,7 +101,7 @@ export default function ProdutorCombo({
               display: "grid", gridTemplateColumns: "1fr 160px",
               padding: "7px 10px", cursor: "pointer",
               background: value === "" ? "#EBF4FF" : "transparent",
-              borderBottom: "0.5px solid #F0F0F0", fontSize: 13, color: "#888",
+              borderBottom: "0.5px solid #F0F0F0", fontSize: 13, color: "var(--text-3)",
             }}
             onMouseEnter={e => { if (value !== "") e.currentTarget.style.background = "#F8FAFB"; }}
             onMouseLeave={e => { e.currentTarget.style.background = value === "" ? "#EBF4FF" : "transparent"; }}
@@ -122,16 +122,16 @@ export default function ProdutorCombo({
                   background: selected ? "#D5E8F5" : "transparent",
                   borderBottom: "0.5px solid #F0F0F0",
                 }}
-                onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "#F4F6FA"; }}
+                onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "var(--bg-page)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = selected ? "#D5E8F5" : "transparent"; }}
               >
                 <span style={{
-                  fontSize: 13, fontWeight: selected ? 600 : 400, color: "#1a1a1a",
+                  fontSize: 13, fontWeight: selected ? 600 : 400, color: "var(--text-1)",
                   paddingRight: 12,
                 }}>
                   {p.nome}
                 </span>
-                <span style={{ fontSize: 12, color: selected ? "#0B2D50" : "#555", fontWeight: selected ? 600 : 400 }}>
+                <span style={{ fontSize: 12, color: selected ? "#0B2D50" : "var(--text-2)", fontWeight: selected ? 600 : 400 }}>
                   {p.inscricao_est || "—"}
                 </span>
               </div>
@@ -139,7 +139,7 @@ export default function ProdutorCombo({
           })}
 
           {opts.length === 0 && (
-            <div style={{ padding: 12, fontSize: 13, color: "#888", textAlign: "center" }}>
+            <div style={{ padding: 12, fontSize: 13, color: "var(--text-3)", textAlign: "center" }}>
               Nenhum produtor disponível
             </div>
           )}

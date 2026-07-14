@@ -103,8 +103,8 @@ const corStatus = (s: string) => (({
 } as Record<string, {bg:string;color:string;label:string;icone:string}>)[s] ?? { bg:"#F1EFE8", color:"#666", label:s, icone:"·" });
 
 // ── Estilos base ──────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"#1a1a1a", background:"#fff", boxSizing:"border-box", outline:"none" };
-const lbl: React.CSSProperties = { fontSize:10, color:"#555", marginBottom:3, display:"block" };
+const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-card)", boxSizing:"border-box", outline:"none" };
+const lbl: React.CSSProperties = { fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" };
 const btnV: React.CSSProperties = { padding:"8px 18px", background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
 const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid #D4DCE8", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13 };
 
@@ -563,7 +563,7 @@ export default function Faturamento() {
           </div>
           <div>
             <label style={lbl}>CFOP</label>
-            <input style={{ ...inp, fontWeight:600, color:"#1A4870", background:"#F4F6FA" }} value={fVenda.cfop} readOnly />
+            <input style={{ ...inp, fontWeight:600, color:"#1A4870", background:"var(--bg-page)" }} value={fVenda.cfop} readOnly />
           </div>
           <div>
             <label style={lbl}>Modelo</label>
@@ -605,7 +605,7 @@ export default function Faturamento() {
             return (
               <div style={{ gridColumn:"1/-1", background:"#EBF4FB", border:"0.5px solid #93C5E8", borderRadius:8, padding:"10px 14px", fontSize:11, color:"#1A4870" }}>
                 <strong>{nat.descricao}</strong>
-                <div style={{ color:"#555", marginTop:4 }}>{nat.obs}</div>
+                <div style={{ color:"var(--text-2)", marginTop:4 }}>{nat.obs}</div>
               </div>
             );
           })()}
@@ -748,7 +748,7 @@ export default function Faturamento() {
             <label style={lbl}>Referência de Contrato</label>
             <input style={inp} value={fVenda.contrato_numero} onChange={e => fv({ contrato_numero: e.target.value })} placeholder="Nº do contrato de venda" />
           </div>
-          <div style={{ gridColumn:"1/-1", background:"#F8FAFD", border:"0.5px solid #D4DCE8", borderRadius:8, padding:"10px 14px", fontSize:11, color:"#555" }}>
+          <div style={{ gridColumn:"1/-1", background:"#F8FAFD", border:"0.5px solid #D4DCE8", borderRadius:8, padding:"10px 14px", fontSize:11, color:"var(--text-2)" }}>
             Esta aba registra informações de pontualidade e antecipação de pagamento. Campos adicionais de desconto financeiro e condições especiais podem ser configurados nos Parâmetros do Sistema.
           </div>
         </div>
@@ -760,25 +760,25 @@ export default function Faturamento() {
 
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ background:"#F4F6FA", minHeight:"100vh", fontFamily:"system-ui,sans-serif" }}>
+    <div style={{ background:"var(--bg-page)", minHeight:"100vh", fontFamily:"system-ui,sans-serif" }}>
       <TopNav />
 
       <div style={{ maxWidth:1280, margin:"0 auto", padding:"24px 24px" }}>
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
-            <h1 style={{ fontSize:22, fontWeight:700, color:"#1a1a1a", margin:0 }}>Faturamento — NF-e de Saída</h1>
+            <h1 style={{ fontSize:22, fontWeight:700, color:"var(--text-1)", margin:0 }}>Faturamento — NF-e de Saída</h1>
             <p style={{ fontSize:13, color:"#666", margin:"4px 0 0" }}>Emita notas por contrato de venda ou avulsa (remessa, devolução, retorno)</p>
           </div>
           <button style={btnV} onClick={abrirModal}>+ Nova NF-e</button>
         </div>
 
         {/* Filtros */}
-        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+        <div style={{ background:"var(--bg-card)", border:"0.5px solid #D4DCE8", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
           {(["todas","processando","autorizadas","rejeitadas","canceladas"] as const).map(a => (
             <button key={a} onClick={() => setFiltroAba(a)}
               style={{ padding:"5px 14px", borderRadius:20, border:"0.5px solid", fontSize:12, cursor:"pointer", fontWeight: filtroAba===a ? 600 : 400,
-                background: filtroAba===a ? "#1A4870" : "#F4F6FA", color: filtroAba===a ? "#fff" : "#555", borderColor: filtroAba===a ? "#1A4870" : "#D4DCE8" }}>
+                background: filtroAba===a ? "#1A4870" : "var(--bg-page)", color: filtroAba===a ? "#fff" : "var(--text-2)", borderColor: filtroAba===a ? "#1A4870" : "var(--border-table)" }}>
               {a === "todas" ? "Todas" : a === "processando" ? "Processando" : a === "autorizadas" ? "Autorizadas" : a === "rejeitadas" ? "Rejeitadas" : "Canceladas"}
             </button>
           ))}
@@ -786,18 +786,18 @@ export default function Faturamento() {
         </div>
 
         {/* Tabela */}
-        <div style={{ background:"#fff", border:"0.5px solid #D4DCE8", borderRadius:12, overflow:"hidden" }}>
+        <div style={{ background:"var(--bg-card)", border:"0.5px solid #D4DCE8", borderRadius:12, overflow:"hidden" }}>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ background:"#F8FAFD" }}>
                 {["Nº / Série","Data Emissão","Destinatário","CFOP","Valor Total","Status","Ações"].map((h, i) => (
-                  <th key={i} style={{ padding:"10px 14px", textAlign: i >= 4 && i <= 5 ? "center" : "left", fontSize:11, fontWeight:600, color:"#555", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                  <th key={i} style={{ padding:"10px 14px", textAlign: i >= 4 && i <= 5 ? "center" : "left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#888", fontSize:13 }}>Carregando…</td></tr>
+                <tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"var(--text-3)", fontSize:13 }}>Carregando…</td></tr>
               ) : notasFiltradas.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding:40, textAlign:"center", color:"#999", fontSize:13 }}>
                   Nenhuma NF-e de saída encontrada.<br />
@@ -808,7 +808,7 @@ export default function Faturamento() {
                 return (
                   <tr key={nota.id} style={{ borderBottom:"0.5px solid #F0F2F6" }}>
                     <td style={{ padding:"10px 14px", fontSize:13, fontWeight:600, color:"#1A4870" }}>
-                      {nota.numero} <span style={{ fontSize:11, color:"#888", fontWeight:400 }}>Série {nota.serie}</span>
+                      {nota.numero} <span style={{ fontSize:11, color:"var(--text-3)", fontWeight:400 }}>Série {nota.serie}</span>
                     </td>
                     <td style={{ padding:"10px 14px", fontSize:12 }}>{fmtData(nota.data_emissao)}</td>
                     <td style={{ padding:"10px 14px", fontSize:13 }}>{nota.destinatario ?? "—"}</td>
@@ -822,7 +822,7 @@ export default function Faturamento() {
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
                         <button
-                          style={{ padding:"4px 10px", fontSize:11, background:"#F4F6FA", color:"#1A4870", border:"0.5px solid #D4DCE8", borderRadius:6, cursor:"pointer" }}
+                          style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#1A4870", border:"0.5px solid #D4DCE8", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           Visualizar
                         </button>
@@ -866,8 +866,8 @@ export default function Faturamento() {
 
           {notasFiltradas.length > 0 && (
             <div style={{ padding:"10px 16px", background:"#F8FAFD", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:24 }}>
-              <span style={{ fontSize:12, color:"#555" }}>Total de notas: <strong>{notasFiltradas.length}</strong></span>
-              <span style={{ fontSize:12, color:"#555" }}>Valor total: <strong style={{ color:"#1A4870" }}>{fmtR$(notasFiltradas.reduce((s, n) => s + n.valor_total, 0))}</strong></span>
+              <span style={{ fontSize:12, color:"var(--text-2)" }}>Total de notas: <strong>{notasFiltradas.length}</strong></span>
+              <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor total: <strong style={{ color:"#1A4870" }}>{fmtR$(notasFiltradas.reduce((s, n) => s + n.valor_total, 0))}</strong></span>
             </div>
           )}
         </div>
@@ -881,8 +881,8 @@ export default function Faturamento() {
 
           {/* ── PASSO 1: Origem ── */}
           {passo === "origem" && (
-            <div style={{ background:"#fff", borderRadius:14, padding:32, width:560, boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
-              <div style={{ fontSize:17, fontWeight:700, color:"#1a1a1a", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
+            <div style={{ background:"var(--bg-card)", borderRadius:14, padding:32, width:560, boxShadow:"0 4px 20px rgba(11,45,80,0.10)" }}>
+              <div style={{ fontSize:17, fontWeight:700, color:"var(--text-1)", marginBottom:6 }}>Nova Nota Fiscal de Saída</div>
               <div style={{ fontSize:13, color:"#666", marginBottom:24 }}>Como deseja iniciar a emissão?</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:28 }}>
                 <button
@@ -892,7 +892,7 @@ export default function Faturamento() {
                   onMouseLeave={e => (e.currentTarget.style.background = "#EBF4FB")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>📋</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"#0B2D50", marginBottom:4 }}>Por Contrato</div>
-                  <div style={{ fontSize:12, color:"#555" }}>Selecione um contrato de venda. Destinatário, CFOP, itens e observações legais são preenchidos automaticamente.</div>
+                  <div style={{ fontSize:12, color:"var(--text-2)" }}>Selecione um contrato de venda. Destinatário, CFOP, itens e observações legais são preenchidos automaticamente.</div>
                 </button>
                 <button
                   onClick={() => { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }}
@@ -900,8 +900,8 @@ export default function Faturamento() {
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
                   onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFD")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>📝</div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>Avulsa — Venda</div>
-                  <div style={{ fontSize:12, color:"#555" }}>Nota de venda sem vínculo de contrato. Você preenche todos os dados.</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Avulsa — Venda</div>
+                  <div style={{ fontSize:12, color:"var(--text-2)" }}>Nota de venda sem vínculo de contrato. Você preenche todos os dados.</div>
                 </button>
                 <button
                   onClick={() => { setTipoAvulsa("remessa"); preencherAvulsa("remessa", "6.905"); }}
@@ -909,8 +909,8 @@ export default function Faturamento() {
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
                   onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFD")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>🏭</div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>Remessa</div>
-                  <div style={{ fontSize:12, color:"#555" }}>Depósito em armazém (6.905), entrega futura (6.117) ou venda à ordem (6.119).</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Remessa</div>
+                  <div style={{ fontSize:12, color:"var(--text-2)" }}>Depósito em armazém (6.905), entrega futura (6.117) ou venda à ordem (6.119).</div>
                 </button>
                 <button
                   onClick={() => { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "2.201"); }}
@@ -918,8 +918,8 @@ export default function Faturamento() {
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
                   onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFD")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
-                  <div style={{ fontSize:14, fontWeight:700, color:"#1a1a1a", marginBottom:4 }}>Devolução / Retorno</div>
-                  <div style={{ fontSize:12, color:"#555" }}>Devolução de mercadoria vendida ou retorno de armazém geral.</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Devolução / Retorno</div>
+                  <div style={{ fontSize:12, color:"var(--text-2)" }}>Devolução de mercadoria vendida ou retorno de armazém geral.</div>
                 </button>
               </div>
               <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
@@ -928,11 +928,11 @@ export default function Faturamento() {
 
           {/* ── PASSO 2: Selecionar Contrato ── */}
           {passo === "contrato" && (
-            <div style={{ background:"#fff", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+            <div style={{ background:"var(--bg-card)", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</button>
                 <div>
-                  <div style={{ fontSize:16, fontWeight:700, color:"#1a1a1a" }}>Selecionar Contrato de Venda</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Contrato de Venda</div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>Clique no contrato para pré-preencher a nota</div>
                 </div>
                 <input
@@ -957,15 +957,15 @@ export default function Faturamento() {
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                       <div style={{ flex:"0 0 100px" }}>
                         <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>{c.numero}</div>
-                        <div style={{ fontSize:11, color:"#888" }}>{c.data_contrato ? fmtData(c.data_contrato) : "—"}</div>
+                        <div style={{ fontSize:11, color:"var(--text-3)" }}>{c.data_contrato ? fmtData(c.data_contrato) : "—"}</div>
                       </div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:13, fontWeight:600, color:"#1a1a1a" }}>{c.comprador}</div>
+                        <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>{c.comprador}</div>
                         <div style={{ fontSize:11, color:"#666" }}>{c.produto} · {c.cfop ?? "—"} · {c.natureza_operacao ?? "—"}</div>
                       </div>
                       <div style={{ textAlign:"right", flex:"0 0 160px" }}>
-                        <div style={{ fontSize:13, fontWeight:600, color:"#1a1a1a" }}>{(c.quantidade_sc ?? 0).toLocaleString("pt-BR")} sc</div>
-                        <div style={{ fontSize:11, color: saldo > 0 ? "#16A34A" : "#888" }}>Saldo: {saldo.toLocaleString("pt-BR")} sc</div>
+                        <div style={{ fontSize:13, fontWeight:600, color:"var(--text-1)" }}>{(c.quantidade_sc ?? 0).toLocaleString("pt-BR")} sc</div>
+                        <div style={{ fontSize:11, color: saldo > 0 ? "#16A34A" : "var(--text-3)" }}>Saldo: {saldo.toLocaleString("pt-BR")} sc</div>
                       </div>
                       <div style={{ fontSize:13, fontWeight:700, color:"#1A4870", flex:"0 0 120px", textAlign:"right" }}>
                         {fmtR$(c.preco ?? 0)}/sc
@@ -985,11 +985,11 @@ export default function Faturamento() {
 
           {/* ── PASSO 2b: Selecionar Romaneio ── */}
           {passo === "romaneio" && contratoSelecionado && (
-            <div style={{ background:"#fff", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+            <div style={{ background:"var(--bg-card)", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:16, fontWeight:700, color:"#1a1a1a" }}>Selecionar Carga (Romaneio)</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Carga (Romaneio)</div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>
                     Contrato <strong>{contratoSelecionado.numero}</strong> · {contratoSelecionado.comprador} · {contratoSelecionado.produto}
                     &nbsp;· R$ {(contratoSelecionado.preco ?? 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}/sc
@@ -1002,12 +1002,12 @@ export default function Faturamento() {
                 {romaneios.length === 0 ? (
                   <div style={{ padding:40, textAlign:"center" }}>
                     <div style={{ fontSize:32, marginBottom:12 }}>🚛</div>
-                    <div style={{ fontSize:14, color:"#555", fontWeight:600, marginBottom:8 }}>Nenhum romaneio registrado para este contrato</div>
-                    <div style={{ fontSize:12, color:"#888" }}>Registre as cargas em Comercial → Contratos de Grãos antes de emitir a NF-e.</div>
+                    <div style={{ fontSize:14, color:"var(--text-2)", fontWeight:600, marginBottom:8 }}>Nenhum romaneio registrado para este contrato</div>
+                    <div style={{ fontSize:12, color:"var(--text-3)" }}>Registre as cargas em Comercial → Contratos de Grãos antes de emitir a NF-e.</div>
                   </div>
                 ) : (
                   <>
-                    <div style={{ padding:"8px 24px", background:"#F8FAFD", borderBottom:"0.5px solid #D4DCE8", display:"flex", gap:32, fontSize:11, color:"#555" }}>
+                    <div style={{ padding:"8px 24px", background:"#F8FAFD", borderBottom:"0.5px solid #D4DCE8", display:"flex", gap:32, fontSize:11, color:"var(--text-2)" }}>
                       <span>Total de cargas: <strong>{romaneios.length}</strong></span>
                       <span>Já faturadas: <strong>{romaneios.filter(r => r.nfe_status === "autorizada").length}</strong></span>
                       <span>Pendentes: <strong style={{ color:"#C9921B" }}>{romaneios.filter(r => r.nfe_status !== "autorizada").length}</strong></span>
@@ -1032,35 +1032,35 @@ export default function Faturamento() {
                         >
                           <div style={{ flex:"0 0 110px" }}>
                             <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>Rom. {rom.numero}</div>
-                            <div style={{ fontSize:11, color:"#888" }}>{rom.data ? fmtData(rom.data) : "—"}</div>
+                            <div style={{ fontSize:11, color:"var(--text-3)" }}>{rom.data ? fmtData(rom.data) : "—"}</div>
                           </div>
                           <div style={{ flex:"0 0 100px" }}>
-                            <div style={{ fontSize:11, color:"#555" }}>Placa</div>
+                            <div style={{ fontSize:11, color:"var(--text-2)" }}>Placa</div>
                             <div style={{ fontSize:13, fontWeight:600 }}>{rom.placa ?? "—"}</div>
                           </div>
                           <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:8 }}>
                             <div>
-                              <div style={{ fontSize:10, color:"#888" }}>Peso Bruto</div>
+                              <div style={{ fontSize:10, color:"var(--text-3)" }}>Peso Bruto</div>
                               <div style={{ fontSize:12, fontWeight:600 }}>{(rom.peso_bruto_kg ?? 0).toLocaleString("pt-BR")} kg</div>
                             </div>
                             <div>
-                              <div style={{ fontSize:10, color:"#888" }}>Tara</div>
+                              <div style={{ fontSize:10, color:"var(--text-3)" }}>Tara</div>
                               <div style={{ fontSize:12 }}>{(rom.tara_kg ?? 0).toLocaleString("pt-BR")} kg</div>
                             </div>
                             <div>
-                              <div style={{ fontSize:10, color:"#888" }}>Peso Líquido</div>
+                              <div style={{ fontSize:10, color:"var(--text-3)" }}>Peso Líquido</div>
                               <div style={{ fontSize:12 }}>{(rom.peso_liquido_kg ?? 0).toLocaleString("pt-BR")} kg</div>
                             </div>
                             <div>
-                              <div style={{ fontSize:10, color:"#555", fontWeight:600 }}>Peso Classificado</div>
+                              <div style={{ fontSize:10, color:"var(--text-2)", fontWeight:600 }}>Peso Classificado</div>
                               <div style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>{pesoKg.toLocaleString("pt-BR")} kg</div>
                             </div>
                           </div>
                           <div style={{ flex:"0 0 130px", textAlign:"right" }}>
-                            <div style={{ fontSize:13, fontWeight:700, color:"#1a1a1a" }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:"var(--text-1)" }}>
                               {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto) * pesoKg).toLocaleString("pt-BR", { style:"currency", currency:"BRL" })}
                             </div>
-                            <div style={{ fontSize:10, color:"#888" }}>valor da carga</div>
+                            <div style={{ fontSize:10, color:"var(--text-3)" }}>valor da carga</div>
                           </div>
                           <div style={{ flex:"0 0 100px", textAlign:"right" }}>
                             {jaFatQry ? (
@@ -1083,7 +1083,7 @@ export default function Faturamento() {
 
           {/* ── PASSO 3: Formulário 8 abas ── */}
           {passo === "form" && (
-            <div style={{ background:"#fff", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+            <div style={{ background:"var(--bg-card)", borderRadius:14, width:"94vw", maxWidth:1100, height:"92vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
 
               {/* Barra de título */}
               <div style={{ background:"#1A4870", color:"#fff", padding:"14px 20px", display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
@@ -1105,7 +1105,7 @@ export default function Faturamento() {
                 {ABAS_NOTA.map(a => (
                   <button key={a.id} onClick={() => setTabNFe(a.id)}
                     style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #1A5CB8" : "2.5px solid transparent", background:"transparent",
-                      color: tabNFe === a.id ? "#1A5CB8" : "#555", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
+                      color: tabNFe === a.id ? "#1A5CB8" : "var(--text-2)", fontWeight: tabNFe === a.id ? 700 : 400, cursor:"pointer", whiteSpace:"nowrap" }}>
                     {a.label}
                   </button>
                 ))}
@@ -1119,7 +1119,7 @@ export default function Faturamento() {
               {/* Grid de itens */}
               <div style={{ borderTop:"0.5px solid #D4DCE8", background:"#F8FAFD", flexShrink:0 }}>
                 <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  <span style={{ fontSize:12, fontWeight:600, color:"#555" }}>Itens da Nota</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota</span>
                   <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #1A5CB8", borderRadius:5, background:"#E6F1FB", color:"#1A5CB8", cursor:"pointer" }} onClick={addItem}>+ Item</button>
                 </div>
                 <div style={{ overflowX:"auto", maxHeight:160 }}>
@@ -1127,13 +1127,13 @@ export default function Faturamento() {
                     <thead>
                       <tr style={{ background:"#F0F4F8" }}>
                         {["Tipo","Item / Produto","NCM","Qtd","Unid","Valor Unit.","Valor Total",""].map((h, i) => (
-                          <th key={i} style={{ padding:"5px 10px", fontSize:10, fontWeight:600, color:"#555", textAlign: i>=3&&i<=6?"center":"left", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                          <th key={i} style={{ padding:"5px 10px", fontSize:10, fontWeight:600, color:"var(--text-2)", textAlign: i>=3&&i<=6?"center":"left", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {nfeItens.length === 0 ? (
-                        <tr><td colSpan={8} style={{ padding:"12px 14px", textAlign:"center", fontSize:11, color:"#aaa" }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
+                        <tr><td colSpan={8} style={{ padding:"12px 14px", textAlign:"center", fontSize:11, color:"var(--text-muted)" }}>Nenhum item. Clique em "+ Item" para adicionar.</td></tr>
                       ) : nfeItens.map((it, idx) => (
                         <tr key={it.id} style={{ borderBottom:"0.5px solid #eee" }}>
                           <td style={{ padding:"5px 8px", width:80 }}>
@@ -1160,7 +1160,7 @@ export default function Faturamento() {
                               onChange={e => atualizarItem(idx, "valor_unitario", aplicarMascara(e.target.value.replace(/\D/g,"")))} placeholder="0,00" />
                           </td>
                           <td style={{ padding:"5px 8px", width:120 }}>
-                            <input style={{ ...inp, background:"#F4F6FA", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }} value={fmtR$(it.valor_total)} readOnly />
+                            <input style={{ ...inp, background:"var(--bg-page)", textAlign:"right", fontSize:12, fontWeight:600, color:"#1A4870" }} value={fmtR$(it.valor_total)} readOnly />
                           </td>
                           <td style={{ padding:"5px 8px", width:30 }}>
                             <button style={{ padding:"2px 7px", border:"0.5px solid #E24B4A50", borderRadius:5, background:"#FCEBEB", cursor:"pointer", fontSize:11, color:"#791F1F" }}
@@ -1172,13 +1172,13 @@ export default function Faturamento() {
                   </table>
                 </div>
                 <div style={{ padding:"8px 16px", display:"flex", justifyContent:"flex-end", gap:24, borderTop:"0.5px solid #D4DCE8" }}>
-                  <span style={{ fontSize:12, color:"#555" }}>Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong></span>
+                  <span style={{ fontSize:12, color:"var(--text-2)" }}>Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong></span>
                   <span style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>Total: {fmtR$(totalItens)}</span>
                 </div>
               </div>
 
               {/* Rodapé do modal */}
-              <div style={{ padding:"12px 20px", borderTop:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:12, flexShrink:0, background:"#fff" }}>
+              <div style={{ padding:"12px 20px", borderTop:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:12, flexShrink:0, background:"var(--bg-card)" }}>
                 {erroForm && (
                   <div style={{ flex:1, background:"#FCEBEB", border:"0.5px solid #E24B4A50", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#791F1F" }}>
                     ⚠ {erroForm}
@@ -1195,7 +1195,7 @@ export default function Faturamento() {
                     }}>
                     Próxima aba →
                   </button>
-                  <button style={{ ...btnV, background: emitindo ? "#888" : "#1A5CB8" }} onClick={emitirNota} disabled={emitindo}>
+                  <button style={{ ...btnV, background: emitindo ? "var(--text-3)" : "#1A5CB8" }} onClick={emitirNota} disabled={emitindo}>
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
                   </button>
                 </div>

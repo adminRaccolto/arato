@@ -12,19 +12,19 @@ import type { Ciclo, Talhao, Insumo, AdubacaoBase, AdubacaoBaseItem, AnoSafra, F
 import InputNumerico from "../../../components/InputNumerico";
 
 // ── estilos ───────────────────────────────────────────────
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties  = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const fmtN    = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 
 const MODALIDADES: Record<AdubacaoBase["modalidade"], { label: string; bg: string; color: string }> = {
-  convencional:  { label: "Convencional",   bg: "#F3F6F9", color: "#1a1a1a" },
+  convencional:  { label: "Convencional",   bg: "#F3F6F9", color: "var(--text-1)" },
   sulco:         { label: "Sulco",          bg: "#E6F1FB", color: "#0C447C" },
   broadcast:     { label: "Broadcast",      bg: "#FBF3E0", color: "#7A5A12" },
   foliar:        { label: "Foliar",         bg: "#ECFDF5", color: "#14532D" },
@@ -156,14 +156,14 @@ export default function AdubacaoBasePage() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Adubação de Base</h1>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Adubação de Base</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>NPK, micronutrientes, adubação foliar e fertirrigação</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {fazendas.length > 1 && (
-              <select style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
+              <select style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
@@ -180,24 +180,24 @@ export default function AdubacaoBasePage() {
               { label: "Área total adubada",     valor: `${registros.reduce((s, r) => s + r.area_ha, 0).toLocaleString("pt-BR")} ha`,       cor: "#C9921B" },
               { label: "Custo total fertilizantes", valor: fmtBRL(registros.reduce((s, r) => s + (r.custo_total ?? 0), 0)),                cor: "#E24B4A" },
             ].map((s, i) => (
-              <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                 <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>{s.valor}</div>
               </div>
             ))}
           </div>
 
           {registros.length === 0 ? (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
               Nenhuma aplicação registrada.
             </div>
           ) : (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
                     {["Safra / Talhão", "Modalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -205,10 +205,10 @@ export default function AdubacaoBasePage() {
                   {registros.map((r, i) => {
                     const mod = MODALIDADES[r.modalidade];
                     return (
-                      <tr key={r.id} style={{ borderBottom: i < registros.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={r.id} style={{ borderBottom: i < registros.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{cicloLabel(r.ciclo_id)}</div>
-                          <div style={{ fontSize: 11, color: "#555" }}>{r.talhao_id ? talhaoLabel(r.talhao_id) : "Todos os talhões"}</div>
+                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{cicloLabel(r.ciclo_id)}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{r.talhao_id ? talhaoLabel(r.talhao_id) : "Todos os talhões"}</div>
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <span style={{ background: mod.bg, color: mod.color, borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 600 }}>{mod.label}</span>
@@ -235,11 +235,11 @@ export default function AdubacaoBasePage() {
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width: 720, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
             <div style={{ marginBottom: 4 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a" }}>Registrar Adubação de Base</div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>Registrar Adubação de Base</div>
             </div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>NPK, micronutrientes, adubação foliar e fertirrigação</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 14 }}>NPK, micronutrientes, adubação foliar e fertirrigação</div>
 
             {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
             <div style={{ marginBottom: 14 }}>
@@ -303,7 +303,7 @@ export default function AdubacaoBasePage() {
                     onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, produto_nome: e.target.value } : x))} />
                   <InputNumerico style={inp} decimais={0} placeholder="Ex: 350" value={it.dose_kg_ha}
                     onChange={v => setItens(p => p.map((x, i) => i === idx ? { ...x, dose_kg_ha: v } : x))} />
-                  <div style={{ ...inp, background: "#F3F6F9", color: "#555", textAlign: "center" as const }}>
+                  <div style={{ ...inp, background: "#F3F6F9", color: "var(--text-2)", textAlign: "center" as const }}>
                     {qtd > 0 ? fmtN(qtd, 0) : "—"} kg
                   </div>
                   <button style={btnX} onClick={() => removeItem(idx)}>✕</button>
@@ -320,7 +320,7 @@ export default function AdubacaoBasePage() {
               <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginTop: 16, fontSize: 12 }}>
                 <div style={{ color: "#7A5A12", fontWeight: 600, marginBottom: 4 }}>Resumo de custo</div>
                 {calcItens.map((it, i) => (
-                  <div key={i} style={{ color: "#555", marginBottom: 2 }}>
+                  <div key={i} style={{ color: "var(--text-2)", marginBottom: 2 }}>
                     {it.nome}: {fmtN(it.quantidade_kg, 0)} kg · {fmtBRL(it.custo_total)}
                   </div>
                 ))}

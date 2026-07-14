@@ -11,11 +11,11 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
-const card: React.CSSProperties = { background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "18px 20px", marginBottom: 16 };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "18px 20px", marginBottom: 16 };
 const toggle: React.CSSProperties = { width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s" };
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -347,14 +347,14 @@ export default function NfServicoPage() {
   // ── Render ───────────────────────────────────────────────────
   if (!podeAcessarPlano("nf_servico")) return <PlanoGate modulo="nf_servico" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <main style={{ flex: 1, padding: "24px 28px", maxWidth: 1300, margin: "0 auto", width: "100%" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>NF de Serviço</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>NF de Serviço</div>
             <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>
               Notas Fiscais de Serviços (NFS-e) · {nfs.length} nota{nfs.length !== 1 ? "s" : ""} · {nfs.filter(n => n.status === "pendente").length} pendente{nfs.filter(n => n.status === "pendente").length !== 1 ? "s" : ""}
             </div>
@@ -365,14 +365,14 @@ export default function NfServicoPage() {
         {/* Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
-            { label: "Total no mês",   value: fmtBRL(nfs.filter(n => n.data_prestacao?.startsWith(new Date().toISOString().substring(0,7)) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_servico,0)), bg: "#fff" },
+            { label: "Total no mês",   value: fmtBRL(nfs.filter(n => n.data_prestacao?.startsWith(new Date().toISOString().substring(0,7)) && n.status !== "cancelada").reduce((s,n)=>s+n.valor_servico,0)), bg: "var(--bg-card)" },
             { label: "ISS total",      value: fmtBRL(nfs.filter(n => n.status === "processada").reduce((s,n)=>s+n.valor_iss,0)), bg: "#EBF8FF" },
             { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
             { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente").length),   bg: "#FBF3E0" },
           ].map(({ label, value, bg }) => (
             <div key={label} style={{ background: bg, border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>{value}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
             </div>
           ))}
         </div>
@@ -388,13 +388,13 @@ export default function NfServicoPage() {
             <option value="">Todos os status</option>
             {Object.entries(STATUS_META).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
-          <span style={{ fontSize: 12, color: "#888", marginLeft: "auto" }}>{nfsFilt.length} resultado{nfsFilt.length !== 1 ? "s" : ""}</span>
+          <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: "auto" }}>{nfsFilt.length} resultado{nfsFilt.length !== 1 ? "s" : ""}</span>
         </div>
 
         {/* Tabela */}
         <div style={card}>
           {nfsFilt.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: "#888", fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-3)", fontSize: 13 }}>
               Nenhuma NF de Serviço. Clique em &ldquo;+ Nova NF de Serviço&rdquo; para começar.
             </div>
           ) : (
@@ -402,7 +402,7 @@ export default function NfServicoPage() {
               <thead>
                 <tr style={{ background: "#F3F6F9" }}>
                   {["Nº", "Prestador", "Competência", "Serviço (LC 116)", "Valor Serv.", "ISS", "Líquido", "Status", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -411,18 +411,18 @@ export default function NfServicoPage() {
                   const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
                   return (
                     <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
-                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>
-                        {nf.numero_nf}<span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/{nf.serie}</span>
+                      <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
+                        {nf.numero_nf}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 13, color: "#1a1a1a", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {nf.prestador_nome}
-                        {nf.prestador_cnpj && <div style={{ fontSize: 11, color: "#888" }}>{nf.prestador_cnpj}</div>}
+                        {nf.prestador_cnpj && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{nf.prestador_cnpj}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "#555" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>
                         {fmtComp(nf.competencia)}
-                        <div style={{ fontSize: 11, color: "#aaa" }}>{fmtData(nf.data_prestacao)}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{fmtData(nf.data_prestacao)}</div>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: 12, color: "#555", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {nf.codigo_servico && <span style={{ fontWeight: 600 }}>{nf.codigo_servico} </span>}
                         {nf.discriminacao ? nf.discriminacao.substring(0, 60) + (nf.discriminacao.length > 60 ? "…" : "") : "—"}
                       </td>
@@ -466,15 +466,15 @@ export default function NfServicoPage() {
       ══════════════════════════════════════════════════════ */}
       {wizard && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 860, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 860, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Header modal */}
             <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {nfEdit ? `NF Serviço ${nfEdit.numero_nf}` : "Nova NF de Serviço"}
                 </div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {etapa === "prestador" ? "Passo 1 — Prestador & Data" : etapa === "servico" ? "Passo 2 — Serviço & Discriminação" : "Passo 3 — Tributação & Lançamento"}
                 </div>
               </div>
@@ -486,15 +486,15 @@ export default function NfServicoPage() {
                   const passado = ordem.indexOf(etapa) > i;
                   return (
                     <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#1A4870" : passado ? "#D5E8F5" : "#F3F6F9", color: ativo ? "#fff" : passado ? "#1A4870" : "#aaa" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#1A4870" : passado ? "#D5E8F5" : "#F3F6F9", color: ativo ? "#fff" : passado ? "#1A4870" : "var(--text-muted)" }}>
                         {i + 1}
                       </div>
-                      {i < 2 && <div style={{ width: 20, height: 1, background: "#D4DCE8" }} />}
+                      {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
                     </div>
                   );
                 })}
               </div>
-              <button onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888", lineHeight: 1 }}>×</button>
+              <button onClick={() => setWizard(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
             <div style={{ padding: 24 }}>
@@ -504,7 +504,7 @@ export default function NfServicoPage() {
               {etapa === "prestador" && (
                 <div>
                   {/* Prestador */}
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Prestador do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Prestador — do cadastro</label>
@@ -533,10 +533,10 @@ export default function NfServicoPage() {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: "#EEF1F6", margin: "18px 0" }} />
+                  <div style={{ height: 1, background: "var(--bg-tag)", margin: "18px 0" }} />
 
                   {/* Identificação da NF */}
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Identificação da Nota</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Identificação da Nota</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Número NF / RPS *</label>
@@ -573,7 +573,7 @@ export default function NfServicoPage() {
               {/* ─── PASSO 2: SERVIÇO ──────────────────────── */}
               {etapa === "servico" && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação do Serviço</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação do Serviço</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Código de Serviço — Lei Complementar 116/2003</label>
@@ -599,7 +599,7 @@ export default function NfServicoPage() {
 
                   <div style={{ marginBottom: 14 }}>
                     <label style={lbl}>Discriminação do Serviço *</label>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
                       Descreva detalhadamente o serviço prestado. Esse texto irá para a NFS-e e serve como prova fiscal.
                     </div>
                     <textarea
@@ -609,7 +609,7 @@ export default function NfServicoPage() {
                       placeholder="Ex: Prestação de serviços de consultoria agronômica para manejo da lavoura de soja, incluindo visitas técnicas, análise de solo, recomendação de adubação e acompanhamento de aplicações. Safra 2025/2026 — Fazenda Santa Maria, Nova Mutum/MT."
                       style={{ ...inp, resize: "vertical", lineHeight: 1.6 }}
                     />
-                    <div style={{ fontSize: 10, color: "#aaa", marginTop: 4, textAlign: "right" }}>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, textAlign: "right" }}>
                       {cab.discriminacao.length} caracteres
                     </div>
                   </div>
@@ -628,7 +628,7 @@ export default function NfServicoPage() {
               {etapa === "tributacao" && (
                 <div>
                   {/* Valores */}
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Valores e ISS</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Valores e ISS</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Valor do Serviço (R$) *</label>
@@ -640,7 +640,7 @@ export default function NfServicoPage() {
                     </div>
                     <div>
                       <label style={lbl}>Base de Cálculo ISS (R$)</label>
-                      <input value={fmtBRL(vBase)} readOnly style={{ ...inp, background: "#F4F6FA", color: "#888" }} />
+                      <input value={fmtBRL(vBase)} readOnly style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)" }} />
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -650,18 +650,18 @@ export default function NfServicoPage() {
                     </div>
                     <div>
                       <label style={lbl}>Valor do ISS (R$)</label>
-                      <input value={fmtBRL(vISS)} readOnly style={{ ...inp, background: "#F4F6FA", color: "#888" }} />
+                      <input value={fmtBRL(vISS)} readOnly style={{ ...inp, background: "var(--bg-page)", color: "var(--text-3)" }} />
                     </div>
                     <div>
                       <label style={lbl}>ISS Retido pelo Tomador?</label>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
                         <button
                           onClick={() => setCab(p=>({...p, iss_retido: !p.iss_retido}))}
-                          style={{ ...toggle, background: cab.iss_retido ? "#E24B4A" : "#D4DCE8" }}
+                          style={{ ...toggle, background: cab.iss_retido ? "#E24B4A" : "var(--border-table)" }}
                         >
-                          <div style={{ position: "absolute", top: 2, left: cab.iss_retido ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+                          <div style={{ position: "absolute", top: 2, left: cab.iss_retido ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "var(--bg-card)", transition: "left 0.2s" }} />
                         </button>
-                        <span style={{ fontSize: 13, color: cab.iss_retido ? "#791F1F" : "#555", fontWeight: cab.iss_retido ? 600 : 400 }}>
+                        <span style={{ fontSize: 13, color: cab.iss_retido ? "#791F1F" : "var(--text-2)", fontWeight: cab.iss_retido ? 600 : 400 }}>
                           {cab.iss_retido ? "Retido (desconta do líquido)" : "Não retido (prestador recolhe)"}
                         </span>
                       </div>
@@ -669,8 +669,8 @@ export default function NfServicoPage() {
                   </div>
 
                   {/* Retenções federais */}
-                  <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 14, marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 10 }}>Retenções Federais (se houver)</div>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10 }}>Retenções Federais (se houver)</div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                       <div>
                         <label style={lbl}>INSS Retido (R$)</label>
@@ -696,16 +696,16 @@ export default function NfServicoPage() {
                       { label: "Valor Líquido",       value: fmtBRL(vLiquido), destaque: true },
                     ].map(({ label, value, vermelho, destaque }) => (
                       <div key={label}>
-                        <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{label}</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: destaque ? "#1A4870" : vermelho ? "#E24B4A" : "#1a1a1a" }}>{value}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: destaque ? "#1A4870" : vermelho ? "#E24B4A" : "var(--text-1)" }}>{value}</div>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ height: 1, background: "#EEF1F6", margin: "18px 0" }} />
+                  <div style={{ height: 1, background: "var(--bg-tag)", margin: "18px 0" }} />
 
                   {/* Classificação gerencial */}
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação Gerencial</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Classificação Gerencial</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                     <div>
                       <label style={lbl}>Operação Gerencial *</label>

@@ -8,9 +8,9 @@ import type { ConfigContabilidade } from "../../../lib/supabase";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600 };
-const card: React.CSSProperties = { background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "24px 28px", marginBottom: 20 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "24px 28px", marginBottom: 20 };
 const secTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" };
 
 const ESCRITURACAO_LABELS: Record<string, string> = {
@@ -140,7 +140,7 @@ export default function ContabilidadePage() {
   const ABA_LABELS = { pf: "Produtor / Pessoa Física", pj: "Empresa / Pessoa Jurídica" };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 20px" }}>
         {/* Header */}
@@ -171,7 +171,7 @@ export default function ContabilidadePage() {
               style={{
                 padding: "10px 24px", border: "none", borderRadius: "8px 8px 0 0",
                 background: aba === e ? "#1A5CB8" : "#E8EEF5",
-                color: aba === e ? "#fff" : "#555",
+                color: aba === e ? "#fff" : "var(--text-2)",
                 fontWeight: aba === e ? 700 : 400, cursor: "pointer", fontSize: 13,
               }}
             >
@@ -294,7 +294,7 @@ export default function ContabilidadePage() {
         {/* ── Termos ── */}
         <div style={card}>
           <div style={secTitle}>Termos do Livro</div>
-          <p style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>
             Os termos de abertura e encerramento são incluídos no arquivo SPED ECD.
             Se deixados em branco, será gerado um termo padrão com os dados acima.
           </p>
@@ -334,7 +334,7 @@ export default function ContabilidadePage() {
           <div style={{ flex: 1 }} />
           <a
             href="/fiscal/sped-contabil"
-            style={{ padding: "10px 20px", background: "#F4F6FA", border: "0.5px solid #1A5CB8", color: "#1A5CB8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, textDecoration: "none" }}
+            style={{ padding: "10px 20px", background: "var(--bg-page)", border: "0.5px solid #1A5CB8", color: "#1A5CB8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13, textDecoration: "none" }}
           >
             Gerar SPED ECD →
           </a>

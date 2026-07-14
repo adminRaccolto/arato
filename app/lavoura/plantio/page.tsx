@@ -8,10 +8,10 @@ import { useAuth } from "../../../components/AuthProvider";
 import CascadeSelector, { type CascadeValues } from "../../../components/CascadeSelector";
 import type { Talhao, Insumo, Plantio, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
 
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -138,9 +138,9 @@ export default function PlantioPage() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
-        <header style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
+        <header style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Plantio</h1>
+            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Plantio</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Registro de plantio por talhão — semente, dose, datas e projeção de colheita</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -161,41 +161,41 @@ export default function PlantioPage() {
             { label: "Área total plantada", valor: totalArea.toLocaleString("pt-BR"), unidade: "ha", cor: "#C9921B" },
             { label: "Receita esperada total", valor: fmtBRL(plantios.reduce((s, p) => s + ((p.produtividade_esperada_sc_ha ?? 0) * p.area_ha * (p.preco_esperado_sc ?? 0)), 0)), cor: "#1A4870" },
           ].map((s, i) => (
-            <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+            <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>
-                {s.valor}{"unidade" in s && s.unidade && <span style={{ fontSize: 12, color: "#555", marginLeft: 4 }}>{s.unidade}</span>}
+                {s.valor}{"unidade" in s && s.unidade && <span style={{ fontSize: 12, color: "var(--text-2)", marginLeft: 4 }}>{s.unidade}</span>}
               </div>
             </div>
           ))}
         </div>
 
         {plantios.length === 0 ? (
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
             Nenhum plantio registrado. Clique em "+ Registrar Plantio" para começar.
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    {fazendas.length > 1 && <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Fazenda</th>}
-                    <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Safra / Talhão</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Semente / Cultivar</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Área</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Dose / Qtd Total</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Data Plantio</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Colheita Prev.</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Produt. Esp.</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Receita Esp.</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>Custo Semente</th>
-                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}></th>
+                    {fazendas.length > 1 && <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Fazenda</th>}
+                    <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Safra / Talhão</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Semente / Cultivar</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Área</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Dose / Qtd Total</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Data Plantio</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Colheita Prev.</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Produt. Esp.</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Receita Esp.</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Custo Semente</th>
+                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {plantios.map((p, i) => (
-                    <tr key={p.id} style={{ borderBottom: i < plantios.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                    <tr key={p.id} style={{ borderBottom: i < plantios.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                       {fazendas.length > 1 && (
                         <td style={{ padding: "10px 12px" }}>
                           <span style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
@@ -204,17 +204,17 @@ export default function PlantioPage() {
                         </td>
                       )}
                       <td style={{ padding: "10px 12px" }}>
-                        <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{cicloLabel(p.ciclo_id)}</div>
-                        <div style={{ fontSize: 11, color: "#555" }}>{talhaoLabel(p.talhao_id)}</div>
+                        <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{cicloLabel(p.ciclo_id)}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhaoLabel(p.talhao_id)}</div>
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>
                         <div>{sementeLabel(p.insumo_id)}</div>
-                        {p.variedade && <div style={{ fontSize: 11, color: "#555" }}>{p.variedade}</div>}
+                        {p.variedade && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{p.variedade}</div>}
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{fmtN(p.area_ha)} ha</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{fmtN(p.area_ha)} ha</td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>
                         {p.dose_kg_ha ? <div>{fmtN(p.dose_kg_ha)} kg/ha</div> : "—"}
-                        {p.quantidade_kg ? <div style={{ fontSize: 11, color: "#555" }}>{fmtN(p.quantidade_kg)} kg total</div> : ""}
+                        {p.quantidade_kg ? <div style={{ fontSize: 11, color: "var(--text-2)" }}>{fmtN(p.quantidade_kg)} kg total</div> : ""}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>{fmtData(p.data_plantio)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>{fmtData(p.data_colheita_prevista)}</td>
@@ -249,7 +249,7 @@ export default function PlantioPage() {
                               </div>
                             );
                           }
-                          return <span style={{ color: "#888" }}>—</span>;
+                          return <span style={{ color: "var(--text-3)" }}>—</span>;
                         })()}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
@@ -266,9 +266,9 @@ export default function PlantioPage() {
 
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
             <div style={{ marginBottom: 14 }}>
-              <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15 }}>Registrar Plantio</div>
+              <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Plantio</div>
             </div>
 
             {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
@@ -296,7 +296,7 @@ export default function PlantioPage() {
 
 
             {/* Semente */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid #D4DCE8", paddingBottom: 4 }}>Semente / Cultivar</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Semente / Cultivar</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>
@@ -319,7 +319,7 @@ export default function PlantioPage() {
             </div>
 
             {/* Área e datas */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid #D4DCE8", paddingBottom: 4 }}>Área e Datas</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Área e Datas</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Área (ha) *</label>
@@ -337,7 +337,7 @@ export default function PlantioPage() {
             </div>
 
             {/* Projeção financeira */}
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid #D4DCE8", paddingBottom: 4 }}>Projeção de Colheita</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, borderBottom: "0.5px solid var(--border-table)", paddingBottom: 4 }}>Projeção de Colheita</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={lbl}>Produtividade Esperada (sc/ha)</label>
@@ -357,7 +357,7 @@ export default function PlantioPage() {
               {/* Preview */}
               {(qtdKg || custoSementes || receitaEsperada) && (
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                  <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
+                  <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
                     {qtdKg && <div>Semente total: <strong>{fmtN(qtdKg)} kg</strong></div>}
                     {custoSementes && <div>Custo semente: <strong style={{ color: "#E24B4A" }}>{fmtBRL(custoSementes)}</strong></div>}
                     {receitaEsperada && <div>Receita esperada: <strong style={{ color: "#1A4870" }}>{fmtBRL(receitaEsperada)}</strong></div>}

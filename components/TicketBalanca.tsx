@@ -99,19 +99,19 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
 
         {/* Ticket */}
         <div ref={printRef} className="ticket-body" style={{
-          background: "#fff", width: 320, padding: "20px 20px 24px",
+          background: "var(--bg-card)", width: 320, padding: "20px 20px 24px",
           fontFamily: "'Courier New', monospace",
           boxShadow: "0 8px 40px rgba(0,0,0,0.3)",
-          borderRadius: 4, border: "0.5px solid #DDE2EE",
+          borderRadius: 4, border: "0.5px solid var(--border)",
           fontSize: 11, color: "#111", lineHeight: "1.6",
         }}>
 
           {/* Cabeçalho fazenda */}
           <div style={{ textAlign: "center", marginBottom: 8 }}>
             {dados.fazendaNome && <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: 0.5 }}>{dados.fazendaNome.toUpperCase()}</div>}
-            {dados.fazendaCnpj && <div style={{ fontSize: 10, color: "#555" }}>CNPJ: {dados.fazendaCnpj}</div>}
+            {dados.fazendaCnpj && <div style={{ fontSize: 10, color: "var(--text-2)" }}>CNPJ: {dados.fazendaCnpj}</div>}
             {(dados.fazendaMunicipio || dados.fazendaUf) && (
-              <div style={{ fontSize: 10, color: "#555" }}>{dados.fazendaMunicipio}{dados.fazendaUf ? ` - ${dados.fazendaUf}` : ""}</div>
+              <div style={{ fontSize: 10, color: "var(--text-2)" }}>{dados.fazendaMunicipio}{dados.fazendaUf ? ` - ${dados.fazendaUf}` : ""}</div>
             )}
           </div>
 
@@ -141,7 +141,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
           {/* Produto */}
           {(dados.produto || dados.safra || dados.talhao) && (
             <>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#555", marginBottom: 2, textTransform: "uppercase", letterSpacing: 1 }}>Produto</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", marginBottom: 2, textTransform: "uppercase", letterSpacing: 1 }}>Produto</div>
               {dados.produto && <div><strong>{dados.produto.toUpperCase()}</strong>{dados.variedade ? ` · ${dados.variedade}` : ""}</div>}
               {dados.safra   && <div style={{ color: "#444" }}>Safra: {dados.safra}</div>}
               {dados.talhao  && <div style={{ color: "#444" }}>Talhão: {dados.talhao}</div>}
@@ -152,7 +152,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
           {/* Transporte */}
           {(dados.placa || dados.motorista || dados.transportadora) && (
             <>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#555", marginBottom: 2, textTransform: "uppercase", letterSpacing: 1 }}>Transporte</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", marginBottom: 2, textTransform: "uppercase", letterSpacing: 1 }}>Transporte</div>
               {dados.placa          && <div>Placa: <strong style={{ fontFamily: "monospace" }}>{dados.placa}</strong></div>}
               {dados.motorista      && <div>Motorista: {dados.motorista}</div>}
               {dados.transportadora && <div>Transp.: {dados.transportadora}</div>}
@@ -161,7 +161,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
           )}
 
           {/* Pesagem */}
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Pesagem</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Pesagem</div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <tbody>
               <tr>
@@ -183,7 +183,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
           {temClassif && (
             <>
               {line()}
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Classificação</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Classificação</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10 }}>
                 <thead>
                   <tr style={{ color: "#666" }}>
@@ -251,7 +251,7 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
             <>
               {line()}
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "#555", marginBottom: 2 }}>TOTAL EM SACAS ({dados.kgSaca ?? 60} kg/sc)</div>
+                <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>TOTAL EM SACAS ({dados.kgSaca ?? 60} kg/sc)</div>
                 <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 2, color: "#1A4870" }}>
                   {fmt(dados.sacas!, 3)} sc
                 </div>
@@ -263,18 +263,18 @@ export default function TicketBalanca({ dados, onFechar }: Props) {
           {dados.obs && (
             <>
               {line()}
-              <div style={{ fontSize: 10, color: "#555" }}>Obs: {dados.obs}</div>
+              <div style={{ fontSize: 10, color: "var(--text-2)" }}>Obs: {dados.obs}</div>
             </>
           )}
 
           {/* Assinatura */}
           {line()}
-          <div style={{ fontSize: 10, color: "#555", marginBottom: 16 }}>
+          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 16 }}>
             {dados.operador && <div>Operador: {dados.operador}</div>}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginTop: 8 }}>
-            <div style={{ flex: 1, borderTop: "1px solid #888", paddingTop: 3, fontSize: 9, color: "#888", textAlign: "center" }}>Operador</div>
-            <div style={{ flex: 1, borderTop: "1px solid #888", paddingTop: 3, fontSize: 9, color: "#888", textAlign: "center" }}>Motorista</div>
+            <div style={{ flex: 1, borderTop: "1px solid #888", paddingTop: 3, fontSize: 9, color: "var(--text-3)", textAlign: "center" }}>Operador</div>
+            <div style={{ flex: 1, borderTop: "1px solid #888", paddingTop: 3, fontSize: 9, color: "var(--text-3)", textAlign: "center" }}>Motorista</div>
           </div>
         </div>
       </div>

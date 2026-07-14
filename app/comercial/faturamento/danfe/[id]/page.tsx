@@ -92,7 +92,7 @@ const S = {
     fontFamily: "Arial, Helvetica, sans-serif",
     fontSize: 8,
     color: "#000",
-    background: "#fff",
+    background: "var(--bg-card)",
     width: "210mm",
     minHeight: "297mm",
     margin: "0 auto",
@@ -246,7 +246,7 @@ export default function DanfePage() {
             : `✓ NF-e Autorizada — Chave: ${nota.chave_acesso ?? "—"}`}
         </span>
         <button onClick={() => window.print()}
-          style={{ padding: "6px 18px", background: isPreview ? "#856404" : "#fff", color: isPreview ? "#fff" : "#1A4870", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
+          style={{ padding: "6px 18px", background: isPreview ? "#856404" : "var(--bg-card)", color: isPreview ? "#fff" : "#1A4870", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
           Imprimir / Salvar PDF
         </button>
       </div>
@@ -280,9 +280,9 @@ export default function DanfePage() {
               </div>
             </div>
             <div style={{ flex: 2, paddingLeft: "4mm", textAlign: "right" }}>
-              <div style={{ fontSize: 6.5, color: "#555" }}>DATA DO RECEBIMENTO</div>
+              <div style={{ fontSize: 6.5, color: "var(--text-2)" }}>DATA DO RECEBIMENTO</div>
               <div style={{ borderBottom: "0.3mm solid #000", marginTop: "4mm", marginBottom: "1mm" }} />
-              <div style={{ fontSize: 6.5, color: "#555" }}>IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
+              <div style={{ fontSize: 6.5, color: "var(--text-2)" }}>IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR</div>
               <div style={{ borderBottom: "0.3mm solid #000", marginTop: "4mm" }} />
             </div>
             <div style={{ paddingLeft: "4mm", textAlign: "right" }}>
@@ -332,7 +332,7 @@ export default function DanfePage() {
               </div>
               <div style={{ fontSize: 6.5, fontWeight: 600 }}>Série {nota.serie}</div>
             </div>
-            <div style={{ fontSize: 6, color: "#555" }}>Folha 1/1</div>
+            <div style={{ fontSize: 6, color: "var(--text-2)" }}>Folha 1/1</div>
           </div>
 
           {/* Chave de acesso */}
@@ -370,7 +370,7 @@ export default function DanfePage() {
           <div style={{ ...S.cell(5) }}>
             <Lbl>Natureza da Operação</Lbl>
             <Val>{nota.natureza}
-              {d.emit_tipo_doc ? <span style={{ fontSize: 6.5, fontWeight: 400, color: "#555" }}> ({d.emit_tipo_doc})</span> : null}
+              {d.emit_tipo_doc ? <span style={{ fontSize: 6.5, fontWeight: 400, color: "var(--text-2)" }}> ({d.emit_tipo_doc})</span> : null}
             </Val>
           </div>
           <div style={{ ...S.cell(2) }}>
@@ -492,12 +492,12 @@ export default function DanfePage() {
               <tbody>
                 {itens.length === 0 ? (
                   <tr>
-                    <td colSpan={15} style={{ padding: "3mm", textAlign: "center", color: "#888", fontStyle: "italic" }}>
+                    <td colSpan={15} style={{ padding: "3mm", textAlign: "center", color: "var(--text-3)", fontStyle: "italic" }}>
                       Nenhum item registrado
                     </td>
                   </tr>
                 ) : itens.map((it, i) => (
-                  <tr key={i} style={{ borderBottom: "0.15mm solid #ddd", background: i % 2 ? "#fafafa" : "#fff" }}>
+                  <tr key={i} style={{ borderBottom: "0.15mm solid #ddd", background: i % 2 ? "#fafafa" : "var(--bg-card)" }}>
                     <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd", fontFamily: "monospace" }}>{String(i + 1).padStart(3, "0")}</td>
                     <td style={{ padding: "0.8mm 1mm", fontWeight: "bold", borderRight: "0.2mm solid #ddd" }}>{it.item}</td>
                     <td style={{ padding: "0.8mm 1mm", borderRight: "0.2mm solid #ddd", fontFamily: "monospace", fontSize: 7 }}>{it.ncm}</td>

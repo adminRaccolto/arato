@@ -34,7 +34,7 @@ const CAT_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   pendente:    "#C9921B",
   classificada:"#16A34A",
-  ignorada:    "#888",
+  ignorada:    "var(--text-3)",
   erro:        "#E24B4A",
 };
 
@@ -218,18 +218,18 @@ export default function PendenciasNfPage() {
   return (
     <>
       <TopNav />
-      <main style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
+      <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Pendências SIEG</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências SIEG</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               NFs importadas automaticamente que aguardam classificação de insumo / categoria
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <a href="/configuracoes/classificacao" style={{ padding: "8px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", fontSize: 12, fontWeight: 600, color: "#555", textDecoration: "none" }}>
+            <a href="/configuracoes/classificacao" style={{ padding: "8px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>
               ⚙️ Regras Automáticas
             </a>
             <a href="/configuracoes/automacoes" style={{ padding: "8px 14px", borderRadius: 7, background: "#1A4870", fontSize: 12, fontWeight: 600, color: "#fff", textDecoration: "none" }}>
@@ -243,27 +243,27 @@ export default function PendenciasNfPage() {
           {[
             { label: "Pendentes", valor: totPendentes, sub: fmt(valorPendente), cor: "#C9921B", bg: "#FBF3E0" },
             { label: "Classificadas", valor: totClassific, sub: "automaticamente + manual", cor: "#16A34A", bg: "#F0FDF4" },
-            { label: "Ignoradas", valor: totIgnoradas, sub: "sem movimentação", cor: "#888", bg: "#F3F6F9" },
+            { label: "Ignoradas", valor: totIgnoradas, sub: "sem movimentação", cor: "var(--text-3)", bg: "#F3F6F9" },
             { label: "Total importado", valor: nfs.length, sub: "últimos 30 dias", cor: "#1A4870", bg: "#EBF5FF" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-              <div style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: k.cor }}>{k.valor}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
             </div>
           ))}
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {["pendente", "classificada", "ignorada", "todas"].map(s => (
             <button
               key={s}
               onClick={() => setFiltroStatus(s)}
               style={{
-                padding: "6px 14px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "#DDE2EE"}`,
+                padding: "6px 14px", borderRadius: 20, border: `0.5px solid ${filtroStatus === s ? "#1A4870" : "var(--border)"}`,
                 background: filtroStatus === s ? "#1A4870" : "transparent",
-                color: filtroStatus === s ? "#fff" : "#555",
+                color: filtroStatus === s ? "#fff" : "var(--text-2)",
                 fontSize: 12, fontWeight: 600, cursor: "pointer",
               }}
             >
@@ -283,37 +283,37 @@ export default function PendenciasNfPage() {
 
         {/* Tabela */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: 48, color: "#888", fontSize: 13 }}>Carregando…</div>
+          <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)", fontSize: 13 }}>Carregando…</div>
         ) : nfsFiltradas.length === 0 ? (
-          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 48, textAlign: "center", color: "#888" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 48, textAlign: "center", color: "var(--text-3)" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "#555" }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-2)" }}>
               {filtroStatus === "pendente" ? "Nenhuma NF pendente — tudo classificado!" : "Nenhuma NF encontrada"}
             </div>
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ background: "#F8FAFC", borderBottom: "0.5px solid #DDE2EE" }}>
                   {["NF", "Fornecedor", "CNPJ Emitente", "Emissão", "Valor Total", "Status", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {nfsFiltradas.map((nf, i) => (
-                  <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 1 ? "#FAFBFD" : "#fff" }}>
+                  <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)" }}>
                     <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1A4870" }}>
                       {nf.numero}/{nf.serie}
                     </td>
                     <td style={{ padding: "10px 14px" }}>
                       <div style={{ fontWeight: 600 }}>{nf.nome_emitente || nf.pessoa_nome || "—"}</div>
                     </td>
-                    <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#555" }}>
+                    <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "var(--text-2)" }}>
                       {(nf.cnpj_emitente || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                     </td>
-                    <td style={{ padding: "10px 14px", color: "#555" }}>{fmtDate(nf.data_emissao)}</td>
+                    <td style={{ padding: "10px 14px", color: "var(--text-2)" }}>{fmtDate(nf.data_emissao)}</td>
                     <td style={{ padding: "10px 14px", fontWeight: 700 }}>{fmt(nf.valor_total ?? 0)}</td>
                     <td style={{ padding: "10px 14px" }}>
                       <span style={{
@@ -344,15 +344,15 @@ export default function PendenciasNfPage() {
       {/* ── Modal Classificação ── */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 16px", overflowY: "auto" }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "min(900px, 97vw)", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(900px, 97vw)", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Header */}
             <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
                   NF {modal.numero}/{modal.serie} — {modal.nome_emitente || "—"}
                 </div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {fmtDate(modal.data_emissao)} · {fmt(modal.valor_total ?? 0)} · CNPJ {(modal.cnpj_emitente || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")}
                 </div>
               </div>
@@ -360,7 +360,7 @@ export default function PendenciasNfPage() {
                 {modal.status === "pendente" && (
                   <button
                     onClick={() => ignorarNf(modal.id)}
-                    style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", color: "#888", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >
                     Ignorar NF
                   </button>
@@ -374,9 +374,9 @@ export default function PendenciasNfPage() {
             {/* Itens */}
             <div style={{ flex: 1, overflow: "auto", padding: "16px 24px" }}>
               {loadingItens ? (
-                <div style={{ textAlign: "center", padding: 40, color: "#888" }}>Carregando itens…</div>
+                <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando itens…</div>
               ) : !modal.itens?.length ? (
-                <div style={{ textAlign: "center", padding: 40, color: "#888", fontSize: 13 }}>
+                <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)", fontSize: 13 }}>
                   Nenhum item encontrado para esta NF
                 </div>
               ) : (
@@ -388,19 +388,19 @@ export default function PendenciasNfPage() {
                       <div
                         key={item.id}
                         style={{
-                          border: `0.5px solid ${classificado ? "#86EFAC" : "#DDE2EE"}`,
+                          border: `0.5px solid ${classificado ? "#86EFAC" : "var(--border)"}`,
                           borderRadius: 10,
                           padding: 16,
-                          background: classificado ? "#F0FDF4" : item.classificado_automaticamente ? "#EBF5FF" : "#fff",
+                          background: classificado ? "#F0FDF4" : item.classificado_automaticamente ? "#EBF5FF" : "var(--bg-card)",
                         }}
                       >
                         {/* Info do item */}
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>
                               {item.numero_item}. {item.descricao}
                             </div>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 3, display: "flex", gap: 12 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3, display: "flex", gap: 12 }}>
                               {item.ncm  && <span>NCM: {item.ncm}</span>}
                               {item.cfop && <span>CFOP: {item.cfop}</span>}
                               <span>{item.quantidade} {item.unidade} × {fmt(item.valor_unitario ?? 0)} = <strong>{fmt(item.valor_total ?? 0)}</strong></span>
@@ -426,7 +426,7 @@ export default function PendenciasNfPage() {
                         {/* Seletores de classificação */}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "end" }}>
                           <div>
-                            <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Categoria</label>
+                            <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Categoria</label>
                             <select
                               value={c.categoria}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, categoria: e.target.value } }))}
@@ -438,7 +438,7 @@ export default function PendenciasNfPage() {
                           </div>
 
                           <div>
-                            <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Insumo</label>
+                            <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Insumo</label>
                             <select
                               value={c.insumo_id}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, insumo_id: e.target.value } }))}
@@ -453,7 +453,7 @@ export default function PendenciasNfPage() {
                           </div>
 
                           <div>
-                            <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Centro de Custo</label>
+                            <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Centro de Custo</label>
                             <select
                               value={c.centro_custo_id}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, centro_custo_id: e.target.value } }))}
@@ -469,8 +469,8 @@ export default function PendenciasNfPage() {
                             disabled={!c.categoria && !c.insumo_id}
                             style={{
                               padding: "7px 14px", borderRadius: 7, border: "none",
-                              background: (!c.categoria && !c.insumo_id) ? "#DDE2EE" : "#1A4870",
-                              color: (!c.categoria && !c.insumo_id) ? "#aaa" : "#fff",
+                              background: (!c.categoria && !c.insumo_id) ? "var(--border)" : "#1A4870",
+                              color: (!c.categoria && !c.insumo_id) ? "var(--text-muted)" : "#fff",
                               fontSize: 12, fontWeight: 600, cursor: (!c.categoria && !c.insumo_id) ? "not-allowed" : "pointer",
                               whiteSpace: "nowrap",
                             }}
@@ -491,22 +491,22 @@ export default function PendenciasNfPage() {
       {/* ── Modal Criar Regra ── */}
       {modalRegra && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "min(520px, 97vw)", padding: 28 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>💡 Criar Regra Automática?</div>
-            <p style={{ fontSize: 13, color: "#555", margin: "0 0 20px", lineHeight: 1.6 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(520px, 97vw)", padding: 28 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>💡 Criar Regra Automática?</div>
+            <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 20px", lineHeight: 1.6 }}>
               Deseja que o sistema classifique automaticamente nas próximas importações itens de
               {" "}<strong>{modalRegra.nomeEmit || modalRegra.cnpj}</strong>{" "}
               com o NCM <strong>{modalRegra.item.ncm || "(qualquer)"}</strong>?
             </p>
 
-            <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "#555" }}>
+            <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
               <div><strong>Fornecedor:</strong> {modalRegra.nomeEmit} ({(modalRegra.cnpj || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")})</div>
               <div><strong>NCM:</strong> {modalRegra.item.ncm || "—"} · <strong>Produto:</strong> {modalRegra.item.descricao}</div>
               <div><strong>Classificação:</strong> {CAT_LABEL[classif[modalRegra.item.id]?.categoria || modalRegra.item.categoria || ""] || "—"} {insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome ? `→ ${insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome}` : ""}</div>
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Nome da regra (opcional)</label>
+              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Nome da regra (opcional)</label>
               <input
                 value={nomeRegra}
                 onChange={e => setNomeRegra(e.target.value)}
@@ -518,7 +518,7 @@ export default function PendenciasNfPage() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={() => { setModalRegra(null); setNomeRegra(""); }}
-                style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Não, obrigado
               </button>

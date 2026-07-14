@@ -161,8 +161,8 @@ export default function LCDPR() {
 
   const anos = [2023, 2024, 2025, 2026, 2027];
 
-  const inpS: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-  const lblS: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+  const inpS: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+  const lblS: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
   if (!podeAcessarPlano("fiscal_sped")) return <PlanoGate modulo="fiscal_sped" />;
   return (
@@ -171,13 +171,13 @@ export default function LCDPR() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>LCDPR — Livro Caixa Digital do Produtor Rural</h1>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>LCDPR — Livro Caixa Digital do Produtor Rural</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Obrigação acessória · Receita Federal · Instrução Normativa RFB nº 1.848/2018</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <select value={anoSel} onChange={e => setAnoSel(Number(e.target.value))} style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", cursor: "pointer" }}>
+            <select value={anoSel} onChange={e => setAnoSel(Number(e.target.value))} style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", cursor: "pointer" }}>
               {anos.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
             <button onClick={() => setModalManual(true)} style={{ padding: "8px 16px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
@@ -191,13 +191,13 @@ export default function LCDPR() {
           {/* Cards de resumo */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             {[
-              { label: "Saldo Inicial",   valor: saldoInicial,   cor: "#1a1a1a", bg: "#fff" },
+              { label: "Saldo Inicial",   valor: saldoInicial,   cor: "var(--text-1)", bg: "var(--bg-card)" },
               { label: "Total Receitas",  valor: totalReceitas,  cor: "#1A5C38", bg: "#EAF3DE" },
               { label: "Total Despesas",  valor: totalDespesas,  cor: "#E24B4A", bg: "#FCEBEB" },
               { label: "Saldo Final",     valor: saldoFinal,     cor: saldoFinal >= 0 ? "#1A5C38" : "#E24B4A", bg: saldoFinal >= 0 ? "#EAF3DE" : "#FCEBEB" },
             ].map((c, i) => (
-              <div key={i} style={{ background: c.bg, border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>{c.label}</div>
+              <div key={i} style={{ background: c.bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{c.label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: c.cor }}>{fmtBRL(c.valor)}</div>
               </div>
             ))}
@@ -209,20 +209,20 @@ export default function LCDPR() {
             <InputNumerico
               value={saldoInicial}
               onChange={v => setSaldoInicial(Number(v))}
-              style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, width: 140, color: "#1a1a1a" }}
+              style={{ padding: "4px 8px", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 12, width: 140, color: "var(--text-1)" }}
             />
             <span style={{ color: "#7A5A12" }}>Informe o saldo em caixa em 1º de janeiro de {anoSel}</span>
           </div>
 
           {/* Abas */}
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
               {([["livro", "Livro Caixa"], ["resumo", "Resumo Anual"], ["exportacao", "Exportação"]] as [AbaLCDPR, string][]).map(([key, label]) => (
                 <button key={key} onClick={() => setAba(key)} style={{
                   padding: "10px 20px", border: "none", background: aba === key ? "#fff" : "#F8FAFD",
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",
                   cursor: "pointer", fontSize: 13, fontWeight: aba === key ? 600 : 400,
-                  color: aba === key ? "#1A5C38" : "#555",
+                  color: aba === key ? "#1A5C38" : "var(--text-2)",
                 }}>
                   {label}
                 </button>
@@ -233,11 +233,11 @@ export default function LCDPR() {
             {aba === "livro" && (
               <div>
                 {loading ? (
-                  <div style={{ padding: 32, textAlign: "center", color: "#555" }}>Carregando lançamentos...</div>
+                  <div style={{ padding: 32, textAlign: "center", color: "var(--text-2)" }}>Carregando lançamentos...</div>
                 ) : entradas.length === 0 ? (
-                  <div style={{ padding: 40, textAlign: "center", color: "#555" }}>
+                  <div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a" }}>Nenhum lançamento baixado em {anoSel}</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)" }}>Nenhum lançamento baixado em {anoSel}</div>
                     <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>Os lançamentos aparecem aqui após a baixa no Financeiro, ou adicione manualmente.</div>
                   </div>
                 ) : (
@@ -245,7 +245,7 @@ export default function LCDPR() {
                     <thead>
                       <tr style={{ background: "#F3F6F9" }}>
                         {["Data", "Cód.", "Histórico", "Documento", "CPF/CNPJ", "Receita", "Despesa", "Saldo", ""].map((h, i) => (
-                          <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -256,20 +256,20 @@ export default function LCDPR() {
                           saldo += e.receita - e.despesa;
                           const cod = [...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa].find(c => c.cod === e.codigo);
                           return (
-                            <tr key={e.id} style={{ borderBottom: i < entradas.length - 1 ? "0.5px solid #DEE5EE" : "none", background: e.origem === "manual" ? "#FFFDF5" : "transparent" }}>
-                              <td style={{ padding: "8px 12px", color: "#1a1a1a", whiteSpace: "nowrap" }}>{fmtData(e.data)}</td>
+                            <tr key={e.id} style={{ borderBottom: i < entradas.length - 1 ? "0.5px solid var(--border-row)" : "none", background: e.origem === "manual" ? "#FFFDF5" : "transparent" }}>
+                              <td style={{ padding: "8px 12px", color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtData(e.data)}</td>
                               <td style={{ padding: "8px 12px" }}>
                                 <span style={{ fontSize: 10, background: e.codigo.startsWith("1") ? "#EAF3DE" : "#FCEBEB", color: e.codigo.startsWith("1") ? "#1A5C38" : "#791F1F", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>{e.codigo}</span>
                               </td>
-                              <td style={{ padding: "8px 12px", color: "#1a1a1a", maxWidth: 260 }}>
+                              <td style={{ padding: "8px 12px", color: "var(--text-1)", maxWidth: 260 }}>
                                 <div style={{ fontWeight: 500 }}>{e.historico}</div>
                                 {cod && <div style={{ fontSize: 10, color: "#666" }}>{cod.desc}</div>}
                               </td>
-                              <td style={{ padding: "8px 12px", color: "#1a1a1a", fontSize: 11 }}>{e.doc}</td>
-                              <td style={{ padding: "8px 12px", color: "#555", fontSize: 11 }}>{e.cpf_cnpj || "—"}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", color: e.receita > 0 ? "#1A5C38" : "#aaa", fontWeight: e.receita > 0 ? 600 : 400 }}>{e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", color: e.despesa > 0 ? "#E24B4A" : "#aaa", fontWeight: e.despesa > 0 ? 600 : 400 }}>{e.despesa > 0 ? fmtBRL(e.despesa) : "—"}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: saldo >= 0 ? "#1a1a1a" : "#E24B4A" }}>{fmtBRL(saldo)}</td>
+                              <td style={{ padding: "8px 12px", color: "var(--text-1)", fontSize: 11 }}>{e.doc}</td>
+                              <td style={{ padding: "8px 12px", color: "var(--text-2)", fontSize: 11 }}>{e.cpf_cnpj || "—"}</td>
+                              <td style={{ padding: "8px 12px", textAlign: "right", color: e.receita > 0 ? "#1A5C38" : "var(--text-muted)", fontWeight: e.receita > 0 ? 600 : 400 }}>{e.receita > 0 ? fmtBRL(e.receita) : "—"}</td>
+                              <td style={{ padding: "8px 12px", textAlign: "right", color: e.despesa > 0 ? "#E24B4A" : "var(--text-muted)", fontWeight: e.despesa > 0 ? 600 : 400 }}>{e.despesa > 0 ? fmtBRL(e.despesa) : "—"}</td>
+                              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: saldo >= 0 ? "var(--text-1)" : "#E24B4A" }}>{fmtBRL(saldo)}</td>
                               <td style={{ padding: "8px 12px" }}>
                                 {e.origem === "manual" && (
                                   <button onClick={() => removerManual(e.id)} style={{ fontSize: 11, padding: "2px 7px", borderRadius: 6, border: "0.5px solid #E24B4A50", background: "#FCEBEB", color: "#791F1F", cursor: "pointer" }}>✕</button>
@@ -281,8 +281,8 @@ export default function LCDPR() {
                       })()}
                     </tbody>
                     <tfoot>
-                      <tr style={{ background: "#F3F6F9", borderTop: "1px solid #D4DCE8" }}>
-                        <td colSpan={5} style={{ padding: "10px 12px", fontWeight: 700, color: "#1a1a1a" }}>TOTAL {anoSel}</td>
+                      <tr style={{ background: "#F3F6F9", borderTop: "1px solid var(--border-table)" }}>
+                        <td colSpan={5} style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text-1)" }}>TOTAL {anoSel}</td>
                         <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalReceitas)}</td>
                         <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(totalDespesas)}</td>
                         <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: saldoFinal >= 0 ? "#1A5C38" : "#E24B4A" }}>{fmtBRL(saldoFinal)}</td>
@@ -301,12 +301,12 @@ export default function LCDPR() {
 
                   {/* Resumo mensal */}
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 12 }}>Movimentação mensal — {anoSel}</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Movimentação mensal — {anoSel}</div>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F3F6F9" }}>
                           {["Mês", "Receitas", "Despesas", "Resultado"].map((h, i) => (
-                            <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                            <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -315,8 +315,8 @@ export default function LCDPR() {
                           const res = m.rec - m.desp;
                           const temDados = m.rec > 0 || m.desp > 0;
                           return (
-                            <tr key={i} style={{ borderBottom: "0.5px solid #DEE5EE", opacity: temDados ? 1 : 0.4 }}>
-                              <td style={{ padding: "7px 10px", color: "#1a1a1a", textTransform: "capitalize" }}>{m.mes}</td>
+                            <tr key={i} style={{ borderBottom: "0.5px solid var(--border-row)", opacity: temDados ? 1 : 0.4 }}>
+                              <td style={{ padding: "7px 10px", color: "var(--text-1)", textTransform: "capitalize" }}>{m.mes}</td>
                               <td style={{ padding: "7px 10px", textAlign: "right", color: "#1A5C38", fontWeight: m.rec > 0 ? 600 : 400 }}>{m.rec > 0 ? fmtBRL(m.rec) : "—"}</td>
                               <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A", fontWeight: m.desp > 0 ? 600 : 400 }}>{m.desp > 0 ? fmtBRL(m.desp) : "—"}</td>
                               <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: temDados ? 600 : 400, color: res >= 0 ? "#1A5C38" : "#E24B4A" }}>{temDados ? fmtBRL(res) : "—"}</td>
@@ -329,15 +329,15 @@ export default function LCDPR() {
 
                   {/* Resumo por código */}
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 12 }}>Por código LCDPR</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Por código LCDPR</div>
                     {porCodigo.length === 0 ? (
-                      <div style={{ color: "#888", fontSize: 12 }}>Sem lançamentos no período.</div>
+                      <div style={{ color: "var(--text-3)", fontSize: 12 }}>Sem lançamentos no período.</div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {porCodigo.map(c => (
-                          <div key={c.cod} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#F8FAFD", borderRadius: 8, border: "0.5px solid #DEE5EE" }}>
+                          <div key={c.cod} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#F8FAFD", borderRadius: 8, border: "0.5px solid var(--border-row)" }}>
                             <span style={{ fontSize: 11, background: c.tipo === "receita" ? "#EAF3DE" : "#FCEBEB", color: c.tipo === "receita" ? "#1A5C38" : "#791F1F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, flexShrink: 0 }}>{c.cod}</span>
-                            <span style={{ flex: 1, fontSize: 12, color: "#1a1a1a" }}>{c.desc}</span>
+                            <span style={{ flex: 1, fontSize: 12, color: "var(--text-1)" }}>{c.desc}</span>
                             <span style={{ fontWeight: 700, color: c.tipo === "receita" ? "#1A5C38" : "#E24B4A", fontSize: 13 }}>{fmtBRL(c.total)}</span>
                           </div>
                         ))}
@@ -345,15 +345,15 @@ export default function LCDPR() {
                     )}
 
                     {/* Resultado apurado */}
-                    <div style={{ marginTop: 16, background: "#F3F6F9", borderRadius: 10, padding: "14px 16px", border: "0.5px solid #D4DCE8" }}>
-                      <div style={{ fontSize: 11, color: "#555", marginBottom: 8 }}>Resultado apurado {anoSel}</div>
+                    <div style={{ marginTop: 16, background: "#F3F6F9", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border-table)" }}>
+                      <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 8 }}>Resultado apurado {anoSel}</div>
                       {[
                         { label: "(+) Total Receitas",     valor: totalReceitas,  cor: "#1A5C38" },
                         { label: "(-) Total Despesas",     valor: -totalDespesas, cor: "#E24B4A" },
                         { label: "(=) Resultado Líquido",  valor: totalReceitas - totalDespesas, cor: (totalReceitas - totalDespesas) >= 0 ? "#1A5C38" : "#E24B4A", bold: true },
                       ].map((l, i) => (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: i < 2 ? "0.5px solid #DEE5EE" : "none" }}>
-                          <span style={{ fontSize: 12, color: "#555" }}>{l.label}</span>
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: i < 2 ? "0.5px solid var(--border-row)" : "none" }}>
+                          <span style={{ fontSize: 12, color: "var(--text-2)" }}>{l.label}</span>
                           <span style={{ fontWeight: l.bold ? 700 : 500, color: l.cor, fontSize: l.bold ? 14 : 12 }}>{fmtBRL(Math.abs(l.valor))}</span>
                         </div>
                       ))}
@@ -369,8 +369,8 @@ export default function LCDPR() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 12 }}>Arquivo LCDPR para entrega à Receita Federal</div>
-                    <div style={{ fontSize: 12, color: "#555", lineHeight: 1.8, marginBottom: 20 }}>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Arquivo LCDPR para entrega à Receita Federal</div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.8, marginBottom: 20 }}>
                       O LCDPR deve ser entregue anualmente até <strong>30 de junho</strong> do ano seguinte ao período de apuração, através do programa <strong>ReceitaNet</strong> ou via portal e-CAC.
                     </div>
 
@@ -382,9 +382,9 @@ export default function LCDPR() {
                       { label: "Total receitas",         val: fmtBRL(totalReceitas) },
                       { label: "Total despesas",         val: fmtBRL(totalDespesas) },
                     ].map((r, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "0.5px solid #DEE5EE" }}>
-                        <span style={{ fontSize: 12, color: "#555" }}>{r.label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{r.val}</span>
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "0.5px solid var(--border-row)" }}>
+                        <span style={{ fontSize: 12, color: "var(--text-2)" }}>{r.label}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{r.val}</span>
                       </div>
                     ))}
 
@@ -407,8 +407,8 @@ export default function LCDPR() {
                     </div>
                   </div>
 
-                  <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "18px 20px" }}>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Quem é obrigado a entregar?</div>
+                  <div style={{ background: "#F8FAFD", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px" }}>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Quem é obrigado a entregar?</div>
                     {[
                       "Produtor rural Pessoa Física",
                       "Receita bruta rural acima de R$ 56.112,00 no ano",
@@ -421,8 +421,8 @@ export default function LCDPR() {
                       </div>
                     ))}
 
-                    <div style={{ borderTop: "0.5px solid #D4DCE8", marginTop: 14, paddingTop: 14 }}>
-                      <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Categorias obrigatórias no LCDPR</div>
+                    <div style={{ borderTop: "0.5px solid var(--border-table)", marginTop: 14, paddingTop: 14 }}>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Categorias obrigatórias no LCDPR</div>
                       {[...CODIGOS_LCDPR.receita, ...CODIGOS_LCDPR.despesa].map(c => (
                         <div key={c.cod} style={{ display: "flex", gap: 8, marginBottom: 5, fontSize: 11 }}>
                           <span style={{ fontWeight: 700, color: c.cod.startsWith("1") ? "#1A5C38" : "#E24B4A", flexShrink: 0, width: 28 }}>{c.cod}</span>
@@ -441,8 +441,8 @@ export default function LCDPR() {
       {/* Modal lançamento manual */}
       {modalManual && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: 28, width: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: 20 }}>Lançamento Manual LCDPR</div>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 460, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: 20 }}>Lançamento Manual LCDPR</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
                 <label style={lblS}>Data *</label>
@@ -481,7 +481,7 @@ export default function LCDPR() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 13, color: "#1a1a1a" }}>Cancelar</button>
+              <button onClick={() => setModalManual(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-1)" }}>Cancelar</button>
               <button onClick={adicionarManual} style={{ padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>Adicionar</button>
             </div>
           </div>

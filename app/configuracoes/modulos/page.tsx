@@ -49,7 +49,7 @@ interface Motorista {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const campo = (label: string, children: React.ReactNode, required?: boolean) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-    <label style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+    <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
       {label}{required && <span style={{ color: "#E24B4A", marginLeft: 2 }}>*</span>}
     </label>
     {children}
@@ -61,7 +61,7 @@ const inp = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
 );
 
 const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff", outline: "none", width: "100%", ...props.style }} />
+  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%", ...props.style }} />
 );
 
 const txta = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
@@ -574,10 +574,10 @@ function ParametrosSistemaContent() {
         "040": { label: "Isenta",        bg: "#EFF6FF", color: "#1A5CB8" },
         "041": { label: "Não Trib.",     bg: "#EFF6FF", color: "#1A5CB8" },
         "000": { label: "Tributada",     bg: "#FEE2E2", color: "#E24B4A" },
-        "08":  { label: "Sem Incid.",    bg: "#F4F6FA", color: "#555"    },
+        "08":  { label: "Sem Incid.",    bg: "var(--bg-page)", color: "var(--text-2)"    },
         "06":  { label: "Alíq. Zero",   bg: "#F0FDF4", color: "#16A34A" },
       };
-      const s = map[cst] ?? { label: cst, bg: "#F4F6FA", color: "#555" };
+      const s = map[cst] ?? { label: cst, bg: "var(--bg-page)", color: "var(--text-2)" };
       return <span style={{ padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{s.label}</span>;
     };
 
@@ -585,7 +585,7 @@ function ParametrosSistemaContent() {
       <div>
         <div style={{ marginBottom: 20 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Operações Fiscais</h2>
-          <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Define o perfil fiscal de cada tipo de saída — CFOP, ICMS, PIS/COFINS e IBS/CBS.
             Ao emitir uma NF-e o usuário escolhe a operação; o sistema aplica automaticamente o tratamento correto.
           </p>
@@ -606,7 +606,7 @@ function ParametrosSistemaContent() {
           </button>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => window.print()} className="no-print"
-              style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               🖨 Imprimir
             </button>
             <button onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
@@ -619,7 +619,7 @@ function ParametrosSistemaContent() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ background: "#F4F6FA" }}>
+              <tr style={{ background: "var(--bg-page)" }}>
                 {["Operação","CFOP int.","CFOP ext.","ICMS interno","ICMS externo","Alíq%","B.Red%","PIS","COFINS","IBS/CBS","Status",""].map(h => (
                   <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
@@ -633,14 +633,14 @@ function ParametrosSistemaContent() {
                   <tr key={op.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{op.nome}</div>
-                      {op.descricao && <div style={{ color: "#888", fontSize: 11, maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={op.descricao}>{op.descricao}</div>}
+                      {op.descricao && <div style={{ color: "var(--text-3)", fontSize: 11, maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={op.descricao}>{op.descricao}</div>}
                     </td>
                     <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700, color: "#1A4870" }}>{op.cfop_interno}</td>
-                    <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700, color: "#555" }}>{op.cfop_externo !== op.cfop_interno ? op.cfop_externo : "—"}</td>
+                    <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700, color: "var(--text-2)" }}>{op.cfop_externo !== op.cfop_interno ? op.cfop_externo : "—"}</td>
                     <td style={{ padding: "8px 10px" }}>{cstBadge(op.icms_cst_interno)}</td>
                     <td style={{ padding: "8px 10px" }}>{cstBadge(op.icms_cst_externo)}</td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>{op.icms_aliq.toFixed(2)}%</td>
-                    <td style={{ padding: "8px 10px", textAlign: "right", color: op.icms_base_reduzida_pct < 100 ? "#B45309" : "#888" }}>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: op.icms_base_reduzida_pct < 100 ? "#B45309" : "var(--text-3)" }}>
                       {op.icms_base_reduzida_pct < 100 ? `${op.icms_base_reduzida_pct}% → ${efetiva.toFixed(2)}%` : "—"}
                     </td>
                     <td style={{ padding: "8px 10px" }}>{cstBadge(op.pis_cst)}</td>
@@ -668,7 +668,7 @@ function ParametrosSistemaContent() {
                 );
               })}
               {operacoes.length === 0 && (
-                <tr><td colSpan={12} style={{ padding: "28px", textAlign: "center", color: "#888" }}>
+                <tr><td colSpan={12} style={{ padding: "28px", textAlign: "center", color: "var(--text-3)" }}>
                   Nenhuma operação configurada. Clique em "Carregar Operações Padrão (MT)" para começar.
                 </td></tr>
               )}
@@ -737,24 +737,24 @@ function ParametrosSistemaContent() {
       <div>
         <div style={{ marginBottom: 20 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros Fiscais — NF-e por Emitente</h2>
-          <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Cada empresa (PJ) ou produtor (PF) que emite NF-e tem configuração independente — série, numeração, endereço e certificado próprios.
             A tributação por produto é configurada na aba <strong>Tributação NCM</strong>.
           </p>
         </div>
 
         {/* ── Ambiente SEFAZ Global ─────────────────────────────────── */}
-        <div style={{ background: "#fff", border: `2px solid ${ambienteGlobal === "producao" ? "#16A34A" : "#C9921B"}`, borderRadius: 12, padding: "18px 22px", marginBottom: 24 }}>
+        <div style={{ background: "var(--bg-card)", border: `2px solid ${ambienteGlobal === "producao" ? "#16A34A" : "#C9921B"}`, borderRadius: 12, padding: "18px 22px", marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3 }}>Ambiente SEFAZ</div>
-              <div style={{ fontSize: 12, color: "#888" }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                 {ambienteGlobal === "producao"
                   ? "Produção — NF-e com validade fiscal real. Transmite à SEFAZ."
                   : "Homologação — ambiente de testes. NF-e sem validade fiscal."}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 0, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 30, padding: "4px" }}>
+            <div style={{ display: "flex", gap: 0, background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 30, padding: "4px" }}>
               {(["homologacao", "producao"] as const).map(v => {
                 const ativo = ambienteGlobal === v;
                 return (
@@ -768,7 +768,7 @@ function ParametrosSistemaContent() {
                       padding: "8px 24px", borderRadius: 26, border: "none", cursor: "pointer",
                       fontSize: 13, fontWeight: ativo ? 700 : 400,
                       background: ativo ? (v === "producao" ? "#16A34A" : "#C9921B") : "transparent",
-                      color: ativo ? "#fff" : "#888",
+                      color: ativo ? "#fff" : "var(--text-3)",
                       transition: "all 0.15s",
                     }}
                   >
@@ -792,9 +792,9 @@ function ParametrosSistemaContent() {
         </div>
 
         {emitters.length === 0 ? (
-          <div style={{ background: "#fff", border: "0.5px dashed #DDE2EE", borderRadius: 10, padding: "40px 24px", textAlign: "center", color: "#888" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px dashed #DDE2EE", borderRadius: 10, padding: "40px 24px", textAlign: "center", color: "var(--text-3)" }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
-            <div style={{ fontWeight: 600, marginBottom: 6, color: "#555" }}>Nenhum emitente cadastrado</div>
+            <div style={{ fontWeight: 600, marginBottom: 6, color: "var(--text-2)" }}>Nenhum emitente cadastrado</div>
             <div style={{ fontSize: 12, marginBottom: 16 }}>
               Cadastre uma <strong>Empresa</strong> (PJ) ou <strong>Produtor</strong> (PF) em Cadastros primeiro.
             </div>
@@ -810,17 +810,17 @@ function ParametrosSistemaContent() {
             const hasCert = !!(c.cert_a1_path);
 
             return (
-              <div key={emitter.moduloKey} style={{ border: `0.5px solid ${isOpen ? "#1A4870" : "#DDE2EE"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
+              <div key={emitter.moduloKey} style={{ border: `0.5px solid ${isOpen ? "#1A4870" : "var(--border)"}`, borderRadius: 10, marginBottom: 10, overflow: "hidden", boxShadow: isOpen ? "0 2px 8px rgba(26,72,112,0.08)" : "none" }}>
 
                 {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: isOpen ? "#F0F5FF" : "#fff", cursor: "pointer", userSelect: "none" }}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: isOpen ? "#F0F5FF" : "var(--bg-card)", cursor: "pointer", userSelect: "none" }}
                   onClick={() => setExpandedEmitter(isOpen ? null : emitter.moduloKey)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 10, background: emitter.type === "empresa" ? "#EFF6FF" : "#F0FDF4", color: emitter.type === "empresa" ? "#1A5CB8" : "#16A34A", border: `0.5px solid ${emitter.type === "empresa" ? "#BFDBFE" : "#BBF7D0"}` }}>
                       {emitter.type === "empresa" ? "PJ — e-CNPJ" : "PF — e-CPF"}
                     </span>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{emitter.nome}</span>
-                    {emitter.cpf_cnpj && <span style={{ fontSize: 12, color: "#888", fontFamily: "monospace" }}>{emitter.cpf_cnpj}</span>}
+                    {emitter.cpf_cnpj && <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>{emitter.cpf_cnpj}</span>}
                     <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, fontWeight: 600, background: isConfigured ? "#DCFCE7" : "#FEF3C7", color: isConfigured ? "#16A34A" : "#B45309" }}>
                       {isConfigured ? "Configurado" : "Pendente"}
                     </span>
@@ -833,7 +833,7 @@ function ParametrosSistemaContent() {
 
                   {/* Ambiente SEFAZ — toggle rápido no header */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 20, padding: "3px 4px" }}>
+                    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 20, padding: "3px 4px" }}>
                       {(["homologacao", "producao"] as const).map(v => {
                         const atual = (c.ambiente as string) || "homologacao";
                         const ativo = atual === v;
@@ -847,7 +847,7 @@ function ParametrosSistemaContent() {
                             style={{
                               padding: "3px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontSize: 11, fontWeight: ativo ? 700 : 400,
                               background: ativo ? (v === "producao" ? "#16A34A" : "#C9921B") : "transparent",
-                              color: ativo ? "#fff" : "#888",
+                              color: ativo ? "#fff" : "var(--text-3)",
                               transition: "all 0.15s",
                             }}
                           >
@@ -856,7 +856,7 @@ function ParametrosSistemaContent() {
                         );
                       })}
                     </div>
-                    <span style={{ fontSize: 13, color: "#888" }}>{isOpen ? "▲" : "▼"}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-3)" }}>{isOpen ? "▲" : "▼"}</span>
                   </div>
                 </div>
 
@@ -993,14 +993,14 @@ function ParametrosSistemaContent() {
       if (cst === "051") return { bg: "#DCFCE7", color: "#16A34A" };
       if (cst === "020") return { bg: "#FEF3C7", color: "#B45309" };
       if (["040","041"].includes(cst)) return { bg: "#EFF6FF", color: "#1A5CB8" };
-      return { bg: "#F4F6FA", color: "#555" };
+      return { bg: "var(--bg-page)", color: "var(--text-2)" };
     };
 
     return (
       <div>
         <div style={{ marginBottom: 20 }}>
           <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Tributação por NCM</h2>
-          <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
             Define ICMS, PIS, COFINS, IBS e CBS para cada NCM. O sistema busca automaticamente essa tabela ao gerar uma NF-e.
           </p>
         </div>
@@ -1030,7 +1030,7 @@ function ParametrosSistemaContent() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ background: "#F4F6FA" }}>
+              <tr style={{ background: "var(--bg-page)" }}>
                 {["NCM","Descrição","ICMS Interno","ICMS Externo","Alíq%","B.Red%","Efetiva","PIS","COFINS","IBS+CBS (c/red.)","infCpl",""].map(h => (
                   <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
@@ -1054,25 +1054,25 @@ function ParametrosSistemaContent() {
                       <span style={{ padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: externo.bg, color: externo.color }}>{cstLabel(n.icms_cst_externo)}</span>
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>{n.icms_aliq.toFixed(2)}%</td>
-                    <td style={{ padding: "8px 10px", textAlign: "right", color: n.icms_base_reduzida_pct < 100 ? "#B45309" : "#888" }}>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: n.icms_base_reduzida_pct < 100 ? "#B45309" : "var(--text-3)" }}>
                       {n.icms_base_reduzida_pct < 100 ? `${n.icms_base_reduzida_pct}%` : "—"}
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 600 }}>{efetiva.toFixed(2)}%</td>
-                    <td style={{ padding: "8px 10px", textAlign: "right", color: n.pis_aliq === 0 ? "#16A34A" : "#1a1a1a" }}>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: n.pis_aliq === 0 ? "#16A34A" : "var(--text-1)" }}>
                       {n.pis_cst} / {n.pis_aliq.toFixed(2)}%
                     </td>
-                    <td style={{ padding: "8px 10px", textAlign: "right", color: n.cofins_aliq === 0 ? "#16A34A" : "#1a1a1a" }}>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: n.cofins_aliq === 0 ? "#16A34A" : "var(--text-1)" }}>
                       {n.cofins_cst} / {n.cofins_aliq.toFixed(2)}%
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span style={{ fontSize: 11, color: "#888" }}>Padrão: {ibsCbsTotal.toFixed(1)}%</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: n.ibs_cbs_reducao_pct > 0 ? "#C9921B" : "#555" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>Padrão: {ibsCbsTotal.toFixed(1)}%</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: n.ibs_cbs_reducao_pct > 0 ? "#C9921B" : "var(--text-2)" }}>
                           {n.ibs_cbs_reducao_pct > 0 ? `−${n.ibs_cbs_reducao_pct}% → ` : ""}{ibsCbsEfetivo.toFixed(2)}%
                         </span>
                       </div>
                     </td>
-                    <td style={{ padding: "8px 10px", maxWidth: 120, color: "#888", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={n.inf_cpl}>
+                    <td style={{ padding: "8px 10px", maxWidth: 120, color: "var(--text-3)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={n.inf_cpl}>
                       {n.inf_cpl ? "✓" : "—"}
                     </td>
                     <td style={{ padding: "8px 10px" }}>
@@ -1085,7 +1085,7 @@ function ParametrosSistemaContent() {
                 );
               })}
               {ncms.length === 0 && (
-                <tr><td colSpan={12} style={{ padding: "28px", textAlign: "center", color: "#888" }}>
+                <tr><td colSpan={12} style={{ padding: "28px", textAlign: "center", color: "var(--text-3)" }}>
                   Nenhum NCM configurado. Clique em "Carregar Padrões MT" para começar.
                 </td></tr>
               )}
@@ -1103,7 +1103,7 @@ function ParametrosSistemaContent() {
         {(["transportadoras", "veiculos", "motoristas"] as const).map(s => (
           <button key={s} onClick={() => setSubAba(s)} style={{
             padding: "6px 16px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13,
-            fontWeight: subAba === s ? 700 : 400, background: subAba === s ? "#1A4870" : "#fff",
+            fontWeight: subAba === s ? 700 : 400, background: subAba === s ? "#1A4870" : "var(--bg-card)",
             color: subAba === s ? "#fff" : "#333", cursor: "pointer",
           }}>
             {s === "transportadoras" ? "Transportadoras" : s === "veiculos" ? "Veículos" : "Motoristas"}
@@ -1117,7 +1117,7 @@ function ParametrosSistemaContent() {
             <button onClick={() => setModalT({})} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Nova Transportadora</button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr style={{ background: "#F4F6FA" }}>
+            <thead><tr style={{ background: "var(--bg-page)" }}>
               {["CNPJ","Razão Social","RNTRC","UF","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
               ))}
@@ -1125,10 +1125,10 @@ function ParametrosSistemaContent() {
             <tbody>
               {transportadoras.map(t => (
                 <tr key={t.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{t.cnpj}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{t.cnpj}</td>
                   <td style={{ padding: "8px 12px", fontWeight: 600 }}>{t.razao_social}</td>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{t.rntrc || "—"}</td>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{t.uf || "—"}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{t.rntrc || "—"}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{t.uf || "—"}</td>
                   <td style={{ padding: "8px 12px" }}>
                     <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: t.ativa ? "#DCFCE7" : "#FEE2E2", color: t.ativa ? "#16A34A" : "#E24B4A" }}>
                       {t.ativa ? "Ativa" : "Inativa"}
@@ -1137,7 +1137,7 @@ function ParametrosSistemaContent() {
                   <td style={{ padding: "8px 12px" }}><button onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                 </tr>
               ))}
-              {transportadoras.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "#888" }}>Nenhuma transportadora cadastrada</td></tr>}
+              {transportadoras.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhuma transportadora cadastrada</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1149,7 +1149,7 @@ function ParametrosSistemaContent() {
             <button onClick={() => setModalV({})} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Veículo</button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr style={{ background: "#F4F6FA" }}>
+            <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Placa","Tipo","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
               ))}
@@ -1158,10 +1158,10 @@ function ParametrosSistemaContent() {
               {veiculos.map(v => (
                 <tr key={v.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
                   <td style={{ padding: "8px 12px", fontWeight: 700, fontFamily: "monospace" }}>{v.placa}</td>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{v.tipo}</td>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{v.tara_kg?.toLocaleString("pt-BR") || "—"}</td>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{v.cap_kg?.toLocaleString("pt-BR") || "—"}</td>
-                  <td style={{ padding: "8px 12px", color: "#555" }}>{v.rntrc || "—"}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tipo}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tara_kg?.toLocaleString("pt-BR") || "—"}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.cap_kg?.toLocaleString("pt-BR") || "—"}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.rntrc || "—"}</td>
                   <td style={{ padding: "8px 12px" }}>
                     <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: v.ativo ? "#DCFCE7" : "#FEE2E2", color: v.ativo ? "#16A34A" : "#E24B4A" }}>
                       {v.ativo ? "Ativo" : "Inativo"}
@@ -1170,7 +1170,7 @@ function ParametrosSistemaContent() {
                   <td style={{ padding: "8px 12px" }}><button onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                 </tr>
               ))}
-              {veiculos.length === 0 && <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "#888" }}>Nenhum veículo cadastrado</td></tr>}
+              {veiculos.length === 0 && <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum veículo cadastrado</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1182,7 +1182,7 @@ function ParametrosSistemaContent() {
             <button onClick={() => setModalM({})} style={{ padding: "7px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Novo Motorista</button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead><tr style={{ background: "#F4F6FA" }}>
+            <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Nome","CPF","CNH","Validade CNH","Status",""].map(h => (
                 <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
               ))}
@@ -1194,8 +1194,8 @@ function ParametrosSistemaContent() {
                 return (
                   <tr key={m.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
                     <td style={{ padding: "8px 12px", fontWeight: 600 }}>{m.nome}</td>
-                    <td style={{ padding: "8px 12px", color: "#555", fontFamily: "monospace" }}>{m.cpf}</td>
-                    <td style={{ padding: "8px 12px", color: "#555" }}>{m.cnh || "—"}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)", fontFamily: "monospace" }}>{m.cpf}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{m.cnh || "—"}</td>
                     <td style={{ padding: "8px 12px" }}>
                       {venc ? <span style={{ color: cnhVencida ? "#E24B4A" : "#16A34A", fontWeight: cnhVencida ? 700 : 400 }}>{venc.toLocaleDateString("pt-BR")}{cnhVencida ? " ⚠" : ""}</span> : "—"}
                     </td>
@@ -1208,7 +1208,7 @@ function ParametrosSistemaContent() {
                   </tr>
                 );
               })}
-              {motoristas.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "#888" }}>Nenhum motorista cadastrado</td></tr>}
+              {motoristas.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum motorista cadastrado</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1242,18 +1242,18 @@ function ParametrosSistemaContent() {
   };
 
   const modalStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 };
-  const boxStyle: React.CSSProperties = { background: "#fff", borderRadius: 12, padding: 28, width: 640, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.2)" };
+  const boxStyle: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, padding: 28, width: 640, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.2)" };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 24px" }}>
 
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Configurações</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Configurações</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>Parâmetros do Sistema</h1>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>Parâmetros do Sistema</h1>
             <span style={{ fontSize: 12, background: "#FBF3E0", color: "#C9921B", padding: "2px 10px", borderRadius: 12, fontWeight: 600, border: "0.5px solid #C9921B" }}>Configurações externas — sem código</span>
           </div>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#666" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
@@ -1272,13 +1272,13 @@ function ParametrosSistemaContent() {
           ))}
         </div>
 
-        <div style={{ background: "#fff", borderRadius: 12, padding: 28, border: "0.5px solid #DDE2EE" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, border: "0.5px solid #DDE2EE" }}>
 
           {aba === "aparencia" && (
             <div>
               <div style={{ marginBottom: 24 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Identidade Visual</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>A logo aparece no cabeçalho do sistema, no DANFE e no DACTE.</p>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "start" }}>
@@ -1287,7 +1287,7 @@ function ParametrosSistemaContent() {
                   <div style={{ width: 160, height: 100, border: "1.5px dashed #DDE2EE", borderRadius: 12, background: "#F8FAFB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     {logoUrl
                       ? <img src={logoUrl} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }} />
-                      : <span style={{ fontSize: 12, color: "#aaa" }}>Sem logo</span>
+                      : <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem logo</span>
                     }
                   </div>
                   {logoUrl && (
@@ -1306,7 +1306,7 @@ function ParametrosSistemaContent() {
                     <label style={{
                       display: "inline-flex", alignItems: "center", gap: 8,
                       padding: "10px 20px", borderRadius: 8, cursor: "pointer",
-                      background: logoUploading ? "#DDE2EE" : "#1A4870", color: "#fff",
+                      background: logoUploading ? "var(--border)" : "#1A4870", color: "#fff",
                       fontSize: 13, fontWeight: 600,
                     }}>
                       <input
@@ -1327,7 +1327,7 @@ function ParametrosSistemaContent() {
                     </div>
                   )}
 
-                  <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>
                     <strong>Bucket Supabase:</strong> <code>logos</code> (público) · Caminho: <code>clientes/{"{conta_id}"}/logo.{"{ext}"}</code>
                   </div>
                 </div>
@@ -1345,7 +1345,7 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros CT-e 3.00</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>
                   Conhecimento de Transporte Eletrônico — Modelo 57. Emitido pela frota própria do produtor.
                   MT usa SVRS (RS) como autorizador.
                 </p>
@@ -1371,7 +1371,7 @@ function ParametrosSistemaContent() {
                       <select
                         value={currentRef}
                         onChange={e => setCfgs(prev => ({ ...prev, cte: { ...(prev["cte"] ?? {}), modulo_fiscal_ref: e.target.value } }))}
-                        style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "#fff", outline: "none", width: "100%" }}
+                        style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
                       >
                         <option value="">— selecione o emitente —</option>
                         {emitters.map(em => (
@@ -1398,7 +1398,7 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros MDF-e</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>Manifesto Eletrônico de Documentos Fiscais — obrigatório no transporte interestadual de grãos.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Manifesto Eletrônico de Documentos Fiscais — obrigatório no transporte interestadual de grãos.</p>
               </div>
               {renderFields("mdfe", MDFE_FIELDS)}
             </div>
@@ -1408,7 +1408,7 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Transportes</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>Transportadoras, frota própria e motoristas. Usados na expedição e MDF-e.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Transportadoras, frota própria e motoristas. Usados na expedição e MDF-e.</p>
               </div>
               {renderTransportes()}
             </div>
@@ -1418,7 +1418,7 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Integrações Externas</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>Credenciais de serviços externos. Armazenadas com segurança no banco — RLS por fazenda.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Credenciais de serviços externos. Armazenadas com segurança no banco — RLS por fazenda.</p>
               </div>
               <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, padding: "10px 14px", marginBottom: 20, fontSize: 12, color: "#7A5A12" }}>
                 Armazenadas na tabela <code>configuracoes_modulo</code> com RLS de fazenda. Não expostas ao frontend de clientes.
@@ -1431,7 +1431,7 @@ function ParametrosSistemaContent() {
             <div>
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#1A4870" }}>Parâmetros de Expedição</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#888" }}>Configurações do módulo de expedição de grãos — pesos, tolerâncias e comportamento automático.</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-3)" }}>Configurações do módulo de expedição de grãos — pesos, tolerâncias e comportamento automático.</p>
               </div>
               {renderFields("expedicao", EXPEDICAO_FIELDS)}
             </div>
@@ -1445,7 +1445,7 @@ function ParametrosSistemaContent() {
           <div style={{ ...boxStyle, width: 780 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalOp.id ? "Editar Operação Fiscal" : "Nova Operação Fiscal"}</h3>
-              <button onClick={() => setModalOp(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={() => setModalOp(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Identificação */}
@@ -1466,7 +1466,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interestadual", sel({ value: modalOp.icms_cst_externo ?? "020", onChange: e => setModalOp(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.icms_aliq ?? 12, onChange: e => setModalOp(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalOp.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
-              {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#F4F6FA", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
+              {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div style={{ marginBottom: 14 }}>{secHeader("PIS / COFINS")}</div>
@@ -1486,7 +1486,7 @@ function ParametrosSistemaContent() {
 
             <div style={{ marginBottom: 14 }}>{secHeader("Texto Complementar (infCpl) — template")}</div>
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
                 Use <code>[CONTRATO]</code>, <code>[RE_NUMERO]</code>, <code>[DUE_NUMERO]</code> como variáveis — o sistema substitui ao emitir a NF-e.
               </div>
               {campo("Template infCpl",
@@ -1495,7 +1495,7 @@ function ParametrosSistemaContent() {
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarOp} style={{ padding: "8px 24px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1508,7 +1508,7 @@ function ParametrosSistemaContent() {
           <div style={{ ...boxStyle, width: 820 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalNcm.id ? "Editar Tributação NCM" : "Nova Tributação NCM"}</h3>
-              <button onClick={() => setModalNcm(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={() => setModalNcm(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
@@ -1524,7 +1524,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.icms_aliq ?? 12, onChange: e => setModalNcm(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalNcm.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
-              {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#F4F6FA", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
+              {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
@@ -1545,7 +1545,7 @@ function ParametrosSistemaContent() {
               {campo("IBS Municipal %", inp({ type: "number", step: "0.01", value: modalNcm.ibs_municipal_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, ibs_municipal_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("CBS %", inp({ type: "number", step: "0.01", value: modalNcm.cbs_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, cbs_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Redução %", sel({ value: String(modalNcm.ibs_cbs_reducao_pct ?? 0), onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_reducao_pct: parseFloat(e.target.value) })), children: [["0","0% — sem redução"],["60","60% — produção rural (agro)"],["100","100% — zero (exportação/cesta básica)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("Efetiva IBS+CBS", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#F4F6FA", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
+              {campo("Efetiva IBS+CBS", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
                 {(((modalNcm.ibs_estadual_aliq ?? 0) + (modalNcm.ibs_municipal_aliq ?? 0) + (modalNcm.cbs_aliq ?? 0)) * (1 - (modalNcm.ibs_cbs_reducao_pct ?? 0) / 100)).toFixed(2)}%
               </div>)}
             </div>
@@ -1562,7 +1562,7 @@ function ParametrosSistemaContent() {
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarNcm} style={{ padding: "8px 24px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1575,7 +1575,7 @@ function ParametrosSistemaContent() {
           <div style={boxStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalT.id ? "Editar Transportadora" : "Nova Transportadora"}</h3>
-              <button onClick={() => setModalT(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={() => setModalT(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("CNPJ *", inp({ value: modalT.cnpj ?? "", onChange: e => setModalT(p => ({ ...p!, cnpj: e.target.value })), placeholder: "00.000.000/0001-00" }))}
@@ -1586,7 +1586,7 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalT.ativa === false ? "inativo" : "ativo", onChange: e => setModalT(p => ({ ...p!, ativa: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativa</option>, <option key="inativo" value="inativo">Inativa</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarTransportadora} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1599,7 +1599,7 @@ function ParametrosSistemaContent() {
           <div style={boxStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalV.id ? "Editar Veículo" : "Novo Veículo"}</h3>
-              <button onClick={() => setModalV(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={() => setModalV(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Placa *", inp({ value: modalV.placa ?? "", onChange: e => setModalV(p => ({ ...p!, placa: e.target.value.toUpperCase() })), placeholder: "AAA-0000" }))}
@@ -1610,7 +1610,7 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalV.ativo === false ? "inativo" : "ativo", onChange: e => setModalV(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarVeiculo} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1623,7 +1623,7 @@ function ParametrosSistemaContent() {
           <div style={boxStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{modalM.id ? "Editar Motorista" : "Novo Motorista"}</h3>
-              <button onClick={() => setModalM(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={() => setModalM(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
               {campo("Nome *", inp({ value: modalM.nome ?? "", onChange: e => setModalM(p => ({ ...p!, nome: e.target.value })) }))}
@@ -1633,7 +1633,7 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalM.ativo === false ? "inativo" : "ativo", onChange: e => setModalM(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarMotorista} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1646,7 +1646,7 @@ function ParametrosSistemaContent() {
 
 export default function ParametrosSistema() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando...</div>}>
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando...</div>}>
       <ParametrosSistemaContent />
     </Suspense>
   );

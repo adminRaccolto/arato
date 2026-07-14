@@ -85,8 +85,8 @@ const STATUS_META: Record<StatusRec, { label: string; cor: string; bg: string }>
 const UNIDADES = ["L/ha","mL/ha","kg/ha","g/ha","t/ha","sc/ha","dose/ha","un/ha"];
 const BICOS = ["TT 110015","TT 11001","TT 11002","TT 11003","TeeJet 8001","TeeJet 8002","Cônico","Leque","Outro"];
 
-const inp: React.CSSProperties = { width:"100%", padding:"8px 10px", border:"0.5px solid #DDE2EE", borderRadius:8, fontSize:13, boxSizing:"border-box", background:"#fff" };
-const lbl: React.CSSProperties = { fontSize:11, color:"#888", fontWeight:600, marginBottom:4, display:"block", textTransform:"uppercase" };
+const inp: React.CSSProperties = { width:"100%", padding:"8px 10px", border:"0.5px solid var(--border)", borderRadius:8, fontSize:13, boxSizing:"border-box", background:"var(--bg-card)" };
+const lbl: React.CSSProperties = { fontSize:11, color:"var(--text-3)", fontWeight:600, marginBottom:4, display:"block", textTransform:"uppercase" };
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const fmtN = (v?: number | null, d = 1) => v != null ? v.toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}) : "—";
 
@@ -277,12 +277,12 @@ function ModalNova({
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#fff", borderRadius:12, width:760, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+      <div style={{ background:"var(--bg-card)", borderRadius:12, width:760, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
         {/* Header */}
-        <div style={{ padding:"20px 28px 0", borderBottom:"0.5px solid #DDE2EE" }}>
+        <div style={{ padding:"20px 28px 0", borderBottom:"0.5px solid var(--border)" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
             <div style={{ fontSize:17, fontWeight:700 }}>{isEditing ? "Editar Recomendação" : "Nova Recomendação Agronômica"}</div>
-            <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+            <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
           </div>
           <div style={{ display:"flex", gap:0 }}>
             {abas.map(a => (
@@ -307,9 +307,9 @@ function ModalNova({
                 <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                   {(Object.keys(TIPOS_OP) as TipoOp[]).map(t => (
                     <button key={t} onClick={() => setF(v => ({...v, tipo: t}))}
-                      style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${f.tipo === t ? TIPOS_OP[t].cor : "#DDE2EE"}`,
-                        background: f.tipo === t ? TIPOS_OP[t].bg : "#fff",
-                        color: f.tipo === t ? TIPOS_OP[t].cor : "#555",
+                      style={{ padding:"7px 14px", borderRadius:20, border:`1.5px solid ${f.tipo === t ? TIPOS_OP[t].cor : "var(--border)"}`,
+                        background: f.tipo === t ? TIPOS_OP[t].bg : "var(--bg-card)",
+                        color: f.tipo === t ? TIPOS_OP[t].cor : "var(--text-2)",
                         fontWeight: f.tipo === t ? 700 : 400, fontSize:12, cursor:"pointer" }}>
                       {TIPOS_OP[t].label}
                     </button>
@@ -369,7 +369,7 @@ function ModalNova({
                 <div>
                   <div style={{ fontSize:14, fontWeight:700 }}>Talhões incluídos</div>
                   {areaTotal > 0 && (
-                    <div style={{ fontSize:12, color:"#888", marginTop:2 }}>
+                    <div style={{ fontSize:12, color:"var(--text-3)", marginTop:2 }}>
                       Área total: <strong>{fmtN(areaTotal)} ha</strong>
                       {parseFloat(f.remonte_pct) > 0 && <span style={{ color:"#C9921B" }}> (inclui {f.remonte_pct}% remonte)</span>}
                     </div>
@@ -443,7 +443,7 @@ function ModalNova({
                           setPf(i, "nome", ins?.nome ?? "");
                         }
                       }}
-                      style={{ ...inp, borderColor: p.insumo_id ? "#16A34A" : "#DDE2EE" }}
+                      style={{ ...inp, borderColor: p.insumo_id ? "#16A34A" : "var(--border)" }}
                     >
                       <option value="__outro__">— Selecione um insumo —</option>
                       {(["defensivo","fertilizante","inoculante","semente","produto_agricola","outros"] as const).map(cat => {
@@ -463,7 +463,7 @@ function ModalNova({
                       })}
                     </select>
                     {!p.insumo_id && (
-                      <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>
                         Selecione um insumo cadastrado para baixar estoque automaticamente
                       </div>
                     )}
@@ -488,11 +488,11 @@ function ModalNova({
                 </div>
               ))}
               {areaTotal > 0 && produtosForm.some(p => p.dose && p.nome) && (
-                <div style={{ marginTop:16, background:"#F4F6FA", borderRadius:8, padding:"12px 16px" }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:"#888", marginBottom:8, textTransform:"uppercase" }}>Totais calculados ({fmtN(areaTotal)} ha)</div>
+                <div style={{ marginTop:16, background:"var(--bg-page)", borderRadius:8, padding:"12px 16px" }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"var(--text-3)", marginBottom:8, textTransform:"uppercase" }}>Totais calculados ({fmtN(areaTotal)} ha)</div>
                   {produtosForm.filter(p => p.nome && p.dose).map((p, i) => (
                     <div key={i} style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
-                      <span style={{ color:"#555" }}>{p.nome}</span>
+                      <span style={{ color:"var(--text-2)" }}>{p.nome}</span>
                       <strong>{fmtN(parseFloat(p.dose) * areaTotal, 2)} {p.unidade.split("/")[0]}</strong>
                     </div>
                   ))}
@@ -504,7 +504,7 @@ function ModalNova({
           {/* ABA CONDIÇÕES */}
           {aba === "condicoes" && (
             <div>
-              <div style={{ marginBottom:16, fontSize:13, color:"#888" }}>
+              <div style={{ marginBottom:16, fontSize:13, color:"var(--text-3)" }}>
                 Condições mínimas para realização da operação em campo. Exibidas ao operador durante a execução.
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
@@ -569,14 +569,14 @@ function ModalNova({
         </div>
 
         {/* Footer */}
-        <div style={{ padding:"16px 28px", borderTop:"0.5px solid #DDE2EE", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div style={{ fontSize:12, color:"#888" }}>
+        <div style={{ padding:"16px 28px", borderTop:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ fontSize:12, color:"var(--text-3)" }}>
             {talhoesForm.filter(t => t.talhao_id && t.area).length} talhão(ões) ·{" "}
             {produtosForm.filter(p => p.nome && p.dose).length} produto(s)
             {areaTotal > 0 && <> · {fmtN(areaTotal)} ha</>}
           </div>
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={onClose} style={{ padding:"9px 20px", background:"#fff", border:"0.5px solid #DDE2EE", borderRadius:8, fontSize:13, cursor:"pointer" }}>
+            <button onClick={onClose} style={{ padding:"9px 20px", background:"var(--bg-card)", border:"0.5px solid var(--border)", borderRadius:8, fontSize:13, cursor:"pointer" }}>
               Cancelar
             </button>
             <button onClick={salvar} disabled={saving}
@@ -630,16 +630,16 @@ function ModalExecutar({
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(11,45,80,0.32)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:"#fff", borderRadius:12, width:640, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding:"20px 28px", borderBottom:"0.5px solid #DDE2EE", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div style={{ background:"var(--bg-card)", borderRadius:12, width:640, maxHeight:"90vh", display:"flex", flexDirection:"column", boxShadow:"0 24px 64px rgba(0,0,0,0.2)" }}>
+        <div style={{ padding:"20px 28px", borderBottom:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <div style={{ fontSize:16, fontWeight:700 }}>Confirmar Execução</div>
-            <div style={{ fontSize:12, color:"#888", marginTop:2 }}>
+            <div style={{ fontSize:12, color:"var(--text-3)", marginTop:2 }}>
               <span style={{ padding:"2px 8px", background:tipoMeta.bg, color:tipoMeta.cor, borderRadius:20, fontWeight:600, fontSize:11 }}>{tipoMeta.label}</span>
               {rec.agronomo_nome && <span style={{ marginLeft:8 }}>Rec.: {rec.agronomo_nome}</span>}
             </div>
           </div>
-          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"#888" }}>×</button>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:20, cursor:"pointer", color:"var(--text-3)" }}>×</button>
         </div>
 
         <div style={{ padding:24, overflowY:"auto", flex:1 }}>
@@ -661,7 +661,7 @@ function ModalExecutar({
 
           {/* Produtos */}
           <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:"#555", marginBottom:8, textTransform:"uppercase" }}>Produtos</div>
+            <div style={{ fontSize:12, fontWeight:700, color:"var(--text-2)", marginBottom:8, textTransform:"uppercase" }}>Produtos</div>
             {produtos.map((p, i) => (
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, padding:"6px 0", borderBottom:"0.5px solid #F0F0F0" }}>
                 <span style={{ display:"flex", alignItems:"center", gap:6 }}>
@@ -684,21 +684,21 @@ function ModalExecutar({
 
           {/* Talhões — confirmação de área */}
           <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:"#555", marginBottom:10, textTransform:"uppercase" }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"var(--text-2)", marginBottom:10, textTransform:"uppercase" }}>
               Confirmação por Talhão
             </div>
             {ajustes.map((a, i) => (
               <div key={i} style={{ display:"grid", gridTemplateColumns:"auto 1fr 120px auto", gap:10, alignItems:"center", marginBottom:10,
                 padding:"12px 16px", background: a.concluido ? "#F0FFF4" : "#F9FAFB", borderRadius:8,
-                border:`0.5px solid ${a.concluido ? "#86EFAC" : "#DDE2EE"}` }}>
+                border:`0.5px solid ${a.concluido ? "#86EFAC" : "var(--border)"}` }}>
                 <input type="checkbox" checked={a.concluido ?? false} onChange={e => setAjuste(i, "concluido", e.target.checked)}
                   style={{ width:18, height:18, cursor:"pointer", accentColor:"#16A34A" }} />
                 <div>
                   <div style={{ fontSize:13, fontWeight:600 }}>{a.talhao_nome}</div>
-                  <div style={{ fontSize:11, color:"#888" }}>Rec.: {fmtN(a.area_recomendada_ha)} ha</div>
+                  <div style={{ fontSize:11, color:"var(--text-3)" }}>Rec.: {fmtN(a.area_recomendada_ha)} ha</div>
                 </div>
                 <div>
-                  <div style={{ fontSize:10, color:"#888", marginBottom:2 }}>Área executada (ha)</div>
+                  <div style={{ fontSize:10, color:"var(--text-3)", marginBottom:2 }}>Área executada (ha)</div>
                   <InputNumerico value={Number(a.area_executada_ha) || ""}
                     onChange={v => setAjuste(i, "area_executada_ha", parseFloat(v) || 0)}
                     disabled={!a.concluido}
@@ -712,7 +712,7 @@ function ModalExecutar({
               </div>
             ))}
             {areaExecutada > 0 && (
-              <div style={{ fontSize:12, color:"#555", textAlign:"right", marginTop:8 }}>
+              <div style={{ fontSize:12, color:"var(--text-2)", textAlign:"right", marginTop:8 }}>
                 Executado: <strong>{fmtN(areaExecutada)} ha</strong> de {fmtN(areaTotalRec)} ha recomendados
               </div>
             )}
@@ -730,12 +730,12 @@ function ModalExecutar({
           </div>
         </div>
 
-        <div style={{ padding:"16px 28px", borderTop:"0.5px solid #DDE2EE", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ padding:"16px 28px", borderTop:"0.5px solid var(--border)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div style={{ fontSize:12, color: todosFeitos ? "#16A34A" : "#C9921B" }}>
             {todosFeitos ? "✓ Todos os talhões concluídos" : `${ajustes.filter(a=>a.concluido).length}/${ajustes.length} talhões concluídos`}
           </div>
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={onClose} style={{ padding:"9px 20px", background:"#fff", border:"0.5px solid #DDE2EE", borderRadius:8, fontSize:13, cursor:"pointer" }}>
+            <button onClick={onClose} style={{ padding:"9px 20px", background:"var(--bg-card)", border:"0.5px solid var(--border)", borderRadius:8, fontSize:13, cursor:"pointer" }}>
               Cancelar
             </button>
             <button onClick={confirmar} disabled={saving}
@@ -1008,7 +1008,7 @@ export default function RecomendacoesPage() {
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
           <div>
             <h1 style={{ margin:0, fontSize:20, fontWeight:700 }}>Recomendações Agronômicas</h1>
-            <p style={{ margin:"4px 0 0", fontSize:13, color:"#888" }}>Emissão e acompanhamento de receituários de campo</p>
+            <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--text-3)" }}>Emissão e acompanhamento de receituários de campo</p>
           </div>
           <div style={{ display:"flex", gap:10 }}>
             <a href="/lavoura/execucao"
@@ -1030,10 +1030,10 @@ export default function RecomendacoesPage() {
             { k: "concluida",   label: "Concluídas",    cor: STATUS_META.concluida },
           ] as const).map(s => (
             <div key={s.k} onClick={() => setFiltroStatus(filtroStatus === s.k ? "" : s.k)}
-              style={{ background:"#fff", borderRadius:10, padding:"16px 20px", border:`0.5px solid ${filtroStatus === s.k ? s.cor.cor : "#DDE2EE"}`,
+              style={{ background:"var(--bg-card)", borderRadius:10, padding:"16px 20px", border:`0.5px solid ${filtroStatus === s.k ? s.cor.cor : "var(--border)"}`,
                 cursor:"pointer", transition:"border .15s" }}>
               <div style={{ fontSize:28, fontWeight:800, color: s.cor.cor }}>{stats[s.k]}</div>
-              <div style={{ fontSize:12, color:"#888", marginTop:2 }}>{s.label}</div>
+              <div style={{ fontSize:12, color:"var(--text-3)", marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -1052,7 +1052,7 @@ export default function RecomendacoesPage() {
           </select>
           {(filtroStatus || filtroTipo || busca) && (
             <button onClick={() => { setFiltroStatus(""); setFiltroTipo(""); setBusca(""); }}
-              style={{ padding:"8px 14px", background:"#F4F6FA", border:"0.5px solid #DDE2EE", borderRadius:8, fontSize:12, cursor:"pointer", color:"#666" }}>
+              style={{ padding:"8px 14px", background:"var(--bg-page)", border:"0.5px solid var(--border)", borderRadius:8, fontSize:12, cursor:"pointer", color:"#666" }}>
               Limpar filtros
             </button>
           )}
@@ -1060,12 +1060,12 @@ export default function RecomendacoesPage() {
 
         {/* Lista */}
         {loading ? (
-          <div style={{ textAlign:"center", padding:60, color:"#888" }}>Carregando...</div>
+          <div style={{ textAlign:"center", padding:60, color:"var(--text-3)" }}>Carregando...</div>
         ) : recsFiltradas.length === 0 ? (
-          <div style={{ textAlign:"center", padding:60, background:"#fff", borderRadius:12, border:"0.5px solid #DDE2EE" }}>
+          <div style={{ textAlign:"center", padding:60, background:"var(--bg-card)", borderRadius:12, border:"0.5px solid var(--border)" }}>
             <div style={{ fontSize:36, marginBottom:12 }}>📋</div>
-            <div style={{ fontSize:15, fontWeight:600, color:"#555" }}>Nenhuma recomendação encontrada</div>
-            <div style={{ fontSize:13, color:"#888", marginTop:4 }}>Crie a primeira recomendação usando o botão acima.</div>
+            <div style={{ fontSize:15, fontWeight:600, color:"var(--text-2)" }}>Nenhuma recomendação encontrada</div>
+            <div style={{ fontSize:13, color:"var(--text-3)", marginTop:4 }}>Crie a primeira recomendação usando o botão acima.</div>
           </div>
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -1073,7 +1073,7 @@ export default function RecomendacoesPage() {
               const tipo   = TIPOS_OP[rec.tipo];
               const status = STATUS_META[rec.status];
               return (
-                <div key={rec.id} style={{ background:"#fff", borderRadius:10, border:"0.5px solid #DDE2EE", padding:"16px 20px",
+                <div key={rec.id} style={{ background:"var(--bg-card)", borderRadius:10, border:"0.5px solid var(--border)", padding:"16px 20px",
                   display:"grid", gridTemplateColumns:"auto 1fr auto auto", gap:16, alignItems:"center" }}>
                   {/* Tipo badge */}
                   <div style={{ textAlign:"center" }}>
@@ -1089,9 +1089,9 @@ export default function RecomendacoesPage() {
                         {rec.data_prevista_fim && rec.data_prevista_fim !== rec.data_prevista_inicio
                           ? ` → ${fmtData(rec.data_prevista_fim)}` : ""}
                       </span>
-                      {rec.codigo && <span style={{ fontSize:11, color:"#888" }}>#{rec.codigo}</span>}
+                      {rec.codigo && <span style={{ fontSize:11, color:"var(--text-3)" }}>#{rec.codigo}</span>}
                     </div>
-                    <div style={{ fontSize:12, color:"#555", display:"flex", gap:16, flexWrap:"wrap" }}>
+                    <div style={{ fontSize:12, color:"var(--text-2)", display:"flex", gap:16, flexWrap:"wrap" }}>
                       {rec.agronomo_nome && <span>Agrônomo: <strong>{rec.agronomo_nome}</strong></span>}
                       {rec.area_total_recomendada_ha && <span>Área: <strong>{fmtN(rec.area_total_recomendada_ha)} ha</strong></span>}
                       {rec.vazao_lha && rec.tipo === "pulverizacao" && <span>Vazão: <strong>{rec.vazao_lha} L/ha</strong></span>}

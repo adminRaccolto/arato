@@ -133,9 +133,9 @@ export default function AdminPage() {
     return (
       <>
         <TopNav />
-        <div style={{ padding: 40, textAlign: "center", color: "#888" }}>
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#1a1a1a" }}>Acesso restrito</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-1)" }}>Acesso restrito</div>
           <div style={{ fontSize: 14, marginTop: 8 }}>Esta área é exclusiva para a equipe Raccolto.</div>
         </div>
       </>
@@ -281,12 +281,12 @@ export default function AdminPage() {
   return (
     <>
       <TopNav />
-      <div style={{ background: "#F4F6FA", minHeight: "100vh", padding: "24px 28px" }}>
+      <div style={{ background: "var(--bg-page)", minHeight: "100vh", padding: "24px 28px" }}>
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>
               Administração de Clientes
             </h1>
             <span style={{ padding: "2px 10px", background: "#E24B4A", color: "white", borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
@@ -306,14 +306,14 @@ export default function AdminPage() {
               onClick={() => { setAba(a.id); setResultadoCliente(null); setResultadoLimpeza(null); }}
               style={{
                 padding: "12px 20px", borderRadius: 10, cursor: "pointer",
-                border: `2px solid ${aba === a.id ? "#E24B4A" : "#DDE2EE"}`,
+                border: `2px solid ${aba === a.id ? "#E24B4A" : "var(--border)"}`,
                 background: aba === a.id ? "#FFF0F0" : "white",
                 textAlign: "left", minWidth: 240,
               }}
             >
               <div style={{ fontSize: 20, marginBottom: 4 }}>{a.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: aba === a.id ? "#E24B4A" : "#1a1a1a" }}>{a.label}</div>
-              <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{a.desc}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: aba === a.id ? "#E24B4A" : "var(--text-1)" }}>{a.label}</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{a.desc}</div>
             </button>
           ))}
         </div>
@@ -325,17 +325,17 @@ export default function AdminPage() {
             {/* Lista de contas */}
             <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>
                   Contas ({contas.length})
                 </span>
-                <button onClick={carregarContas} style={{ padding: "4px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "#555" }}>
+                <button onClick={carregarContas} style={{ padding: "4px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                   {carregandoContas ? "⏳" : "↺"} Recarregar
                 </button>
               </div>
               {carregandoContas ? (
-                <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando...</div>
+                <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
               ) : contas.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: "#aaa", fontSize: 13 }}>Nenhuma conta encontrada.</div>
+                <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Nenhuma conta encontrada.</div>
               ) : (
                 contas.map(c => (
                   <button
@@ -348,10 +348,10 @@ export default function AdminPage() {
                       textAlign: "left", cursor: "pointer",
                     }}
                   >
-                    <div style={{ fontWeight: 600, fontSize: 13, color: contaSelecionada === c.id ? "#E24B4A" : "#1a1a1a" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: contaSelecionada === c.id ? "#E24B4A" : "var(--text-1)" }}>
                       {c.nome}
                     </div>
-                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                       {c.fazendas.length} fazenda{c.fazendas.length !== 1 ? "s" : ""}
                       {c.fazendas.length > 0 && ` · ${c.fazendas.map(f => f.nome).join(", ")}`}
                     </div>
@@ -363,7 +363,7 @@ export default function AdminPage() {
             {/* Painel de exclusão */}
             <div>
               {!contaExcluirObj ? (
-                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "#aaa", fontSize: 14 }}>
+                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                   Selecione um cliente à esquerda para ver as opções de exclusão.
                 </div>
               ) : (
@@ -383,14 +383,14 @@ export default function AdminPage() {
                       ))}
                       <li>Lançamentos, contratos, operações de lavoura, arrendamentos, estoque — tudo</li>
                     </ul>
-                    <div style={{ marginTop: 10, fontSize: 12, color: "#888" }}>
+                    <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-3)" }}>
                       Os usuários de autenticação (e-mail/senha) NÃO são excluídos — remova-os manualmente em Supabase → Authentication se necessário.
                     </div>
                   </div>
 
                   {/* Detalhes da conta */}
                   <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px", marginBottom: 20 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>
                       Resumo do cliente selecionado
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
@@ -399,9 +399,9 @@ export default function AdminPage() {
                         { label: "Tipo", valor: contaExcluirObj.tipo?.toUpperCase() ?? "—" },
                         { label: "Fazendas", valor: String(contaExcluirObj.fazendas.length) },
                       ].map(({ label, valor }) => (
-                        <div key={label} style={{ padding: "10px 14px", background: "#F4F6FA", borderRadius: 8 }}>
-                          <div style={{ fontSize: 11, color: "#888" }}>{label}</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginTop: 2 }}>{valor}</div>
+                        <div key={label} style={{ padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-3)" }}>{label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginTop: 2 }}>{valor}</div>
                         </div>
                       ))}
                     </div>
@@ -418,11 +418,11 @@ export default function AdminPage() {
 
                   {/* Confirmação */}
                   <div style={{ background: "white", borderRadius: 12, border: "1.5px solid #E24B4A", padding: "20px 24px" }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>
                       Para confirmar, digite exatamente o nome da conta:
                     </div>
                     <div style={{ marginBottom: 6 }}>
-                      <code style={{ background: "#F4F6FA", padding: "4px 10px", borderRadius: 6, fontSize: 14, color: "#1A4870", fontWeight: 700 }}>
+                      <code style={{ background: "var(--bg-page)", padding: "4px 10px", borderRadius: 6, fontSize: 14, color: "#1A4870", fontWeight: 700 }}>
                         {contaExcluirObj.nome}
                       </code>
                     </div>
@@ -431,7 +431,7 @@ export default function AdminPage() {
                       onChange={e => setConfirmaTexto(e.target.value)}
                       placeholder="Digite o nome da conta aqui..."
                       style={{
-                        width: "100%", padding: "10px 14px", border: `1.5px solid ${confirmaTexto === contaExcluirObj.nome ? "#E24B4A" : "#DDE2EE"}`,
+                        width: "100%", padding: "10px 14px", border: `1.5px solid ${confirmaTexto === contaExcluirObj.nome ? "#E24B4A" : "var(--border)"}`,
                         borderRadius: 8, fontSize: 14, outline: "none", marginTop: 8, boxSizing: "border-box",
                       }}
                     />
@@ -440,8 +440,8 @@ export default function AdminPage() {
                       disabled={confirmaTexto !== contaExcluirObj.nome || deletandoCliente}
                       style={{
                         marginTop: 16, width: "100%", padding: "12px 0", borderRadius: 8, border: "none",
-                        background: confirmaTexto !== contaExcluirObj.nome ? "#DDE2EE" : "#E24B4A",
-                        color: confirmaTexto !== contaExcluirObj.nome ? "#888" : "white",
+                        background: confirmaTexto !== contaExcluirObj.nome ? "var(--border)" : "#E24B4A",
+                        color: confirmaTexto !== contaExcluirObj.nome ? "var(--text-3)" : "white",
                         fontWeight: 700, fontSize: 15, cursor: confirmaTexto !== contaExcluirObj.nome ? "default" : "pointer",
                       }}
                     >
@@ -473,7 +473,7 @@ export default function AdminPage() {
             {/* Painel esquerdo: seleção de conta + fazenda */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: "#555", marginBottom: 8 }}>1. Selecione o cliente</div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>1. Selecione o cliente</div>
                 <select
                   value={contaLimpar}
                   onChange={e => { setContaLimpar(e.target.value); setFazendaLimpar(""); setContagens({}); setGruposSelecionados(new Set()); setResultadoLimpeza(null); }}
@@ -488,7 +488,7 @@ export default function AdminPage() {
 
               {contaLimparObj && (
                 <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: "#555", marginBottom: 8 }}>2. Selecione a fazenda</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>2. Selecione a fazenda</div>
                   <select
                     value={fazendaLimpar}
                     onChange={e => { setFazendaLimpar(e.target.value); setContagens({}); setGruposSelecionados(new Set()); setResultadoLimpeza(null); }}
@@ -543,7 +543,7 @@ export default function AdminPage() {
             {/* Painel direito: grupos + confirmação */}
             <div>
               {!fazendaLimpar ? (
-                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "#aaa", fontSize: 14 }}>
+                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                   Selecione um cliente e uma fazenda para ver os grupos disponíveis.
                 </div>
               ) : (
@@ -551,10 +551,10 @@ export default function AdminPage() {
                   {/* Cabeçalho dos grupos */}
                   <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 20px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
                         {fazLimparNome || "—"}
                       </div>
-                      <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                         {Object.keys(contagens).length > 0
                           ? `${totalRegistros.toLocaleString("pt-BR")} registros totais`
                           : "Clique em ↺ Carregar contagens para ver os dados"}
@@ -563,13 +563,13 @@ export default function AdminPage() {
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={() => setGruposSelecionados(new Set(GRUPOS.map(g => g.id)))}
-                        style={{ padding: "6px 12px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "#555" }}
+                        style={{ padding: "6px 12px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}
                       >
                         Marcar todos
                       </button>
                       <button
                         onClick={() => setGruposSelecionados(new Set())}
-                        style={{ padding: "6px 12px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "#555" }}
+                        style={{ padding: "6px 12px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}
                       >
                         Limpar seleção
                       </button>
@@ -591,7 +591,7 @@ export default function AdminPage() {
                           }}
                           style={{
                             background: selecionado ? g.bg : "white",
-                            border: `1.5px solid ${selecionado ? g.cor : "#DDE2EE"}`,
+                            border: `1.5px solid ${selecionado ? g.cor : "var(--border)"}`,
                             borderRadius: 10, padding: "14px 16px", cursor: "pointer",
                             transition: "all 0.15s",
                           }}
@@ -599,30 +599,30 @@ export default function AdminPage() {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                               <div style={{
-                                width: 18, height: 18, borderRadius: 4, border: `2px solid ${selecionado ? g.cor : "#DDE2EE"}`,
+                                width: 18, height: 18, borderRadius: 4, border: `2px solid ${selecionado ? g.cor : "var(--border)"}`,
                                 background: selecionado ? g.cor : "white", display: "flex", alignItems: "center", justifyContent: "center",
                                 flexShrink: 0,
                               }}>
                                 {selecionado && <span style={{ color: "white", fontSize: 11, lineHeight: 1 }}>✓</span>}
                               </div>
                               <span style={{ fontSize: 16 }}>{g.icon}</span>
-                              <span style={{ fontWeight: 700, fontSize: 13, color: selecionado ? g.cor : "#1a1a1a" }}>{g.label}</span>
+                              <span style={{ fontWeight: 700, fontSize: 13, color: selecionado ? g.cor : "var(--text-1)" }}>{g.label}</span>
                             </div>
                             {qtd !== null && (
                               <span style={{
                                 padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                                background: qtd > 0 ? g.bg : "#F4F6FA",
-                                color: qtd > 0 ? g.cor : "#aaa",
-                                border: `0.5px solid ${qtd > 0 ? g.cor + "40" : "#DDE2EE"}`,
+                                background: qtd > 0 ? g.bg : "var(--bg-page)",
+                                color: qtd > 0 ? g.cor : "var(--text-muted)",
+                                border: `0.5px solid ${qtd > 0 ? g.cor + "40" : "var(--border)"}`,
                               }}>
                                 {qtd.toLocaleString("pt-BR")}
                               </span>
                             )}
                             {qtd === null && carregandoContagens && (
-                              <span style={{ fontSize: 11, color: "#aaa" }}>...</span>
+                              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>...</span>
                             )}
                           </div>
-                          <div style={{ fontSize: 11, color: "#888", lineHeight: 1.5, marginLeft: 26 }}>{g.desc}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", lineHeight: 1.5, marginLeft: 26 }}>{g.desc}</div>
                           {g.aviso && selecionado && (
                             <div style={{ marginTop: 8, marginLeft: 26, padding: "6px 10px", background: "#FBF3E0", borderRadius: 6, fontSize: 11, color: "#7A5A12", lineHeight: 1.5 }}>
                               ⚠️ {g.aviso}
@@ -636,8 +636,8 @@ export default function AdminPage() {
                   {/* Confirmação e botão */}
                   {gruposSelecionados.size > 0 && (
                     <div style={{ background: "white", borderRadius: 12, border: "1.5px solid #E24B4A", padding: "20px 24px" }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 8 }}>
-                        Para confirmar a exclusão, digite <code style={{ background: "#F4F6FA", padding: "2px 8px", borderRadius: 4, color: "#E24B4A", fontWeight: 700 }}>CONFIRMO</code>:
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 8 }}>
+                        Para confirmar a exclusão, digite <code style={{ background: "var(--bg-page)", padding: "2px 8px", borderRadius: 4, color: "#E24B4A", fontWeight: 700 }}>CONFIRMO</code>:
                       </div>
                       <input
                         value={confirmaDeletar}
@@ -645,7 +645,7 @@ export default function AdminPage() {
                         placeholder="Digite CONFIRMO para habilitar o botão"
                         style={{
                           width: "100%", padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box",
-                          border: `1.5px solid ${confirmaDeletar === "CONFIRMO" ? "#E24B4A" : "#DDE2EE"}`, borderRadius: 8,
+                          border: `1.5px solid ${confirmaDeletar === "CONFIRMO" ? "#E24B4A" : "var(--border)"}`, borderRadius: 8,
                         }}
                       />
                       <button
@@ -653,8 +653,8 @@ export default function AdminPage() {
                         disabled={confirmaDeletar !== "CONFIRMO" || deletandoDados}
                         style={{
                           marginTop: 14, width: "100%", padding: "12px 0", borderRadius: 8, border: "none",
-                          background: confirmaDeletar !== "CONFIRMO" ? "#DDE2EE" : "#E24B4A",
-                          color: confirmaDeletar !== "CONFIRMO" ? "#888" : "white",
+                          background: confirmaDeletar !== "CONFIRMO" ? "var(--border)" : "#E24B4A",
+                          color: confirmaDeletar !== "CONFIRMO" ? "var(--text-3)" : "white",
                           fontWeight: 700, fontSize: 15, cursor: confirmaDeletar !== "CONFIRMO" ? "default" : "pointer",
                         }}
                       >
@@ -668,7 +668,7 @@ export default function AdminPage() {
                   {/* Resultado da limpeza */}
                   {resultadoLimpeza && (
                     <div style={{ marginTop: 16, background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>
+                      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
                         Resultado da limpeza
                       </div>
                       {resultadoLimpeza.map((r, i) => (
@@ -677,7 +677,7 @@ export default function AdminPage() {
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, fontSize: 13, color: r.ok ? "#15803D" : "#C9921B" }}>
                               {r.grupo}
-                              {r.deletados > 0 && <span style={{ fontWeight: 400, color: "#888", marginLeft: 8 }}>— {r.deletados.toLocaleString("pt-BR")} registros removidos</span>}
+                              {r.deletados > 0 && <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>— {r.deletados.toLocaleString("pt-BR")} registros removidos</span>}
                             </div>
                             {r.erros.length > 0 && (
                               <div style={{ marginTop: 4 }}>
@@ -689,11 +689,11 @@ export default function AdminPage() {
                           </div>
                         </div>
                       ))}
-                      <div style={{ padding: "12px 20px", background: "#F4F6FA", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                      <div style={{ padding: "12px 20px", background: "var(--bg-page)", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                         <span style={{ color: "#16A34A", fontWeight: 600 }}>
                           ✓ {resultadoLimpeza.filter(r => r.ok).length} grupo{resultadoLimpeza.filter(r => r.ok).length !== 1 ? "s" : ""} limpo{resultadoLimpeza.filter(r => r.ok).length !== 1 ? "s" : ""}
                         </span>
-                        <span style={{ color: "#888" }}>
+                        <span style={{ color: "var(--text-3)" }}>
                           {resultadoLimpeza.reduce((acc, r) => acc + r.deletados, 0).toLocaleString("pt-BR")} registros removidos no total
                         </span>
                       </div>

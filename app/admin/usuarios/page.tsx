@@ -153,20 +153,20 @@ const permFromGrupo = (g: GrupoUsuario): PermMap => {
 // ── Helpers / estilos ──────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none",
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none",
 };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
-const btnR: React.CSSProperties = { padding: "9px 16px", background: "#F4F6FA", color: "#555", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" };
+const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" };
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-      <div style={{ background: "#fff", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>✕</button>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
         </div>
         <div style={{ padding: "20px 22px" }}>{children}</div>
       </div>
@@ -205,14 +205,14 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
-          <tr style={{ background: "#F4F6FA" }}>
-            <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", minWidth: 200, borderBottom: "0.5px solid #DEE5EE" }}>Módulo</th>
+          <tr style={{ background: "var(--bg-page)" }}>
+            <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid #DEE5EE" }}>Módulo</th>
             {(Object.keys(ACAO_META) as Acao[]).map(a => (
               <th key={a} style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: ACAO_META[a].cor, borderBottom: "0.5px solid #DEE5EE", whiteSpace: "nowrap", minWidth: 66 }}>
                 {ACAO_META[a].label}
               </th>
             ))}
-            <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 10, color: "#888", borderBottom: "0.5px solid #DEE5EE", width: 50 }}>Tudo</th>
+            <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 10, color: "var(--text-3)", borderBottom: "0.5px solid #DEE5EE", width: 50 }}>Tudo</th>
           </tr>
         </thead>
         <tbody>
@@ -235,7 +235,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                           <button
                             onClick={() => toggleGrupo(grupo, acao)}
                             title={`${todosOn ? "Desativar" : "Ativar"} "${ACAO_META[acao].label}" em todo o grupo ${grupo}`}
-                            style={{ width: 20, height: 20, borderRadius: 5, border: `0.5px solid ${todosOn ? ACAO_META[acao].cor : algumOn ? ACAO_META[acao].cor + "80" : "#D4DCE8"}`, background: todosOn ? ACAO_META[acao].bg : algumOn ? ACAO_META[acao].bg + "80" : "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
+                            style={{ width: 20, height: 20, borderRadius: 5, border: `0.5px solid ${todosOn ? ACAO_META[acao].cor : algumOn ? ACAO_META[acao].cor + "80" : "var(--border-table)"}`, background: todosOn ? ACAO_META[acao].bg : algumOn ? ACAO_META[acao].bg + "80" : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>
                             {todosOn ? "✓" : algumOn ? "−" : ""}
                           </button>
                         ) : <span style={{ color: "#ddd", fontSize: 10 }}>—</span>}
@@ -250,7 +250,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                   const tudo = acoesAtivas.length === mod.acoes.length;
                   return (
                     <tr key={mod.id} style={{ borderBottom: "0.5px solid #F0F4FA", background: idx % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                      <td style={{ padding: "7px 12px 7px 22px", color: "#1a1a1a" }}>{mod.label}</td>
+                      <td style={{ padding: "7px 12px 7px 22px", color: "var(--text-1)" }}>{mod.label}</td>
                       {(Object.keys(ACAO_META) as Acao[]).map(acao => {
                         const disponivel = mod.acoes.includes(acao);
                         const ativo = acoesAtivas.includes(acao);
@@ -260,7 +260,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
                               <button
                                 onClick={() => toggle(mod.id, acao)}
                                 title={`${ativo ? "Remover" : "Conceder"} permissão "${ACAO_META[acao].label}" em ${mod.label}`}
-                                style={{ width: 22, height: 22, borderRadius: 6, border: `0.5px solid ${ativo ? ACAO_META[acao].cor : "#D4DCE8"}`, background: ativo ? ACAO_META[acao].bg : "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: ativo ? ACAO_META[acao].cor : "#bbb", transition: "all 0.1s" }}>
+                                style={{ width: 22, height: 22, borderRadius: 6, border: `0.5px solid ${ativo ? ACAO_META[acao].cor : "var(--border-table)"}`, background: ativo ? ACAO_META[acao].bg : "var(--bg-card)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: ativo ? ACAO_META[acao].cor : "#bbb", transition: "all 0.1s" }}>
                                 {ativo ? "✓" : ""}
                               </button>
                             ) : (
@@ -492,10 +492,10 @@ export default function AdminUsuarios() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>Equipe Raccotlo</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#555" }}>Usuários internos da Raccotlo e seus níveis de acesso ao HUB</p>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Equipe Raccotlo</h1>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Usuários internos da Raccotlo e seus níveis de acesso ao HUB</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {userRole === "raccotlo" && (
@@ -525,7 +525,7 @@ export default function AdminUsuarios() {
               { role: "raccotlo", label: "Superadmin", cor: "#7A5A12", bg: "#FBF3E0", desc: "Acesso total ao sistema" },
               { role: "raccotlo_gestor", label: "Hub Completo", cor: "#1A4870", bg: "#D5E8F5", desc: "Gestão Arato + Seletor" },
               { role: "raccotlo_seletor", label: "Seletor", cor: "#378ADD", bg: "#EFF6FF", desc: "Apenas Seletor de Clientes" },
-              { role: "client", label: "Sem Acesso", cor: "#888", bg: "#F3F4F6", desc: "Sem acesso interno" },
+              { role: "client", label: "Sem Acesso", cor: "var(--text-3)", bg: "#F3F4F6", desc: "Sem acesso interno" },
             ].map(n => (
               <div key={n.role} style={{ padding: "7px 12px", background: n.bg, border: `0.5px solid ${n.cor}40`, borderRadius: 8, fontSize: 11 }}>
                 <span style={{ fontWeight: 700, color: n.cor }}>{n.label}</span>
@@ -535,10 +535,10 @@ export default function AdminUsuarios() {
           </div>
 
           {/* TABELA DE USUÁRIOS (sem abas — só equipe Raccotlo) */}
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
             {/* placeholder falso para manter compatibilidade de estrutura */}
             {false && (
-              <div style={{ display: "flex", background: "#fff", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
+              <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
                 {([
                   { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
                   { key: "usuarios", label: `Usuários (${usuarios.length})`        },
@@ -546,7 +546,7 @@ export default function AdminUsuarios() {
                   <button key={a.key} onClick={() => setAba(a.key)} style={{
                     padding: "11px 22px", border: "none", background: "transparent", cursor: "pointer",
                     fontWeight: aba === a.key ? 600 : 400, fontSize: 13,
-                    color: aba === a.key ? "#1a1a1a" : "#555",
+                    color: aba === a.key ? "var(--text-1)" : "var(--text-2)",
                     borderBottom: aba === a.key ? "2px solid #1A4870" : "2px solid transparent",
                   }}>
                     {a.label}
@@ -557,23 +557,23 @@ export default function AdminUsuarios() {
 
           {/* ── USUÁRIOS ── */}
           {true && (
-            <div style={{ background: "#fff", border: "none", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "none", borderRadius: 12, overflow: "hidden" }}>
               {/* bloco removido: Acesso Raccolto — pertence ao ambiente do cliente, não ao admin */}
 
               {carregando ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando…</div>
+                <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: "#F4F6FA" }}>
+                    <tr style={{ background: "var(--bg-page)" }}>
                       {["Nome", "E-mail", "Acesso HUB", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#555", borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {usuarios.length === 0 && (
-                      <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "#888" }}>
+                      <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
                         Nenhum usuário cadastrado. <button onClick={() => abrirModalUser()} style={{ color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Criar o primeiro →</button>
                       </td></tr>
                     )}
@@ -582,10 +582,10 @@ export default function AdminUsuarios() {
                       const hubCfg = hub === "raccotlo_gestor"  ? { label: "Hub Completo",   cor: "#1A4870", bg: "#D5E8F5" }
                                    : hub === "raccotlo_seletor" ? { label: "Seletor",         cor: "#378ADD", bg: "#EFF6FF" }
                                    : hub === "raccotlo"         ? { label: "Superadmin",      cor: "#7A5A12", bg: "#FBF3E0" }
-                                   :                             { label: "Sem Acesso",        cor: "#888",    bg: "#F3F4F6" };
+                                   :                             { label: "Sem Acesso",        cor: "var(--text-3)",    bg: "#F3F4F6" };
                       return (
                         <tr key={u.id} style={{ borderBottom: i < usuarios.length - 1 ? "0.5px solid #F0F3F8" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
-                          <td style={{ padding: "11px 16px", fontWeight: 500, color: "#1a1a1a" }}>
+                          <td style={{ padding: "11px 16px", fontWeight: 500, color: "var(--text-1)" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#FDE9BB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
                                 {u.nome.charAt(0).toUpperCase()}
@@ -593,12 +593,12 @@ export default function AdminUsuarios() {
                               {u.nome}
                             </div>
                           </td>
-                          <td style={{ padding: "11px 16px", color: "#555" }}>{u.email}</td>
+                          <td style={{ padding: "11px 16px", color: "var(--text-2)" }}>{u.email}</td>
                           <td style={{ padding: "11px 16px" }}>
                             <span style={{ fontSize: 11, background: hubCfg.bg, color: hubCfg.cor, padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{hubCfg.label}</span>
                           </td>
                           <td style={{ padding: "11px 16px" }}>
-                            <span style={{ fontSize: 11, background: u.ativo !== false ? "#DCFCE7" : "#F1F5F9", color: u.ativo !== false ? "#16A34A" : "#888", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>
+                            <span style={{ fontSize: 11, background: u.ativo !== false ? "#DCFCE7" : "#F1F5F9", color: u.ativo !== false ? "#16A34A" : "var(--text-3)", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>
                               {u.ativo !== false ? "Ativo" : "Inativo"}
                             </span>
                           </td>
@@ -659,7 +659,7 @@ export default function AdminUsuarios() {
                     placeholder="5565999990000"
                     maxLength={15}
                   />
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>DDI + DDD + número, sem espaços. Ex: 5565999990000</div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>DDI + DDD + número, sem espaços. Ex: 5565999990000</div>
                 </div>
 
                 {/* Senha — só para novo usuário */}
@@ -677,12 +677,12 @@ export default function AdminUsuarios() {
                       <button
                         type="button"
                         onClick={() => setSenhaVisivel(v => !v)}
-                        style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#888" }}
+                        style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "var(--text-3)" }}
                       >
                         {senhaVisivel ? "🙈" : "👁"}
                       </button>
                     </div>
-                    <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                       O usuário será solicitado a trocar essa senha no primeiro acesso.
                     </div>
                   </div>
@@ -695,7 +695,7 @@ export default function AdminUsuarios() {
                     <option value="raccotlo_seletor">Seletor de Clientes apenas</option>
                     <option value="client">Sem Acesso Interno</option>
                   </select>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>
                     {fUser.hub_acesso === "raccotlo_gestor" && "Acessa o painel admin (Gestão Arato) e pode visualizar ambientes de clientes."}
                     {fUser.hub_acesso === "raccotlo_seletor" && "Pode acessar ambientes de clientes via Seletor, mas não acessa o painel admin."}
                     {fUser.hub_acesso === "client" && "Nenhum acesso especial Raccotlo. Usuário comum sem painel administrativo."}
@@ -704,12 +704,12 @@ export default function AdminUsuarios() {
 
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <input type="checkbox" id="ativo" checked={fUser.ativo} onChange={e => setFUser(p => ({ ...p, ativo: e.target.checked }))} />
-                  <label htmlFor="ativo" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Usuário ativo</label>
+                  <label htmlFor="ativo" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Usuário ativo</label>
                 </div>
 
                 {/* Enviar email — só para novo usuário */}
                 {!editUser && (
-                  <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px" }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <input
                         type="checkbox"
@@ -718,9 +718,9 @@ export default function AdminUsuarios() {
                         onChange={e => setFUser(p => ({ ...p, enviarEmail: e.target.checked }))}
                         style={{ marginTop: 2 }}
                       />
-                      <label htmlFor="enviarEmail" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer", lineHeight: 1.4 }}>
+                      <label htmlFor="enviarEmail" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>
                         <span style={{ fontWeight: 600 }}>Enviar e-mail de boas-vindas</span>
-                        <span style={{ display: "block", fontSize: 11, color: "#555", marginTop: 2 }}>
+                        <span style={{ display: "block", fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                           Envia e-mail para <strong>{fUser.email || "o endereço acima"}</strong> com as credenciais de acesso.
                         </span>
                       </label>
@@ -753,7 +753,7 @@ export default function AdminUsuarios() {
                 <>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
                   <div style={{ fontSize: 17, fontWeight: 700, color: "#16A34A", marginBottom: 8 }}>Cliente criado com sucesso!</div>
-                  <div style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 20 }}>
                     Usuário <strong>{resultCliente.email}</strong> criado com acesso ao Arato.
                   </div>
                   <button style={btnV} onClick={() => { setModalNovoCliente(false); setResultCliente(null); setFCliente({ tipo: "pj", nome: "", cpf_cnpj: "", email_cliente: "", telefone: "", municipio_cliente: "", estado_cliente: "", fazenda_nome: "", fazenda_municipio: "", fazenda_estado: "", fazenda_area: "", user_nome: "", user_email: "", user_senha: "Arato@123" }); }}>
@@ -764,7 +764,7 @@ export default function AdminUsuarios() {
                 <>
                   <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
                   <div style={{ fontSize: 17, fontWeight: 700, color: "#E24B4A", marginBottom: 8 }}>Falha ao criar cliente</div>
-                  <div style={{ fontSize: 12, color: "#555", background: "#FFF0F0", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 20, textAlign: "left", wordBreak: "break-word" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", background: "#FFF0F0", border: "0.5px solid #E24B4A50", borderRadius: 8, padding: "10px 14px", marginBottom: 20, textAlign: "left", wordBreak: "break-word" }}>
                     {resultCliente.erro}
                   </div>
                   <button style={btnR} onClick={() => setResultCliente(null)}>Tentar novamente</button>

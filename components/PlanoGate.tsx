@@ -28,12 +28,12 @@ function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
   const vencido = contaStatus === "cancelado" || contaStatus === "inativo";
   return (
     <div style={{
-      minHeight: "100vh", background: "#F4F6FA",
+      minHeight: "100vh", background: "var(--bg-page)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "40px 24px", fontFamily: "system-ui, sans-serif",
     }}>
       <div style={{
-        background: "#fff", borderRadius: 16,
+        background: "var(--bg-card)", borderRadius: 16,
         border: "2px solid #E24B4A",
         padding: "48px 40px", maxWidth: 500, width: "100%",
         textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.08)",
@@ -67,7 +67,7 @@ function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
           padding: "14px 18px", marginBottom: 28, textAlign: "left",
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#7A5A12", marginBottom: 8 }}>Dados ficam preservados</div>
-          <div style={{ fontSize: 13, color: "#555", lineHeight: 1.7 }}>
+          <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.7 }}>
             ✓ Seus dados não são excluídos<br />
             ✓ Acesso restaurado automaticamente após pagamento<br />
             ✓ Suporte disponível via WhatsApp
@@ -84,7 +84,7 @@ function TelaInadimplente({ contaStatus }: { contaStatus: string | null }) {
 
         <a href="https://wa.me/5565981456825?text=Preciso+regularizar+meu+acesso+ao+Arato"
           target="_blank" rel="noopener noreferrer"
-          style={{ display: "block", textAlign: "center", padding: "10px 0", color: "#888", fontSize: 13, textDecoration: "none" }}>
+          style={{ display: "block", textAlign: "center", padding: "10px 0", color: "var(--text-3)", fontSize: 13, textDecoration: "none" }}>
           Falar com suporte via WhatsApp
         </a>
       </div>
@@ -115,12 +115,12 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#F4F6FA",
+      minHeight: "100vh", background: "var(--bg-page)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "40px 24px", fontFamily: "system-ui, sans-serif",
     }}>
       <div style={{
-        background: "#fff", borderRadius: 16,
+        background: "var(--bg-card)", borderRadius: 16,
         border: `2px solid ${cor}`,
         padding: "48px 40px", maxWidth: 520, width: "100%",
         textAlign: "center",
@@ -161,10 +161,10 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
 
         {/* O que o upgrade desbloqueia */}
         <div style={{
-          background: "#F4F6FA", borderRadius: 10,
+          background: "var(--bg-page)", borderRadius: 10,
           padding: "16px 20px", marginBottom: 28, textAlign: "left",
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>
             O plano {NOME_PLANO[planoNecessario]} inclui
           </div>
           {plano.features_marketing.map((f, i) => (
@@ -180,7 +180,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
           <span style={{ fontSize: 32, fontWeight: 900, color: "#0B2D50" }}>
             {plano.preco_mensal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </span>
-          <span style={{ fontSize: 14, color: "#888" }}>/mês</span>
+          <span style={{ fontSize: 14, color: "var(--text-3)" }}>/mês</span>
         </div>
 
         {/* CTAs */}
@@ -200,7 +200,7 @@ export default function PlanoGate({ modulo, children }: PlanoGateProps) {
           href="/"
           style={{
             display: "block", textAlign: "center",
-            padding: "10px 0", color: "#888",
+            padding: "10px 0", color: "var(--text-3)",
             fontSize: 13, textDecoration: "none",
           }}
         >

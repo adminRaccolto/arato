@@ -33,14 +33,14 @@ type AbaContrato   = "" | "trial" | "ativo" | "pro_bono" | "inadimplente" | "can
 const STATUS_CFG: Record<StatusCliente, { label: string; cor: string; bg: string }> = {
   trial:        { label: "Trial",        cor: "#C9921B", bg: "#FBF3E0" },
   ativo:        { label: "Ativo",        cor: "#16A34A", bg: "#F0FDF4" },
-  inativo:      { label: "Inativo",      cor: "#888",    bg: "#F3F4F6" },
+  inativo:      { label: "Inativo",      cor: "var(--text-3)",    bg: "#F3F4F6" },
   inadimplente: { label: "Inadimplente", cor: "#E24B4A", bg: "#FEF2F2" },
   pro_bono:     { label: "Pro Bono",     cor: "#378ADD", bg: "#EFF6FF" },
   cancelado:    { label: "Cancelado",    cor: "#6B7280", bg: "#F3F4F6" },
 };
 
 const PACOTE_CFG: Record<PacoteCliente, { label: string; cor: string; bg: string; valor: number }> = {
-  essencial:   { label: "Essencial",   cor: "#555",    bg: "#F3F4F6", valor: 290  },
+  essencial:   { label: "Essencial",   cor: "var(--text-2)",    bg: "#F3F4F6", valor: 290  },
   gestao:      { label: "Gestão",      cor: "#1A4870", bg: "#D5E8F5", valor: 590  },
   performance: { label: "Performance", cor: "#7A5A12", bg: "#FBF3E0", valor: 990  },
 };
@@ -55,7 +55,7 @@ const ABAS_CONTRATO: Array<{ key: AbaContrato; label: string; cor?: string; bg?:
 ];
 
 const CRM_STAGE_CFG: Record<string, { label: string; cor: string }> = {
-  lead:         { label: "Lead",          cor: "#888"    },
+  lead:         { label: "Lead",          cor: "var(--text-3)"    },
   contato:      { label: "Contato feito", cor: "#378ADD" },
   demo:         { label: "Demo",          cor: "#EF9F27" },
   proposta:     { label: "Proposta",      cor: "#C9921B" },
@@ -86,12 +86,12 @@ function diasRestantes(venc?: string | null): number | null {
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
   border: "0.5px solid #D4DCE8", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff",
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 
 const lbl: React.CSSProperties = {
-  fontSize: 11, color: "#555", marginBottom: 4, display: "block", fontWeight: 600,
+  fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600,
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -100,13 +100,13 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSecondary: React.CSSProperties = {
-  padding: "8px 18px", background: "#fff", color: "#555",
+  padding: "8px 18px", background: "var(--bg-card)", color: "var(--text-2)",
   border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
 const btnSmall: React.CSSProperties = {
   padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-  cursor: "pointer", border: "0.5px solid #D4DCE8", background: "#fff", color: "#0B1E35",
+  cursor: "pointer", border: "0.5px solid #D4DCE8", background: "var(--bg-card)", color: "#0B1E35",
 };
 
 // ─── Modal editar cliente (reutilizado do admin/page.tsx) ─────────────────────
@@ -152,14 +152,14 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 660, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 12px 48px #0004" }}>
 
         <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #E4E9F0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>{conta.nome}</div>
-            <div style={{ fontSize: 11, color: "#aaa", marginTop: 2, fontFamily: "monospace" }}>{conta.id}</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>{conta.id}</div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
         </div>
 
         <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #E4E9F0", padding: "0 24px" }}>
@@ -167,7 +167,7 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
             <button key={t} onClick={() => setAba(t)} style={{
               padding: "10px 16px", border: "none", background: "none", cursor: "pointer",
               fontSize: 13, fontWeight: aba === t ? 700 : 400,
-              color: aba === t ? "#0B1E35" : "#888",
+              color: aba === t ? "#0B1E35" : "var(--text-3)",
               borderBottom: aba === t ? "2px solid #C9921B" : "2px solid transparent",
               marginBottom: -1, textTransform: "capitalize",
             }}>{t === "geral" ? "Dados gerais" : "Assinatura & Pacote"}</button>
@@ -370,7 +370,7 @@ export default function ClientesPage() {
     .reduce((s, c) => s + (c.valor_mensalidade ?? 0), 0);
 
   const kpis = [
-    { label: "Total",         valor: clientes.length,                                                                       cor: "#0B1E35", bg: "#fff"    },
+    { label: "Total",         valor: clientes.length,                                                                       cor: "#0B1E35", bg: "var(--bg-card)"    },
     { label: "Ativos",        valor: clientes.filter(c => c.status === "ativo").length,                                     cor: "#16A34A", bg: "#F0FDF4" },
     { label: "Trial",         valor: clientes.filter(c => c.status === "trial").length,                                     cor: "#C9921B", bg: "#FBF3E0" },
     { label: "Inadimplentes", valor: clientes.filter(c => c.status === "inadimplente" || c.status === "inativo").length,    cor: "#E24B4A", bg: "#FEF2F2" },
@@ -558,13 +558,13 @@ export default function ClientesPage() {
       {modalPlano && (
         <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) setModalPlano(null); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 560, padding: "24px", boxShadow: "0 12px 48px #0004" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 560, padding: "24px", boxShadow: "0 12px 48px #0004" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35" }}>Alterar Plano</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{modalPlano.nome}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalPlano.nome}</div>
               </div>
-              <button onClick={() => setModalPlano(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+              <button onClick={() => setModalPlano(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-muted)" }}>✕</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(pk => {
@@ -577,9 +577,9 @@ export default function ClientesPage() {
                     style={{ padding: "16px 12px", border: `2px solid ${isCurrent ? cfg.cor : "#E4E9F0"}`, borderRadius: 10, background: isCurrent ? cfg.bg : "#FAFBFC", cursor: isCurrent ? "default" : "pointer", textAlign: "center", opacity: loading ? 0.5 : 1 }}>
                     <div style={{ fontWeight: 700, color: cfg.cor, fontSize: 14, marginBottom: 4 }}>{cfg.label}</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "#0B1E35", marginBottom: 6 }}>{fmtPreco(plano?.preco_mensal ?? cfg.valor)}</div>
-                    <div style={{ fontSize: 10, color: "#888" }}>{plano?.limite_usuarios ? `até ${plano.limite_usuarios} usuários` : "ilimitado"}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-3)" }}>{plano?.limite_usuarios ? `até ${plano.limite_usuarios} usuários` : "ilimitado"}</div>
                     {isCurrent && <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: cfg.cor }}>PLANO ATUAL</div>}
-                    {!isCurrent && !loading && <div style={{ marginTop: 6, fontSize: 11, color: "#555", fontWeight: 600 }}>{(modalPlano.pacote && PACOTE_CFG[modalPlano.pacote].valor < cfg.valor) ? "⬆ Upgrade" : "⬇ Downgrade"}</div>}
+                    {!isCurrent && !loading && <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>{(modalPlano.pacote && PACOTE_CFG[modalPlano.pacote].valor < cfg.valor) ? "⬆ Upgrade" : "⬇ Downgrade"}</div>}
                   </button>
                 );
               })}
@@ -597,7 +597,7 @@ export default function ClientesPage() {
           <h1 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 800, color: "#0B1E35", letterSpacing: "-0.3px" }}>
             Clientes
           </h1>
-          <p style={{ margin: 0, fontSize: 13, color: "#888" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>
             Gestão completa da base de clientes
           </p>
         </div>
@@ -610,7 +610,7 @@ export default function ClientesPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map(k => (
           <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
-            <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
+            <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: k.cor }}>{k.valor}</div>
           </div>
         ))}
@@ -627,10 +627,10 @@ export default function ClientesPage() {
               onClick={() => setAbaContrato(aba.key)}
               style={{
                 padding: "6px 14px",
-                border: `1.5px solid ${ativa ? (aba.cor ?? "#0B1E35") : "#D4DCE8"}`,
+                border: `1.5px solid ${ativa ? (aba.cor ?? "#0B1E35") : "var(--border-table)"}`,
                 borderRadius: 20,
-                background: ativa ? (aba.bg ?? "#F0F4FA") : "#fff",
-                color: ativa ? (aba.cor ?? "#0B1E35") : "#555",
+                background: ativa ? (aba.bg ?? "#F0F4FA") : "var(--bg-card)",
+                color: ativa ? (aba.cor ?? "#0B1E35") : "var(--text-2)",
                 fontWeight: ativa ? 700 : 400,
                 fontSize: 13,
                 cursor: "pointer",
@@ -663,24 +663,24 @@ export default function ClientesPage() {
             <span style={{ fontSize: 11, color: "#378ADD", background: "#DBEAFE", borderRadius: 20, padding: "2px 10px", fontWeight: 700 }}>
               {proBonoList.length} {proBonoList.length === 1 ? "cliente" : "clientes"}
             </span>
-            <span style={{ fontSize: 11, color: "#555", marginLeft: 4 }}>
+            <span style={{ fontSize: 11, color: "var(--text-2)", marginLeft: 4 }}>
               — Acesso ao Arato incluso na consultoria Raccolto · não cobrados no SaaS
             </span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {proBonoList.map(c => (
               <div key={c.id} style={{
-                background: "#fff", border: "0.5px solid #378ADD60",
+                background: "var(--bg-card)", border: "0.5px solid #378ADD60",
                 borderRadius: 10, padding: "10px 14px",
                 display: "flex", alignItems: "center", gap: 12, minWidth: 260,
               }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35" }}>{c.nome}</div>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                     {c.pacote ? `Plano ${c.pacote}` : "Sem plano"}
                     {c.pro_bono_motivo && <> · {c.pro_bono_motivo}</>}
                   </div>
-                  {c.email_contato && <div style={{ fontSize: 10, color: "#aaa" }}>{c.email_contato}</div>}
+                  {c.email_contato && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{c.email_contato}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button style={{ ...btnSmall, color: "#378ADD" }} onClick={() => setModalEdit(c)}>✎</button>
@@ -697,7 +697,7 @@ export default function ClientesPage() {
       )}
 
       {/* Filtros */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input style={{ ...inp, width: 240 }} placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
         <select style={{ ...inp, width: 150 }} value={filtroPacote} onChange={e => setFiltroPacote(e.target.value as PacoteCliente | "")}>
           <option value="">Todos os pacotes</option>
@@ -718,17 +718,17 @@ export default function ClientesPage() {
           </select>
         )}
         <button style={{ ...btnSecondary, padding: "7px 14px", fontSize: 12 }} onClick={carregar}>↺ Atualizar</button>
-        <div style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>
+        <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
           {filtrados.length} de {clientes.length} clientes
         </div>
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Carregando…</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
         ) : filtrados.length === 0 ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "#888" }}>Nenhum cliente encontrado</div>
+          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Nenhum cliente encontrado</div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -736,7 +736,7 @@ export default function ClientesPage() {
                 {["Cliente", "Pacote", "Status", "CRM", "Local", "Desde", "Vencimento", "Mensalidade", "Fazendas", "Ações"].map((h, i) => (
                   <th key={i} style={{
                     padding: "10px 12px", textAlign: i >= 5 && i <= 8 ? "center" : "left",
-                    fontSize: 11, fontWeight: 600, color: "#888",
+                    fontSize: 11, fontWeight: 600, color: "var(--text-3)",
                     borderBottom: "0.5px solid #D4DCE8",
                     textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
                   }}>{h}</th>
@@ -758,7 +758,7 @@ export default function ClientesPage() {
                   }}>
                     <td style={{ padding: "10px 12px", minWidth: 160 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 13 }}>{c.nome}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 13 }}>{c.nome}</span>
                         {c.status === "pro_bono" && (
                           <span style={{ fontSize: 9, fontWeight: 700, color: "#378ADD", background: "#DBEAFE", borderRadius: 10, padding: "1px 6px", letterSpacing: 0.5 }}>PB</span>
                         )}
@@ -766,11 +766,11 @@ export default function ClientesPage() {
                           <span style={{ fontSize: 9, fontWeight: 700, color: "#C9921B", background: "#FBF3E0", borderRadius: 10, padding: "1px 6px" }}>SEM CONTA</span>
                         )}
                       </div>
-                      {c.email_contato && <div style={{ fontSize: 11, color: "#888", marginTop: 1 }}>{c.email_contato}</div>}
+                      {c.email_contato && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{c.email_contato}</div>}
                       {c.pro_bono_motivo && c.status === "pro_bono" && (
                         <div style={{ fontSize: 10, color: "#378ADD", marginTop: 1, fontStyle: "italic" }}>{c.pro_bono_motivo}</div>
                       )}
-                      {c.telefone && !c.pro_bono_motivo && <div style={{ fontSize: 10, color: "#aaa" }}>{c.telefone}</div>}
+                      {c.telefone && !c.pro_bono_motivo && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{c.telefone}</div>}
                       {c._sem_conta && (
                         <div style={{ fontSize: 10, color: "#C9921B", marginTop: 2 }}>
                           {c._fazendas_prod.map(f => f.nome).slice(0, 2).join(", ")}
@@ -783,7 +783,7 @@ export default function ClientesPage() {
                         <span style={{ padding: "2px 8px", background: PACOTE_CFG[c.pacote].bg, color: PACOTE_CFG[c.pacote].cor, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
                           {PACOTE_CFG[c.pacote].label}
                         </span>
-                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                      ) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {c._sem_conta ? (
@@ -796,36 +796,36 @@ export default function ClientesPage() {
                     </td>
                     <td style={{ padding: "10px 12px" }}>
                       {c.crm_stage ? (
-                        <span style={{ fontSize: 11, color: CRM_STAGE_CFG[c.crm_stage]?.cor ?? "#888" }}>
+                        <span style={{ fontSize: 11, color: CRM_STAGE_CFG[c.crm_stage]?.cor ?? "var(--text-3)" }}>
                           {CRM_STAGE_CFG[c.crm_stage]?.label ?? c.crm_stage}
                         </span>
-                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                      ) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}
                     </td>
-                    <td style={{ padding: "10px 12px", fontSize: 12, color: "#555" }}>
+                    <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-2)" }}>
                       {c.cidade && c.estado ? `${c.cidade}/${c.estado}` : (c.estado ?? (c._fazendas_prod[0]?.municipio ? `${c._fazendas_prod[0].municipio}/${c._fazendas_prod[0].estado ?? ""}` : "—"))}
                     </td>
-                    <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                    <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
                       {fmtDate(c.data_inicio)}
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
                       {c.data_vencimento ? (
                         <>
-                          <div style={{ fontSize: 12, color: vencido ? "#E24B4A" : urgente ? "#C9921B" : "#555", fontWeight: (urgente || vencido) ? 600 : 400 }}>
+                          <div style={{ fontSize: 12, color: vencido ? "#E24B4A" : urgente ? "#C9921B" : "var(--text-2)", fontWeight: (urgente || vencido) ? 600 : 400 }}>
                             {fmtDate(c.data_vencimento)}
                           </div>
                           {dias !== null && (
-                            <div style={{ fontSize: 10, color: vencido ? "#E24B4A" : urgente ? "#C9921B" : "#aaa" }}>
+                            <div style={{ fontSize: 10, color: vencido ? "#E24B4A" : urgente ? "#C9921B" : "var(--text-muted)" }}>
                               {vencido ? `há ${Math.abs(dias)}d` : `${dias}d`}
                             </div>
                           )}
                         </>
-                      ) : <span style={{ color: "#aaa", fontSize: 11 }}>—</span>}
+                      ) : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>—</span>}
                     </td>
-                    <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, color: c.valor_mensalidade ? "#0B1E35" : "#aaa" }}>
+                    <td style={{ padding: "10px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, color: c.valor_mensalidade ? "#0B1E35" : "var(--text-muted)" }}>
                       {fmtBRL(c.valor_mensalidade)}
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                      <span style={{ background: "#F3F6F9", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "#555", fontWeight: 600 }}>
+                      <span style={{ background: "#F3F6F9", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
                         {c.fazendas_count}
                       </span>
                     </td>

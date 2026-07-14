@@ -60,21 +60,21 @@ export default function IBSCBS() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>IBS / CBS — Reforma Tributária 2027</h1>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>IBS / CBS — Reforma Tributária 2027</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Lei Complementar nº 214/2024 · Emenda Constitucional nº 132/2023</p>
           </div>
           <div style={{ background: diasAte2027 <= 180 ? "#FCEBEB" : "#FBF3E0", border: `0.5px solid ${diasAte2027 <= 180 ? "#E24B4A" : "#C9921B"}40`, borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: diasAte2027 <= 180 ? "#E24B4A" : "#C9921B" }}>{diasAte2027.toLocaleString("pt-BR")}</div>
-            <div style={{ fontSize: 10, color: "#555" }}>dias até 01/01/2027</div>
+            <div style={{ fontSize: 10, color: "var(--text-2)" }}>dias até 01/01/2027</div>
           </div>
         </header>
 
         <div style={{ padding: "16px 22px", flex: 1 }}>
 
           {/* Abas */}
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
             <div style={{ display: "flex", borderBottom: "0.5px solid #D4DCE8" }}>
               {([
                 ["visao",      "Visão Geral"],
@@ -88,7 +88,7 @@ export default function IBSCBS() {
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",
                   cursor: "pointer", fontSize: 13,
                   fontWeight: aba === key ? 600 : 400,
-                  color: aba === key ? "#1A5C38" : "#555",
+                  color: aba === key ? "#1A5C38" : "var(--text-2)",
                 }}>
                   {label}
                 </button>
@@ -102,7 +102,7 @@ export default function IBSCBS() {
 
                   {/* O que muda */}
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>O que muda com a Reforma</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>O que muda com a Reforma</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {[
                         { de: "PIS + COFINS (federal)", para: "CBS — Contribuição sobre Bens e Serviços", cor: "#1A4870" },
@@ -112,7 +112,7 @@ export default function IBSCBS() {
                       ].map((r, i) => (
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: "#F8FAFD", borderRadius: 8, padding: "10px 12px", border: "0.5px solid #DEE5EE" }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 11, color: "#888", textDecoration: "line-through" }}>{r.de}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", textDecoration: "line-through" }}>{r.de}</div>
                           </div>
                           <div style={{ fontSize: 14, color: "#bbb" }}>→</div>
                           <div style={{ flex: 1.5 }}>
@@ -123,7 +123,7 @@ export default function IBSCBS() {
                     </div>
 
                     <div style={{ marginTop: 20 }}>
-                      <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 12 }}>Princípios fundamentais</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Princípios fundamentais</div>
                       {[
                         { icon: "◈", titulo: "Não-cumulatividade plena", desc: "Crédito total sobre todos os insumos, bens de capital e serviços adquiridos na atividade rural." },
                         { icon: "▦", titulo: "Princípio de destino",     desc: "O imposto fica no estado/município onde o produto é consumido, não onde é produzido." },
@@ -133,8 +133,8 @@ export default function IBSCBS() {
                         <div key={i} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: i < 3 ? "0.5px solid #DEE5EE" : "none" }}>
                           <span style={{ fontSize: 16, color: "#1A5C38", flexShrink: 0 }}>{p.icon}</span>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 12, color: "#1a1a1a" }}>{p.titulo}</div>
-                            <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{p.desc}</div>
+                            <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-1)" }}>{p.titulo}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{p.desc}</div>
                           </div>
                         </div>
                       ))}
@@ -143,18 +143,18 @@ export default function IBSCBS() {
 
                   {/* Alíquotas */}
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Alíquotas de referência (2027)</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Alíquotas de referência (2027)</div>
                     <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "16px 18px", marginBottom: 14 }}>
                       {[
                         { label: "CBS — federal",         val: `${aliqCBS.toFixed(1)}%`,      cor: "#1A4870", sub: "Substitui PIS + COFINS" },
                         { label: "IBS — estadual (MT)",   val: `~${aliqIBSest.toFixed(2)}%`,  cor: "#1A5C38", sub: "Estimativa — a definir pelos estados" },
                         { label: "IBS — municipal",       val: `~${aliqIBSmun.toFixed(2)}%`,  cor: "#1A5C38", sub: "Estimativa — a definir pelos municípios" },
-                        { label: "TOTAL estimado",        val: `~${aliqTotal.toFixed(2)}%`,   cor: "#1a1a1a", sub: "Sobre receita bruta, com crédito pleno", bold: true },
+                        { label: "TOTAL estimado",        val: `~${aliqTotal.toFixed(2)}%`,   cor: "var(--text-1)", sub: "Sobre receita bruta, com crédito pleno", bold: true },
                       ].map((r, i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < 3 ? "0.5px solid #DEE5EE" : "none" }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: r.bold ? 700 : 500, color: r.cor }}>{r.label}</div>
-                            <div style={{ fontSize: 10, color: "#888" }}>{r.sub}</div>
+                            <div style={{ fontSize: 10, color: "var(--text-3)" }}>{r.sub}</div>
                           </div>
                           <div style={{ fontSize: r.bold ? 18 : 15, fontWeight: r.bold ? 800 : 600, color: r.cor }}>{r.val}</div>
                         </div>
@@ -172,7 +172,7 @@ export default function IBSCBS() {
                       ].map((t, i) => (
                         <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 12 }}>
                           <span style={{ color: "#1A5C38", flexShrink: 0 }}>✓</span>
-                          <span style={{ color: "#1a1a1a" }}>{t}</span>
+                          <span style={{ color: "var(--text-1)" }}>{t}</span>
                         </div>
                       ))}
                     </div>
@@ -187,28 +187,28 @@ export default function IBSCBS() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
 
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 16 }}>Simulação IBS/CBS — sua propriedade</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 16 }}>Simulação IBS/CBS — sua propriedade</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
-                        <label style={{ fontSize: 11, color: "#555", display: "block", marginBottom: 5 }}>Receita bruta anual estimada (R$)</label>
-                        <InputNumerico decimais={0} value={receitaAnual || ""} onChange={v => setReceitaAnual(Number(v))} placeholder="Ex: 5.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", boxSizing: "border-box" }} />
+                        <label style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Receita bruta anual estimada (R$)</label>
+                        <InputNumerico decimais={0} value={receitaAnual || ""} onChange={v => setReceitaAnual(Number(v))} placeholder="Ex: 5.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", boxSizing: "border-box" }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: "#555", display: "block", marginBottom: 5 }}>Total de insumos e serviços comprados com nota (R$)</label>
-                        <InputNumerico decimais={0} value={creditosInsumos || ""} onChange={v => setCreditosInsumos(Number(v))} placeholder="Ex: 2.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", boxSizing: "border-box" }} />
+                        <label style={{ fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Total de insumos e serviços comprados com nota (R$)</label>
+                        <InputNumerico decimais={0} value={creditosInsumos || ""} onChange={v => setCreditosInsumos(Number(v))} placeholder="Ex: 2.000.000" style={{ width: "100%", padding: "10px 12px", border: "1px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", boxSizing: "border-box" }} />
                       </div>
 
                       <div style={{ borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
-                        <div style={{ fontSize: 11, color: "#555", marginBottom: 10 }}>Ajuste as alíquotas estimadas</div>
+                        <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 10 }}>Ajuste as alíquotas estimadas</div>
                         {[
                           { label: "CBS (federal)", val: aliqCBS, set: setAliqCBS },
                           { label: "IBS estadual", val: aliqIBSest, set: setAliqIBSest },
                           { label: "IBS municipal", val: aliqIBSmun, set: setAliqIBSmun },
                         ].map((r, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                            <label style={{ fontSize: 12, color: "#555", width: 130, flexShrink: 0 }}>{r.label}</label>
-                            <InputNumerico value={r.val} onChange={v => r.set(Number(v))} style={{ width: 80, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 12, color: "#1a1a1a" }} />
-                            <span style={{ fontSize: 11, color: "#888" }}>%</span>
+                            <label style={{ fontSize: 12, color: "var(--text-2)", width: 130, flexShrink: 0 }}>{r.label}</label>
+                            <InputNumerico value={r.val} onChange={v => r.set(Number(v))} style={{ width: 80, padding: "5px 8px", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 12, color: "var(--text-1)" }} />
+                            <span style={{ fontSize: 11, color: "var(--text-3)" }}>%</span>
                           </div>
                         ))}
                       </div>
@@ -216,23 +216,23 @@ export default function IBSCBS() {
                   </div>
 
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 16 }}>Resultado da simulação</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 16 }}>Resultado da simulação</div>
                     {receitaAnual === 0 ? (
-                      <div style={{ background: "#F3F6F9", borderRadius: 12, padding: 24, textAlign: "center", color: "#888", fontSize: 12 }}>
+                      <div style={{ background: "#F3F6F9", borderRadius: 12, padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
                         Informe a receita anual para simular
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         {[
-                          { label: "Receita bruta",        val: receitaAnual,  cor: "#1a1a1a" },
+                          { label: "Receita bruta",        val: receitaAnual,  cor: "var(--text-1)" },
                           { label: `IBS/CBS bruto (${aliqTotal.toFixed(2)}%)`, val: tribBruto, cor: "#E24B4A" },
                           { label: `(-) Créditos insumos`, val: -creditos,     cor: "#1A5C38" },
                           { label: "IBS/CBS líquido",      val: tribLiq,       cor: "#E24B4A", bold: true },
                           { label: "Economia com créditos",val: economia,      cor: "#1A5C38", bold: true },
-                          { label: "Carga efetiva",        val: receitaAnual > 0 ? tribLiq / receitaAnual * 100 : 0, pct: true, cor: "#1a1a1a" },
+                          { label: "Carga efetiva",        val: receitaAnual > 0 ? tribLiq / receitaAnual * 100 : 0, pct: true, cor: "var(--text-1)" },
                         ].map((l, i) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: l.bold ? "#F3F6F9" : "#fff", border: "0.5px solid #DEE5EE", borderRadius: 8 }}>
-                            <span style={{ fontSize: 12, color: "#555" }}>{l.label}</span>
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: l.bold ? "#F3F6F9" : "var(--bg-card)", border: "0.5px solid #DEE5EE", borderRadius: 8 }}>
+                            <span style={{ fontSize: 12, color: "var(--text-2)" }}>{l.label}</span>
                             <span style={{ fontSize: l.bold ? 16 : 13, fontWeight: l.bold ? 700 : 500, color: l.cor }}>
                               {l.pct ? `${(l.val as number).toFixed(2)}%` : fmtBRL(Math.abs(l.val as number))}
                             </span>
@@ -248,14 +248,14 @@ export default function IBSCBS() {
             {/* ── ABA: REDUÇÕES AGRO ── */}
             {aba === "impacto" && (
               <div style={{ padding: 24 }}>
-                <div style={{ marginBottom: 14, fontSize: 12, color: "#555", background: "#EAF3DE", border: "0.5px solid #1A5C3840", borderRadius: 8, padding: "10px 14px" }}>
+                <div style={{ marginBottom: 14, fontSize: 12, color: "var(--text-2)", background: "#EAF3DE", border: "0.5px solid #1A5C3840", borderRadius: 8, padding: "10px 14px" }}>
                   <strong style={{ color: "#1A5C38" }}>Agronegócio beneficiado:</strong> A Reforma Tributária manteve tratamento favorecido para insumos agropecuários (alíquota zero) e grãos (redução de 60%). Isso representa grande vantagem competitiva para o produtor rural.
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F3F6F9" }}>
                       {["NCM", "Produto / Insumo", "Redução", "Alíquota efetiva", "Observação"].map((h, i) => (
-                        <th key={i} style={{ padding: "8px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                        <th key={i} style={{ padding: "8px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -264,8 +264,8 @@ export default function IBSCBS() {
                       const efetiva = aliqTotal * (1 - r.reducao / 100);
                       return (
                         <tr key={i} style={{ borderBottom: i < REDUCOES_AGRO.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                          <td style={{ padding: "9px 14px", color: "#1a1a1a", fontFamily: "monospace", fontSize: 12 }}>{r.ncm}</td>
-                          <td style={{ padding: "9px 14px", color: "#1a1a1a", fontWeight: 600 }}>{r.produto}</td>
+                          <td style={{ padding: "9px 14px", color: "var(--text-1)", fontFamily: "monospace", fontSize: 12 }}>{r.ncm}</td>
+                          <td style={{ padding: "9px 14px", color: "var(--text-1)", fontWeight: 600 }}>{r.produto}</td>
                           <td style={{ padding: "9px 14px", textAlign: "center" }}>
                             <span style={{ background: r.reducao === 100 ? "#EAF3DE" : "#FBF3E0", color: r.reducao === 100 ? "#1A5C38" : "#7A5A12", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6 }}>
                               {r.reducao}%
@@ -274,7 +274,7 @@ export default function IBSCBS() {
                           <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 700, color: r.reducao === 100 ? "#1A5C38" : "#C9921B" }}>
                             {r.reducao === 100 ? "Zero" : `~${efetiva.toFixed(2)}%`}
                           </td>
-                          <td style={{ padding: "9px 14px", color: "#555", fontSize: 11 }}>{r.obs}</td>
+                          <td style={{ padding: "9px 14px", color: "var(--text-2)", fontSize: 11 }}>{r.obs}</td>
                         </tr>
                       );
                     })}
@@ -286,7 +286,7 @@ export default function IBSCBS() {
             {/* ── ABA: CRONOGRAMA ── */}
             {aba === "cronograma" && (
               <div style={{ padding: 24 }}>
-                <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 16 }}>Calendário de transição — 2026 a 2034</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 16 }}>Calendário de transição — 2026 a 2034</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {CRONOGRAMA.map((c, i) => {
                     const passado   = c.ano < new Date().getFullYear();
@@ -296,26 +296,26 @@ export default function IBSCBS() {
                       <div key={i} style={{
                         display: "flex", alignItems: "center", gap: 16,
                         padding: "12px 16px", borderRadius: 10,
-                        background: corrente ? "#EAF3DE" : passado ? "#F8FAFD" : "#fff",
-                        border: `0.5px solid ${corrente ? "#1A5C38" : "#D4DCE8"}`,
+                        background: corrente ? "#EAF3DE" : passado ? "#F8FAFD" : "var(--bg-card)",
+                        border: `0.5px solid ${corrente ? "#1A5C38" : "var(--border-table)"}`,
                         opacity: passado ? 0.7 : 1,
                       }}>
                         <div style={{ width: 54, textAlign: "center", flexShrink: 0 }}>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: corrente ? "#1A5C38" : "#1a1a1a" }}>{c.ano}</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: corrente ? "#1A5C38" : "var(--text-1)" }}>{c.ano}</div>
                           {corrente && <div style={{ fontSize: 9, color: "#1A5C38", fontWeight: 600 }}>ATUAL</div>}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{c.desc}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{c.desc}</div>
                           <div style={{ display: "flex", gap: 12 }}>
                             <span style={{ fontSize: 11, color: "#1A4870" }}>CBS: <strong>{c.cbs}%</strong></span>
                             <span style={{ fontSize: 11, color: "#1A5C38" }}>IBS: <strong>{c.ibs}% do total</strong></span>
                           </div>
                         </div>
                         <div style={{ width: 200, flexShrink: 0 }}>
-                          <div style={{ height: 8, background: "#DEE5EE", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ height: 8, background: "var(--border-row)", borderRadius: 4, overflow: "hidden" }}>
                             <div style={{ height: "100%", width: `${c.ibs}%`, background: "#1A5C38", borderRadius: 4, transition: "width 0.3s" }} />
                           </div>
-                          <div style={{ fontSize: 10, color: "#888", marginTop: 2, textAlign: "right" }}>IBS {c.ibs}% implementado</div>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2, textAlign: "right" }}>IBS {c.ibs}% implementado</div>
                         </div>
                       </div>
                     );
@@ -334,7 +334,7 @@ export default function IBSCBS() {
                   ].map((t, i) => (
                     <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5 }}>
                       <span style={{ color: "#C9921B" }}>→</span>
-                      <span style={{ color: "#1a1a1a" }}>{t}</span>
+                      <span style={{ color: "var(--text-1)" }}>{t}</span>
                     </div>
                   ))}
                 </div>

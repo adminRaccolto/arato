@@ -91,10 +91,10 @@ export default function SelectBusca({ value, onChange, options, placeholder = "‚
           transition: "background 0.1s",
         }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize, color: selectedLabel ? "#1a1a1a" : "#aaa", flex: 1, minWidth: 0 }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize, color: selectedLabel ? "var(--text-1)" : "var(--text-muted)", flex: 1, minWidth: 0 }}>
           {selectedLabel ?? placeholder}
         </span>
-        <span style={{ flexShrink: 0, marginLeft: 6, color: "#888", fontSize: 9, lineHeight: 1 }}>{aberto ? "‚ñ≤" : "‚ñº"}</span>
+        <span style={{ flexShrink: 0, marginLeft: 6, color: "var(--text-3)", fontSize: 9, lineHeight: 1 }}>{aberto ? "‚ñ≤" : "‚ñº"}</span>
       </div>
 
       {aberto && typeof window !== "undefined" && (
@@ -106,7 +106,7 @@ export default function SelectBusca({ value, onChange, options, placeholder = "‚
             left: pos.left,
             width: Math.max(pos.width, 300),
             zIndex: 99999,
-            background: "#fff",
+            background: "var(--bg-card)",
             border: "0.5px solid #C8D4E8",
             borderRadius: 8,
             boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
@@ -123,7 +123,7 @@ export default function SelectBusca({ value, onChange, options, placeholder = "‚
               value={busca}
               onChange={e => setBusca(e.target.value)}
               placeholder="Filtrar‚Ä¶"
-              style={{ width: "100%", border: "0.5px solid #C8D4E8", borderRadius: 6, padding: "5px 9px", fontSize: 12, outline: "none", background: "#fff", boxSizing: "border-box" }}
+              style={{ width: "100%", border: "0.5px solid #C8D4E8", borderRadius: 6, padding: "5px 9px", fontSize: 12, outline: "none", background: "var(--bg-card)", boxSizing: "border-box" }}
             />
           </div>
 
@@ -132,7 +132,7 @@ export default function SelectBusca({ value, onChange, options, placeholder = "‚
             {/* Op√ß√£o vazia */}
             <div
               onClick={() => selectOption("")}
-              style={{ padding: "7px 12px", fontSize: 12, color: "#aaa", cursor: "pointer", borderBottom: "0.5px solid #F0F4FA", fontStyle: "italic" }}
+              style={{ padding: "7px 12px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", borderBottom: "0.5px solid #F0F4FA", fontStyle: "italic" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#F0F4FA")}
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
@@ -140,7 +140,7 @@ export default function SelectBusca({ value, onChange, options, placeholder = "‚
             </div>
 
             {filtradas.length === 0 && (
-              <div style={{ padding: "14px 12px", textAlign: "center", color: "#aaa", fontSize: 12 }}>Nenhum resultado para "{busca}"</div>
+              <div style={{ padding: "14px 12px", textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum resultado para "{busca}"</div>
             )}
 
             {hasGroups
@@ -168,7 +168,7 @@ function OptionRow({ o, selected, onSelect }: { o: SelectBuscaOption; selected: 
       style={{
         padding: "7px 12px 7px 16px",
         fontSize: 12,
-        color: selected ? "#0B2D50" : "#1a1a1a",
+        color: selected ? "#0B2D50" : "var(--text-1)",
         background: selected ? "#D5E8F5" : "transparent",
         cursor: "pointer",
         borderBottom: "0.5px solid #F4F6FA",

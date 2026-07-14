@@ -44,7 +44,7 @@ export default function NovaSenha() {
     width: "100%", padding: "11px 14px",
     border: "1px solid #E0E6EE", borderRadius: 10,
     fontSize: 13, outline: "none", boxSizing: "border-box",
-    color: "#1a1a1a", background: "#F7F9FB",
+    color: "var(--text-1)", background: "#F7F9FB",
   };
 
   return (
@@ -55,27 +55,27 @@ export default function NovaSenha() {
     }}>
       <div style={{
         width: "100%", maxWidth: 400, margin: "24px",
-        background: "#fff", borderRadius: 20,
+        background: "var(--bg-card)", borderRadius: 20,
         boxShadow: "0 4px 20px rgba(11,45,80,0.10)",
         overflow: "hidden",
       }}>
         {/* Topo */}
         <div style={{
-          background: "#fff", padding: "32px 40px 24px",
+          background: "var(--bg-card)", padding: "32px 40px 24px",
           textAlign: "center", borderBottom: "0.5px solid #EEF1F6",
         }}>
           <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 48, width: "auto", objectFit: "contain", marginBottom: 12 }} />
-          <div style={{ color: "#aaa", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
             Menos clique, mais gestão
           </div>
         </div>
 
         {/* Conteúdo */}
         <div style={{ padding: "32px 40px 36px" }}>
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>
             Nova senha
           </h2>
-          <p style={{ margin: "0 0 28px", fontSize: 13, color: "#888" }}>
+          <p style={{ margin: "0 0 28px", fontSize: 13, color: "var(--text-3)" }}>
             Defina sua nova senha de acesso
           </p>
 
@@ -110,7 +110,7 @@ export default function NovaSenha() {
           ) : (
             <form onSubmit={definirNovaSenha}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, letterSpacing: "0.06em" }}>
                   NOVA SENHA
                 </label>
                 <input
@@ -126,7 +126,7 @@ export default function NovaSenha() {
               </div>
 
               <div style={{ marginBottom: 28 }}>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, letterSpacing: "0.06em" }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, letterSpacing: "0.06em" }}>
                   CONFIRMAR SENHA
                 </label>
                 <input
@@ -146,7 +146,7 @@ export default function NovaSenha() {
                 disabled={carregando || !sessaoOk}
                 style={{
                   width: "100%",
-                  background: (carregando || !sessaoOk) ? "#aaa" : "#1A5C38",
+                  background: (carregando || !sessaoOk) ? "var(--text-muted)" : "#1A5C38",
                   color: "#fff", border: "none", borderRadius: 10,
                   padding: "13px", fontSize: 14, fontWeight: 700,
                   cursor: (carregando || !sessaoOk) ? "not-allowed" : "pointer",

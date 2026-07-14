@@ -27,7 +27,7 @@ type Pendencia = {
 const STATUS_LABEL: Record<string, { label: string; cor: string; bg: string }> = {
   aguardando:  { label: "Aguardando NF",  cor: "#9D4900", bg: "#FFF4E5" },
   recebida:    { label: "NF Recebida",    cor: "#166534", bg: "#DCFCE7" },
-  dispensada:  { label: "Dispensada",     cor: "#555",    bg: "#F3F4F6" },
+  dispensada:  { label: "Dispensada",     cor: "var(--text-2)",    bg: "#F3F4F6" },
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -229,7 +229,7 @@ export default function PendenciasFiscaisPage() {
   return (
     <>
     <TopNav />
-    <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
@@ -240,7 +240,7 @@ export default function PendenciasFiscaisPage() {
           >
             ← Voltar
           </button>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Pendências Fiscais</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Pendências Fiscais</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Consumos registrados sem documento fiscal — WhatsApp IA ou lançamentos manuais
           </p>
@@ -262,8 +262,8 @@ export default function PendenciasFiscaisPage() {
             style={{
               padding: "5px 14px", borderRadius: 20, border: "0.5px solid",
               fontSize: 12, cursor: "pointer", fontWeight: filtroStatus === s ? 600 : 400,
-              borderColor: filtroStatus === s ? "#1A4870" : "#D4DCE8",
-              background: filtroStatus === s ? "#1A4870" : "#fff",
+              borderColor: filtroStatus === s ? "#1A4870" : "var(--border-table)",
+              background: filtroStatus === s ? "#1A4870" : "var(--bg-card)",
               color: filtroStatus === s ? "#fff" : "#444",
             }}
           >
@@ -273,7 +273,7 @@ export default function PendenciasFiscaisPage() {
         <select
           value={filtroTipo}
           onChange={e => setFiltroTipo(e.target.value)}
-          style={{ padding: "5px 10px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "#fff", color: "#444" }}
+          style={{ padding: "5px 10px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "var(--bg-card)", color: "#444" }}
         >
           <option value="">Todos os tipos</option>
           {Object.entries(TIPO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -282,7 +282,7 @@ export default function PendenciasFiscaisPage() {
           placeholder="Buscar por descrição ou fornecedor..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "#fff", minWidth: 240 }}
+          style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "var(--bg-card)", minWidth: 240 }}
         />
         {selecionados.size > 0 && (
           <button
@@ -300,11 +300,11 @@ export default function PendenciasFiscaisPage() {
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando...</div>
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
         ) : pendenciasFiltradas.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             {filtroStatus === "aguardando" ? "Nenhuma pendência fiscal no momento." : "Nenhum registro encontrado."}
           </div>
         ) : (
@@ -320,7 +320,7 @@ export default function PendenciasFiscaisPage() {
                   />
                 </th>
                 {["Data", "Tipo", "Descrição", "Fornecedor", "Valor", "Origem", "Status", ""].map(h => (
-                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -341,25 +341,25 @@ export default function PendenciasFiscaisPage() {
                     <td style={{ padding: "10px 14px", fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>
                       {new Date(p.data_operacao + "T12:00").toLocaleDateString("pt-BR")}
                     </td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: "#555" }}>
+                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)" }}>
                       {TIPO_LABEL[p.tipo] ?? p.tipo}
                     </td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: "#1a1a1a", maxWidth: 260 }}>
+                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-1)", maxWidth: 260 }}>
                       <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.descricao}</div>
                     </td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: "#555" }}>
+                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)" }}>
                       {p.fornecedor_nome ?? "—"}
                     </td>
-                    <td style={{ padding: "10px 14px", fontSize: 13, color: "#1a1a1a", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-1)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                       {p.valor != null ? `R$ ${p.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
                     </td>
                     <td style={{ padding: "10px 14px", fontSize: 12 }}>
                       <span style={{
                         padding: "3px 8px", borderRadius: 20, fontWeight: 500,
                         background: p.origem === "whatsapp" ? "#EEF5FF" : "#F3F6F9",
-                        color: p.origem === "whatsapp" ? "#1A4870" : "#555",
+                        color: p.origem === "whatsapp" ? "#1A4870" : "var(--text-2)",
                         border: "0.5px solid",
-                        borderColor: p.origem === "whatsapp" ? "#B8D0EE" : "#D4DCE8",
+                        borderColor: p.origem === "whatsapp" ? "#B8D0EE" : "var(--border-table)",
                       }}>
                         {p.origem === "whatsapp" ? "WhatsApp" : p.origem === "manual" ? "Manual" : p.origem}
                       </span>
@@ -367,7 +367,7 @@ export default function PendenciasFiscaisPage() {
                     <td style={{ padding: "10px 14px" }}>
                       <span style={{
                         padding: "3px 8px", borderRadius: 20, fontSize: 12, fontWeight: 500,
-                        background: st?.bg ?? "#F3F4F6", color: st?.cor ?? "#555",
+                        background: st?.bg ?? "#F3F4F6", color: st?.cor ?? "var(--text-2)",
                         border: "0.5px solid", borderColor: st?.cor ?? "#ccc",
                       }}>
                         {st?.label ?? p.status}
@@ -412,24 +412,24 @@ export default function PendenciasFiscaisPage() {
       {/* Modal de Anexar NF */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             {/* Header modal */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #EEF1F6" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>Anexar Nota Fiscal</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Anexar Nota Fiscal</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{modal.descricao}</div>
               </div>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888", lineHeight: 1 }}>×</button>
+              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}>×</button>
             </div>
 
             <div style={{ padding: "20px 24px" }}>
               {/* Info da pendência */}
               <div style={{ background: "#F8FAFB", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
-                  <div><span style={{ color: "#888" }}>Data: </span><span style={{ color: "#333", fontWeight: 500 }}>{new Date(modal.data_operacao + "T12:00").toLocaleDateString("pt-BR")}</span></div>
-                  <div><span style={{ color: "#888" }}>Tipo: </span><span style={{ color: "#333", fontWeight: 500 }}>{TIPO_LABEL[modal.tipo] ?? modal.tipo}</span></div>
-                  {modal.valor != null && <div><span style={{ color: "#888" }}>Valor: </span><span style={{ color: "#333", fontWeight: 500 }}>R$ {modal.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>}
-                  {modal.fornecedor_nome && <div><span style={{ color: "#888" }}>Fornecedor: </span><span style={{ color: "#333", fontWeight: 500 }}>{modal.fornecedor_nome}</span></div>}
+                  <div><span style={{ color: "var(--text-3)" }}>Data: </span><span style={{ color: "#333", fontWeight: 500 }}>{new Date(modal.data_operacao + "T12:00").toLocaleDateString("pt-BR")}</span></div>
+                  <div><span style={{ color: "var(--text-3)" }}>Tipo: </span><span style={{ color: "#333", fontWeight: 500 }}>{TIPO_LABEL[modal.tipo] ?? modal.tipo}</span></div>
+                  {modal.valor != null && <div><span style={{ color: "var(--text-3)" }}>Valor: </span><span style={{ color: "#333", fontWeight: 500 }}>R$ {modal.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>}
+                  {modal.fornecedor_nome && <div><span style={{ color: "var(--text-3)" }}>Fornecedor: </span><span style={{ color: "#333", fontWeight: 500 }}>{modal.fornecedor_nome}</span></div>}
                 </div>
               </div>
 
@@ -442,9 +442,9 @@ export default function PendenciasFiscaisPage() {
                     style={{
                       padding: "7px 16px", borderRadius: 8, border: "0.5px solid",
                       fontSize: 13, cursor: "pointer", fontWeight: modoAnexo === m ? 600 : 400,
-                      borderColor: modoAnexo === m ? "#1A4870" : "#D4DCE8",
-                      background: modoAnexo === m ? "#D5E8F5" : "#fff",
-                      color: modoAnexo === m ? "#0B2D50" : "#555",
+                      borderColor: modoAnexo === m ? "#1A4870" : "var(--border-table)",
+                      background: modoAnexo === m ? "#D5E8F5" : "var(--bg-card)",
+                      color: modoAnexo === m ? "#0B2D50" : "var(--text-2)",
                     }}
                   >
                     {m === "chave" ? "🔑 Chave de Acesso" : "📷 Foto da Nota"}
@@ -455,7 +455,7 @@ export default function PendenciasFiscaisPage() {
               {/* Modo: chave de acesso */}
               {modoAnexo === "chave" && (
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#555", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
                     Chave de Acesso NF-e (44 dígitos)
                   </label>
                   <input
@@ -464,7 +464,7 @@ export default function PendenciasFiscaisPage() {
                     placeholder="Digite ou cole os 44 dígitos da chave..."
                     style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
                   />
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                     {chaveInput.length}/44 dígitos — a chave está impressa abaixo do código de barras da DANFE
                   </div>
                   <button
@@ -473,7 +473,7 @@ export default function PendenciasFiscaisPage() {
                     style={{
                       marginTop: 14, width: "100%", padding: "10px", borderRadius: 8,
                       border: "none", cursor: consultando ? "wait" : "pointer",
-                      background: consultando ? "#aaa" : "#1A4870", color: "#fff",
+                      background: consultando ? "var(--text-muted)" : "#1A4870", color: "#fff",
                       fontSize: 13, fontWeight: 600,
                     }}
                   >
@@ -485,20 +485,20 @@ export default function PendenciasFiscaisPage() {
               {/* Modo: foto */}
               {modoAnexo === "foto" && (
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#555", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
                     Foto da Nota Fiscal ou DANFE
                   </label>
                   <div style={{ border: "1.5px dashed #D4DCE8", borderRadius: 10, padding: "24px", textAlign: "center", background: "#FAFBFC" }}>
                     {fotoBase64 ? (
                       <div>
                         <div style={{ fontSize: 13, color: "#166534", fontWeight: 600, marginBottom: 8 }}>✅ Foto carregada</div>
-                        <button onClick={() => setFotoBase64(null)} style={{ fontSize: 12, color: "#888", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Trocar foto</button>
+                        <button onClick={() => setFotoBase64(null)} style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Trocar foto</button>
                       </div>
                     ) : (
                       <label style={{ cursor: "pointer" }}>
                         <div style={{ fontSize: 32, marginBottom: 8 }}>📷</div>
                         <div style={{ fontSize: 13, color: "#666" }}>Clique para selecionar uma foto</div>
-                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>JPG ou PNG — a IA Claude extrai a chave automaticamente</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>JPG ou PNG — a IA Claude extrai a chave automaticamente</div>
                         <input type="file" accept="image/*" onChange={handleFoto} style={{ display: "none" }} />
                       </label>
                     )}
@@ -509,7 +509,7 @@ export default function PendenciasFiscaisPage() {
                     style={{
                       marginTop: 14, width: "100%", padding: "10px", borderRadius: 8,
                       border: "none", cursor: consultando || !fotoBase64 ? "not-allowed" : "pointer",
-                      background: consultando || !fotoBase64 ? "#aaa" : "#1A4870", color: "#fff",
+                      background: consultando || !fotoBase64 ? "var(--text-muted)" : "#1A4870", color: "#fff",
                       fontSize: 13, fontWeight: 600,
                     }}
                   >
@@ -534,7 +534,7 @@ export default function PendenciasFiscaisPage() {
               <div style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
                 <button
                   onClick={fecharModal}
-                  style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}
+                  style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
                 >
                   Fechar
                 </button>

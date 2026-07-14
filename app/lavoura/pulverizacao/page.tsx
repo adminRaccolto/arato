@@ -12,13 +12,13 @@ import CascadeSelector, { type CascadeValues } from "../../../components/Cascade
 import InputNumerico from "../../../components/InputNumerico";
 import type { Talhao, Insumo, PulverizacaoOp, PulverizacaoItem, AnoSafra, Ciclo, Fazenda } from "../../../lib/supabase";
 
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" };
+const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
@@ -29,11 +29,11 @@ const TIPOS: Record<PulverizacaoOp["tipo"], { label: string; bg: string; color: 
   fungicida:          { label: "Fungicida",             bg: "#E6F1FB", color: "#0C447C" },
   inseticida:         { label: "Inseticida",            bg: "#FBF0D8", color: "#7A5A12" },
   nematicida:         { label: "Nematicida",            bg: "#FBF3E0", color: "#8B5E14" },
-  acaricida:          { label: "Acaricida",             bg: "#F1EFE8", color: "#555"    },
+  acaricida:          { label: "Acaricida",             bg: "#F1EFE8", color: "var(--text-2)"    },
   fertilizante_foliar:{ label: "Fertilizante Foliar",   bg: "#D5E8F5", color: "#0B2D50" },
   regulador:          { label: "Regulador Crescimento", bg: "#FFF8EC", color: "#7A5200" },
   dessecacao:         { label: "Dessecação",            bg: "#F8EBE0", color: "#7A2E00" },
-  outros:             { label: "Outros",                bg: "#F3F6F9", color: "#555"    },
+  outros:             { label: "Outros",                bg: "#F3F6F9", color: "var(--text-2)"    },
 };
 
 const ESTADIOS = ["VE","V1","V2","V3","V4","V5","V6","R1","R2","R3","R4","R5","R6","R7","R8","Pós-emergência","Pré-emergência"];
@@ -156,14 +156,14 @@ export default function PulverizacaoPage() {
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
-        <header style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
+        <header style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Pulverização</h1>
+            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pulverização</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Herbicidas, fungicidas, inseticidas, nematicidas e fertilizantes foliares</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {fazendas.length > 1 && (
-              <select style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
+              <select style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }} value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}>
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
@@ -179,39 +179,39 @@ export default function PulverizacaoPage() {
             { label: "Custo total defensivos", valor: fmtBRL(pulverizacoes.reduce((s, p) => s + (p.custo_total ?? 0), 0)), cor: "#E24B4A" },
             { label: "Área total tratada", valor: `${pulverizacoes.reduce((s, p) => s + p.area_ha, 0).toLocaleString("pt-BR")} ha`, cor: "#C9921B" },
           ].map((s, i) => (
-            <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: 11, color: "#555", marginBottom: 6 }}>{s.label}</div>
+            <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
               <div style={{ fontSize: 20, fontWeight: 600, color: s.cor }}>{s.valor}</div>
             </div>
           ))}
         </div>
 
         {pulverizacoes.length === 0 ? (
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 40, textAlign: "center", color: "#444" }}>
             Nenhuma pulverização registrada.
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
-                    {fazendas.length > 1 && <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Fazenda</th>}
-                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Safra / Talhão</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Tipo</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Estádio</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Data</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Área</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Calda Total</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>Custo Total</th>
-                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}></th>
+                    {fazendas.length > 1 && <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Fazenda</th>}
+                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Safra / Talhão</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Tipo</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Estádio</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Data</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Área</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Calda Total</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Custo Total</th>
+                    <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {pulverizacoes.map((p, i) => {
                     const tm = TIPOS[p.tipo];
                     return (
-                      <tr key={p.id} style={{ borderBottom: i < pulverizacoes.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                      <tr key={p.id} style={{ borderBottom: i < pulverizacoes.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                         {fazendas.length > 1 && (
                           <td style={{ padding: "10px 14px" }}>
                             <span style={{ fontSize: 11, background: "#EFF6FF", color: "#1A4870", padding: "2px 7px", borderRadius: 6, fontWeight: 600 }}>
@@ -220,17 +220,17 @@ export default function PulverizacaoPage() {
                           </td>
                         )}
                         <td style={{ padding: "10px 14px" }}>
-                          <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{cicloLabel(p.ciclo_id ?? "")}</div>
-                          {p.talhao_id && <div style={{ fontSize: 11, color: "#555" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>}
+                          <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{cicloLabel(p.ciclo_id ?? "")}</div>
+                          {p.talhao_id && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{talhoes.find(t => t.id === p.talhao_id)?.nome ?? "—"}</div>}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <span style={{ fontSize: 10, background: tm.bg, color: tm.color, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
-                          {p.pre_pos && <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{p.pre_pos === "pre" ? "Pré-emerg." : p.pre_pos === "pos" ? "Pós-emerg." : "Dessecação"}</div>}
+                          {p.pre_pos && <div style={{ fontSize: 10, color: "var(--text-2)", marginTop: 2 }}>{p.pre_pos === "pre" ? "Pré-emerg." : p.pre_pos === "pos" ? "Pós-emerg." : "Dessecação"}</div>}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{p.estadio_fenologico ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtData(p.data_inicio)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{fmtN(p.area_ha)} ha</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{p.estadio_fenologico ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtData(p.data_inicio)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{fmtN(p.area_ha)} ha</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
                           {p.calda_total_l ? `${fmtN(p.calda_total_l)} L` : "—"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#E24B4A" }}>
@@ -270,9 +270,9 @@ export default function PulverizacaoPage() {
       {/* Modal Detalhe Produtos */}
       {detalhe && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
-            <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) ? 8 : 18 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+            <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Produtos aplicados</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) ? 8 : 18 }}>
               {TIPOS[detalhe.pulv.tipo].label} · {fmtData(detalhe.pulv.data_inicio)} · {fmtN(detalhe.pulv.area_ha)} ha
             </div>
             {detalhe.itens.some(it => (it.custo_total ?? 0) === 0 && (insumos.find(i => i.id === it.insumo_id)?.custo_medio ?? 0) > 0) && (
@@ -284,12 +284,12 @@ export default function PulverizacaoPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "#F3F6F9" }}>
                   {["Produto", "Dose/ha", "Total Consumido", "Valor Unit.", "Custo/ha", "Custo Total"].map((h, i) => (
-                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
                   {detalhe.itens.map((it, i) => (
-                    <tr key={it.id} style={{ borderBottom: i < detalhe.itens.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                    <tr key={it.id} style={{ borderBottom: i < detalhe.itens.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                       <td style={{ padding: "8px 12px" }}>{insumos.find(x => x.id === it.insumo_id)?.nome ?? it.insumo_id}</td>
                       <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtN(it.dose_ha, 3)} {it.unidade}/ha</td>
                       <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmtN(it.total_consumido, 3)} {it.unidade}</td>
@@ -300,8 +300,8 @@ export default function PulverizacaoPage() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ background: "#F3F6F9", color: "#1a1a1a", fontWeight: 600 }}>
-                    <td colSpan={4} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "#555" }}>TOTAL</td>
+                  <tr style={{ background: "#F3F6F9", color: "var(--text-1)", fontWeight: 600 }}>
+                    <td colSpan={4} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL</td>
                     <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_ha, 0))}</td>
                     <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_total, 0))}</td>
                   </tr>
@@ -318,9 +318,9 @@ export default function PulverizacaoPage() {
       {/* Modal Registrar Aplicação */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 740, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 740, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", padding: 26 }}>
             <div style={{ marginBottom: 14 }}>
-              <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
+              <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 15 }}>Registrar Pulverização / Aplicação</div>
             </div>
 
             {/* Hierarquia: Produtor → Fazenda → Safra → Ciclo → Talhão */}
@@ -401,8 +401,8 @@ export default function PulverizacaoPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 {caldaTotal !== null && (
-                  <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
-                    <div style={{ color: "#555", fontSize: 10, marginBottom: 2 }}>Calda Total</div>
+                  <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
+                    <div style={{ color: "var(--text-2)", fontSize: 10, marginBottom: 2 }}>Calda Total</div>
                     <strong>{fmtN(caldaTotal)} L</strong>
                   </div>
                 )}
@@ -415,7 +415,7 @@ export default function PulverizacaoPage() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead><tr style={{ background: "#F3F6F9" }}>
                   {["Produto (estoque)", "Un.", "Dose/ha", "Total", "Custo/ha", "Custo Total", ""].map((h, i) => (
-                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
@@ -427,7 +427,7 @@ export default function PulverizacaoPage() {
                     const custoHa = vu * dose;
                     const custoTot = custoHa * areaHa;
                     return (
-                      <tr key={idx} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
+                      <tr key={idx} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
                         <td style={{ padding: "6px 8px" }}>
                           <select style={{ ...inp, fontSize: 12 }} value={it.insumo_id} onChange={e => setItens(p => p.map((x, j) => j === idx ? { ...x, insumo_id: e.target.value, unidade: insumos.find(i => i.id === e.target.value)?.unidade ?? "L" } : x))}>
                             <option value="">— Produto —</option>
@@ -436,7 +436,7 @@ export default function PulverizacaoPage() {
                         </td>
                         <td style={{ padding: "6px 8px", width: 70 }}>
                           {it.insumo_id ? (
-                            <div style={{ ...inp, fontSize: 12, background: "#F4F6FA", color: "#1A4870", fontWeight: 600, textAlign: "center", cursor: "default" }}
+                            <div style={{ ...inp, fontSize: 12, background: "var(--bg-page)", color: "#1A4870", fontWeight: 600, textAlign: "center", cursor: "default" }}
                               title="Unidade travada pelo cadastro do insumo">
                               {it.unidade}
                             </div>
@@ -449,7 +449,7 @@ export default function PulverizacaoPage() {
                         <td style={{ padding: "6px 8px", width: 90 }}>
                           <InputNumerico style={{ ...inp, fontSize: 12, textAlign: "right" }} decimais={3} placeholder="0,000" value={it.dose_ha} onChange={v => setItens(p => p.map((x, j) => j === idx ? { ...x, dose_ha: v } : x))} />
                         </td>
-                        <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{total > 0 ? `${fmtN(total, 2)} ${it.unidade}` : "—"}</td>
+                        <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "var(--text-1)" }}>{total > 0 ? `${fmtN(total, 2)} ${it.unidade}` : "—"}</td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, color: "#E24B4A" }}>{custoHa > 0 ? fmtBRL(custoHa) : "—"}</td>
                         <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#E24B4A" }}>{custoTot > 0 ? fmtBRL(custoTot) : "—"}</td>
                         <td style={{ padding: "6px 8px", width: 40 }}>
@@ -464,7 +464,7 @@ export default function PulverizacaoPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <button style={{ ...btnR, fontSize: 12 }} onClick={() => setItens(p => [...p, { insumo_id: "", dose_ha: "", unidade: "L" }])}>+ Produto</button>
               {custoTotal > 0 && (
-                <div style={{ fontSize: 12, color: "#555" }}>
+                <div style={{ fontSize: 12, color: "var(--text-2)" }}>
                   Custo total: <strong style={{ color: "#E24B4A" }}>{fmtBRL(custoTotal)}</strong>
                   {areaHa > 0 && <> · <strong style={{ color: "#E24B4A" }}>{fmtBRL(custoTotal / areaHa)}/ha</strong></>}
                 </div>

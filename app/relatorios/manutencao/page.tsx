@@ -21,7 +21,7 @@ const TIPO_MANUT_LABEL: Record<string, string> = {
 };
 const TIPO_MANUT_COR: Record<string, string> = {
   preventiva: "#16A34A", corretiva: "#E24B4A",
-  revisao: "#378ADD",    outro: "#888",
+  revisao: "#378ADD",    outro: "var(--text-3)",
 };
 const TIPO_MAQUINA_LABEL: Record<string, string> = {
   trator: "Trator", colheitadeira: "Colheitadeira", pulverizador: "Pulverizador",
@@ -177,7 +177,7 @@ function RelManutInner() {
             </span>
           </td>
           <td style="padding:4px 8px;font-size:9px">${r.descricao}</td>
-          <td style="padding:4px 8px;font-size:9px;text-align:right;font-weight:600;color:${r.custo ? "#DC2626" : "#aaa"};white-space:nowrap">
+          <td style="padding:4px 8px;font-size:9px;text-align:right;font-weight:600;color:${r.custo ? "#DC2626" : "var(--text-muted)"};white-space:nowrap">
             ${r.custo ? fmtBRL(r.custo) : "—"}
           </td>
         </tr>`).join("");
@@ -205,7 +205,7 @@ function RelManutInner() {
       <div class="auto-fit-table">
       <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
         <thead>
-          <tr style="background:#F4F6FA">
+          <tr style="background:var(--bg-page)">
             <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">Data</th>
             <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:center;white-space:nowrap">Tipo</th>
             <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;white-space:nowrap">Serviço / Descrição</th>
@@ -298,26 +298,26 @@ function RelManutInner() {
 
   // ── estilos ───────────────────────────────────────────────────────────────
   const inp: React.CSSProperties = {
-    padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8,
-    fontSize: 13, color: "#1a1a1a", background: "#fff", outline: "none",
+    padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
+    fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none",
   };
-  const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+  const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
   const btn = (active: boolean, cor = "#1A4870"): React.CSSProperties => ({
     padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
-    border: `0.5px solid ${active ? cor : "#D4DCE8"}`,
-    background: active ? cor + "15" : "#fff",
-    color: active ? cor : "#888",
+    border: `0.5px solid ${active ? cor : "var(--border-table)"}`,
+    background: active ? cor + "15" : "var(--bg-card)",
+    color: active ? cor : "var(--text-3)",
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Manutenção de Veículos e Máquinas</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>Histórico de manutenções agrupado por equipamento</p>
           </div>
           {gerado && (
@@ -333,7 +333,7 @@ function RelManutInner() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, marginBottom: 20 }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
           {/* Modo de filtro */}
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
             {(["data", "safra"] as const).map(m => (
@@ -406,7 +406,7 @@ function RelManutInner() {
                 <button onClick={() => setMaquinasSel(new Set(maquinas.map(m => m.id)))}
                   style={{ fontSize: 11, color: "#1A4870", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Todos</button>
                 <button onClick={() => setMaquinasSel(new Set())}
-                  style={{ fontSize: 11, color: "#888", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Nenhum</button>
+                  style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Nenhum</button>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 100, overflowY: "auto" }}>
                 {maquinas.filter(m => tiposMaqSel.has(m.tipo)).map(m => (
@@ -434,11 +434,11 @@ function RelManutInner() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
               {[
                 { label: "Equipamentos", val: totalMaquinas, cor: "#1A4870", fmt: false },
-                { label: "Manutenções",  val: totalManut,    cor: "#555",    fmt: false },
+                { label: "Manutenções",  val: totalManut,    cor: "var(--text-2)",    fmt: false },
                 { label: "Custo Total",  val: totalCusto,    cor: "#DC2626", fmt: true },
               ].map(k => (
-                <div key={k.label} style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
-                  <p style={{ margin: 0, fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</p>
+                <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</p>
                   <p style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700, color: k.cor }}>
                     {k.fmt ? fmtBRL(k.val) : k.val}
                   </p>
@@ -448,19 +448,19 @@ function RelManutInner() {
 
             {/* Tabela */}
             {grupos.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "#888" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 40, textAlign: "center", color: "var(--text-3)" }}>
                 Nenhuma manutenção encontrada no período selecionado.
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: "#F4F6FA" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Data", "Tipo", "Serviço / Descrição", "Custo"].map(h => (
                           <th key={h} style={{
-                            padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "#555",
-                            borderBottom: "1.5px solid #DDE2EE", whiteSpace: "nowrap",
+                            padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "var(--text-2)",
+                            borderBottom: "1.5px solid var(--border)", whiteSpace: "nowrap",
                             textAlign: h === "Custo" ? "right" : h === "Tipo" ? "center" : "left",
                           }}>{h}</th>
                         ))}
@@ -482,7 +482,7 @@ function RelManutInner() {
                           </tr>
                           {g.rows.map((r, i) => (
                             <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD", borderBottom: "0.5px solid #F0F3FA" }}>
-                              <td style={{ padding: "8px 12px", color: "#555", whiteSpace: "nowrap" }}>{fmtDate(r.data)}</td>
+                              <td style={{ padding: "8px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDate(r.data)}</td>
                               <td style={{ padding: "8px 12px", textAlign: "center" }}>
                                 <span style={{
                                   fontSize: 11, background: TIPO_MANUT_COR[r.tipo] + "20",
@@ -493,7 +493,7 @@ function RelManutInner() {
                                 </span>
                               </td>
                               <td style={{ padding: "8px 12px" }}>{r.descricao}</td>
-                              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap", color: r.custo ? "#DC2626" : "#aaa" }}>
+                              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap", color: r.custo ? "#DC2626" : "var(--text-muted)" }}>
                                 {r.custo ? fmtBRL(r.custo) : "—"}
                               </td>
                             </tr>
@@ -528,7 +528,7 @@ function RelManutInner() {
 
 export default function RelManutencaoPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando...</div>}>
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando...</div>}>
       <RelManutInner />
     </Suspense>
   );

@@ -277,15 +277,15 @@ export default function Conciliacao() {
   };
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Financeiro</div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1a1a1a" }}>Conciliação Bancária</h1>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Financeiro</div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "var(--text-1)" }}>Conciliação Bancária</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
               Importe o extrato OFX do seu banco — o sistema concilia automaticamente com os lançamentos.
             </p>
@@ -296,7 +296,7 @@ export default function Conciliacao() {
               <select
                 value={contaSel}
                 onChange={e => setContaSel(e.target.value)}
-                style={{ padding: "8px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "#fff", outline: "none" }}
+                style={{ padding: "8px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", outline: "none" }}
               >
                 <option value="">— Conta bancária —</option>
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} · {c.banco}</option>)}
@@ -310,7 +310,7 @@ export default function Conciliacao() {
               </button>
               <input ref={inputRef} type="file" accept=".ofx,.OFX" onChange={handleOFX} style={{ display: "none" }} />
             </div>
-            <div style={{ fontSize: 11, color: "#888" }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)" }}>
               Suporta OFX de qualquer banco brasileiro. Automático às 8h via cron.
             </div>
           </div>
@@ -320,28 +320,28 @@ export default function Conciliacao() {
         {!extrato && (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
             {extratos.length === 0 ? (
-              <div style={{ gridColumn: "1/-1", background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center", color: "#888", fontSize: 13 }}>
+              <div style={{ gridColumn: "1/-1", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🏦</div>
-                <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>Nenhum extrato importado ainda</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>Nenhum extrato importado ainda</div>
                 <div style={{ fontSize: 12 }}>Selecione uma conta bancária e importe o arquivo OFX do seu banco para iniciar a conciliação.</div>
               </div>
             ) : extratos.map(e => (
               <div
                 key={e.id}
                 onClick={() => setExtrato(e)}
-                style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 18px", cursor: "pointer", transition: "box-shadow 0.15s" }}
+                style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 18px", cursor: "pointer", transition: "box-shadow 0.15s" }}
                 onMouseEnter={el => (el.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)")}
                 onMouseLeave={el => (el.currentTarget.style.boxShadow = "none")}
               >
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a", marginBottom: 2 }}>{e.conta_nome}</div>
-                <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)", marginBottom: 2 }}>{e.conta_nome}</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>
                   {fmtDt(e.data_inicio)} a {fmtDt(e.data_fim)} · Importado {fmtDt(e.data_importacao)}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                   <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 11, background: "#DCFCE7", color: "#16A34A", fontWeight: 600 }}>{e.conciliados} conciliados</span>
                   {e.pendentes > 0 && <span style={{ padding: "2px 8px", borderRadius: 10, fontSize: 11, background: "#FEF3C7", color: "#92400E", fontWeight: 600 }}>{e.pendentes} pendentes</span>}
                 </div>
-                <div style={{ height: 6, background: "#EEF1F6", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ height: 6, background: "var(--bg-tag)", borderRadius: 3, overflow: "hidden" }}>
                   <div style={{ width: `${Math.round(e.conciliados / e.total_linhas * 100)}%`, height: "100%", background: "#16A34A", borderRadius: 3 }} />
                 </div>
               </div>
@@ -353,12 +353,12 @@ export default function Conciliacao() {
         {extrato && (
           <div>
             {/* Cabeçalho do extrato */}
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px", marginBottom: 16 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px", marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button onClick={() => setExtrato(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 18, padding: 0 }}>←</button>
+                  <button onClick={() => setExtrato(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: 18, padding: 0 }}>←</button>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{extrato.conta_nome}</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{extrato.conta_nome}</div>
                     <div style={{ fontSize: 12, color: "#666" }}>
                       {fmtDt(extrato.data_inicio)} até {fmtDt(extrato.data_fim)} · {extrato.total_linhas} transações
                     </div>
@@ -373,15 +373,15 @@ export default function Conciliacao() {
                     <div style={{ fontWeight: 700, color: "#92400E", fontSize: 15 }}>{extrato.pendentes}</div>
                     <div style={{ fontSize: 10, color: "#92400E" }}>pendentes</div>
                   </div>
-                  <div style={{ textAlign: "center", padding: "6px 14px", background: "#F4F6FA", borderRadius: 8 }}>
-                    <div style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 15 }}>{pctConciliado}%</div>
-                    <div style={{ fontSize: 10, color: "#888" }}>conciliado</div>
+                  <div style={{ textAlign: "center", padding: "6px 14px", background: "var(--bg-page)", borderRadius: 8 }}>
+                    <div style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 15 }}>{pctConciliado}%</div>
+                    <div style={{ fontSize: 10, color: "var(--text-3)" }}>conciliado</div>
                   </div>
                 </div>
               </div>
 
               {/* Barra de progresso */}
-              <div style={{ height: 8, background: "#EEF1F6", borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{ height: 8, background: "var(--bg-tag)", borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
                 <div style={{ width: `${pctConciliado}%`, height: "100%", background: pctConciliado === 100 ? "#16A34A" : "#1A4870", borderRadius: 4, transition: "width 0.3s" }} />
               </div>
 
@@ -392,8 +392,8 @@ export default function Conciliacao() {
                   { label: "Total Débitos",   valor: totalDebitos,  cor: "#E24B4A" },
                   { label: "Saldo do Período", valor: saldo,        cor: saldo >= 0 ? "#1A4870" : "#E24B4A" },
                 ].map(k => (
-                  <div key={k.label} style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px" }}>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>{k.label}</div>
+                  <div key={k.label} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{k.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{fmtBRL(k.valor)}</div>
                   </div>
                 ))}
@@ -406,40 +406,40 @@ export default function Conciliacao() {
                 placeholder="Buscar por descrição ou FITID..."
                 value={busca}
                 onChange={e => setBusca(e.target.value)}
-                style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, width: 320, outline: "none" }}
+                style={{ padding: "7px 12px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, width: 320, outline: "none" }}
               />
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", color: "#555" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
                 <input type="checkbox" checked={filtroPend} onChange={e => setFiltroPend(e.target.checked)} />
                 Mostrar apenas pendentes
               </label>
-              <div style={{ marginLeft: "auto", fontSize: 12, color: "#888" }}>
+              <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>
                 {linhasFiltradas.length} de {extrato.total_linhas} transações
               </div>
             </div>
 
             {/* Tabela de transações */}
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: "#F4F6FA" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Data","Descrição no Extrato","Valor","Situação","Lançamento Vinculado",""].map(h => (
-                      <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {linhasFiltradas.map((l, i) => (
-                    <tr key={l.id} style={{ borderBottom: i < linhasFiltradas.length - 1 ? "0.5px solid #EEF1F6" : "none", background: l.conciliado ? "transparent" : "#FFFEF5" }}>
-                      <td style={{ padding: "10px 14px", color: "#555", whiteSpace: "nowrap" }}>{fmtDt(l.data)}</td>
+                    <tr key={l.id} style={{ borderBottom: i < linhasFiltradas.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: l.conciliado ? "transparent" : "#FFFEF5" }}>
+                      <td style={{ padding: "10px 14px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDt(l.data)}</td>
                       <td style={{ padding: "10px 14px" }}>
-                        <div style={{ fontWeight: 500, color: "#1a1a1a", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
-                        <div style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace" }}>{l.id}</div>
+                        <div style={{ fontWeight: 500, color: "var(--text-1)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "monospace" }}>{l.id}</div>
                       </td>
                       <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
                         <span style={{ fontWeight: 700, color: l.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>
                           {l.tipo === "credito" ? "+" : "-"}{fmtBRL(l.valor)}
                         </span>
-                        <div style={{ fontSize: 10, color: "#888" }}>{l.tipo === "credito" ? "Crédito" : "Débito"}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)" }}>{l.tipo === "credito" ? "Crédito" : "Débito"}</div>
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         {l.conciliado ? (
@@ -455,19 +455,19 @@ export default function Conciliacao() {
                       <td style={{ padding: "10px 14px" }}>
                         {l.conciliado && l.lancamento_desc ? (
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 500, color: "#1a1a1a", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.lancamento_desc}</div>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-1)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.lancamento_desc}</div>
                             {l.lancamento_valor != null && (
-                              <div style={{ fontSize: 11, color: "#888" }}>{fmtBRL(l.lancamento_valor)}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-3)" }}>{fmtBRL(l.lancamento_valor)}</div>
                             )}
                           </div>
                         ) : (
-                          <span style={{ color: "#aaa", fontSize: 12 }}>—</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>
                         )}
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         {l.conciliado ? (
                           <button onClick={() => desvincular(l.id)}
-                            style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "#fff", color: "#888", fontSize: 11, cursor: "pointer" }}>
+                            style={{ padding: "3px 9px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 11, cursor: "pointer" }}>
                             Desvincular
                           </button>
                         ) : (
@@ -480,7 +480,7 @@ export default function Conciliacao() {
                     </tr>
                   ))}
                   {linhasFiltradas.length === 0 && (
-                    <tr><td colSpan={6} style={{ padding: "32px", textAlign: "center", color: "#888", fontSize: 13 }}>Nenhuma transação encontrada com os filtros aplicados.</td></tr>
+                    <tr><td colSpan={6} style={{ padding: "32px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma transação encontrada com os filtros aplicados.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -517,15 +517,15 @@ export default function Conciliacao() {
       ══════════════════════════════════════════════════════════════════════ */}
       {modalVincular && (
         <div style={modalStyle} onClick={e => { if (e.target === e.currentTarget) setModalVincular(null); }}>
-          <div style={{ background: "#fff", borderRadius: 12, padding: 28, width: 620, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, width: 620, maxHeight: "85vh", overflowY: "auto", boxShadow: "0 16px 48px rgba(0,0,0,0.2)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Vincular Transação</h3>
-              <button onClick={() => setModalVincular(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={() => setModalVincular(null)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             {/* Dados da transação */}
-            <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "12px 16px", marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 8 }}>Transação do extrato</div>
+            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 16px", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", marginBottom: 8 }}>Transação do extrato</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 {[
                   ["Data",       fmtDt(modalVincular.data)],
@@ -533,22 +533,22 @@ export default function Conciliacao() {
                   ["Tipo",       modalVincular.tipo === "credito" ? "Crédito" : "Débito"],
                 ].map(([k, v]) => (
                   <div key={k}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase" }}>{k}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>{k}</div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: modalVincular.tipo === "credito" ? "#16A34A" : "#E24B4A" }}>{v}</div>
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase" }}>Descrição</div>
-                <div style={{ fontSize: 13, color: "#1a1a1a" }}>{modalVincular.descricao}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>Descrição</div>
+                <div style={{ fontSize: 13, color: "var(--text-1)" }}>{modalVincular.descricao}</div>
               </div>
             </div>
 
             {/* Lista de lançamentos candidatos */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", marginBottom: 8 }}>
               Selecione o lançamento correspondente
             </div>
-            <div style={{ maxHeight: 320, overflowY: "auto", border: "0.5px solid #DDE2EE", borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ maxHeight: 320, overflowY: "auto", border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
               {lancamentos
                 .filter(l => {
                   // Mostra lançamentos do tipo compatível
@@ -563,15 +563,15 @@ export default function Conciliacao() {
                     onClick={() => setLancSel(l.id)}
                     style={{
                       padding: "10px 14px", cursor: "pointer",
-                      borderBottom: i < arr.length - 1 ? "0.5px solid #EEF1F6" : "none",
+                      borderBottom: i < arr.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
                       background: lancSel === l.id ? "#EBF4FF" : "transparent",
                       borderLeft: lancSel === l.id ? "3px solid #1A4870" : "3px solid transparent",
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "#1a1a1a" }}>{l.descricao}</div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{l.descricao}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                           Vcto: {fmtDt(l.data_vencimento)}
                           {l.data_baixa ? ` · Baixado: ${fmtDt(l.data_baixa)}` : ""}
                           {l.categoria ? ` · ${l.categoria}` : ""}
@@ -591,7 +591,7 @@ export default function Conciliacao() {
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalVincular(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalVincular(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={confirmarVinculo} disabled={!lancSel}
                 style={{ padding: "8px 22px", background: lancSel ? "#1A4870" : "#ccc", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: lancSel ? "pointer" : "not-allowed" }}>
                 Confirmar Vínculo

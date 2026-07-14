@@ -105,11 +105,11 @@ const ESTAGIO_SOJA  = ["V1","V2","V3","V4","V5","V6","V7","V8","R1","R2","R3","R
 const ESTAGIO_MILHO = ["V1","V2","V3","V4","V5","V6","VT","R1","R2","R3","R4","R5","R6"];
 
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
-  borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box",
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
+  borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box",
 };
 const lbl: React.CSSProperties = {
-  fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4,
+  fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4,
 };
 
 const dataDisplay = (r: Monitoramento) =>
@@ -315,12 +315,12 @@ export default function PragasPage() {
   return (
     <>
       <TopNav />
-      <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
+      <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Monitoramento de Pragas & Doenças</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Monitoramento de Pragas & Doenças</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Scouting por talhão · GPS georreferenciado · Fotos de campo</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -337,14 +337,14 @@ export default function PragasPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           {[
             { label: "Total de Registros", valor: registros.length, sub: "todos os ciclos", cor: "#1A4870", destaque: false },
-            { label: "Nível Crítico",      valor: criticos, sub: criticos > 0 ? "⚠ ação imediata" : "nenhum", cor: criticos > 0 ? "#DC2626" : "#888", destaque: criticos > 0 },
-            { label: "Nível Alto",         valor: altos, sub: altos > 0 ? "monitorar de perto" : "nenhum",  cor: altos > 0 ? "#92400E" : "#888", destaque: altos > 0 },
+            { label: "Nível Crítico",      valor: criticos, sub: criticos > 0 ? "⚠ ação imediata" : "nenhum", cor: criticos > 0 ? "#DC2626" : "var(--text-3)", destaque: criticos > 0 },
+            { label: "Nível Alto",         valor: altos, sub: altos > 0 ? "monitorar de perto" : "nenhum",  cor: altos > 0 ? "#92400E" : "var(--text-3)", destaque: altos > 0 },
             { label: "Com Coordenadas GPS",valor: comGPS, sub: `de ${registros.length} registros`, cor: "#16A34A", destaque: false },
           ].map(kpi => (
-            <div key={kpi.label} style={{ background: kpi.destaque ? (kpi.cor === "#DC2626" ? "#FEF2F2" : "#FFFBEB") : "#fff", borderRadius: 12, padding: "16px 20px", border: `0.5px solid ${kpi.destaque ? "#FCA5A5" : "#DDE2EE"}` }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{kpi.label}</div>
+            <div key={kpi.label} style={{ background: kpi.destaque ? (kpi.cor === "#DC2626" ? "#FEF2F2" : "#FFFBEB") : "#fff", borderRadius: 12, padding: "16px 20px", border: `0.5px solid ${kpi.destaque ? "#FCA5A5" : "var(--border)"}` }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{kpi.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: kpi.cor }}>{kpi.valor}</div>
-              <div style={{ fontSize: 11, color: kpi.cor === "#888" ? "#888" : kpi.cor, marginTop: 2 }}>{kpi.sub}</div>
+              <div style={{ fontSize: 11, color: kpi.cor === "var(--text-3)" ? "var(--text-3)" : kpi.cor, marginTop: 2 }}>{kpi.sub}</div>
             </div>
           ))}
         </div>
@@ -357,14 +357,14 @@ export default function PragasPage() {
               <span style={{ fontWeight: 700, color: "#991B1B", fontSize: 13 }}>Crítico — {r.talhao_nome ?? "Talhão"}</span>
               <span style={{ color: "#991B1B", fontSize: 13 }}> · {r.nome}</span>
               {r.acao_recomendada && <div style={{ fontSize: 12, color: "#B91C1C", marginTop: 2 }}>Ação: {r.acao_recomendada}</div>}
-              {r.gps_lat && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>📍 {r.gps_lat.toFixed(6)}, {r.gps_lng?.toFixed(6)}</div>}
+              {r.gps_lat && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>📍 {r.gps_lat.toFixed(6)}, {r.gps_lng?.toFixed(6)}</div>}
             </div>
-            <span style={{ fontSize: 11, color: "#888", whiteSpace: "nowrap" }}>{dataDisplay(r)}</span>
+            <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{dataDisplay(r)}</span>
           </div>
         ))}
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", gap: 0, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
           {(["lista", "mapa", "relatorio"] as const).map(a => (
             <button key={a} onClick={() => setAba(a)} style={{
               padding: "10px 20px", border: "none", background: "none", cursor: "pointer", fontSize: 13,
@@ -405,24 +405,24 @@ export default function PragasPage() {
                   </option>
                 ))}
               </select>
-              <div style={{ marginLeft: "auto", fontSize: 12, color: "#888", alignSelf: "center" }}>
+              <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)", alignSelf: "center" }}>
                 {filtrados.length} registro{filtrados.length !== 1 ? "s" : ""}
               </div>
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               {loading ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando...</div>
+                <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
               ) : filtrados.length === 0 ? (
-                <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+                <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                   Nenhum registro. Use "+ Novo Registro" para iniciar o monitoramento.
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
+                    <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid var(--border)" }}>
                       {["Data","Talhão","Ciclo","Tipo","Ocorrência","Nível","% Pl.","Estágio","GPS","Foto","Ação Recomendada"].map(h => (
-                        <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -431,21 +431,21 @@ export default function PragasPage() {
                       const nm = NIVEL_META[r.nivel];
                       const tm = TIPO_META[r.tipo];
                       return (
-                        <tr key={r.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: r.nivel === 4 ? "#FFF8F8" : idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                        <tr key={r.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: r.nivel === 4 ? "#FFF8F8" : idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                           <td style={{ padding: "9px 12px", fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>{dataDisplay(r)}</td>
-                          <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{r.talhao_nome ?? "—"}</td>
-                          <td style={{ padding: "9px 12px", fontSize: 12, color: "#555" }}>{r.ciclo_nome ?? "—"}</td>
+                          <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{r.talhao_nome ?? "—"}</td>
+                          <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)" }}>{r.ciclo_nome ?? "—"}</td>
                           <td style={{ padding: "9px 12px" }}>
                             <span style={{ fontSize: 12, padding: "2px 7px", borderRadius: 20, background: tm.bg, color: tm.cor, fontWeight: 600, whiteSpace: "nowrap" }}>{tm.icone} {tm.label}</span>
                           </td>
-                          <td style={{ padding: "9px 12px", fontSize: 13, color: "#1a1a1a", maxWidth: 220 }}>
+                          <td style={{ padding: "9px 12px", fontSize: 13, color: "var(--text-1)", maxWidth: 220 }}>
                             <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nome}</div>
                           </td>
                           <td style={{ padding: "9px 12px" }}>
                             <span style={{ fontSize: 12, padding: "2px 9px", borderRadius: 20, fontWeight: 700, background: nm.bg, color: nm.cor, border: `0.5px solid ${nm.border}`, whiteSpace: "nowrap" }}>{nm.label}</span>
                           </td>
-                          <td style={{ padding: "9px 12px", fontSize: 13, color: "#555", textAlign: "center" }}>{r.percentual_plantas != null ? `${r.percentual_plantas}%` : "—"}</td>
-                          <td style={{ padding: "9px 12px", fontSize: 13, color: "#555", textAlign: "center" }}>{estagioDisplay(r)}</td>
+                          <td style={{ padding: "9px 12px", fontSize: 13, color: "var(--text-2)", textAlign: "center" }}>{r.percentual_plantas != null ? `${r.percentual_plantas}%` : "—"}</td>
+                          <td style={{ padding: "9px 12px", fontSize: 13, color: "var(--text-2)", textAlign: "center" }}>{estagioDisplay(r)}</td>
                           <td style={{ padding: "9px 12px", textAlign: "center" }}>
                             {r.gps_lat ? (
                               <a href={`https://maps.google.com/?q=${r.gps_lat},${r.gps_lng}`} target="_blank" rel="noreferrer" title={`${r.gps_lat?.toFixed(5)}, ${r.gps_lng?.toFixed(5)}`} style={{ fontSize: 16 }}>📍</a>
@@ -454,11 +454,11 @@ export default function PragasPage() {
                           <td style={{ padding: "9px 12px", textAlign: "center" }}>
                             {r.foto_url ? (
                               <a href={r.foto_url} target="_blank" rel="noreferrer">
-                                <img src={r.foto_url} alt="foto" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "0.5px solid #DDE2EE" }} />
+                                <img src={r.foto_url} alt="foto" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6, border: "0.5px solid var(--border)" }} />
                               </a>
                             ) : "—"}
                           </td>
-                          <td style={{ padding: "9px 12px", fontSize: 12, color: "#555", maxWidth: 220 }}>
+                          <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)", maxWidth: 220 }}>
                             <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.acao_recomendada ?? "—"}</div>
                           </td>
                         </tr>
@@ -474,10 +474,10 @@ export default function PragasPage() {
         {/* ── ABA MAPA / PONTOS GPS ── */}
         {aba === "mapa" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 12 }}>Pontos Georreferenciados</div>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 12 }}>Pontos Georreferenciados</div>
               {registros.filter(r => r.gps_lat !== null).length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#888", fontSize: 13 }}>
+                <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-3)", fontSize: 13 }}>
                   Nenhum ponto GPS registrado ainda.<br />
                   <span style={{ fontSize: 12 }}>Use "Capturar GPS" no registro para georreferenciar ocorrências.</span>
                 </div>
@@ -491,11 +491,11 @@ export default function PragasPage() {
                         <div key={r.id} style={{ border: `0.5px solid ${nm.border}`, borderRadius: 10, padding: "12px 14px", background: nm.bg }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: nm.cor }}>{r.talhao_nome ?? "Talhão"}</span>
-                            <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 12, background: "#fff", color: nm.cor, fontWeight: 700, border: `0.5px solid ${nm.border}` }}>{nm.label}</span>
+                            <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 12, background: "var(--bg-card)", color: nm.cor, fontWeight: 700, border: `0.5px solid ${nm.border}` }}>{nm.label}</span>
                           </div>
                           <div style={{ fontSize: 12, color: "#444", marginBottom: 4 }}>{tm.icone} {r.nome}</div>
                           <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>📅 {dataDisplay(r)} · {r.ciclo_nome ?? "—"}</div>
-                          <div style={{ fontSize: 11, color: "#555", fontFamily: "monospace", marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-2)", fontFamily: "monospace", marginBottom: 8 }}>
                             📍 {r.gps_lat?.toFixed(6)}, {r.gps_lng?.toFixed(6)}
                             {r.gps_accuracy_m ? ` (±${Math.round(r.gps_accuracy_m)}m)` : ""}
                           </div>
@@ -513,7 +513,7 @@ export default function PragasPage() {
                       );
                     })}
                   </div>
-                  <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#555" }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>
                     💡 Para visualizar todos os pontos em um mapa: exporte as coordenadas via CSV e importe no Google My Maps ou ArcGIS Online.
                   </div>
                 </>
@@ -549,13 +549,13 @@ export default function PragasPage() {
                 const top3  = Object.entries(regsT.reduce((acc, r) => { acc[r.nome] = (acc[r.nome] ?? 0) + 1; return acc; }, {} as Record<string,number>)).sort((a,b) => b[1]-a[1]).slice(0,5);
                 const tm    = TIPO_META[tipo];
                 return (
-                  <div key={tipo} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20 }}>
+                  <div key={tipo} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: tm.cor, marginBottom: 12 }}>{tm.icone} {tm.label}s — Top Ocorrências</div>
                     {top3.length === 0 ? (
-                      <div style={{ fontSize: 12, color: "#888" }}>Nenhum registro</div>
+                      <div style={{ fontSize: 12, color: "var(--text-3)" }}>Nenhum registro</div>
                     ) : top3.map(([nome, qtd]) => (
-                      <div key={nome} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "0.5px solid #EEF1F6" }}>
-                        <div style={{ fontSize: 12, color: "#1a1a1a", flex: 1, paddingRight: 8 }}>{nome}</div>
+                      <div key={nome} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "0.5px solid var(--bg-tag)" }}>
+                        <div style={{ fontSize: 12, color: "var(--text-1)", flex: 1, paddingRight: 8 }}>{nome}</div>
                         <span style={{ fontSize: 12, padding: "2px 8px", borderRadius: 12, background: tm.bg, color: tm.cor, fontWeight: 700 }}>{qtd}×</span>
                       </div>
                     ))}
@@ -564,16 +564,16 @@ export default function PragasPage() {
               })}
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 14 }}>Incidência por Talhão</div>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 14 }}>Incidência por Talhão</div>
               {relatorio.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "30px 20px", color: "#888", fontSize: 13 }}>Nenhum dado ainda.</div>
+                <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-3)", fontSize: 13 }}>Nenhum dado ainda.</div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
+                    <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid var(--border)" }}>
                       {["Talhão","Total","Crítico","Alto","Médio","Baixo","Últimas Ocorrências"].map(h => (
-                        <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase" }}>{h}</th>
+                        <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -582,22 +582,22 @@ export default function PragasPage() {
                       const medios = ultimos.filter(r => r.nivel === 2).length + (registros.filter(r => r.talhao_id === talhao.id && r.nivel === 2).length);
                       const baixos = registros.filter(r => r.talhao_id === talhao.id && r.nivel === 1).length;
                       return (
-                        <tr key={talhao.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
-                          <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{talhao.nome}</td>
+                        <tr key={talhao.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
+                          <td style={{ padding: "9px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{talhao.nome}</td>
                           <td style={{ padding: "9px 12px", fontSize: 13, color: "#444", textAlign: "center" }}>{total}</td>
                           <td style={{ padding: "9px 12px", textAlign: "center" }}>
-                            {crit > 0 ? <span style={{ background: "#DC2626", color: "#fff", padding: "2px 8px", borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{crit}</span> : <span style={{ color: "#888", fontSize: 12 }}>—</span>}
+                            {crit > 0 ? <span style={{ background: "#DC2626", color: "#fff", padding: "2px 8px", borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{crit}</span> : <span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span>}
                           </td>
                           <td style={{ padding: "9px 12px", textAlign: "center" }}>
-                            {alt > 0 ? <span style={{ background: "#FFEDD5", color: "#9A3412", padding: "2px 8px", borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{alt}</span> : <span style={{ color: "#888", fontSize: 12 }}>—</span>}
+                            {alt > 0 ? <span style={{ background: "#FFEDD5", color: "#9A3412", padding: "2px 8px", borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{alt}</span> : <span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span>}
                           </td>
                           <td style={{ padding: "9px 12px", textAlign: "center" }}>
-                            {medios > 0 ? <span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 12, fontSize: 12 }}>{medios}</span> : <span style={{ color: "#888", fontSize: 12 }}>—</span>}
+                            {medios > 0 ? <span style={{ background: "#FEF3C7", color: "#92400E", padding: "2px 8px", borderRadius: 12, fontSize: 12 }}>{medios}</span> : <span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span>}
                           </td>
                           <td style={{ padding: "9px 12px", textAlign: "center" }}>
-                            {baixos > 0 ? <span style={{ background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 12, fontSize: 12 }}>{baixos}</span> : <span style={{ color: "#888", fontSize: 12 }}>—</span>}
+                            {baixos > 0 ? <span style={{ background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 12, fontSize: 12 }}>{baixos}</span> : <span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span>}
                           </td>
-                          <td style={{ padding: "9px 12px", fontSize: 12, color: "#555" }}>
+                          <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-2)" }}>
                             {ultimos.map(r => r.nome.split("(")[0].trim()).join(", ")}
                           </td>
                         </tr>
@@ -614,14 +614,14 @@ export default function PragasPage() {
       {/* ── Modal de novo registro ──────────────────────────────────────────── */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "94vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "94vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: "0.5px solid #EEF1F6" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>Registrar Monitoramento</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Registrar Monitoramento</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Pragas, doenças ou plantas daninhas · GPS + fotos</div>
               </div>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             <div style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -660,7 +660,7 @@ export default function PragasPage() {
                     const tm = TIPO_META[t];
                     return (
                       <button key={t} type="button" onClick={() => { setFTipo(t); setFNome(""); setFNomeCustom(""); }}
-                        style={{ flex: 1, padding: "8px 6px", borderRadius: 8, border: `0.5px solid ${fTipo === t ? tm.cor : "#D4DCE8"}`, fontSize: 12, cursor: "pointer", fontWeight: fTipo === t ? 700 : 400, background: fTipo === t ? tm.bg : "#fff", color: fTipo === t ? tm.cor : "#555" }}>
+                        style={{ flex: 1, padding: "8px 6px", borderRadius: 8, border: `0.5px solid ${fTipo === t ? tm.cor : "var(--border-table)"}`, fontSize: 12, cursor: "pointer", fontWeight: fTipo === t ? 700 : 400, background: fTipo === t ? tm.bg : "var(--bg-card)", color: fTipo === t ? tm.cor : "var(--text-2)" }}>
                         {tm.icone} {tm.label}
                       </button>
                     );
@@ -688,10 +688,10 @@ export default function PragasPage() {
                     const nm = NIVEL_META[n]; const sel = fNivel === n;
                     return (
                       <button key={n} type="button" onClick={() => setFNivel(n)}
-                        style={{ padding: "10px 6px", borderRadius: 10, border: `1.5px solid ${sel ? nm.border : "#D4DCE8"}`, background: sel ? nm.bg : "#fff", cursor: "pointer", textAlign: "center", boxShadow: sel ? `0 0 0 2px ${nm.border}40` : "none" }}>
+                        style={{ padding: "10px 6px", borderRadius: 10, border: `1.5px solid ${sel ? nm.border : "var(--border-table)"}`, background: sel ? nm.bg : "var(--bg-card)", cursor: "pointer", textAlign: "center", boxShadow: sel ? `0 0 0 2px ${nm.border}40` : "none" }}>
                         <div style={{ fontSize: 18, marginBottom: 4 }}>{n===1?"🟢":n===2?"🟡":n===3?"🟠":"🔴"}</div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: nm.cor }}>{nm.label}</div>
-                        <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{n===1?"Abaixo NE":n===2?"Próx. NE":n===3?"Acima NE":"Emergencial"}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{n===1?"Abaixo NE":n===2?"Próx. NE":n===3?"Acima NE":"Emergencial"}</div>
                       </button>
                     );
                   })}
@@ -718,31 +718,31 @@ export default function PragasPage() {
               </div>
 
               {/* GPS — capturar coordenadas */}
-              <div style={{ background: "#F4F6FA", borderRadius: 10, padding: 14 }}>
+              <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14 }}>
                 <label style={{ ...lbl, marginBottom: 8 }}>📍 Coordenadas GPS</label>
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     {gpsLat !== null ? (
-                      <div style={{ background: "#fff", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "8px 12px" }}>
+                      <div style={{ background: "var(--bg-card)", border: "0.5px solid #86EFAC", borderRadius: 8, padding: "8px 12px" }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>✓ Localização capturada</div>
-                        <div style={{ fontSize: 12, color: "#555", fontFamily: "monospace", marginTop: 4 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-2)", fontFamily: "monospace", marginTop: 4 }}>
                           {gpsLat.toFixed(7)}, {gpsLng?.toFixed(7)}
                         </div>
-                        {gpsAcc && <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Precisão: ±{Math.round(gpsAcc)}m</div>}
+                        {gpsAcc && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Precisão: ±{Math.round(gpsAcc)}m</div>}
                         <button type="button" onClick={() => { setGpsLat(null); setGpsLng(null); setGpsAcc(null); }}
-                          style={{ marginTop: 6, fontSize: 11, color: "#888", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                          style={{ marginTop: 6, fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                           Limpar
                         </button>
                       </div>
                     ) : (
-                      <div style={{ fontSize: 12, color: "#888", padding: "6px 0" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-3)", padding: "6px 0" }}>
                         {gpsBusy ? "🔄 Obtendo localização..." : "Sem coordenadas — clique para capturar a posição atual."}
                       </div>
                     )}
                     {gpsErro && <div style={{ fontSize: 11, color: "#E24B4A", marginTop: 4 }}>{gpsErro}</div>}
                   </div>
                   <button type="button" onClick={capturarGPS} disabled={gpsBusy}
-                    style={{ padding: "9px 14px", background: gpsBusy ? "#aaa" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gpsBusy ? "wait" : "pointer", whiteSpace: "nowrap" }}>
+                    style={{ padding: "9px 14px", background: gpsBusy ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: gpsBusy ? "wait" : "pointer", whiteSpace: "nowrap" }}>
                     {gpsBusy ? "Aguarde..." : "Capturar GPS"}
                   </button>
                 </div>
@@ -754,7 +754,7 @@ export default function PragasPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {fotos.map((url, i) => (
                     <div key={i} style={{ position: "relative" }}>
-                      <img src={url} alt={`foto ${i+1}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "0.5px solid #DDE2EE" }} />
+                      <img src={url} alt={`foto ${i+1}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "0.5px solid var(--border)" }} />
                       <button type="button" onClick={() => setFotos(prev => prev.filter((_, j) => j !== i))}
                         style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, background: "#E24B4A", color: "#fff", border: "none", borderRadius: "50%", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                         ×
@@ -763,14 +763,14 @@ export default function PragasPage() {
                   ))}
                   {fotos.length < 3 && (
                     <button type="button" onClick={() => fileRef.current?.click()} disabled={fotoLoading}
-                      style={{ width: 80, height: 80, border: "1.5px dashed #D4DCE8", borderRadius: 8, background: "#F4F6FA", cursor: "pointer", fontSize: 24, color: "#aaa", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+                      style={{ width: 80, height: 80, border: "1.5px dashed var(--border-table)", borderRadius: 8, background: "var(--bg-page)", cursor: "pointer", fontSize: 24, color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
                       {fotoLoading ? <span style={{ fontSize: 11 }}>Enviando</span> : <>+<span style={{ fontSize: 10 }}>foto</span></>}
                     </button>
                   )}
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                   onChange={e => { const f = e.target.files?.[0]; if (f) uploadFoto(f); e.target.value = ""; }} />
-                <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Clique para tirar foto ou selecionar da galeria</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Clique para tirar foto ou selecionar da galeria</div>
               </div>
 
               {/* Ação + Recomendação vinculada */}
@@ -804,8 +804,8 @@ export default function PragasPage() {
               )}
 
               <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button onClick={fecharModal} style={{ flex: 1, padding: 10, borderRadius: 8, border: "0.5px solid #D4DCE8", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}>Cancelar</button>
-                <button onClick={salvar} disabled={salvando} style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: salvando ? "#aaa" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
+                <button onClick={fecharModal} style={{ flex: 1, padding: 10, borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
+                <button onClick={salvar} disabled={salvando} style={{ flex: 2, padding: 10, borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}>
                   {salvando ? "Salvando..." : "✓ Salvar Registro"}
                 </button>
               </div>

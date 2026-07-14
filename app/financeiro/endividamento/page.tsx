@@ -329,7 +329,7 @@ export default function RelatorioEndividamento() {
       ["TOTAL CAPTADO",        fmtBRL(totalCaptado),           "#1A4870"],
       ["AMORTIZADO",           fmtBRL(totalPago),              "#16A34A"],
       ["A PAGAR NO PERÍODO",   fmtBRL(totalJanelaTotal),       "#1A4870"],
-      ["  — Amortização",      fmtBRL(totalJanelaAmort),       "#555"],
+      ["  — Amortização",      fmtBRL(totalJanelaAmort),       "var(--text-2)"],
       ["  — Juros / Encargos", fmtBRL(totalJanelaJuros),       "#C9921B"],
     ].map(([k, v, cor]) => `<div><div style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:2px">${k}</div><div style="font-size:11px;font-weight:800;color:${cor}">${v}</div></div>`).join("")}
     <div style="margin-left:auto;font-size:8px;color:#aaa;align-self:flex-end">${new Date().toLocaleDateString("pt-BR")}</div>
@@ -360,20 +360,20 @@ export default function RelatorioEndividamento() {
   }
 
   // ── Estilos ─────────────────────────────────────────────────────
-  const sel: React.CSSProperties = { padding: "7px 10px", borderRadius: 8, border: "0.5px solid #DDE2EE", fontSize: 12, background: "#fff", color: "#555", cursor: "pointer", outline: "none" };
+  const sel: React.CSSProperties = { padding: "7px 10px", borderRadius: 8, border: "0.5px solid #DDE2EE", fontSize: 12, background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", outline: "none" };
   const colV: React.CSSProperties = { padding: "7px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" };
   const colS: React.CSSProperties = { ...colV, color: "#C9921B" };
 
   return (
     <>
       <TopNav />
-      <div style={{ padding: "24px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
+      <div style={{ padding: "24px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Relatório de Endividamento</h1>
-            <div style={{ fontSize: 13, color: "#888", marginTop: 2 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Relatório de Endividamento</h1>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>
               Capital de Terceiros — colunas = anos de vencimento das parcelas
             </div>
           </div>
@@ -399,18 +399,18 @@ export default function RelatorioEndividamento() {
             ))}
           </select>
 
-          <div style={{ width: 1, background: "#DDE2EE", height: 28 }} />
+          <div style={{ width: 1, background: "var(--border)", height: 28 }} />
 
           {/* Status */}
           {[{ label: "Todos", val: "" }, { label: "Ativos", val: "ativo" }, { label: "Quitados", val: "quitado" }].map(f => (
             <button key={f.val} onClick={() => setFiltroStatus(f.val)}
               style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid #DDE2EE", fontSize: 12,
-                background: filtroStatus === f.val ? "#1A4870" : "#fff", color: filtroStatus === f.val ? "#fff" : "#555", cursor: "pointer" }}>
+                background: filtroStatus === f.val ? "#1A4870" : "var(--bg-card)", color: filtroStatus === f.val ? "#fff" : "var(--text-2)", cursor: "pointer" }}>
               {f.label}
             </button>
           ))}
 
-          <div style={{ width: 1, background: "#DDE2EE", height: 28 }} />
+          <div style={{ width: 1, background: "var(--border)", height: 28 }} />
 
           {/* Moeda */}
           <select value={filtroMoeda} onChange={e => setFiltroMoeda(e.target.value)} style={sel}>
@@ -419,27 +419,27 @@ export default function RelatorioEndividamento() {
             <option value="USD">USD</option>
           </select>
 
-          <div style={{ width: 1, background: "#DDE2EE", height: 28 }} />
+          <div style={{ width: 1, background: "var(--border)", height: 28 }} />
 
           {/* Parcelas */}
           <button onClick={() => setApenasEmAberto(!apenasEmAberto)}
             style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid #DDE2EE", fontSize: 12,
-              background: apenasEmAberto ? "#FBF3E0" : "#fff", color: apenasEmAberto ? "#C9921B" : "#555",
+              background: apenasEmAberto ? "#FBF3E0" : "var(--bg-card)", color: apenasEmAberto ? "#C9921B" : "var(--text-2)",
               cursor: "pointer", fontWeight: apenasEmAberto ? 700 : 400 }}>
             {apenasEmAberto ? "⚠ Apenas em aberto" : "Todas as parcelas"}
           </button>
         </div>
 
         {/* Filtro de intervalo de anos */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "#555", fontWeight: 600 }}>Período (colunas):</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>Período (colunas):</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "#888" }}>De</span>
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>De</span>
             <select value={anoInicio} onChange={e => setAnoInicio(e.target.value)} style={{ ...sel, minWidth: 90 }}>
               <option value="">Todos</option>
               {todosAnosParc.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
-            <span style={{ fontSize: 12, color: "#888" }}>até</span>
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>até</span>
             <select value={anoFim} onChange={e => setAnoFim(e.target.value)} style={{ ...sel, minWidth: 90 }}>
               <option value="">Todos</option>
               {todosAnosParc.map(a => <option key={a} value={a}>{a}</option>)}
@@ -454,13 +454,13 @@ export default function RelatorioEndividamento() {
               { l: "Tudo",           i: "",        f: "" },
             ].map(s => (
               <button key={s.l} onClick={() => { setAnoInicio(s.i); setAnoFim(s.f); }}
-                style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 11, background: "#F4F6FA", color: "#555", cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}>
                 {s.l}
               </button>
             ))}
           </div>
           {anos.length > 0 && (
-            <span style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>
+            <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
               {anos.length} ano{anos.length !== 1 ? "s" : ""} visível{anos.length !== 1 ? "is" : ""}: {anos[0]} → {anos[anos.length - 1]}
             </span>
           )}
@@ -476,37 +476,37 @@ export default function RelatorioEndividamento() {
               sub: `amort. ${fmtBRL(totalJanelaAmort)} · juros ${fmtBRL(totalJanelaJuros)}` },
             { l: "Juros Acumulados",       v: fmtBRL(totalJuros),           cor: "#C9921B" },
           ].map(k => (
-            <div key={k.l} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 20px", flex: 1, minWidth: 150 }}>
-              <div style={{ fontSize: 10, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 5 }}>{k.l}</div>
+            <div key={k.l} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 20px", flex: 1, minWidth: 150 }}>
+              <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 5 }}>{k.l}</div>
               <div style={{ fontSize: 19, fontWeight: 700, color: k.cor }}>{k.v}</div>
-              {k.sub && <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>{k.sub}</div>}
+              {k.sub && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{k.sub}</div>}
             </div>
           ))}
         </div>
 
         {/* Corpo */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Carregando contratos...</div>
+          <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)" }}>Carregando contratos...</div>
         ) : erro ? (
-          <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #FCA5A5" }}>
+          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #FCA5A5" }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: "#B91C1C", marginBottom: 8 }}>Erro ao carregar dados</div>
-            <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>{erro}</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>{erro}</div>
             <button onClick={carregar} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13 }}>
               Tentar novamente
             </button>
           </div>
         ) : filtrados.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#555" }}>Nenhum contrato encontrado</div>
-            <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Cadastre contratos financeiros em Financeiro → Contratos Financeiros.</div>
+          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Nenhum contrato encontrado</div>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Cadastre contratos financeiros em Financeiro → Contratos Financeiros.</div>
           </div>
         ) : anos.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#555" }}>Nenhum vencimento no período selecionado</div>
-            <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Ajuste o intervalo de anos ou desmarque "Apenas em aberto".</div>
+          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Nenhum vencimento no período selecionado</div>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Ajuste o intervalo de anos ou desmarque "Apenas em aberto".</div>
           </div>
         ) : (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 210 + 380 }}>
                 <thead>
@@ -549,7 +549,7 @@ export default function RelatorioEndividamento() {
                           <td style={{ padding: "10px 16px", fontWeight: 700, fontSize: 13, color: "#0B2D50", position: "sticky", left: 0, background: "#EBF3FC", zIndex: 1 }}>
                             <span style={{ fontSize: 10, color: "#1A4870", marginRight: 6, opacity: 0.5 }}>{isExp ? "▼" : "▶"}</span>
                             {n1.credor}
-                            <div style={{ fontSize: 10, color: "#888", fontWeight: 400, marginTop: 2 }}>
+                            <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginTop: 2 }}>
                               {n1.niveis2.length} tipo{n1.niveis2.length !== 1 ? "s" : ""} ·{" "}
                               {n1.niveis2.reduce((s, n) => s + n.contratos.length, 0)} contrato{n1.niveis2.reduce((s, n) => s + n.contratos.length, 0) !== 1 ? "s" : ""}
                             </div>
@@ -581,9 +581,9 @@ export default function RelatorioEndividamento() {
                               <tr onClick={e => { e.stopPropagation(); toggle(rowKey2); }}
                                 style={{ background: "#F4F8FC", borderBottom: "0.5px solid #E5EDF5", cursor: "pointer" }}>
                                 <td style={{ padding: "8px 16px 8px 32px", fontSize: 12, fontWeight: 600, color: "#1A4870", position: "sticky", left: 0, background: "#F4F8FC", zIndex: 1 }}>
-                                  <span style={{ fontSize: 9, color: "#888", marginRight: 5 }}>{isExp2 ? "▼" : "▶"}</span>
+                                  <span style={{ fontSize: 9, color: "var(--text-3)", marginRight: 5 }}>{isExp2 ? "▼" : "▶"}</span>
                                   {TIPO_LABEL[n2.tipo] ?? n2.tipo}
-                                  <span style={{ fontSize: 10, color: "#888", fontWeight: 400, marginLeft: 8 }}>{n2.contratos.length} contrato{n2.contratos.length !== 1 ? "s" : ""}</span>
+                                  <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400, marginLeft: 8 }}>{n2.contratos.length} contrato{n2.contratos.length !== 1 ? "s" : ""}</span>
                                 </td>
                                 {anos.map(a => (
                                   <React.Fragment key={a}>
@@ -611,8 +611,8 @@ export default function RelatorioEndividamento() {
                                 return (
                                   <tr key={c.id} style={{ background: ci % 2 === 0 ? "#fff" : "#FAFBFC", borderBottom: "0.5px solid #F0F0F0" }}>
                                     <td style={{ padding: "8px 16px 8px 48px", fontSize: 11, position: "sticky", left: 0, background: ci % 2 === 0 ? "#fff" : "#FAFBFC", zIndex: 1 }}>
-                                      <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{c.descricao || c.credor}</div>
-                                      <div style={{ color: "#888", fontSize: 10 }}>
+                                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao || c.credor}</div>
+                                      <div style={{ color: "var(--text-3)", fontSize: 10 }}>
                                         contrato: {fmtData(c.data_contrato)}
                                         {c.linha_credito ? ` · ${c.linha_credito}` : ""}
                                         {c.taxa_juros_aa != null ? ` · ${c.taxa_juros_aa}% a.a.` : ""}

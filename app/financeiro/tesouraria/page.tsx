@@ -9,10 +9,10 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -152,7 +152,7 @@ export default function TesourariaPage() {
 
   if (!podeAcessarPlano("fin_tesouraria")) return <PlanoGate modulo="fin_tesouraria" />;
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "28px 20px" }}>
@@ -160,7 +160,7 @@ export default function TesourariaPage() {
         {/* Cabeçalho */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Lançamento de Tesouraria</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Lançamento de Tesouraria</h1>
             <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>
               Registre operações financeiras de tesouraria: transferências, ajustes de saldo, seguros, consórcios e outros.
             </p>
@@ -175,7 +175,7 @@ export default function TesourariaPage() {
             { label: "Total Saídas",      value: fmtBRL(totalSaidas),   color: "#E24B4A" },
             { label: "Lançamentos em Aberto", value: String(emAberto),  color: "#1A4870" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
             </div>
@@ -184,17 +184,17 @@ export default function TesourariaPage() {
 
         {/* Lista de lançamentos */}
         {lancamentos.length === 0 ? (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 48, textAlign: "center", color: "#888", fontSize: 13 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             Nenhum lançamento de tesouraria registrado.<br />
-            <span style={{ fontSize: 12, color: "#aaa" }}>Use o botão "+ Novo Lançamento" para registrar.</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Use o botão "+ Novo Lançamento" para registrar.</span>
           </div>
         ) : (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#F3F6F9" }}>
                   {["Data", "Operação", "Descrição", "Conta", "Entrada", "Saída", "Status", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Entrada" || h === "Saída" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Entrada" || h === "Saída" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -205,8 +205,8 @@ export default function TesourariaPage() {
                     <td style={{ padding: "9px 12px" }}>
                       <span style={{ fontSize: 10, background: "#EEE6F8", color: "#4A1A7A", padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{l.categoria}</span>
                     </td>
-                    <td style={{ padding: "9px 12px", fontSize: 12, color: "#1a1a1a" }}>{l.descricao}</td>
-                    <td style={{ padding: "9px 12px", fontSize: 11, color: "#555" }}>{l.conta_bancaria ?? "—"}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 12, color: "var(--text-1)" }}>{l.descricao}</td>
+                    <td style={{ padding: "9px 12px", fontSize: 11, color: "var(--text-2)" }}>{l.conta_bancaria ?? "—"}</td>
                     <td style={{ padding: "9px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "#16A34A" }}>
                       {l.tipo === "receber" ? fmtBRL(l.valor) : ""}
                     </td>
@@ -243,10 +243,10 @@ export default function TesourariaPage() {
           : [<option key="_vazio" value="" disabled>Nenhuma conta cadastrada — acesse Cadastros &gt; Contas Bancárias</option>];
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-            <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
               <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Novo Lançamento de Tesouraria</div>
-                <button onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Lançamento de Tesouraria</div>
+                <button onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
               </div>
               <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
                 {lErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{lErr}</div>}
@@ -286,7 +286,7 @@ export default function TesourariaPage() {
                       </div>
                     </div>
                     {lForm.saldo_atual && lForm.saldo_correto && (
-                      <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
+                      <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                         Diferença:{" "}
                         <strong style={{ color: lForm.saldo_correto - lForm.saldo_atual >= 0 ? "#16A34A" : "#E24B4A" }}>
                           {fmtBRL(Math.abs(lForm.saldo_correto - lForm.saldo_atual))}
@@ -343,7 +343,7 @@ export default function TesourariaPage() {
                         <div style={{ display: "flex", gap: 8 }}>
                           {(["pagar", "receber"] as const).map(t => (
                             <button key={t} onClick={() => setLForm(f => ({ ...f, tipo: t }))}
-                              style={{ flex: 1, padding: "9px 14px", border: `2px solid ${lForm.tipo === t ? "#1A4870" : "#D4DCE8"}`, borderRadius: 8, background: lForm.tipo === t ? "#D5E8F5" : "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600, color: lForm.tipo === t ? "#0B2D50" : "#555" }}>
+                              style={{ flex: 1, padding: "9px 14px", border: `2px solid ${lForm.tipo === t ? "#1A4870" : "var(--border-table)"}`, borderRadius: 8, background: lForm.tipo === t ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", fontSize: 12, fontWeight: 600, color: lForm.tipo === t ? "#0B2D50" : "var(--text-2)" }}>
                               {t === "pagar" ? "Saída (Pagar)" : "Entrada (Receber)"}
                             </button>
                           ))}
@@ -385,7 +385,7 @@ export default function TesourariaPage() {
               </div>
               <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button style={btnR} onClick={() => setModalLanc(false)}>Cancelar</button>
-                <button onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "#aaa" : "#1A4870", cursor: lSaving ? "default" : "pointer" }}>
+                <button onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#1A4870", cursor: lSaving ? "default" : "pointer" }}>
                   {lSaving ? "Salvando…" : "Salvar"}
                 </button>
               </div>

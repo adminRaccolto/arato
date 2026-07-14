@@ -2,8 +2,50 @@
   box-sizing: border-box;
 }
 
-/* ── Tokens ──────────────────────────────────────────────────── */
-:root {
+/* ════════════════════════════════════════════════════════════════
+   SISTEMA DE TEMAS — Arato
+   Alterna via  data-theme="light" | data-theme="dark"  no <html>
+   Cores semânticas (verde, vermelho, mostarda) são iguais nos dois.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Tema Claro (padrão) ─────────────────────────────────────── */
+:root,
+:root[data-theme="light"] {
+  /* Estrutura */
+  --bg-page:        #F4F6FA;
+  --bg-card:        #ffffff;
+  --bg-header:      #ffffff;
+  --bg-nav:         #F4F6FA;
+  --bg-input:       #ffffff;
+  --bg-input-f:     #FAFBFC;   /* filtros de coluna */
+  --bg-hover:       #F9FAFC;
+  --bg-stripe:      #F4F6FA;   /* thead, tfoot */
+  --bg-tag:         #EEF1F6;   /* badges neutros */
+
+  /* Bordas */
+  --border:         #DDE2EE;
+  --border-table:   #D4DCE8;
+  --border-row:     #DEE5EE;
+
+  /* Texto */
+  --text-1:         #1a1a1a;
+  --text-2:         #555555;
+  --text-3:         #888888;
+  --text-muted:     #aaaaaa;
+
+  /* TopNav */
+  --nav-bg:         #050D1A;
+  --nav-faixa1:     #0A1628;
+  --nav-faixa2:     #1A5CB8;
+  --nav-text:       #ffffff;
+  --nav-border:     rgba(255,255,255,0.07);
+
+  /* Sombras */
+  --shadow-card:    0 1px 4px rgba(11,45,80,0.05);
+  --shadow-modal:   0 4px 20px rgba(11,45,80,0.10);
+  --overlay:        rgba(11,45,80,0.35);
+
+  /* Legados (compatibilidade) */
   --c-primary:       #1A4870;
   --c-primary-light: #D5E8F5;
   --c-accent:        #C9921B;
@@ -14,8 +56,57 @@
   --c-text:          #1a1a1a;
   --c-text-sub:      #555555;
   --c-text-weak:     #888888;
-  --shadow-card:     0 1px 4px rgba(11,45,80,0.05);
-  --shadow-modal:    0 4px 20px rgba(11,45,80,0.10);
+  --r-card:          10px;
+  --r-modal:         12px;
+}
+
+/* ── Tema Escuro ─────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  /* Estrutura */
+  --bg-page:        #060F1C;
+  --bg-card:        #0D1B2E;
+  --bg-header:      #0A1628;
+  --bg-nav:         #080F1C;
+  --bg-input:       rgba(255,255,255,0.05);
+  --bg-input-f:     rgba(255,255,255,0.04);
+  --bg-hover:       rgba(255,255,255,0.04);
+  --bg-stripe:      rgba(255,255,255,0.03);
+  --bg-tag:         rgba(255,255,255,0.06);
+
+  /* Bordas */
+  --border:         rgba(255,255,255,0.08);
+  --border-table:   rgba(255,255,255,0.06);
+  --border-row:     rgba(255,255,255,0.04);
+
+  /* Texto */
+  --text-1:         #E2E8F0;
+  --text-2:         #94A3B8;
+  --text-3:         #475569;
+  --text-muted:     #334155;
+
+  /* TopNav — igual nos dois temas (sempre dark) */
+  --nav-bg:         #050D1A;
+  --nav-faixa1:     #0A1628;
+  --nav-faixa2:     #1A5CB8;
+  --nav-text:       #ffffff;
+  --nav-border:     rgba(255,255,255,0.07);
+
+  /* Sombras */
+  --shadow-card:    0 1px 6px rgba(0,0,0,0.4);
+  --shadow-modal:   0 8px 40px rgba(0,0,0,0.6);
+  --overlay:        rgba(0,0,0,0.6);
+
+  /* Legados */
+  --c-primary:       #1A4870;
+  --c-primary-light: rgba(96,165,250,0.12);
+  --c-accent:        #C9921B;
+  --c-bg:            #060F1C;
+  --c-surface:       #0D1B2E;
+  --c-border:        rgba(255,255,255,0.08);
+  --c-border-light:  rgba(255,255,255,0.05);
+  --c-text:          #E2E8F0;
+  --c-text-sub:      #94A3B8;
+  --c-text-weak:     #475569;
   --r-card:          10px;
   --r-modal:         12px;
 }
@@ -23,10 +114,11 @@
 body {
   margin: 0;
   padding: 0;
-  background: var(--c-bg);
-  color: var(--c-text);
+  background: var(--bg-page);
+  color: var(--text-1);
   font-family: system-ui, -apple-system, Arial, sans-serif;
   font-size: 13px;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 input, select, textarea, button {
@@ -35,22 +127,22 @@ input, select, textarea, button {
 
 /* ── Utilitários ─────────────────────────────────────────────── */
 .card {
-  background: var(--c-surface);
-  border: 0.5px solid var(--c-border);
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
   border-radius: var(--r-card);
   box-shadow: var(--shadow-card);
 }
 
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(11,45,80,0.35);
+  background: var(--overlay);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
 }
 
 .modal-box {
-  background: var(--c-surface);
-  border: 0.5px solid var(--c-border);
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
   border-radius: var(--r-modal);
   box-shadow: var(--shadow-modal);
 }
@@ -60,18 +152,18 @@ input, select, textarea, button {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--c-text-weak);
+  color: var(--text-3);
   padding-bottom: 6px;
-  border-bottom: 0.5px solid var(--c-border);
+  border-bottom: 0.5px solid var(--border);
   margin-bottom: 10px;
 }
 
 /* Dropdown sobrio */
 .dropdown-menu {
-  background: var(--c-surface);
-  border: 0.5px solid var(--c-border);
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
   border-radius: var(--r-card);
-  box-shadow: 0 4px 12px rgba(11,45,80,0.08);
+  box-shadow: var(--shadow-modal);
 }
 
 /* ── Tabelas ─────────────────────────────────────────────────── */
@@ -82,22 +174,22 @@ input, select, textarea, button {
 }
 
 .data-table th {
-  background: #F4F6FA;
+  background: var(--bg-stripe);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--c-text-sub);
+  color: var(--text-2);
   padding: 8px 12px;
   text-align: left;
-  border-bottom: 0.5px solid var(--c-border);
+  border-bottom: 0.5px solid var(--border-table);
   white-space: nowrap;
 }
 
 .data-table td {
   padding: 9px 12px;
-  border-bottom: 0.5px solid var(--c-border-light);
-  color: var(--c-text);
+  border-bottom: 0.5px solid var(--border-row);
+  color: var(--text-1);
   vertical-align: middle;
 }
 
@@ -106,7 +198,7 @@ input, select, textarea, button {
 }
 
 .data-table tbody tr:hover {
-  background: #F9FAFC;
+  background: var(--bg-hover);
 }
 
 /* ── Inputs e formulários ────────────────────────────────────── */
@@ -116,7 +208,7 @@ input, select, textarea, button {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--c-text-sub);
+  color: var(--text-2);
   margin-bottom: 5px;
 }
 

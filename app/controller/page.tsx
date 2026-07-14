@@ -12,7 +12,7 @@ const SEV_COR: Record<Severidade, string> = {
   critico: "#E24B4A",
   alto: "#EF9F27",
   medio: "#378ADD",
-  baixo: "#888",
+  baixo: "var(--text-3)",
 };
 const SEV_BG: Record<Severidade, string> = {
   critico: "#FEF2F2",
@@ -98,7 +98,7 @@ export default function ControllerPage() {
   const totalAtivos = alertas.filter(a => !a.resolved_at).length;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
 
@@ -111,7 +111,7 @@ export default function ControllerPage() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {msg && <span style={{ fontSize: 12, color: "#555", fontStyle: "italic" }}>{msg}</span>}
+            {msg && <span style={{ fontSize: 12, color: "var(--text-2)", fontStyle: "italic" }}>{msg}</span>}
             <button
               onClick={executarVerificacoes}
               disabled={executando}
@@ -133,8 +133,8 @@ export default function ControllerPage() {
               key={sev}
               onClick={() => setFiltroSev(filtroSev === sev ? "todos" : sev)}
               style={{
-                background: filtroSev === sev ? SEV_BG[sev] : "#fff",
-                border: `0.5px solid ${filtroSev === sev ? SEV_COR[sev] : "#DDE2EE"}`,
+                background: filtroSev === sev ? SEV_BG[sev] : "var(--bg-card)",
+                border: `0.5px solid ${filtroSev === sev ? SEV_COR[sev] : "var(--border)"}`,
                 borderLeft: `4px solid ${SEV_COR[sev]}`,
                 borderRadius: 8, padding: "14px 16px", textAlign: "left", cursor: "pointer",
               }}
@@ -146,8 +146,8 @@ export default function ControllerPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 12, color: "#888", fontWeight: 600 }}>FILTRAR:</span>
+        <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600 }}>FILTRAR:</span>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {(["todos", "Fiscal", "Financeiro", "Contratos", "Lavoura", "Cadastros", "Estoque", "Arrendamentos"] as (Categoria | "todos")[]).map(cat => (
@@ -155,9 +155,9 @@ export default function ControllerPage() {
                 key={cat}
                 onClick={() => setFiltroCat(cat)}
                 style={{
-                  background: filtroCat === cat ? "#D5E8F5" : "#F4F6FA",
-                  border: `0.5px solid ${filtroCat === cat ? "#1A4870" : "#DDE2EE"}`,
-                  color: filtroCat === cat ? "#1A4870" : "#555",
+                  background: filtroCat === cat ? "#D5E8F5" : "var(--bg-page)",
+                  border: `0.5px solid ${filtroCat === cat ? "#1A4870" : "var(--border)"}`,
+                  color: filtroCat === cat ? "#1A4870" : "var(--text-2)",
                   borderRadius: 99, padding: "4px 12px", fontSize: 12, cursor: "pointer", fontWeight: filtroCat === cat ? 600 : 400,
                 }}
               >
@@ -174,7 +174,7 @@ export default function ControllerPage() {
               onChange={e => setMostrarResolvidos(e.target.checked)}
               style={{ cursor: "pointer" }}
             />
-            <label htmlFor="mostrar-resolvidos" style={{ fontSize: 12, color: "#888", cursor: "pointer" }}>
+            <label htmlFor="mostrar-resolvidos" style={{ fontSize: 12, color: "var(--text-3)", cursor: "pointer" }}>
               Mostrar resolvidos
             </label>
           </div>
@@ -184,12 +184,12 @@ export default function ControllerPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#999", fontSize: 14 }}>Carregando alertas...</div>
         ) : alertasFiltrados.length === 0 ? (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 48, textAlign: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{totalAtivos === 0 ? "✅" : "🔍"}</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: totalAtivos === 0 ? "#16A34A" : "#1A4870" }}>
               {totalAtivos === 0 ? "Tudo em ordem!" : "Nenhum alerta para os filtros selecionados"}
             </div>
-            <div style={{ fontSize: 13, color: "#888", marginTop: 6 }}>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
               {totalAtivos === 0
                 ? "Todas as verificações passaram. Execute novamente para atualizar."
                 : "Tente ajustar os filtros acima."}
@@ -205,7 +205,7 @@ export default function ControllerPage() {
                   key={a.id}
                   style={{
                     background: resolved ? "#F9FAFB" : SEV_BG[a.severidade],
-                    border: `0.5px solid ${resolved ? "#DDE2EE" : SEV_COR[a.severidade]}`,
+                    border: `0.5px solid ${resolved ? "var(--border)" : SEV_COR[a.severidade]}`,
                     borderLeft: `4px solid ${resolved ? "#ccc" : SEV_COR[a.severidade]}`,
                     borderRadius: 10, padding: "14px 16px",
                     opacity: resolved ? 0.65 : 1,
@@ -225,8 +225,8 @@ export default function ControllerPage() {
                           {resolved ? "Resolvido" : SEV_LABEL[a.severidade]}
                         </span>
                         <span style={{
-                          fontSize: 10, background: "#F4F6FA", border: "0.5px solid #DDE2EE",
-                          color: "#555", padding: "2px 7px", borderRadius: 99,
+                          fontSize: 10, background: "var(--bg-page)", border: "0.5px solid #DDE2EE",
+                          color: "var(--text-2)", padding: "2px 7px", borderRadius: 99,
                         }}>
                           {a.categoria}
                         </span>
@@ -235,8 +235,8 @@ export default function ControllerPage() {
                         )}
                       </div>
 
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a", marginBottom: 4 }}>{a.titulo}</div>
-                      <div style={{ fontSize: 13, color: "#555", lineHeight: 1.5 }}>{a.descricao}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)", marginBottom: 4 }}>{a.titulo}</div>
+                      <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>{a.descricao}</div>
 
                       {a.suggested_action && (
                         <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 6, fontSize: 12, color: "#333" }}>
@@ -244,7 +244,7 @@ export default function ControllerPage() {
                         </div>
                       )}
 
-                      <div style={{ marginTop: 8, fontSize: 11, color: "#aaa" }}>
+                      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)" }}>
                         Detectado em {a.first_seen_at ? new Date(a.first_seen_at).toLocaleString("pt-BR") : "—"}
                         {a.acknowledged_at && ` · Reconhecido em ${new Date(a.acknowledged_at).toLocaleString("pt-BR")}`}
                         {a.resolved_at && ` · Resolvido em ${new Date(a.resolved_at).toLocaleString("pt-BR")}`}
@@ -257,8 +257,8 @@ export default function ControllerPage() {
                           <button
                             onClick={() => ackAlerta(a.id)}
                             style={{
-                              background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 6,
-                              padding: "5px 10px", fontSize: 11, color: "#555", cursor: "pointer",
+                              background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 6,
+                              padding: "5px 10px", fontSize: 11, color: "var(--text-2)", cursor: "pointer",
                               whiteSpace: "nowrap",
                             }}
                           >
@@ -285,8 +285,8 @@ export default function ControllerPage() {
         )}
 
         {/* Info */}
-        <div style={{ marginTop: 20, background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 8 }}>VERIFICAÇÕES DISPONÍVEIS</div>
+        <div style={{ marginTop: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8 }}>VERIFICAÇÕES DISPONÍVEIS</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
             {[
               { cat: "Fiscal", checks: ["NF-e sem autorização", "Certificado A1 vencendo", "Notas em rejeição"] },
@@ -296,7 +296,7 @@ export default function ControllerPage() {
               { cat: "Arrendamentos", checks: ["Parcela vencendo em 15 dias"] },
               { cat: "Estoque", checks: ["Produto abaixo do mínimo", "NF entrada sem conferência"] },
             ].map(grupo => (
-              <div key={grupo.cat} style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 12px" }}>
+              <div key={grupo.cat} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px" }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 4 }}>
                   {CAT_ICONE[grupo.cat as Categoria]} {grupo.cat}
                 </div>

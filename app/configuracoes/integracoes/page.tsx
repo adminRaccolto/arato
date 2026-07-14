@@ -233,15 +233,15 @@ function ModalSieg({
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000,
                   display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 700,
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 32, width: 700,
                     maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
           <div style={{ fontSize: 32 }}>📥</div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>Sieg DFe Monitor</div>
-            <div style={{ fontSize: 12, color: "#888" }}>sieg.com.br</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Sieg DFe Monitor</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)" }}>sieg.com.br</div>
           </div>
         </div>
 
@@ -264,17 +264,17 @@ function ModalSieg({
         {/* ── Aba Configuração ── */}
         {tab === "config" && (
           <>
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.6 }}>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>
               O Sieg monitora a distribuição DFe da SEFAZ e importa automaticamente as NF-e recebidas
               para cada CPF/CNPJ cadastrado abaixo.
             </p>
 
             {/* API Key */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase",
                             letterSpacing: "0.05em", marginBottom: 6 }}>
                 API Key Sieg
-                <span style={{ fontWeight: 400, color: "#888", textTransform: "none", marginLeft: 6 }}>
+                <span style={{ fontWeight: 400, color: "var(--text-3)", textTransform: "none", marginLeft: 6 }}>
                   (obtenha em sieg.com.br → Minha conta → API)
                 </span>
               </div>
@@ -306,7 +306,7 @@ function ModalSieg({
             </div>
 
             {/* CPFs/CNPJs */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase",
                           letterSpacing: "0.05em", marginBottom: 8 }}>
               CPF / CNPJ monitorados <span style={{ color: "#E24B4A" }}>*</span>
             </div>
@@ -320,7 +320,7 @@ function ModalSieg({
                     <span style={{ fontFamily: "monospace", color: "#1A4870", fontWeight: 600 }}>
                       {formatarDoc(doc)}
                     </span>
-                    <span style={{ fontSize: 11, color: "#888" }}>{doc.length === 11 ? "CPF" : "CNPJ"}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{doc.length === 11 ? "CPF" : "CNPJ"}</span>
                     <button onClick={() => removerDoc(doc)}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "#E24B4A",
                                fontSize: 14, lineHeight: 1, padding: "0 2px", marginLeft: 2 }}>×</button>
@@ -332,7 +332,7 @@ function ModalSieg({
             {/* Produtores cadastrados — sugestões rápidas */}
             {produtoresSugeridos.length > 0 && (
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 11, color: "#888", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>
                   Produtores cadastrados — clique para incluir:
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -349,8 +349,8 @@ function ModalSieg({
                         style={{
                           padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
                           cursor: jaAdicionado ? "default" : "pointer",
-                          border: `0.5px solid ${jaAdicionado ? "#86EFAC" : "#DDE2EE"}`,
-                          background: jaAdicionado ? "#F0FFF4" : "#F4F6FA",
+                          border: `0.5px solid ${jaAdicionado ? "#86EFAC" : "var(--border)"}`,
+                          background: jaAdicionado ? "#F0FFF4" : "var(--bg-page)",
                           color: jaAdicionado ? "#16A34A" : "#1A4870",
                         }}
                         title={jaAdicionado ? "Já monitorado" : `Adicionar ${p.cpf_cnpj}`}
@@ -375,14 +375,14 @@ function ModalSieg({
               />
               <button onClick={adicionarDoc} disabled={novoDoc.length < 11}
                 style={{ padding: "8px 18px",
-                         background: novoDoc.length >= 11 ? "#1A4870" : "#F4F6FA",
-                         color: novoDoc.length >= 11 ? "#fff" : "#888",
+                         background: novoDoc.length >= 11 ? "#1A4870" : "var(--bg-page)",
+                         color: novoDoc.length >= 11 ? "#fff" : "var(--text-3)",
                          border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 13,
                          fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
                 + Adicionar
               </button>
             </div>
-            <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>
               Pressione Enter ou clique Adicionar. Pode cadastrar quantos CPFs/CNPJs precisar.
             </div>
 
@@ -393,7 +393,7 @@ function ModalSieg({
                 <div style={{ fontSize: 12, color: "#16A34A", fontWeight: 600 }}>
                   Última sincronização: {fmtData(cfg.ultima_sync_data)}
                 </div>
-                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>
                   Total importado: {cfg.total_importado ?? "0"} NF-e
                 </div>
               </div>
@@ -429,14 +429,14 @@ function ModalSieg({
                           alignItems: "center" }}>
               <button onClick={sincronizar} disabled={syncing || cfg.cnpjs_destino.length === 0}
                 style={{ padding: "9px 22px",
-                         background: syncing || cfg.cnpjs_destino.length === 0 ? "#DDE2EE" : "#16A34A",
+                         background: syncing || cfg.cnpjs_destino.length === 0 ? "var(--border)" : "#16A34A",
                          color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600,
                          cursor: syncing || cfg.cnpjs_destino.length === 0 ? "not-allowed" : "pointer" }}>
                 {syncing ? "Sincronizando…" : "⟳ Sincronizar Agora"}
               </button>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={onClose}
-                  style={{ padding: "9px 20px", background: "#fff", border: "0.5px solid #DDE2EE",
+                  style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid #DDE2EE",
                            borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                   Cancelar
                 </button>
@@ -448,7 +448,7 @@ function ModalSieg({
               </div>
             </div>
 
-            <div style={{ marginTop: 20, padding: "10px 14px", background: "#F4F6FA",
+            <div style={{ marginTop: 20, padding: "10px 14px", background: "var(--bg-page)",
                           border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666" }}>
               💡 A sincronização automática diária já está configurada via Cron Job na Vercel.
               Use o botão acima para sincronizar manualmente a qualquer momento.
@@ -469,7 +469,7 @@ function ModalSieg({
 
             {/* Opção: CNPJ específico ou todos */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#555", textTransform: "uppercase",
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase",
                             letterSpacing: "0.05em", marginBottom: 8 }}>
                 CNPJ / CPF a registrar
               </div>
@@ -483,7 +483,7 @@ function ModalSieg({
                            fontSize: 13, fontFamily: "monospace", boxSizing: "border-box" }}
                 />
               </div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 5 }}>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 5 }}>
                 CNPJs cadastrados: {cfg.cnpjs_destino.length === 0 ? "nenhum" : cfg.cnpjs_destino.map(d => formatarDoc(d)).join(", ")}
               </div>
             </div>
@@ -514,13 +514,13 @@ function ModalSieg({
                       {r.cnpj ? formatarDoc(r.cnpj) : "—"} — {r.sucesso ? "Registrado com sucesso" : "Erro"}
                     </div>
                     {r.key_info && (
-                      <div style={{ fontSize: 11, color: r.sucesso ? "#555" : "#b45309",
+                      <div style={{ fontSize: 11, color: r.sucesso ? "var(--text-2)" : "#b45309",
                                     marginTop: 3, fontFamily: "monospace" }}>
                         Chave: {r.key_info}
                       </div>
                     )}
                     {r.sucesso && (
-                      <div style={{ fontSize: 11, color: "#555", marginTop: 3 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 3 }}>
                         Resposta: {typeof r.resposta === "string" ? r.resposta : JSON.stringify(r.resposta)}
                       </div>
                     )}
@@ -534,7 +534,7 @@ function ModalSieg({
 
             <button onClick={registrarTodos} disabled={certSaving}
               style={{ width: "100%", padding: "11px 0",
-                       background: certSaving ? "#DDE2EE" : "#1A4870",
+                       background: certSaving ? "var(--border)" : "#1A4870",
                        color: "#fff", border: "none", borderRadius: 8, fontSize: 14,
                        fontWeight: 700, cursor: certSaving ? "not-allowed" : "pointer" }}>
               {certSaving
@@ -544,7 +544,7 @@ function ModalSieg({
                   : `Registrar ${cfg.cnpjs_destino.length} CNPJ(s) no Sieg`}
             </button>
 
-            <div style={{ marginTop: 16, padding: "10px 14px", background: "#F4F6FA",
+            <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--bg-page)",
                           border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666",
                           lineHeight: 1.6 }}>
               💡 Se os CNPJs já foram registrados anteriormente no portal Sieg, este botão apenas
@@ -555,9 +555,9 @@ function ModalSieg({
             <div style={{ marginTop: 20, borderTop: "0.5px solid #DDE2EE", paddingTop: 20 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                             marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#555" }}>Diagnóstico da chave</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>Diagnóstico da chave</div>
                 <button onClick={testarDiagnostico} disabled={diagLoading}
-                  style={{ padding: "6px 14px", background: diagLoading ? "#F4F6FA" : "#fff",
+                  style={{ padding: "6px 14px", background: diagLoading ? "var(--bg-page)" : "var(--bg-card)",
                            border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12,
                            cursor: diagLoading ? "not-allowed" : "pointer", color: "#1A4870", fontWeight: 600 }}>
                   {diagLoading ? "Testando…" : "Testar chave agora"}
@@ -576,7 +576,7 @@ function ModalSieg({
                                 border: `0.5px solid ${ok ? "#86EFAC" : "#FCA5A5"}`,
                                 borderRadius: 8, fontSize: 12 }}>
                     {kd && (
-                      <div style={{ fontFamily: "monospace", color: "#555", marginBottom: 10,
+                      <div style={{ fontFamily: "monospace", color: "var(--text-2)", marginBottom: 10,
                                     lineHeight: 1.8 }}>
                         <span style={{ fontWeight: 700 }}>Fonte:</span> {String(kd.fonte)}<br />
                         <span style={{ fontWeight: 700 }}>Comprimento:</span> {String(kd.comprimento)} chars<br />
@@ -590,7 +590,7 @@ function ModalSieg({
                     <div style={{ fontWeight: 700, color: ok ? "#16A34A" : "#E24B4A", marginBottom: 4 }}>
                       HTTP {status} — {ok ? "Autenticado ✓" : "Falha na autenticação ✗"}
                     </div>
-                    <div style={{ fontFamily: "monospace", color: "#555", wordBreak: "break-all" }}>
+                    <div style={{ fontFamily: "monospace", color: "var(--text-2)", wordBreak: "break-all" }}>
                       {resp as string}
                     </div>
                     {errNet && <div style={{ color: "#E24B4A", marginTop: 6 }}>{errNet}</div>}
@@ -692,29 +692,29 @@ function ModalConfigurar({
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000,
                   display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#fff", borderRadius: 12, padding: 32, width: 640,
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 32, width: 640,
                     maxHeight: "85vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
           <span style={{ fontSize: 28 }}>{integracao.icone}</span>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>{integracao.nome}</div>
-            {integracao.fabricante && <div style={{ fontSize: 12, color: "#888" }}>{integracao.fabricante}</div>}
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{integracao.nome}</div>
+            {integracao.fabricante && <div style={{ fontSize: 12, color: "var(--text-3)" }}>{integracao.fabricante}</div>}
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 13, color: "#555" }}>Ativo</span>
+            <span style={{ fontSize: 13, color: "var(--text-2)" }}>Ativo</span>
             <div onClick={() => setAtivo(v => !v)}
-              style={{ width: 44, height: 24, borderRadius: 12, background: ativo ? "#1A4870" : "#DDE2EE",
+              style={{ width: 44, height: 24, borderRadius: 12, background: ativo ? "#1A4870" : "var(--border)",
                        cursor: "pointer", position: "relative", transition: "background .2s" }}>
-              <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute",
+              <div style={{ width: 18, height: 18, borderRadius: 9, background: "var(--bg-card)", position: "absolute",
                             top: 3, left: ativo ? 23 : 3, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} />
             </div>
           </div>
         </div>
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#555", lineHeight: 1.5 }}>{integracao.descricao}</p>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--text-2)", lineHeight: 1.5 }}>{integracao.descricao}</p>
 
         {isBalanca && (
           <>
-            <div style={{ fontSize: 12, color: "#888", background: "#FBF3E0", border: "0.5px solid #C9921B",
+            <div style={{ fontSize: 12, color: "var(--text-3)", background: "#FBF3E0", border: "0.5px solid #C9921B",
                           borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
               Protocolo pré-configurado pela Raccolto. Requer cabo RS-232 ou adaptador USB-Serial.
             </div>
@@ -727,18 +727,18 @@ function ModalConfigurar({
                 { key: "weightUnit",label:"Unidade",    type: "select", opts: ["kg","t"] },
               ].map(f => (
                 <div key={f.key}>
-                  <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4,
+                  <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginBottom: 4,
                                 textTransform: "uppercase" }}>{f.label}</div>
                   <select value={String(config[f.key] ?? "")} disabled
                     style={{ width: "100%", padding: "6px 10px", borderRadius: 6,
-                             border: "0.5px solid #DDE2EE", fontSize: 13, background: "#F4F6FA", color: "#555" }}>
+                             border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-page)", color: "var(--text-2)" }}>
                     {f.opts.map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
               ))}
             </div>
             <button onClick={testarBalanca} disabled={testing}
-              style={{ marginTop: 16, padding: "9px 20px", background: "#F4F6FA", border: "0.5px solid #DDE2EE",
+              style={{ marginTop: 16, padding: "9px 20px", background: "var(--bg-page)", border: "0.5px solid #DDE2EE",
                        borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1A4870" }}>
               {testing ? "Aguardando leitura..." : "Testar Balança (Web Serial)"}
             </button>
@@ -761,7 +761,7 @@ function ModalConfigurar({
               { key: "api_key",    label: "API Key",         placeholder: "d606738..." },
             ].map(f => (
               <div key={f.key}>
-                <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4,
+                <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginBottom: 4,
                               textTransform: "uppercase" }}>{f.label}</div>
                 <input placeholder={f.placeholder} value={String(config[f.key] ?? "")}
                   onChange={e => setField(f.key, e.target.value)}
@@ -776,7 +776,7 @@ function ModalConfigurar({
                 Conexão WhatsApp
               </div>
               <button onClick={reconectarWhatsApp} disabled={qrLoading}
-                style={{ padding: "9px 20px", background: qrLoading ? "#DDE2EE" : "#25D366",
+                style={{ padding: "9px 20px", background: qrLoading ? "var(--border)" : "#25D366",
                          color: "#fff", border: "none", borderRadius: 8,
                          fontSize: 13, fontWeight: 600, cursor: qrLoading ? "default" : "pointer" }}>
                 {qrLoading ? "Gerando QR Code…" : "Gerar QR Code para Conectar"}
@@ -795,11 +795,11 @@ function ModalConfigurar({
                 <div style={{ marginTop: 14, textAlign: "center" }}>
                   <img src={qrBase64} alt="QR Code WhatsApp"
                     style={{ width: 240, height: 240, border: "4px solid #25D366", borderRadius: 12, display: "block", margin: "0 auto" }} />
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 8 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
                     Se expirar, clique em "Gerar QR Code" novamente
                   </div>
                   <button onClick={reconectarWhatsApp} disabled={qrLoading}
-                    style={{ marginTop: 8, padding: "6px 14px", background: "#F4F6FA",
+                    style={{ marginTop: 8, padding: "6px 14px", background: "var(--bg-page)",
                              border: "0.5px solid #DDE2EE", borderRadius: 6,
                              fontSize: 12, cursor: "pointer", color: "#1A4870" }}>
                     Renovar QR Code
@@ -817,7 +817,7 @@ function ModalConfigurar({
               { key: "from_address", label: "E-mail remetente", placeholder: "noreply@fazenda.com.br" },
             ].map(f => (
               <div key={f.key}>
-                <div style={{ fontSize: 11, color: "#888", fontWeight: 600, marginBottom: 4,
+                <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginBottom: 4,
                               textTransform: "uppercase" }}>{f.label}</div>
                 <input placeholder={f.placeholder} value={String(config[f.key] ?? "")}
                   onChange={e => setField(f.key, e.target.value)}
@@ -829,14 +829,14 @@ function ModalConfigurar({
         )}
 
         {!isBalanca && !isEvo && !isResend && (
-          <div style={{ fontSize: 13, color: "#555", background: "#F4F6FA", borderRadius: 8, padding: 16 }}>
+          <div style={{ fontSize: 13, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 8, padding: 16 }}>
             Esta integração não requer configuração adicional.
           </div>
         )}
 
         <div style={{ display: "flex", gap: 12, marginTop: 28, justifyContent: "flex-end" }}>
           <button onClick={onClose}
-            style={{ padding: "9px 20px", background: "#fff", border: "0.5px solid #DDE2EE",
+            style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid #DDE2EE",
                      borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
             Cancelar
           </button>
@@ -914,8 +914,8 @@ export default function IntegracoesPage() {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Integrações</h1>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Integrações</h1>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-3)" }}>
               {totalAtivos > 0 ? `${totalAtivos} integração${totalAtivos > 1 ? "ões" : ""} ativa${totalAtivos > 1 ? "s" : ""}` : "Nenhuma integração ativa"}
             </p>
           </div>
@@ -949,7 +949,7 @@ export default function IntegracoesPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 14 }}>Carregando...</div>
+          <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>Carregando...</div>
         ) : (
           <>
             {/* ── Aba Fiscal ── */}
@@ -957,19 +957,19 @@ export default function IntegracoesPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
 
                 {/* Card Sieg */}
-                <div style={{ background: "#fff", borderRadius: 12,
-                              border: `0.5px solid ${siegAtivo ? "#1A4870" : "#DDE2EE"}`,
+                <div style={{ background: "var(--bg-card)", borderRadius: 12,
+                              border: `0.5px solid ${siegAtivo ? "#1A4870" : "var(--border)"}`,
                               padding: 20, display: "flex", flexDirection: "column", gap: 12,
                               boxShadow: siegAtivo ? "0 0 0 1px rgba(26,72,112,0.08)" : "none" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                     <div style={{ fontSize: 28, lineHeight: 1 }}>📥</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Sieg DFe Monitor</div>
-                      <div style={{ fontSize: 11, color: "#888" }}>sieg.com.br</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Sieg DFe Monitor</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>sieg.com.br</div>
                     </div>
                     <div style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                                  background: siegAtivo ? "#D5E8F5" : "#F4F6FA",
-                                  color: siegAtivo ? "#1A4870" : "#888" }}>
+                                  background: siegAtivo ? "#D5E8F5" : "var(--bg-page)",
+                                  color: siegAtivo ? "#1A4870" : "var(--text-3)" }}>
                       {siegAtivo ? "Ativo" : "Inativo"}
                     </div>
                   </div>
@@ -989,7 +989,7 @@ export default function IntegracoesPage() {
                       NF-e Modelo 55
                     </span>
                     {fmtData(siegCfg.ultima_sync_data) && (
-                      <span style={{ padding: "2px 8px", background: "#F4F6FA", color: "#555",
+                      <span style={{ padding: "2px 8px", background: "var(--bg-page)", color: "var(--text-2)",
                                      borderRadius: 20, fontSize: 11 }}>
                         Sync: {fmtData(siegCfg.ultima_sync_data)}
                       </span>
@@ -998,25 +998,25 @@ export default function IntegracoesPage() {
 
                   <button onClick={() => setModalSieg(true)}
                     style={{ marginTop: "auto", padding: "9px 0",
-                             background: siegAtivo ? "#1A4870" : "#F4F6FA",
+                             background: siegAtivo ? "#1A4870" : "var(--bg-page)",
                              color: siegAtivo ? "#fff" : "#1A4870",
-                             border: `0.5px solid ${siegAtivo ? "#1A4870" : "#DDE2EE"}`,
+                             border: `0.5px solid ${siegAtivo ? "#1A4870" : "var(--border)"}`,
                              borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                     {siegAtivo ? "Gerenciar" : "Configurar"}
                   </button>
                 </div>
 
                 {/* OFX */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EAF3FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🏦</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>Importação OFX</div>
-                      <div style={{ fontSize: 11, color: "#888" }}>Conciliação bancária automática</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Importação OFX</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>Conciliação bancária automática</div>
                     </div>
                     <span style={{ marginLeft: "auto", background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700 }}>ATIVO</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "#555", flex: 1, lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.6 }}>
                     Importe extratos OFX de qualquer banco brasileiro. O sistema concilia automaticamente com CP/CR cadastrados.
                   </div>
                   <button onClick={() => router.push("/financeiro/conciliacao")}
@@ -1026,16 +1026,16 @@ export default function IntegracoesPage() {
                 </div>
 
                 {/* GNRE */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📋</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>GNRE</div>
-                      <div style={{ fontSize: 11, color: "#888" }}>Guias Nacionais de Recolhimento</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>GNRE</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>Guias Nacionais de Recolhimento</div>
                     </div>
                     <span style={{ marginLeft: "auto", background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700 }}>ATIVO</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "#555", flex: 1, lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.6 }}>
                     Emita e controle GNREs para DIFAL (EC 87/2015), substituição tributária e antecipação de ICMS nas operações interestaduais.
                   </div>
                   <button onClick={() => router.push("/fiscal/gnre")}
@@ -1045,16 +1045,16 @@ export default function IntegracoesPage() {
                 </div>
 
                 {/* eSocial Rural */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>👷</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>eSocial Rural</div>
-                      <div style={{ fontSize: 11, color: "#888" }}>Trabalhadores e eventos rurais</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>eSocial Rural</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>Trabalhadores e eventos rurais</div>
                     </div>
                     <span style={{ marginLeft: "auto", background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 10, fontSize: 10, fontWeight: 700 }}>ATIVO</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "#555", flex: 1, lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", flex: 1, lineHeight: 1.6 }}>
                     Gerencie CLT e avulsos rurais (TSVE), gere eventos eSocial (S-2200, S-2300, S-1200) e calcule a folha com FUNRURAL e SENAR.
                   </div>
                   <button onClick={() => router.push("/fiscal/esocial")}
@@ -1070,8 +1070,8 @@ export default function IntegracoesPage() {
               itensCatalogo.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 60 }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>🔌</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: "#555" }}>Nenhuma integração disponível</div>
-                  <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Serão adicionadas pela equipe Raccolto.</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Nenhuma integração disponível</div>
+                  <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Serão adicionadas pela equipe Raccolto.</div>
                 </div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
@@ -1080,19 +1080,19 @@ export default function IntegracoesPage() {
                     const ativo = cfg?.ativo ?? false;
                     const testadoEm = cfg?.testado_em ? new Date(cfg.testado_em).toLocaleDateString("pt-BR") : null;
                     return (
-                      <div key={intg.id} style={{ background: "#fff", borderRadius: 12,
-                                                   border: `0.5px solid ${ativo ? "#1A4870" : "#DDE2EE"}`,
+                      <div key={intg.id} style={{ background: "var(--bg-card)", borderRadius: 12,
+                                                   border: `0.5px solid ${ativo ? "#1A4870" : "var(--border)"}`,
                                                    padding: 20, display: "flex", flexDirection: "column", gap: 12,
                                                    boxShadow: ativo ? "0 0 0 1px rgba(26,72,112,0.08)" : "none" }}>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                           <div style={{ fontSize: 28, lineHeight: 1 }}>{intg.icone}</div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{intg.nome}</div>
-                            {intg.fabricante && <div style={{ fontSize: 11, color: "#888" }}>{intg.fabricante}</div>}
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{intg.nome}</div>
+                            {intg.fabricante && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{intg.fabricante}</div>}
                           </div>
                           <div style={{ padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                                        background: ativo ? "#D5E8F5" : "#F4F6FA",
-                                        color: ativo ? "#1A4870" : "#888" }}>
+                                        background: ativo ? "#D5E8F5" : "var(--bg-page)",
+                                        color: ativo ? "#1A4870" : "var(--text-3)" }}>
                             {ativo ? "Ativo" : "Inativo"}
                           </div>
                         </div>
@@ -1111,7 +1111,7 @@ export default function IntegracoesPage() {
                             </span>
                           )}
                           {testadoEm && (
-                            <span style={{ padding: "2px 8px", background: "#F4F6FA", color: "#555",
+                            <span style={{ padding: "2px 8px", background: "var(--bg-page)", color: "var(--text-2)",
                                            borderRadius: 20, fontSize: 11 }}>
                               Testado em {testadoEm}
                             </span>
@@ -1119,9 +1119,9 @@ export default function IntegracoesPage() {
                         </div>
                         <button onClick={() => setModal(intg)}
                           style={{ marginTop: "auto", padding: "9px 0",
-                                   background: ativo ? "#1A4870" : "#F4F6FA",
+                                   background: ativo ? "#1A4870" : "var(--bg-page)",
                                    color: ativo ? "#fff" : "#1A4870",
-                                   border: `0.5px solid ${ativo ? "#1A4870" : "#DDE2EE"}`,
+                                   border: `0.5px solid ${ativo ? "#1A4870" : "var(--border)"}`,
                                    borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>
                           {ativo ? "Gerenciar" : "Configurar"}
                         </button>
@@ -1136,12 +1136,12 @@ export default function IntegracoesPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 4 }}>
 
                 {/* Card Toledo PRIX */}
-                <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #1A4870", padding: 20, maxWidth: 560 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #1A4870", padding: 20, maxWidth: 560 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 14 }}>
                     <div style={{ fontSize: 32, lineHeight: 1 }}>⚖️</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Toledo PRIX</div>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Toledo do Brasil · Balança de pesagem de caminhões</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Toledo PRIX</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Toledo do Brasil · Balança de pesagem de caminhões</div>
                       <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                         <span style={{ padding: "2px 8px", background: "#FBF3E0", color: "#7A5A12", border: "0.5px solid #C9921B", borderRadius: 20, fontSize: 11 }}>Requer hardware</span>
                         <span style={{ padding: "2px 8px", background: "#DCFCE7", color: "#166534", border: "0.5px solid #16A34A40", borderRadius: 20, fontSize: 11 }}>Integrado</span>
@@ -1149,14 +1149,14 @@ export default function IntegracoesPage() {
                     </div>
                   </div>
 
-                  <div style={{ fontSize: 12, color: "#555", lineHeight: 1.6, marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 14 }}>
                     Leitura automática do peso via porta serial USB. Ao abrir um romaneio,
                     clique em <strong>"Conectar"</strong> e os campos de Peso Bruto e Tara
                     serão preenchidos diretamente da balança com um clique.
                   </div>
 
                   {/* Parâmetros técnicos */}
-                  <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
                     {[
                       ["Protocolo",    "RS-232 via USB"],
                       ["Baud rate",    "9600"],
@@ -1166,20 +1166,20 @@ export default function IntegracoesPage() {
                       ["Conector",     "RJ45 proprietário Toledo → DB9 → USB-Serial"],
                     ].map(([k, v]) => (
                       <div key={k} style={{ display: "flex", gap: 6, fontSize: 11 }}>
-                        <span style={{ color: "#888", whiteSpace: "nowrap" }}>{k}:</span>
-                        <span style={{ color: "#1a1a1a", fontWeight: 600 }}>{v}</span>
+                        <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>{k}:</span>
+                        <span style={{ color: "var(--text-1)", fontWeight: 600 }}>{v}</span>
                       </div>
                     ))}
                   </div>
 
                   {/* Teste de conexão ao vivo */}
                   <div style={{ borderTop: "0.5px solid #EEF1F6", paddingTop: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 8 }}>Testar conexão</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Testar conexão</div>
                     <BalancaSerial
                       onCapturarBruto={kg => alert(`✓ Peso Bruto capturado: ${kg.toLocaleString("pt-BR")} kg`)}
                       onCapturarTara={kg  => alert(`✓ Tara capturada: ${kg.toLocaleString("pt-BR")} kg`)}
                     />
-                    <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 4 }}>
                       Use este painel para confirmar que a balança está enviando dados corretamente antes de usar no romaneio.
                     </div>
                   </div>

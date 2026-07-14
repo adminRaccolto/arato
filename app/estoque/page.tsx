@@ -31,10 +31,10 @@ import type {
 // ────────────────────────────────────────────────────────
 // Estilos base
 // ────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
@@ -50,7 +50,7 @@ function TH({ cols }: { cols: string[] }) {
     <thead>
       <tr style={{ background: "#F3F6F9" }}>
         {cols.map((c, i) => (
-          <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
+          <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
         ))}
       </tr>
     </thead>
@@ -60,9 +60,9 @@ function TH({ cols }: { cols: string[] }) {
 function Modal({ titulo, subtitulo, width, onClose, children }: { titulo: string; subtitulo?: string; width?: number; onClose: () => void; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} >
-      <div style={{ background: "#fff", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: width ?? 600, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a", marginBottom: subtitulo ? 4 : 20 }}>{titulo}</div>
-        {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: "24px 28px", width: "100%", maxWidth: width ?? 600, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)", marginBottom: subtitulo ? 4 : 20 }}>{titulo}</div>
+        {subtitulo && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
     </div>
@@ -86,7 +86,7 @@ const CAT_META: Record<Insumo["categoria"], { bg: string; cl: string; label: str
   material:        { bg: "#E8F5E9", cl: "#1A6B3C", label: "Material"         },
   uso_consumo:     { bg: "#F3E8FF", cl: "#6B21A8", label: "Uso e Consumo"    },
   escritorio:      { bg: "#F0F9FF", cl: "#0369A1", label: "Escritório"       },
-  outros:          { bg: "#F1EFE8", cl: "#555",    label: "Outros"           },
+  outros:          { bg: "#F1EFE8", cl: "var(--text-2)",    label: "Outros"           },
 };
 
 type Aba = "posicao" | "nf_entrada" | "terceiros" | "movimentacoes" | "relatorios";
@@ -523,24 +523,24 @@ export default function Estoque() {
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 0 }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Estoque</h1>
+              <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Estoque</h1>
               <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Insumos, produtos, NF de entrada e movimentações</p>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {negativos.length > 0 && <span style={{ fontSize: 11, background: "#FCEBEB", color: "#791F1F", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⛔ {negativos.length} saldo negativo</span>}
               {alertas.length > 0 && <span style={{ fontSize: 11, background: "#FAEEDA", color: "#633806", padding: "4px 10px", borderRadius: 8, fontWeight: 600 }}>⚠ {alertas.length} no mínimo</span>}
-              <span style={{ fontSize: 12, color: "#555" }}>Valor: <strong style={{ color: "#1a1a1a" }}>{fmtBRL(totalValorEstoque)}</strong></span>
+              <span style={{ fontSize: 12, color: "var(--text-2)" }}>Valor: <strong style={{ color: "var(--text-1)" }}>{fmtBRL(totalValorEstoque)}</strong></span>
             </div>
           </div>
         </header>
 
         {/* Abas — scroll horizontal no mobile */}
-        <div style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
           {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"] ] as const).map(([k,l]) => (
-            <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "#1a1a1a" : "#555", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent", flexShrink: 0 }}>{l}</button>
+            <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent", flexShrink: 0 }}>{l}</button>
           ))}
         </div>
 
@@ -561,7 +561,7 @@ export default function Estoque() {
                   ] as [string,string][]).map(([k,l]) => {
                     const isAlert = k === "alertas" || k === "negativos";
                     const ativo = filtroCat === k;
-                    return <button key={k} onClick={() => setFiltroCat(k as typeof filtroCat)} style={{ padding: "6px 12px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: ativo ? 600 : 400, background: ativo ? (isAlert ? "#FCEBEB" : "#D5E8F5") : "#fff", color: ativo ? (isAlert ? "#791F1F" : "#0B2D50") : "#666", borderColor: ativo ? (isAlert ? "#E24B4A50" : "#1A487040") : "#D4DCE8" }}>{l}</button>;
+                    return <button key={k} onClick={() => setFiltroCat(k as typeof filtroCat)} style={{ padding: "6px 12px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: ativo ? 600 : 400, background: ativo ? (isAlert ? "#FCEBEB" : "#D5E8F5") : "#fff", color: ativo ? (isAlert ? "#791F1F" : "#0B2D50") : "#666", borderColor: ativo ? (isAlert ? "#E24B4A50" : "#1A487040") : "var(--border-table)" }}>{l}</button>;
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginLeft: "auto", alignItems: "center" }}>
@@ -589,9 +589,9 @@ export default function Estoque() {
               {(() => {
                 const todosSel = insumosFiltrados.length > 0 && insumosFiltrados.every(i => selecionados.has(i.id));
                 const algumSel = insumosFiltrados.some(i => selecionados.has(i.id));
-                const thStyle: React.CSSProperties = { padding: "8px 14px", textAlign: "center" as const, fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" as const };
+                const thStyle: React.CSSProperties = { padding: "8px 14px", textAlign: "center" as const, fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" as const };
                 return (
-                  <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
                         <tr style={{ background: "#F3F6F9" }}>
@@ -610,38 +610,38 @@ export default function Estoque() {
                         {insumosFiltrados.map((ins, i) => {
                           const negativo = ins.estoque < 0;
                           const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
-                          const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: ins.categoria };
+                          const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: ins.categoria };
                           const dep      = depositos.find(d => d.id === ins.deposito_id);
                           const valorTotal = ins.estoque * ins.valor_unitario;
                           const sel = selecionados.has(ins.id);
                           return (
-                            <tr key={ins.id} style={{ borderBottom: i < insumosFiltrados.length - 1 ? "0.5px solid #DEE5EE" : "none", background: sel ? "#EBF5FF" : negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
+                            <tr key={ins.id} style={{ borderBottom: i < insumosFiltrados.length - 1 ? "0.5px solid var(--border-row)" : "none", background: sel ? "#EBF5FF" : negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
                               <td style={{ padding: "10px 12px", textAlign: "center" }}>
                                 <input type="checkbox" checked={sel}
                                   onChange={e => setSelecionados(prev => { const s = new Set(prev); e.target.checked ? s.add(ins.id) : s.delete(ins.id); return s; })}
                                   style={{ cursor: "pointer", width: 15, height: 15 }} />
                               </td>
                               <td style={{ padding: "10px 14px" }}>
-                                <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{ins.nome}</div>
+                                <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{ins.nome}</div>
                                 {ins.fabricante && <div style={{ fontSize: 11, color: "#444" }}>{ins.fabricante}</div>}
-                                {(ins.lote || ins.validade) && <div style={{ fontSize: 10, color: "#888" }}>{ins.lote ? `Lote: ${ins.lote}` : ""}{ins.lote && ins.validade ? " · " : ""}{ins.validade ? `Val: ${ins.validade.split("-").reverse().join("/")}` : ""}</div>}
+                                {(ins.lote || ins.validade) && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{ins.lote ? `Lote: ${ins.lote}` : ""}{ins.lote && ins.validade ? " · " : ""}{ins.validade ? `Val: ${ins.validade.split("-").reverse().join("/")}` : ""}</div>}
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                 {badge(ins.tipo === "produto" ? "Produto" : "Insumo", ins.tipo === "produto" ? "#F0F9FF" : "#E8F5E9", ins.tipo === "produto" ? "#0369A1" : "#1A6B3C")}
                                 <div style={{ marginTop: 4 }}>{badge(cat.label, cat.bg, cat.cl)}</div>
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 5, justifyContent: "center" }}>
-                                  <span style={{ fontWeight: 600, color: negativo ? "#E24B4A" : alerta ? "#EF9F27" : "#1a1a1a" }}>{fmtNum(ins.estoque)}</span>
-                                  <span style={{ fontSize: 11, color: "#555" }}>{ins.unidade}</span>
+                                  <span style={{ fontWeight: 600, color: negativo ? "#E24B4A" : alerta ? "#EF9F27" : "var(--text-1)" }}>{fmtNum(ins.estoque)}</span>
+                                  <span style={{ fontSize: 11, color: "var(--text-2)" }}>{ins.unidade}</span>
                                   {negativo && <span style={{ fontSize: 10, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 5, fontWeight: 600 }}>NEG</span>}
                                   {alerta && <span style={{ fontSize: 10, background: "#FAEEDA", color: "#633806", padding: "1px 5px", borderRadius: 5, fontWeight: 600 }}>MIN</span>}
                                 </div>
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtBRL(ins.valor_unitario)}/{ins.unidade}</td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", color: negativo ? "#E24B4A" : "#1a1a1a", fontWeight: 600 }}>{fmtBRL(valorTotal)}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtBRL(ins.valor_unitario)}/{ins.unidade}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", color: negativo ? "#E24B4A" : "var(--text-1)", fontWeight: 600 }}>{fmtBRL(valorTotal)}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right" }}>
                                 <button style={btnE} onClick={() => { setFMov(p => ({ ...p, insumo_id: ins.id, deposito_id: ins.deposito_id ?? "" })); setModalMov(true); }}>± Mov.</button>
                               </td>
@@ -661,12 +661,12 @@ export default function Estoque() {
             <div style={{ marginTop: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Defensivos / Fertilizantes / Inoculantes</span>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Defensivos / Fertilizantes / Inoculantes</span>
                   <span style={{ fontSize: 12, color: "#666", marginLeft: 8 }}>— por Princípio Ativo</span>
                 </div>
                 <input style={{ ...inp, width: 200, fontSize: 12 }} placeholder="Buscar PA…" value={buscaPA} onChange={e => setBuscaPA(e.target.value)} />
               </div>
-              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Princípio Ativo", "Categoria", "Saldo atual", "Custo médio", "Valor em estoque", "Última movimentação"]} />
                   <tbody>
@@ -681,27 +681,27 @@ export default function Estoque() {
                           acaricida:    { bg: "#F4ECF7", cl: "#6C3483", label: "Acaricida" },
                           fertilizante: { bg: "#EAF2FB", cl: "#1A4870", label: "Fertilizante" },
                           inoculante:   { bg: "#E8F8F5", cl: "#0E6655", label: "Inoculante" },
-                          outro:        { bg: "#F4F6F7", cl: "#555",    label: "Outro" },
+                          outro:        { bg: "#F4F6F7", cl: "var(--text-2)",    label: "Outro" },
                         };
                         const cat = CAT_PA[pa?.categoria ?? "outro"] ?? CAT_PA.outro;
                         const valor = p.saldo_atual * p.custo_medio;
                         return (
-                          <tr key={p.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                          <tr key={p.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                             <td style={{ padding: "10px 14px" }}>
-                              <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{pa?.nome ?? "—"}</div>
+                              <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{pa?.nome ?? "—"}</div>
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>
                               <span style={{ background: cat.bg, color: cat.cl, padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>{cat.label}</span>
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                              <span style={{ fontWeight: 600, color: p.saldo_atual <= 0 ? "#E24B4A" : "#1a1a1a" }}>{p.saldo_atual.toFixed(2)}</span>
-                              <span style={{ fontSize: 11, color: "#555", marginLeft: 4 }}>{pa?.unidade}</span>
+                              <span style={{ fontWeight: 600, color: p.saldo_atual <= 0 ? "#E24B4A" : "var(--text-1)" }}>{p.saldo_atual.toFixed(2)}</span>
+                              <span style={{ fontSize: 11, color: "var(--text-2)", marginLeft: 4 }}>{pa?.unidade}</span>
                               {p.saldo_atual <= 0 && <span style={{ fontSize: 10, background: "#FCEBEB", color: "#791F1F", padding: "1px 5px", borderRadius: 5, fontWeight: 600, marginLeft: 4 }}>SEM SALDO</span>}
                             </td>
-                            <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>
                               R$ {p.custo_medio.toFixed(2)}/{pa?.unidade}
                             </td>
-                            <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>
+                            <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-1)" }}>
                               R$ {valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "#666" }}>
@@ -716,7 +716,7 @@ export default function Estoque() {
                   </tbody>
                 </table>
               </div>
-              <div style={{ marginTop: 8, fontSize: 11, color: "#888", textAlign: "right" }}>
+              <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-3)", textAlign: "right" }}>
                 Total em estoque PA: R$ {paSaldos.reduce((s, p) => s + p.saldo_atual * p.custo_medio, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
@@ -728,7 +728,7 @@ export default function Estoque() {
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
                 <button style={btnV} onClick={abrirNovaFf}>+ Lançar NF de Entrada</button>
               </div>
-              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["NF / Série", "Emitente", "Data Emissão", "Valor Total", "Status", "Natureza", ""]} />
                   <tbody>
@@ -742,19 +742,19 @@ export default function Estoque() {
                       };
                       const [bg, cl] = corStatus[nf.status];
                       return (
-                        <tr key={nf.id} style={{ borderBottom: i < nfEntradas.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        <tr key={nf.id} style={{ borderBottom: i < nfEntradas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                           <td style={{ padding: "10px 14px" }}>
-                            <div style={{ color: "#1a1a1a", fontWeight: 600 }}>NF {nf.numero}</div>
+                            <div style={{ color: "var(--text-1)", fontWeight: 600 }}>NF {nf.numero}</div>
                             <div style={{ fontSize: 11, color: "#444" }}>Série {nf.serie}</div>
                           </td>
                           <td style={{ padding: "10px 14px" }}>
                             <div style={{ fontWeight: 500 }}>{nf.emitente_nome}</div>
                             {nf.emitente_cnpj && <div style={{ fontSize: 11, color: "#444" }}>{nf.emitente_cnpj}</div>}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{nf.data_emissao.split("-").reverse().join("/")}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{fmtBRL(nf.valor_total)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{nf.data_emissao.split("-").reverse().join("/")}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(nf.valor_total)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(nf.status.charAt(0).toUpperCase()+nf.status.slice(1), bg, cl)}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontSize: 12 }}>{nf.natureza || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{nf.natureza || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             <button style={btnE} onClick={() => verDetalheNf(nf)}>Ver itens</button>
                           </td>
@@ -769,10 +769,10 @@ export default function Estoque() {
 
           {/* ══ ESTOQUE TERCEIROS ══ */}
           {aba === "terceiros" && (
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DEE5EE" }}>
-                <div style={{ color: "#1a1a1a", fontWeight: 600, fontSize: 14 }}>Estoque de Terceiros</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Insumos entregues por terceiros para uso futuro — controle de saldo e consumo</div>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)" }}>
+                <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Estoque de Terceiros</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Insumos entregues por terceiros para uso futuro — controle de saldo e consumo</div>
               </div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -784,29 +784,29 @@ export default function Estoque() {
                       const corStatus: Record<EstoqueTerceiro["status"], [string,string]> = {
                         aberto:    ["#D5E8F5","#0B2D50"],
                         parcial:   ["#FAEEDA","#633806"],
-                        encerrado: ["#F1EFE8","#555"],
+                        encerrado: ["#F1EFE8","var(--text-2)"],
                       };
                       const [bg, cl] = corStatus[t.status];
                       const insumo = insumos.find(x => x.id === t.insumo_id);
                       return (
-                        <tr key={t.id} style={{ borderBottom: i < terceiros.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        <tr key={t.id} style={{ borderBottom: i < terceiros.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                           <td style={{ padding: "10px 14px" }}>
-                            <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{t.descricao}</div>
+                            <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{t.descricao}</div>
                             {insumo && <div style={{ fontSize: 11, color: "#444" }}>{insumo.nome} — {insumo.unidade}</div>}
                           </td>
                           <td style={{ padding: "10px 14px" }}>
                             <div style={{ fontWeight: 500 }}>{t.terceiro_nome}</div>
                             {t.terceiro_cnpj && <div style={{ fontSize: 11, color: "#444" }}>{t.terceiro_cnpj}</div>}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(t.quantidade_original)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtNum(t.quantidade_original)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                            <div style={{ fontWeight: 600, color: pct < 20 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(t.quantidade_saldo)}</div>
-                            <div style={{ width: 60, height: 4, background: "#DEE5EE", borderRadius: 2, margin: "3px auto 0", overflow: "hidden" }}>
+                            <div style={{ fontWeight: 600, color: pct < 20 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(t.quantidade_saldo)}</div>
+                            <div style={{ width: 60, height: 4, background: "var(--border-row)", borderRadius: 2, margin: "3px auto 0", overflow: "hidden" }}>
                               <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : "#1A4870", borderRadius: 2 }} />
                             </div>
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(t.status.charAt(0).toUpperCase()+t.status.slice(1), bg, cl)}</td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", color: "#1a1a1a", fontSize: 12 }}>{t.safra || "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontSize: 12 }}>{t.safra || "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
                             <button style={btnE}>Detalhes</button>
                           </td>
@@ -825,13 +825,13 @@ export default function Estoque() {
               <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {([["todos","Todas"],["entrada","Entradas"],["saida","Saídas"]] as const).map(([k,l]) => (
-                    <button key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#D5E8F5" : "#fff", color: filtroMov === k ? "#0B2D50" : "#666", borderColor: filtroMov === k ? "#1A487040" : "#D4DCE8" }}>{l}</button>
+                    <button key={k} onClick={() => setFiltroMov(k)} style={{ padding: "6px 14px", border: "0.5px solid", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: filtroMov === k ? 600 : 400, background: filtroMov === k ? "#D5E8F5" : "var(--bg-card)", color: filtroMov === k ? "#0B2D50" : "#666", borderColor: filtroMov === k ? "#1A487040" : "var(--border-table)" }}>{l}</button>
                   ))}
                 </div>
-                <span style={{ marginLeft: "auto", fontSize: 12, color: "#555" }}>{movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-2)" }}>{movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
                 <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => setModalMov(true)}>± Nova Movimentação</button>
               </div>
-              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Origem"]} />
                   <tbody>
@@ -844,10 +844,10 @@ export default function Estoque() {
                       const MOTIVO_LABEL: Record<string, string> = { compra: "Compra", ajuste_saldo: "Ajuste saldo", baixa_uso: "Baixa uso", baixa_perda: "Baixa perda", transferencia: "Transferência", inventario: "Inventário", outros: "Outros" };
                       const isAdj = m.tipo === "ajuste";
                       return (
-                        <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none", background: isAdj ? "#FFFDF5" : undefined }}>
-                          <td style={{ padding: "10px 14px", color: "#1a1a1a", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
+                        <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-row)" : "none", background: isAdj ? "#FFFDF5" : undefined }}>
+                          <td style={{ padding: "10px 14px", color: "var(--text-1)", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
                           <td style={{ padding: "10px 14px" }}>
-                            <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{ins?.nome ?? "—"}</div>
+                            <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{ins?.nome ?? "—"}</div>
                             {ins && <div style={{ fontSize: 11, color: "#444" }}>{CAT_META[ins.categoria]?.label ?? ins.categoria}</div>}
                           </td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
@@ -855,22 +855,22 @@ export default function Estoque() {
                               ? badge("⚙ Ajuste","#FBF3E0","#7A5A12")
                               : m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{m.motivo ? MOTIVO_LABEL[m.motivo] ?? m.motivo : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.motivo ? MOTIVO_LABEL[m.motivo] ?? m.motivo : "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>
                             {isAdj
                               ? <span style={{ color: m.quantidade >= 0 ? "#1A4870" : "#E24B4A" }}>{m.quantidade >= 0 ? "+" : ""}{fmtNum(m.quantidade)} {ins?.unidade} <span style={{ fontSize: 10, color: "#C9921B", fontWeight: 400 }}>(ajuste)</span></span>
                               : <span style={{ color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins?.unidade}</span>}
                           </td>
-                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
                           <td style={{ padding: "10px 14px", textAlign: "center" }}>
                             {m.auto ? badge("Auto","#D5E8F5","#0B2D50") : badge("Manual","#FBF0D8","#7A5A12")}
                             {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome && (
-                              <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                              <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                                 {(m as MovimentacaoEstoque & { usuario_nome?: string }).usuario_nome}
                               </div>
                             )}
                             {m.observacao && (
-                              <div style={{ fontSize: 11, color: isAdj ? "#7A5A12" : "#888", marginTop: 2, maxWidth: 200, whiteSpace: "normal", textAlign: "left" }}>
+                              <div style={{ fontSize: 11, color: isAdj ? "#7A5A12" : "var(--text-3)", marginTop: 2, maxWidth: 200, whiteSpace: "normal", textAlign: "left" }}>
                                 {isAdj && <span style={{ fontWeight: 600 }}>Justificativa: </span>}
                                 {m.observacao}
                               </div>
@@ -888,19 +888,19 @@ export default function Estoque() {
           {/* ══ MOVIMENTAÇÕES PA ══ */}
           {aba === "movimentacoes" && movsPA.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 10 }}>
                 Movimentações — Defensivos / Fertilizantes / Inoculantes (PA)
               </div>
-              <div style={{ overflowX: "auto", background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Princípio Ativo", "Tipo", "Qtd.", "Custo unit.", "Produto na NF", "Origem", "NF"]} />
                   <tbody>
                     {movsPA.filter(m => filtroMov === "todos" || m.tipo === filtroMov).map((m, i, arr) => (
-                      <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <td style={{ padding: "10px 14px", color: "#1a1a1a", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
+                      <tr key={m.id} style={{ borderBottom: i < arr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                        <td style={{ padding: "10px 14px", color: "var(--text-1)", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
                         <td style={{ padding: "10px 14px" }}>
-                          <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{m.principio_ativo?.nome ?? "—"}</div>
-                          <div style={{ fontSize: 11, color: "#555" }}>{m.principio_ativo?.categoria}</div>
+                          <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{m.principio_ativo?.nome ?? "—"}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-2)" }}>{m.principio_ativo?.categoria}</div>
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           {m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
@@ -910,18 +910,18 @@ export default function Estoque() {
                             {m.tipo === "entrada" ? "+" : "-"}{Number(m.quantidade).toFixed(2)} {m.principio_ativo?.unidade}
                           </span>
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>
                           {m.custo_unitario != null ? `R$ ${Number(m.custo_unitario).toFixed(2)}` : "—"}
                         </td>
-                        <td style={{ padding: "10px 14px", fontSize: 12, color: "#1a1a1a" }}>
+                        <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-1)" }}>
                           {m.nome_comercial_ref
                             ? <span><span style={{ fontWeight: 600 }}>{m.nome_comercial_ref}</span></span>
-                            : <span style={{ color: "#aaa" }}>—</span>}
+                            : <span style={{ color: "var(--text-muted)" }}>—</span>}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          {badge(m.origem_tipo === "nf_entrada" ? "NF" : m.origem_tipo === "bot" ? "BOT" : m.origem_tipo ?? "manual", "#F4F6FA", "#555")}
+                          {badge(m.origem_tipo === "nf_entrada" ? "NF" : m.origem_tipo === "bot" ? "BOT" : m.origem_tipo ?? "manual", "var(--bg-page)", "var(--text-2)")}
                         </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "#888" }}>
+                        <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 11, color: "var(--text-3)" }}>
                           {m.nf_entrada_id ? m.nf_entrada_id.slice(0, 8) + "…" : "—"}
                         </td>
                       </tr>
@@ -936,7 +936,7 @@ export default function Estoque() {
           {aba === "relatorios" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Sub-abas — scroll horizontal no mobile */}
-              <div style={{ display: "flex", gap: 0, background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
+              <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
                 {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#1A4870" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
@@ -986,7 +986,7 @@ export default function Estoque() {
                 return (
                   <div>
                     {/* Filtros */}
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
                         <div>
                           <label style={lbl}>Data início *</label>
@@ -1019,7 +1019,7 @@ export default function Estoque() {
                     </div>
 
                     {kardexMovs.length === 0 && !kardexBuscando && (
-                      <div style={{ textAlign: "center", padding: "48px 0", color: "#888", background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
                         Selecione o período e clique em Buscar para gerar o relatório.
                       </div>
                     )}
@@ -1045,44 +1045,44 @@ export default function Estoque() {
                         <div style={{ display: "none" }} className="print-area">
                           <div style={{ marginBottom: 12 }}>
                             <div style={{ fontWeight: 700, fontSize: 16 }}>Relatório de Movimentação de Estoque por Produto</div>
-                            <div style={{ fontSize: 12, color: "#555" }}>Período: {kardexInicio.split("-").reverse().join("/")} a {kardexFim.split("-").reverse().join("/")} · Gerado em {new Date().toLocaleDateString("pt-BR")}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-2)" }}>Período: {kardexInicio.split("-").reverse().join("/")} a {kardexFim.split("-").reverse().join("/")} · Gerado em {new Date().toLocaleDateString("pt-BR")}</div>
                           </div>
                         </div>
 
                         {/* Botão imprimir */}
                         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }} className="no-print">
-                          <button onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#F4F6FA", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                          <button onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             🖨 Imprimir
                           </button>
                         </div>
 
                         {/* Tabela resumo */}
-                        <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
-                          <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", fontWeight: 600, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+                          <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span>Resumo por Produto</span>
-                            <span style={{ fontSize: 12, color: "#555", fontWeight: 400 }}>{kardexInicio.split("-").reverse().join("/")} → {kardexFim.split("-").reverse().join("/")}</span>
+                            <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 400 }}>{kardexInicio.split("-").reverse().join("/")} → {kardexFim.split("-").reverse().join("/")}</span>
                           </div>
                           <div style={{ overflowX: "auto" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                               <TH cols={["Produto", "Categoria", "Unid.", "Saldo Inicial", "Entradas", "Saídas", "Saldo Final"]} />
                               <tbody>
                                 {grupos.map((g, i) => {
-                                  const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: g.insumo.categoria };
+                                  const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: g.insumo.categoria };
                                   return (
-                                    <tr key={g.insumo.id} style={{ borderBottom: i < grupos.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
-                                      <td style={{ padding: "9px 14px", fontWeight: 600, color: "#1a1a1a" }}>{g.insumo.nome}</td>
+                                    <tr key={g.insumo.id} style={{ borderBottom: i < grupos.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                                      <td style={{ padding: "9px 14px", fontWeight: 600, color: "var(--text-1)" }}>{g.insumo.nome}</td>
                                       <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
-                                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#555", fontSize: 12 }}>{g.insumo.unidade}</td>
-                                      <td style={{ padding: "9px 14px", textAlign: "right", color: "#555" }}>{fmtNum(g.saldoInicial)} {g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)", fontSize: 12 }}>{g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "right", color: "var(--text-2)" }}>{fmtNum(g.saldoInicial)} {g.insumo.unidade}</td>
                                       <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>+{fmtNum(g.totalE)} {g.insumo.unidade}</td>
                                       <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 600, color: "#E24B4A" }}>-{fmtNum(g.totalS)} {g.insumo.unidade}</td>
-                                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: g.saldoFinal < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(g.saldoFinal)} {g.insumo.unidade}</td>
+                                      <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: g.saldoFinal < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(g.saldoFinal)} {g.insumo.unidade}</td>
                                     </tr>
                                   );
                                 })}
                                 <tr style={{ background: "#F8FAFD", borderTop: "1px solid #D4DCE8" }}>
-                                  <td colSpan={3} style={{ padding: "9px 14px", fontWeight: 700, color: "#1a1a1a" }}>TOTAL</td>
-                                  <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#555" }}>—</td>
+                                  <td colSpan={3} style={{ padding: "9px 14px", fontWeight: 700, color: "var(--text-1)" }}>TOTAL</td>
+                                  <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "var(--text-2)" }}>—</td>
                                   <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>▲ {fmtNum(totalEntradas)}</td>
                                   <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#E24B4A" }}>▼ {fmtNum(totalSaidas)}</td>
                                   <td style={{ padding: "9px 14px" }} />
@@ -1094,18 +1094,18 @@ export default function Estoque() {
 
                         {/* Detalhe por produto */}
                         {grupos.map(g => {
-                          const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: g.insumo.categoria };
+                          const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: g.insumo.categoria };
                           return (
-                            <div key={g.insumo.id} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
-                              <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                                <span style={{ fontWeight: 700, color: "#1a1a1a" }}>{g.insumo.nome}</span>
+                            <div key={g.insumo.id} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                              <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                                <span style={{ fontWeight: 700, color: "var(--text-1)" }}>{g.insumo.nome}</span>
                                 {badge(cat.label, cat.bg, cat.cl)}
-                                <span style={{ fontSize: 12, color: "#555" }}>{g.movs.length} moviment.</span>
+                                <span style={{ fontSize: 12, color: "var(--text-2)" }}>{g.movs.length} moviment.</span>
                                 <span style={{ marginLeft: "auto", display: "flex", gap: 16, fontSize: 12 }}>
                                   <span>Inicial: <strong>{fmtNum(g.saldoInicial)} {g.insumo.unidade}</strong></span>
                                   <span style={{ color: "#1A4870" }}>+{fmtNum(g.totalE)}</span>
                                   <span style={{ color: "#E24B4A" }}>-{fmtNum(g.totalS)}</span>
-                                  <span>Final: <strong style={{ color: g.saldoFinal < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(g.saldoFinal)} {g.insumo.unidade}</strong></span>
+                                  <span>Final: <strong style={{ color: g.saldoFinal < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(g.saldoFinal)} {g.insumo.unidade}</strong></span>
                                 </span>
                               </div>
                               <div style={{ overflowX: "auto" }}>
@@ -1116,20 +1116,20 @@ export default function Estoque() {
                                       const dep = depositos.find(d => d.id === m.deposito_id);
                                       const isAdj2 = m.tipo === "ajuste";
                                       return (
-                                        <tr key={m.id} style={{ borderBottom: mi < g.movs.length - 1 ? "0.5px solid #EEF1F6" : "none", background: isAdj2 ? "#FFFDF5" : undefined }}>
-                                          <td style={{ padding: "8px 14px", whiteSpace: "nowrap", color: "#555" }}>{m.data.split("-").reverse().join("/")}</td>
+                                        <tr key={m.id} style={{ borderBottom: mi < g.movs.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: isAdj2 ? "#FFFDF5" : undefined }}>
+                                          <td style={{ padding: "8px 14px", whiteSpace: "nowrap", color: "var(--text-2)" }}>{m.data.split("-").reverse().join("/")}</td>
                                           <td style={{ padding: "8px 14px", textAlign: "center" }}>
                                             {isAdj2 ? badge("⚙ Ajuste","#FBF3E0","#7A5A12") : m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}
                                           </td>
-                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? m.motivo ?? "—"}</td>
+                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{MOTIVO_LABEL[m.motivo ?? ""] ?? m.motivo ?? "—"}</td>
                                           <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 600, color: isAdj2 ? (m.quantidade >= 0 ? "#1A4870" : "#E24B4A") : m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>
                                             {isAdj2 ? `${m.quantidade >= 0 ? "+" : ""}${fmtNum(m.quantidade)}` : `${m.tipo === "entrada" ? "+" : "-"}${fmtNum(m.quantidade)}`} {g.insumo.unidade}
                                           </td>
-                                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "#1a1a1a" }}>
+                                          <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "var(--text-1)" }}>
                                             {fmtNum(m.saldo)} {g.insumo.unidade}
                                           </td>
-                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
-                                          <td style={{ padding: "8px 14px", fontSize: 11, color: isAdj2 ? "#7A5A12" : "#888", maxWidth: 180, whiteSpace: "normal" }}>
+                                          <td style={{ padding: "8px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
+                                          <td style={{ padding: "8px 14px", fontSize: 11, color: isAdj2 ? "#7A5A12" : "var(--text-3)", maxWidth: 180, whiteSpace: "normal" }}>
                                             {m.observacao ? <><strong>{isAdj2 ? "Justificativa: " : ""}</strong><span title={m.observacao}>{m.observacao.slice(0, 60)}{m.observacao.length > 60 ? "…" : ""}</span></> : "—"}
                                           </td>
                                         </tr>
@@ -1145,7 +1145,7 @@ export default function Estoque() {
                     )}
 
                     {kardexMovs.length > 0 && grupos.length === 0 && (
-                      <div style={{ textAlign: "center", padding: "32px 0", color: "#888", background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+                      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
                         Nenhum produto com movimentação no período com os filtros selecionados.
                       </div>
                     )}
@@ -1184,11 +1184,11 @@ export default function Estoque() {
                       return { ...m, saldo };
                     });
                     return (
-                      <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{ins.nome}</span>
-                          <span style={{ fontSize: 12, color: "#555" }}>Saldo atual: <strong style={{ color: ins.estoque < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(ins.estoque)} {ins.unidade}</strong></span>
-                          <span style={{ fontSize: 12, color: "#555" }}>{rows.length} movimentações</span>
+                      <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-2)" }}>Saldo atual: <strong style={{ color: ins.estoque < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(ins.estoque)} {ins.unidade}</strong></span>
+                          <span style={{ fontSize: 12, color: "var(--text-2)" }}>{rows.length} movimentações</span>
                         </div>
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1198,13 +1198,13 @@ export default function Estoque() {
                               {rows.map((m, i) => {
                                 const dep = depositos.find(x => x.id === m.deposito_id);
                                 return (
-                                  <tr key={m.id} style={{ borderBottom: i < rows.length-1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                  <tr key={m.id} style={{ borderBottom: i < rows.length-1 ? "0.5px solid var(--border-row)" : "none" }}>
                                     <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>{m.data.split("-").reverse().join("/")}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.tipo === "entrada" ? badge("▲ Entrada","#D5E8F5","#0B2D50") : badge("▼ Saída","#FCEBEB","#791F1F")}</td>
-                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{m.motivo ?? "—"}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{m.motivo ?? "—"}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>{m.tipo === "entrada" ? "+" : "-"}{fmtNum(m.quantidade)} {ins.unidade}</td>
-                                    <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(m.saldo)} {ins.unidade}</td>
-                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: m.saldo < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(m.saldo)} {ins.unidade}</td>
+                                    <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
                                     <td style={{ padding: "9px 14px", textAlign: "center" }}>{m.auto ? badge("Auto","#D5E8F5","#0B2D50") : badge("Manual","#FBF0D8","#7A5A12")}</td>
                                   </tr>
                                 );
@@ -1220,10 +1220,10 @@ export default function Estoque() {
 
               {/* Saldos de Estoque */}
               {relTipo === "saldos" && (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Saldos de Estoque</div>
-                    <div style={{ fontSize: 12, color: "#555" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
                   </div>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1233,15 +1233,15 @@ export default function Estoque() {
                           const negativo = ins.estoque < 0;
                           const alerta   = !negativo && ins.estoque <= ins.estoque_minimo;
                           const dep      = depositos.find(d => d.id === ins.deposito_id);
-                          const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "#555", label: ins.categoria };
+                          const cat      = CAT_META[ins.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: ins.categoria };
                           return (
-                            <tr key={ins.id} style={{ borderBottom: i < insumos.length-1 ? "0.5px solid #DEE5EE" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
-                              <td style={{ padding: "9px 14px", fontWeight: 600, color: "#1a1a1a" }}>{ins.nome}</td>
+                            <tr key={ins.id} style={{ borderBottom: i < insumos.length-1 ? "0.5px solid var(--border-row)" : "none", background: negativo ? "#FFF5F5" : alerta ? "#FFFAF8" : "transparent" }}>
+                              <td style={{ padding: "9px 14px", fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(ins.tipo === "produto" ? "Produto" : "Insumo", ins.tipo === "produto" ? "#F0F9FF" : "#E8F5E9", ins.tipo === "produto" ? "#0369A1" : "#1A6B3C")}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(cat.label, cat.bg, cat.cl)}</td>
-                              <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#555" }}>{dep?.nome ?? "—"}</td>
-                              <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: negativo ? "#E24B4A" : "#1a1a1a" }}>{fmtNum(ins.estoque)} {ins.unidade}</td>
-                              <td style={{ padding: "9px 14px", textAlign: "center", color: "#555" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{dep?.nome ?? "—"}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: negativo ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(ins.estoque)} {ins.unidade}</td>
+                              <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-2)" }}>{fmtNum(ins.estoque_minimo)} {ins.unidade}</td>
                               <td style={{ padding: "9px 14px", textAlign: "center" }}>
                                 {negativo ? badge("Negativo","#FCEBEB","#791F1F") : alerta ? badge("Mínimo","#FAEEDA","#633806") : badge("OK","#D5E8F5","#0B2D50")}
                               </td>
@@ -1277,8 +1277,8 @@ export default function Estoque() {
                         </div>
                       ))}
                     </div>
-                    <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                      <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #DEE5EE", fontWeight: 600, fontSize: 14 }}>Valor por Categoria</div>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14 }}>Valor por Categoria</div>
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
                           <TH cols={["Categoria","Qtd. itens","Valor total","% do estoque"]} />
@@ -1287,16 +1287,16 @@ export default function Estoque() {
                               const qtd = insumos.filter(x => (CAT_META[x.categoria]?.label ?? x.categoria) === cat).length;
                               const pct = total > 0 ? (valor/total*100) : 0;
                               return (
-                                <tr key={cat} style={{ borderBottom: i < porCategoria.length-1 ? "0.5px solid #DEE5EE" : "none" }}>
-                                  <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1a1a1a" }}>{cat}</td>
-                                  <td style={{ padding: "10px 14px", textAlign: "center", color: "#555" }}>{qtd}</td>
-                                  <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "#1a1a1a" }}>{fmtBRL(valor)}</td>
+                                <tr key={cat} style={{ borderBottom: i < porCategoria.length-1 ? "0.5px solid var(--border-row)" : "none" }}>
+                                  <td style={{ padding: "10px 14px", fontWeight: 600, color: "var(--text-1)" }}>{cat}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-2)" }}>{qtd}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600, color: "var(--text-1)" }}>{fmtBRL(valor)}</td>
                                   <td style={{ padding: "10px 14px", textAlign: "center" }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                                      <div style={{ width: 80, height: 5, background: "#DEE5EE", borderRadius: 3, overflow: "hidden" }}>
+                                      <div style={{ width: 80, height: 5, background: "var(--border-row)", borderRadius: 3, overflow: "hidden" }}>
                                         <div style={{ height: "100%", width: `${pct}%`, background: "#1A4870", borderRadius: 3 }} />
                                       </div>
-                                      <span style={{ fontSize: 12, color: "#555", minWidth: 36 }}>{pct.toFixed(1)}%</span>
+                                      <span style={{ fontSize: 12, color: "var(--text-2)", minWidth: 36 }}>{pct.toFixed(1)}%</span>
                                     </div>
                                   </td>
                                 </tr>
@@ -1407,7 +1407,7 @@ export default function Estoque() {
               </div>
             </div>
             {ins && !isAjuste && (
-              <div style={{ marginTop: 12, fontSize: 12, color: "#555", background: "#F3F6F9", padding: "8px 12px", borderRadius: 7 }}>
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "#F3F6F9", padding: "8px 12px", borderRadius: 7 }}>
                 Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
                 {" → "}
                 <strong style={{ color: fMov.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>
@@ -1416,7 +1416,7 @@ export default function Estoque() {
               </div>
             )}
             {ins && isAjuste && (
-              <div style={{ marginTop: 12, fontSize: 12, color: "#555", background: "#FBF3E0", border: "0.5px solid #E8C97A", padding: "10px 14px", borderRadius: 7 }}>
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "#FBF3E0", border: "0.5px solid #E8C97A", padding: "10px 14px", borderRadius: 7 }}>
                 Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
                 {" → "}
                 <strong style={{ color: "#C9921B" }}>{fmtNum(parseFloat(fMov.quantidade_nova)||0)} {ins.unidade}</strong>
@@ -1431,9 +1431,9 @@ export default function Estoque() {
             )}
             {/* Operador — sempre visível, nunca editável */}
             <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#F8FAFB", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
-              <span style={{ fontSize: 11, color: "#888" }}>Operador:</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{nomeUsuario ?? "—"}</span>
-              <span style={{ fontSize: 11, color: "#aaa", marginLeft: 4 }}>({emailUsuario ?? ""})</span>
+              <span style={{ fontSize: 11, color: "var(--text-3)" }}>Operador:</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{nomeUsuario ?? "—"}</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>({emailUsuario ?? ""})</span>
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
               <button style={btnR} onClick={() => setModalMov(false)}>Cancelar</button>
@@ -1528,7 +1528,7 @@ export default function Estoque() {
           {nfMode === "xml" && (
             <div style={{ marginBottom: 18 }}>
               <div style={{ background: "#F3F6F9", border: "0.5px dashed #ccc", borderRadius: 8, padding: "20px", textAlign: "center" }}>
-                <div style={{ fontSize: 13, color: "#555", marginBottom: 8 }}>Selecione o arquivo XML da NF-e para preencher automaticamente</div>
+                <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>Selecione o arquivo XML da NF-e para preencher automaticamente</div>
                 <input ref={xmlRef} type="file" accept=".xml" style={{ display: "none" }} onChange={lerXml} />
                 <button style={btnV} onClick={() => { if (xmlRef.current) { xmlRef.current.value = ""; xmlRef.current.click(); } }}>
                   {fNf.numero ? "↺ Trocar XML" : "Selecionar XML"}
@@ -1541,8 +1541,8 @@ export default function Estoque() {
                   {/* Fornecedor */}
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 7,
-                    background: xmlFeedback.fornecedor === "encontrado" ? "#D4EDDA" : xmlFeedback.fornecedor === "novo" ? "#FBF3E0" : "#F4F6FA",
-                    border: `0.5px solid ${xmlFeedback.fornecedor === "encontrado" ? "#28a745" : xmlFeedback.fornecedor === "novo" ? "#C9921B" : "#DDE2EE"}`,
+                    background: xmlFeedback.fornecedor === "encontrado" ? "#D4EDDA" : xmlFeedback.fornecedor === "novo" ? "#FBF3E0" : "var(--bg-page)",
+                    border: `0.5px solid ${xmlFeedback.fornecedor === "encontrado" ? "#28a745" : xmlFeedback.fornecedor === "novo" ? "#C9921B" : "var(--border)"}`,
                     fontSize: 12,
                   }}>
                     <span>{xmlFeedback.fornecedor === "encontrado" ? "✓" : xmlFeedback.fornecedor === "novo" ? "＋" : "–"}</span>
@@ -1607,7 +1607,7 @@ export default function Estoque() {
               return (
               <div key={item.key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, background: item.alerta_preco ? "#FFFAF8" : "#F8FAFD", borderLeft: `3px solid ${borderColor}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Item {idx + 1}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Item {idx + 1}</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     {autoVinculado && <span style={{ fontSize: 11, background: "#D4EDDA", color: "#155724", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>✓ Auto-vinculado</span>}
                     {semVinculo    && <span style={{ fontSize: 11, background: "#F8D7DA", color: "#721C24", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>⚠ Sem vínculo — selecione o insumo</span>}
@@ -1731,7 +1731,7 @@ export default function Estoque() {
                   return (
                     <div style={{ marginTop: 8, fontSize: 11, color: "#666", background: "#F3F6F9", padding: "6px 10px", borderRadius: 6 }}>
                       Custo médio atual: <strong>{fmtBRL(ins.valor_unitario)}/{ins.unidade}</strong> · Após entrada: <strong style={{ color: "#1A4870" }}>{fmtBRL(novoMed)}/{ins.unidade}</strong>
-                      {ins.estoque > 0 && <span style={{ marginLeft: 10, color: "#555" }}>Estoque atual: {fmtNum(ins.estoque)} {ins.unidade}</span>}
+                      {ins.estoque > 0 && <span style={{ marginLeft: 10, color: "var(--text-2)" }}>Estoque atual: {fmtNum(ins.estoque)} {ins.unidade}</span>}
                       {item.tipo_apropiacao === "remessa" && <span style={{ marginLeft: 10, color: "#1A6B3C", fontWeight: 600 }}>← débita saldo de terceiro + credita fazenda</span>}
                     </div>
                   );
@@ -1742,7 +1742,7 @@ export default function Estoque() {
           </div>
 
           <div style={{ display: "flex", gap: 8, justifyContent: "space-between", marginTop: 20, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ fontSize: 12, color: "#555" }}>
+            <div style={{ fontSize: 12, color: "var(--text-2)" }}>
               {itensNf.length} iten(s) · Total: <strong>{fmtBRL(itensNf.reduce((s,i) => s + i.valor_total, 0))}</strong>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -1770,7 +1770,7 @@ export default function Estoque() {
                     estoque:    ["#D5E8F5","#0B2D50"],
                     maquinario: ["#E6F1FB","#0C447C"],
                     terceiro:   ["#FBF0D8","#7A5A12"],
-                    direto:     ["#F1EFE8","#555"],
+                    direto:     ["#F1EFE8","var(--text-2)"],
                     vef:        ["#FBF3E0","#C9921B"],
                     remessa:    ["#E8F5E9","#1A6B3C"],
                   };
@@ -1784,16 +1784,16 @@ export default function Estoque() {
                     remessa:    "Remessa",
                   };
                   return (
-                    <tr key={it.id} style={{ borderBottom: i < itensDetalhe.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                    <tr key={it.id} style={{ borderBottom: i < itensDetalhe.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                       <td style={{ padding: "9px 14px" }}>
-                        <div style={{ color: "#1a1a1a", fontWeight: 600 }}>{it.descricao_produto}</div>
+                        <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{it.descricao_produto}</div>
                         {ins && <div style={{ fontSize: 11, color: "#444" }}>{ins.nome}</div>}
                       </td>
-                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtNum(it.quantidade)} {it.unidade}</td>
-                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a" }}>{fmtBRL(it.valor_unitario)}</td>
-                      <td style={{ padding: "9px 14px", textAlign: "center", color: "#1a1a1a", fontWeight: 600 }}>{fmtBRL(it.valor_total)}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtNum(it.quantidade)} {it.unidade}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtBRL(it.valor_unitario)}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{fmtBRL(it.valor_total)}</td>
                       <td style={{ padding: "9px 14px", textAlign: "center" }}>{badge(labelApr[it.tipo_apropiacao], bg, cl)}</td>
-                      <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "#1a1a1a" }}>{destino}</td>
+                      <td style={{ padding: "9px 14px", textAlign: "center", fontSize: 12, color: "var(--text-1)" }}>{destino}</td>
                     </tr>
                   );
                 })}

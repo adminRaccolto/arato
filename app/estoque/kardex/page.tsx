@@ -282,7 +282,7 @@ export default function Kardex() {
   // ─── render ──────────────────────────────────────────────────────────────
 
   const corLinha = (tipo: LinhaKardex["tipo"]) => {
-    if (tipo === "saldo_inicial") return "#F4F6FA";
+    if (tipo === "saldo_inicial") return "var(--bg-page)";
     if (tipo === "entrada")       return "#F0FDF4";
     if (tipo === "saida")         return "#FFF7F7";
     return "#FEFCE8";
@@ -291,10 +291,10 @@ export default function Kardex() {
   return (
     <>
       <TopNav />
-      <div style={{ background: "#F4F6FA", minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ background: "var(--bg-page)", minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
 
         {/* ── Cabeçalho ── */}
-        <div style={{ background: "#fff", borderBottom: "0.5px solid #DDE2EE", padding: "18px 32px" }}>
+        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)", padding: "18px 32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1400, margin: "0 auto" }}>
             <div>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1A4870" }}>
@@ -321,7 +321,7 @@ export default function Kardex() {
 
           {/* ── Filtros ── */}
           <div style={{
-            background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12,
+            background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12,
             padding: 24, marginBottom: 20,
           }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 180px 180px auto", gap: 16, alignItems: "end" }}>
@@ -338,7 +338,7 @@ export default function Kardex() {
                 />
                 {busca && !insumoId && insumosFiltrados.length > 0 && (
                   <div style={{
-                    border: "0.5px solid #DDE2EE", borderRadius: 8, background: "#fff",
+                    border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)",
                     maxHeight: 200, overflowY: "auto", boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                     position: "absolute", zIndex: 100, width: 300,
                   }}>
@@ -350,11 +350,11 @@ export default function Kardex() {
                           padding: "8px 14px", cursor: "pointer", fontSize: 13,
                           borderBottom: "0.5px solid #F0F0F0",
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "#F4F6FA")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "var(--bg-card)")}
                       >
                         <span style={{ fontWeight: 600 }}>{i.nome}</span>
-                        <span style={{ color: "#888", marginLeft: 8, fontSize: 11 }}>{i.categoria} · {i.unidade}</span>
+                        <span style={{ color: "var(--text-3)", marginLeft: 8, fontSize: 11 }}>{i.categoria} · {i.unidade}</span>
                       </div>
                     ))}
                   </div>
@@ -408,10 +408,10 @@ export default function Kardex() {
                   { label: "Custo Médio Final",valor: `R$ ${fmt(cmFinal)}/${insumoSel?.unidade ?? "un"}`,     cor: "#C9921B" },
                 ].map(k => (
                   <div key={k.label} style={{
-                    background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10,
+                    background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
                     padding: "14px 18px",
                   }}>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 4, fontWeight: 600 }}>{k.label}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, fontWeight: 600 }}>{k.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                   </div>
                 ))}
@@ -425,10 +425,10 @@ export default function Kardex() {
                   { label: "Saldo Total (R$)",      valor: `R$ ${fmt(saldoFinal * cmFinal)}`,   cor: "#1A4870" },
                 ].map(k => (
                   <div key={k.label} style={{
-                    background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10,
+                    background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
                     padding: "14px 18px",
                   }}>
-                    <div style={{ fontSize: 11, color: "#888", marginBottom: 4, fontWeight: 600 }}>{k.label}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4, fontWeight: 600 }}>{k.label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                   </div>
                 ))}
@@ -436,7 +436,7 @@ export default function Kardex() {
 
               {/* ── Tabela Kardex ── */}
               <div style={{
-                background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12,
+                background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12,
                 overflow: "hidden",
               }}>
                 {/* Cabeçalho do produto */}
@@ -460,7 +460,7 @@ export default function Kardex() {
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
-                      <tr style={{ background: "#F4F6FA" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         <th style={{ ...th, width: 85 }}>Data</th>
                         <th style={{ ...th, textAlign: "left" }}>Operação / Documento</th>
                         <th style={{ ...th, width: 70 }}>E. Qtd</th>
@@ -479,22 +479,22 @@ export default function Kardex() {
                       {linhas.map((l, i) => (
                         <tr
                           key={i}
-                          style={{ background: corLinha(l.tipo), borderBottom: "0.5px solid #EEF1F6" }}
+                          style={{ background: corLinha(l.tipo), borderBottom: "0.5px solid var(--bg-tag)" }}
                         >
-                          <td style={{ ...td, textAlign: "center", color: "#555" }}>{fmtDate(l.data)}</td>
+                          <td style={{ ...td, textAlign: "center", color: "var(--text-2)" }}>{fmtDate(l.data)}</td>
                           <td style={{ ...td, paddingLeft: 14 }}>
-                            <div style={{ fontWeight: l.tipo === "saldo_inicial" ? 700 : 400, color: "#1a1a1a" }}>
+                            <div style={{ fontWeight: l.tipo === "saldo_inicial" ? 700 : 400, color: "var(--text-1)" }}>
                               {l.operacao}
                             </div>
                             {l.documento !== "—" && (
-                              <div style={{ fontSize: 11, color: "#888" }}>{l.documento}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-3)" }}>{l.documento}</div>
                             )}
                           </td>
                           {/* Entrada */}
                           <td style={{ ...td, textAlign: "right", color: "#16A34A", fontWeight: l.entrada_qty ? 600 : 400 }}>
                             {l.entrada_qty ? fmtQty(l.entrada_qty) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
-                          <td style={{ ...td, textAlign: "right", color: "#555" }}>
+                          <td style={{ ...td, textAlign: "right", color: "var(--text-2)" }}>
                             {l.entrada_unit ? fmt(l.entrada_unit) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
                           <td style={{ ...td, textAlign: "right", color: "#16A34A", fontWeight: l.entrada_total ? 600 : 400 }}>
@@ -504,7 +504,7 @@ export default function Kardex() {
                           <td style={{ ...td, textAlign: "right", color: "#E24B4A", fontWeight: l.saida_qty ? 600 : 400 }}>
                             {l.saida_qty ? fmtQty(l.saida_qty) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
-                          <td style={{ ...td, textAlign: "right", color: "#555" }}>
+                          <td style={{ ...td, textAlign: "right", color: "var(--text-2)" }}>
                             {l.saida_unit ? fmt(l.saida_unit) : <span style={{ color: "#ccc" }}>—</span>}
                           </td>
                           <td style={{ ...td, textAlign: "right", color: "#E24B4A", fontWeight: l.saida_total ? 600 : 400 }}>
@@ -565,7 +565,7 @@ export default function Kardex() {
                 </div>
 
                 {linhas.length === 1 && (
-                  <div style={{ padding: "32px", textAlign: "center", color: "#888", fontSize: 13 }}>
+                  <div style={{ padding: "32px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                     Nenhuma movimentação encontrada no período selecionado.
                   </div>
                 )}
@@ -575,11 +575,11 @@ export default function Kardex() {
 
           {!gerado && !carregando && (
             <div style={{
-              background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 12,
+              background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 12,
               padding: 48, textAlign: "center",
             }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-              <div style={{ fontSize: 14, color: "#888" }}>
+              <div style={{ fontSize: 14, color: "var(--text-3)" }}>
                 Selecione um produto e o período para gerar a ficha de estoque (Kardex).
               </div>
             </div>
@@ -620,22 +620,22 @@ function labelMotivo(motivo: string): string {
 // ─── estilos inline ──────────────────────────────────────────────────────────
 
 const lbl: React.CSSProperties = {
-  display: "block", fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em",
+  display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em",
 };
 
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
-  fontSize: 13, color: "#1a1a1a", background: "#fff", outline: "none", boxSizing: "border-box",
+  width: "100%", padding: "8px 12px", border: "0.5px solid var(--border)", borderRadius: 8,
+  fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none", boxSizing: "border-box",
 };
 
 const btnSec: React.CSSProperties = {
-  background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 8,
+  background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8,
   padding: "8px 14px", fontSize: 12, color: "#444", cursor: "pointer", fontWeight: 500,
 };
 
 const th: React.CSSProperties = {
-  padding: "9px 10px", fontSize: 11, fontWeight: 700, color: "#555",
-  textAlign: "right", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap",
+  padding: "9px 10px", fontSize: 11, fontWeight: 700, color: "var(--text-2)",
+  textAlign: "right", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap",
 };
 
 const td: React.CSSProperties = {

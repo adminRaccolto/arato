@@ -79,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Logo Raccolto */}
         <div style={{
           padding: "20px 20px 16px",
-          borderBottom: "0.5px solid rgba(255,255,255,0.08)",
+          borderBottom: "0.5px solid var(--border)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img
@@ -135,7 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 transition: "all 0.12s",
                 borderLeft: active ? "2px solid #C9921B" : "2px solid transparent",
               }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--border-table)"; }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
               >
                 <span style={{ fontSize: 14, width: 18, textAlign: "center" }}>{item.icon}</span>
@@ -148,7 +148,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Bottom — link to app + user */}
         <div style={{
           padding: "12px 14px",
-          borderTop: "0.5px solid rgba(255,255,255,0.08)",
+          borderTop: "0.5px solid var(--border)",
         }}>
           <Link href="/" style={{
             display: "flex", alignItems: "center", gap: 8,
@@ -176,19 +176,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Top bar */}
         <div style={{
           position: "sticky", top: 0, zIndex: 50,
-          background: "#fff",
+          background: "var(--bg-card)",
           borderBottom: "0.5px solid #DDE2EE",
           padding: "0 28px",
           height: 52,
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           {/* Breadcrumb simples */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555" }}>
-            <span style={{ color: "#888" }}>Admin</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-2)" }}>
+            <span style={{ color: "var(--text-3)" }}>Admin</span>
             {pathname !== "/admin" && (
               <>
-                <span style={{ color: "#DDE2EE" }}>/</span>
-                <span style={{ color: "#1a1a1a", fontWeight: 600, textTransform: "capitalize" }}>
+                <span style={{ color: "var(--border)" }}>/</span>
+                <span style={{ color: "var(--text-1)", fontWeight: 600, textTransform: "capitalize" }}>
                   {pathname.split("/admin/")[1]?.split("/")[0]?.replace(/-/g, " ") ?? ""}
                 </span>
               </>
@@ -213,7 +213,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               style={{
                 padding: "6px 14px", borderRadius: 6,
                 border: "0.5px solid #DDE2EE", background: "#F8FAFC",
-                fontSize: 12, color: "#555", textDecoration: "none", fontWeight: 500,
+                fontSize: 12, color: "var(--text-2)", textDecoration: "none", fontWeight: 500,
               }}
             >
               Arato produção ↗

@@ -4,11 +4,11 @@ import { supabase } from "../../../lib/supabase";
 import type { OperacaoGerencial } from "../../../lib/supabase";
 
 // ─── Estilos base ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 3, display: "block" };
-const card: React.CSSProperties = { background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" };
 const btnP: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnS: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#555" };
+const btnS: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 
 // ─── Tipo local ───────────────────────────────────────────────────────────────
 type OpTemplate = OperacaoGerencial;
@@ -203,7 +203,7 @@ export default function PadroesPage() {
       {/* Cabeçalho */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Padrões do Sistema</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Padrões do Sistema</div>
           <button
             onClick={carregarPadroes}
             disabled={seeding}
@@ -242,10 +242,10 @@ export default function PadroesPage() {
             {m.label}
           </div>
         ))}
-        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed #D4DCE8", color: "#aaa", fontSize: 13, cursor: "default" }}>
+        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed #D4DCE8", color: "var(--text-muted)", fontSize: 13, cursor: "default" }}>
           Regras de Classificação — em breve
         </div>
-        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed #D4DCE8", color: "#aaa", fontSize: 13, cursor: "default" }}>
+        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed #D4DCE8", color: "var(--text-muted)", fontSize: 13, cursor: "default" }}>
           CFOPs — em breve
         </div>
       </div>
@@ -265,7 +265,7 @@ export default function PadroesPage() {
             {(["todos","receita","despesa"] as const).map(t => (
               <button key={t} onClick={() => setFiltroTipo(t)} style={{
                 padding: "6px 14px", borderRadius: 20, border: "0.5px solid",
-                borderColor: filtroTipo === t ? "#1A4870" : "#D4DCE8",
+                borderColor: filtroTipo === t ? "#1A4870" : "var(--border-table)",
                 background: filtroTipo === t ? "#D5E8F5" : "transparent",
                 color: filtroTipo === t ? "#0B2D50" : "#666",
                 fontWeight: filtroTipo === t ? 600 : 400, fontSize: 12, cursor: "pointer",
@@ -281,11 +281,11 @@ export default function PadroesPage() {
 
           <div style={card}>
             {loading ? (
-              <div style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando…</div>
+              <div style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando…</div>
             ) : filtrados.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center" }}>
-                <div style={{ fontSize: 14, color: "#888", marginBottom: 8 }}>Nenhum template cadastrado</div>
-                <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Crie as operações gerenciais padrão que serão sincronizadas com os clientes.</div>
+                <div style={{ fontSize: 14, color: "var(--text-3)", marginBottom: 8 }}>Nenhum template cadastrado</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Crie as operações gerenciais padrão que serão sincronizadas com os clientes.</div>
                 <button onClick={abrirNovo} style={btnP}>+ Criar primeira operação</button>
               </div>
             ) : (
@@ -293,7 +293,7 @@ export default function PadroesPage() {
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
                     {["Código", "Descrição", "Tipo", "LCDPR", "Débito", "Crédito", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -304,11 +304,11 @@ export default function PadroesPage() {
                     const isGrupo = d === 0;
                     return (
                       <tr key={op.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: isGrupo ? "#F8FAFD" : op.inativo ? "#FAFAFA" : "white" }}>
-                        <td style={{ padding: "7px 14px", fontFamily: "monospace", fontSize: 12, color: "#1a1a1a", whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "7px 14px", fontFamily: "monospace", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                           {op.classificacao}
                         </td>
                         <td style={{ padding: "7px 14px", maxWidth: 280 }}>
-                          <span style={{ paddingLeft: d * 12, fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 700 : 400, color: op.inativo ? "#999" : "#1a1a1a" }}>
+                          <span style={{ paddingLeft: d * 12, fontSize: isGrupo ? 13 : 12, fontWeight: isGrupo ? 700 : 400, color: op.inativo ? "#999" : "var(--text-1)" }}>
                             {op.descricao}
                           </span>
                           {op.inativo && <span style={{ marginLeft: 6, fontSize: 9, background: "#F3F3F3", color: "#999", padding: "1px 5px", borderRadius: 4 }}>INATIVO</span>}
@@ -319,14 +319,14 @@ export default function PadroesPage() {
                         <td style={{ padding: "7px 14px", textAlign: "center", fontSize: 11, color: "#666" }}>
                           {op.tipo_lcdpr || "—"}
                         </td>
-                        <td style={{ padding: "7px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 11, color: "#555" }}>
+                        <td style={{ padding: "7px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 11, color: "var(--text-2)" }}>
                           {op.conta_debito || "—"}
                         </td>
-                        <td style={{ padding: "7px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 11, color: "#555" }}>
+                        <td style={{ padding: "7px 14px", textAlign: "center", fontFamily: "monospace", fontSize: 11, color: "var(--text-2)" }}>
                           {op.conta_credito || "—"}
                         </td>
                         <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                          <button onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "#555", cursor: "pointer", marginRight: 4 }}>
+                          <button onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
                           </button>
                           <button
@@ -347,7 +347,7 @@ export default function PadroesPage() {
 
           {/* Nota sobre templates */}
           {templates.length > 0 && (
-            <div style={{ marginTop: 12, padding: "10px 14px", background: "#F4F6FA", borderRadius: 8, fontSize: 11, color: "#666" }}>
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--bg-page)", borderRadius: 8, fontSize: 11, color: "#666" }}>
               <strong style={{ color: "#1A4870" }}>{templates.length}</strong> operações no template.
               Clientes com operações próprias de mesmo código terão <strong>todos os campos atualizados</strong> na próxima sincronização (modo Merge).
               Operações que o cliente criou com códigos diferentes não são afetadas.
@@ -369,19 +369,19 @@ export default function PadroesPage() {
               {/* Selecionar fazendas */}
               <div style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                     Fazendas ({fazendas.length})
                   </label>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
                       onClick={() => setSyncSelect(new Set(fazendas.map(f => f.id)))}
-                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", color: "#555" }}
+                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
                       Todas
                     </button>
                     <button
                       onClick={() => setSyncSelect(new Set())}
-                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", color: "#555" }}
+                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
                       Limpar
                     </button>
@@ -389,7 +389,7 @@ export default function PadroesPage() {
                 </div>
                 <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
                   {fazendas.length === 0 ? (
-                    <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: "#888" }}>Nenhuma fazenda encontrada</div>
+                    <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhuma fazenda encontrada</div>
                   ) : fazendas.map(f => (
                     <label key={f.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", cursor: "pointer", borderBottom: "0.5px solid #F0F2F7", background: syncSelect.has(f.id) ? "#EEF5FD" : "transparent" }}>
                       <input
@@ -403,13 +403,13 @@ export default function PadroesPage() {
                         style={{ accentColor: "#1A4870" }}
                       />
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: syncSelect.has(f.id) ? 600 : 400, color: "#1a1a1a" }}>{f.nome}</div>
-                        {f.municipio && <div style={{ fontSize: 10, color: "#888" }}>{f.municipio}</div>}
+                        <div style={{ fontSize: 12, fontWeight: syncSelect.has(f.id) ? 600 : 400, color: "var(--text-1)" }}>{f.nome}</div>
+                        {f.municipio && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{f.municipio}</div>}
                       </div>
                     </label>
                   ))}
                 </div>
-                <div style={{ marginTop: 6, fontSize: 11, color: "#888" }}>
+                <div style={{ marginTop: 6, fontSize: 11, color: "var(--text-3)" }}>
                   {syncSelect.size === 0
                     ? "Nenhuma selecionada — vai sincronizar todas ao confirmar"
                     : `${syncSelect.size} fazenda(s) selecionada(s)`}
@@ -440,13 +440,13 @@ export default function PadroesPage() {
               {/* Resultado */}
               {syncResult && (
                 <div style={{ marginTop: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 8 }}>
                     Resultado
                   </div>
                   <div style={{ maxHeight: 200, overflowY: "auto" }}>
                     {syncResult.map(r => (
                       <div key={r.fazenda_id} style={{ padding: "7px 10px", borderBottom: "0.5px solid #F0F2F7", fontSize: 11 }}>
-                        <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 2 }}>{r.fazenda_nome}</div>
+                        <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 2 }}>{r.fazenda_nome}</div>
                         <div style={{ display: "flex", gap: 10 }}>
                           <span style={{ background: "#EAF3DE", color: "#1A5C38", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>+{r.inseridos} novos</span>
                           <span style={{ background: "#D5E8F5", color: "#0B2D50", padding: "1px 7px", borderRadius: 5, fontWeight: 600 }}>{r.atualizados} atualizados</span>
@@ -471,13 +471,13 @@ export default function PadroesPage() {
       ══════════════════════════════════════════════════════ */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 700, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
                 {modal === "novo" ? "Nova Operação — Template" : `Editar: ${form.classificacao}`}
               </div>
-              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#888" }}>×</button>
+              <button onClick={() => setModal(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
 
             <div style={{ padding: 24 }}>
@@ -529,7 +529,7 @@ export default function PadroesPage() {
               </div>
 
               {/* Permissões */}
-              <div style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Permite usar em</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px" }}>
                   {([

@@ -111,9 +111,9 @@ function CardRecomendacao({
 
   return (
     <div style={{
-      background: "#fff", borderRadius: 14, overflow: "hidden",
+      background: "var(--bg-card)", borderRadius: 14, overflow: "hidden",
       boxShadow: "0 2px 12px rgba(0,0,0,0.08)", marginBottom: 14,
-      border: `1.5px solid ${rec.status === "em_execucao" ? cor : "#DDE2EE"}`,
+      border: `1.5px solid ${rec.status === "em_execucao" ? cor : "var(--border)"}`,
     }}>
       {/* Header colorido */}
       <div style={{ background: bg, padding: "14px 18px", borderBottom: `1.5px solid ${cor}20` }}>
@@ -136,7 +136,7 @@ function CardRecomendacao({
       <div style={{ padding: "14px 18px" }}>
         {/* Datas */}
         {rec.data_prevista_inicio && (
-          <div style={{ fontSize: 13, color: "#555", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 10 }}>
             📅 {rec.data_prevista_inicio?.split("-").reverse().join("/")}
             {rec.data_prevista_fim && rec.data_prevista_fim !== rec.data_prevista_inicio
               ? ` → ${rec.data_prevista_fim?.split("-").reverse().join("/")}` : ""}
@@ -145,7 +145,7 @@ function CardRecomendacao({
 
         {/* Área */}
         {rec.area_total_recomendada_ha && (
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", marginBottom: 10 }}>
             {rec.area_total_recomendada_ha.toLocaleString("pt-BR", { minimumFractionDigits: 1 })} ha
           </div>
         )}
@@ -277,7 +277,7 @@ function TelaExecucao({
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA", paddingBottom: 100 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)", paddingBottom: 100 }}>
       {/* Header mobile */}
       <div style={{ background: cor, color: "#fff", padding: "16px 18px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
@@ -301,12 +301,12 @@ function TelaExecucao({
 
       <div style={{ padding: "16px 16px 0" }}>
         {/* Produtos */}
-        <div style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", marginBottom: 14, border: "0.5px solid #DDE2EE" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#888", marginBottom: 10, textTransform: "uppercase" }}>Produtos a aplicar</div>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", marginBottom: 14, border: "0.5px solid var(--border)" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", marginBottom: 10, textTransform: "uppercase" }}>Produtos a aplicar</div>
           {produtos.map((p, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0",
               borderBottom: i < produtos.length - 1 ? "0.5px solid #F0F0F0" : "none", fontSize: 14 }}>
-              <span style={{ color: "#1a1a1a" }}>{p.produto_nome}</span>
+              <span style={{ color: "var(--text-1)" }}>{p.produto_nome}</span>
               <span style={{ fontWeight: 700, color: cor }}>{p.dose_ha} {p.unidade}</span>
             </div>
           ))}
@@ -314,13 +314,13 @@ function TelaExecucao({
 
         {/* Talhões */}
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#888", marginBottom: 10, textTransform: "uppercase", padding: "0 4px" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", marginBottom: 10, textTransform: "uppercase", padding: "0 4px" }}>
             Talhões ({ajustes.filter(a => a.concluido).length}/{ajustes.length} concluídos)
           </div>
           {ajustes.map((a, i) => (
             <div key={i} style={{
-              background: "#fff", borderRadius: 12, padding: "14px 16px", marginBottom: 10,
-              border: `1.5px solid ${a.concluido ? "#16A34A" : "#DDE2EE"}`,
+              background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", marginBottom: 10,
+              border: `1.5px solid ${a.concluido ? "#16A34A" : "var(--border)"}`,
               boxShadow: a.concluido ? "0 0 0 3px #16A34A15" : "none",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: a.concluido ? 10 : 0 }}>
@@ -336,7 +336,7 @@ function TelaExecucao({
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 700 }}>{a.talhao_nome}</div>
-                  <div style={{ fontSize: 12, color: "#888" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                     Recomendado: {a.area_recomendada_ha.toLocaleString("pt-BR",{minimumFractionDigits:1})} ha
                   </div>
                 </div>
@@ -344,14 +344,14 @@ function TelaExecucao({
 
               {a.concluido && (
                 <div style={{ marginTop: 10 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, textTransform: "uppercase" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 6, textTransform: "uppercase" }}>
                     Área executada (ha)
                   </div>
                   <InputNumerico
                     value={Number(a.area_executada_ha) || ""}
                     onChange={v => setA(i, "area_executada_ha", parseFloat(v) || 0)}
                     style={{
-                      width: "100%", padding: "12px 14px", border: "1.5px solid #DDE2EE", borderRadius: 10,
+                      width: "100%", padding: "12px 14px", border: "1.5px solid var(--border)", borderRadius: 10,
                       fontSize: 18, fontWeight: 700, boxSizing: "border-box", background: "#F9FAFB",
                     }}
                   />
@@ -367,36 +367,36 @@ function TelaExecucao({
         </div>
 
         {/* Operador e obs */}
-        <div style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", marginBottom: 14, border: "0.5px solid #DDE2EE" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#888", marginBottom: 10, textTransform: "uppercase" }}>Dados do operador</div>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: "14px 16px", marginBottom: 14, border: "0.5px solid var(--border)" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", marginBottom: 10, textTransform: "uppercase" }}>Dados do operador</div>
           <input
             placeholder="Nome do operador"
             value={operador}
             onChange={e => setOperador(e.target.value)}
-            style={{ width: "100%", padding: "12px 14px", border: "1.5px solid #DDE2EE", borderRadius: 10, fontSize: 14, boxSizing: "border-box", marginBottom: 10 }}
+            style={{ width: "100%", padding: "12px 14px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 14, boxSizing: "border-box", marginBottom: 10 }}
           />
           <textarea
             placeholder="Observações de campo (opcional)..."
             value={obs}
             onChange={e => setObs(e.target.value)}
-            style={{ width: "100%", padding: "12px 14px", border: "1.5px solid #DDE2EE", borderRadius: 10, fontSize: 14, boxSizing: "border-box", height: 80, resize: "vertical" }}
+            style={{ width: "100%", padding: "12px 14px", border: "1.5px solid var(--border)", borderRadius: 10, fontSize: 14, boxSizing: "border-box", height: 80, resize: "vertical" }}
           />
         </div>
       </div>
 
       {/* Footer fixo com botões */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", padding: "14px 16px", boxShadow: "0 -2px 12px rgba(0,0,0,0.1)", display: "flex", gap: 10 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--bg-card)", padding: "14px 16px", boxShadow: "0 -2px 12px rgba(0,0,0,0.1)", display: "flex", gap: 10 }}>
         {!todosFeitos && algumFeito && (
           <button onClick={() => salvar(false)} disabled={saving}
-            style={{ flex: 1, padding: "14px 0", background: "#F4F6FA", color: "#1A4870", border: "1.5px solid #DDE2EE", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+            style={{ flex: 1, padding: "14px 0", background: "var(--bg-page)", color: "#1A4870", border: "1.5px solid var(--border)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Salvar Parcial
           </button>
         )}
         <button onClick={() => salvar(true)} disabled={saving || !algumFeito}
           style={{
             flex: 2, padding: "14px 0",
-            background: algumFeito ? cor : "#DDE2EE",
-            color: algumFeito ? "#fff" : "#888",
+            background: algumFeito ? cor : "var(--border)",
+            color: algumFeito ? "#fff" : "var(--text-3)",
             border: "none", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: algumFeito ? "pointer" : "not-allowed",
           }}>
           {saving ? "Salvando..." : todosFeitos ? "✓ Concluir Tudo" : `Confirmar (${ajustes.filter(a=>a.concluido).length}/${ajustes.length})`}
@@ -507,7 +507,7 @@ export default function ExecucaoPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       {/* Header mobile */}
       <div style={{ background: "#1A4870", color: "#fff", padding: "18px 18px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
@@ -542,16 +542,16 @@ export default function ExecucaoPage() {
         )}
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: "#888", fontSize: 16 }}>Carregando...</div>
+          <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 16 }}>Carregando...</div>
         ) : recs.length === 0 ? (
           <div style={{ textAlign: "center", padding: 60 }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#555" }}>Nenhuma tarefa pendente</div>
-            <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Todas as recomendações foram executadas.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-2)" }}>Nenhuma tarefa pendente</div>
+            <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Todas as recomendações foram executadas.</div>
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#888", marginBottom: 12, textTransform: "uppercase" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-3)", marginBottom: 12, textTransform: "uppercase" }}>
               {recs.length} tarefa{recs.length > 1 ? "s" : ""} pendente{recs.length > 1 ? "s" : ""}
             </div>
             {recs.map(rec => (

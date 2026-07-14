@@ -172,7 +172,7 @@ export default function SuportePage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
 
@@ -190,12 +190,12 @@ export default function SuportePage() {
         <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, height: "calc(100vh - 140px)" }}>
 
           {/* Sidebar de conversas */}
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {/* Header */}
             <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870" }}>Suporte IA</div>
-                <div style={{ fontSize: 11, color: "#888" }}>Assistente Arato</div>
+                <div style={{ fontSize: 11, color: "var(--text-3)" }}>Assistente Arato</div>
               </div>
               <button
                 onClick={novaConversa}
@@ -213,7 +213,7 @@ export default function SuportePage() {
               {loadingConversas ? (
                 <div style={{ padding: 20, textAlign: "center", color: "#999", fontSize: 13 }}>Carregando...</div>
               ) : conversas.length === 0 ? (
-                <div style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 13 }}>
+                <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
                   Nenhuma conversa ainda
                 </div>
               ) : (
@@ -239,7 +239,7 @@ export default function SuportePage() {
                         }}>
                           {conv.titulo ?? "Nova conversa"}
                         </div>
-                        <div style={{ fontSize: 11, color: "#aaa", marginTop: 1 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
                           {conv.updated_at ? new Date(conv.updated_at).toLocaleDateString("pt-BR") : ""}
                         </div>
                       </div>
@@ -261,15 +261,15 @@ export default function SuportePage() {
             </div>
 
             {/* Info */}
-            <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", background: "#F4F6FA" }}>
-              <div style={{ fontSize: 10, color: "#aaa", lineHeight: 1.5 }}>
+            <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", background: "var(--bg-page)" }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5 }}>
                 Assistente com conhecimento completo do Arato e do agronegócio brasileiro.
               </div>
             </div>
           </div>
 
           {/* Área de chat */}
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {conversaAtiva ? (
               <>
                 {/* Header do chat */}
@@ -279,7 +279,7 @@ export default function SuportePage() {
                     display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, flexShrink: 0,
                   }}>🤖</div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{conversaAtiva.titulo ?? "Nova conversa"}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{conversaAtiva.titulo ?? "Nova conversa"}</div>
                     <div style={{ fontSize: 11, color: "#16A34A" }}>● Online</div>
                   </div>
                 </div>
@@ -303,8 +303,8 @@ export default function SuportePage() {
                             key={s}
                             onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 50); }}
                             style={{
-                              background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 99,
-                              padding: "6px 14px", fontSize: 12, color: "#555", cursor: "pointer",
+                              background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 99,
+                              padding: "6px 14px", fontSize: 12, color: "var(--text-2)", cursor: "pointer",
                             }}
                           >
                             {s}
@@ -331,8 +331,8 @@ export default function SuportePage() {
                         )}
                         <div style={{
                           maxWidth: "72%",
-                          background: msg.role === "user" ? "#1A4870" : "#F4F6FA",
-                          color: msg.role === "user" ? "#fff" : "#1a1a1a",
+                          background: msg.role === "user" ? "#1A4870" : "var(--bg-page)",
+                          color: msg.role === "user" ? "#fff" : "var(--text-1)",
                           borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                           padding: "10px 14px",
                           fontSize: 13, lineHeight: 1.6,
@@ -362,7 +362,7 @@ export default function SuportePage() {
                         display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, flexShrink: 0,
                       }}>🤖</div>
                       <div style={{
-                        background: "#F4F6FA", border: "0.5px solid #DDE2EE",
+                        background: "var(--bg-page)", border: "0.5px solid #DDE2EE",
                         borderRadius: "16px 16px 16px 4px", padding: "12px 16px",
                       }}>
                         <div style={{ display: "flex", gap: 4 }}>
@@ -394,7 +394,7 @@ export default function SuportePage() {
                       fontSize: 13, resize: "none", outline: "none", lineHeight: 1.5,
                       minHeight: 40, maxHeight: 120, overflowY: "auto",
                       fontFamily: "system-ui, sans-serif",
-                      background: enviando ? "#F4F6FA" : "#fff",
+                      background: enviando ? "var(--bg-page)" : "var(--bg-card)",
                     }}
                     onInput={(e) => {
                       const t = e.target as HTMLTextAreaElement;

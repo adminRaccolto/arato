@@ -42,10 +42,10 @@ const fmtBRL = (v: number, d = 0) =>
 const fmtNum = (v: number, d = 0) =>
   v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
-  borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff",
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
+  borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)",
   boxSizing: "border-box", outline: "none",
 };
 
@@ -54,13 +54,13 @@ function DreRow({ label, valor, ha, sc, base, bold, bg, indent, cor, negativo, n
   label:string; valor:number; ha:number; sc:number; base:number;
   bold?:boolean; bg?:string; indent?:boolean; cor?:string; negativo?:boolean; noBorder?:boolean;
 }) {
-  const c = cor ?? (bold ? "#0B2D50" : "#1a1a1a");
+  const c = cor ?? (bold ? "#0B2D50" : "var(--text-1)");
   const vAbs = Math.abs(valor);
   const fmt = (v: number) => negativo ? `(${fmtBRL(v)})` : fmtBRL(v);
   const td = (extra?: React.CSSProperties): React.CSSProperties => ({
     padding: bold ? "10px 20px" : "8px 20px",
     ...(indent ? { paddingLeft: 34 } : {}),
-    borderBottom: noBorder ? "none" : "0.5px solid #DEE5EE",
+    borderBottom: noBorder ? "none" : "0.5px solid var(--border-row)",
     ...extra,
   });
   return (
@@ -99,7 +99,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
   return (
-    <div style={{ background: "#F8FAFD", borderBottom: "0.5px solid #D4DCE8", padding: "12px 22px" }}>
+    <div style={{ background: "#F8FAFD", borderBottom: "0.5px solid var(--border-table)", padding: "12px 22px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "end" }}>
         <div>
           <label style={lbl}>Ano Safra</label>
@@ -122,9 +122,9 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
                   onClick={() => setCicloIds(prev => sel ? prev.filter(id => id !== c.id) : [...prev, c.id])}
                   style={{
                     padding: "5px 12px", borderRadius: 20,
-                    border: `0.5px solid ${sel ? "#1A4870" : "#D4DCE8"}`,
-                    background: sel ? "#D5E8F5" : "#fff",
-                    color: sel ? "#0B2D50" : "#555",
+                    border: `0.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`,
+                    background: sel ? "#D5E8F5" : "var(--bg-card)",
+                    color: sel ? "#0B2D50" : "var(--text-2)",
                     cursor: "pointer", fontSize: 12, fontWeight: sel ? 600 : 400,
                   }}>
                   {c.descricao}{c.area_plantada_ha ? ` · ${fmtNum(c.area_plantada_ha)} ha` : ""}
@@ -135,7 +135,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 8, fontSize: 11, color: "#555", display: "flex", gap: 16, alignItems: "center" }}>
+      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16, alignItems: "center" }}>
         <span>{ciclosSel.length} ciclo{ciclosSel.length !== 1 ? "s" : ""} selecionado{ciclosSel.length !== 1 ? "s" : ""}{areaTotal > 0 ? ` · ${fmtNum(areaTotal, 0)} ha` : ""}</span>
         {dreLoading && <span style={{ color: "#1A4870", fontWeight: 600 }}>⟳ Carregando…</span>}
       </div>
@@ -331,7 +331,7 @@ function CustosInner() {
     { label: "Corretivos de Solo", cats: ["Corretivos de Solo"],    cor: "#7C3AED", bg: "#F5F3FF" },
     { label: "Defensivos",         cats: ["Defensivos"],            cor: "#EF9F27", bg: "#FBF3E0" },
     { label: "Inoculantes",        cats: ["Inoculantes"],           cor: "#0EA5E9", bg: "#E0F2FE" },
-    { label: "Outros Insumos",     cats: ["Outros Insumos"],        cor: "#555",    bg: "#F4F6FA" },
+    { label: "Outros Insumos",     cats: ["Outros Insumos"],        cor: "var(--text-2)",    bg: "var(--bg-page)" },
   ];
   const custosPorGrupo = CUSTO_GRUPOS.map(g => {
     const total = g.cats.reduce((s, c) => s + (cpvPorGrupo[c] ?? 0), 0);
@@ -349,10 +349,10 @@ function CustosInner() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 11, color: "#888", marginBottom: 2 }}>Custos</div>
-            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#1a1a1a" }}>
+            <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Custos</div>
+            <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>
               {aba === "dre" ? "DRE Agrícola" : aba === "custoha" ? "Custo / ha" : aba === "produtividade" ? "Produtividade" : "Custos Totais"}
             </h1>
           </div>
@@ -387,8 +387,8 @@ function CustosInner() {
                     { label: "Resultado operacional",   valor: fmtBRL(lucroOp),     cor: lucroOp >= 0 ? "#1A4870" : "#E24B4A" },
                     { label: "Margem líquida",          valor: receitaBRL > 0 ? `${fmtNum(lucroLiquido / receitaBRL * 100, 1)}%` : "—", cor: lucroLiquido >= 0 ? "#16A34A" : "#E24B4A" },
                   ].map((k, i) => (
-                    <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "12px 14px" }}>
-                      <div style={{ fontSize: 10, color: "#555", marginBottom: 5 }}>{k.label}</div>
+                    <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 5 }}>{k.label}</div>
                       <div style={{ fontSize: 17, fontWeight: 600, color: k.cor }}>{k.valor}</div>
                     </div>
                   ))}
@@ -404,11 +404,11 @@ function CustosInner() {
 
               {/* ══════════ ABA: DRE ══════════ */}
               {aba === "dre" && !dreLoading && (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>Demonstração do Resultado do Exercício — Agrícola</div>
-                      <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>Demonstração do Resultado do Exercício — Agrícola</div>
+                      <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                         Base: consumo de insumos via custo médio ponderado · despesas diretas por ciclo · overhead rateado
                       </div>
                     </div>
@@ -422,7 +422,7 @@ function CustosInner() {
                     <thead>
                       <tr style={{ background: "#F3F6F9" }}>
                         {["Conta", "Total (R$)", "R$/ha", "R$/sc", "% Receita"].map((h, i) => (
-                          <th key={i} style={{ padding: "8px 20px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                          <th key={i} style={{ padding: "8px 20px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -435,7 +435,7 @@ function CustosInner() {
                       ))}
                       {contratos.some(c => c.moeda === "USD") && (
                         <tr>
-                          <td colSpan={5} style={{ padding: "4px 34px", fontSize: 11, color: "#EF9F27", borderBottom: "0.5px solid #DEE5EE" }}>
+                          <td colSpan={5} style={{ padding: "4px 34px", fontSize: 11, color: "#EF9F27", borderBottom: "0.5px solid var(--border-row)" }}>
                             ⚠ Contratos em USD não convertidos — incluir cotação para totalização correta
                           </td>
                         </tr>
@@ -455,7 +455,7 @@ function CustosInner() {
                         <DreRow key={grupo} label={grupo} valor={v} ha={areaHa} sc={totalSacas} base={receitaBRL} indent negativo />
                       ))}
                       {cpvTotal === 0 && (
-                        <tr><td colSpan={5} style={{ padding: "6px 34px", fontSize: 11, color: "#888", borderBottom: "0.5px solid #DEE5EE" }}>
+                        <tr><td colSpan={5} style={{ padding: "6px 34px", fontSize: 11, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-row)" }}>
                           Nenhuma movimentação de saída de estoque vinculada a estes ciclos
                         </td></tr>
                       )}
@@ -471,7 +471,7 @@ function CustosInner() {
                         <DreRow key={cat} label={cat} valor={v} ha={areaHa} sc={totalSacas} base={receitaBRL} indent negativo />
                       ))}
                       {despDirTotal === 0 && (
-                        <tr><td colSpan={5} style={{ padding: "6px 34px", fontSize: 11, color: "#888", borderBottom: "0.5px solid #DEE5EE" }}>
+                        <tr><td colSpan={5} style={{ padding: "6px 34px", fontSize: 11, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-row)" }}>
                           Nenhum lançamento de despesa direta vinculado a estes ciclos
                         </td></tr>
                       )}
@@ -484,20 +484,20 @@ function CustosInner() {
                           <DreRow key={cat} label={cat} valor={v} ha={areaHa} sc={totalSacas} base={receitaBRL} indent negativo />
                         ))
                         : lanOvh.slice(0, 10).map(l => (
-                          <tr key={l.id} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
-                            <td style={{ padding: "6px 34px", fontSize: 11, color: "#555", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</td>
+                          <tr key={l.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                            <td style={{ padding: "6px 34px", fontSize: 11, color: "var(--text-2)", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.descricao}</td>
                             <td style={{ padding: "6px 20px", textAlign: "right", fontSize: 11, color: "#E24B4A" }}>({fmtBRL(l.valor)})</td>
-                            <td colSpan={3} style={{ padding: "6px 20px", fontSize: 10, color: "#888", textAlign: "right" }}>sem rateio</td>
+                            <td colSpan={3} style={{ padding: "6px 20px", fontSize: 10, color: "var(--text-3)", textAlign: "right" }}>sem rateio</td>
                           </tr>
                         ))
                       }
                       {ratLinhas.length === 0 && lanOvh.length > 10 && (
-                        <tr><td colSpan={5} style={{ padding: "4px 34px", fontSize: 11, color: "#888", borderBottom: "0.5px solid #DEE5EE" }}>
+                        <tr><td colSpan={5} style={{ padding: "4px 34px", fontSize: 11, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-row)" }}>
                           … e mais {lanOvh.length - 10} lançamentos. Configure regras de rateio em Configurações → Regras de Rateio.
                         </td></tr>
                       )}
                       {ratLinhas.length === 0 && lanOvh.length === 0 && (
-                        <tr><td colSpan={5} style={{ padding: "6px 34px", fontSize: 11, color: "#888", borderBottom: "0.5px solid #DEE5EE" }}>Nenhum overhead registrado</td></tr>
+                        <tr><td colSpan={5} style={{ padding: "6px 34px", fontSize: 11, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-row)" }}>Nenhum overhead registrado</td></tr>
                       )}
 
                       {/* RESULTADO OPERACIONAL */}
@@ -526,27 +526,27 @@ function CustosInner() {
 
                   {/* Ponto de equilíbrio */}
                   {totalSacas > 0 && precoMedioSc > 0 && (
-                    <div style={{ padding: "16px 20px", borderTop: "0.5px solid #DEE5EE", background: "#F8FAFD" }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Análise do Ponto de Equilíbrio</div>
+                    <div style={{ padding: "16px 20px", borderTop: "0.5px solid var(--border-row)", background: "#F8FAFD" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Análise do Ponto de Equilíbrio</div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 12 }}>
                         {[
                           { label: "Preço médio contratado", v: `${fmtBRL(precoMedioSc, 2)}/sc`, cor: "#1A4870" },
                           { label: "PE (sc necessárias)", v: `${fmtNum(peSacas, 0)} sc`, cor: "#E24B4A" },
-                          { label: "Sacas contratadas", v: `${fmtNum(totalSacas, 0)} sc`, cor: "#1a1a1a" },
+                          { label: "Sacas contratadas", v: `${fmtNum(totalSacas, 0)} sc`, cor: "var(--text-1)" },
                           { label: "Folga acima do PE", v: folga >= 0 ? `+${fmtNum(folga, 0)} sc` : `${fmtNum(folga, 0)} sc`, cor: folga >= 0 ? "#16A34A" : "#E24B4A" },
                         ].map((k, i) => (
-                          <div key={i} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "10px 12px" }}>
-                            <div style={{ fontSize: 10, color: "#555", marginBottom: 3 }}>{k.label}</div>
+                          <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "10px 12px" }}>
+                            <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3 }}>{k.label}</div>
                             <div style={{ fontSize: 14, fontWeight: 600, color: k.cor }}>{k.v}</div>
                           </div>
                         ))}
                       </div>
                       {totalSacas > 0 && (
                         <div>
-                          <div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>
+                          <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>
                             PE: {fmtNum(peSacas, 0)} sc de {fmtNum(totalSacas, 0)} sc contratadas ({fmtNum(peSacas / totalSacas * 100, 1)}%)
                           </div>
-                          <div style={{ height: 14, background: "#DEE5EE", borderRadius: 4, overflow: "hidden", position: "relative" }}>
+                          <div style={{ height: 14, background: "var(--border-row)", borderRadius: 4, overflow: "hidden", position: "relative" }}>
                             <div style={{ height: "100%", width: `${Math.min(100, peSacas / totalSacas * 100)}%`, background: "#E24B4A", borderRadius: 4 }} />
                           </div>
                         </div>
@@ -555,7 +555,7 @@ function CustosInner() {
                   )}
 
                   {/* Nota metodológica */}
-                  <div style={{ padding: "10px 20px", borderTop: "0.5px solid #DEE5EE", fontSize: 10, color: "#888" }}>
+                  <div style={{ padding: "10px 20px", borderTop: "0.5px solid var(--border-row)", fontSize: 10, color: "var(--text-3)" }}>
                     Custo de insumos apurado via custo médio ponderado na baixa do estoque (movimentações_estoque × custo_medio). Lançamentos de insumos excluídos para evitar dupla contagem. Overhead alocado conforme regras de rateio configuradas.
                   </div>
                 </div>
@@ -563,16 +563,16 @@ function CustosInner() {
 
               {/* ══════════ ABA: Custo/ha ══════════ */}
               {aba === "custoha" && !dreLoading && (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                     {[
                       { label: "Custo insumos/ha",   v: areaHa > 0 ? fmtBRL(cpvTotal / areaHa) : "—",       cor: "#E24B4A" },
                       { label: "Desp. diretas/ha",   v: areaHa > 0 ? fmtBRL(despDirTotal / areaHa) : "—",   cor: "#C9921B" },
-                      { label: "Custo total/ha",     v: areaHa > 0 ? fmtBRL(custoTotal / areaHa) : "—",     cor: "#1a1a1a" },
+                      { label: "Custo total/ha",     v: areaHa > 0 ? fmtBRL(custoTotal / areaHa) : "—",     cor: "var(--text-1)" },
                       { label: "Receita/ha",         v: areaHa > 0 ? fmtBRL(receitaBRL / areaHa) : "—",     cor: "#1A4870" },
                     ].map((k, i) => (
-                      <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <div style={{ fontSize: 11, color: "#555", marginBottom: 5 }}>{k.label}</div>
+                      <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 5 }}>{k.label}</div>
                         <div style={{ fontSize: 18, fontWeight: 600, color: k.cor }}>{k.v}</div>
                       </div>
                     ))}
@@ -585,19 +585,19 @@ function CustosInner() {
                         return (
                           <div key={grupo}>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
-                              <span style={{ color: "#555" }}>{grupo}</span>
-                              <span style={{ fontWeight: 600, color: "#1a1a1a" }}>
+                              <span style={{ color: "var(--text-2)" }}>{grupo}</span>
+                              <span style={{ fontWeight: 600, color: "var(--text-1)" }}>
                                 {fmtBRL(v)}{areaHa > 0 ? ` · ${fmtBRL(v / areaHa)}/ha` : ""}{totalSacas > 0 ? ` · ${fmtBRL(v / totalSacas, 2)}/sc` : ""}
                               </span>
                             </div>
-                            <div style={{ height: 8, background: "#DEE5EE", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: 8, background: "var(--border-row)", borderRadius: 4, overflow: "hidden" }}>
                               <div style={{ height: "100%", width: `${Math.max(4, v / maxV * 100)}%`, background: "#E24B4A", borderRadius: 4 }} />
                             </div>
                           </div>
                         );
                       })}
                       {Object.keys(cpvPorGrupo).length === 0 && (
-                        <div style={{ color: "#888", fontSize: 12 }}>Nenhuma movimentação de saída de estoque para os ciclos selecionados.</div>
+                        <div style={{ color: "var(--text-3)", fontSize: 12 }}>Nenhuma movimentação de saída de estoque para os ciclos selecionados.</div>
                       )}
                     </div>
 
@@ -610,12 +610,12 @@ function CustosInner() {
                             return (
                               <div key={cat}>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
-                                  <span style={{ color: "#555" }}>{cat}</span>
-                                  <span style={{ fontWeight: 600, color: "#1a1a1a" }}>
+                                  <span style={{ color: "var(--text-2)" }}>{cat}</span>
+                                  <span style={{ fontWeight: 600, color: "var(--text-1)" }}>
                                     {fmtBRL(v)}{areaHa > 0 ? ` · ${fmtBRL(v / areaHa)}/ha` : ""}
                                   </span>
                                 </div>
-                                <div style={{ height: 8, background: "#DEE5EE", borderRadius: 4, overflow: "hidden" }}>
+                                <div style={{ height: 8, background: "var(--border-row)", borderRadius: 4, overflow: "hidden" }}>
                                   <div style={{ height: "100%", width: `${Math.max(4, v / maxV * 100)}%`, background: "#C9921B", borderRadius: 4 }} />
                                 </div>
                               </div>
@@ -626,17 +626,17 @@ function CustosInner() {
                     )}
 
                     {totalSacas > 0 && (
-                      <div style={{ marginTop: 20, borderTop: "0.5px solid #DEE5EE", paddingTop: 14 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 10 }}>Equivalência em sacas</div>
+                      <div style={{ marginTop: 20, borderTop: "0.5px solid var(--border-row)", paddingTop: 14 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Equivalência em sacas</div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
                           {[
                             { label: "Insumos/sc",        v: cpvTotal / totalSacas,    cor: "#E24B4A" },
                             { label: "Desp. diretas/sc",  v: despDirTotal / totalSacas, cor: "#C9921B" },
                             { label: "Overhead/sc",       v: (despIndirTotal + overheadSemRateio) / totalSacas, cor: "#7C3AED" },
-                            { label: "Custo total/sc",    v: custoTotal / totalSacas,  cor: "#1a1a1a" },
+                            { label: "Custo total/sc",    v: custoTotal / totalSacas,  cor: "var(--text-1)" },
                           ].map((k, i) => (
                             <div key={i} style={{ background: "#F3F6F9", borderRadius: 10, padding: "12px 14px" }}>
-                              <div style={{ fontSize: 10, color: "#555", marginBottom: 4 }}>{k.label}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                               <div style={{ fontSize: 16, fontWeight: 600, color: k.cor }}>{fmtBRL(k.v, 2)}</div>
                             </div>
                           ))}
@@ -649,8 +649,8 @@ function CustosInner() {
 
               {/* ══════════ ABA: Produtividade ══════════ */}
               {aba === "produtividade" && (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Safras cadastradas — produtividade</div>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Safras cadastradas — produtividade</div>
                   {safrasOrd.length === 0 ? (
                     <div style={{ padding: 40, textAlign: "center", color: "#666" }}>Nenhuma safra cadastrada.</div>
                   ) : (
@@ -668,9 +668,9 @@ function CustosInner() {
                         const sc = statusCors[s.status] ?? statusCors.planejada;
                         const stLbl: Record<string, string> = { colhida: "Colhida", em_andamento: "Em andamento", planejada: "Planejada", cancelada: "Cancelada" };
                         return (
-                          <div key={s.id} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: 10, border: "0.5px solid #D4DCE8", background: i === safrasOrd.length - 1 ? "#F8FAFD" : "transparent" }}>
+                          <div key={s.id} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: 10, border: "0.5px solid var(--border-table)", background: i === safrasOrd.length - 1 ? "#F8FAFD" : "transparent" }}>
                             <div style={{ width: 110, flexShrink: 0 }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{s.cultura} {s.ano_agricola}</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{s.cultura} {s.ano_agricola}</div>
                               <span style={{ fontSize: 10, background: sc.bg, color: sc.color, padding: "1px 6px", borderRadius: 6 }}>{stLbl[s.status]}</span>
                             </div>
                             <div style={{ width: 60, flexShrink: 0, textAlign: "right", fontSize: 12, color: "#666" }}>{fmtNum(s.area_ha)} ha</div>
@@ -679,11 +679,11 @@ function CustosInner() {
                                 <div style={{ height: "100%", width: `${pct * 100}%`, background: cor, borderRadius: 4 }} />
                               </div>
                             </div>
-                            <div style={{ width: 80, textAlign: "right", fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>
+                            <div style={{ width: 80, textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>
                               {recEstim > 0 ? `${fmtBRL(recEstim / 1000, 0)}k` : "—"}
                             </div>
                             <div style={{ width: 70, textAlign: "right" }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{s.produtividade_sc_ha ? fmtNum(s.produtividade_sc_ha, 1) : "—"}</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{s.produtividade_sc_ha ? fmtNum(s.produtividade_sc_ha, 1) : "—"}</div>
                               <div style={{ fontSize: 10, color: "#444" }}>sc/ha</div>
                             </div>
                           </div>
@@ -714,27 +714,27 @@ function CustosInner() {
 
               {/* ══════════ ABA: Custos Totais ══════════ */}
               {aba === "custostotais" && !dreLoading && (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {/* KPIs custos totais */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid #DEE5EE" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderBottom: "0.5px solid var(--border-row)" }}>
                     {[
                       { label: "Custo de Insumos",     v: fmtBRL(cpvTotal),    cor: "#E24B4A" },
                       { label: "Desp. Diretas",        v: fmtBRL(despDirTotal), cor: "#C9921B" },
                       { label: "Overhead Rateado",     v: fmtBRL(despIndirTotal + overheadSemRateio), cor: "#7C3AED" },
-                      { label: "Custo Total",          v: fmtBRL(custoTotal),  cor: "#1a1a1a" },
+                      { label: "Custo Total",          v: fmtBRL(custoTotal),  cor: "var(--text-1)" },
                     ].map((k, i) => (
-                      <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid #DEE5EE" : "none" }}>
-                        <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>{k.label}</div>
+                      <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                         <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.v}</div>
-                        {areaHa > 0 && <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>{fmtBRL(parseFloat(k.v.replace(/[^0-9,-]/g, "").replace(",", ".")) / areaHa)}/ha</div>}
+                        {areaHa > 0 && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{fmtBRL(parseFloat(k.v.replace(/[^0-9,-]/g, "").replace(",", ".")) / areaHa)}/ha</div>}
                       </div>
                     ))}
                   </div>
 
                   <div style={{ padding: "16px 20px" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", marginBottom: 14 }}>Composição de Insumos por Grupo</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Composição de Insumos por Grupo</div>
                     {custosPorGrupo.length === 0 ? (
-                      <div style={{ color: "#888", fontSize: 12, padding: 20 }}>Nenhum consumo de insumo registrado para os ciclos selecionados.</div>
+                      <div style={{ color: "var(--text-3)", fontSize: 12, padding: 20 }}>Nenhum consumo de insumo registrado para os ciclos selecionados.</div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         {custosPorGrupo.map(g => (
@@ -742,9 +742,9 @@ function CustosInner() {
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                               <span style={{ fontSize: 13, fontWeight: 600, color: g.cor }}>{g.label}</span>
                               <div style={{ display: "flex", gap: 16, fontSize: 12 }}>
-                                <span style={{ fontWeight: 700, color: "#1a1a1a" }}>{fmtBRL(g.total)}</span>
-                                {areaHa > 0 && <span style={{ color: "#555" }}>{fmtBRL(g.total / areaHa)}/ha</span>}
-                                <span style={{ color: "#888" }}>{cpvTotal > 0 ? fmtNum(g.total / cpvTotal * 100, 1) : "0,0"}%</span>
+                                <span style={{ fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(g.total)}</span>
+                                {areaHa > 0 && <span style={{ color: "var(--text-2)" }}>{fmtBRL(g.total / areaHa)}/ha</span>}
+                                <span style={{ color: "var(--text-3)" }}>{cpvTotal > 0 ? fmtNum(g.total / cpvTotal * 100, 1) : "0,0"}%</span>
                               </div>
                             </div>
                             <div style={{ height: 8, background: "#E0E5EE", borderRadius: 4, overflow: "hidden" }}>
@@ -762,10 +762,10 @@ function CustosInner() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {Object.entries(despDirPorCat).sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
                             <div key={cat} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "#FBF3E0", borderRadius: 8, fontSize: 12 }}>
-                              <span style={{ color: "#555" }}>{cat}</span>
+                              <span style={{ color: "var(--text-2)" }}>{cat}</span>
                               <div style={{ display: "flex", gap: 12 }}>
-                                <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{fmtBRL(v)}</span>
-                                {areaHa > 0 && <span style={{ color: "#888" }}>{fmtBRL(v / areaHa)}/ha</span>}
+                                <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{fmtBRL(v)}</span>
+                                {areaHa > 0 && <span style={{ color: "var(--text-3)" }}>{fmtBRL(v / areaHa)}/ha</span>}
                               </div>
                             </div>
                           ))}
@@ -783,11 +783,11 @@ function CustosInner() {
                           {ratLinhas.length > 0
                             ? Object.entries(despIndirPorCat).sort((a, b) => b[1] - a[1]).map(([cat, v]) => (
                               <div key={cat} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: "#F5F3FF", borderRadius: 8, fontSize: 12 }}>
-                                <span style={{ color: "#555" }}>{cat}</span>
-                                <span style={{ fontWeight: 600, color: "#1a1a1a" }}>{fmtBRL(v)}</span>
+                                <span style={{ color: "var(--text-2)" }}>{cat}</span>
+                                <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{fmtBRL(v)}</span>
                               </div>
                             ))
-                            : <div style={{ padding: "8px 12px", background: "#F5F3FF", borderRadius: 8, fontSize: 12, color: "#555" }}>
+                            : <div style={{ padding: "8px 12px", background: "#F5F3FF", borderRadius: 8, fontSize: 12, color: "var(--text-2)" }}>
                               {fmtBRL(overheadSemRateio)} — Configure regras de rateio em <strong>Configurações → Regras de Rateio</strong>
                             </div>
                           }

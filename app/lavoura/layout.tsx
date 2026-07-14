@@ -98,9 +98,9 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
         <div className="lavoura-action-sheet">
           <div style={{
             width: 40, height: 4, borderRadius: 2,
-            background: "#DDE2EE", margin: "0 auto 12px",
+            background: "var(--border)", margin: "0 auto 12px",
           }} />
-          <div style={{ padding: "0 8px 4px 16px", fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <div style={{ padding: "0 8px 4px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Nova operação
           </div>
           {ACOES.map(a => (
@@ -112,7 +112,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                 width: "100%", padding: "13px 20px",
                 background: "none", border: "none",
                 textAlign: "left", cursor: "pointer",
-                fontSize: 14, color: "#1a1a1a",
+                fontSize: 14, color: "var(--text-1)",
                 borderBottom: "0.5px solid #F0F2F7",
               }}
             >
@@ -128,9 +128,9 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
         <div className="lavoura-action-sheet">
           <div style={{
             width: 40, height: 4, borderRadius: 2,
-            background: "#DDE2EE", margin: "0 auto 12px",
+            background: "var(--border)", margin: "0 auto 12px",
           }} />
-          <div style={{ padding: "0 8px 4px 16px", fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <div style={{ padding: "0 8px 4px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             Mais opções
           </div>
           {MAIS.map(m => (
@@ -142,7 +142,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                 width: "100%", padding: "13px 20px",
                 background: "none", border: "none",
                 textAlign: "left", cursor: "pointer",
-                fontSize: 14, color: "#1a1a1a",
+                fontSize: 14, color: "var(--text-1)",
                 borderBottom: "0.5px solid #F0F2F7",
               }}
             >
@@ -180,7 +180,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
                 }}>
                   ➕
                 </div>
-                <span style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{tab.label}</span>
+                <span style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{tab.label}</span>
               </button>
             );
           }
@@ -188,7 +188,7 @@ export default function LavouraLayout({ children }: { children: React.ReactNode 
           const content = (
             <>
               <span style={{ fontSize: 20 }}>{tab.icon}</span>
-              <span style={{ fontSize: 10, color: isActive ? "#1A4870" : "#888" }}>{tab.label}</span>
+              <span style={{ fontSize: 10, color: isActive ? "#1A4870" : "var(--text-3)" }}>{tab.label}</span>
             </>
           );
           if (isMais) {

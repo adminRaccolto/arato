@@ -154,7 +154,7 @@ function RelFinClassInner() {
     const tipoLabel = { todos: "CP + CR", pagar: "Contas a Pagar", receber: "Contas a Receber" }[tipo];
     const statusLabel = [...statusSel].map(s => STATUS_LABELS[s]).join(", ") || "Todos";
 
-    const corStatus = (s: string) => STATUS_COR[s] ?? "#888";
+    const corStatus = (s: string) => STATUS_COR[s] ?? "var(--text-3)";
     const bgTipo    = (t: string) => t === "receber" ? "#EFF8F0" : "#FEF2F2";
     const corValor  = (t: string) => t === "receber" ? "#16A34A" : "#DC2626";
 
@@ -202,7 +202,7 @@ function RelFinClassInner() {
       <div class="auto-fit-table">
       <table style="border-collapse:collapse;font-family:system-ui,sans-serif;white-space:nowrap">
         <thead>
-          <tr style="background:#F4F6FA">
+          <tr style="background:var(--bg-page)">
             <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:left;white-space:nowrap">Vcto</th>
             <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:left;white-space:nowrap">Descrição</th>
             <th style="padding:5px 8px;font-size:9px;font-weight:700;color:#555;border-bottom:1.5px solid #1A4870;text-align:left;white-space:nowrap">Fornecedor / Cliente</th>
@@ -218,11 +218,11 @@ function RelFinClassInner() {
             <td colspan="4" style="padding:6px 10px;font-size:10px;font-weight:700;color:#fff;text-align:right">TOTAL GERAL</td>
             <td colspan="3" style="padding:6px 10px;font-size:11px;font-weight:800;color:${saldo >= 0 ? "#86EFAC" : "#FCA5A5"};text-align:right">${fmtBRL(saldo)}</td>
           </tr>
-          <tr style="background:#F4F6FA">
+          <tr style="background:var(--bg-page)">
             <td colspan="4" style="padding:4px 10px;font-size:9px;color:#1A4870;text-align:right">Entradas</td>
             <td colspan="3" style="padding:4px 10px;font-size:9px;color:#16A34A;font-weight:600;text-align:right">+${fmtBRL(totalEntradas)}</td>
           </tr>
-          <tr style="background:#F4F6FA">
+          <tr style="background:var(--bg-page)">
             <td colspan="4" style="padding:4px 10px;font-size:9px;color:#555;text-align:right">Saídas</td>
             <td colspan="3" style="padding:4px 10px;font-size:9px;color:#DC2626;font-weight:600;text-align:right">−${fmtBRL(totalSaidas)}</td>
           </tr>
@@ -323,25 +323,25 @@ function RelFinClassInner() {
 
   // ── estilos ───────────────────────────────────────────────────────────────
   const inp: React.CSSProperties = {
-    padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8,
-    fontSize: 13, color: "#1a1a1a", background: "#fff", outline: "none",
+    padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
+    fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", outline: "none",
   };
-  const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+  const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
   const btnCheck = (active: boolean, cor?: string): React.CSSProperties => ({
     padding: "5px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer",
-    border: `0.5px solid ${active ? (cor ?? "#1A4870") : "#D4DCE8"}`,
-    background: active ? (cor ?? "#1A4870") + "15" : "#fff",
-    color: active ? (cor ?? "#1A4870") : "#888",
+    border: `0.5px solid ${active ? (cor ?? "#1A4870") : "var(--border-table)"}`,
+    background: active ? (cor ?? "#1A4870") + "15" : "var(--bg-card)",
+    color: active ? (cor ?? "#1A4870") : "var(--text-3)",
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px" }}>
         {/* Cabeçalho */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Financeiro por Classificação</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Financeiro por Classificação</h1>
             <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
               Relatório de lançamentos agrupados por categoria contábil
             </p>
@@ -359,7 +359,7 @@ function RelFinClassInner() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, marginBottom: 20 }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, marginBottom: 20 }}>
           <div style={{ display: "grid", gridTemplateColumns: "160px 160px 1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Data Início (Vcto)</label>
@@ -402,7 +402,7 @@ function RelFinClassInner() {
                 Todas
               </button>
               <button onClick={() => setClassifSel(new Set())}
-                style={{ fontSize: 11, color: "#888", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
                 Nenhuma
               </button>
             </div>
@@ -435,8 +435,8 @@ function RelFinClassInner() {
                 { label: "Saldo",    val: saldo,          cor: saldo >= 0 ? "#16A34A" : "#DC2626" },
                 { label: "Lançamentos", val: totalLinhas,  cor: "#1A4870", isNum: true },
               ].map(k => (
-                <div key={k.label} style={{ background: "#fff", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
-                  <p style={{ margin: 0, fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</p>
+                <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</p>
                   <p style={{ margin: "6px 0 0", fontSize: 18, fontWeight: 700, color: k.cor }}>
                     {k.isNum ? totalLinhas : fmtBRL(k.val as number)}
                   </p>
@@ -446,17 +446,17 @@ function RelFinClassInner() {
 
             {/* Tabela por grupo */}
             {grupos.length === 0 ? (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "#888" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 40, textAlign: "center", color: "var(--text-3)" }}>
                 Nenhum lançamento encontrado com os filtros selecionados.
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ background: "#F4F6FA" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Vcto", "Descrição", "Fornecedor / Cliente", "Parcela", "Valor", "Status", "Baixa"].map(h => (
-                          <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor" ? "right" : h === "Parcela" || h === "Status" || h === "Baixa" ? "center" : "left", fontSize: 11, fontWeight: 700, color: "#555", borderBottom: "1.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor" ? "right" : h === "Parcela" || h === "Status" || h === "Baixa" ? "center" : "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "1.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -475,10 +475,10 @@ function RelFinClassInner() {
                             {/* Linhas */}
                             {g.rows.map((r, i) => (
                               <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD", borderBottom: "0.5px solid #F0F3FA" }}>
-                                <td style={{ padding: "8px 12px", color: "#555", whiteSpace: "nowrap" }}>{fmtDate(r.data_vencimento)}</td>
+                                <td style={{ padding: "8px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtDate(r.data_vencimento)}</td>
                                 <td style={{ padding: "8px 12px", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.descricao}</td>
-                                <td style={{ padding: "8px 12px", color: "#555", whiteSpace: "nowrap" }}>{r.pessoa_nome ?? "—"}</td>
-                                <td style={{ padding: "8px 12px", textAlign: "center", color: "#888", whiteSpace: "nowrap" }}>
+                                <td style={{ padding: "8px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{r.pessoa_nome ?? "—"}</td>
+                                <td style={{ padding: "8px 12px", textAlign: "center", color: "var(--text-3)", whiteSpace: "nowrap" }}>
                                   {r.num_parcela ? `${r.num_parcela}/${r.total_parcelas}` : "—"}
                                 </td>
                                 <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, whiteSpace: "nowrap", color: r.tipo === "pagar" ? "#DC2626" : "#16A34A" }}>
@@ -489,7 +489,7 @@ function RelFinClassInner() {
                                     {STATUS_LABELS[r.status] ?? r.status}
                                   </span>
                                 </td>
-                                <td style={{ padding: "8px 12px", textAlign: "center", color: "#888", whiteSpace: "nowrap" }}>
+                                <td style={{ padding: "8px 12px", textAlign: "center", color: "var(--text-3)", whiteSpace: "nowrap" }}>
                                   {r.data_baixa ? fmtDate(r.data_baixa) : "—"}
                                 </td>
                               </tr>
@@ -527,7 +527,7 @@ function RelFinClassInner() {
 
 export default function RelFinancClassPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando...</div>}>
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando...</div>}>
       <RelFinClassInner />
     </Suspense>
   );

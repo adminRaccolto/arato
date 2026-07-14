@@ -31,8 +31,8 @@ type Abastecimento = {
 type InsumoCombo = { id: string; nome: string; estoque: number; custo_medio: number; unidade: string };
 
 // ─── Estilos utilitários ───────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box" };
-const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#555", display: "block", marginBottom: 4 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box" };
+const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 };
 
 const COMB_LABEL: Record<string, string> = {
   diesel_s10:  "Diesel S-10",
@@ -395,12 +395,12 @@ export default function AbastecimentoPage() {
   return (
     <>
       <TopNav />
-      <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "#F4F6FA", minHeight: "100vh" }}>
+      <div style={{ fontFamily: "system-ui, sans-serif", padding: "28px 32px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Abastecimento de Máquinas</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Abastecimento de Máquinas</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Consumo de combustível das bombas da fazenda — dedução de estoque e custo</p>
           </div>
           <button
@@ -417,31 +417,31 @@ export default function AbastecimentoPage() {
             { label: "Litros Hoje",        valor: fmtNum(litrosHoje, 0) + " L",   sub: "consumo no dia",         cor: "#1A4870", bg: "#EAF3FB" },
             { label: "Litros no Mês",      valor: fmtNum(totalLitrosMes, 0) + " L", sub: filtroMes,              cor: "#166534", bg: "#DCFCE7" },
             { label: "Custo no Mês",       valor: fmtBRL(totalCustoMes),           sub: "a pagar / pago",        cor: "#9D4900", bg: "#FFF4E5" },
-            { label: "Abastecimentos",     valor: String(totalAbastMes),           sub: "no período",            cor: "#555",   bg: "#F3F4F6" },
+            { label: "Abastecimentos",     valor: String(totalAbastMes),           sub: "no período",            cor: "var(--text-2)",   bg: "#F3F4F6" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 12, padding: "16px 20px", border: "0.5px solid #DDE2EE" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, padding: "16px 20px", border: "0.5px solid var(--border)" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.valor}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{k.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
             </div>
           ))}
         </div>
 
         {/* Estoque das bombas */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 20px", marginBottom: 20 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 14 }}>Bombas e Tanques — Estoque Atual</div>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 20px", marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 14 }}>Bombas e Tanques — Estoque Atual</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
             {bombas.length === 0 && (
-              <div style={{ color: "#888", fontSize: 13 }}>Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis & Bombas.</div>
+              <div style={{ color: "var(--text-3)", fontSize: 13 }}>Nenhuma bomba cadastrada. Acesse Cadastros → Combustíveis & Bombas.</div>
             )}
             {bombas.map(b => {
               const pct = b.capacidade_l ? Math.round((b.estoque_atual_l / b.capacidade_l) * 100) : null;
-              const [cbg, ccl] = COMB_COR[b.combustivel] ?? ["#F1EFE8", "#555"];
+              const [cbg, ccl] = COMB_COR[b.combustivel] ?? ["#F1EFE8", "var(--text-2)"];
               const baixo = pct !== null && pct < 20;
               return (
-                <div key={b.id} style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px", background: baixo ? "#FFF4E5" : "#FAFBFC" }}>
+                <div key={b.id} style={{ border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px", background: baixo ? "#FFF4E5" : "#FAFBFC" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{b.nome}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{b.nome}</div>
                     <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: cbg, color: ccl, fontWeight: 600 }}>
                       {COMB_LABEL[b.combustivel] ?? b.combustivel}
                     </span>
@@ -451,10 +451,10 @@ export default function AbastecimentoPage() {
                   </div>
                   {b.capacidade_l && (
                     <>
-                      <div style={{ margin: "8px 0 4px", height: 6, background: "#EEF1F6", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ margin: "8px 0 4px", height: 6, background: "var(--bg-tag)", borderRadius: 4, overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: baixo ? "#EF9F27" : "#1A4870", borderRadius: 4, transition: "width 0.3s" }} />
                       </div>
-                      <div style={{ fontSize: 11, color: "#888" }}>{pct}% de {fmtNum(b.capacidade_l, 0)} L</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>{pct}% de {fmtNum(b.capacidade_l, 0)} L</div>
                     </>
                   )}
                   {baixo && <div style={{ fontSize: 11, color: "#9D4900", fontWeight: 600, marginTop: 4 }}>⚠ Nível baixo</div>}
@@ -480,64 +480,64 @@ export default function AbastecimentoPage() {
             <option value="">Todas as bombas</option>
             {bombas.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
           </select>
-          <div style={{ marginLeft: "auto", fontSize: 12, color: "#888" }}>
+          <div style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)" }}>
             {historico.length} registro{historico.length !== 1 ? "s" : ""}
           </div>
         </div>
 
         {/* Tabela de histórico */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
           {loading ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>Carregando...</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
           ) : historico.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#888", fontSize: 13 }}>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
               Nenhum abastecimento no período selecionado.
             </div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
+                <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid var(--border)" }}>
                   {["Data", "Bomba / Combustível", "Veículo / Máquina", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {historico.map((h, idx) => {
                   const bomba = bombas.find(b => b.id === h.bomba_id);
-                  const [cbg, ccl] = COMB_COR[bomba?.combustivel ?? ""] ?? ["#F1EFE8", "#555"];
+                  const [cbg, ccl] = COMB_COR[bomba?.combustivel ?? ""] ?? ["#F1EFE8", "var(--text-2)"];
                   const destino = h.maquina_nome ?? h.funcionario_nome ?? h.destino_livre ?? "—";
                   return (
-                    <tr key={h.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                    <tr key={h.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                       <td style={{ padding: "10px 14px", fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>
                         {new Date(h.data + "T12:00").toLocaleDateString("pt-BR")}
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 13 }}>
-                        <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{h.bomba_nome ?? "—"}</div>
+                        <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{h.bomba_nome ?? "—"}</div>
                         {bomba && (
                           <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 8, background: cbg, color: ccl, fontWeight: 600 }}>
                             {COMB_LABEL[bomba.combustivel]}
                           </span>
                         )}
                       </td>
-                      <td style={{ padding: "10px 14px", fontSize: 13, color: "#555" }}>{destino}</td>
-                      <td style={{ padding: "10px 14px", fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)" }}>{destino}</td>
+                      <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {h.horimetro != null ? fmtNum(h.horimetro, 1) : "—"}
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1A4870", whiteSpace: "nowrap" }}>
                         {fmtNum(h.quantidade_l, 0)} L
                       </td>
-                      <td style={{ padding: "10px 14px", fontSize: 13, color: "#555", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 14px", fontSize: 13, color: "var(--text-2)", whiteSpace: "nowrap" }}>
                         {fmtBRL(h.valor_unitario)}/L
                       </td>
-                      <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1a1a1a", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                         {fmtBRL(h.valor_total)}
                       </td>
                       <td style={{ padding: "10px 14px", fontSize: 12 }}>
                         {h.lancamento_id ? (
                           <span style={{ background: "#DCFCE7", color: "#166534", padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>Gerado</span>
                         ) : (
-                          <span style={{ background: "#F3F4F6", color: "#888", padding: "2px 8px", borderRadius: 8 }}>—</span>
+                          <span style={{ background: "#F3F4F6", color: "var(--text-3)", padding: "2px 8px", borderRadius: 8 }}>—</span>
                         )}
                       </td>
                       <td style={{ padding: "10px 14px" }}>
@@ -545,18 +545,18 @@ export default function AbastecimentoPage() {
                           <button
                             onClick={() => abrirEditar(h)}
                             title="Editar abastecimento"
-                            style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "#888", lineHeight: 1 }}
+                            style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
                             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#EAF3FB"; (e.currentTarget as HTMLButtonElement).style.color = "#1A4870"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#B8D0EE"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
                           >
                             ✏
                           </button>
                           <button
                             onClick={() => excluir(h)}
                             title="Excluir abastecimento (e CP/pendência vinculados)"
-                            style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "#888", lineHeight: 1 }}
+                            style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 8px", fontSize: 13, cursor: "pointer", color: "var(--text-3)", lineHeight: 1 }}
                             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#FEE2E2"; (e.currentTarget as HTMLButtonElement).style.color = "#991B1B"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#FCA5A5"; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#DDE2EE"; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
                           >
                             🗑
                           </button>
@@ -567,11 +567,11 @@ export default function AbastecimentoPage() {
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ background: "#F8FAFB", borderTop: "0.5px solid #DDE2EE" }}>
-                  <td colSpan={4} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "#555" }}>Total do período</td>
+                <tr style={{ background: "#F8FAFB", borderTop: "0.5px solid var(--border)" }}>
+                  <td colSpan={4} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do período</td>
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{fmtNum(totalLitrosMes, 0)} L</td>
                   <td style={{ padding: "10px 14px" }} />
-                  <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{fmtBRL(totalCustoMes)}</td>
+                  <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{fmtBRL(totalCustoMes)}</td>
                   <td /><td />
                 </tr>
               </tfoot>
@@ -584,13 +584,13 @@ export default function AbastecimentoPage() {
       {/* ── Modal de lançamento ─────────────────────────────────────────────── */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #EEF1F6" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, maxHeight: "92vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>{editando ? "Editar Abastecimento" : "Registrar Abastecimento"}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Abastecimento" : "Registrar Abastecimento"}</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{editando ? "Atualize os dados do abastecimento" : "Consumo da bomba da fazenda"}</div>
               </div>
-              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+              <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
 
             <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
@@ -599,9 +599,9 @@ export default function AbastecimentoPage() {
               <div>
                 <label style={lbl}>Bomba / Tanque *</label>
                 {editando ? (
-                  <div style={{ ...inp, background: "#F8FAFB", color: "#555", cursor: "default" }}>
+                  <div style={{ ...inp, background: "#F8FAFB", color: "var(--text-2)", cursor: "default" }}>
                     {bombaSelecionada?.nome ?? editando.bomba_nome ?? "—"}
-                    {bombaSelecionada && <span style={{ marginLeft: 8, fontSize: 11, color: "#888" }}>({COMB_LABEL[bombaSelecionada.combustivel] ?? bombaSelecionada.combustivel})</span>}
+                    {bombaSelecionada && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-3)" }}>({COMB_LABEL[bombaSelecionada.combustivel] ?? bombaSelecionada.combustivel})</span>}
                   </div>
                 ) : (
                   <select
@@ -650,9 +650,9 @@ export default function AbastecimentoPage() {
                       style={{
                         padding: "5px 14px", borderRadius: 8, border: "0.5px solid",
                         fontSize: 12, cursor: "pointer", fontWeight: fDestTipo === t ? 600 : 400,
-                        borderColor: fDestTipo === t ? "#1A4870" : "#D4DCE8",
-                        background: fDestTipo === t ? "#D5E8F5" : "#fff",
-                        color: fDestTipo === t ? "#0B2D50" : "#555",
+                        borderColor: fDestTipo === t ? "#1A4870" : "var(--border-table)",
+                        background: fDestTipo === t ? "#D5E8F5" : "var(--bg-card)",
+                        color: fDestTipo === t ? "#0B2D50" : "var(--text-2)",
                       }}
                     >
                       {t === "maquina" ? "Máquina" : t === "funcionario" ? "Funcionário" : "Outro"}
@@ -723,7 +723,7 @@ export default function AbastecimentoPage() {
                     onChange={v => setFHorimetro(v)}
                     style={{ ...inp, maxWidth: 220 }}
                   />
-                  <span style={{ fontSize: 12, color: "#888" }}>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>
                     {fDestTipo === "maquina" && maquinas.find(m => m.id === fMaquina)?.tipo === "caminhao" ? "km" : "h"}
                     {" "}— opcional, para controle de manutenção
                   </span>
@@ -733,7 +733,7 @@ export default function AbastecimentoPage() {
               {/* Valor total calculado */}
               {valorTotal > 0 && (
                 <div style={{ background: "#F0F8FF", border: "0.5px solid #B8D0EE", borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, color: "#555" }}>Valor Total</span>
+                  <span style={{ fontSize: 13, color: "var(--text-2)" }}>Valor Total</span>
                   <span style={{ fontSize: 18, fontWeight: 700, color: "#0B2D50" }}>{fmtBRL(valorTotal)}</span>
                 </div>
               )}
@@ -747,8 +747,8 @@ export default function AbastecimentoPage() {
                     onChange={e => setFGerarCP(e.target.checked)}
                     style={{ width: 16, height: 16, cursor: "pointer" }}
                   />
-                  <span style={{ fontWeight: 600, color: "#1a1a1a" }}>Gerar Conta a Pagar</span>
-                  <span style={{ color: "#888", fontWeight: 400 }}>(lança no financeiro)</span>
+                  <span style={{ fontWeight: 600, color: "var(--text-1)" }}>Gerar Conta a Pagar</span>
+                  <span style={{ color: "var(--text-3)", fontWeight: 400 }}>(lança no financeiro)</span>
                 </label>
                 {fGerarCP && (
                   <div>
@@ -776,13 +776,13 @@ export default function AbastecimentoPage() {
               )}
 
               <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button onClick={fecharModal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}>
+                <button onClick={fecharModal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
                   Cancelar
                 </button>
                 <button
                   onClick={salvar}
                   disabled={salvando}
-                  style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "#aaa" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}
+                  style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: salvando ? "var(--text-muted)" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: salvando ? "wait" : "pointer" }}
                 >
                   {salvando ? "Salvando..." : editando ? "✓ Salvar Alterações" : "✓ Confirmar Abastecimento"}
                 </button>

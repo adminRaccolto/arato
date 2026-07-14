@@ -10,10 +10,10 @@ import {
 import type { RateioRegra, RateioRegraLinha, RateioGlobal, Ciclo, AnoSafra, CentroCusto, Fazenda } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
 
-const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", marginBottom: 3, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "7px 14px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "#fff", cursor: "pointer", fontSize: 12, color: "#555" };
+const btnR: React.CSSProperties = { padding: "7px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 12, color: "var(--text-2)" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
 const CULT: Record<string, string> = {
@@ -292,13 +292,13 @@ export default function RateioPage() {
 
   // ─── Render ───────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1 }}>
-        <header style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Regras de Rateio</h1>
-            <p style={{ margin: 0, fontSize: 11, color: "#555" }}>
+            <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Regras de Rateio</h1>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>
               Distribua custos entre ciclos de uma fazenda (Por Ciclo) ou entre múltiplas fazendas (Global)
             </p>
           </div>
@@ -308,7 +308,7 @@ export default function RateioPage() {
         </header>
 
         {/* ── Tabs ── */}
-        <div style={{ background: "#fff", borderBottom: "0.5px solid #D4DCE8", padding: "0 22px", display: "flex", gap: 0 }}>
+        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "0 22px", display: "flex", gap: 0 }}>
           {(["ciclo", "global"] as const).map(t => (
             <button
               key={t}
@@ -316,12 +316,12 @@ export default function RateioPage() {
               style={{
                 padding: "10px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13,
                 fontWeight: tab === t ? 700 : 400,
-                color: tab === t ? "#1A5CB8" : "#555",
+                color: tab === t ? "#1A5CB8" : "var(--text-2)",
                 borderBottom: tab === t ? "2px solid #1A5CB8" : "2px solid transparent",
               }}
             >
               {t === "ciclo" ? "Por Ciclo" : "Global (todas as fazendas)"}
-              <span style={{ marginLeft: 6, fontSize: 11, background: tab === t ? "#D5E8F5" : "#F3F6F9", color: tab === t ? "#0B2D50" : "#888", padding: "1px 6px", borderRadius: 10 }}>
+              <span style={{ marginLeft: 6, fontSize: 11, background: tab === t ? "#D5E8F5" : "#F3F6F9", color: tab === t ? "#0B2D50" : "var(--text-3)", padding: "1px 6px", borderRadius: 10 }}>
                 {t === "ciclo" ? regras.length : regrasGlobal.length}
               </span>
             </button>
@@ -340,25 +340,25 @@ export default function RateioPage() {
 
               {/* Filtro */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ fontSize: 12, color: "#555" }}>Filtrar por Ano Safra:</span>
+                <span style={{ fontSize: 12, color: "var(--text-2)" }}>Filtrar por Ano Safra:</span>
                 <select
-                  style={{ padding: "6px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, background: "#fff", outline: "none" }}
+                  style={{ padding: "6px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, background: "var(--bg-card)", outline: "none" }}
                   value={filtroAno} onChange={e => setFiltroAno(e.target.value)}
                 >
                   <option value="">Todos os anos</option>
                   {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                 </select>
                 {filtroAno && <button style={{ ...btnR, fontSize: 11, padding: "4px 10px" }} onClick={() => setFiltroAno("")}>Limpar</button>}
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
                   {regrasFiltradas.length} regra{regrasFiltradas.length !== 1 ? "s" : ""}
                 </span>
               </div>
 
               {/* Lista */}
               {loading ? (
-                <div style={{ textAlign: "center", padding: 48, color: "#555" }}>Carregando...</div>
+                <div style={{ textAlign: "center", padding: 48, color: "var(--text-2)" }}>Carregando...</div>
               ) : regrasFiltradas.length === 0 ? (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "#555" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-2)" }}>
                   Nenhuma regra cadastrada. Clique em "+ Nova Regra".
                 </div>
               ) : (
@@ -366,21 +366,21 @@ export default function RateioPage() {
                   {regrasFiltradas.map(r => {
                     const linhasR = r.linhas ?? [];
                     return (
-                      <div key={r.id} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
+                      <div key={r.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 11, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{nomeAno(r.ano_safra_id)}</span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{r.nome}</span>
-                              {!r.ativo && <span style={{ fontSize: 10, background: "#F3F6F9", color: "#888", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{r.nome}</span>
+                              {!r.ativo && <span style={{ fontSize: 10, background: "#F3F6F9", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
                             </div>
-                            <div style={{ fontSize: 12, color: "#555", marginBottom: 8 }}>
+                            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8 }}>
                               CC: <strong style={{ color: "#1A4870" }}>{nomeCC(r.centro_custo_id)}</strong>
-                              {r.descricao && <span style={{ color: "#888", marginLeft: 8 }}>· {r.descricao}</span>}
+                              {r.descricao && <span style={{ color: "var(--text-3)", marginLeft: 8 }}>· {r.descricao}</span>}
                             </div>
                             {linhasR.length > 0 && (
                               <>
-                                <div style={{ display: "flex", height: 18, borderRadius: 4, overflow: "hidden", border: "0.5px solid #D4DCE8", marginBottom: 6 }}>
+                                <div style={{ display: "flex", height: 18, borderRadius: 4, overflow: "hidden", border: "0.5px solid var(--border-table)", marginBottom: 6 }}>
                                   {linhasR.map((l, i) => (
                                     <div key={i} style={{ width: `${l.percentual}%`, background: CORES[i % CORES.length], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, fontWeight: 700, minWidth: l.percentual > 0 ? 20 : 0 }}>
                                       {l.percentual > 5 ? `${l.percentual}%` : ""}
@@ -389,10 +389,10 @@ export default function RateioPage() {
                                 </div>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {linhasR.map((l, i) => (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "#F3F6F9", border: "0.5px solid #D4DCE8" }}>
+                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "#F3F6F9", border: "0.5px solid var(--border-table)" }}>
                                       <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES[i % CORES.length], display: "inline-block" }} />
                                       <span style={{ fontWeight: 600 }}>{l.percentual}%</span>
-                                      <span style={{ color: "#555" }}>{nomeCiclo(r.fazenda_id, l.ciclo_id)}</span>
+                                      <span style={{ color: "var(--text-2)" }}>{nomeCiclo(r.fazenda_id, l.ciclo_id)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -421,9 +421,9 @@ export default function RateioPage() {
               </div>
 
               {loading ? (
-                <div style={{ textAlign: "center", padding: 48, color: "#555" }}>Carregando...</div>
+                <div style={{ textAlign: "center", padding: 48, color: "var(--text-2)" }}>Carregando...</div>
               ) : regrasGlobal.length === 0 ? (
-                <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "#555" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-2)" }}>
                   Nenhuma regra global cadastrada. Clique em "+ Nova Regra".
                 </div>
               ) : (
@@ -431,22 +431,22 @@ export default function RateioPage() {
                   {regrasGlobal.map(r => {
                     const faz = r.fazendas ?? [];
                     return (
-                      <div key={r.id} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
+                      <div key={r.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 11, background: "#FBF3E0", color: "#633806", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{r.ano_safra_label}</span>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{r.nome}</span>
-                              {r.centro_custo_id && <span style={{ fontSize: 11, color: "#555" }}>CC: {nomeCC(r.centro_custo_id)}</span>}
-                              {!r.ativo && <span style={{ fontSize: 10, background: "#F3F6F9", color: "#888", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{r.nome}</span>
+                              {r.centro_custo_id && <span style={{ fontSize: 11, color: "var(--text-2)" }}>CC: {nomeCC(r.centro_custo_id)}</span>}
+                              {!r.ativo && <span style={{ fontSize: 10, background: "#F3F6F9", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
                             </div>
-                            {r.descricao && <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>{r.descricao}</div>}
+                            {r.descricao && <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8 }}>{r.descricao}</div>}
 
                             {/* Nível 1 — barra de fazendas */}
                             {faz.length > 0 && (
                               <div style={{ marginBottom: 10 }}>
-                                <div style={{ fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Nível 1 — Entre Fazendas</div>
-                                <div style={{ display: "flex", height: 20, borderRadius: 5, overflow: "hidden", border: "0.5px solid #D4DCE8" }}>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Nível 1 — Entre Fazendas</div>
+                                <div style={{ display: "flex", height: 20, borderRadius: 5, overflow: "hidden", border: "0.5px solid var(--border-table)" }}>
                                   {faz.map((f, i) => (
                                     <div key={i} style={{ width: `${f.percentual}%`, background: CORES_FAZ[i % CORES_FAZ.length], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, fontWeight: 700, minWidth: 24 }}>
                                       {f.percentual > 8 ? `${f.percentual}%` : ""}
@@ -455,10 +455,10 @@ export default function RateioPage() {
                                 </div>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                                   {faz.map((f, i) => (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 10px", borderRadius: 6, background: "#F3F6F9", border: "0.5px solid #D4DCE8" }}>
+                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 10px", borderRadius: 6, background: "#F3F6F9", border: "0.5px solid var(--border-table)" }}>
                                       <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES_FAZ[i % CORES_FAZ.length], display: "inline-block" }} />
                                       <span style={{ fontWeight: 600 }}>{f.percentual}%</span>
-                                      <span style={{ color: "#555" }}>{nomeFaz(f.fazenda_id)}</span>
+                                      <span style={{ color: "var(--text-2)" }}>{nomeFaz(f.fazenda_id)}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -468,7 +468,7 @@ export default function RateioPage() {
                             {/* Nível 2 — ciclos por fazenda */}
                             {faz.some(f => (f.ciclos ?? []).length > 0) && (
                               <div>
-                                <div style={{ fontSize: 10, color: "#888", fontWeight: 600, marginBottom: 6, textTransform: "uppercase" }}>Nível 2 — Ciclos por Fazenda</div>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, marginBottom: 6, textTransform: "uppercase" }}>Nível 2 — Ciclos por Fazenda</div>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                   {faz.filter(f => (f.ciclos ?? []).length > 0).map((f, i) => (
                                     <div key={i} style={{ background: "#F9FAFB", border: "0.5px solid #E8EDF5", borderRadius: 6, padding: "8px 12px" }}>
@@ -477,10 +477,10 @@ export default function RateioPage() {
                                       </div>
                                       <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                                         {(f.ciclos ?? []).map((c, j) => (
-                                          <div key={j} style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, padding: "2px 7px", borderRadius: 6, background: "#fff", border: "0.5px solid #D4DCE8" }}>
+                                          <div key={j} style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, padding: "2px 7px", borderRadius: 6, background: "var(--bg-card)", border: "0.5px solid var(--border-table)" }}>
                                             <span style={{ width: 6, height: 6, borderRadius: 2, background: CORES[j % CORES.length], display: "inline-block" }} />
                                             <span style={{ fontWeight: 600 }}>{c.percentual}%</span>
-                                            <span style={{ color: "#555" }}>{nomeCiclo(f.fazenda_id, c.ciclo_id)}</span>
+                                            <span style={{ color: "var(--text-2)" }}>{nomeCiclo(f.fazenda_id, c.ciclo_id)}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -511,23 +511,23 @@ export default function RateioPage() {
       {modalCiclo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalCiclo(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 760, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 760, maxWidth: "97vw", maxHeight: "92vh", overflowY: "auto" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{editId ? "Editar Regra por Ciclo" : "Nova Regra por Ciclo"}</div>
-              <button onClick={() => setModalCiclo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
+              <button onClick={() => setModalCiclo(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
             <div style={{ padding: 22 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div>
                   <label style={lbl}>Ano Safra *</label>
-                  <select style={{ ...inp, borderColor: !f.ano_safra_id ? "#E24B4A80" : "#D4DCE8" }} value={f.ano_safra_id} onChange={e => setF(p => ({ ...p, ano_safra_id: e.target.value }))}>
+                  <select style={{ ...inp, borderColor: !f.ano_safra_id ? "#E24B4A80" : "var(--border-table)" }} value={f.ano_safra_id} onChange={e => setF(p => ({ ...p, ano_safra_id: e.target.value }))}>
                     <option value="">— Selecionar —</option>
                     {anos.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
                   </select>
                 </div>
                 <div>
                   <label style={lbl}>Centro de Custo de Origem *</label>
-                  <select style={{ ...inp, borderColor: !f.centro_custo_id ? "#E24B4A80" : "#D4DCE8" }} value={f.centro_custo_id} onChange={e => setF(p => ({ ...p, centro_custo_id: e.target.value }))}>
+                  <select style={{ ...inp, borderColor: !f.centro_custo_id ? "#E24B4A80" : "var(--border-table)" }} value={f.centro_custo_id} onChange={e => setF(p => ({ ...p, centro_custo_id: e.target.value }))}>
                     <option value="">— Selecionar CC —</option>
                     {ccs.filter(c => c.parent_id).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
                   </select>
@@ -546,13 +546,13 @@ export default function RateioPage() {
 
               {/* Barra visual */}
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 5, fontWeight: 600, textTransform: "uppercase" }}>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 5, fontWeight: 600, textTransform: "uppercase" }}>
                   Distribuição do Custo
                   <span style={{ marginLeft: 10, fontWeight: 400, color: somaOk ? "#16A34A" : somaLinhas > 100 ? "#E24B4A" : "#C9921B" }}>
                     {somaLinhas.toFixed(1)}% de 100%
                   </span>
                 </div>
-                <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", border: "0.5px solid #D4DCE8", background: "#F3F6F9" }}>
+                <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", border: "0.5px solid var(--border-table)", background: "#F3F6F9" }}>
                   {linhas.map((l, i) => {
                     const pct = Math.min(100, parseFloat(l.percentual) || 0);
                     return pct > 0 ? (
@@ -565,10 +565,10 @@ export default function RateioPage() {
               </div>
 
               {/* Linhas */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
+              <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase" }}>Destinos *</span>
-                  <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "#fff" }} onClick={addLinha}>+ Adicionar Ciclo</button>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>Destinos *</span>
+                  <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addLinha}>+ Adicionar Ciclo</button>
                 </div>
                 {linhas.map((l, i) => (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "16px 2fr 80px 2fr 32px", gap: 8, alignItems: "center", marginBottom: i < linhas.length - 1 ? 8 : 0 }}>
@@ -579,7 +579,7 @@ export default function RateioPage() {
                     </select>
                     <div style={{ position: "relative" }}>
                       <InputNumerico style={{ ...inp, paddingRight: 20 }} min="0" max="100" placeholder="0" value={l.percentual} onChange={v => setPctLinha(i, v)} />
-                      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "#888", pointerEvents: "none" }}>%</span>
+                      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", pointerEvents: "none" }}>%</span>
                     </div>
                     <input style={inp} placeholder="Observação (opcional)" value={l.descricao} onChange={e => setLinha(i, "descricao", e.target.value)} />
                     <button style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeLinha(i)} disabled={linhas.length <= 1}>✕</button>
@@ -615,13 +615,13 @@ export default function RateioPage() {
       {modalGlobal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalGlobal(false); }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: 860, maxWidth: "97vw", maxHeight: "94vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 860, maxWidth: "97vw", maxHeight: "94vh", overflowY: "auto" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{editGlobalId ? "Editar Regra Global" : "Nova Regra Global"}</div>
-                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Distribua custos entre fazendas e, dentro de cada fazenda, entre ciclos</div>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Distribua custos entre fazendas e, dentro de cada fazenda, entre ciclos</div>
               </div>
-              <button onClick={() => setModalGlobal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#555" }}>×</button>
+              <button onClick={() => setModalGlobal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
             </div>
             <div style={{ padding: 22 }}>
 
@@ -658,22 +658,22 @@ export default function RateioPage() {
               </div>
 
               {/* ── Nível 1: Distribuição entre Fazendas ── */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+              <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#1A5CB8", textTransform: "uppercase" }}>
                       Nível 1 — Distribuição entre Fazendas
                     </div>
-                    <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Quanto do custo total cabe a cada fazenda</div>
+                    <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Quanto do custo total cabe a cada fazenda</div>
                   </div>
                   {todasFazendas.length > fazLinhas.length && (
-                    <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "#fff" }} onClick={addFazendaLinha}>+ Fazenda</button>
+                    <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addFazendaLinha}>+ Fazenda</button>
                   )}
                 </div>
 
                 {/* Barra visual fazendas */}
                 {fazLinhas.some(f => parseFloat(f.percentual) > 0) && (
-                  <div style={{ display: "flex", height: 24, borderRadius: 6, overflow: "hidden", border: "0.5px solid #D4DCE8", background: "#fff", marginBottom: 12 }}>
+                  <div style={{ display: "flex", height: 24, borderRadius: 6, overflow: "hidden", border: "0.5px solid var(--border-table)", background: "var(--bg-card)", marginBottom: 12 }}>
                     {fazLinhas.map((faz, i) => {
                       const pct = Math.min(100, parseFloat(faz.percentual) || 0);
                       return pct > 0 ? (
@@ -695,7 +695,7 @@ export default function RateioPage() {
                     </select>
                     <div style={{ position: "relative" }}>
                       <InputNumerico style={{ ...inp, paddingRight: 20 }} min="0" max="100" placeholder="0" value={faz.percentual} onChange={v => setPctFazenda(i, v)} />
-                      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "#888", pointerEvents: "none" }}>%</span>
+                      <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "var(--text-3)", pointerEvents: "none" }}>%</span>
                     </div>
                     <button style={{ ...btnX, padding: "5px 7px" }} onClick={() => removeFazendaLinha(i)} disabled={fazLinhas.length <= 1}>✕</button>
                   </div>
@@ -707,19 +707,19 @@ export default function RateioPage() {
               </div>
 
               {/* ── Nível 2: Distribuição entre Ciclos por Fazenda ── */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+              <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#C9921B", textTransform: "uppercase" }}>
                     Nível 2 — Distribuição entre Ciclos por Fazenda
                   </div>
-                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
                     Para cada fazenda, defina como a parcela dela é dividida entre os ciclos (culturas).
                     Deixe em branco para não detalhar por ciclo.
                   </div>
                 </div>
 
                 {fazLinhas.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#aaa", textAlign: "center", padding: 12 }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", padding: 12 }}>
                     Adicione fazendas no Nível 1 primeiro.
                   </div>
                 ) : (
@@ -739,11 +739,11 @@ export default function RateioPage() {
                       const ciclosOk = somaCiclosOk(fazIdx);
 
                       return (
-                        <div key={fazIdx} style={{ background: "#fff", border: `0.5px solid ${corFaz}40`, borderLeft: `3px solid ${corFaz}`, borderRadius: 8, padding: "12px 14px" }}>
+                        <div key={fazIdx} style={{ background: "var(--bg-card)", border: `0.5px solid ${corFaz}40`, borderLeft: `3px solid ${corFaz}`, borderRadius: 8, padding: "12px 14px" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                             <div style={{ fontWeight: 700, fontSize: 12, color: corFaz }}>
                               {fazNome}
-                              <span style={{ fontWeight: 400, color: "#555", marginLeft: 6 }}>({faz.percentual || 0}% do custo global)</span>
+                              <span style={{ fontWeight: 400, color: "var(--text-2)", marginLeft: 6 }}>({faz.percentual || 0}% do custo global)</span>
                             </div>
                             {ciclosFaz.length > faz.ciclos.length && (
                               <button style={{ ...btnR, fontSize: 11, padding: "3px 10px" }} onClick={() => addCicloFazenda(fazIdx)}>+ Ciclo</button>
@@ -751,7 +751,7 @@ export default function RateioPage() {
                           </div>
 
                           {faz.ciclos.length === 0 ? (
-                            <div style={{ fontSize: 11, color: "#aaa", fontStyle: "italic" }}>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
                               Sem detalhamento por ciclo — todo o custo fica nesta fazenda como overhead.
                               <button style={{ marginLeft: 8, ...btnR, fontSize: 11, padding: "2px 8px" }} onClick={() => addCicloFazenda(fazIdx)}>Detalhar por ciclo</button>
                             </div>
@@ -759,7 +759,7 @@ export default function RateioPage() {
                             <>
                               {/* Mini-barra ciclos */}
                               {faz.ciclos.some(c => parseFloat(c.percentual) > 0) && (
-                                <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", border: "0.5px solid #D4DCE8", marginBottom: 8 }}>
+                                <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", border: "0.5px solid var(--border-table)", marginBottom: 8 }}>
                                   {faz.ciclos.map((c, j) => {
                                     const pct = Math.min(100, parseFloat(c.percentual) || 0);
                                     return pct > 0 ? (
@@ -780,7 +780,7 @@ export default function RateioPage() {
                                   </select>
                                   <div style={{ position: "relative" }}>
                                     <InputNumerico style={{ ...inp, paddingRight: 18, fontSize: 12 }} min="0" max="100" placeholder="0" value={c.percentual} onChange={v => setPctCicloFazenda(fazIdx, cicloIdx, v)} />
-                                    <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#888", pointerEvents: "none" }}>%</span>
+                                    <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "var(--text-3)", pointerEvents: "none" }}>%</span>
                                   </div>
                                   <input style={{ ...inp, fontSize: 12 }} placeholder="Obs." value={c.descricao} onChange={e => setCicloFazenda(fazIdx, cicloIdx, "descricao", e.target.value)} />
                                   <button style={{ ...btnX, padding: "3px 6px", fontSize: 10 }} onClick={() => removeCicloFazenda(fazIdx, cicloIdx)}>✕</button>

@@ -194,10 +194,10 @@ export default function AutomacoesPage() {
   return (
     <>
       <TopNav />
-      <main style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
+      <main style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "calc(100vh - 96px)", fontFamily: "system-ui, sans-serif" }}>
 
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Automações</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Automações</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Jobs agendados que rodam automaticamente. Use o toggle para ativar/desativar por fazenda.
           </p>
@@ -218,7 +218,7 @@ export default function AutomacoesPage() {
           const lista = AUTOMACOES.filter(a => a.categoria === cat);
           return (
             <div key={cat} style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>
                 {CAT_LABEL[cat]}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -233,8 +233,8 @@ export default function AutomacoesPage() {
                     <div
                       key={aut.id}
                       style={{
-                        background: "#fff",
-                        border: `0.5px solid ${st === "ok" ? "#86EFAC" : st === "error" ? "#FECACA" : ativa ? "#93C5FD" : "#DDE2EE"}`,
+                        background: "var(--bg-card)",
+                        border: `0.5px solid ${st === "ok" ? "#86EFAC" : st === "error" ? "#FECACA" : ativa ? "#93C5FD" : "var(--border)"}`,
                         borderRadius: 10,
                         padding: "16px 20px",
                         display: "flex",
@@ -252,8 +252,8 @@ export default function AutomacoesPage() {
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{aut.nome}</span>
-                          <span style={{ fontSize: 11, color: "#888", background: "#F3F6F9", padding: "2px 8px", borderRadius: 20, border: "0.5px solid #DDE2EE" }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{aut.nome}</span>
+                          <span style={{ fontSize: 11, color: "var(--text-3)", background: "#F3F6F9", padding: "2px 8px", borderRadius: 20, border: "0.5px solid var(--border)" }}>
                             🕐 {aut.scheduleLabel}
                           </span>
                           {ativa && (
@@ -267,7 +267,7 @@ export default function AutomacoesPage() {
                             </span>
                           )}
                         </div>
-                        <p style={{ fontSize: 13, color: "#555", margin: 0, lineHeight: 1.5 }}>{aut.descricao}</p>
+                        <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, lineHeight: 1.5 }}>{aut.descricao}</p>
 
                         {/* Config SIEG resumida */}
                         {aut.temConfig && cfg.cnpjs && (
@@ -282,7 +282,7 @@ export default function AutomacoesPage() {
                           </div>
                         )}
 
-                        <div style={{ marginTop: 8, fontSize: 11, color: "#aaa", fontFamily: "monospace" }}>
+                        <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
                           GET {aut.endpoint}
                         </div>
 
@@ -302,7 +302,7 @@ export default function AutomacoesPage() {
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", flexShrink: 0 }}>
                         {/* Toggle ON/OFF */}
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 11, color: "#888" }}>{ativa ? "Ativa" : "Inativa"}</span>
+                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>{ativa ? "Ativa" : "Inativa"}</span>
                           <button
                             onClick={() => {
                               if (aut.temConfig && !ativa && !cfg.api_key) {
@@ -314,14 +314,14 @@ export default function AutomacoesPage() {
                             }}
                             style={{
                               width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
-                              background: ativa ? "#16A34A" : "#DDE2EE",
+                              background: ativa ? "#16A34A" : "var(--border)",
                               position: "relative", transition: "background 0.25s",
                               flexShrink: 0,
                             }}
                           >
                             <span style={{
                               position: "absolute", top: 4, left: ativa ? 23 : 4,
-                              width: 16, height: 16, borderRadius: "50%", background: "#fff",
+                              width: 16, height: 16, borderRadius: "50%", background: "var(--bg-card)",
                               transition: "left 0.25s", display: "block",
                               boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                             }} />
@@ -333,8 +333,8 @@ export default function AutomacoesPage() {
                           <button
                             onClick={() => { setSiegForm({ api_key: cfg.api_key ?? "", cnpjs: cfg.cnpjs ?? "" }); setModalSieg(true); }}
                             style={{
-                              padding: "6px 12px", borderRadius: 6, border: "0.5px solid #DDE2EE",
-                              background: "#fff", color: "#555", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                              padding: "6px 12px", borderRadius: 6, border: "0.5px solid var(--border)",
+                              background: "var(--bg-card)", color: "var(--text-2)", fontSize: 11, fontWeight: 600, cursor: "pointer",
                             }}
                           >
                             ⚙️ Configurar
@@ -351,7 +351,7 @@ export default function AutomacoesPage() {
                               : st === "ok"      ? "#16A34A"
                               : st === "error"   ? "#E24B4A"
                               : aut.cor,
-                            color: st === "running" ? "#aaa" : "#fff",
+                            color: st === "running" ? "var(--text-muted)" : "#fff",
                             fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
                             transition: "background 0.3s", minWidth: 90,
                           }}
@@ -368,38 +368,38 @@ export default function AutomacoesPage() {
         })}
 
         {/* Configuração de e-mail */}
-        <div style={{ background: "#fff", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a", margin: "0 0 4px" }}>Configuração de E-mail</h2>
-          <p style={{ fontSize: 12, color: "#888", margin: "0 0 16px" }}>
+        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)", margin: "0 0 4px" }}>Configuração de E-mail</h2>
+          <p style={{ fontSize: 12, color: "var(--text-3)", margin: "0 0 16px" }}>
             Configure o remetente dos alertas automáticos.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 600 }}>
             <div>
-              <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Remetente (RESEND_FROM)</label>
+              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Remetente (RESEND_FROM)</label>
               <input
                 value={emailConfig.from}
                 onChange={e => setEmailConfig(c => ({ ...c, from: e.target.value }))}
                 placeholder="alertas@ractech.com.br"
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
               />
-              <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
                 Configure em Vercel → Settings → Env → <code>RESEND_FROM</code>
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4 }}>Destinatário padrão (fallback)</label>
+              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Destinatário padrão (fallback)</label>
               <input
                 value={emailConfig.destinatario}
                 onChange={e => setEmailConfig(c => ({ ...c, destinatario: e.target.value }))}
                 placeholder={nomeUsuario ? "email@fazenda.com" : "email@fazenda.com"}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
               />
             </div>
           </div>
         </div>
 
         {/* Variáveis de ambiente */}
-        <div style={{ background: "#FAFBFD", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px" }}>
+        <div style={{ background: "#FAFBFD", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
           <h2 style={{ fontSize: 13, fontWeight: 700, color: "#333", margin: "0 0 12px" }}>Variáveis de Ambiente (Vercel)</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {[
@@ -412,8 +412,8 @@ export default function AutomacoesPage() {
             ].map(v => (
               <div key={v.key} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: "0.5px solid #F0F2F8" }}>
                 <code style={{ fontSize: 12, background: "#F0F2F8", padding: "2px 8px", borderRadius: 5, color: "#1A4870", minWidth: 240, flexShrink: 0 }}>{v.key}</code>
-                <span style={{ fontSize: 12, color: "#555", flex: 1 }}>{v.desc}</span>
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: v.obrig ? "#FEF2F2" : "#F3F6F9", color: v.obrig ? "#991B1B" : "#888", border: `0.5px solid ${v.obrig ? "#FECACA" : "#DDE2EE"}`, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1 }}>{v.desc}</span>
+                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: v.obrig ? "#FEF2F2" : "#F3F6F9", color: v.obrig ? "#991B1B" : "var(--text-3)", border: `0.5px solid ${v.obrig ? "#FECACA" : "var(--border)"}`, flexShrink: 0 }}>
                   {v.obrig ? "Obrigatório" : "Opcional"}
                 </span>
               </div>
@@ -425,7 +425,7 @@ export default function AutomacoesPage() {
       {/* ── Modal Configuração SIEG ── */}
       {modalSieg && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "min(560px, 97vw)", padding: 28 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(560px, 97vw)", padding: 28 }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>🔄 Configuração SIEG</div>
             <p style={{ fontSize: 12, color: "#666", margin: "0 0 20px", lineHeight: 1.6 }}>
               A chave de API pode ser configurada aqui (por fazenda) ou via variável de ambiente
@@ -434,28 +434,28 @@ export default function AutomacoesPage() {
             </p>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4, fontWeight: 600 }}>API Key SIEG</label>
+              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600 }}>API Key SIEG</label>
               <input
                 type="password"
                 value={siegForm.api_key}
                 onChange={e => setSiegForm(f => ({ ...f, api_key: e.target.value }))}
                 placeholder="Cole aqui a chave de API da SIEG..."
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
               />
-              <div style={{ fontSize: 10, color: "#aaa", marginTop: 3 }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
                 Disponível no painel SIEG → Configurações → API Key. Se o campo estiver vazio, usa SIEG_API_KEY da Vercel.
               </div>
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, color: "#888", display: "block", marginBottom: 4, fontWeight: 600 }}>CNPJ(s) para monitorar</label>
+              <label style={{ fontSize: 11, color: "var(--text-3)", display: "block", marginBottom: 4, fontWeight: 600 }}>CNPJ(s) para monitorar</label>
               <input
                 value={siegForm.cnpjs}
                 onChange={e => setSiegForm(f => ({ ...f, cnpjs: e.target.value }))}
                 placeholder="00.000.000/0001-00, 11.111.111/0001-11"
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
               />
-              <div style={{ fontSize: 10, color: "#aaa", marginTop: 3 }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
                 Separe múltiplos CNPJs com vírgula. O sistema consulta todos e importa NFs destinadas a eles.
               </div>
             </div>
@@ -468,7 +468,7 @@ export default function AutomacoesPage() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={() => setModalSieg(false)}
-                style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "#fff", color: "#555", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancelar
               </button>

@@ -115,14 +115,14 @@ export default function BackupPage() {
   const podeRestaurar = userRole === "raccotlo" || userRole === "admin";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA", fontFamily: "system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif" }}>
       <TopNav />
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 24px" }}>
 
         {/* Cabeçalho */}
         <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#1a1a1a" }}>Proteção de Dados — Backup & Restauração</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Proteção de Dados — Backup & Restauração</h1>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
             Exporta todos os dados da fazenda para um arquivo JSON seguro armazenado na nuvem.
           </p>
@@ -164,16 +164,16 @@ export default function BackupPage() {
             <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: "16px 18px", border: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 5 }}>{c.label}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: c.cor }}>{c.valor}</div>
-              <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>{c.sub}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{c.sub}</div>
             </div>
           ))}
         </div>
 
         {/* Ação principal */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 22, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 22, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Criar Backup Agora</div>
-            <div style={{ fontSize: 12, color: "#555", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>Criar Backup Agora</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
               Exporta todas as tabelas da fazenda (cadastros, lavoura, financeiro, estoque, etc.) para um arquivo JSON
               armazenado com segurança no Supabase Storage.
             </div>
@@ -192,21 +192,21 @@ export default function BackupPage() {
         </div>
 
         {/* Tabela de backups */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", marginBottom: 22 }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", marginBottom: 22 }}>
           <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a" }}>Histórico de Backups</span>
-            <button onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid #D4DCE8", background: "#fff", fontSize: 12, cursor: "pointer", color: "#555" }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Histórico de Backups</span>
+            <button onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
               {loading ? "…" : "↻ Atualizar"}
             </button>
           </div>
 
           {loading ? (
-            <div style={{ padding: "32px 18px", textAlign: "center", color: "#aaa", fontSize: 13 }}>Carregando…</div>
+            <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Carregando…</div>
           ) : backups.length === 0 ? (
             <div style={{ padding: "48px 18px", textAlign: "center" }}>
               <div style={{ fontSize: 32, marginBottom: 10 }}>💾</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#555", marginBottom: 6 }}>Nenhum backup encontrado</div>
-              <div style={{ fontSize: 12, color: "#888" }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Nenhum backup encontrado</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                 Crie o primeiro backup agora ou verifique se o bucket <strong>backups</strong> foi criado no Supabase Storage.
               </div>
             </div>
@@ -215,22 +215,22 @@ export default function BackupPage() {
               <thead>
                 <tr style={{ background: "#F8FAFD" }}>
                   {["Data/Hora", "Arquivo", "Tamanho", "Ações"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 16px", textAlign: i === 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                    <th key={h} style={{ padding: "9px 16px", textAlign: i === 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {backups.map((b, i) => (
                   <tr key={b.nome} style={{ borderBottom: i < backups.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
-                    <td style={{ padding: "10px 16px", fontSize: 13, color: "#1a1a1a", fontWeight: 500 }}>{nomeParaData(b.nome)}</td>
-                    <td style={{ padding: "10px 16px", fontSize: 11, color: "#888", fontFamily: "monospace" }}>{b.nome}</td>
-                    <td style={{ padding: "10px 16px", fontSize: 12, color: "#555" }}>{fmtTamanho(b.tamanho_bytes)}</td>
+                    <td style={{ padding: "10px 16px", fontSize: 13, color: "var(--text-1)", fontWeight: 500 }}>{nomeParaData(b.nome)}</td>
+                    <td style={{ padding: "10px 16px", fontSize: 11, color: "var(--text-3)", fontFamily: "monospace" }}>{b.nome}</td>
+                    <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-2)" }}>{fmtTamanho(b.tamanho_bytes)}</td>
                     <td style={{ padding: "10px 16px", textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       {b.download_url && (
                         <a
                           href={b.download_url}
                           download={b.nome}
-                          style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #D4DCE8", background: "#fff", fontSize: 11, color: "#1A4870", textDecoration: "none", fontWeight: 600 }}
+                          style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 11, color: "#1A4870", textDecoration: "none", fontWeight: 600 }}
                         >
                           ⬇ Baixar
                         </a>
@@ -253,14 +253,14 @@ export default function BackupPage() {
 
         {/* Detalhes da última restauração */}
         {detalhes && (
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", marginBottom: 22 }}>
-            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 12, color: "#1a1a1a" }}>Detalhes da Restauração</div>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", marginBottom: 22 }}>
+            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Detalhes da Restauração</div>
             <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
               {Object.entries(detalhes).filter(([, v]) => v.restaurados > 0 || v.erro).map(([tabela, v]) => (
                 <div key={tabela} style={{ padding: "8px 10px", borderRadius: 7, background: v.erro ? "#FCEBEB" : "#ECFDF5", border: `0.5px solid ${v.erro ? "#FECACA" : "#BBF7D0"}` }}>
                   <div style={{ fontSize: 10, fontWeight: 600, color: v.erro ? "#791F1F" : "#14532D" }}>{tabela}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, color: v.erro ? "#E24B4A" : "#16A34A" }}>{v.erro ? "Erro" : `${v.restaurados} reg.`}</div>
-                  {v.erro && <div style={{ fontSize: 9, color: "#888", marginTop: 2, wordBreak: "break-all" }}>{v.erro}</div>}
+                  {v.erro && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 2, wordBreak: "break-all" }}>{v.erro}</div>}
                 </div>
               ))}
             </div>
@@ -268,8 +268,8 @@ export default function BackupPage() {
         )}
 
         {/* Instruções de configuração */}
-        <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 22px" }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: "#1a1a1a", marginBottom: 14 }}>Configuração Necessária</div>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 22px" }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 14 }}>Configuração Necessária</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
               {
@@ -308,7 +308,7 @@ export default function BackupPage() {
                   {p.status === "configurado" ? "✓" : p.passo}
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a" }}>{p.titulo}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{p.titulo}</div>
                   <div style={{ fontSize: 11, color: "#666", marginTop: 2, lineHeight: 1.5 }}>{p.desc}</div>
                 </div>
               </div>
@@ -320,9 +320,9 @@ export default function BackupPage() {
       {/* ── Modal Restauração ─────────────────────────────────────── */}
       {modalRestaura && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 500, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, padding: "28px 28px 24px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#791F1F", marginBottom: 6 }}>Restaurar Backup</div>
-            <div style={{ fontSize: 12, color: "#555", marginBottom: 18, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18, lineHeight: 1.6 }}>
               Esta operação vai sobrescrever os dados atuais com os dados do backup selecionado.
               Registros novos criados após o backup <strong>não serão apagados</strong> (modo upsert).
             </div>
@@ -333,7 +333,7 @@ export default function BackupPage() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", display: "block", marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", display: "block", marginBottom: 6 }}>
                 Para confirmar, digite <strong style={{ color: "#E24B4A" }}>RESTAURAR</strong>:
               </label>
               <input
@@ -341,14 +341,14 @@ export default function BackupPage() {
                 value={confirmacao}
                 onChange={e => setConfirmacao(e.target.value)}
                 placeholder="RESTAURAR"
-                style={{ width: "100%", padding: "10px 12px", border: `0.5px solid ${confirmacao === "RESTAURAR" ? "#16A34A" : "#D4DCE8"}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", letterSpacing: 1 }}
+                style={{ width: "100%", padding: "10px 12px", border: `0.5px solid ${confirmacao === "RESTAURAR" ? "#16A34A" : "var(--border-table)"}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", letterSpacing: 1 }}
               />
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={() => { setModalRestaura(null); setConfirmacao(""); }}
-                style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "#fff", fontSize: 13, cursor: "pointer", color: "#555" }}
+                style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Cancelar
               </button>

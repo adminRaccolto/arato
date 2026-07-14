@@ -10,7 +10,7 @@ const MapaLeaflet = dynamic(() => import("../../components/MapaLeaflet"), {
   ssr: false,
   loading: () => (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#EEF3F8" }}>
-      <div style={{ textAlign: "center", color: "#888" }}>
+      <div style={{ textAlign: "center", color: "var(--text-3)" }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
         <div style={{ fontSize: 13 }}>Carregando mapa…</div>
       </div>
@@ -143,14 +143,14 @@ export default function MapaPage() {
 
       {/* ── PAINEL LATERAL ── */}
       <div style={{
-        width: 300, background: "#fff", borderRight: "0.5px solid #DDE2EE",
+        width: 300, background: "var(--bg-card)", borderRight: "0.5px solid #DDE2EE",
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
 
         {/* Cabeçalho */}
         <div style={{ padding: "16px 18px 12px", borderBottom: "0.5px solid #EEF1F6" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1a1a" }}>Mapa de Talhões</div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Mapa de Talhões</div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
             {talhoes.length} talhão(ões) · {comPlantio.length} com plantio ativo · {comKml.length} com KML
           </div>
         </div>
@@ -185,9 +185,9 @@ export default function MapaPage() {
         {/* Lista de talhões */}
         <div style={{ flex: 1, overflowY: "auto" }}>
           {loading ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 12 }}>Carregando…</div>
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Carregando…</div>
           ) : talhoes.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#aaa", fontSize: 12 }}>Nenhum talhão cadastrado</div>
+            <div style={{ padding: 20, textAlign: "center", color: "var(--text-muted)", fontSize: 12 }}>Nenhum talhão cadastrado</div>
           ) : (
             talhoes.map(t => {
               const cor = corCultura(t.plantio?.cultura);
@@ -207,9 +207,9 @@ export default function MapaPage() {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     {/* Bolinha de cultura */}
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: t.plantio ? cor : "#DDE2EE", flexShrink: 0, display: "inline-block" }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", flex: 1 }}>{t.nome}</span>
-                    <span style={{ fontSize: 11, color: "#888", whiteSpace: "nowrap" }}>{t.area_ha?.toFixed(1)} ha</span>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: t.plantio ? cor : "var(--border)", flexShrink: 0, display: "inline-block" }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)", flex: 1 }}>{t.nome}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>{t.area_ha?.toFixed(1)} ha</span>
                   </div>
 
                   {t.plantio ? (
@@ -217,7 +217,7 @@ export default function MapaPage() {
                       {t.plantio.cultura}{t.plantio.variedade ? ` · ${t.plantio.variedade}` : ""}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 11, color: "#aaa", paddingLeft: 18 }}>Sem plantio ativo</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", paddingLeft: 18 }}>Sem plantio ativo</div>
                   )}
 
                   {/* Badge KML + botão upload */}
@@ -227,7 +227,7 @@ export default function MapaPage() {
                         ✓ KML
                       </span>
                     ) : (
-                      <span style={{ fontSize: 10, background: "#F4F6FA", color: "#aaa", border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "2px 7px" }}>
+                      <span style={{ fontSize: 10, background: "var(--bg-page)", color: "var(--text-muted)", border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "2px 7px" }}>
                         sem KML
                       </span>
                     )}
@@ -236,7 +236,7 @@ export default function MapaPage() {
                       disabled={uploading}
                       style={{
                         fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "0.5px solid #DDE2EE",
-                        background: "#F8FAFD", color: "#555", cursor: "pointer",
+                        background: "#F8FAFD", color: "var(--text-2)", cursor: "pointer",
                       }}
                     >
                       {uploading && uploadId === t.id ? "Enviando…" : t.kml_url ? "↻ KML" : "+ KML"}
@@ -251,16 +251,16 @@ export default function MapaPage() {
         {/* Legenda de culturas */}
         {comPlantio.length > 0 && (
           <div style={{ padding: "10px 16px", borderTop: "0.5px solid #EEF1F6" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Legenda</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Legenda</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
               {Object.entries(CULTURA_COR).filter(([k]) => talhoes.some(t => t.plantio?.cultura?.toLowerCase().includes(k))).map(([k, c]) => (
-                <div key={k} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#555" }}>
+                <div key={k} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-2)" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: c, display: "inline-block" }} />
                   <span style={{ textTransform: "capitalize" }}>{k}</span>
                 </div>
               ))}
-              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#aaa" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#DDE2EE", display: "inline-block" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-muted)" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--border)", display: "inline-block" }} />
                 Sem plantio
               </div>
             </div>
@@ -274,12 +274,12 @@ export default function MapaPage() {
         {selecionado && (
           <div style={{
             position: "absolute", top: 16, right: 16, zIndex: 1000,
-            background: "#fff", borderRadius: 12, boxShadow: "0 4px 12px rgba(11,45,80,0.08)",
+            background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 4px 12px rgba(11,45,80,0.08)",
             border: "0.5px solid #DDE2EE", padding: "16px 20px", minWidth: 240, maxWidth: 300,
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>{selecionado.nome}</div>
-              <button onClick={() => setSelecionado(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#aaa", fontSize: 18, lineHeight: 1 }}>×</button>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{selecionado.nome}</div>
+              <button onClick={() => setSelecionado(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1 }}>×</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
@@ -291,9 +291,9 @@ export default function MapaPage() {
                 { l: "Colheita prevista", v: fmtData(selecionado.plantio?.data_colheita_prevista) },
               ].map(({ l, v }) => (
                 <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 12 }}>
-                  <span style={{ color: "#888", whiteSpace: "nowrap" }}>{l}</span>
+                  <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>{l}</span>
                   <span style={{
-                    color: l === "Cultura" && selecionado.plantio ? corCultura(selecionado.plantio.cultura) : "#1a1a1a",
+                    color: l === "Cultura" && selecionado.plantio ? corCultura(selecionado.plantio.cultura) : "var(--text-1)",
                     fontWeight: l === "Cultura" ? 600 : 400,
                     textAlign: "right",
                   }}>{v}</span>
@@ -307,12 +307,12 @@ export default function MapaPage() {
         {!loading && talhoes.every(t => !t.kml_url && !t.lat && !t.lng) && (
           <div style={{
             position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-            zIndex: 1000, background: "#fff", borderRadius: 12, padding: "24px 32px",
+            zIndex: 1000, background: "var(--bg-card)", borderRadius: 12, padding: "24px 32px",
             boxShadow: "0 4px 24px rgba(0,0,0,0.12)", textAlign: "center", maxWidth: 340,
           }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>📍</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>Sem dados de localização</div>
-            <div style={{ fontSize: 12, color: "#888", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 6 }}>Sem dados de localização</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5 }}>
               Adicione coordenadas (lat/lng) nos talhões em <strong>Cadastros → Fazendas</strong>, ou faça upload de arquivos KML pelo painel lateral.
             </div>
           </div>

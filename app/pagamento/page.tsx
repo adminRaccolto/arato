@@ -119,7 +119,7 @@ function PagamentoInner() {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#F4F6FA",
+      minHeight: "100vh", background: "var(--bg-page)",
       fontFamily: "system-ui, sans-serif", fontSize: 13,
       display: "flex", flexDirection: "column",
     }}>
@@ -161,10 +161,10 @@ function PagamentoInner() {
 
           {/* Assinatura atual */}
           {carregando ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Carregando…</div>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
           ) : assinatura && (
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Sua assinatura</div>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Sua assinatura</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#0B1E35" }}>
@@ -178,7 +178,7 @@ function PagamentoInner() {
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: "#0B1E35" }}>
                     {fmtPreco(assinatura.preco)}
-                    <span style={{ fontSize: 11, color: "#888", fontWeight: 400 }}>/mês</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/mês</span>
                   </div>
                   <span style={{
                     fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
@@ -200,8 +200,8 @@ function PagamentoInner() {
 
           {/* Cobranças em aberto */}
           {pagamentos.length > 0 && (
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
                 Cobranças em aberto
               </div>
               {pagamentos.map(p => (
@@ -210,8 +210,8 @@ function PagamentoInner() {
                   padding: "12px 0", borderBottom: "0.5px solid #EEF1F6",
                 }}>
                   <div>
-                    <div style={{ fontWeight: 600, color: "#1a1a1a" }}>{p.descricao ?? "Mensalidade Arato"}</div>
-                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Vence: {fmtDate(p.data_vencimento)}</div>
+                    <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{p.descricao ?? "Mensalidade Arato"}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Vence: {fmtDate(p.data_vencimento)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: "#E24B4A" }}>{fmtPreco(p.valor)}</span>
@@ -234,7 +234,7 @@ function PagamentoInner() {
 
           {/* Gerar nova cobrança */}
           {assinatura && pagamentos.length === 0 && (
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35", marginBottom: 4 }}>Gerar cobrança</div>
               <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
                 Escolha o método de pagamento para gerar uma cobrança avulsa.
@@ -248,8 +248,8 @@ function PagamentoInner() {
                     onClick={() => setMetodoPag(key)}
                     style={{
                       flex: 1, padding: "12px 14px", borderRadius: 10, cursor: "pointer",
-                      border: `1.5px solid ${metodoPag === key ? "#1A4870" : "#DDE2EE"}`,
-                      background: metodoPag === key ? "#D5E8F5" : "#fff",
+                      border: `1.5px solid ${metodoPag === key ? "#1A4870" : "var(--border)"}`,
+                      background: metodoPag === key ? "#D5E8F5" : "var(--bg-card)",
                     }}
                   >
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#0B1E35" }}>{label}</div>
@@ -264,7 +264,7 @@ function PagamentoInner() {
                 <div>
                   {novoPag.pix ? (
                     <>
-                      <div style={{ background: "#F4F6FA", borderRadius: 8, padding: "10px 12px", fontSize: 11, fontFamily: "monospace", wordBreak: "break-all", marginBottom: 10 }}>
+                      <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", fontSize: 11, fontFamily: "monospace", wordBreak: "break-all", marginBottom: 10 }}>
                         {novoPag.pix}
                       </div>
                       <button onClick={copiarPix} style={{
@@ -301,7 +301,7 @@ function PagamentoInner() {
           )}
 
           {/* Suporte */}
-          <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#0B1E35", marginBottom: 8 }}>Precisa de ajuda?</div>
             <div style={{ display: "flex", gap: 10 }}>
               <a href="https://wa.me/5565981456825?text=Preciso+de+ajuda+com+pagamento+do+Arato"
@@ -310,7 +310,7 @@ function PagamentoInner() {
                 WhatsApp
               </a>
               <a href="mailto:financeiro@raccolto.com.br"
-                style={{ flex: 1, padding: "10px 0", background: "#F4F6FA", color: "#555", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", textAlign: "center", border: "0.5px solid #DDE2EE" }}>
+                style={{ flex: 1, padding: "10px 0", background: "var(--bg-page)", color: "var(--text-2)", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", textAlign: "center", border: "0.5px solid #DDE2EE" }}>
                 E-mail
               </a>
             </div>
@@ -320,19 +320,19 @@ function PagamentoInner() {
         {/* Coluna lateral — histórico */}
         {pagamentos.length > 0 || assinatura ? (
           <div style={{ width: 260, flexShrink: 0 }}>
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
                 Resumo da conta
               </div>
-              <div style={{ fontSize: 12, color: "#555", lineHeight: 2 }}>
+              <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 2 }}>
                 <div>Status: <strong style={{ color: inadimplente ? "#E24B4A" : "#16A34A" }}>{inadimplente ? "Inadimplente" : contaStatus ?? "—"}</strong></div>
                 <div>Plano: <strong>{plano?.nome ?? "—"}</strong></div>
                 <div>Em aberto: <strong style={{ color: "#E24B4A" }}>{fmtPreco(totalDevido)}</strong></div>
               </div>
 
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
-                <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>CNPJ Faturamento</div>
-                <div style={{ fontSize: 11, fontFamily: "monospace", color: "#555", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>CNPJ Faturamento</div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-2)", lineHeight: 1.6 }}>
                   Raccolto Consultoria e Treinamentos LTDA<br />
                   CNPJ: 49.578.526/0001-42
                 </div>

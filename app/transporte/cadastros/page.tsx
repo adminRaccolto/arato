@@ -43,7 +43,7 @@ interface Motorista {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #CDD5E0", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box", background: "#fff" };
+const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #CDD5E0", borderRadius: 7, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-card)" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 11, fontWeight: 600, color: "#444", marginBottom: 4 };
 const btnV: React.CSSProperties = { background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
 const btnR: React.CSSProperties = { background: "#F0F4FA", color: "#444", border: "0.5px solid #CDD5E0", borderRadius: 7, padding: "8px 18px", fontSize: 13, cursor: "pointer" };
@@ -67,10 +67,10 @@ function diasParaVencerCnh(val?: string): number | null {
 function Modal({ titulo, onClose, children, width = 720 }: { titulo: string; onClose: () => void; children: React.ReactNode; width?: number }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
-      <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>{titulo}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
         </div>
         <div style={{ padding: 20, overflowY: "auto" }}>{children}</div>
       </div>
@@ -202,23 +202,23 @@ export default function TransporteCadastrosPage() {
     return null;
   };
 
-  if (loading) return (<><TopNav /><div style={{ padding: 40, textAlign: "center", color: "#555" }}>Carregando…</div></>);
+  if (loading) return (<><TopNav /><div style={{ padding: 40, textAlign: "center", color: "var(--text-2)" }}>Carregando…</div></>);
 
   return (
     <>
       <TopNav />
-      <div style={{ padding: "24px 28px", background: "#F4F6FA", minHeight: "100vh" }}>
+      <div style={{ padding: "24px 28px", background: "var(--bg-page)", minHeight: "100vh" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Cadastros de Transporte</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Cadastros de Transporte</h1>
             <p style={{ fontSize: 12, color: "#666", margin: "4px 0 0" }}>Transportadoras, veículos e motoristas — usados em NF-e, CT-e e MDF-e</p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar…"
               style={{ ...inp, width: 180 }} />
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", color: "#555" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>
               <input type="checkbox" checked={soAtivos} onChange={e => setSoAtivos(e.target.checked)} />
               Só ativos
             </label>
@@ -234,7 +234,7 @@ export default function TransporteCadastrosPage() {
           ] as [Aba, string][]).map(([a, l]) => (
             <button key={a} onClick={() => { setAba(a); setBusca(""); }}
               style={{ padding: "10px 20px", border: "none", borderBottom: aba === a ? "2px solid #1A5CB8" : "2px solid transparent",
-                background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#1A5CB8" : "#555", cursor: "pointer" }}>
+                background: "transparent", fontSize: 13, fontWeight: aba === a ? 700 : 400, color: aba === a ? "#1A5CB8" : "var(--text-2)", cursor: "pointer" }}>
               {l}
             </button>
           ))}
@@ -246,24 +246,24 @@ export default function TransporteCadastrosPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</button>
             </div>
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Razão Social / Nome Fantasia", "CNPJ / CPF", "IE", "RNTRC", "Município / UF", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {transFilt.length === 0 ? (
-                    <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>
+                    <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                       Nenhuma transportadora cadastrada. Clique em "+ Nova Transportadora".
                     </td></tr>
                   ) : transFilt.map((t, i) => (
                     <tr key={t.id} style={{ borderBottom: i < transFilt.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
                       <td style={{ padding: "10px 12px" }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{t.razao_social}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{t.razao_social}</div>
                         {t.nome_fantasia && <div style={{ fontSize: 11, color: "#666" }}>{t.nome_fantasia}</div>}
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{t.cnpj ?? t.cpf ?? "—"}</td>
@@ -272,7 +272,7 @@ export default function TransporteCadastrosPage() {
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>{t.municipio ? `${t.municipio} - ${t.uf}` : "—"}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 600,
-                          background: t.ativa ? "#ECFDF5" : "#F4F6FA", color: t.ativa ? "#16A34A" : "#888" }}>
+                          background: t.ativa ? "#ECFDF5" : "var(--bg-page)", color: t.ativa ? "#16A34A" : "var(--text-3)" }}>
                           {t.ativa ? "Ativa" : "Inativa"}
                         </span>
                       </td>
@@ -293,24 +293,24 @@ export default function TransporteCadastrosPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={btnV} onClick={() => setModalV({ ativo: true })}>+ Novo Veículo</button>
             </div>
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Placa", "Tipo", "Carroceria", "Tara / Cap.", "RENAVAM", "Transportadora", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {veicFilt.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>
+                    <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                       Nenhum veículo cadastrado. Clique em "+ Novo Veículo".
                     </td></tr>
                   ) : veicFilt.map((v, i) => (
                     <tr key={v.id} style={{ borderBottom: i < veicFilt.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
                       <td style={{ padding: "10px 12px" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", fontFamily: "monospace", letterSpacing: 1 }}>{v.placa}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", fontFamily: "monospace", letterSpacing: 1 }}>{v.placa}</div>
                         {v.uf_placa && <div style={{ fontSize: 10, color: "#666" }}>{v.uf_placa} · {v.marca ?? ""} {v.modelo ?? ""} {v.ano_fab ?? ""}</div>}
                       </td>
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>{v.tipo}</td>
@@ -323,7 +323,7 @@ export default function TransporteCadastrosPage() {
                       <td style={{ padding: "10px 12px", fontSize: 12 }}>{transNome(v.transportadora_id)}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 600,
-                          background: v.ativo ? "#ECFDF5" : "#F4F6FA", color: v.ativo ? "#16A34A" : "#888" }}>
+                          background: v.ativo ? "#ECFDF5" : "var(--bg-page)", color: v.ativo ? "#16A34A" : "var(--text-3)" }}>
                           {v.ativo ? "Ativo" : "Inativo"}
                         </span>
                       </td>
@@ -344,18 +344,18 @@ export default function TransporteCadastrosPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={btnV} onClick={() => setModalM({ ativo: true })}>+ Novo Motorista</button>
             </div>
-            <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Nome", "CPF", "CNH / Categoria / UF", "Validade CNH", "Transportadora", "Telefone", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {motorFilt.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>
+                    <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                       Nenhum motorista cadastrado. Clique em "+ Novo Motorista".
                     </td></tr>
                   ) : motorFilt.map((m, i) => {
@@ -363,7 +363,7 @@ export default function TransporteCadastrosPage() {
                     return (
                       <tr key={m.id} style={{ borderBottom: i < motorFilt.length - 1 ? "0.5px solid #EEF1F7" : "none" }}>
                         <td style={{ padding: "10px 12px" }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{m.nome}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.nome}</div>
                           {m.email && <div style={{ fontSize: 11, color: "#666" }}>{m.email}</div>}
                         </td>
                         <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "monospace" }}>{m.cpf ?? "—"}</td>
@@ -382,13 +382,13 @@ export default function TransporteCadastrosPage() {
                                 </span>
                               )}
                             </div>
-                          ) : <span style={{ fontSize: 12, color: "#aaa" }}>—</span>}
+                          ) : <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>}
                         </td>
                         <td style={{ padding: "10px 12px", fontSize: 12 }}>{transNome(m.transportadora_id)}</td>
                         <td style={{ padding: "10px 12px", fontSize: 12 }}>{m.telefone ?? "—"}</td>
                         <td style={{ padding: "10px 12px" }}>
                           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 600,
-                            background: m.ativo ? "#ECFDF5" : "#F4F6FA", color: m.ativo ? "#16A34A" : "#888" }}>
+                            background: m.ativo ? "#ECFDF5" : "var(--bg-page)", color: m.ativo ? "#16A34A" : "var(--text-3)" }}>
                             {m.ativo ? "Ativo" : "Inativo"}
                           </span>
                         </td>
@@ -434,7 +434,7 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ padding: "12px 16px", background: "#F4F6FA", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
+            <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Endereço</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <Campo label="CEP">

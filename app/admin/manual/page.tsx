@@ -79,7 +79,7 @@ function Tabela({ colunas, linhas }: { colunas: string[]; linhas: string[][] }) 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, marginBottom: 16 }}>
       <thead>
-        <tr style={{ background: "#F4F6FA" }}>
+        <tr style={{ background: "var(--bg-page)" }}>
           {colunas.map(c => (
             <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "#1A4870", border: "0.5px solid #DDE2EE" }}>{c}</th>
           ))}
@@ -105,10 +105,10 @@ function ManualContent() {
     <>
 
 
-      <div className="no-print" style={{ background: "#F4F6FA", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #DDE2EE" }}>
+      <div className="no-print" style={{ background: "var(--bg-page)", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #DDE2EE" }}>
         <div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a" }}>Manual do Proprietário — Arato SaaS</span>
-          <span style={{ fontSize: 12, color: "#888", marginLeft: 12 }}>Versão 2.0 · Abril 2026 · Uso interno Raccolto</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Manual do Proprietário — Arato SaaS</span>
+          <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 12 }}>Versão 2.0 · Abril 2026 · Uso interno Raccolto</span>
         </div>
         <button
           onClick={() => window.print()}
@@ -130,16 +130,16 @@ function ManualContent() {
         }
       `}</style>
 
-      <main className="manual-wrap" style={{ maxWidth: 900, margin: "0 auto", padding: "36px 32px", fontFamily: "system-ui, sans-serif", fontSize: 13, color: "#1a1a1a", lineHeight: 1.7 }}>
+      <main className="manual-wrap" style={{ maxWidth: 900, margin: "0 auto", padding: "36px 32px", fontFamily: "system-ui, sans-serif", fontSize: 13, color: "var(--text-1)", lineHeight: 1.7 }}>
 
         {/* ── Capa ── */}
         <div style={{ textAlign: "center", padding: "32px 0 44px", borderBottom: "2px solid #1A4870", marginBottom: 44 }}>
-          <div style={{ fontSize: 11, color: "#888", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Raccolto Consultoria · Documento Interno</div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 8 }}>Raccolto Consultoria · Documento Interno</div>
           <h1 style={{ fontSize: 30, fontWeight: 900, color: "#1A4870", margin: "0 0 6px" }}>Arato SaaS</h1>
-          <div style={{ fontSize: 16, color: "#555", marginBottom: 28 }}>Manual Completo do Proprietário do Sistema</div>
+          <div style={{ fontSize: 16, color: "var(--text-2)", marginBottom: 28 }}>Manual Completo do Proprietário do Sistema</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
             {["Versão 2.0", "Abril 2026", "Uso interno"].map(t => (
-              <span key={t} style={{ background: "#F4F6FA", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "#888" }}>{t}</span>
+              <span key={t} style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "var(--text-3)" }}>{t}</span>
             ))}
           </div>
         </div>
@@ -536,7 +536,7 @@ VALUES (
           <SubSecao titulo="8.2 Variáveis de ambiente na Vercel">
             <Code>{`RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 RESEND_FROM=alertas@raccolto.com.br`}</Code>
-            <p style={{ marginTop: 8, fontSize: 12, color: "#555" }}>
+            <p style={{ marginTop: 8, fontSize: 12, color: "var(--text-2)" }}>
               Configure em: <strong>Vercel Dashboard → Project arato → Settings → Environment Variables</strong>. Aplique para os ambientes <em>Production</em> e <em>Preview</em>.
             </p>
           </SubSecao>
@@ -726,7 +726,7 @@ DELETE FROM fazendas             WHERE id          = 'UUID';
         </Secao>
 
         {/* Rodapé */}
-        <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 20, marginTop: 12, display: "flex", justifyContent: "space-between", fontSize: 11, color: "#aaa" }}>
+        <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 20, marginTop: 12, display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}>
           <span>Arato SaaS — Manual do Proprietário v2.0 · Abril 2026</span>
           <span>Raccolto Consultoria · Documento Interno · Não distribuir</span>
         </div>

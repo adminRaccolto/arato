@@ -383,8 +383,8 @@ export default function ColheitaPage() {
         {/* Header */}
         <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1a1a1a", margin: 0 }}>Colheita Própria</h1>
-            <p style={{ fontSize: 13, color: "#555", margin: "4px 0 0" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--text-1)", margin: 0 }}>Colheita Própria</h1>
+            <p style={{ fontSize: 13, color: "var(--text-2)", margin: "4px 0 0" }}>
               Pesagem de caminhões, classificação de grãos e entrada no estoque
             </p>
           </div>
@@ -393,7 +393,7 @@ export default function ColheitaPage() {
               <select
                 value={fazendaFiltro}
                 onChange={e => setFazendaFiltro(e.target.value)}
-                style={{ padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff" }}
+                style={{ padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)" }}
               >
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
@@ -427,8 +427,8 @@ export default function ColheitaPage() {
             { label: "Produtividade média",   valor: totalArea > 0 ? fmt(prodMedia, 1) + " sc/ha" : "—", cor: "#C9921B" },
           ].map(st => (
             <div key={st.label} style={{
-              background: "#fff", borderRadius: 10, padding: "16px 18px",
-              border: "0.5px solid #D4DCE8",
+              background: "var(--bg-card)", borderRadius: 10, padding: "16px 18px",
+              border: "0.5px solid var(--border-table)",
             }}>
               <div style={{ fontSize: 11, color: "#444", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 {st.label}
@@ -455,11 +455,11 @@ export default function ColheitaPage() {
           <div style={{ textAlign: "center", color: "#444", padding: 48, fontSize: 14 }}>Carregando...</div>
         ) : colheitas.length === 0 ? (
           <div style={{
-            background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8",
+            background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)",
             padding: 48, textAlign: "center", color: "#444",
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🌾</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: "#555", marginBottom: 4 }}>Nenhuma colheita registrada</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Nenhuma colheita registrada</div>
             <div style={{ fontSize: 13 }}>Clique em "Nova Colheita" para iniciar o registro</div>
           </div>
         ) : (
@@ -469,7 +469,7 @@ export default function ColheitaPage() {
               const prodLabel = PRODUTOS_PADRAO[col.produto]?.label ?? col.produto;
               return (
                 <div key={col.id} style={{
-                  background: "#fff", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden",
+                  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden",
                 }}>
                   {/* Cabeçalho do card */}
                   <div style={{ padding: "16px 20px", display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -484,10 +484,10 @@ export default function ColheitaPage() {
 
                     {/* Infos principais */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>
                         {prodLabel}{col.variedade ? ` — ${col.variedade}` : ""}
                       </div>
-                      <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>
                         {cicloLabel(col.ciclo_id ?? "")} · {nomeTalhao(col.talhao_id)} · {nomeDeposito(col.deposito_id)}
                       </div>
                     </div>
@@ -496,12 +496,12 @@ export default function ColheitaPage() {
                     <div style={{ display: "flex", gap: 20, flexWrap: "nowrap", flexShrink: 0, alignItems: "center" }}>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Área</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(col.area_ha ?? 0, 1)} ha</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{fmt(col.area_ha ?? 0, 1)} ha</div>
                       </div>
                       {col.total_sacas > 0 ? (<>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Peso Liq.</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(col.total_kg_bruto / 1000, 1)} t</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{fmt(col.total_kg_bruto / 1000, 1)} t</div>
                       </div>
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 11, color: "#444" }}>Classificado</div>
@@ -561,8 +561,8 @@ export default function ColheitaPage() {
                       <button
                         onClick={() => toggleExpandir(col.id)}
                         style={{
-                          background: "none", border: "0.5px solid #D4DCE8", borderRadius: 7,
-                          padding: "6px 10px", fontSize: 12, cursor: "pointer", color: "#555",
+                          background: "none", border: "0.5px solid var(--border-table)", borderRadius: 7,
+                          padding: "6px 10px", fontSize: 12, cursor: "pointer", color: "var(--text-2)",
                         }}
                       >
                         {isExp ? "▲" : "▼"}
@@ -581,8 +581,8 @@ export default function ColheitaPage() {
 
                   {/* Romaneios expandidos */}
                   {isExp && (
-                    <div style={{ borderTop: "0.5px solid #DEE5EE", background: "#F8FAFD" }}>
-                      <div style={{ padding: "10px 20px 6px", fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <div style={{ borderTop: "0.5px solid var(--border-row)", background: "#F8FAFD" }}>
+                      <div style={{ padding: "10px 20px 6px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         Romaneios ({col.romaneios?.length ?? 0})
                       </div>
                       {!col.romaneios || col.romaneios.length === 0 ? (
@@ -593,46 +593,46 @@ export default function ColheitaPage() {
                         <div style={{ overflowX: "auto" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                             <thead>
-                              <tr style={{ background: "#DEE5EE" }}>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Nº</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Placa</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Data</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Peso Bruto</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Tara</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Peso Líq.</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Umid %</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>D.Umid kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Imp %</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>D.Imp kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Avar %</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>D.Avar kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Classificado kg</th>
-                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid #D4DCE8" }}>Sacas</th>
-                                <th style={{ padding: "7px 12px", borderBottom: "0.5px solid #D4DCE8" }}></th>
+                              <tr style={{ background: "var(--border-row)" }}>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Nº</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "left", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Placa</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Data</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Peso Bruto</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Tara</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Peso Líq.</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Umid %</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>D.Umid kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Imp %</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>D.Imp kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Avar %</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>D.Avar kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Classificado kg</th>
+                                <th style={{ padding: "7px 12px", fontWeight: 600, color: "#666", textAlign: "right", whiteSpace: "nowrap", borderBottom: "0.5px solid var(--border-table)" }}>Sacas</th>
+                                <th style={{ padding: "7px 12px", borderBottom: "0.5px solid var(--border-table)" }}></th>
                               </tr>
                             </thead>
                             <tbody>
                               {col.romaneios!.map(rom => (
-                                <tr key={rom.id} style={{ borderBottom: "0.5px solid #DEE5EE" }}>
-                                  <td style={{ padding: "8px 12px", color: "#1a1a1a" }}>{rom.numero || "—"}</td>
-                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "#1a1a1a" }}>{rom.placa}</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#1a1a1a" }}>{rom.data ? new Date(rom.data + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
+                                <tr key={rom.id} style={{ borderBottom: "0.5px solid var(--border-row)" }}>
+                                  <td style={{ padding: "8px 12px", color: "var(--text-1)" }}>{rom.numero || "—"}</td>
+                                  <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text-1)" }}>{rom.placa}</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-1)" }}>{rom.data ? new Date(rom.data + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
                                   <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.peso_bruto_kg)} kg</td>
                                   <td style={{ padding: "8px 12px", textAlign: "right" }}>{fmt(rom.tara_kg)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "#1a1a1a", fontWeight: 600 }}>{fmt(rom.peso_liquido_kg)} kg</td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.umidade_pct ?? 0) > (rom.umidade_padrao_pct ?? 14) ? "#E24B4A" : "#1a1a1a" }}>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-1)", fontWeight: 600 }}>{fmt(rom.peso_liquido_kg)} kg</td>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.umidade_pct ?? 0) > (rom.umidade_padrao_pct ?? 14) ? "#E24B4A" : "var(--text-1)" }}>
                                     {fmt(rom.umidade_pct ?? 0, 1)}%
                                   </td>
                                   <td style={{ padding: "8px 12px", textAlign: "right", color: "#E24B4A" }}>
                                     {(rom.desconto_umidade_kg ?? 0) > 0 ? `-${fmt(rom.desconto_umidade_kg ?? 0, 1)}` : "—"}
                                   </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.impureza_pct ?? 0) > 1 ? "#EF9F27" : "#1a1a1a" }}>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.impureza_pct ?? 0) > 1 ? "#EF9F27" : "var(--text-1)" }}>
                                     {fmt(rom.impureza_pct ?? 0, 1)}%
                                   </td>
                                   <td style={{ padding: "8px 12px", textAlign: "right", color: "#EF9F27" }}>
                                     {(rom.desconto_impureza_kg ?? 0) > 0 ? `-${fmt(rom.desconto_impureza_kg ?? 0, 1)}` : "—"}
                                   </td>
-                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.avariados_pct ?? 0) > 0.5 ? "#EF9F27" : "#1a1a1a" }}>
+                                  <td style={{ padding: "8px 12px", textAlign: "right", color: (rom.avariados_pct ?? 0) > 0.5 ? "#EF9F27" : "var(--text-1)" }}>
                                     {fmt(rom.avariados_pct ?? 0, 1)}%
                                   </td>
                                   <td style={{ padding: "8px 12px", textAlign: "right", color: "#EF9F27" }}>
@@ -653,7 +653,7 @@ export default function ColheitaPage() {
                             </tbody>
                             {/* Totais */}
                             <tfoot>
-                              <tr style={{ background: "#D5E8F5", color: "#1a1a1a", fontWeight: 600 }}>
+                              <tr style={{ background: "#D5E8F5", color: "var(--text-1)", fontWeight: 600 }}>
                                 <td colSpan={3} style={{ padding: "8px 12px", color: "#0B2D50" }}>Total</td>
                                 <td colSpan={2} style={{ padding: "8px 12px" }} />
                                 <td style={{ padding: "8px 12px", textAlign: "right", color: "#0B2D50" }}>
@@ -692,9 +692,9 @@ export default function ColheitaPage() {
       ────────────────────────────────────────── */}
       {modalColheita && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setModalColheita(false); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Nova Colheita</h2>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Nova Colheita</h2>
               <button onClick={() => setModalColheita(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
             </div>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -754,7 +754,7 @@ export default function ColheitaPage() {
               {/* Peso colhido — entrada rápida (opcional) */}
               <div style={{ background: "#F3F8FF", borderRadius: 10, border: "0.5px solid #C5D9F0", padding: "14px 16px" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 4 }}>Peso colhido (opcional)</div>
-                <div style={{ fontSize: 11, color: "#555", marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 12 }}>
                   Informe o total colhido agora, ou deixe em branco e registre romaneio a romaneio depois (pesagem caminhão a caminhão).
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -832,11 +832,11 @@ export default function ColheitaPage() {
 
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setModalRomaneio(null); }}>
-            <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-              <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 680, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+              <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Romaneio de Entrada — Colheita</h2>
-                  <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>
+                  <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Romaneio de Entrada — Colheita</h2>
+                  <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 3 }}>
                     {PRODUTOS_PADRAO[produto]?.label ?? produto}
                     {colheitaSel?.variedade ? ` — ${colheitaSel.variedade}` : ""}
                     {" · "}Padrão: {cls.umidade_padrao}% umid · {cls.impureza_padrao}% imp · {cls.avariados_padrao}% avar
@@ -879,7 +879,7 @@ export default function ColheitaPage() {
                     </label>
                     <div>
                       <div style={lbStyle}>Peso Líquido (calculado)</div>
-                      <div style={{ ...inpStyle, background: "#F3F6F9", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#1A4870" : "#888", display: "flex", alignItems: "center" }}>
+                      <div style={{ ...inpStyle, background: "#F3F6F9", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#1A4870" : "var(--text-3)", display: "flex", alignItems: "center" }}>
                         {fmt(pl)} kg
                       </div>
                     </div>
@@ -890,8 +890,8 @@ export default function ColheitaPage() {
                 {pl > 0 && (
                   <div>
                     {/* cabeçalho com botão Class. Padrão */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #D4DCE8", paddingBottom: 6, marginBottom: 14 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>Classificação do Grão</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid var(--border-table)", paddingBottom: 6, marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Classificação do Grão</div>
                       <button type="button" onClick={applyPadrao}
                         style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", background: "#D5E8F5", border: "0.5px solid #A8C8E8", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
                         ✦ Class. Padrão
@@ -902,7 +902,7 @@ export default function ColheitaPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                       <div>
                         <label style={lbStyle}>Umidade (%)</label>
-                        <InputNumerico style={{ ...inpStyle, color: formRomaneio.umidade_pct > cls.umidade_padrao ? "#E24B4A" : "#1a1a1a" }}
+                        <InputNumerico style={{ ...inpStyle, color: formRomaneio.umidade_pct > cls.umidade_padrao ? "#E24B4A" : "var(--text-1)" }}
                           min="0" max="40"
                           placeholder={String(cls.umidade_padrao)}
                           value={formRomaneio.umidade_pct || ""}
@@ -912,7 +912,7 @@ export default function ColheitaPage() {
                       </div>
                       <div>
                         <label style={lbStyle}>Impureza / Mat. Estranhas (%)</label>
-                        <InputNumerico style={{ ...inpStyle, color: formRomaneio.impureza_pct > cls.impureza_padrao ? "#EF9F27" : "#1a1a1a" }}
+                        <InputNumerico style={{ ...inpStyle, color: formRomaneio.impureza_pct > cls.impureza_padrao ? "#EF9F27" : "var(--text-1)" }}
                           min="0" max="20"
                           placeholder={String(cls.impureza_padrao)}
                           value={formRomaneio.impureza_pct || ""}
@@ -935,8 +935,8 @@ export default function ColheitaPage() {
                     </div>
 
                     {/* Avariados — detalhamento por commodity */}
-                    <div style={{ background: "#F8F9FC", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#555", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ background: "#F8F9FC", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 14px", marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <span>Avariados{isSoja ? " — ABIOVE / IN MAPA 11/2007" : isMilho ? " — IN MAPA 60/2011" : ""}</span>
                         {avar_pct > 0 && (
                           <span style={{ fontSize: 11, fontWeight: 700, color: avar_pct > cls.avariados_padrao ? "#E24B4A" : "#16A34A" }}>
@@ -957,7 +957,7 @@ export default function ColheitaPage() {
                             { key: "outros_avariados", label: "Outros Avariados (%)" },
                           ] as { key: keyof typeof formRomaneio; label: string }[]).map(({ key, label }) => (
                             <div key={String(key)}>
-                              <label style={{ fontSize: 10, color: "#555", marginBottom: 3, display: "block" }}>{label}</label>
+                              <label style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3, display: "block" }}>{label}</label>
                               <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio[key] as string}
                                 onChange={v => setFormRomaneio(f => ({ ...f, [key]: v }))} />
@@ -966,11 +966,11 @@ export default function ColheitaPage() {
                           {/* Avariados direto (sem sub-parâmetros) */}
                           {!temSub && (
                             <div>
-                              <label style={{ fontSize: 10, color: "#888", marginBottom: 3, display: "block" }}>Total direto (%)</label>
+                              <label style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3, display: "block" }}>Total direto (%)</label>
                               <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio.avariados_pct || ""}
                                 onChange={v => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(v) || 0 }))} />
-                              <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>somente se não detalhar acima</div>
+                              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>somente se não detalhar acima</div>
                             </div>
                           )}
                         </div>
@@ -985,7 +985,7 @@ export default function ColheitaPage() {
                             { key: "outros_avariados", label: "Outros Avariados (%)" },
                           ] as { key: keyof typeof formRomaneio; label: string }[]).map(({ key, label }) => (
                             <div key={String(key)}>
-                              <label style={{ fontSize: 10, color: "#555", marginBottom: 3, display: "block" }}>{label}</label>
+                              <label style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 3, display: "block" }}>{label}</label>
                               <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio[key] as string}
                                 onChange={v => setFormRomaneio(f => ({ ...f, [key]: v }))} />
@@ -993,11 +993,11 @@ export default function ColheitaPage() {
                           ))}
                           {!temSub && (
                             <div>
-                              <label style={{ fontSize: 10, color: "#888", marginBottom: 3, display: "block" }}>Total direto (%)</label>
+                              <label style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3, display: "block" }}>Total direto (%)</label>
                               <InputNumerico style={{ ...inpStyle, fontSize: 12, padding: "5px 8px" }} min="0" max="100"
                                 value={formRomaneio.avariados_pct || ""}
                                 onChange={v => setFormRomaneio(f => ({ ...f, avariados_pct: parseFloat(v) || 0 }))} />
-                              <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>somente se não detalhar acima</div>
+                              <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>somente se não detalhar acima</div>
                             </div>
                           )}
                         </div>
@@ -1009,25 +1009,25 @@ export default function ColheitaPage() {
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#0B2D50", marginBottom: 8 }}>Apuração — Balança de Entrada (Fazenda)</div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                         <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#555" }}>Peso Líquido</div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{fmt(pl)} kg</div>
+                          <div style={{ fontSize: 10, color: "var(--text-2)" }}>Peso Líquido</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{fmt(pl)} kg</div>
                         </div>
                         {temClassif && (
                           <div style={{ textAlign: "center" }}>
-                            <div style={{ fontSize: 10, color: "#555" }}>Descontos (U+I+A)</div>
+                            <div style={{ fontSize: 10, color: "var(--text-2)" }}>Descontos (U+I+A)</div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: "#E24B4A" }}>−{fmt(totalDescKg, 1)} kg ({fmt(pctDesconto, 1)}%)</div>
                           </div>
                         )}
                         <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#555" }}>Peso Classificado</div>
+                          <div style={{ fontSize: 10, color: "var(--text-2)" }}>Peso Classificado</div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#0B2D50" }}>{fmt(temClassif ? classificado : pl, 1)} kg</div>
                         </div>
                         <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 10, color: "#555" }}>Sacas ({cls.kg_saca} kg/sc)</div>
+                          <div style={{ fontSize: 10, color: "var(--text-2)" }}>Sacas ({cls.kg_saca} kg/sc)</div>
                           <div style={{ fontSize: 16, fontWeight: 700, color: "#1A4870" }}>{fmt(sacas, 2)} sc</div>
                         </div>
                       </div>
-                      {!temClassif && <div style={{ fontSize: 10, color: "#888", marginTop: 6 }}>Preencha a classificação para calcular descontos.</div>}
+                      {!temClassif && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6 }}>Preencha a classificação para calcular descontos.</div>}
                     </div>
                   </div>
                 )}
@@ -1051,9 +1051,9 @@ export default function ColheitaPage() {
       ────────────────────────────────────────── */}
       {modalFinalizar && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }} onClick={e => { if (e.target === e.currentTarget) setModalFinalizar(null); }}>
-          <div style={{ background: "#fff", borderRadius: 12, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 17, color: "#1a1a1a", fontWeight: 600 }}>Finalizar Colheita</h2>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Finalizar Colheita</h2>
               <button onClick={() => setModalFinalizar(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#444" }}>×</button>
             </div>
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1066,15 +1066,15 @@ export default function ColheitaPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#555" }}>Peso Líquido</div>
+                    <div style={{ fontSize: 10, color: "var(--text-2)" }}>Peso Líquido</div>
                     <div style={{ fontWeight: 600, color: "#0B2D50" }}>{fmt(modalFinalizar.total_kg_bruto / 1000, 2)} t</div>
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#555" }}>Classificado</div>
+                    <div style={{ fontSize: 10, color: "var(--text-2)" }}>Classificado</div>
                     <div style={{ fontWeight: 600, color: "#0B2D50" }}>{fmt(modalFinalizar.total_kg_classificado / 1000, 2)} t</div>
                   </div>
                   <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color: "#555" }}>Sacas</div>
+                    <div style={{ fontSize: 10, color: "var(--text-2)" }}>Sacas</div>
                     <div style={{ fontWeight: 700, fontSize: 16, color: "#1A4870" }}>{fmt(modalFinalizar.total_sacas, 1)} sc</div>
                   </div>
                 </div>
@@ -1145,7 +1145,7 @@ export default function ColheitaPage() {
 const inpStyle: React.CSSProperties = {
   width: "100%", padding: "8px 10px", fontSize: 13, borderRadius: 8,
   border: "0.5px solid #d0d0cc", outline: "none", boxSizing: "border-box",
-  background: "#fff",
+  background: "var(--bg-input)",
 };
 
 const lbStyle: React.CSSProperties = {
@@ -1155,7 +1155,7 @@ const lbStyle: React.CSSProperties = {
 const secTitle: React.CSSProperties = {
   fontSize: 12, fontWeight: 700, color: "#444", textTransform: "uppercase",
   letterSpacing: "0.05em", marginBottom: 10, paddingBottom: 6,
-  borderBottom: "0.5px solid #DEE5EE",
+  borderBottom: "0.5px solid var(--border-row)",
 };
 
 const btnPrimStyle: React.CSSProperties = {
@@ -1176,7 +1176,7 @@ function DescontoBox({ label, valor }: { label: string; valor: number }) {
       background: valor > 0 ? "#FFF5F5" : "#F3F6F9",
       borderRadius: 8, padding: "8px 10px", textAlign: "center",
     }}>
-      <div style={{ fontSize: 10, color: "#555", marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>{label}</div>
       <div style={{ fontWeight: 600, color: valor > 0 ? "#E24B4A" : "#444", fontSize: 13 }}>
         {valor > 0 ? `-${(valor / 1000).toFixed(2)} t` : "—"}
       </div>

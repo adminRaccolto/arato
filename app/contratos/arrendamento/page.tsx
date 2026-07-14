@@ -72,7 +72,7 @@ const STATUS_PAG: Record<StatusPag, { label: string; bg: string; color: string }
   pendente:  { label: "Pendente",  bg: "#FBF3E0", color: "#7A5A12" },
   pago:      { label: "Pago",      bg: "#ECFDF5", color: "#14532D" },
   parcial:   { label: "Parcial",   bg: "#EBF3FC", color: "#0C447C" },
-  cancelado: { label: "Cancelado", bg: "#F4F6FA", color: "#888"    },
+  cancelado: { label: "Cancelado", bg: "var(--bg-page)", color: "var(--text-3)"    },
 };
 
 function extrairAnoFim(descricao: string): number {
@@ -85,11 +85,11 @@ function isoData(ano: number, mes: number, dia: number): string {
 }
 
 // ── estilos ───────────────────────────────────────────────
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "#1a1a1a", background: "#fff", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const inpSm: React.CSSProperties = { ...inp, padding: "5px 8px", fontSize: 12 };
-const lbl: React.CSSProperties  = { fontSize: 11, color: "#555", marginBottom: 4, display: "block" };
+const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "#1a1a1a" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
@@ -99,9 +99,9 @@ function Modal({ titulo, subtitulo, onClose, width = 760, children }: {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
       >
-      <div style={{ background: "#fff", borderRadius: 14, padding: 26, width, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: "#1a1a1a", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
-        {subtitulo && <div style={{ fontSize: 12, color: "#555", marginBottom: 18 }}>{subtitulo}</div>}
+      <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 26, width, maxWidth: "96vw", maxHeight: "92vh", overflowY: "auto" }}>
+        <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)", marginBottom: subtitulo ? 2 : 18 }}>{titulo}</div>
+        {subtitulo && <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 18 }}>{subtitulo}</div>}
         {children}
       </div>
     </div>
@@ -825,14 +825,14 @@ export default function Arrendamentos() {
 
   if (!podeAcessarPlano("arrendamento")) return <PlanoGate modulo="arrendamento" />;
   return (
-    <div style={{ minHeight: "100vh", background: "#F4F6FA" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
       <div style={{ padding: "28px 32px" }}>
 
         {/* cabeçalho */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
-            <h1 style={{ fontSize: 19, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Contratos de Arrendamento</h1>
+            <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Contratos de Arrendamento</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>Gestão de contratos, parcelas automáticas por safra e calendário de vencimentos</p>
           </div>
           <button style={btnV} onClick={() => { setEditContrato(null); setFC(initFC()); setModalContrato(true); }}>
@@ -846,9 +846,9 @@ export default function Arrendamentos() {
             { label: "Área Arrendada",       valor: `${fmtN(totalArea)} ha`, bg: "#EBF3FC", color: "#0C447C" },
             { label: "Contratos Ativos",     valor: arrendamentos.length,    bg: "#D5E8F5", color: "#0B2D50" },
             { label: "Parcelas Pendentes",   valor: pagPend,                 bg: "#FBF3E0", color: "#7A5A12" },
-            { label: "Vencidas (atrasadas)", valor: pagAtras, bg: pagAtras > 0 ? "#FCEBEB" : "#F4F6FA", color: pagAtras > 0 ? "#791F1F" : "#888" },
+            { label: "Vencidas (atrasadas)", valor: pagAtras, bg: pagAtras > 0 ? "#FCEBEB" : "var(--bg-page)", color: pagAtras > 0 ? "#791F1F" : "var(--text-3)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: k.color }}>{k.valor}</div>
             </div>
@@ -867,7 +867,7 @@ export default function Arrendamentos() {
           ))}
         </div>
 
-        {loading && <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Carregando...</div>}
+        {loading && <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)" }}>Carregando...</div>}
 
         {/* ═══════════ ABA LISTA ═══════════ */}
         {!loading && aba === "lista" && (() => {
@@ -890,10 +890,10 @@ export default function Arrendamentos() {
           return (
           <div>
             {arrendamentos.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
                 <div style={{ fontSize: 34, marginBottom: 12 }}>◻</div>
-                <div style={{ fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Nenhum contrato cadastrado</div>
-                <div style={{ fontSize: 13, color: "#888" }}>Cadastre os contratos em Cadastros → Fazendas → aba Arrendamentos</div>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhum contrato cadastrado</div>
+                <div style={{ fontSize: 13, color: "var(--text-3)" }}>Cadastre os contratos em Cadastros → Fazendas → aba Arrendamentos</div>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -910,7 +910,7 @@ export default function Arrendamentos() {
                             {produtor.nome}{produtor.inscricao_est ? ` · IE ${produtor.inscricao_est}` : ""}{produtor.municipio ? ` · ${produtor.municipio}/${produtor.estado ?? ""}` : ""}
                           </span>
                         ) : (
-                          <span style={{ fontSize: 13, color: "#888", fontStyle: "italic" }}>Produtor não definido na fazenda</span>
+                          <span style={{ fontSize: 13, color: "var(--text-3)", fontStyle: "italic" }}>Produtor não definido na fazenda</span>
                         )}
                         <span style={{ marginLeft: "auto", fontSize: 11, color: "#666" }}>{arrsGrupo.length} contrato{arrsGrupo.length !== 1 ? "s" : ""}</span>
                       </div>
@@ -926,16 +926,16 @@ export default function Arrendamentos() {
                   const ehMisto = arr.forma_pagamento === "sc_soja_milho";
 
                   return (
-                    <div key={arr.id} style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                    <div key={arr.id} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
                       {/* cabeçalho do contrato */}
                       <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
                         onClick={() => toggleArr(arr.id)}>
-                        <div style={{ fontSize: 18, color: expanded ? "#1A4870" : "#888" }}>{expanded ? "▼" : "▶"}</div>
+                        <div style={{ fontSize: 18, color: expanded ? "#1A4870" : "var(--text-3)" }}>{expanded ? "▼" : "▶"}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
-                            <span style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{arr.proprietario_nome ?? "Proprietário não informado"}</span>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{arr.proprietario_nome ?? "Proprietário não informado"}</span>
                             <Badge label={FORMA_LABEL[arr.forma_pagamento]} bg="#EBF3FC" color="#0C447C" />
-                            {fazNome && <Badge label={fazNome} bg="#F4F6FA" color="#555" />}
+                            {fazNome && <Badge label={fazNome} bg="var(--bg-page)" color="var(--text-2)" />}
                             {atras > 0 && <Badge label={`${atras} vencido${atras > 1 ? "s" : ""}`} bg="#FCEBEB" color="#791F1F" />}
                             {pend > 0 && atras === 0 && <Badge label={`${pend} pendente${pend > 1 ? "s" : ""}`} bg="#FBF3E0" color="#7A5A12" />}
                             {pagos > 0 && pend === 0 && <Badge label="Em dia" bg="#ECFDF5" color="#14532D" />}
@@ -1013,7 +1013,7 @@ export default function Arrendamentos() {
                       {expanded && (
                         <div style={{ borderTop: "0.5px solid #EEF1F6" }}>
                           {pags.length === 0 ? (
-                            <div style={{ padding: "20px 24px", textAlign: "center", color: "#888", fontSize: 12 }}>
+                            <div style={{ padding: "20px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
                               Nenhuma parcela registrada — use "Gerar por Safra" ou "+ Parcela Manual"
                             </div>
                           ) : ehMisto ? (
@@ -1021,22 +1021,22 @@ export default function Arrendamentos() {
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
                                 <tr style={{ background: "#F8FAFD" }}>
-                                  <th rowSpan={2} style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", verticalAlign: "bottom" }}>Ano Safra</th>
+                                  <th rowSpan={2} style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", verticalAlign: "bottom" }}>Ano Safra</th>
                                   <th colSpan={4} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #C6E8D9", borderLeft: "0.5px solid #C6E8D9", background: "#F0FDF7" }}>Soja — venc. 30/Abr</th>
                                   <th colSpan={4} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #C5D9F1", borderLeft: "0.5px solid #C5D9F1", background: "#EBF3FC" }}>Milho — venc. 31/Jul</th>
                                   <th rowSpan={2} style={{ padding: "7px 12px", fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}></th>
                                 </tr>
                                 <tr style={{ background: "#F8FAFD" }}>
                                   {/* soja */}
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", borderLeft: "0.5px solid #C6E8D9", background: "#F0FDF7" }}>Prev.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Entregue</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Venc.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Status</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", borderLeft: "0.5px solid #C6E8D9", background: "#F0FDF7" }}>Prev.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Entregue</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Venc.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Status</th>
                                   {/* milho */}
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", borderLeft: "0.5px solid #C5D9F1", background: "#EBF3FC" }}>Prev.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Entregue</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Venc.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Status</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", borderLeft: "0.5px solid #C5D9F1", background: "#EBF3FC" }}>Prev.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Entregue</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Venc.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1050,16 +1050,16 @@ export default function Arrendamentos() {
                                     const rep = sojaP ?? milhoP;
                                     return (
                                       <tr key={key} style={{ borderBottom: gi < arr2.length - 1 ? "0.5px solid #F0F3F8" : "none", background: (sojaAtras || milhoAtras) ? "#FFFBF5" : "transparent" }}>
-                                        <td style={{ padding: "8px 12px", fontSize: 12, color: "#555" }}>{anoDesc}</td>
+                                        <td style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)" }}>{anoDesc}</td>
                                         {/* soja */}
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, borderLeft: "0.5px solid #E8F4EF" }}>{sojaP?.sacas_previstas != null ? `${fmtN(sojaP.sacas_previstas)} sc` : "—"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12 }}>{sojaP?.sacas_pagas != null ? `${fmtN(sojaP.sacas_pagas)} sc` : "—"}</td>
-                                        <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, color: sojaAtras ? "#791F1F" : "#1a1a1a", fontWeight: sojaAtras ? 600 : 400 }}>{fmtDt(sojaP?.data_vencimento)}{sojaAtras && " ⚠"}</td>
+                                        <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, color: sojaAtras ? "#791F1F" : "var(--text-1)", fontWeight: sojaAtras ? 600 : 400 }}>{fmtDt(sojaP?.data_vencimento)}{sojaAtras && " ⚠"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right" }}>{sojaP ? <Badge label={STATUS_PAG[sojaP.status].label} bg={STATUS_PAG[sojaP.status].bg} color={STATUS_PAG[sojaP.status].color} /> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
                                         {/* milho */}
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, borderLeft: "0.5px solid #D5E8F5" }}>{milhoP?.sacas_previstas != null ? `${fmtN(milhoP.sacas_previstas)} sc` : "—"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12 }}>{milhoP?.sacas_pagas != null ? `${fmtN(milhoP.sacas_pagas)} sc` : "—"}</td>
-                                        <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, color: milhoAtras ? "#791F1F" : "#1a1a1a", fontWeight: milhoAtras ? 600 : 400 }}>{fmtDt(milhoP?.data_vencimento)}{milhoAtras && " ⚠"}</td>
+                                        <td style={{ padding: "8px 10px", textAlign: "right", fontSize: 12, color: milhoAtras ? "#791F1F" : "var(--text-1)", fontWeight: milhoAtras ? 600 : 400 }}>{fmtDt(milhoP?.data_vencimento)}{milhoAtras && " ⚠"}</td>
                                         <td style={{ padding: "8px 10px", textAlign: "right" }}>{milhoP ? <Badge label={STATUS_PAG[milhoP.status].label} bg={STATUS_PAG[milhoP.status].bg} color={STATUS_PAG[milhoP.status].color} /> : <span style={{ color: "#bbb", fontSize: 11 }}>—</span>}</td>
                                         {/* ações */}
                                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
@@ -1101,7 +1101,7 @@ export default function Arrendamentos() {
                               <thead>
                                 <tr style={{ background: "#F8FAFD" }}>
                                   {["Ano Safra", "Vencimento", ehSc ? "Sacas Prev." : "Valor Prev.", ehSc ? "Sacas Entregues" : "Valor Pago", ehSc ? "Equiv. R$" : "Diff.", "Pgto", "Status", ""].map((h, i) => (
-                                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -1113,10 +1113,10 @@ export default function Arrendamentos() {
                                     ? p.sacas_previstas * p.preco_sc_referencia : null;
                                   return (
                                     <tr key={p.id} style={{ borderBottom: pi < arr2.length - 1 ? "0.5px solid #F0F3F8" : "none", background: atrasado ? "#FFFBF5" : "transparent" }}>
-                                      <td style={{ padding: "8px 12px", fontSize: 12, color: "#555" }}>
+                                      <td style={{ padding: "8px 12px", fontSize: 12, color: "var(--text-2)" }}>
                                         {anosSafra.find(a => a.id === p.ano_safra_id)?.descricao ?? "—"}
                                       </td>
-                                      <td style={{ padding: "8px 12px", textAlign: "right", fontSize: 12, color: atrasado ? "#791F1F" : "#1a1a1a", fontWeight: atrasado ? 600 : 400 }}>
+                                      <td style={{ padding: "8px 12px", textAlign: "right", fontSize: 12, color: atrasado ? "#791F1F" : "var(--text-1)", fontWeight: atrasado ? 600 : 400 }}>
                                         {fmtDt(p.data_vencimento)}{atrasado && " ⚠"}
                                       </td>
                                       <td style={{ padding: "8px 12px", textAlign: "right", fontSize: 12 }}>
@@ -1128,7 +1128,7 @@ export default function Arrendamentos() {
                                       <td style={{ padding: "8px 12px", textAlign: "right", fontSize: 12 }}>
                                         {ehSc ? (valorRef != null ? fmtR(valorRef) : "—") : (p.valor_previsto != null && p.valor_pago != null ? fmtR(p.valor_pago - p.valor_previsto) : "—")}
                                       </td>
-                                      <td style={{ padding: "8px 12px", textAlign: "right", fontSize: 12, color: "#555" }}>{fmtDt(p.data_pagamento)}</td>
+                                      <td style={{ padding: "8px 12px", textAlign: "right", fontSize: 12, color: "var(--text-2)" }}>{fmtDt(p.data_pagamento)}</td>
                                       <td style={{ padding: "8px 12px", textAlign: "right" }}><Badge label={st.label} bg={st.bg} color={st.color} /></td>
                                       <td style={{ padding: "8px 12px", textAlign: "right" }}>
                                         <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
@@ -1195,18 +1195,18 @@ export default function Arrendamentos() {
                 <option value="cancelado">Cancelado</option>
               </select>
             </div>
-            <div style={{ background: "#fff", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6F9" }}>
                     {["Proprietário / Contrato", "Commodity", "Ano Safra", "Vencimento", "Previsto", "Pago", "Pgto", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {pagsFiltrados.length === 0 && (
-                    <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "#888", fontSize: 13 }}>Nenhuma parcela encontrada</td></tr>
+                    <tr><td colSpan={9} style={{ padding: 32, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Nenhuma parcela encontrada</td></tr>
                   )}
                   {pagsFiltrados.map((p, pi) => {
                     const arr = arrendamentos.find(a => a.id === p.arrendamento_id);
@@ -1217,15 +1217,15 @@ export default function Arrendamentos() {
                     const pagoStr = ehSc ? (p.sacas_pagas != null ? `${fmtN(p.sacas_pagas)} sc` : "—") : (p.valor_pago != null ? fmtR(p.valor_pago) : "—");
                     return (
                       <tr key={p.id} style={{ borderBottom: pi < pagsFiltrados.length - 1 ? "0.5px solid #EEF1F6" : "none", background: atrasado ? "#FFFBF5" : "transparent" }}>
-                        <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: "#1a1a1a" }}>{nomeArr(p.arrendamento_id)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "#555" }}>{p.commodity ?? (arr?.forma_pagamento === "brl" ? "R$" : "—")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "#555" }}>{anosSafra.find(a => a.id === p.ano_safra_id)?.descricao ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: atrasado ? "#791F1F" : "#1a1a1a", fontWeight: atrasado ? 600 : 400 }}>
+                        <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{nomeArr(p.arrendamento_id)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--text-2)" }}>{p.commodity ?? (arr?.forma_pagamento === "brl" ? "R$" : "—")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--text-2)" }}>{anosSafra.find(a => a.id === p.ano_safra_id)?.descricao ?? "—"}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: atrasado ? "#791F1F" : "var(--text-1)", fontWeight: atrasado ? 600 : 400 }}>
                           {fmtDt(p.data_vencimento)}{atrasado && " ⚠"}
                         </td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13 }}>{prevStr}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13 }}>{pagoStr}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "#555" }}>{fmtDt(p.data_pagamento)}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--text-2)" }}>{fmtDt(p.data_pagamento)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}><Badge label={st.label} bg={st.bg} color={st.color} /></td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
                           {p.status === "pendente" && arr && (
@@ -1246,7 +1246,7 @@ export default function Arrendamentos() {
         {!loading && aba === "calendario" && (
           <div>
             {proximos.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "#888", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum vencimento nos próximos 12 meses
               </div>
             ) : (
@@ -1263,13 +1263,13 @@ export default function Arrendamentos() {
                   const commLabel = p.commodity ?? (arr?.forma_pagamento === "brl" ? "R$" : "");
 
                   return (
-                    <div key={p.id} style={{ background: "#fff", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${urgente ? "#E24B4A50" : "#DDE2EE"}`, display: "flex", alignItems: "center", gap: 16 }}>
+                    <div key={p.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: `0.5px solid ${urgente ? "#E24B4A50" : "var(--border)"}`, display: "flex", alignItems: "center", gap: 16 }}>
                       <div style={{ width: 52, textAlign: "center", flexShrink: 0 }}>
                         <div style={{ fontSize: 22, fontWeight: 700, color: urgente ? "#E24B4A" : "#1A4870" }}>{dt.getDate()}</div>
-                        <div style={{ fontSize: 11, color: "#888" }}>{dt.toLocaleString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()} {dt.getFullYear()}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>{dt.toLocaleString("pt-BR", { month: "short" }).replace(".", "").toUpperCase()} {dt.getFullYear()}</div>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: "#1a1a1a", marginBottom: 3 }}>{arr?.proprietario_nome ?? "—"}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 3 }}>{arr?.proprietario_nome ?? "—"}</div>
                         <div style={{ fontSize: 12, color: "#666", display: "flex", gap: 14, flexWrap: "wrap" }}>
                           <span>{fmtN(arr?.area_ha ?? 0)} ha</span>
                           {commLabel && <Badge label={commLabel} bg="#EBF3FC" color="#0C447C" />}
@@ -1280,7 +1280,7 @@ export default function Arrendamentos() {
                         </div>
                       </div>
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: urgente ? "#E24B4A" : "#555" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: urgente ? "#E24B4A" : "var(--text-2)" }}>
                           {dias === 0 ? "Hoje" : `em ${dias} dias`}
                         </div>
                         <button style={{ ...btnE, marginTop: 6, background: "#ECFDF5", color: "#14532D", border: "0.5px solid #16A34A40", fontSize: 11 }}
@@ -1341,7 +1341,7 @@ export default function Arrendamentos() {
                 onChange={e => setFC(f => ({ ...f, locatario_nome: e.target.value }))}
                 placeholder="Ex: Rancho Alegre Ltda" />
             </div>
-            <div style={{ gridColumn: "1/-1", fontSize: 11, color: "#888", background: "#F8FAFC", borderRadius: 6, padding: "6px 10px", lineHeight: 1.5 }}>
+            <div style={{ gridColumn: "1/-1", fontSize: 11, color: "var(--text-3)", background: "#F8FAFC", borderRadius: 6, padding: "6px 10px", lineHeight: 1.5 }}>
               ℹ️ <strong>Locatário</strong> = quem assina o contrato como arrendatário (pode ser o grupo econômico ou empresa familiar).
               O campo <strong>Agricultor Responsável (LCDPR)</strong> abaixo deve ser o produtor físico com IE que explora a área.
             </div>
@@ -1427,17 +1427,17 @@ export default function Arrendamentos() {
               <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                 {fC.sc_soja_ha && <span style={{ color: "#14532D", marginRight: 20 }}>
                   <strong>{(parseFloat(fC.area_ha) * parseFloat(fC.sc_soja_ha)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} sc soja/ano</strong>
-                  <span style={{ color: "#555" }}> ({fC.sc_soja_ha} sc/ha)</span>
+                  <span style={{ color: "var(--text-2)" }}> ({fC.sc_soja_ha} sc/ha)</span>
                 </span>}
                 {fC.sc_milho_ha && <span style={{ color: "#0C447C" }}>
                   <strong>{(parseFloat(fC.area_ha) * parseFloat(fC.sc_milho_ha)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} sc milho/ano</strong>
-                  <span style={{ color: "#555" }}> ({fC.sc_milho_ha} sc/ha)</span>
+                  <span style={{ color: "var(--text-2)" }}> ({fC.sc_milho_ha} sc/ha)</span>
                 </span>}
               </div>
             )}
             {(fC.forma_pagamento === "sc_soja" || fC.forma_pagamento === "sc_milho") && fC.area_ha && fC.sc_soja_ha && (
               <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
-                <span style={{ color: "#555" }}>Total: </span>
+                <span style={{ color: "var(--text-2)" }}>Total: </span>
                 <strong style={{ color: "#0C447C" }}>
                   {(parseFloat(fC.area_ha) * parseFloat(fC.sc_soja_ha)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} sc/ano
                 </strong>
@@ -1458,14 +1458,14 @@ export default function Arrendamentos() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 20 }}>
               <input type="checkbox" id="renovAuto" checked={fC.renovacao_auto}
                 onChange={e => setFC(f => ({ ...f, renovacao_auto: e.target.checked }))} />
-              <label htmlFor="renovAuto" style={{ fontSize: 13, color: "#1a1a1a", cursor: "pointer" }}>Renovação automática</label>
+              <label htmlFor="renovAuto" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Renovação automática</label>
             </div>
 
             {/* IE Explorador(es) — quem declara no LCDPR */}
             <div>
               <label style={lbl}>
                 IE Explorador / Responsável LCDPR
-                <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>(1º)</span>
+                <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>(1º)</span>
               </label>
               <ProdutorCombo
                 produtores={produtores}
@@ -1477,7 +1477,7 @@ export default function Arrendamentos() {
             <div>
               <label style={lbl}>
                 IE Explorador
-                <span style={{ fontWeight: 400, color: "#888", marginLeft: 4 }}>(2º — contrato conjunto)</span>
+                <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 4 }}>(2º — contrato conjunto)</span>
               </label>
               <ProdutorCombo
                 produtores={produtores}
@@ -1594,9 +1594,9 @@ export default function Arrendamentos() {
                 </div>
                 {total != null && (
                   <div style={{ gridColumn: "1/-1", background: "#EBF3FC", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
-                    <span style={{ color: "#555" }}>Valor equivalente: </span>
+                    <span style={{ color: "var(--text-2)" }}>Valor equivalente: </span>
                     <span style={{ fontWeight: 700, color: "#0C447C" }}>{fmtR(total)}</span>
-                    <span style={{ fontSize: 11, color: "#888", marginLeft: 8 }}>({fP.sacas_previstas} sc × R$ {fP.preco_sc_referencia}/sc)</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 8 }}>({fP.sacas_previstas} sc × R$ {fP.preco_sc_referencia}/sc)</span>
                   </div>
                 )}
                 <div style={{ gridColumn: "1/-1" }}>
@@ -1633,18 +1633,18 @@ export default function Arrendamentos() {
           </div>
 
           {configSafras.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 32, color: "#888", fontSize: 13 }}>
+            <div style={{ textAlign: "center", padding: 32, color: "var(--text-3)", fontSize: 13 }}>
               Nenhum ano-safra cadastrado no período do contrato. Cadastre anos safra em Cadastros.
             </div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
               <thead>
                 <tr style={{ background: "#F3F6F9" }}>
-                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE", width: 30 }}>
+                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", width: 30 }}>
                     <input type="checkbox" checked={configSafras.every(c => c.incluir)}
                       onChange={e => setConfigSafras(cs => cs.map(c => ({ ...c, incluir: e.target.checked })))} />
                   </th>
-                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "#555", borderBottom: "0.5px solid #DDE2EE" }}>Ano Safra</th>
+                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Ano Safra</th>
                   {(selArrGerador.forma_pagamento === "sc_soja" || selArrGerador.forma_pagamento === "sc_soja_milho") && <>
                     <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Soja sc/ha</th>
                     <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Total Soja</th>
@@ -1683,7 +1683,7 @@ export default function Arrendamentos() {
                         <input type="checkbox" checked={cfg.incluir}
                           onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, incluir: e.target.checked } : c))} />
                       </td>
-                      <td style={{ padding: "6px 10px", fontSize: 13, fontWeight: 600, color: "#1a1a1a" }}>{cfg.descricao}</td>
+                      <td style={{ padding: "6px 10px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{cfg.descricao}</td>
 
                       {(selArrGerador.forma_pagamento === "sc_soja" || selArrGerador.forma_pagamento === "sc_soja_milho") && <>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
@@ -1734,7 +1734,7 @@ export default function Arrendamentos() {
                         <td style={{ padding: "6px 8px", textAlign: "right", background: "#FAFEF8" }}>
                           {totalSoja > 0 && precoSojaN > 0
                             ? <span style={{ fontWeight: 600, fontSize: 12, color: "#14532D" }}>{fmtR(totalSoja * precoSojaN)}</span>
-                            : <span style={{ color: "#aaa", fontSize: 11 }}>{totalSoja > 0 ? `${fmtN(totalSoja,1)} sc` : "—"}</span>}
+                            : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{totalSoja > 0 ? `${fmtN(totalSoja,1)} sc` : "—"}</span>}
                         </td>
                         <td style={{ padding: "6px 8px", background: "#FAFEF8" }}>
                           <input style={inpSm} type="date" value={cfg.dt_venc_soja}
@@ -1752,7 +1752,7 @@ export default function Arrendamentos() {
                         <td style={{ padding: "6px 8px", textAlign: "right", background: "#EBF3FC" }}>
                           {totalMilho > 0 && precoMilhoN > 0
                             ? <span style={{ fontWeight: 600, fontSize: 12, color: "#0C447C" }}>{fmtR(totalMilho * precoMilhoN)}</span>
-                            : <span style={{ color: "#aaa", fontSize: 11 }}>{totalMilho > 0 ? `${fmtN(totalMilho,1)} sc` : "—"}</span>}
+                            : <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{totalMilho > 0 ? `${fmtN(totalMilho,1)} sc` : "—"}</span>}
                         </td>
                         <td style={{ padding: "6px 8px", background: "#EBF3FC" }}>
                           <input style={inpSm} type="date" value={cfg.dt_venc_milho}

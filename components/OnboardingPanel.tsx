@@ -13,8 +13,8 @@ export default function OnboardingPanel() {
 
   return (
     <div style={{
-      background: "#fff",
-      border: "0.5px solid #DDE2EE",
+      background: "var(--bg-card)",
+      border: "0.5px solid var(--border)",
       borderRadius: 12,
       padding: "24px 28px",
       marginBottom: 24,
@@ -22,10 +22,10 @@ export default function OnboardingPanel() {
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a1a" }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-1)" }}>
             {todosCompletos ? "Implantação concluída!" : "Implantação do sistema"}
           </div>
-          <div style={{ fontSize: 13, color: "#555", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "var(--text-2)", marginTop: 2 }}>
             {todosCompletos
               ? "Todos os cadastros iniciais foram realizados. O sistema está pronto para uso."
               : `Etapa ${stepsCompletos + 1} de ${TOTAL_STEPS} — complete as etapas para liberar todos os módulos`}
@@ -59,8 +59,8 @@ export default function OnboardingPanel() {
               gap: 14,
               padding: "14px 16px",
               borderRadius: 8,
-              border: `0.5px solid ${atual ? "#1A4870" : "#DDE2EE"}`,
-              background: atual ? "#D5E8F5" : completo ? "#F4F6FA" : "#fff",
+              border: `0.5px solid ${atual ? "#1A4870" : "var(--border)"}`,
+              background: atual ? "#D5E8F5" : completo ? "var(--bg-page)" : "var(--bg-card)",
               opacity: futuro ? 0.45 : 1,
             }}>
               {/* Ícone */}
@@ -68,8 +68,8 @@ export default function OnboardingPanel() {
                 width: 28,
                 height: 28,
                 borderRadius: "50%",
-                background: completo ? "#1A4870" : atual ? "#1A5CB8" : "#DDE2EE",
-                color: completo || atual ? "#fff" : "#888",
+                background: completo ? "#1A4870" : atual ? "#1A5CB8" : "var(--border)",
+                color: completo || atual ? "#fff" : "var(--text-3)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -83,8 +83,8 @@ export default function OnboardingPanel() {
 
               {/* Texto */}
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1a1a" }}>{step.titulo}</div>
-                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{step.subtitulo}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-1)" }}>{step.titulo}</div>
+                <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 2 }}>{step.subtitulo}</div>
 
                 {/* Instruções expandidas só no step atual */}
                 {atual && (
@@ -149,8 +149,8 @@ export default function OnboardingPanel() {
               {futuro && (
                 <div style={{
                   fontSize: 11,
-                  background: "#F4F6FA",
-                  color: "#888",
+                  background: "var(--bg-page)",
+                  color: "var(--text-3)",
                   borderRadius: 99,
                   padding: "2px 10px",
                   flexShrink: 0,

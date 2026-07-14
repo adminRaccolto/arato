@@ -130,17 +130,17 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
   const desconectar = modo === "bridge" ? desconectarBridge : desconectarSerial;
 
   return (
-    <div style={{ background: "#F4F6FA", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+    <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
 
       {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#555" }}>Balança Toledo PRIX</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)" }}>Balança Toledo PRIX</span>
           <span style={{
             fontSize: 10, padding: "2px 8px", borderRadius: 10,
-            background: conectada ? "#DCFCE7" : "#EEF1F6",
-            color: conectada ? "#166534" : "#888",
-            border: "0.5px solid", borderColor: conectada ? "#16A34A40" : "#D4DCE8",
+            background: conectada ? "#DCFCE7" : "var(--bg-tag)",
+            color: conectada ? "#166534" : "var(--text-3)",
+            border: "0.5px solid", borderColor: conectada ? "#16A34A40" : "var(--border-table)",
           }}>
             {conectada ? "● Conectada" : "○ Desconectada"}
           </span>
@@ -148,14 +148,14 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
 
         {/* Seletor de modo */}
         {!conectada && (
-          <div style={{ display: "flex", gap: 4, background: "#EEF1F6", borderRadius: 8, padding: 3 }}>
+          <div style={{ display: "flex", gap: 4, background: "var(--bg-tag)", borderRadius: 8, padding: 3 }}>
             {([["bridge", "RJ45 (Bridge)"], ["serial", "USB Serial"]] as [Modo, string][]).map(([m, label]) => (
               <button key={m} type="button" onClick={() => { setModo(m); setErro(null); }}
                 disabled={m === "serial" && !temSerial}
                 style={{
                   fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 6, border: "none", cursor: m === "serial" && !temSerial ? "not-allowed" : "pointer",
                   background: modo === m ? "#fff" : "transparent",
-                  color: modo === m ? "#1A4870" : "#888",
+                  color: modo === m ? "#1A4870" : "var(--text-3)",
                   boxShadow: modo === m ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
                   opacity: m === "serial" && !temSerial ? 0.4 : 1,
                 }}>
@@ -184,12 +184,12 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
         <div style={{
           flex: 1, textAlign: "center", padding: "10px 0",
           background: conectada ? "#fff" : "#EBEDF2",
-          border: "0.5px solid", borderColor: conectada ? "#1A487040" : "#D4DCE8", borderRadius: 8,
+          border: "0.5px solid", borderColor: conectada ? "#1A487040" : "var(--border-table)", borderRadius: 8,
         }}>
           <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: conectada && pesoAtual ? "#1A4870" : "#bbb", letterSpacing: 2 }}>
             {pesoAtual != null ? pesoAtual.toLocaleString("pt-BR") : "— — —"}
           </div>
-          <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>kg</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>kg</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -198,8 +198,8 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
             style={{
               fontSize: 11, fontWeight: 600, padding: "7px 14px", borderRadius: 7, border: "none", whiteSpace: "nowrap",
               cursor: conectada && pesoAtual != null ? "pointer" : "not-allowed",
-              background: conectada && pesoAtual != null ? "#1A4870" : "#EEF1F6",
-              color:      conectada && pesoAtual != null ? "#fff"    : "#aaa",
+              background: conectada && pesoAtual != null ? "#1A4870" : "var(--bg-tag)",
+              color:      conectada && pesoAtual != null ? "#fff"    : "var(--text-muted)",
             }}>
             ↓ Capturar Peso Bruto
           </button>
@@ -208,20 +208,20 @@ export default function BalancaSerial({ onCapturarBruto, onCapturarTara }: Props
             style={{
               fontSize: 11, fontWeight: 600, padding: "7px 14px", borderRadius: 7, border: "none", whiteSpace: "nowrap",
               cursor: conectada && pesoAtual != null ? "pointer" : "not-allowed",
-              background: conectada && pesoAtual != null ? "#C9921B" : "#EEF1F6",
-              color:      conectada && pesoAtual != null ? "#fff"    : "#aaa",
+              background: conectada && pesoAtual != null ? "#C9921B" : "var(--bg-tag)",
+              color:      conectada && pesoAtual != null ? "#fff"    : "var(--text-muted)",
             }}>
             ↓ Capturar Tara
           </button>
         </div>
       </div>
 
-      {status && !erro && <div style={{ marginTop: 6, fontSize: 10, color: "#888", textAlign: "center" }}>{status}</div>}
+      {status && !erro && <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-3)", textAlign: "center" }}>{status}</div>}
       {erro && (
         <div style={{ marginTop: 8, fontSize: 11, color: "#E24B4A" }}>
           {erro}
           {modo === "bridge" && (
-            <div style={{ marginTop: 4, fontSize: 10, color: "#888" }}>
+            <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-3)" }}>
               Certifique-se de que o <strong>bridge.exe</strong> está rodando no PC da balança.
             </div>
           )}

@@ -59,7 +59,7 @@ const TIPO_META: Record<TipoTriang, { label: string; cor: string; bg: string; ic
 };
 
 const STATUS_META: Record<StatusTriang, { label: string; cor: string; bg: string }> = {
-  rascunho:    { label: "Rascunho",    cor: "#555",    bg: "#F4F6FA" },
+  rascunho:    { label: "Rascunho",    cor: "var(--text-2)",    bg: "var(--bg-page)" },
   em_andamento:{ label: "Em andamento",cor: "#7A5A12", bg: "#FBF3E0" },
   concluido:   { label: "Concluído",   cor: "#14532D", bg: "#DCF5E8" },
   cancelado:   { label: "Cancelado",   cor: "#791F1F", bg: "#FCEBEB" },
@@ -81,7 +81,7 @@ const CFOP_LABEL: Record<string, string> = {
 // ── Helpers de estilo ────────────────────────────────────────────────────────
 
 const card = (extra?: React.CSSProperties): React.CSSProperties => ({
-  background: "#fff", borderRadius: 12, border: "0.5px solid #DDE2EE",
+  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE",
   padding: "18px 20px", ...extra,
 });
 const inp: React.CSSProperties = {
@@ -89,13 +89,13 @@ const inp: React.CSSProperties = {
   border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box",
   fontFamily: "inherit",
 };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#555", display: "block", marginBottom: 4, fontWeight: 600 };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 4, fontWeight: 600 };
 const btnV: React.CSSProperties = {
   background: "#1A4870", color: "#fff", border: "none", borderRadius: 7,
   padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer",
 };
 const btnO: React.CSSProperties = {
-  background: "#fff", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 7,
+  background: "var(--bg-card)", color: "#1A4870", border: "0.5px solid #1A4870", borderRadius: 7,
   padding: "9px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer",
 };
 
@@ -354,14 +354,14 @@ export default function TriangulacaoPage() {
   const nomePessoa = (id?: string) => pessoas.find(p => p.id === id)?.nome ?? "—";
   const nomeProdutor = (id?: string) => produtores.find(p => p.id === id)?.nome ?? "—";
 
-  if (!fazendaId) return <div style={{ padding: 40, textAlign: "center", color: "#888" }}>Selecione uma fazenda.</div>;
+  if (!fazendaId) return <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Selecione uma fazenda.</div>;
 
   return (
     <div style={{ padding: "24px 32px", fontFamily: "Inter, sans-serif", maxWidth: 1300, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Triangulação de NF</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Triangulação de NF</h1>
           <p style={{ fontSize: 13, color: "#666", margin: "4px 0 0" }}>
             Gestão de operações com múltiplos destinatários — Venda a Ordem, Barter, Pagamento a Terceiro e Entrega em Terceiro
           </p>
@@ -379,8 +379,8 @@ export default function TriangulacaoPage() {
             <div key={tipo} style={card({ cursor: "pointer", borderLeft: `3px solid ${m.cor}` })}
               onClick={() => setFiltroTipo(filtroTipo === tipo ? "" : tipo)}>
               <div style={{ fontSize: 22, marginBottom: 4 }}>{m.icon}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{m.label}</div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 8 }}>{m.desc}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{m.label}</div>
+              <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>{m.desc}</div>
               <div style={{ display: "flex", gap: 10 }}>
                 <span style={{ fontSize: 20, fontWeight: 700, color: m.cor }}>{n}</span>
                 {emAnd > 0 && <span style={{ background: "#FBF3E0", color: "#7A5A12", fontSize: 11, padding: "2px 6px", borderRadius: 4, alignSelf: "center" }}>
@@ -412,12 +412,12 @@ export default function TriangulacaoPage() {
 
       {/* Lista */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: 60, color: "#888" }}>Carregando…</div>
+        <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)" }}>Carregando…</div>
       ) : listFiltrada.length === 0 ? (
         <div style={card({ textAlign: "center", padding: 60 })}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔄</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a1a", marginBottom: 6 }}>Nenhuma triangulação cadastrada</div>
-          <div style={{ fontSize: 13, color: "#888" }}>Clique em "+ Nova Triangulação" para registrar uma operação com múltiplos destinatários.</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma triangulação cadastrada</div>
+          <div style={{ fontSize: 13, color: "var(--text-3)" }}>Clique em "+ Nova Triangulação" para registrar uma operação com múltiplos destinatários.</div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -436,13 +436,13 @@ export default function TriangulacaoPage() {
                   <Badge tipo={item.tipo} />
                   <StatusBadge status={item.status} />
                   {item.contrato_ref && (
-                    <span style={{ fontSize: 12, color: "#555", fontWeight: 600 }}>Contrato: {item.contrato_ref}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>Contrato: {item.contrato_ref}</span>
                   )}
                   {item.produto && (
-                    <span style={{ fontSize: 12, color: "#1a1a1a" }}>{item.produto}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-1)" }}>{item.produto}</span>
                   )}
                   {item.quantidade_kg && (
-                    <span style={{ fontSize: 12, color: "#1a1a1a" }}>
+                    <span style={{ fontSize: 12, color: "var(--text-1)" }}>
                       {fmtSc(item.quantidade_kg)} ({fmtKg(item.quantidade_kg)})
                     </span>
                   )}
@@ -451,8 +451,8 @@ export default function TriangulacaoPage() {
                   )}
                   <div style={{ flex: 1 }} />
                   {/* Pipeline de partes */}
-                  <div style={{ fontSize: 12, color: "#555", display: "flex", alignItems: "center", gap: 6 }}>
-                    {prodNome !== "—" && <><span style={{ fontWeight: 600, color: "#1a1a1a" }}>{prodNome}</span><span>→</span></>}
+                  <div style={{ fontSize: 12, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 6 }}>
+                    {prodNome !== "—" && <><span style={{ fontWeight: 600, color: "var(--text-1)" }}>{prodNome}</span><span>→</span></>}
                     {pANome !== "—"   && <><span style={{ fontWeight: 600, color: "#1A4870" }}>{pANome}</span></>}
                     {pBNome !== "—"   && <><span>→</span><span style={{ fontWeight: 600, color: "#14532D" }}>{pBNome}</span></>}
                   </div>
@@ -479,37 +479,37 @@ export default function TriangulacaoPage() {
                   <div>
                     <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 16 }}>
                       {/* Chain de documentos */}
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#555", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
                         Cadeia de Documentos Fiscais
                       </div>
                       {nfs.length === 0 ? (
-                        <div style={{ fontSize: 12, color: "#888", fontStyle: "italic" }}>Documentos não gerados ainda. Edite para gerar.</div>
+                        <div style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic" }}>Documentos não gerados ainda. Edite para gerar.</div>
                       ) : (
                         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                           {nfs.map((nf, i) => (
                             <div key={i} style={{
-                              border: `0.5px solid ${nf.status === "autorizada" ? "#86EFAC" : nf.status === "cancelada" ? "#FCA5A5" : "#DDE2EE"}`,
+                              border: `0.5px solid ${nf.status === "autorizada" ? "#86EFAC" : nf.status === "cancelada" ? "#FCA5A5" : "var(--border)"}`,
                               borderRadius: 10, padding: "12px 16px", minWidth: 220, maxWidth: 320, flex: "1 1 220px",
                               background: nf.status === "autorizada" ? "#F0FDF4" : nf.status === "cancelada" ? "#FEF2F2" : "#FAFBFC",
                             }}>
                               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                                 <span style={{ fontWeight: 700, fontSize: 14, color: "#1A4870" }}>CFOP {nf.cfop}</span>
-                                <span style={{ fontSize: 10, fontWeight: 600, color: nf.status === "autorizada" ? "#16A34A" : nf.status === "cancelada" ? "#E24B4A" : "#888",
-                                  background: nf.status === "autorizada" ? "#DCF5E8" : nf.status === "cancelada" ? "#FCEBEB" : "#F4F6FA",
+                                <span style={{ fontSize: 10, fontWeight: 600, color: nf.status === "autorizada" ? "#16A34A" : nf.status === "cancelada" ? "#E24B4A" : "var(--text-3)",
+                                  background: nf.status === "autorizada" ? "#DCF5E8" : nf.status === "cancelada" ? "#FCEBEB" : "var(--bg-page)",
                                   padding: "1px 6px", borderRadius: 4 }}>
                                   {nf.status === "pendente" ? "PENDENTE" : nf.status === "gerada" ? "GERADA" : nf.status === "autorizada" ? "AUTORIZADA" : "CANCELADA"}
                                 </span>
                               </div>
-                              <div style={{ fontSize: 11, color: "#1a1a1a", marginBottom: 4 }}>{nf.descricao}</div>
-                              <div style={{ fontSize: 11, color: "#555" }}>
+                              <div style={{ fontSize: 11, color: "var(--text-1)", marginBottom: 4 }}>{nf.descricao}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                                 <div>Emitente: <strong>{nf.emitente}</strong></div>
                                 <div>Destinatário: <strong>{nf.destinatario}</strong></div>
                                 {nf.valor != null && nf.valor > 0 && <div>Valor: <strong>{fmtMoeda(nf.valor, item.moeda)}</strong></div>}
                                 {nf.numero && <div>Nº: <strong>{nf.numero}</strong></div>}
-                                {nf.chave && <div style={{ fontSize: 10, color: "#888", wordBreak: "break-all" }}>Chave: {nf.chave}</div>}
+                                {nf.chave && <div style={{ fontSize: 10, color: "var(--text-3)", wordBreak: "break-all" }}>Chave: {nf.chave}</div>}
                               </div>
                               {CFOP_LABEL[nf.cfop] && (
-                                <div style={{ fontSize: 10, color: "#888", marginTop: 6, borderTop: "0.5px solid #DDE2EE", paddingTop: 6 }}>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6, borderTop: "0.5px solid #DDE2EE", paddingTop: 6 }}>
                                   {CFOP_LABEL[nf.cfop]}
                                 </div>
                               )}
@@ -536,7 +536,7 @@ export default function TriangulacaoPage() {
 
                       {/* Barter: link NF entrada */}
                       {item.tipo === "barter" && item.nf_entrada_ref && (
-                        <div style={{ marginTop: 14, fontSize: 12, color: "#555" }}>
+                        <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-2)" }}>
                           NF de Entrada de Insumos ref.: <strong style={{ color: "#1A4870" }}>{item.nf_entrada_ref}</strong>
                           {item.valor_insumos && <> — Valor: <strong>{fmtMoeda(item.valor_insumos)}</strong></>}
                         </div>
@@ -565,24 +565,24 @@ export default function TriangulacaoPage() {
       {/* ══════════ MODAL ══════════ */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#fff", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {/* Modal header */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
+            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {editItem ? "Editar Triangulação" : "Nova Triangulação de NF"}
                 </div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                   {step === 1 ? "Passo 1 — Selecionar tipo" : step === 2 ? "Passo 2 — Dados da operação" : "Passo 3 — Revisar e gerar documentos"}
                 </div>
               </div>
-              <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }} onClick={() => setModal(false)}>✕</button>
+              <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }} onClick={() => setModal(false)}>✕</button>
             </div>
 
             {/* Progress */}
-            <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "#F4F6FA", borderBottom: "0.5px solid #DDE2EE" }}>
+            <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "var(--bg-page)", borderBottom: "0.5px solid #DDE2EE" }}>
               {[1, 2, 3].map(s => (
-                <div key={s} style={{ padding: "10px 16px", fontSize: 12, fontWeight: step >= s ? 700 : 400, color: step >= s ? "#1A4870" : "#888",
+                <div key={s} style={{ padding: "10px 16px", fontSize: 12, fontWeight: step >= s ? 700 : 400, color: step >= s ? "#1A4870" : "var(--text-3)",
                   borderBottom: step === s ? "2px solid #1A4870" : "2px solid transparent", cursor: step < s ? "default" : "pointer" }}
                   onClick={() => { if (s < step) setStep(s as 1|2|3); }}>
                   {s}. {s === 1 ? "Tipo" : s === 2 ? "Dados" : "Gerar Docs"}
@@ -595,7 +595,7 @@ export default function TriangulacaoPage() {
               {/* ── PASSO 1: TIPO ─────────────────────────────────────── */}
               {step === 1 && (
                 <div>
-                  <div style={{ fontSize: 13, color: "#555", marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 16 }}>
                     Selecione o tipo de operação triangular:
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -604,34 +604,34 @@ export default function TriangulacaoPage() {
                       const sel = f.tipo === tipo;
                       return (
                         <div key={tipo} onClick={() => sf("tipo", tipo)} style={{
-                          border: `2px solid ${sel ? m.cor : "#DDE2EE"}`,
+                          border: `2px solid ${sel ? m.cor : "var(--border)"}`,
                           borderRadius: 10, padding: "16px 18px", cursor: "pointer",
-                          background: sel ? m.bg : "#fff",
+                          background: sel ? m.bg : "var(--bg-card)",
                           transition: "all 0.15s",
                         }}>
                           <div style={{ fontSize: 24, marginBottom: 6 }}>{m.icon}</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: sel ? m.cor : "#1a1a1a", marginBottom: 4 }}>{m.label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: sel ? m.cor : "var(--text-1)", marginBottom: 4 }}>{m.label}</div>
                           <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{m.desc}</div>
                           {tipo === "venda_a_ordem" && (
-                            <div style={{ fontSize: 11, color: "#555", background: "#F4F6FA", borderRadius: 6, padding: "6px 8px" }}>
+                            <div style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 6, padding: "6px 8px" }}>
                               Produtor → Trading A → Trading B<br />
                               Entrega física: Produtor → Trading B
                             </div>
                           )}
                           {tipo === "barter" && (
-                            <div style={{ fontSize: 11, color: "#555", background: "#F4F6FA", borderRadius: 6, padding: "6px 8px" }}>
+                            <div style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 6, padding: "6px 8px" }}>
                               Fornecedor entrega insumos ao Produtor<br />
                               Trading paga fornecedor + recebe grão
                             </div>
                           )}
                           {tipo === "pagamento_terceiro" && (
-                            <div style={{ fontSize: 11, color: "#555", background: "#F4F6FA", borderRadius: 6, padding: "6px 8px" }}>
+                            <div style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 6, padding: "6px 8px" }}>
                               NF de grão normal para Trading<br />
                               Trading liquida dívida do Produtor com Banco/Terceiro
                             </div>
                           )}
                           {tipo === "entrega_terceiro" && (
-                            <div style={{ fontSize: 11, color: "#555", background: "#F4F6FA", borderRadius: 6, padding: "6px 8px" }}>
+                            <div style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", borderRadius: 6, padding: "6px 8px" }}>
                               NF emitida para Trading A<br />
                               Local de entrega física = Trading B (destacado no infCpl)
                             </div>
@@ -703,7 +703,7 @@ export default function TriangulacaoPage() {
                       </div>
                     </div>
                     {(f.quantidade_kg ?? 0) > 0 && (f.preco_unitario ?? 0) > 0 && (
-                      <div style={{ marginTop: 8, fontSize: 12, color: "#555" }}>
+                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-2)" }}>
                         Total estimado:{" "}
                         <strong style={{ color: "#1A4870" }}>
                           {fmtMoeda(((f.quantidade_kg ?? 0) / 60) * (f.preco_unitario ?? 0), f.moeda)}
@@ -738,7 +738,7 @@ export default function TriangulacaoPage() {
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                             </select>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Recebe NF 6101 do Produtor</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Recebe NF 6101 do Produtor</div>
                           </div>
                           <div>
                             <label style={lbl}>Trading B — Destinatário Final (NF 6108 + 6923)</label>
@@ -746,7 +746,7 @@ export default function TriangulacaoPage() {
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                             </select>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Recebe entrega física + NF 6923</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Recebe entrega física + NF 6923</div>
                           </div>
                         </div>
                         <div style={{ padding: 12, background: "#D5E8F5", borderRadius: 8, fontSize: 11, color: "#0B2D50" }}>
@@ -777,7 +777,7 @@ export default function TriangulacaoPage() {
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                             </select>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Quem entrega os insumos ao produtor</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Quem entrega os insumos ao produtor</div>
                           </div>
                           <div>
                             <label style={lbl}>Trading (comprador do grão)</label>
@@ -785,7 +785,7 @@ export default function TriangulacaoPage() {
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                             </select>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Paga o fornecedor e recebe o grão</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Paga o fornecedor e recebe o grão</div>
                           </div>
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -838,7 +838,7 @@ export default function TriangulacaoPage() {
                         <div>
                           <label style={lbl}>Valor a pagar ao terceiro (R$)</label>
                           <InputNumerico style={{ ...inp, maxWidth: 200 }} min="0" value={f.valor_terceiro ?? ""} onChange={v => sf("valor_terceiro", Number(v))} placeholder="0,00" />
-                          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Parte do valor do grão que a trading transfere diretamente ao beneficiário</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Parte do valor do grão que a trading transfere diretamente ao beneficiário</div>
                         </div>
                         <div style={{ padding: 12, background: "#EDE9FE", borderRadius: 8, fontSize: 11, color: "#4C1D95" }}>
                           <strong>Fluxo:</strong><br />
@@ -870,7 +870,7 @@ export default function TriangulacaoPage() {
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                             </select>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>A NF é emitida para este CNPJ</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>A NF é emitida para este CNPJ</div>
                           </div>
                           <div>
                             <label style={lbl}>Trading B — Local Físico de Entrega</label>
@@ -886,7 +886,7 @@ export default function TriangulacaoPage() {
                               <option value="">— Selecionar —</option>
                               {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                             </select>
-                            <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Onde o grão é entregue fisicamente</div>
+                            <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>Onde o grão é entregue fisicamente</div>
                           </div>
                         </div>
 
@@ -935,17 +935,17 @@ export default function TriangulacaoPage() {
               {/* ── PASSO 3: REVIEW ───────────────────────────────────── */}
               {step === 3 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                  <div style={{ padding: 14, background: "#F4F6FA", borderRadius: 10, fontSize: 13 }}>
+                  <div style={{ padding: 14, background: "var(--bg-page)", borderRadius: 10, fontSize: 13 }}>
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                       <span><Badge tipo={f.tipo} /></span>
                       <span>{f.produto} · {fmtSc(f.quantidade_kg)} · {fmtMoeda(((f.quantidade_kg ?? 0) / 60) * (f.preco_unitario ?? 0), f.moeda)}</span>
-                      <span style={{ color: "#555" }}>Contrato: <strong>{f.contrato_ref || "—"}</strong></span>
-                      <span style={{ color: "#555" }}>Safra: <strong>{f.safra || "—"}</strong></span>
+                      <span style={{ color: "var(--text-2)" }}>Contrato: <strong>{f.contrato_ref || "—"}</strong></span>
+                      <span style={{ color: "var(--text-2)" }}>Safra: <strong>{f.safra || "—"}</strong></span>
                     </div>
                   </div>
 
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", marginBottom: 12 }}>
                       Documentos que serão gerados para esta operação:
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -956,12 +956,12 @@ export default function TriangulacaoPage() {
                           </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{nf.descricao}</div>
-                            <div style={{ fontSize: 12, color: "#555", display: "flex", gap: 16 }}>
+                            <div style={{ fontSize: 12, color: "var(--text-2)", display: "flex", gap: 16 }}>
                               <span>Emitente: <strong>{nf.emitente}</strong></span>
                               <span>Destinatário: <strong>{nf.destinatario}</strong></span>
                               {nf.valor != null && nf.valor > 0 && <span>Valor: <strong>{fmtMoeda(nf.valor, f.moeda)}</strong></span>}
                             </div>
-                            {CFOP_LABEL[nf.cfop] && <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>{CFOP_LABEL[nf.cfop]}</div>}
+                            {CFOP_LABEL[nf.cfop] && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>{CFOP_LABEL[nf.cfop]}</div>}
                           </div>
                         </div>
                       ))}
@@ -995,7 +995,7 @@ export default function TriangulacaoPage() {
             </div>
 
             {/* Footer do modal */}
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "#fff" }}>
+            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "var(--bg-card)" }}>
               <button style={btnO} onClick={() => step === 1 ? setModal(false) : setStep(s => (s - 1) as 1|2|3)}>
                 {step === 1 ? "Cancelar" : "← Voltar"}
               </button>
