@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../components/AuthProvider";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase"; // usado em carregarFazendas
 
 type FazendaOp = { id: string; nome: string };
 
@@ -16,14 +16,11 @@ const NAV_ITEMS = [
   { href: "/campo/monitoramento", label: "Monitor.", icon: "🐛" },
 ];
 
-const LOGO_FALLBACK = "https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png";
-
 export default function CampoLayoutClient({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { fazendaId, nomeFazendaSelecionada, setFazendaAtiva, contaId } = useAuth();
   const [fazendas, setFazendas] = useState<FazendaOp[]>([]);
   const [showSwitch, setShowSwitch] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string>(LOGO_FALLBACK);
 
   // Registra service worker para modo offline
   useEffect(() => {
@@ -44,10 +41,6 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
 
   useEffect(() => { carregarFazendas(); }, [carregarFazendas]);
 
-  useEffect(() => {
-    const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");
-    if (data?.publicUrl) setLogoUrl(data.publicUrl);
-  }, []);
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", background: "var(--bg-page)", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
@@ -56,9 +49,9 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
       <div style={{ background: "#1A4870", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img
-            src={logoUrl}
+            src="/Arato_BRANCO.png"
             alt="Arato"
-            style={{ height: 28, maxWidth: 90, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(255,255,255,0.5))" }}
+            style={{ height: 26, maxWidth: 86, objectFit: "contain" }}
           />
           <div>
             <div style={{ fontSize: 10, color: "#B0C8E0", letterSpacing: "0.5px", lineHeight: 1 }}>campo</div>

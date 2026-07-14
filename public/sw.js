@@ -11,6 +11,7 @@ const APP_SHELL = [
   "/icon-192x192.png",
   "/icon-512x512.png",
   "/apple-touch-icon.png",
+  "/Arato_BRANCO.png",
 ];
 
 // Instala: cacheia app shell
