@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 const SYSTEM_PROMPT = `Você é o Assistente do Arato — um assistente especialista integrado ao sistema de gestão agrícola Arato (RacTech).
 
@@ -206,6 +207,62 @@ Vá em **Relatórios → DRE Agrícola**, selecione o ano safra e os ciclos, e c
 
 type MensagemChat = { role: "user" | "assistant"; content: string };
 
+async function buscarContextoFazenda(fazenda_id: string): Promise<string> {
+  try {
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const [fazendaRes, ciclosRes, automacoesRes] = await Promise.all([
+      supabaseAdmin
+        .from("fazendas")
+        .select("nome, municipio, estado")
+        .eq("id", fazenda_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("ciclos")
+        .select("cultura, descricao, fazenda_id, ano_safra_id")
+        .or(`fazenda_id.eq.${fazenda_id}`)
+        .order("created_at", { ascending: false })
+        .limit(6),
+      supabaseAdmin
+        .from("automacoes_fazenda")
+        .select("tipo, ativo")
+        .eq("fazenda_id", fazenda_id),
+    ]);
+
+    let ctx = "\n\n## Contexto desta sessão (dados reais da fazenda do usuário)\n";
+
+    const fazenda = fazendaRes.data;
+    if (fazenda) {
+      ctx += `- **Fazenda ativa:** ${fazenda.nome}${fazenda.municipio ? ` — ${fazenda.municipio}/${fazenda.estado ?? "MT"}` : ""}\n`;
+    }
+
+    const ciclos = ciclosRes.data ?? [];
+    if (ciclos.length > 0) {
+      const nomes = ciclos.map(c => c.cultura + (c.descricao ? ` (${c.descricao})` : "")).join(", ");
+      ctx += `- **Ciclos cadastrados:** ${nomes}\n`;
+    } else {
+      ctx += `- **Ciclos:** nenhum cadastrado ainda\n`;
+    }
+
+    const automacoes = automacoesRes.data ?? [];
+    const ativas = automacoes.filter(a => a.ativo).map(a => a.tipo);
+    if (ativas.length > 0) {
+      ctx += `- **Automações ativas:** ${ativas.join(", ")}\n`;
+    } else {
+      ctx += `- **Automações:** nenhuma ativada (usuário pode não ter configurado ainda)\n`;
+    }
+
+    ctx += "\nUse esses dados para personalizar suas respostas. Por exemplo, mencione o nome da fazenda e os ciclos reais ao explicar fluxos.\n";
+
+    return ctx;
+  } catch {
+    return "";
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
@@ -214,7 +271,7 @@ export async function POST(req: NextRequest) {
       mensagens: MensagemChat[];
     };
 
-    const { mensagens } = body;
+    const { fazenda_id, mensagens } = body;
 
     if (!mensagens || mensagens.length === 0) {
       return NextResponse.json({ error: "Nenhuma mensagem fornecida" }, { status: 400 });
@@ -225,7 +282,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "ANTHROPIC_API_KEY não configurada" }, { status: 500 });
     }
 
-    // Chama a API da Anthropic diretamente via fetch (sem SDK para evitar dependência)
+    // Busca contexto dinâmico da fazenda para personalizar respostas
+    const contextoDinamico = fazenda_id ? await buscarContextoFazenda(fazenda_id) : "";
+    const systemPromptCompleto = SYSTEM_PROMPT + contextoDinamico;
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -234,9 +294,9 @@ export async function POST(req: NextRequest) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        model: "claude-sonnet-5",
+        max_tokens: 2048,
+        system: systemPromptCompleto,
         messages: mensagens.map(m => ({ role: m.role, content: m.content })),
       }),
     });
