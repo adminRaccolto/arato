@@ -190,6 +190,7 @@ const TOOLS: Anthropic.Tool[] = [
         valor_total:     { type: "number",  description: "Valor total da nota em R$" },
         vencimento:      { type: "string",  description: "Data de vencimento para CP: hoje, amanhã, dd/mm/aaaa" },
         confirmado:      { type: "boolean", description: "false = apenas preview (padrão). true = salvar no sistema. Só use true após o usuário confirmar." },
+        tipo_nf:         { type: "string", enum: ["produto", "servico"], description: "Tipo da nota: 'produto' = NF-e de mercadorias/insumos físicos (sementes, fertilizantes, peças, equipamentos, combustível). 'servico' = NFS-e ou nota de serviços (consultoria, honorários, manutenção, TI, contabilidade, assessoria). Analise o emitente e os itens para decidir." },
         itens: {
           type: "array",
           description: "Lista de itens da nota fiscal",
@@ -649,9 +650,14 @@ REGRA #5 — CONTEXTO CONTÍNUO:
 REGRA #6 — FOTO DE NOTA FISCAL:
 Quando o usuário enviar uma imagem/PDF ou pedir para registrar uma NF de compra:
 - LEIA a imagem/PDF para extrair: razão social, CNPJ, número da NF, data de emissão, valor total, itens (descrição/quantidade/unidade/valor).
-- IMEDIATAMENTE chame registrar_nf_compra com confirmado=false e todos os dados extraídos + vencimento do texto do usuário (se mencionado) ou "hoje".
+- CLASSIFIQUE o tipo da nota no campo tipo_nf ANTES de chamar a ferramenta:
+  • tipo_nf="produto" → NF-e de mercadorias físicas: sementes, fertilizantes, defensivos, peças, combustível, equipamentos, embalagens. O emitente é uma empresa que vende produtos físicos. O documento tem DANFE, CFOP de compra (ex: 1101, 1201, 1102).
+  • tipo_nf="servico" → NFS-e ou nota de serviços: consultoria, honorários, assessoria, manutenção, serviços de TI, contabilidade, jurídico, marketing, frete avulso. O emitente é um prestador de serviços. O documento pode ter cabeçalho "Nota Fiscal de Serviços Eletrônica" ou "NFS-e". Os itens descrevem atividades intangíveis.
+  • Dúvida: prefira "produto" apenas quando houver itens claramente físicos e quantificáveis (kg, L, unidades de produto). Uma empresa de consultoria nunca emite NF-e de produto.
+- IMEDIATAMENTE chame registrar_nf_compra com confirmado=false, todos os dados extraídos, tipo_nf classificado + vencimento do texto do usuário (se mencionado) ou "hoje".
 - Mesmo que a imagem esteja girada, torta ou parcialmente legível — use os dados parciais. NUNCA diga "não consigo ler" ou "não tenho essa função".
-- A ferramenta faz TUDO automaticamente: cadastra o fornecedor, cadastra os produtos no estoque, lança entrada no estoque e cria Conta a Pagar. Você NÃO precisa chamar outras ferramentas separadas.
+- NF de PRODUTO → cadastra fornecedor, cadastra produtos no estoque, lança entrada no estoque, cria Conta a Pagar.
+- NF de SERVIÇO → cadastra prestador, registra na aba NF de Serviços, cria Conta a Pagar. NÃO movimenta estoque.
 - Quando usuário responder "sim", "confirmo" ou similar → chame com confirmado=true e os MESMOS dados.
 - Se a imagem vier junto com texto ("vencimento 30/05/2026", "conta caixa") → use essas informações nos campos.
 

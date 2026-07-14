@@ -2005,6 +2005,7 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
   const valorTotal  = Number(dados.valor_total ?? 0);
   const vencimento  = parseData(String(dados.vencimento ?? "hoje"));
   const confirmado  = dados.confirmado === true;
+  const tipoNf      = String(dados.tipo_nf ?? "produto") === "servico" ? "servico" : "produto";
 
   type ItemNF = { descricao: string; quantidade: number; unidade: string; valor_unitario: number };
   const itens: ItemNF[] = Array.isArray(dados.itens)
@@ -2033,10 +2034,28 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
 
     const itensTxt = itensComInsumo.slice(0, 5).map(i => {
       const vt = (Number(i.quantidade) || 1) * (Number(i.valor_unitario) || 0);
-      const tag = i.insumo ? ` ✅ _→ ${i.insumo.nome}_` : " ⚠️ _sem cadastro_";
+      const tag = tipoNf === "servico"
+        ? " _[serviço]_"
+        : (i.insumo ? ` ✅ _→ ${i.insumo.nome}_` : " ⚠️ _sem cadastro_");
       return `  • ${i.descricao} — ${i.quantidade} ${i.unidade || "UN"} · R$ ${fmtBRL(vt)}${tag}`;
     }).join("\n");
     const mais = itensComInsumo.length > 5 ? `\n  _...+${itensComInsumo.length - 5} itens_` : "";
+
+    if (tipoNf === "servico") {
+      return {
+        ok: false,
+        mensagem: [
+          `📋 *NF de Serviço nº ${numeroNf || "—"}* — ${razao}`,
+          `• CNPJ: ${cnpjFmt}`,
+          `• Emissão: ${dataEmissao}  ·  Venc. CP: ${vencimento}`,
+          `• *Total: R$ ${fmtBRL(valorTotal)}*`,
+          itensComInsumo.length > 0 ? `\nServiços prestados:\n${itensTxt}${mais}` : "",
+          `\n🔧 *Tipo: NF de Serviço* — sem movimentação de estoque`,
+          `✅ Será criado: Prestador + NFS-e + Conta a Pagar`,
+          `\n*Confirma? Responda "sim" para registrar.*`,
+        ].filter(Boolean).join("\n"),
+      };
+    }
 
     const resumoEstoque = nVinculados > 0
       ? `\n✅ ${nVinculados} item(ns) já cadastrado(s) → entrada automática no estoque`
@@ -2113,6 +2132,78 @@ async function inserirNfCompraFoto(dados: Record<string, unknown>, fazendaId: st
       if (!errP && nova) { pessoaId = nova.id; pessoaNova = true; }
     }
   }
+
+  // ── FLUXO NF DE SERVIÇO ─────────────────────────────────────────────────
+  if (tipoNf === "servico") {
+    const discriminacao = itens.map(i => `${i.descricao} — ${i.quantidade} ${i.unidade || "UN"}`).join("; ");
+
+    const { data: nfServRow, error: errNfS } = await sb().from("nf_servicos").insert({
+      fazenda_id:              fazendaId,
+      numero_nf:               numeroNf || "0",
+      serie:                   "1",
+      prestador_id:            pessoaId,
+      prestador_nome:          razao,
+      prestador_cnpj:          cnpj || null,
+      data_prestacao:          dataEmissao,
+      discriminacao:           discriminacao || null,
+      valor_servico:           valorTotal,
+      valor_deducoes:          0,
+      valor_base_iss:          valorTotal,
+      aliquota_iss:            0,
+      valor_iss:               0,
+      iss_retido:              false,
+      valor_inss:              0,
+      valor_ir:                0,
+      valor_outras_retencoes:  0,
+      valor_liquido:           valorTotal,
+      data_vencimento_cp:      vencimento,
+      status:                  "pendente",
+      origem:                  "manual",
+      observacao:              "Lançado via foto NF — WhatsApp",
+    }).select("id").maybeSingle();
+
+    if (errNfS) return { ok: false, mensagem: `❌ Erro ao criar NF de Serviço: ${errNfS.message}` };
+
+    const { data: lancServRow } = await sb().from("lancamentos").insert({
+      fazenda_id:      fazendaId,
+      tipo:            "pagar",
+      descricao:       `NFS-e ${numeroNf ? `nº ${numeroNf} ` : ""}— ${razao}`,
+      categoria:       "servicos",
+      valor:           valorTotal,
+      moeda:           "BRL",
+      data_lancamento: hoje,
+      data_vencimento: vencimento,
+      status:          "em_aberto",
+      observacao:      "Lançado via foto NF de Serviço — WhatsApp",
+      auto:            false,
+    }).select("id").maybeSingle();
+
+    await sb().from("pendencias_fiscais").insert({
+      fazenda_id:      fazendaId,
+      lancamento_id:   lancServRow?.id ?? null,
+      tipo:            "entrada_estoque",
+      status:          "aguardando",
+      descricao:       `NFS-e ${numeroNf || "s/n"} — ${razao}`,
+      valor:           valorTotal,
+      data_operacao:   hoje,
+      fornecedor_nome: razao,
+      origem:          "whatsapp",
+    });
+
+    return {
+      ok: true,
+      mensagem: [
+        `✅ *NF de Serviço registrada com sucesso!*`,
+        `• Prestador: *${razao}*${pessoaNova ? " _(cadastrado agora)_" : ""}`,
+        `• NFS-e nº ${numeroNf || "—"}  ·  R$ ${fmtBRL(valorTotal)}`,
+        `• CP lançado — vence ${vencimento}`,
+        `• Registrado em: Compras → NF de Serviços`,
+        `• ℹ️ ISS e retenções: complete em Compras → NF de Serviços se necessário`,
+      ].join("\n"),
+    };
+  }
+
+  // ── FLUXO NF DE PRODUTO (padrão) ─────────────────────────────────────────
 
   // 2. Criar NF Entrada
   const { data: nfRow, error: errNf } = await sb().from("nf_entradas").insert({
