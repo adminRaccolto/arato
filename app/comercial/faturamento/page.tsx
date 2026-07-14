@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
@@ -110,7 +110,7 @@ const btnV: React.CSSProperties = { padding:"8px 18px", background:"#1A5CB8", co
 const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function Faturamento() {
+function FaturamentoInner() {
   const { fazendaId } = useAuth();
   const searchParams   = useSearchParams();
 
@@ -1243,5 +1243,13 @@ export default function Faturamento() {
       )}
 
     </div>
+  );
+}
+
+export default function Faturamento() {
+  return (
+    <Suspense fallback={null}>
+      <FaturamentoInner />
+    </Suspense>
   );
 }

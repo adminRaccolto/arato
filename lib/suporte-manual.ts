@@ -1491,7 +1491,7 @@ Registro simplificado de operação de semeadura. Campos:
 - **Dose de Semente (kg/ha)** — calcula automaticamente o total em kg
 - **Observações** — texto livre
 
-Salva na tabela `plantios`. Ao concluir, mostra resumo e botão "Ver todos os plantios" (redireciona para Lavoura → Plantio desktop).
+Salva na tabela \`plantios\`. Ao concluir, mostra resumo e botão "Ver todos os plantios" (redireciona para Lavoura → Plantio desktop).
 
 ### Aba Pulverização (/campo/pulverizacao)
 Registro de aplicação de defensivos e foliares. Campos:
@@ -1503,7 +1503,7 @@ Registro de aplicação de defensivos e foliares. Campos:
 - **Produtos Aplicados*** — um ou mais produtos. Para cada um: select do insumo cadastrado (ou texto livre), dose e unidade (L/ha, mL/ha, kg/ha, g/ha, cc/ha). Total calculado automaticamente.
 - Botão **+ Adicionar Produto** para múltiplos produtos na mesma aplicação
 
-Salva em `pulverizacoes` + `pulverizacao_itens`. Ao concluir, redireciona para Lavoura → Pulverização desktop.
+Salva em \`pulverizacoes\` + \`pulverizacao_itens\`. Ao concluir, redireciona para Lavoura → Pulverização desktop.
 
 ### Aba Colheita (/campo/colheita)
 Registro simplificado de produtividade por talhão. Campos:
@@ -1514,7 +1514,7 @@ Registro simplificado de produtividade por talhão. Campos:
 - **Umidade (%)** e **Impureza (%)**
 - **Destino/Armazém** — select dos depósitos cadastrados
 
-Salva em `colheitas`. Ao concluir, redireciona para Lavoura → Colheita Própria desktop.
+Salva em \`colheitas\`. Ao concluir, redireciona para Lavoura → Colheita Própria desktop.
 
 ### Aba Abastecimento (/campo/abastecimento)
 Registro de abastecimento de combustível para máquinas e frota. Campos:
@@ -1526,7 +1526,7 @@ Registro de abastecimento de combustível para máquinas e frota. Campos:
 - **Valor por litro (R$)** — opcional; calcula o custo total
 - **Observações**
 
-Salva em `abastecimentos`. Se a bomba tem `consume_estoque = true`, desconta do `estoque_atual_l`. Se a máquina é selecionada e horímetro informado, atualiza `maquinas.horimetro_atual`.
+Salva em \`abastecimentos\`. Se a bomba tem \`consume_estoque = true\`, desconta do \`estoque_atual_l\`. Se a máquina é selecionada e horímetro informado, atualiza \`maquinas.horimetro_atual\`.
 
 ### Aba Monitoramento (/campo/monitoramento)
 Registro de pragas, doenças e plantas daninhas. Fluxo em 3 etapas:
@@ -1534,7 +1534,7 @@ Registro de pragas, doenças e plantas daninhas. Fluxo em 3 etapas:
 2. **GPS**: captura localização georreferenciada do ponto de incidência
 3. **Foto**: até 3 fotos da ocorrência (upload para Supabase Storage)
 
-Salva em `monitoramento_pragas`. Nível 4 (Crítico) gera alerta no Dashboard e na tela inicial do modo campo.
+Salva em \`monitoramento_pragas\`. Nível 4 (Crítico) gera alerta no Dashboard e na tela inicial do modo campo.
 
 ### Erros comuns no modo campo
 - **"Nenhuma bomba cadastrada"**: Acesse Configurações → Combustíveis para cadastrar bombas antes de usar o abastecimento
