@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { MANUAL_OPERACIONAL } from "../../../../lib/suporte-manual";
 
 const SYSTEM_PROMPT = `Você é o Assistente do Arato — um assistente especialista integrado ao sistema de gestão agrícola Arato (RacTech).
 
@@ -322,7 +323,7 @@ export async function POST(req: NextRequest) {
 
     // Busca contexto dinâmico da fazenda para personalizar respostas
     const contextoDinamico = fazenda_id ? await buscarContextoFazenda(fazenda_id) : "";
-    const systemPromptCompleto = SYSTEM_PROMPT + contextoDinamico;
+    const systemPromptCompleto = SYSTEM_PROMPT + "\n\n---\n\n" + MANUAL_OPERACIONAL + contextoDinamico;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
