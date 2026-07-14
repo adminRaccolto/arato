@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import TopNav from "../../../components/TopNav";
 import {
   listarNotasFiscais, criarNotaFiscal, atualizarStatusNFe,
@@ -111,6 +112,7 @@ const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Faturamento() {
   const { fazendaId } = useAuth();
+  const searchParams   = useSearchParams();
 
   const [notas,     setNotas]     = useState<NotaFiscal[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
@@ -139,6 +141,8 @@ export default function Faturamento() {
   const [emitindo,    setEmitindo]    = useState(false);
   const [erroForm,    setErroForm]    = useState<string|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
+  // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
+  const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
 
   // totais em tempo real
   const totalItens     = nfeItens.reduce((s, i) => s + i.valor_total, 0);
@@ -147,6 +151,11 @@ export default function Faturamento() {
   // ── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!fazendaId) return;
+    // Captura deep-link antes de carregar (URL params ficam disponíveis só no client)
+    const romId  = searchParams.get("romaneio_id");
+    const contrId = searchParams.get("contrato_id");
+    if (romId && contrId) setDeepLinkPendente({ romaneio_id: romId, contrato_id: contrId });
+
     Promise.all([
       listarNotasFiscais(fazendaId),
       listarProdutores(fazendaId),
@@ -160,7 +169,35 @@ export default function Faturamento() {
       setContratos(c.filter(c => c.tipo === "venda" || !c.tipo));
       setAnosSafra(as_.data ?? []);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [fazendaId]);
+  }, [fazendaId, searchParams]);
+
+  // ── Deep-link: abrir direto no romaneio passado via URL ──────────────────
+  const preencherDeRomaneioCallback = useCallback(preencherDeRomaneio, [pessoas, contratoSelecionado]); // eslint-disable-line
+  useEffect(() => {
+    if (!deepLinkPendente || loading || contratos.length === 0) return;
+    const { romaneio_id, contrato_id } = deepLinkPendente;
+    const contrato = contratos.find(c => c.id === contrato_id);
+    if (!contrato) return;
+    setDeepLinkPendente(null); // executa só uma vez
+    // Carrega romaneios do contrato e abre o wizard já no romaneio correto
+    supabase.from("romaneios").select("*").eq("contrato_id", contrato_id).order("data", { ascending: false })
+      .then(({ data }) => {
+        const roms = data ?? [];
+        const rom  = roms.find(r => r.id === romaneio_id);
+        if (!rom) return;
+        setContratoSelecionado(contrato);
+        setRomaneios(roms);
+        // Pré-preenche e abre modal direto no passo "form"
+        const hoje  = new Date().toISOString().slice(0, 10);
+        const agora = new Date().toTimeString().slice(0, 8);
+        setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora });
+        setNfeItens([]);
+        setTabNFe("produtor");
+        setModalAberto(true);
+        preencherDeRomaneio(rom);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkPendente, loading, contratos]);
 
   // ── Abrir modal ───────────────────────────────────────────────────────────
   function abrirModal() {

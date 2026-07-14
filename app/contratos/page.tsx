@@ -1409,7 +1409,17 @@ export default function Contratos() {
                               <td style={{ padding:"9px 12px", textAlign:"center", fontSize:11, fontWeight:600 }}>{fmtPeso(r.peso_liquido_kg??0)}</td>
                               <td style={{ padding:"9px 12px", textAlign:"center", fontWeight:600, color:"#1A4870" }}>{(r.sacas??0).toLocaleString("pt-BR")}</td>
                               <td style={{ padding:"9px 12px", textAlign:"center" }}>
-                                {r.nfe_numero ? badge(`✓ ${r.nfe_numero}`) : <span style={{ fontSize:10, background:"#FAEEDA", color:"#633806", padding:"2px 6px", borderRadius:6 }}>⟳ Gerando…</span>}
+                                {r.nfe_numero
+                                  ? badge(`✓ ${r.nfe_numero}`)
+                                  : (
+                                    <a
+                                      href={`/comercial/faturamento?romaneio_id=${r.id}&contrato_id=${r.contrato_id}`}
+                                      style={{ fontSize:11, padding:"3px 10px", borderRadius:6, background:"#C9921B", color:"#fff", fontWeight:600, textDecoration:"none", whiteSpace:"nowrap", display:"inline-block" }}
+                                    >
+                                      Faturar →
+                                    </a>
+                                  )
+                                }
                               </td>
                             </tr>
                           );
@@ -2148,7 +2158,7 @@ export default function Contratos() {
                     </div>
                   </div>
                   {!temClassif && <div style={{ fontSize:10, color:"var(--text-3)", marginTop:6 }}>Preencha a classificação para calcular descontos e peso líquido faturável.</div>}
-                  <div style={{ marginTop:6, fontSize:10, color:"#1A4870" }}>NF-e gerada automaticamente após confirmação</div>
+                  {/* AUTO-NF desativado — faturamento manual via botão "Faturar" na aba Expedição */}
                 </div>
 
                 {/* ── Peso Recebido / Faturado pelo Comprador ── */}
