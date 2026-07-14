@@ -1469,10 +1469,91 @@ R: O administrador (raccotlo) cria o usuário via painel admin. O novo cliente d
 
 ---
 
+## MÓDULO: MODO CAMPO (MOBILE)
+
+Aplicação mobile-first acessada em **/campo** — otimizada para uso no celular no campo, fora do escritório. Acessível pelo menu principal ou direto pela URL.
+
+### Acesso e Seletor de Fazenda
+- O botão **← Desktop** no topo leva de volta ao sistema principal
+- Se a conta tem **mais de uma fazenda**, o nome da fazenda no topo é clicável e exibe um menu para troca de fazenda ativa
+- A fazenda selecionada afeta todos os registros feitos no modo campo
+
+### Aba Início (/campo)
+Hub com saudação, hora, resumo (talhões e ciclo ativo), alertas críticos e atalhos para todas as operações.
+
+### Aba Plantio (/campo/plantio)
+Registro simplificado de operação de semeadura. Campos:
+- **Talhão*** — select; ao selecionar, a área é preenchida automaticamente
+- **Ciclo/Safra*** — select dos ciclos da fazenda
+- **Data do Plantio*** — padrão: hoje
+- **Variedade/Cultivar** — texto livre (ex: M6410 IPRO)
+- **Área (ha)** — preenchida automaticamente pelo talhão, editável
+- **Dose de Semente (kg/ha)** — calcula automaticamente o total em kg
+- **Observações** — texto livre
+
+Salva na tabela `plantios`. Ao concluir, mostra resumo e botão "Ver todos os plantios" (redireciona para Lavoura → Plantio desktop).
+
+### Aba Pulverização (/campo/pulverizacao)
+Registro de aplicação de defensivos e foliares. Campos:
+- **Talhão** e **Ciclo/Safra***** — selects obrigatórios
+- **Tipo de Aplicação*** — botões: Herbicida / Fungicida / Inseticida / Foliar / Dessecação / Regulador / Outros
+- **Data***
+- **Estádio** — texto (ex: R1, V5)
+- **Área (ha)** e **Volume de calda (L/ha)**
+- **Produtos Aplicados*** — um ou mais produtos. Para cada um: select do insumo cadastrado (ou texto livre), dose e unidade (L/ha, mL/ha, kg/ha, g/ha, cc/ha). Total calculado automaticamente.
+- Botão **+ Adicionar Produto** para múltiplos produtos na mesma aplicação
+
+Salva em `pulverizacoes` + `pulverizacao_itens`. Ao concluir, redireciona para Lavoura → Pulverização desktop.
+
+### Aba Colheita (/campo/colheita)
+Registro simplificado de produtividade por talhão. Campos:
+- **Talhão*** e **Ciclo/Safra***
+- **Data da Colheita***
+- **Área colhida (ha)*** e **Produtividade (sc/ha)***
+- Preview automático: total de sacas e toneladas
+- **Umidade (%)** e **Impureza (%)**
+- **Destino/Armazém** — select dos depósitos cadastrados
+
+Salva em `colheitas`. Ao concluir, redireciona para Lavoura → Colheita Própria desktop.
+
+### Aba Abastecimento (/campo/abastecimento)
+Registro de abastecimento de combustível para máquinas e frota. Campos:
+- **Bomba/Tanque*** — select mostra nome, tipo de combustível e estoque atual em litros
+- **Destino** — 3 opções: Máquina (select das máquinas cadastradas, preenche horímetro automaticamente), Funcionário (select), Outro (texto livre)
+- **Data***
+- **Quantidade (L)***
+- **Horímetro (h)** — preenchido automaticamente ao selecionar máquina; atualiza o horímetro da máquina ao salvar
+- **Valor por litro (R$)** — opcional; calcula o custo total
+- **Observações**
+
+Salva em `abastecimentos`. Se a bomba tem `consume_estoque = true`, desconta do `estoque_atual_l`. Se a máquina é selecionada e horímetro informado, atualiza `maquinas.horimetro_atual`.
+
+### Aba Monitoramento (/campo/monitoramento)
+Registro de pragas, doenças e plantas daninhas. Fluxo em 3 etapas:
+1. **Formulário**: talhão, ciclo, data, tipo (praga/doença/invasora), espécie (catálogo), nível de infestação (1-4), % plantas afetadas, estádio, ação recomendada, observações
+2. **GPS**: captura localização georreferenciada do ponto de incidência
+3. **Foto**: até 3 fotos da ocorrência (upload para Supabase Storage)
+
+Salva em `monitoramento_pragas`. Nível 4 (Crítico) gera alerta no Dashboard e na tela inicial do modo campo.
+
+### Erros comuns no modo campo
+- **"Nenhuma bomba cadastrada"**: Acesse Configurações → Combustíveis para cadastrar bombas antes de usar o abastecimento
+- **"Preencha talhão, ciclo e data"**: Campos obrigatórios não preenchidos
+- **GPS não capturado**: No monitoramento, é possível pular e salvar sem GPS clicando "Pular GPS"
+- **JWT expirado (42501)**: Se surgir erro de permissão, faça logout e login novamente
+
+---
+
 ## REFERÊNCIA RÁPIDA — CAMINHOS DO MENU
 
 | O que fazer | Caminho |
 |---|---|
+| Usar modo mobile (campo) | Acessar /campo no celular |
+| Registrar plantio (mobile) | Campo → Plantio |
+| Registrar pulverização (mobile) | Campo → Pulv. |
+| Registrar colheita (mobile) | Campo → Colheita |
+| Abastecer máquina (mobile) | Campo → Abastecer |
+| Monitorar pragas (mobile) | Campo → Monitor. |
 | Ver alertas e preços | Dashboard |
 | Ver fazendas e talhões | Propriedades |
 | Criar/ver ciclos de lavoura | Lavoura → Planejamento Agrícola |
