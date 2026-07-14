@@ -16,11 +16,14 @@ const NAV_ITEMS = [
   { href: "/campo/monitoramento", label: "Monitor.", icon: "🐛" },
 ];
 
+const LOGO_FALLBACK = "https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png";
+
 export default function CampoLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { fazendaId, nomeFazendaSelecionada, setFazendaAtiva, contaId } = useAuth();
   const [fazendas, setFazendas] = useState<FazendaOp[]>([]);
   const [showSwitch, setShowSwitch] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string>(LOGO_FALLBACK);
 
   const carregarFazendas = useCallback(async () => {
     if (!contaId) return;
@@ -34,14 +37,24 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => { carregarFazendas(); }, [carregarFazendas]);
 
+  useEffect(() => {
+    const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");
+    if (data?.publicUrl) setLogoUrl(data.publicUrl);
+  }, []);
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", background: "var(--bg-page)", minHeight: "100dvh", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
 
       {/* Faixa de topo */}
       <div style={{ background: "#1A4870", color: "#fff", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 50, borderBottom: "0.5px solid #0B2D50" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img
+            src={logoUrl}
+            alt="Arato"
+            style={{ height: 28, maxWidth: 90, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(255,255,255,0.5))" }}
+          />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.3px", lineHeight: 1 }}>arato campo</div>
+            <div style={{ fontSize: 10, color: "#B0C8E0", letterSpacing: "0.5px", lineHeight: 1 }}>campo</div>
             <button
               onClick={() => fazendas.length > 1 && setShowSwitch(true)}
               style={{
