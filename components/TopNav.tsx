@@ -308,6 +308,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [logoArato,        setLogoArato]        = useState<string | null>(null);
   const [nomeArato,        setNomeArato]        = useState("Arato");
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
+  const [showQr,           setShowQr]           = useState(false);
+  const [qrDataUrl,        setQrDataUrl]        = useState("");
 
   const pathname = usePathname();
   const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
@@ -348,6 +350,16 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     const { data } = supabase.storage.from("logos").getPublicUrl("arato.png");
     if (data?.publicUrl) setLogoArato(data.publicUrl);
   }, []);
+
+  useEffect(() => {
+    if (!showQr || qrDataUrl) return;
+    import("qrcode").then(QRCode => {
+      QRCode.toDataURL("https://arato.agr.br/campo", {
+        width: 240, margin: 2,
+        color: { dark: "#1A4870", light: "#ffffff" },
+      }).then(setQrDataUrl);
+    });
+  }, [showQr, qrDataUrl]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -509,6 +521,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   }
 
   return (
+  <>
     <header
       ref={navRef}
       style={{
@@ -594,6 +607,13 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setShowQr(true)}
+              title="App Campo — instalar no celular"
+              style={{ background: "var(--bg-input)", border: "0.5px solid rgba(255,255,255,0.12)", cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28 }}
+            >
+              📱
+            </button>
             <button
               onClick={toggleTheme}
               title={isDark ? "Tema claro" : "Tema escuro"}
@@ -850,5 +870,53 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         )}
       </nav>
     </header>
+
+    {/* ── Modal QR Code App Campo ── */}
+    {showQr && (
+      <div
+        onClick={() => setShowQr(false)}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ background: "var(--bg-card)", borderRadius: 20, padding: 28, maxWidth: 320, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", textAlign: "center" }}
+        >
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-1)", marginBottom: 4 }}>📱 App Campo</div>
+          <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
+            Escaneie o QR Code com o celular para abrir e instalar o app
+          </div>
+
+          {qrDataUrl
+            ? <img src={qrDataUrl} alt="QR Code App Campo" style={{ width: 200, height: 200, borderRadius: 12, border: "0.5px solid var(--border)" }} />
+            : <div style={{ width: 200, height: 200, borderRadius: 12, background: "var(--bg-page)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
+                <div style={{ width: 24, height: 24, border: "3px solid #1A4870", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              </div>
+          }
+
+          <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>arato.agr.br/campo</span>
+            <button
+              onClick={() => { navigator.clipboard.writeText("https://arato.agr.br/campo"); }}
+              style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", background: "#D5E8F5", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+            >
+              Copiar
+            </button>
+          </div>
+
+          <div style={{ marginTop: 16, fontSize: 12, color: "var(--text-3)", lineHeight: 1.7, textAlign: "left" }}>
+            <strong style={{ color: "var(--text-2)" }}>iPhone:</strong> Abrir no Safari → Compartilhar → Adicionar à Tela de Início<br />
+            <strong style={{ color: "var(--text-2)" }}>Android:</strong> Abrir no Chrome → banner "Instalar" ou ⋮ → Adicionar à tela inicial
+          </div>
+
+          <button
+            onClick={() => setShowQr(false)}
+            style={{ marginTop: 20, width: "100%", padding: "12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    )}
+  </>
   );
 }
