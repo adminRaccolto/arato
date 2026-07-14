@@ -898,7 +898,7 @@ export default function BI() {
                   { label: "Milho", v: precos.milho?.brl ?? 0, var: precos.milho?.variacao ?? 0 },
                   { label: "USD",   v: precos.usdBrl ?? 0,     var: 0                           },
                 ].map(p => (
-                  <div key={p.label} style={{ background: "rgba(255,255,255,0.07)", borderRadius: 7, padding: "5px 9px", textAlign: "center", minWidth: 66 }}>
+                  <div key={p.label} style={{ background: "var(--border)", borderRadius: 7, padding: "5px 9px", textAlign: "center", minWidth: 66 }}>
                     <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginBottom: 1 }}>{p.label}</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>R$ {fmtN(p.v, 2)}</div>
                     {p.var !== 0 && <div style={{ fontSize: 9, color: p.var > 0 ? "#4ADE80" : "#F87171" }}>{p.var > 0 ? "+" : ""}{fmtN(p.var, 1)}%</div>}
@@ -909,7 +909,7 @@ export default function BI() {
             <button
               onClick={() => { setCfContratos([]); setCfParcelas([]); carregar(); carregarCF(); }}
               title="Recarregar todos os dados (use após importar contratos ou lançamentos)"
-              style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.2)", background: "var(--border)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</button>
+              style={{ padding: "7px 11px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 13, cursor: "pointer" }}>↻</button>
           </div>
         </div>
 
@@ -918,7 +918,7 @@ export default function BI() {
           <select
             value={filtroAnoSafraId}
             onChange={e => handleAnoSafraChange(e.target.value)}
-            style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 12, cursor: "pointer", outline: "none" }}
+            style={{ padding: "6px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border)", color: "#fff", fontSize: 12, cursor: "pointer", outline: "none" }}
           >
             <option value="" style={{ background: "#1A4870" }}>Todas as safras</option>
             {safrasUnicas.map(s => (
@@ -941,7 +941,7 @@ export default function BI() {
                 );
               })}
               {filtroCicloIds.size > 0 && (
-                <button onClick={() => setFiltroCicloIds(new Set())} style={{ padding: "4px 8px", borderRadius: 12, border: "none", background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }}>✕ limpar</button>
+                <button onClick={() => setFiltroCicloIds(new Set())} style={{ padding: "4px 8px", borderRadius: 12, border: "none", background: "var(--border)", color: "rgba(255,255,255,0.5)", fontSize: 10, cursor: "pointer" }}>✕ limpar</button>
               )}
             </div>
           )}

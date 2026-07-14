@@ -110,9 +110,9 @@ const dotStatus = (s: string) => ({
 }[s] ?? { cor: "var(--text-3)", title: s });
 
 // ── Estilos ───────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box", outline: "none", color: "var(--text-1)" };
-const inpF: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "var(--border-row)", boxSizing: "border-box", outline: "none", color: "#CBD5E1" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box", outline: "none", color: "var(--text-1)" };
+const inpF: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "var(--border-row)", boxSizing: "border-box", outline: "none", color: "var(--text-2)" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
 // ═══════════════════════════════════════════════════════════════
 export default function ContasReceber() {
@@ -660,7 +660,7 @@ export default function ContasReceber() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* ═══ HEADER ═══ */}
-        <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid rgba(255,255,255,0.07)", padding: "16px 24px" }}>
+        <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid var(--border)", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Contas a Receber</h1>
@@ -669,10 +669,10 @@ export default function ContasReceber() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: "var(--text-3)" }}>Período:</span>
               <input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)}
-                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "#CBD5E1" }} />
+                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>até</span>
               <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)}
-                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "#CBD5E1" }} />
+                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
               <button onClick={() => { setCascade({}); setModalTab("principal"); carregarOps(); setModalNovo(true); }}
                 style={{ background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 + Nova CR
@@ -717,7 +717,7 @@ export default function ContasReceber() {
           {loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando…</div>}
 
           {!loading && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
 
               {/* Tabs de status */}
               <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", background: "var(--bg-nav)" }}>
@@ -727,7 +727,7 @@ export default function ContasReceber() {
                   { key: "baixado",  label: "Recebidos",  count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length,         cor: "#60A5FA", activeBg: "rgba(59,130,246,0.12)",  activeBorder: "rgba(59,130,246,0.35)" },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,           cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao", label: "Previsões",  count: lancamentos.filter(l => l.natureza === "previsao").length,                                          cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
-                  { key: "todos",    label: "Todos",      count: lancamentos.length,                                                                                 cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "rgba(255,255,255,0.2)"  },
+                  { key: "todos",    label: "Todos",      count: lancamentos.length,                                                                                 cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
                   <button key={f.key} className="cr-tab" onClick={() => setFiltro(f.key)}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
@@ -739,7 +739,7 @@ export default function ContasReceber() {
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
                   {hasColFilter && (
-                    <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.1)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
+                    <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
                       ✕ Limpar filtros
                     </button>
                   )}
@@ -953,7 +953,7 @@ export default function ContasReceber() {
                                 )}
                                 {!l.auto && (
                                   <button onClick={() => abrirEditar(l)} title="Editar lançamento"
-                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid rgba(255,255,255,0.1)", lineHeight: 1 }}>✏</button>
+                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", lineHeight: 1 }}>✏</button>
                                 )}
                               </div>
                             </td>
@@ -1017,7 +1017,7 @@ export default function ContasReceber() {
             )}
             <button
               onClick={() => setSelecionados(new Set())}
-              style={{ background: "none", border: "0.5px solid rgba(255,255,255,0.4)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
+              style={{ background: "none", border: "0.5px solid var(--border)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
             >
               Cancelar
             </button>
@@ -1219,11 +1219,11 @@ export default function ContasReceber() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 16 }}>
                 <div>
                   <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do Recebimento *</label>
-                  <input type="date" style={{ width: "100%", padding: "8px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box" as const, outline: "none", color: "var(--text-1)" }} value={loteData} onChange={e => setLoteData(e.target.value)} />
+                  <input type="date" style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box" as const, outline: "none", color: "var(--text-1)" }} value={loteData} onChange={e => setLoteData(e.target.value)} />
                 </div>
                 <div>
                   <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
-                  <select style={{ width: "100%", padding: "8px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box" as const, outline: "none", color: "var(--text-1)" }} value={loteConta} onChange={e => setLoteConta(e.target.value)}>
+                  <select style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box" as const, outline: "none", color: "var(--text-1)" }} value={loteConta} onChange={e => setLoteConta(e.target.value)}>
                     <option value="">— Selecionar conta —</option>
                     {contas.map(c => {
                       const label = c.nome || `${c.banco ?? ""} ${c.agencia ? `Ag.${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim();
@@ -1234,7 +1234,7 @@ export default function ContasReceber() {
                 </div>
                 <div style={{ gridColumn: "1/-1" }}>
                   <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Descrição do Borderô (opcional)</label>
-                  <input style={{ width: "100%", padding: "8px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box" as const, outline: "none", color: "var(--text-1)" }} value={loteDesc} onChange={e => setLoteDesc(e.target.value)} placeholder={`Borderô ${loteData} — ${itensLote.length} títulos`} />
+                  <input style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box" as const, outline: "none", color: "var(--text-1)" }} value={loteDesc} onChange={e => setLoteDesc(e.target.value)} placeholder={`Borderô ${loteData} — ${itensLote.length} títulos`} />
                 </div>
               </div>
 
@@ -1265,7 +1265,7 @@ export default function ContasReceber() {
               )}
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setModalLote(false)} style={{ padding: "8px 18px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={() => setModalLote(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button
                   onClick={receberEmLote}
                   disabled={loteSalvando || !loteData || !loteConta}
@@ -1654,7 +1654,7 @@ function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.
     textAlign: align,
     fontSize: 10,
     fontWeight: 700,
-    color: "var(--text-muted)",
+    color: "var(--text-2)",
     borderBottom: "0.5px solid var(--border-table)",
     whiteSpace: "nowrap",
     textTransform: "uppercase",

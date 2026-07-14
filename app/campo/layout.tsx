@@ -26,7 +26,7 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
             <div style={{ fontSize: 10, color: "#B0C8E0", marginTop: 2 }}>operações rurais</div>
           </div>
         </div>
-        <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "rgba(255,255,255,0.1)", padding: "5px 10px", borderRadius: 6 }}>
+        <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "var(--border)", padding: "5px 10px", borderRadius: 6 }}>
           ← Desktop
         </Link>
       </div>

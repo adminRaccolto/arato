@@ -125,9 +125,9 @@ const dotStatus = (s: string) => ({
 }[s] ?? { cor: "var(--text-3)", title: s });
 
 // ── Estilos ───────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box", outline: "none", color: "var(--text-1)" };
-const inpF: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "var(--border-row)", boxSizing: "border-box", outline: "none", color: "#CBD5E1" };
-const lbl: React.CSSProperties = { fontSize: 11, color: "#64748B", marginBottom: 4, display: "block" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-input)", boxSizing: "border-box", outline: "none", color: "var(--text-1)" };
+const inpF: React.CSSProperties = { width: "100%", padding: "4px 7px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "var(--border-row)", boxSizing: "border-box", outline: "none", color: "var(--text-2)" };
+const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 
 // ═══════════════════════════════════════════════════════════════
 function ContasPagarInner() {
@@ -815,7 +815,7 @@ function ContasPagarInner() {
     .cp-row { transition: background .1s }
     .cp-row:hover { background: rgba(255,255,255,0.04) !important }
     .cp-tab { transition: background .12s, color .12s, border-color .12s }
-    .cp-tab:hover { border-color: rgba(255,255,255,0.2) !important }
+    .cp-tab:hover { border-color: var(--border) !important }
     .cp-btn { transition: opacity .12s }
     .cp-btn:hover { opacity: .8 }
     input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.6) }
@@ -829,7 +829,7 @@ function ContasPagarInner() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* ═══ HEADER ═══ */}
-        <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid rgba(255,255,255,0.07)", padding: "16px 24px" }}>
+        <header style={{ background: "var(--bg-header)", borderBottom: "0.5px solid var(--border)", padding: "16px 24px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div>
               <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Contas a Pagar</h1>
@@ -838,10 +838,10 @@ function ContasPagarInner() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 11, color: "var(--text-3)" }}>Período:</span>
               <input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)}
-                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "#CBD5E1" }} />
+                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
               <span style={{ fontSize: 11, color: "var(--text-muted)" }}>até</span>
               <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)}
-                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "#CBD5E1" }} />
+                style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, outline: "none", background: "var(--border-table)", color: "var(--text-2)" }} />
               <a href="/compras/nf" className="cp-btn"
                 style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", border: "0.5px solid rgba(96,165,250,0.3)", borderRadius: 8, background: "rgba(96,165,250,0.1)", color: "#60A5FA", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                 📄 NFs Importadas
@@ -883,7 +883,7 @@ function ContasPagarInner() {
           {loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando…</div>}
 
           {!loading && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
 
               {/* Tabs de status */}
               <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", background: "var(--bg-nav)" }}>
@@ -893,7 +893,7 @@ function ContasPagarInner() {
                   { key: "baixado",  label: "Pagos",      count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length, cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",  activeBorder: "rgba(34,197,94,0.35)"  },
                   { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,   cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
                   { key: "previsao", label: "Previsões",  count: lancamentos.filter(l => l.natureza === "previsao").length,                             cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
-                  { key: "todos",    label: "Todos",      count: lancamentos.length,                                                                     cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "rgba(255,255,255,0.2)"  },
+                  { key: "todos",    label: "Todos",      count: lancamentos.length,                                                                     cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
                   <button key={f.key} className="cp-tab" onClick={() => setFiltro(f.key)}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>
@@ -905,7 +905,7 @@ function ContasPagarInner() {
                 ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
                   {hasColFilter && (
-                    <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid rgba(255,255,255,0.1)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
+                    <button onClick={limparFiltrosColunas} style={{ padding: "4px 10px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--border-row)", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
                       ✕ Limpar filtros
                     </button>
                   )}
@@ -1108,7 +1108,7 @@ function ContasPagarInner() {
                                   <button
                                     onClick={() => abrirEditar(l)}
                                     title="Editar lançamento"
-                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid rgba(255,255,255,0.1)", lineHeight: 1 }}
+                                    style={{ fontSize: 13, padding: "3px 7px", borderRadius: 6, cursor: "pointer", background: "var(--bg-input)", color: "var(--text-2)", border: "0.5px solid var(--border)", lineHeight: 1 }}
                                   >
                                     ✏
                                   </button>
@@ -1154,7 +1154,7 @@ function ContasPagarInner() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 680, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
 
             {/* Header */}
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Vincular Nota Fiscal à Baixa</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>{alertaNF.descricao} — {alertaNF.valor?.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
@@ -1169,7 +1169,7 @@ function ContasPagarInner() {
                 placeholder="Buscar por nº NF, emitente ou valor…"
                 value={nfVinculoBusca}
                 onChange={e => setNfVinculoBusca(e.target.value)}
-                style={{ width: "100%", padding: "8px 12px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-input)", color: "var(--text-1)" }}
+                style={{ width: "100%", padding: "8px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-input)", color: "var(--text-1)" }}
                 autoFocus
               />
             </div>
@@ -1335,7 +1335,7 @@ function ContasPagarInner() {
           )}
           <button
             onClick={() => setSelecionados(new Set())}
-            style={{ background: "none", border: "0.5px solid rgba(255,255,255,0.4)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
+            style={{ background: "none", border: "0.5px solid var(--border)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer" }}
           >
             Cancelar
           </button>
@@ -1363,8 +1363,8 @@ function ContasPagarInner() {
               </div>
               <button onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
-            <div style={{ fontSize: 12, color: "#64748B", marginBottom: 16 }}>{modalBaixa.descricao}</div>
-            <div style={{ background: "var(--border-row)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap", border: "0.5px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>{modalBaixa.descricao}</div>
+            <div style={{ background: "var(--border-row)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap", border: "0.5px solid var(--border)" }}>
               <span>Valor original: <strong style={{ color: "#EF4444" }}>{fmtBRL(valorTotal)}</strong></span>
               {jaPago > 0 && <span>Já pago: <strong style={{ color: "#22C55E" }}>{fmtBRL(jaPago)}</strong></span>}
               {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#FBBF24" }}>{fmtBRL(valorOrig)}</strong></span>}
@@ -1540,7 +1540,7 @@ function ContasPagarInner() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid rgba(255,255,255,0.07)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Pagamento em Lote (Borderô)</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)}</div>
@@ -1552,11 +1552,11 @@ function ContasPagarInner() {
               {/* Parâmetros do lote */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginBottom: 16 }}>
                 <div>
-                  <label style={{ fontSize: 11, color: "#64748B", marginBottom: 3, display: "block" }}>Data do Pagamento *</label>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Data do Pagamento *</label>
                   <input type="date" style={{ ...inp }} value={loteData} onChange={e => setLoteData(e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, color: "#64748B", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Conta Bancária *</label>
                   <select style={{ ...inp }} value={loteConta} onChange={e => setLoteConta(e.target.value)}>
                     <option value="">— Selecionar conta —</option>
                     {contas.map(c => {
@@ -1567,25 +1567,25 @@ function ContasPagarInner() {
                   </select>
                 </div>
                 <div style={{ gridColumn: "1/-1" }}>
-                  <label style={{ fontSize: 11, color: "#64748B", marginBottom: 3, display: "block" }}>Descrição do Borderô (opcional)</label>
+                  <label style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" }}>Descrição do Borderô (opcional)</label>
                   <input style={{ ...inp }} value={loteDesc} onChange={e => setLoteDesc(e.target.value)} placeholder={`Borderô ${loteData} — ${itensLote.length} títulos`} />
                 </div>
               </div>
 
               {/* Lista dos títulos selecionados */}
               <div style={{ border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
+                <div style={{ background: "var(--bg-stripe)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
                   <span>Título</span><span>Vencimento</span><span style={{ textAlign: "right" }}>Valor</span>
                 </div>
                 {itensLote.map((l, i) => (
                   <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "8px 12px", borderTop: i > 0 ? "0.5px solid var(--bg-input)" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{exibirFornecedor(l.descricao)}</span>
-                    <span style={{ color: "#64748B", whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
+                    <span style={{ color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ fontWeight: 600, color: "#EF4444", textAlign: "right", whiteSpace: "nowrap" }}>{exibirValor(l)}</span>
                   </div>
                 ))}
-                <div style={{ background: "rgba(255,255,255,0.03)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid rgba(255,255,255,0.07)" }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#64748B" }}>Total do lote</span>
+                <div style={{ background: "var(--bg-stripe)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border)" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do lote</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: "#60A5FA" }}>{fmtBRL(totalLote)}</span>
                 </div>
               </div>
@@ -1603,7 +1603,7 @@ function ContasPagarInner() {
               )}
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setModalLote(false)} style={{ padding: "8px 18px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={() => setModalLote(false)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button
                   onClick={pagarEmLote}
                   disabled={loteSalvando || !loteData || !loteConta}
@@ -1624,18 +1624,18 @@ function ContasPagarInner() {
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)", display: "flex", flexDirection: "column" }}>
 
             {/* ── Cabeçalho ── */}
-            <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
                     {editandoId ? "✏ Editar Conta a Pagar" : "Nova Conta a Pagar"}
                   </span>
-                  <div style={{ display: "flex", gap: 0, border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
                     {(["real", "previsao"] as const).map(n => (
                       <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
                         style={{ padding: "4px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
                           background: form.natureza === n ? (n === "previsao" ? "#1A5CB8" : "#C9921B") : "var(--border-row)",
-                          color: form.natureza === n ? "#fff" : "#64748B" }}>
+                          color: form.natureza === n ? "#fff" : "var(--text-2)" }}>
                         {n === "real" ? "Real" : "Previsão"}
                       </button>
                     ))}
@@ -1843,7 +1843,7 @@ function ContasPagarInner() {
                               cursor: "pointer", border: "none",
                               borderRight: idx < 2 ? "0.5px solid var(--border)" : "none",
                               background: form.condicao === v ? "#1A4870" : "var(--border-row)",
-                              color: form.condicao === v ? "#fff" : "#64748B",
+                              color: form.condicao === v ? "#fff" : "var(--text-2)",
                               whiteSpace: "nowrap",
                             }}>
                             {v === "avista" ? "À Vista" : v === "prazo" ? "Parcelado" : "Recorrência"}
@@ -1883,7 +1883,7 @@ function ContasPagarInner() {
 
                   {/* Grid de parcelas */}
                   {form.condicao === "prazo" && parcelas.length === 0 && (
-                    <div style={{ fontSize: 11, color: "var(--text-3)", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", padding: "10px 14px", background: "var(--bg-stripe)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
                       Preencha o Vencimento e Valor, depois clique em "Gerar".
                     </div>
                   )}
@@ -1891,9 +1891,9 @@ function ContasPagarInner() {
                     <div style={{ overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
-                          <tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                          <tr style={{ background: "var(--bg-stripe)" }}>
                             {["#", "Vencimento", "Valor (R$)"].map((h, i) => (
-                              <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid rgba(255,255,255,0.07)" }}>{h}</th>
+                              <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -1913,7 +1913,7 @@ function ContasPagarInner() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr style={{ background: "rgba(255,255,255,0.03)" }}>
+                          <tr style={{ background: "var(--bg-stripe)" }}>
                             <td colSpan={2} style={{ padding: "6px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: "var(--text-3)" }}>Total:</td>
                             <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 700, color: "#60A5FA" }}>
                               {fmtBRL(parcelas.reduce((s, p) => s + desmascarar(p.valorMask), 0))}
@@ -1939,10 +1939,10 @@ function ContasPagarInner() {
                         {form.vencimento && valorRec > 0 && (
                           <div style={{ overflowX: "auto", maxHeight: 220, overflowY: "auto", borderRadius: 8, border: "0.5px solid var(--border)" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                              <thead style={{ position: "sticky", top: 0, background: "rgba(255,255,255,0.03)" }}>
+                              <thead style={{ position: "sticky", top: 0, background: "var(--bg-stripe)" }}>
                                 <tr>
                                   {["#", "Vencimento", "Valor"].map((h, i) => (
-                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid rgba(255,255,255,0.07)" }}>{h}</th>
+                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -1963,7 +1963,7 @@ function ContasPagarInner() {
                           </div>
                         )}
                         {!form.vencimento && (
-                          <div style={{ fontSize: 11, color: "var(--text-3)", padding: "10px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", padding: "10px 14px", background: "var(--bg-stripe)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
                             Defina o 1º Vencimento para visualizar as datas.
                           </div>
                         )}
@@ -2077,7 +2077,7 @@ function ContasPagarInner() {
             </div>
 
             {/* ── Rodapé ── */}
-            <div style={{ padding: "12px 24px", borderTop: "0.5px solid rgba(255,255,255,0.07)", display: "flex", gap: 8, alignItems: "center", background: "var(--bg-nav)", borderRadius: "0 0 12px 12px" }}>
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8, alignItems: "center", background: "var(--bg-nav)", borderRadius: "0 0 12px 12px" }}>
               {errosForm.length > 0 && (
                 <div style={{ flex: 1, background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", borderRadius: 7, padding: "7px 12px", fontSize: 11, color: "#EF4444" }}>
                   {errosForm.map((e, i) => <div key={i}>• {e}</div>)}
@@ -2093,7 +2093,7 @@ function ContasPagarInner() {
                     ⚡ Efetivar
                   </button>
                 )}
-                <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, background: "var(--border-row)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+                <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--border-row)", color: "var(--text-2)", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
                 <button onClick={adicionarLancamento} disabled={disabled}
                   style={{ padding: "8px 20px", background: disabled ? "var(--text-muted)" : "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", fontSize: 13 }}>
                   {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.condicao === "prazo" && parcelas.length > 0 ? `◈ Criar ${parcelas.length} parcelas` : form.condicao === "prazo" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} parcelas` : form.condicao === "recorrencia" ? `◈ Criar ${Math.max(2, Number(form.qtdParcelas) || 2)} repetições` : "◈ Salvar"}
@@ -2126,7 +2126,7 @@ function thS(_minW: number, align: "left" | "center" | "right" = "left"): React.
     textAlign: align,
     fontSize: 10,
     fontWeight: 700,
-    color: "var(--text-muted)",
+    color: "var(--text-2)",
     borderBottom: "0.5px solid var(--border-table)",
     whiteSpace: "nowrap",
     textTransform: "uppercase",

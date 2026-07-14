@@ -663,7 +663,7 @@ export default function Dashboard() {
     @keyframes ticker   { from { transform:translateX(0) } to { transform:translateX(-50%) } }
     .al-row:hover  { background: rgba(255,255,255,0.04) !important }
     .atalho-dark   { transition: background .15s, border-color .15s, transform .15s }
-    .atalho-dark:hover { background: rgba(255,255,255,0.07) !important; transform: translateY(-1px) }
+    .atalho-dark:hover { background: var(--border) !important; transform: translateY(-1px) }
     .mkt-flash-up  { background: rgba(34,197,94,0.12) !important }
     .mkt-flash-dn  { background: rgba(239,68,68,0.12) !important }
   `;
@@ -681,7 +681,7 @@ export default function Dashboard() {
         <div style={{
           padding:"36px 32px 32px",
           background:"linear-gradient(160deg,#0A1628 0%,#0D1F38 60%,#091422 100%)",
-          borderBottom:"0.5px solid rgba(255,255,255,0.07)",
+          borderBottom:"0.5px solid var(--border)",
           animation:"fadeUp .5s ease both",
         }}>
           {/* Saudação */}
@@ -760,7 +760,7 @@ export default function Dashboard() {
                 onChange={e => { setBuscaGlobal(e.target.value); setBuscaAberta(true); }}
                 onFocus={() => setBuscaAberta(true)}
                 style={{ width:"100%",boxSizing:"border-box",padding:"8px 12px 8px 34px",
-                  border:"0.5px solid rgba(255,255,255,0.1)",borderRadius:10,fontSize:13,
+                  border:"0.5px solid var(--border)",borderRadius:10,fontSize:13,
                   background:"var(--bg-input)",outline:"none",color:"var(--text-1)",
                   boxShadow:"none" }}
               />
@@ -768,7 +768,7 @@ export default function Dashboard() {
                 <button onClick={() => { setBuscaGlobal(""); setResultadosBusca([]); }} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:14,color:"var(--text-3)",padding:0,lineHeight:1 }}>×</button>
               )}
               {buscaAberta && buscaGlobal.trim().length >= 2 && (
-                <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid rgba(255,255,255,0.1)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:320,overflowY:"auto" }}>
+                <div style={{ position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#112236",border:"0.5px solid var(--border)",borderRadius:10,boxShadow:"0 12px 40px rgba(0,0,0,0.5)",zIndex:200,overflow:"hidden",maxHeight:320,overflowY:"auto" }}>
                   {resultadosBusca.length === 0 && !buscandoGlobal && (
                     <div style={{ padding:"14px",fontSize:12,color:"var(--text-3)",textAlign:"center" }}>Nenhum resultado para "{buscaGlobal}"</div>
                   )}
@@ -823,7 +823,7 @@ export default function Dashboard() {
           <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
 
             {/* ALERTAS */}
-            <div style={{ background:"var(--bg-card)",border:"0.5px solid rgba(255,255,255,0.07)",borderRadius:12,overflow:"hidden" }}>
+            <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
               <div style={{ padding:"14px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                 <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Alertas &amp; Pendências</span>
                 {loadAl
@@ -852,9 +852,9 @@ export default function Dashboard() {
                     <span style={{ fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:5,flexShrink:0,background:cor.badge+"18",color:cor.badge,letterSpacing:".04em",textTransform:"uppercase" }}>
                       {TIPO_LABEL[a.tipo] ?? a.tipo}
                     </span>
-                    <span style={{ flex:1,fontSize:13,color:"#CBD5E1",lineHeight:1.45 }}>{a.desc}</span>
+                    <span style={{ flex:1,fontSize:13,color:"var(--text-2)",lineHeight:1.45 }}>{a.desc}</span>
                     <a href={a.link}
-                      style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"var(--border-table)",border:"0.5px solid rgba(255,255,255,0.1)",color:"var(--text-2)",fontWeight:600,textDecoration:"none",whiteSpace:"nowrap",flexShrink:0 }}>
+                      style={{ fontSize:11,padding:"4px 10px",borderRadius:6,background:"var(--border-table)",border:"0.5px solid var(--border)",color:"var(--text-2)",fontWeight:600,textDecoration:"none",whiteSpace:"nowrap",flexShrink:0 }}>
                       {a.linkLabel} →
                     </a>
                   </div>
@@ -864,7 +864,7 @@ export default function Dashboard() {
 
             {/* CONCILIAÇÃO */}
             {conciliPend.length > 0 && (
-              <div style={{ background:"var(--bg-card)",border:"0.5px solid rgba(255,255,255,0.07)",borderRadius:12,overflow:"hidden" }}>
+              <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,overflow:"hidden" }}>
                 <div style={{ padding:"12px 20px",borderBottom:"0.5px solid var(--border-table)",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
                   <span style={{ fontWeight:700,fontSize:14,color:"var(--text-1)" }}>Inconsistências de Conciliação</span>
                   <span style={{ fontSize:11,fontWeight:700,color:"#FBBF24",background:"rgba(251,191,36,0.1)",padding:"2px 8px",borderRadius:10,border:"0.5px solid rgba(251,191,36,0.3)" }}>
@@ -903,16 +903,16 @@ export default function Dashboard() {
 
           {/* ── COLUNA DIREITA: Atalhos ── */}
           <div>
-            <div style={{ background:"var(--bg-card)",border:"0.5px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"16px" }}>
+            <div style={{ background:"var(--bg-card)",border:"0.5px solid var(--border)",borderRadius:12,padding:"16px" }}>
               <div style={{ fontSize:10,fontWeight:700,color:"var(--text-muted)",letterSpacing:".1em",textTransform:"uppercase",marginBottom:14 }}>Acesso Rápido</div>
               <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
                 {ATALHOS.map(a => (
                   <a key={a.link} href={a.link} className="atalho-dark"
                     style={{ display:"flex",alignItems:"center",gap:10,padding:"12px",borderRadius:8,
                       border:"0.5px solid var(--border)",textDecoration:"none",
-                      background:"rgba(255,255,255,0.03)" }}>
+                      background:"var(--bg-stripe)" }}>
                     <span style={{ width:32,height:32,borderRadius:8,background:a.cor+"1A",color:a.cor,fontWeight:800,fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{a.sigla}</span>
-                    <span style={{ fontSize:12,color:"#CBD5E1",fontWeight:500,lineHeight:1.25 }}>{a.label}</span>
+                    <span style={{ fontSize:12,color:"var(--text-2)",fontWeight:500,lineHeight:1.25 }}>{a.label}</span>
                   </a>
                 ))}
               </div>

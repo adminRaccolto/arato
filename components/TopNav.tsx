@@ -672,7 +672,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                       boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
                       zIndex: 1100, display: "flex", overflow: "hidden", minWidth: 360,
                     }}>
-                      <div style={{ width: 160, background: "var(--bg-nav)", borderRight: "0.5px solid rgba(255,255,255,0.07)", padding: "6px 0" }}>
+                      <div style={{ width: 160, background: "var(--nav-bg)", borderRight: "0.5px solid rgba(255,255,255,0.07)", padding: "6px 0" }}>
                         {grupos.map(g => {
                           const sel = g.label === panelGroup;
                           const temAtivo = g.items.some(i => isAtivo(i.path));

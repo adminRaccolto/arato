@@ -91,12 +91,12 @@ export default function RaccotloHub() {
         <button
           onClick={() => router.push("/seletor-cliente")}
           style={{
-            width: 300, padding: "32px 28px", background: "rgba(255,255,255,0.07)",
+            width: 300, padding: "32px 28px", background: "var(--border)",
             border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16,
             cursor: "pointer", textAlign: "left", transition: "all 0.18s",
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.30)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.14)"; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--border)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.30)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--border)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.14)"; }}
         >
           <div style={{ fontSize: 32, marginBottom: 16 }}>🌱</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
@@ -119,7 +119,7 @@ export default function RaccotloHub() {
       <div style={{
         marginTop: 48, padding: "5px 14px",
         background: raccotloGestor ? "rgba(201,146,27,0.15)" : "var(--border-table)",
-        border: `0.5px solid ${raccotloGestor ? "rgba(201,146,27,0.3)" : "rgba(255,255,255,0.12)"}`,
+        border: `0.5px solid ${raccotloGestor ? "rgba(201,146,27,0.3)" : "var(--border)"}`,
         borderRadius: 20, fontSize: 11, fontWeight: 600,
         color: raccotloGestor ? "#FDE9BB" : "rgba(255,255,255,0.45)",
         letterSpacing: "0.06em",
@@ -131,7 +131,7 @@ export default function RaccotloHub() {
       <button
         onClick={signOut}
         style={{
-          marginTop: 28, background: "none", border: "0.5px solid rgba(255,255,255,0.15)",
+          marginTop: 28, background: "none", border: "0.5px solid var(--border)",
           borderRadius: 8, padding: "8px 20px", cursor: "pointer",
           fontSize: 13, color: "rgba(255,255,255,0.35)",
         }}

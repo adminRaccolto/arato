@@ -1690,10 +1690,10 @@ function FiscalInner() {
                       {emissores.map(op => <option key={op.key} value={op.key}>{op.label}</option>)}
                     </select>
                   )}
-                  {emissores.length === 1 && <span style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
+                  {emissores.length === 1 && <span style={{ fontSize: 11, background: "var(--border)", padding: "3px 8px", borderRadius: 5 }}>{emissores[0].label}</span>}
                   {emissores.length === 0 && <span style={{ fontSize: 11, background: "#E24B4A50", padding: "3px 8px", borderRadius: 5 }}>⚠ Configure Parâmetros Fiscais</span>}
                   <button onClick={() => { const hoje = new Date().toISOString().slice(0,10); const agora = new Date().toTimeString().slice(0,8); setFVenda({ ...FVENDA_INICIAL, data_emissao: hoje, data_saida: hoje, hora_saida: agora }); setNfeItens([]); setTabNFe("produtor"); setModalVenda(false); }}
-                    style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</button>
+                    style={{ background: "var(--border)", border: "none", color: "#fff", borderRadius: 5, padding: "4px 10px", cursor: "pointer", fontWeight: 700, fontSize: 14 }}>✕</button>
                 </div>
               </div>
 

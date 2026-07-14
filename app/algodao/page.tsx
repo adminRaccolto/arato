@@ -486,8 +486,8 @@ export default function AlgodaoPage() {
                 {variacaoAlg >= 0 ? "▲" : "▼"} {Math.abs(variacaoAlg).toFixed(1)}%
               </span>
             </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>USD/BRL: {fmtN(usdBrl, 2)}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+            <div style={{ fontSize: 11, color: "var(--border)" }}>USD/BRL: {fmtN(usdBrl, 2)}</div>
+            <div style={{ fontSize: 11, color: "var(--border)" }}>
               {new Date(precos.atualizadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>

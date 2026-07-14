@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             />
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "-0.2px" }}>Raccolto</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>Painel Admin</div>
+              <div style={{ fontSize: 10, color: "var(--border)", marginTop: 1 }}>Painel Admin</div>
             </div>
           </div>
 
@@ -154,7 +154,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             display: "flex", alignItems: "center", gap: 8,
             padding: "8px 12px", borderRadius: 8, marginBottom: 8,
             textDecoration: "none", color: "rgba(255,255,255,0.45)",
-            fontSize: 12, border: "0.5px solid rgba(255,255,255,0.1)",
+            fontSize: 12, border: "0.5px solid var(--border)",
             background: "rgba(255,255,255,0.04)",
           }}>
             <span>←</span> Voltar ao Arato

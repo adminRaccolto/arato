@@ -506,8 +506,8 @@ export default function IdentidadePage() {
           ].map(({ label, url }) => (
             <a key={url} href={url} target="_blank" rel="noopener noreferrer" style={{
               display: "block", padding: "10px 14px",
-              background: "rgba(255,255,255,0.07)",
-              border: "0.5px solid rgba(255,255,255,0.1)",
+              background: "var(--border)",
+              border: "0.5px solid var(--border)",
               borderRadius: 8, textDecoration: "none",
               fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500,
             }}>

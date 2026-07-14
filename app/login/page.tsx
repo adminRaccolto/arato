@@ -259,13 +259,13 @@ export default function Login() {
               onClick={() => { setModo("login"); setErro(null); setSucesso(null); }}
               style={{
                 width: "100%", marginTop: 10,
-                background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.30)",
+                background: "var(--border)", border: "1px solid rgba(255,255,255,0.30)",
                 borderRadius: 12, padding: "13px",
                 fontSize: 14, color: "rgba(255,255,255,0.85)", cursor: "pointer", fontWeight: 500,
                 transition: "background 0.15s",
               }}
               onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.20)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "var(--border)")}
             >
               ← Voltar ao login
             </button>

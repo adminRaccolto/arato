@@ -282,7 +282,7 @@ function TelaExecucao({
       <div style={{ background: cor, color: "#fff", padding: "16px 18px", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
           <button onClick={onVoltar}
-            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 16, cursor: "pointer" }}>
+            style={{ background: "var(--border)", border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", fontSize: 16, cursor: "pointer" }}>
             ←
           </button>
           <div style={{ flex: 1 }}>
