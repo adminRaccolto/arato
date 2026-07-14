@@ -163,7 +163,7 @@ function PagamentoInner() {
           {carregando ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
           ) : assinatura && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Sua assinatura</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
@@ -200,14 +200,14 @@ function PagamentoInner() {
 
           {/* Cobranças em aberto */}
           {pagamentos.length > 0 && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
                 Cobranças em aberto
               </div>
               {pagamentos.map(p => (
                 <div key={p.id} style={{
                   display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "12px 0", borderBottom: "0.5px solid #EEF1F6",
+                  padding: "12px 0", borderBottom: "0.5px solid var(--bg-tag)",
                 }}>
                   <div>
                     <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{p.descricao ?? "Mensalidade Arato"}</div>
@@ -234,7 +234,7 @@ function PagamentoInner() {
 
           {/* Gerar nova cobrança */}
           {assinatura && pagamentos.length === 0 && (
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35", marginBottom: 4 }}>Gerar cobrança</div>
               <div style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
                 Escolha o método de pagamento para gerar uma cobrança avulsa.
@@ -301,7 +301,7 @@ function PagamentoInner() {
           )}
 
           {/* Suporte */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#0B1E35", marginBottom: 8 }}>Precisa de ajuda?</div>
             <div style={{ display: "flex", gap: 10 }}>
               <a href="https://wa.me/5565981456825?text=Preciso+de+ajuda+com+pagamento+do+Arato"
@@ -310,7 +310,7 @@ function PagamentoInner() {
                 WhatsApp
               </a>
               <a href="mailto:financeiro@raccolto.com.br"
-                style={{ flex: 1, padding: "10px 0", background: "var(--bg-page)", color: "var(--text-2)", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", textAlign: "center", border: "0.5px solid #DDE2EE" }}>
+                style={{ flex: 1, padding: "10px 0", background: "var(--bg-page)", color: "var(--text-2)", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none", textAlign: "center", border: "0.5px solid var(--border)" }}>
                 E-mail
               </a>
             </div>
@@ -320,7 +320,7 @@ function PagamentoInner() {
         {/* Coluna lateral — histórico */}
         {pagamentos.length > 0 || assinatura ? (
           <div style={{ width: 260, flexShrink: 0 }}>
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
                 Resumo da conta
               </div>
@@ -330,7 +330,7 @@ function PagamentoInner() {
                 <div>Em aberto: <strong style={{ color: "#E24B4A" }}>{fmtPreco(totalDevido)}</strong></div>
               </div>
 
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8 }}>CNPJ Faturamento</div>
                 <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-2)", lineHeight: 1.6 }}>
                   Raccolto Consultoria e Treinamentos LTDA<br />

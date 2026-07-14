@@ -528,7 +528,7 @@ export default function Financeiro() {
   const d30Key = d30.toISOString().split("T")[0];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
@@ -691,7 +691,7 @@ export default function Financeiro() {
 
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                          <tr style={{ background: "#F3F6F9" }}>
+                          <tr style={{ background: "var(--bg-page)" }}>
                             {["Tipo / Moeda", "Descrição", "Categoria", "Vencimento", "Valor", "Status", "Origem", ""].map((h, i) => (
                               <th key={i} style={{ padding: "8px 14px", textAlign: i >= 3 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                             ))}
@@ -932,8 +932,8 @@ export default function Financeiro() {
                             <div style={{ overflowX: "auto" }}>
                               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                                 <thead>
-                                  <tr style={{ background: "#F3F6F9" }}>
-                                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", minWidth: 240, position: "sticky", left: 0, background: "#F3F6F9", zIndex: 2 }}>
+                                  <tr style={{ background: "var(--bg-page)" }}>
+                                    <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", minWidth: 240, position: "sticky", left: 0, background: "var(--bg-page)", zIndex: 2 }}>
                                       Conta / Descrição
                                     </th>
                                     {mesesDFC.map(m => (
@@ -942,7 +942,7 @@ export default function Financeiro() {
                                         {m.passado && <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>{modoDFC}</div>}
                                       </th>
                                     ))}
-                                    <th style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", minWidth: 120, background: "#F3F6F9" }}>
+                                    <th style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap", minWidth: 120, background: "var(--bg-page)" }}>
                                       Total
                                     </th>
                                   </tr>
@@ -983,8 +983,8 @@ export default function Financeiro() {
                                   })}
 
                                   {/* ── Rodapé ── */}
-                                  <tr style={{ background: "#F3F6F9", borderTop: "2px solid var(--border-table)" }}>
-                                    <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", position: "sticky", left: 0, background: "#F3F6F9", zIndex: 1 }}>Saldo Anterior</td>
+                                  <tr style={{ background: "var(--bg-page)", borderTop: "2px solid var(--border-table)" }}>
+                                    <td style={{ padding: "8px 14px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", position: "sticky", left: 0, background: "var(--bg-page)", zIndex: 1 }}>Saldo Anterior</td>
                                     <td colSpan={mesesDFC.length + 1} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: saldoAnterior >= 0 ? "#1A4870" : "#E24B4A" }}>
                                       {saldoZero ? "Iniciando em R$ 0,00" : fmtBRL(saldoAnterior)}
                                     </td>
@@ -1054,7 +1054,7 @@ export default function Financeiro() {
                         <div>
                           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                             <thead>
-                              <tr style={{ background: "#F3F6F9" }}>
+                              <tr style={{ background: "var(--bg-page)" }}>
                                 <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", width: 200 }}>
                                   Demonstrativo de Fluxo de Caixa
                                 </th>
@@ -1068,7 +1068,7 @@ export default function Financeiro() {
                             </thead>
                             <tbody>
                               {/* Saldo inicial */}
-                              <tr style={{ background: "#F3F6F9" }}>
+                              <tr style={{ background: "var(--bg-page)" }}>
                                 <td style={{ padding: "8px 16px", fontSize: 11, fontWeight: 600, color: "var(--text-1)", borderBottom: "0.5px solid var(--border-table)" }}>Saldo inicial</td>
                                 {saldosMes.map(m => (
                                   <td key={m.keyMes} style={{ padding: "8px 12px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-1)", borderBottom: "0.5px solid var(--border-table)" }}>
@@ -1162,7 +1162,7 @@ export default function Financeiro() {
                               })()}
 
                               {/* Saldo final */}
-                              <tr style={{ background: "#F3F6F9" }}>
+                              <tr style={{ background: "var(--bg-page)" }}>
                                 <td style={{ padding: "10px 16px", fontSize: 12, fontWeight: 600, color: "var(--text-1)", borderTop: "0.5px solid var(--border-table)" }}>Saldo final projetado</td>
                                 {saldosMes.map(m => (
                                   <td key={m.keyMes} style={{ padding: "10px 12px", textAlign: "right", fontSize: 13, fontWeight: 600, color: m.saldoFinal >= 0 ? "#1A4870" : "#E24B4A", borderTop: "0.5px solid var(--border-table)" }}>
@@ -1228,8 +1228,8 @@ export default function Financeiro() {
                           <div style={{ overflowX: "auto", padding: "0 0 8px 0" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
                               <thead>
-                                <tr style={{ background: "#F3F6F9" }}>
-                                  <th style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", width: 190, position: "sticky", left: 0, background: "#F3F6F9" }}>Linha</th>
+                                <tr style={{ background: "var(--bg-page)" }}>
+                                  <th style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", width: 190, position: "sticky", left: 0, background: "var(--bg-page)" }}>Linha</th>
                                   {prevReal.map(m => (
                                     <th key={m.keyMes} style={{ padding: "9px 10px", textAlign: "right", fontSize: 11, fontWeight: 600, color: m.isFuturo ? "var(--text-3)" : "var(--text-1)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>
                                       {m.label}
@@ -1286,7 +1286,7 @@ export default function Financeiro() {
                                 ))}
 
                                 {/* Saldo */}
-                                <tr style={{ background: "#F3F6F9", borderTop: "0.5px solid var(--border-table)" }}>
+                                <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border-table)" }}>
                                   <td colSpan={prevReal.length + 1} style={{ padding: "5px 16px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", letterSpacing: "0.05em", borderBottom: "0.5px solid var(--border-table)" }}>
                                     ⇄ SALDO DO PERÍODO
                                   </td>
@@ -1323,7 +1323,7 @@ export default function Financeiro() {
                         let saldoAcumDia = saldoZero ? 0 : saldoAnterior;
 
                         return (
-                          <div style={{ background: "#F3F6F9" }}>
+                          <div style={{ background: "var(--bg-page)" }}>
                             {/* Sumário 30 dias + botão simulação */}
                             <div style={{ display: "flex", alignItems: "stretch", background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)" }}>
                               <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
@@ -1532,7 +1532,7 @@ export default function Financeiro() {
                       </div>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                          <tr style={{ background: "#F3F6F9" }}>
+                          <tr style={{ background: "var(--bg-page)" }}>
                             {["Data", "Descrição no extrato", "Valor", "Conciliação", "Lançamento vinculado", ""].map((h, i) => (
                               <th key={i} style={{ padding: "8px 14px", textAlign: i === 2 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}

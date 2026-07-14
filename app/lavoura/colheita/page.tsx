@@ -376,7 +376,7 @@ export default function ColheitaPage() {
   // ────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)" }}>
       <TopNav />
 
       <main style={{ flex: 1, padding: "24px 28px" }}>
@@ -581,7 +581,7 @@ export default function ColheitaPage() {
 
                   {/* Romaneios expandidos */}
                   {isExp && (
-                    <div style={{ borderTop: "0.5px solid var(--border-row)", background: "#F8FAFD" }}>
+                    <div style={{ borderTop: "0.5px solid var(--border-row)", background: "var(--bg-card)" }}>
                       <div style={{ padding: "10px 20px 6px", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         Romaneios ({col.romaneios?.length ?? 0})
                       </div>
@@ -879,7 +879,7 @@ export default function ColheitaPage() {
                     </label>
                     <div>
                       <div style={lbStyle}>Peso Líquido (calculado)</div>
-                      <div style={{ ...inpStyle, background: "#F3F6F9", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#1A4870" : "var(--text-3)", display: "flex", alignItems: "center" }}>
+                      <div style={{ ...inpStyle, background: "var(--bg-page)", fontWeight: 700, fontSize: 15, color: pl > 0 ? "#1A4870" : "var(--text-3)", display: "flex", alignItems: "center" }}>
                         {fmt(pl)} kg
                       </div>
                     </div>
@@ -1164,7 +1164,7 @@ const btnPrimStyle: React.CSSProperties = {
 };
 
 const btnCancelStyle: React.CSSProperties = {
-  background: "#F3F6F9", color: "#666", border: "0.5px solid #d0d0cc", borderRadius: 8,
+  background: "var(--bg-page)", color: "#666", border: "0.5px solid #d0d0cc", borderRadius: 8,
   padding: "9px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer",
 };
 
@@ -1173,7 +1173,7 @@ const btnCancelStyle: React.CSSProperties = {
 function DescontoBox({ label, valor }: { label: string; valor: number }) {
   return (
     <div style={{
-      background: valor > 0 ? "#FFF5F5" : "#F3F6F9",
+      background: valor > 0 ? "#FFF5F5" : "var(--bg-page)",
       borderRadius: 8, padding: "8px 10px", textAlign: "center",
     }}>
       <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 2 }}>{label}</div>

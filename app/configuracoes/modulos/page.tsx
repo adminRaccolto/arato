@@ -57,19 +57,19 @@ const campo = (label: string, children: React.ReactNode, required?: boolean) => 
 );
 
 const inp = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box", ...props.style }} />
+  <input {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", width: "100%", boxSizing: "border-box", ...props.style }} />
 );
 
 const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%", ...props.style }} />
+  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%", ...props.style }} />
 );
 
 const txta = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
-  <textarea {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 12, fontFamily: "system-ui, sans-serif", outline: "none", width: "100%", boxSizing: "border-box", resize: "vertical", lineHeight: 1.5, ...props.style }} />
+  <textarea {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 12, fontFamily: "system-ui, sans-serif", outline: "none", width: "100%", boxSizing: "border-box", resize: "vertical", lineHeight: 1.5, ...props.style }} />
 );
 
 const secHeader = (label: string) => (
-  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: "0.5px solid #DDE2EE", paddingBottom: 6, marginBottom: 14 }}>
+  <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: "0.5px solid var(--border)", paddingBottom: 6, marginBottom: 14 }}>
     {label}
   </div>
 );
@@ -606,7 +606,7 @@ function ParametrosSistemaContent() {
           </button>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => window.print()} className="no-print"
-              style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               🖨 Imprimir
             </button>
             <button onClick={() => setModalOp({ ...OP_MODAL_VAZIO })}
@@ -621,7 +621,7 @@ function ParametrosSistemaContent() {
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["Operação","CFOP int.","CFOP ext.","ICMS interno","ICMS externo","Alíq%","B.Red%","PIS","COFINS","IBS/CBS","Status",""].map(h => (
-                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -630,7 +630,7 @@ function ParametrosSistemaContent() {
                 const efetiva = op.icms_aliq * op.icms_base_reduzida_pct / 100;
                 const ibsCbsTotal = 19.1; // standard combined IBS+CBS
                 return (
-                  <tr key={op.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                  <tr key={op.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{op.nome}</div>
                       {op.descricao && <div style={{ color: "var(--text-3)", fontSize: 11, maxWidth: 220, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={op.descricao}>{op.descricao}</div>}
@@ -660,7 +660,7 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setModalOp(op)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                        <button onClick={() => setModalOp(op)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
                         <button onClick={() => excluirOp(op.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
                       </div>
                     </td>
@@ -754,7 +754,7 @@ function ParametrosSistemaContent() {
                   : "Homologação — ambiente de testes. NF-e sem validade fiscal."}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 0, background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 30, padding: "4px" }}>
+            <div style={{ display: "flex", gap: 0, background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 30, padding: "4px" }}>
               {(["homologacao", "producao"] as const).map(v => {
                 const ativo = ambienteGlobal === v;
                 return (
@@ -792,7 +792,7 @@ function ParametrosSistemaContent() {
         </div>
 
         {emitters.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", border: "0.5px dashed #DDE2EE", borderRadius: 10, padding: "40px 24px", textAlign: "center", color: "var(--text-3)" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px dashed var(--border)", borderRadius: 10, padding: "40px 24px", textAlign: "center", color: "var(--text-3)" }}>
             <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
             <div style={{ fontWeight: 600, marginBottom: 6, color: "var(--text-2)" }}>Nenhum emitente cadastrado</div>
             <div style={{ fontSize: 12, marginBottom: 16 }}>
@@ -833,7 +833,7 @@ function ParametrosSistemaContent() {
 
                   {/* Ambiente SEFAZ — toggle rápido no header */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 20, padding: "3px 4px" }}>
+                    <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 20, padding: "3px 4px" }}>
                       {(["homologacao", "producao"] as const).map(v => {
                         const atual = (c.ambiente as string) || "homologacao";
                         const ativo = atual === v;
@@ -862,7 +862,7 @@ function ParametrosSistemaContent() {
 
                 {/* Body */}
                 {isOpen && (
-                  <div style={{ padding: "22px 18px", borderTop: "0.5px solid #DDE2EE" }}>
+                  <div style={{ padding: "22px 18px", borderTop: "0.5px solid var(--border)" }}>
 
                     {/* Identificação */}
                     <div style={{ marginBottom: 24 }}>
@@ -1032,7 +1032,7 @@ function ParametrosSistemaContent() {
             <thead>
               <tr style={{ background: "var(--bg-page)" }}>
                 {["NCM","Descrição","ICMS Interno","ICMS Externo","Alíq%","B.Red%","Efetiva","PIS","COFINS","IBS+CBS (c/red.)","infCpl",""].map(h => (
-                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1044,7 +1044,7 @@ function ParametrosSistemaContent() {
                 const interno = cstColor(n.icms_cst_interno);
                 const externo = cstColor(n.icms_cst_externo);
                 return (
-                  <tr key={n.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                  <tr key={n.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                     <td style={{ padding: "8px 10px", fontFamily: "monospace", fontWeight: 700 }}>{n.ncm}</td>
                     <td style={{ padding: "8px 10px", fontWeight: 600, maxWidth: 180 }}>{n.descricao}</td>
                     <td style={{ padding: "8px 10px" }}>
@@ -1077,7 +1077,7 @@ function ParametrosSistemaContent() {
                     </td>
                     <td style={{ padding: "8px 10px" }}>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button onClick={() => setModalNcm(n)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                        <button onClick={() => setModalNcm(n)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer" }}>Editar</button>
                         <button onClick={() => excluirNcm(n.id)} style={{ background: "none", border: "0.5px solid #FCA5A5", borderRadius: 6, padding: "3px 8px", fontSize: 11, cursor: "pointer", color: "#E24B4A" }}>×</button>
                       </div>
                     </td>
@@ -1102,7 +1102,7 @@ function ParametrosSistemaContent() {
       <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
         {(["transportadoras", "veiculos", "motoristas"] as const).map(s => (
           <button key={s} onClick={() => setSubAba(s)} style={{
-            padding: "6px 16px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13,
+            padding: "6px 16px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13,
             fontWeight: subAba === s ? 700 : 400, background: subAba === s ? "#1A4870" : "var(--bg-card)",
             color: subAba === s ? "#fff" : "#333", cursor: "pointer",
           }}>
@@ -1119,12 +1119,12 @@ function ParametrosSistemaContent() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["CNPJ","Razão Social","RNTRC","UF","Status",""].map(h => (
-                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {transportadoras.map(t => (
-                <tr key={t.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                <tr key={t.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                   <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{t.cnpj}</td>
                   <td style={{ padding: "8px 12px", fontWeight: 600 }}>{t.razao_social}</td>
                   <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{t.rntrc || "—"}</td>
@@ -1134,7 +1134,7 @@ function ParametrosSistemaContent() {
                       {t.ativa ? "Ativa" : "Inativa"}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 12px" }}><button onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                  <td style={{ padding: "8px 12px" }}><button onClick={() => setModalT(t)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                 </tr>
               ))}
               {transportadoras.length === 0 && <tr><td colSpan={6} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhuma transportadora cadastrada</td></tr>}
@@ -1151,12 +1151,12 @@ function ParametrosSistemaContent() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Placa","Tipo","Tara (kg)","Cap. (kg)","RNTRC","Status",""].map(h => (
-                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
               {veiculos.map(v => (
-                <tr key={v.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                <tr key={v.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                   <td style={{ padding: "8px 12px", fontWeight: 700, fontFamily: "monospace" }}>{v.placa}</td>
                   <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tipo}</td>
                   <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{v.tara_kg?.toLocaleString("pt-BR") || "—"}</td>
@@ -1167,7 +1167,7 @@ function ParametrosSistemaContent() {
                       {v.ativo ? "Ativo" : "Inativo"}
                     </span>
                   </td>
-                  <td style={{ padding: "8px 12px" }}><button onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                  <td style={{ padding: "8px 12px" }}><button onClick={() => setModalV(v)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                 </tr>
               ))}
               {veiculos.length === 0 && <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", color: "var(--text-3)" }}>Nenhum veículo cadastrado</td></tr>}
@@ -1184,7 +1184,7 @@ function ParametrosSistemaContent() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead><tr style={{ background: "var(--bg-page)" }}>
               {["Nome","CPF","CNH","Validade CNH","Status",""].map(h => (
-                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
               ))}
             </tr></thead>
             <tbody>
@@ -1192,7 +1192,7 @@ function ParametrosSistemaContent() {
                 const venc = m.cnh_validade ? new Date(m.cnh_validade) : null;
                 const cnhVencida = venc && venc < new Date();
                 return (
-                  <tr key={m.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                  <tr key={m.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                     <td style={{ padding: "8px 12px", fontWeight: 600 }}>{m.nome}</td>
                     <td style={{ padding: "8px 12px", color: "var(--text-2)", fontFamily: "monospace" }}>{m.cpf}</td>
                     <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{m.cnh || "—"}</td>
@@ -1204,7 +1204,7 @@ function ParametrosSistemaContent() {
                         {m.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 12px" }}><button onClick={() => setModalM(m)} style={{ background: "none", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
+                    <td style={{ padding: "8px 12px" }}><button onClick={() => setModalM(m)} style={{ background: "none", border: "0.5px solid var(--border)", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}>Editar</button></td>
                   </tr>
                 );
               })}
@@ -1259,7 +1259,7 @@ function ParametrosSistemaContent() {
           <p style={{ margin: "6px 0 0", fontSize: 13, color: "#666" }}>Todos os parâmetros que variam por cliente. Configure uma vez — o sistema usa automaticamente.</p>
         </div>
 
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1.5px solid var(--border)" }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setAba(t.id)} style={{
               padding: "8px 18px", border: "none", borderRadius: "8px 8px 0 0",
@@ -1272,7 +1272,7 @@ function ParametrosSistemaContent() {
           ))}
         </div>
 
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, border: "0.5px solid #DDE2EE" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 28, border: "0.5px solid var(--border)" }}>
 
           {aba === "aparencia" && (
             <div>
@@ -1284,7 +1284,7 @@ function ParametrosSistemaContent() {
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 32, alignItems: "start" }}>
                 {/* Preview */}
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 160, height: 100, border: "1.5px dashed #DDE2EE", borderRadius: 12, background: "#F8FAFB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                  <div style={{ width: 160, height: 100, border: "1.5px dashed var(--border)", borderRadius: 12, background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     {logoUrl
                       ? <img src={logoUrl} alt="Logo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 8 }} />
                       : <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Sem logo</span>
@@ -1371,7 +1371,7 @@ function ParametrosSistemaContent() {
                       <select
                         value={currentRef}
                         onChange={e => setCfgs(prev => ({ ...prev, cte: { ...(prev["cte"] ?? {}), modulo_fiscal_ref: e.target.value } }))}
-                        style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
+                        style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", width: "100%" }}
                       >
                         <option value="">— selecione o emitente —</option>
                         {emitters.map(em => (
@@ -1466,7 +1466,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interestadual", sel({ value: modalOp.icms_cst_externo ?? "020", onChange: e => setModalOp(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalOp.icms_aliq ?? 12, onChange: e => setModalOp(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalOp.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalOp(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
-              {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
+              {campo("Efetiva (calc.)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalOp.icms_aliq ?? 0) * (modalOp.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div style={{ marginBottom: 14 }}>{secHeader("PIS / COFINS")}</div>
@@ -1495,7 +1495,7 @@ function ParametrosSistemaContent() {
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalOp(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarOp} style={{ padding: "8px 24px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1524,7 +1524,7 @@ function ParametrosSistemaContent() {
               {campo("CST Interestadual", sel({ value: modalNcm.icms_cst_externo ?? "020", onChange: e => setModalNcm(p => ({ ...p!, icms_cst_externo: e.target.value })), children: [["000","Tributada (000)"],["020","Base Reduzida (020)"],["040","Isenta (040)"],["041","Não Tributada (041)"],["051","Diferido (051)"],["090","Outras (090)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
               {campo("Alíquota %", inp({ type: "number", step: "0.01", value: modalNcm.icms_aliq ?? 12, onChange: e => setModalNcm(p => ({ ...p!, icms_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Base Reduzida %", inp({ type: "number", step: "0.01", value: modalNcm.icms_base_reduzida_pct ?? 100, placeholder: "61.11", onChange: e => setModalNcm(p => ({ ...p!, icms_base_reduzida_pct: parseFloat(e.target.value) || 100 })) }))}
-              {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
+              {campo("Efetiva (calculada)", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{((modalNcm.icms_aliq ?? 0) * (modalNcm.icms_base_reduzida_pct ?? 100) / 100).toFixed(2)}%</div>)}
             </div>
 
             <div style={{ marginBottom: 16 }}>{secHeader("PIS / COFINS")}</div>
@@ -1545,7 +1545,7 @@ function ParametrosSistemaContent() {
               {campo("IBS Municipal %", inp({ type: "number", step: "0.01", value: modalNcm.ibs_municipal_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, ibs_municipal_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("CBS %", inp({ type: "number", step: "0.01", value: modalNcm.cbs_aliq ?? 0, onChange: e => setModalNcm(p => ({ ...p!, cbs_aliq: parseFloat(e.target.value) || 0 })) }))}
               {campo("Redução %", sel({ value: String(modalNcm.ibs_cbs_reducao_pct ?? 0), onChange: e => setModalNcm(p => ({ ...p!, ibs_cbs_reducao_pct: parseFloat(e.target.value) })), children: [["0","0% — sem redução"],["60","60% — produção rural (agro)"],["100","100% — zero (exportação/cesta básica)"]].map(([v,l]) => <option key={v} value={v}>{l}</option>) as React.ReactNode }))}
-              {campo("Efetiva IBS+CBS", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
+              {campo("Efetiva IBS+CBS", <div style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", fontSize: 13, fontWeight: 700, color: "#C9921B" }}>
                 {(((modalNcm.ibs_estadual_aliq ?? 0) + (modalNcm.ibs_municipal_aliq ?? 0) + (modalNcm.cbs_aliq ?? 0)) * (1 - (modalNcm.ibs_cbs_reducao_pct ?? 0) / 100)).toFixed(2)}%
               </div>)}
             </div>
@@ -1562,7 +1562,7 @@ function ParametrosSistemaContent() {
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalNcm(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarNcm} style={{ padding: "8px 24px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1586,7 +1586,7 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalT.ativa === false ? "inativo" : "ativo", onChange: e => setModalT(p => ({ ...p!, ativa: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativa</option>, <option key="inativo" value="inativo">Inativa</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalT(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarTransportadora} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1610,7 +1610,7 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalV.ativo === false ? "inativo" : "ativo", onChange: e => setModalV(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalV(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarVeiculo} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>
@@ -1633,7 +1633,7 @@ function ParametrosSistemaContent() {
               {campo("Status", sel({ value: modalM.ativo === false ? "inativo" : "ativo", onChange: e => setModalM(p => ({ ...p!, ativo: e.target.value === "ativo" })), children: [<option key="ativo" value="ativo">Ativo</option>, <option key="inativo" value="inativo">Inativo</option>] as React.ReactNode }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalM(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarMotorista} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Salvar</button>
             </div>
           </div>

@@ -197,7 +197,7 @@ export default function PendenciasOperacionais() {
             <select
               value={filtroTipo}
               onChange={e => setFiltroTipo(e.target.value)}
-              style={{ border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 10px", fontSize: 12, background: "var(--bg-card)", color: "#333" }}
+              style={{ border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 10px", fontSize: 12, background: "var(--bg-card)", color: "#333" }}
             >
               <option value="todos">Todos</option>
               {Object.entries(subtipoLabel).map(([k, v]) => (
@@ -211,7 +211,7 @@ export default function PendenciasOperacionais() {
         {loading ? (
           <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-3)", fontSize: 14 }}>Carregando...</div>
         ) : pendenciasFiltradas.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "60px 0", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+          <div style={{ textAlign: "center", padding: "60px 0", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-1)" }}>Sem pendências!</div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
@@ -229,9 +229,9 @@ export default function PendenciasOperacionais() {
                 <div
                   key={p.id}
                   style={{
-                    background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12,
+                    background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12,
                     padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 16,
-                    borderLeft: p.status === "pendente" ? "4px solid #F59E0B" : p.status === "resolvida" ? "4px solid #10B981" : "4px solid #D4DCE8",
+                    borderLeft: p.status === "pendente" ? "4px solid #F59E0B" : p.status === "resolvida" ? "4px solid #10B981" : "4px solid var(--border-table)",
                   }}
                 >
                   {/* Ícone */}
@@ -403,12 +403,12 @@ export default function PendenciasOperacionais() {
                 value={buscaInsumo}
                 onChange={e => { setBuscaInsumo(e.target.value); setInsumoSel(""); }}
                 placeholder="Digite o nome do insumo..."
-                style={{ width: "100%", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                style={{ width: "100%", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "9px 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
               />
             </div>
 
             {/* Lista de insumos filtrados */}
-            <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid #D4DCE8", borderRadius: 8, marginBottom: 16 }}>
+            <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, marginBottom: 16 }}>
               {insumosFiltrados.length === 0 ? (
                 <div style={{ padding: "16px", textAlign: "center", fontSize: 13, color: "var(--text-3)" }}>
                   Nenhum insumo encontrado
@@ -425,7 +425,7 @@ export default function PendenciasOperacionais() {
                         padding: "10px 14px", cursor: "pointer",
                         background: sel ? "#D5E8F5" : "transparent",
                         borderLeft: sel ? "3px solid #1A4870" : "3px solid transparent",
-                        borderBottom: "0.5px solid #EEF1F6",
+                        borderBottom: "0.5px solid var(--bg-tag)",
                       }}
                     >
                       <div>
@@ -472,7 +472,7 @@ export default function PendenciasOperacionais() {
               <button
                 onClick={() => setModal(null)}
                 disabled={resolving}
-                style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "9px 20px", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
+                style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "9px 20px", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Fechar
               </button>
@@ -505,7 +505,7 @@ export default function PendenciasOperacionais() {
               <button
                 onClick={() => setCancelId(null)}
                 disabled={canceling}
-                style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}
+                style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 18px", fontSize: 13, cursor: "pointer" }}
               >
                 Não cancelar
               </button>

@@ -31,12 +31,12 @@ import type {
 // ────────────────────────────────────────────────────────
 // Estilos base
 // ────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtNum = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -48,9 +48,9 @@ function badge(texto: string, bg = "#D5E8F5", color = "#0B2D50") {
 function TH({ cols }: { cols: string[] }) {
   return (
     <thead>
-      <tr style={{ background: "#F3F6F9" }}>
+      <tr style={{ background: "var(--bg-page)" }}>
         {cols.map((c, i) => (
-          <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
+          <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
         ))}
       </tr>
     </thead>
@@ -519,11 +519,11 @@ export default function Estoque() {
   // RENDER
   // ────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexDirection: "row", gap: 0 }}>
             <div>
               <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Estoque</h1>
@@ -538,7 +538,7 @@ export default function Estoque() {
         </header>
 
         {/* Abas — scroll horizontal no mobile */}
-        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", display: "flex", padding: "0 22px", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch" }}>
           {([ ["posicao","Posição"], ["nf_entrada","NF Entrada"], ["terceiros","Terceiros"], ["movimentacoes","Movimentações"], ["relatorios","Relatórios"] ] as const).map(([k,l]) => (
             <button key={k} onClick={() => setAba(k)} style={{ padding: "11px 18px", border: "none", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: aba === k ? 600 : 400, color: aba === k ? "var(--text-1)" : "var(--text-2)", borderBottom: aba === k ? "2px solid #1A4870" : "2px solid transparent", flexShrink: 0 }}>{l}</button>
           ))}
@@ -589,12 +589,12 @@ export default function Estoque() {
               {(() => {
                 const todosSel = insumosFiltrados.length > 0 && insumosFiltrados.every(i => selecionados.has(i.id));
                 const algumSel = insumosFiltrados.some(i => selecionados.has(i.id));
-                const thStyle: React.CSSProperties = { padding: "8px 14px", textAlign: "center" as const, fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" as const };
+                const thStyle: React.CSSProperties = { padding: "8px 14px", textAlign: "center" as const, fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" as const };
                 return (
-                  <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
+                        <tr style={{ background: "var(--bg-page)" }}>
                           <th style={{ ...thStyle, width: 40, padding: "8px 12px" }}>
                             <input type="checkbox" checked={todosSel} ref={el => { if (el) el.indeterminate = algumSel && !todosSel; }}
                               onChange={e => setSelecionados(e.target.checked ? new Set(insumosFiltrados.map(i => i.id)) : new Set())}
@@ -666,7 +666,7 @@ export default function Estoque() {
                 </div>
                 <input style={{ ...inp, width: 200, fontSize: 12 }} placeholder="Buscar PA…" value={buscaPA} onChange={e => setBuscaPA(e.target.value)} />
               </div>
-              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Princípio Ativo", "Categoria", "Saldo atual", "Custo médio", "Valor em estoque", "Última movimentação"]} />
                   <tbody>
@@ -728,7 +728,7 @@ export default function Estoque() {
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
                 <button style={btnV} onClick={abrirNovaFf}>+ Lançar NF de Entrada</button>
               </div>
-              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["NF / Série", "Emitente", "Data Emissão", "Valor Total", "Status", "Natureza", ""]} />
                   <tbody>
@@ -769,7 +769,7 @@ export default function Estoque() {
 
           {/* ══ ESTOQUE TERCEIROS ══ */}
           {aba === "terceiros" && (
-            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
               <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)" }}>
                 <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Estoque de Terceiros</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Insumos entregues por terceiros para uso futuro — controle de saldo e consumo</div>
@@ -831,7 +831,7 @@ export default function Estoque() {
                 <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-2)" }}>{movs.filter(m => m.motivo !== "abastecimento" && (filtroMov === "todos" || m.tipo === filtroMov)).length} registros</span>
                 <button style={{ ...btnE, borderColor: "#C9921B50", color: "#C9921B", background: "#FBF3E0" }} onClick={() => setModalMov(true)}>± Nova Movimentação</button>
               </div>
-              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Item", "Tipo", "Motivo", "Qtd.", "Depósito", "Origem"]} />
                   <tbody>
@@ -891,7 +891,7 @@ export default function Estoque() {
               <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 10 }}>
                 Movimentações — Defensivos / Fertilizantes / Inoculantes (PA)
               </div>
-              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto", background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <TH cols={["Data", "Princípio Ativo", "Tipo", "Qtd.", "Custo unit.", "Produto na NF", "Origem", "NF"]} />
                   <tbody>
@@ -936,7 +936,7 @@ export default function Estoque() {
           {aba === "relatorios" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Sub-abas — scroll horizontal no mobile */}
-              <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
+              <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", overflowX: "auto", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", width: "fit-content", maxWidth: "100%" }}>
                 {([["kardex","Movimentação por Produto"],["historico","Histórico por Item"],["saldos","Saldos de Estoque"],["posicao","Posição Financeira"]] as [typeof relTipo, string][]).map(([k,l]) => (
                   <button key={k} onClick={() => setRelTipo(k)} style={{ padding: "8px 20px", border: "none", background: relTipo === k ? "#1A4870" : "transparent", color: relTipo === k ? "#fff" : "#666", fontWeight: relTipo === k ? 600 : 400, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>{l}</button>
                 ))}
@@ -986,7 +986,7 @@ export default function Estoque() {
                 return (
                   <div>
                     {/* Filtros */}
-                    <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px", marginBottom: 16 }}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 12, alignItems: "flex-end" }}>
                         <div>
                           <label style={lbl}>Data início *</label>
@@ -1019,7 +1019,7 @@ export default function Estoque() {
                     </div>
 
                     {kardexMovs.length === 0 && !kardexBuscando && (
-                      <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)" }}>
                         Selecione o período e clique em Buscar para gerar o relatório.
                       </div>
                     )}
@@ -1051,13 +1051,13 @@ export default function Estoque() {
 
                         {/* Botão imprimir */}
                         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }} className="no-print">
-                          <button onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                          <button onClick={() => window.print()} style={{ padding: "7px 14px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                             🖨 Imprimir
                           </button>
                         </div>
 
                         {/* Tabela resumo */}
-                        <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
+                        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 20 }}>
                           <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <span>Resumo por Produto</span>
                             <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 400 }}>{kardexInicio.split("-").reverse().join("/")} → {kardexFim.split("-").reverse().join("/")}</span>
@@ -1080,7 +1080,7 @@ export default function Estoque() {
                                     </tr>
                                   );
                                 })}
-                                <tr style={{ background: "#F8FAFD", borderTop: "1px solid #D4DCE8" }}>
+                                <tr style={{ background: "var(--bg-card)", borderTop: "1px solid var(--border-table)" }}>
                                   <td colSpan={3} style={{ padding: "9px 14px", fontWeight: 700, color: "var(--text-1)" }}>TOTAL</td>
                                   <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "var(--text-2)" }}>—</td>
                                   <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>▲ {fmtNum(totalEntradas)}</td>
@@ -1096,7 +1096,7 @@ export default function Estoque() {
                         {grupos.map(g => {
                           const cat = CAT_META[g.insumo.categoria] ?? { bg: "#F1EFE8", cl: "var(--text-2)", label: g.insumo.categoria };
                           return (
-                            <div key={g.insumo.id} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                            <div key={g.insumo.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
                               <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                                 <span style={{ fontWeight: 700, color: "var(--text-1)" }}>{g.insumo.nome}</span>
                                 {badge(cat.label, cat.bg, cat.cl)}
@@ -1145,7 +1145,7 @@ export default function Estoque() {
                     )}
 
                     {kardexMovs.length > 0 && grupos.length === 0 && (
-                      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8" }}>
+                      <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)" }}>
                         Nenhum produto com movimentação no período com os filtros selecionados.
                       </div>
                     )}
@@ -1184,7 +1184,7 @@ export default function Estoque() {
                       return { ...m, saldo };
                     });
                     return (
-                      <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                         <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                           <span style={{ fontWeight: 600, color: "var(--text-1)" }}>{ins.nome}</span>
                           <span style={{ fontSize: 12, color: "var(--text-2)" }}>Saldo atual: <strong style={{ color: ins.estoque < 0 ? "#E24B4A" : "var(--text-1)" }}>{fmtNum(ins.estoque)} {ins.unidade}</strong></span>
@@ -1220,7 +1220,7 @@ export default function Estoque() {
 
               {/* Saldos de Estoque */}
               {relTipo === "saldos" && (
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Saldos de Estoque</div>
                     <div style={{ fontSize: 12, color: "var(--text-2)" }}>{insumos.filter(i => i.estoque !== 0).length} itens com movimento</div>
@@ -1277,7 +1277,7 @@ export default function Estoque() {
                         </div>
                       ))}
                     </div>
-                    <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-row)", fontWeight: 600, fontSize: 14 }}>Valor por Categoria</div>
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1407,7 +1407,7 @@ export default function Estoque() {
               </div>
             </div>
             {ins && !isAjuste && (
-              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "#F3F6F9", padding: "8px 12px", borderRadius: 7 }}>
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", background: "var(--bg-page)", padding: "8px 12px", borderRadius: 7 }}>
                 Saldo atual: <strong>{fmtNum(ins.estoque)} {ins.unidade}</strong>
                 {" → "}
                 <strong style={{ color: fMov.tipo === "entrada" ? "#1A4870" : "#E24B4A" }}>
@@ -1430,7 +1430,7 @@ export default function Estoque() {
               <div style={{ marginTop: 8, fontSize: 11, color: "#E24B4A" }}>A justificativa é obrigatória para ajustes de estoque.</div>
             )}
             {/* Operador — sempre visível, nunca editável */}
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#F8FAFB", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
+            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
               <span style={{ fontSize: 11, color: "var(--text-3)" }}>Operador:</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{nomeUsuario ?? "—"}</span>
               <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>({emailUsuario ?? ""})</span>
@@ -1519,7 +1519,7 @@ export default function Estoque() {
       {modalNf === "passo1" && (
         <Modal titulo="Lançar NF de Entrada" subtitulo="Passo 1 de 2 — Identificação da NF" width={620} onClose={() => setModalNf("off")}>
           {/* Toggle XML / Manual */}
-          <div style={{ display: "flex", gap: 0, marginBottom: 18, background: "#F3F6F9", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
+          <div style={{ display: "flex", gap: 0, marginBottom: 18, background: "var(--bg-page)", borderRadius: 8, overflow: "hidden", width: "fit-content" }}>
             {([["manual","Manual"] as const, ["xml","Importar XML"] as const]).map(([k,l]) => (
               <button key={k} onClick={() => setNfMode(k)} style={{ padding: "8px 18px", border: "none", background: nfMode === k ? "#1A4870" : "transparent", color: nfMode === k ? "#fff" : "#666", fontWeight: nfMode === k ? 600 : 400, cursor: "pointer", fontSize: 13 }}>{l}</button>
             ))}
@@ -1527,7 +1527,7 @@ export default function Estoque() {
 
           {nfMode === "xml" && (
             <div style={{ marginBottom: 18 }}>
-              <div style={{ background: "#F3F6F9", border: "0.5px dashed #ccc", borderRadius: 8, padding: "20px", textAlign: "center" }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px dashed #ccc", borderRadius: 8, padding: "20px", textAlign: "center" }}>
                 <div style={{ fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>Selecione o arquivo XML da NF-e para preencher automaticamente</div>
                 <input ref={xmlRef} type="file" accept=".xml" style={{ display: "none" }} onChange={lerXml} />
                 <button style={btnV} onClick={() => { if (xmlRef.current) { xmlRef.current.value = ""; xmlRef.current.click(); } }}>
@@ -1605,7 +1605,7 @@ export default function Estoque() {
               const semVinculo    = nfMode === "xml" && item.tipo_apropiacao === "estoque" && !item.insumo_id;
               const borderColor   = item.alerta_preco ? "#EF9F27" : autoVinculado ? "#28a745" : semVinculo ? "#E24B4A" : "transparent";
               return (
-              <div key={item.key} style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, background: item.alerta_preco ? "#FFFAF8" : "#F8FAFD", borderLeft: `3px solid ${borderColor}` }}>
+              <div key={item.key} style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, background: item.alerta_preco ? "#FFFAF8" : "var(--bg-card)", borderLeft: `3px solid ${borderColor}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Item {idx + 1}</span>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -1729,7 +1729,7 @@ export default function Estoque() {
                     ? (ins.estoque * ins.valor_unitario + item.quantidade * item.valor_unitario) / (ins.estoque + item.quantidade)
                     : item.valor_unitario;
                   return (
-                    <div style={{ marginTop: 8, fontSize: 11, color: "#666", background: "#F3F6F9", padding: "6px 10px", borderRadius: 6 }}>
+                    <div style={{ marginTop: 8, fontSize: 11, color: "#666", background: "var(--bg-page)", padding: "6px 10px", borderRadius: 6 }}>
                       Custo médio atual: <strong>{fmtBRL(ins.valor_unitario)}/{ins.unidade}</strong> · Após entrada: <strong style={{ color: "#1A4870" }}>{fmtBRL(novoMed)}/{ins.unidade}</strong>
                       {ins.estoque > 0 && <span style={{ marginLeft: 10, color: "var(--text-2)" }}>Estoque atual: {fmtNum(ins.estoque)} {ins.unidade}</span>}
                       {item.tipo_apropiacao === "remessa" && <span style={{ marginLeft: 10, color: "#1A6B3C", fontWeight: 600 }}>← débita saldo de terceiro + credita fazenda</span>}

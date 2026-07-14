@@ -321,7 +321,7 @@ export default function RateioPage() {
               }}
             >
               {t === "ciclo" ? "Por Ciclo" : "Global (todas as fazendas)"}
-              <span style={{ marginLeft: 6, fontSize: 11, background: tab === t ? "#D5E8F5" : "#F3F6F9", color: tab === t ? "#0B2D50" : "var(--text-3)", padding: "1px 6px", borderRadius: 10 }}>
+              <span style={{ marginLeft: 6, fontSize: 11, background: tab === t ? "#D5E8F5" : "var(--bg-page)", color: tab === t ? "#0B2D50" : "var(--text-3)", padding: "1px 6px", borderRadius: 10 }}>
                 {t === "ciclo" ? regras.length : regrasGlobal.length}
               </span>
             </button>
@@ -372,7 +372,7 @@ export default function RateioPage() {
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 11, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{nomeAno(r.ano_safra_id)}</span>
                               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{r.nome}</span>
-                              {!r.ativo && <span style={{ fontSize: 10, background: "#F3F6F9", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
+                              {!r.ativo && <span style={{ fontSize: 10, background: "var(--bg-page)", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
                             </div>
                             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 8 }}>
                               CC: <strong style={{ color: "#1A4870" }}>{nomeCC(r.centro_custo_id)}</strong>
@@ -389,7 +389,7 @@ export default function RateioPage() {
                                 </div>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                   {linhasR.map((l, i) => (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "#F3F6F9", border: "0.5px solid var(--border-table)" }}>
+                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "var(--bg-page)", border: "0.5px solid var(--border-table)" }}>
                                       <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES[i % CORES.length], display: "inline-block" }} />
                                       <span style={{ fontWeight: 600 }}>{l.percentual}%</span>
                                       <span style={{ color: "var(--text-2)" }}>{nomeCiclo(r.fazenda_id, l.ciclo_id)}</span>
@@ -438,7 +438,7 @@ export default function RateioPage() {
                               <span style={{ fontSize: 11, background: "#FBF3E0", color: "#633806", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{r.ano_safra_label}</span>
                               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{r.nome}</span>
                               {r.centro_custo_id && <span style={{ fontSize: 11, color: "var(--text-2)" }}>CC: {nomeCC(r.centro_custo_id)}</span>}
-                              {!r.ativo && <span style={{ fontSize: 10, background: "#F3F6F9", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
+                              {!r.ativo && <span style={{ fontSize: 10, background: "var(--bg-page)", color: "var(--text-3)", padding: "2px 8px", borderRadius: 6 }}>Inativa</span>}
                             </div>
                             {r.descricao && <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8 }}>{r.descricao}</div>}
 
@@ -455,7 +455,7 @@ export default function RateioPage() {
                                 </div>
                                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                                   {faz.map((f, i) => (
-                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 10px", borderRadius: 6, background: "#F3F6F9", border: "0.5px solid var(--border-table)" }}>
+                                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 10px", borderRadius: 6, background: "var(--bg-page)", border: "0.5px solid var(--border-table)" }}>
                                       <span style={{ width: 8, height: 8, borderRadius: 2, background: CORES_FAZ[i % CORES_FAZ.length], display: "inline-block" }} />
                                       <span style={{ fontWeight: 600 }}>{f.percentual}%</span>
                                       <span style={{ color: "var(--text-2)" }}>{nomeFaz(f.fazenda_id)}</span>
@@ -552,7 +552,7 @@ export default function RateioPage() {
                     {somaLinhas.toFixed(1)}% de 100%
                   </span>
                 </div>
-                <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", border: "0.5px solid var(--border-table)", background: "#F3F6F9" }}>
+                <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", border: "0.5px solid var(--border-table)", background: "var(--bg-page)" }}>
                   {linhas.map((l, i) => {
                     const pct = Math.min(100, parseFloat(l.percentual) || 0);
                     return pct > 0 ? (
@@ -565,7 +565,7 @@ export default function RateioPage() {
               </div>
 
               {/* Linhas */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "12px 14px", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>Destinos *</span>
                   <button style={{ ...btnR, fontSize: 11, padding: "4px 12px", background: "var(--bg-card)" }} onClick={addLinha}>+ Adicionar Ciclo</button>
@@ -658,7 +658,7 @@ export default function RateioPage() {
               </div>
 
               {/* ── Nível 1: Distribuição entre Fazendas ── */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#1A5CB8", textTransform: "uppercase" }}>
@@ -707,7 +707,7 @@ export default function RateioPage() {
               </div>
 
               {/* ── Nível 2: Distribuição entre Ciclos por Fazenda ── */}
-              <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#C9921B", textTransform: "uppercase" }}>
                     Nível 2 — Distribuição entre Ciclos por Fazenda

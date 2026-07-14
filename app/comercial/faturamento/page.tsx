@@ -103,10 +103,10 @@ const corStatus = (s: string) => (({
 } as Record<string, {bg:string;color:string;label:string;icone:string}>)[s] ?? { bg:"#F1EFE8", color:"#666", label:s, icone:"·" });
 
 // ── Estilos base ──────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid #D4DCE8", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-card)", boxSizing:"border-box", outline:"none" };
+const inp: React.CSSProperties = { width:"100%", padding:"7px 9px", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, color:"var(--text-1)", background:"var(--bg-card)", boxSizing:"border-box", outline:"none" };
 const lbl: React.CSSProperties = { fontSize:10, color:"var(--text-2)", marginBottom:3, display:"block" };
 const btnV: React.CSSProperties = { padding:"8px 18px", background:"#1A5CB8", color:"#fff", border:"none", borderRadius:8, fontWeight:600, cursor:"pointer", fontSize:13 };
-const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid #D4DCE8", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13 };
+const btnR: React.CSSProperties = { padding:"8px 18px", border:"0.5px solid var(--border-table)", borderRadius:8, background:"transparent", cursor:"pointer", fontSize:13 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Faturamento() {
@@ -748,7 +748,7 @@ export default function Faturamento() {
             <label style={lbl}>Referência de Contrato</label>
             <input style={inp} value={fVenda.contrato_numero} onChange={e => fv({ contrato_numero: e.target.value })} placeholder="Nº do contrato de venda" />
           </div>
-          <div style={{ gridColumn:"1/-1", background:"#F8FAFD", border:"0.5px solid #D4DCE8", borderRadius:8, padding:"10px 14px", fontSize:11, color:"var(--text-2)" }}>
+          <div style={{ gridColumn:"1/-1", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, padding:"10px 14px", fontSize:11, color:"var(--text-2)" }}>
             Esta aba registra informações de pontualidade e antecipação de pagamento. Campos adicionais de desconto financeiro e condições especiais podem ser configurados nos Parâmetros do Sistema.
           </div>
         </div>
@@ -774,7 +774,7 @@ export default function Faturamento() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background:"var(--bg-card)", border:"0.5px solid #D4DCE8", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+        <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, padding:"12px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
           {(["todas","processando","autorizadas","rejeitadas","canceladas"] as const).map(a => (
             <button key={a} onClick={() => setFiltroAba(a)}
               style={{ padding:"5px 14px", borderRadius:20, border:"0.5px solid", fontSize:12, cursor:"pointer", fontWeight: filtroAba===a ? 600 : 400,
@@ -786,12 +786,12 @@ export default function Faturamento() {
         </div>
 
         {/* Tabela */}
-        <div style={{ background:"var(--bg-card)", border:"0.5px solid #D4DCE8", borderRadius:12, overflow:"hidden" }}>
+        <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:12, overflow:"hidden" }}>
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
-              <tr style={{ background:"#F8FAFD" }}>
+              <tr style={{ background:"var(--bg-card)" }}>
                 {["Nº / Série","Data Emissão","Destinatário","CFOP","Valor Total","Status","Ações"].map((h, i) => (
-                  <th key={i} style={{ padding:"10px 14px", textAlign: i >= 4 && i <= 5 ? "center" : "left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                  <th key={i} style={{ padding:"10px 14px", textAlign: i >= 4 && i <= 5 ? "center" : "left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -822,7 +822,7 @@ export default function Faturamento() {
                     <td style={{ padding:"10px 14px" }}>
                       <div style={{ display:"flex", gap:6 }}>
                         <button
-                          style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#1A4870", border:"0.5px solid #D4DCE8", borderRadius:6, cursor:"pointer" }}
+                          style={{ padding:"4px 10px", fontSize:11, background:"var(--bg-page)", color:"#1A4870", border:"0.5px solid var(--border-table)", borderRadius:6, cursor:"pointer" }}
                           onClick={() => window.open(`/comercial/faturamento/danfe/${nota.id}`, "_blank")}>
                           Visualizar
                         </button>
@@ -865,7 +865,7 @@ export default function Faturamento() {
           </table>
 
           {notasFiltradas.length > 0 && (
-            <div style={{ padding:"10px 16px", background:"#F8FAFD", borderTop:"0.5px solid #D4DCE8", display:"flex", justifyContent:"flex-end", gap:24 }}>
+            <div style={{ padding:"10px 16px", background:"var(--bg-card)", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:24 }}>
               <span style={{ fontSize:12, color:"var(--text-2)" }}>Total de notas: <strong>{notasFiltradas.length}</strong></span>
               <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor total: <strong style={{ color:"#1A4870" }}>{fmtR$(notasFiltradas.reduce((s, n) => s + n.valor_total, 0))}</strong></span>
             </div>
@@ -896,27 +896,27 @@ export default function Faturamento() {
                 </button>
                 <button
                   onClick={() => { setTipoAvulsa("venda"); preencherAvulsa("venda", "6.501"); }}
-                  style={{ padding:"20px 16px", border:"1.5px solid #D4DCE8", borderRadius:12, background:"#F8FAFD", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
+                  style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFD")}>
+                  onMouseLeave={e => (e.currentTarget.style.background = "var(--bg-card)")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>📝</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Avulsa — Venda</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Nota de venda sem vínculo de contrato. Você preenche todos os dados.</div>
                 </button>
                 <button
                   onClick={() => { setTipoAvulsa("remessa"); preencherAvulsa("remessa", "6.905"); }}
-                  style={{ padding:"20px 16px", border:"1.5px solid #D4DCE8", borderRadius:12, background:"#F8FAFD", cursor:"pointer", textAlign:"left" }}
+                  style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFD")}>
+                  onMouseLeave={e => (e.currentTarget.style.background = "var(--bg-card)")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>🏭</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Remessa</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Depósito em armazém (6.905), entrega futura (6.117) ou venda à ordem (6.119).</div>
                 </button>
                 <button
                   onClick={() => { setTipoAvulsa("devolucao"); preencherAvulsa("devolucao", "2.201"); }}
-                  style={{ padding:"20px 16px", border:"1.5px solid #D4DCE8", borderRadius:12, background:"#F8FAFD", cursor:"pointer", textAlign:"left" }}
+                  style={{ padding:"20px 16px", border:"1.5px solid var(--border-table)", borderRadius:12, background:"var(--bg-card)", cursor:"pointer", textAlign:"left" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#F0F2F6")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "#F8FAFD")}>
+                  onMouseLeave={e => (e.currentTarget.style.background = "var(--bg-card)")}>
                   <div style={{ fontSize:22, marginBottom:8 }}>↩️</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"var(--text-1)", marginBottom:4 }}>Devolução / Retorno</div>
                   <div style={{ fontSize:12, color:"var(--text-2)" }}>Devolução de mercadoria vendida ou retorno de armazém geral.</div>
@@ -929,7 +929,7 @@ export default function Faturamento() {
           {/* ── PASSO 2: Selecionar Contrato ── */}
           {passo === "contrato" && (
             <div style={{ background:"var(--bg-card)", borderRadius:14, width:720, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
-              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("origem")}>←</button>
                 <div>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Contrato de Venda</div>
@@ -977,7 +977,7 @@ export default function Faturamento() {
                   );
                 })}
               </div>
-              <div style={{ padding:"12px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", gap:10 }}>
+              <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", gap:10 }}>
                 <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
               </div>
             </div>
@@ -986,7 +986,7 @@ export default function Faturamento() {
           {/* ── PASSO 2b: Selecionar Romaneio ── */}
           {passo === "romaneio" && contratoSelecionado && (
             <div style={{ background:"var(--bg-card)", borderRadius:14, width:780, maxHeight:"85vh", display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
-              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:14 }}>
+              <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Carga (Romaneio)</div>
@@ -1007,7 +1007,7 @@ export default function Faturamento() {
                   </div>
                 ) : (
                   <>
-                    <div style={{ padding:"8px 24px", background:"#F8FAFD", borderBottom:"0.5px solid #D4DCE8", display:"flex", gap:32, fontSize:11, color:"var(--text-2)" }}>
+                    <div style={{ padding:"8px 24px", background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)", display:"flex", gap:32, fontSize:11, color:"var(--text-2)" }}>
                       <span>Total de cargas: <strong>{romaneios.length}</strong></span>
                       <span>Já faturadas: <strong>{romaneios.filter(r => r.nfe_status === "autorizada").length}</strong></span>
                       <span>Pendentes: <strong style={{ color:"#C9921B" }}>{romaneios.filter(r => r.nfe_status !== "autorizada").length}</strong></span>
@@ -1024,7 +1024,7 @@ export default function Faturamento() {
                             cursor: jaFatQry ? "default" : "pointer",
                             opacity: jaFatQry ? 0.55 : 1,
                             display:"flex", alignItems:"center", gap:16,
-                            background: jaFatQry ? "#F8FAFD" : "transparent",
+                            background: jaFatQry ? "var(--bg-card)" : "transparent",
                             transition:"background 0.1s",
                           }}
                           onMouseEnter={e => { if (!jaFatQry) e.currentTarget.style.background = "#F4F8FF"; }}
@@ -1075,7 +1075,7 @@ export default function Faturamento() {
                   </>
                 )}
               </div>
-              <div style={{ padding:"12px 24px", borderTop:"0.5px solid #D4DCE8", display:"flex", gap:10 }}>
+              <div style={{ padding:"12px 24px", borderTop:"0.5px solid var(--border-table)", display:"flex", gap:10 }}>
                 <button style={btnR} onClick={() => setModalAberto(false)}>Cancelar</button>
               </div>
             </div>
@@ -1101,7 +1101,7 @@ export default function Faturamento() {
               </div>
 
               {/* Abas */}
-              <div style={{ display:"flex", borderBottom:"0.5px solid #D4DCE8", background:"#F8FAFD", flexShrink:0, overflowX:"auto" }}>
+              <div style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0, overflowX:"auto" }}>
                 {ABAS_NOTA.map(a => (
                   <button key={a.id} onClick={() => setTabNFe(a.id)}
                     style={{ padding:"10px 16px", fontSize:12, border:"none", borderBottom: tabNFe === a.id ? "2.5px solid #1A5CB8" : "2.5px solid transparent", background:"transparent",
@@ -1117,7 +1117,7 @@ export default function Faturamento() {
               </div>
 
               {/* Grid de itens */}
-              <div style={{ borderTop:"0.5px solid #D4DCE8", background:"#F8FAFD", flexShrink:0 }}>
+              <div style={{ borderTop:"0.5px solid var(--border-table)", background:"var(--bg-card)", flexShrink:0 }}>
                 <div style={{ padding:"8px 16px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens da Nota</span>
                   <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #1A5CB8", borderRadius:5, background:"#E6F1FB", color:"#1A5CB8", cursor:"pointer" }} onClick={addItem}>+ Item</button>
@@ -1127,7 +1127,7 @@ export default function Faturamento() {
                     <thead>
                       <tr style={{ background:"#F0F4F8" }}>
                         {["Tipo","Item / Produto","NCM","Qtd","Unid","Valor Unit.","Valor Total",""].map((h, i) => (
-                          <th key={i} style={{ padding:"5px 10px", fontSize:10, fontWeight:600, color:"var(--text-2)", textAlign: i>=3&&i<=6?"center":"left", borderBottom:"0.5px solid #D4DCE8", whiteSpace:"nowrap" }}>{h}</th>
+                          <th key={i} style={{ padding:"5px 10px", fontSize:10, fontWeight:600, color:"var(--text-2)", textAlign: i>=3&&i<=6?"center":"left", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -1171,14 +1171,14 @@ export default function Faturamento() {
                     </tbody>
                   </table>
                 </div>
-                <div style={{ padding:"8px 16px", display:"flex", justifyContent:"flex-end", gap:24, borderTop:"0.5px solid #D4DCE8" }}>
+                <div style={{ padding:"8px 16px", display:"flex", justifyContent:"flex-end", gap:24, borderTop:"0.5px solid var(--border-table)" }}>
                   <span style={{ fontSize:12, color:"var(--text-2)" }}>Financeiro: <strong>{fmtR$(totalFinanceiro)}</strong></span>
                   <span style={{ fontSize:13, fontWeight:700, color:"#1A4870" }}>Total: {fmtR$(totalItens)}</span>
                 </div>
               </div>
 
               {/* Rodapé do modal */}
-              <div style={{ padding:"12px 20px", borderTop:"0.5px solid #D4DCE8", display:"flex", alignItems:"center", gap:12, flexShrink:0, background:"var(--bg-card)" }}>
+              <div style={{ padding:"12px 20px", borderTop:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:12, flexShrink:0, background:"var(--bg-card)" }}>
                 {erroForm && (
                   <div style={{ flex:1, background:"#FCEBEB", border:"0.5px solid #E24B4A50", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#791F1F" }}>
                     ⚠ {erroForm}

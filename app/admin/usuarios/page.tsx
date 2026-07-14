@@ -152,19 +152,19 @@ const permFromGrupo = (g: GrupoUsuario): PermMap => {
 
 // ── Helpers / estilos ──────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8,
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
-const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" };
+const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" };
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
       <div style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
         </div>
@@ -206,13 +206,13 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
-            <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid #DEE5EE" }}>Módulo</th>
+            <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border-row)" }}>Módulo</th>
             {(Object.keys(ACAO_META) as Acao[]).map(a => (
-              <th key={a} style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: ACAO_META[a].cor, borderBottom: "0.5px solid #DEE5EE", whiteSpace: "nowrap", minWidth: 66 }}>
+              <th key={a} style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: ACAO_META[a].cor, borderBottom: "0.5px solid var(--border-row)", whiteSpace: "nowrap", minWidth: 66 }}>
                 {ACAO_META[a].label}
               </th>
             ))}
-            <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 10, color: "var(--text-3)", borderBottom: "0.5px solid #DEE5EE", width: 50 }}>Tudo</th>
+            <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 10, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-row)", width: 50 }}>Tudo</th>
           </tr>
         </thead>
         <tbody>
@@ -221,7 +221,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
             return (
               <>
                 {/* Linha de grupo */}
-                <tr key={`g-${grupo}`} style={{ background: "#EFF3FA" }}>
+                <tr key={`g-${grupo}`} style={{ background: "var(--bg-tag)" }}>
                   <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 11, color: "#1A4870", letterSpacing: "0.5px" }}>
                     {grupo.toUpperCase()}
                   </td>
@@ -487,12 +487,12 @@ export default function AdminUsuarios() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
 
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Equipe Raccotlo</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Usuários internos da Raccotlo e seus níveis de acesso ao HUB</p>
@@ -535,10 +535,10 @@ export default function AdminUsuarios() {
           </div>
 
           {/* TABELA DE USUÁRIOS (sem abas — só equipe Raccotlo) */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
             {/* placeholder falso para manter compatibilidade de estrutura */}
             {false && (
-              <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8", marginBottom: 0 }}>
+              <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)", marginBottom: 0 }}>
                 {([
                   { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
                   { key: "usuarios", label: `Usuários (${usuarios.length})`        },
@@ -567,7 +567,7 @@ export default function AdminUsuarios() {
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Nome", "E-mail", "Acesso HUB", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-row)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -605,7 +605,7 @@ export default function AdminUsuarios() {
                           <td style={{ padding: "11px 16px", textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                               <button onClick={() => abrirModalUser(u)}
-                                style={{ padding: "4px 12px", background: "#EFF3FA", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                                style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
                                 Editar
                               </button>
                               <button onClick={() => excluirUser(u.id)}
@@ -709,7 +709,7 @@ export default function AdminUsuarios() {
 
                 {/* Enviar email — só para novo usuário */}
                 {!editUser && (
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px" }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <input
                         type="checkbox"
@@ -776,7 +776,7 @@ export default function AdminUsuarios() {
 
               {/* Produtor */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>Produtor / Empresa</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Produtor / Empresa</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={lbl}>Tipo *</label>
@@ -814,7 +814,7 @@ export default function AdminUsuarios() {
 
               {/* Fazenda */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>Fazenda</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Fazenda</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div style={{ gridColumn: "span 2" }}>
                     <label style={lbl}>Nome da Fazenda *</label>
@@ -837,7 +837,7 @@ export default function AdminUsuarios() {
 
               {/* Usuário de acesso */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>Usuário de Acesso ao Arato</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>Usuário de Acesso ao Arato</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   <div>
                     <label style={lbl}>Nome do usuário *</label>

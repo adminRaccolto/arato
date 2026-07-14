@@ -273,7 +273,7 @@ export default function PendenciasFiscaisPage() {
         <select
           value={filtroTipo}
           onChange={e => setFiltroTipo(e.target.value)}
-          style={{ padding: "5px 10px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "var(--bg-card)", color: "#444" }}
+          style={{ padding: "5px 10px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", color: "#444" }}
         >
           <option value="">Todos os tipos</option>
           {Object.entries(TIPO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -282,7 +282,7 @@ export default function PendenciasFiscaisPage() {
           placeholder="Buscar por descrição ou fornecedor..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 12, background: "var(--bg-card)", minWidth: 240 }}
+          style={{ padding: "5px 12px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 12, background: "var(--bg-card)", minWidth: 240 }}
         />
         {selecionados.size > 0 && (
           <button
@@ -300,7 +300,7 @@ export default function PendenciasFiscaisPage() {
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
         {loading ? (
           <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
         ) : pendenciasFiltradas.length === 0 ? (
@@ -310,7 +310,7 @@ export default function PendenciasFiscaisPage() {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid #DDE2EE" }}>
+              <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                 <th style={{ padding: "10px 14px", width: 36 }}>
                   <input
                     type="checkbox"
@@ -329,7 +329,7 @@ export default function PendenciasFiscaisPage() {
                 const st = STATUS_LABEL[p.status];
                 const sel = selecionados.has(p.id);
                 return (
-                  <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: sel ? "#FFF8F0" : idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                  <tr key={p.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: sel ? "#FFF8F0" : idx % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                     <td style={{ padding: "10px 14px" }}>
                       <input
                         type="checkbox"
@@ -356,7 +356,7 @@ export default function PendenciasFiscaisPage() {
                     <td style={{ padding: "10px 14px", fontSize: 12 }}>
                       <span style={{
                         padding: "3px 8px", borderRadius: 20, fontWeight: 500,
-                        background: p.origem === "whatsapp" ? "#EEF5FF" : "#F3F6F9",
+                        background: p.origem === "whatsapp" ? "#EEF5FF" : "var(--bg-page)",
                         color: p.origem === "whatsapp" ? "#1A4870" : "var(--text-2)",
                         border: "0.5px solid",
                         borderColor: p.origem === "whatsapp" ? "#B8D0EE" : "var(--border-table)",
@@ -414,7 +414,7 @@ export default function PendenciasFiscaisPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             {/* Header modal */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #EEF1F6" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Anexar Nota Fiscal</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{modal.descricao}</div>
@@ -424,7 +424,7 @@ export default function PendenciasFiscaisPage() {
 
             <div style={{ padding: "20px 24px" }}>
               {/* Info da pendência */}
-              <div style={{ background: "#F8FAFB", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, fontSize: 13 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>
                   <div><span style={{ color: "var(--text-3)" }}>Data: </span><span style={{ color: "#333", fontWeight: 500 }}>{new Date(modal.data_operacao + "T12:00").toLocaleDateString("pt-BR")}</span></div>
                   <div><span style={{ color: "var(--text-3)" }}>Tipo: </span><span style={{ color: "#333", fontWeight: 500 }}>{TIPO_LABEL[modal.tipo] ?? modal.tipo}</span></div>
@@ -462,7 +462,7 @@ export default function PendenciasFiscaisPage() {
                     value={chaveInput}
                     onChange={e => setChaveInput(e.target.value.replace(/\D/g, "").substring(0, 44))}
                     placeholder="Digite ou cole os 44 dígitos da chave..."
-                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "0.5px solid #D4DCE8", fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "0.5px solid var(--border-table)", fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
                   />
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
                     {chaveInput.length}/44 dígitos — a chave está impressa abaixo do código de barras da DANFE
@@ -488,7 +488,7 @@ export default function PendenciasFiscaisPage() {
                   <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>
                     Foto da Nota Fiscal ou DANFE
                   </label>
-                  <div style={{ border: "1.5px dashed #D4DCE8", borderRadius: 10, padding: "24px", textAlign: "center", background: "#FAFBFC" }}>
+                  <div style={{ border: "1.5px dashed var(--border-table)", borderRadius: 10, padding: "24px", textAlign: "center", background: "#FAFBFC" }}>
                     {fotoBase64 ? (
                       <div>
                         <div style={{ fontSize: 13, color: "#166534", fontWeight: 600, marginBottom: 8 }}>✅ Foto carregada</div>
@@ -531,10 +531,10 @@ export default function PendenciasFiscaisPage() {
               )}
 
               {/* Rodapé */}
-              <div style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
+              <div style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
                 <button
                   onClick={fecharModal}
-                  style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
+                  style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
                 >
                   Fechar
                 </button>
@@ -543,7 +543,7 @@ export default function PendenciasFiscaisPage() {
                     const obs = prompt("Motivo da dispensa (opcional):");
                     await dispensar(modal.id, obs ?? "Dispensado pelo usuário");
                   }}
-                  style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "#F8FAFB", fontSize: 13, cursor: "pointer", color: "#666" }}
+                  style={{ flex: 1, padding: "8px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "#666" }}
                 >
                   Dispensar Pendência
                 </button>

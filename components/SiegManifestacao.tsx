@@ -276,7 +276,7 @@ export default function SiegManifestacao() {
                   const isBusy = busy[nf.id];
                   const erro   = erros[nf.id];
                   return (
-                    <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: idx%2===0?"white":"#FAFBFD", verticalAlign: "top" }}>
+                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: idx%2===0?"white":"#FAFBFD", verticalAlign: "top" }}>
                       <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                         {nf.numero}
                         {nf.serie && <span style={{ color: "var(--text-3)", fontWeight: 400 }}> /{nf.serie}</span>}
@@ -320,7 +320,7 @@ export default function SiegManifestacao() {
                 })}
               </tbody>
             </table>
-            <div style={{ padding: "10px 14px", borderTop: "0.5px solid #EEF1F6", fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--bg-tag)", fontSize: 11, color: "var(--text-3)", display: "flex", justifyContent: "space-between" }}>
               <span>{nfsFilt.length} NF{nfsFilt.length !== 1 ? "s" : ""} exibida{nfsFilt.length !== 1 ? "s" : ""}</span>
               <span>Valor total: <strong style={{ color: "var(--text-1)" }}>{fmtR$(nfsFilt.reduce((s, n) => s + (n.valor_total ?? 0), 0))}</strong></span>
             </div>

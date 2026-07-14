@@ -128,13 +128,13 @@ const PADRAO = (fid: string): ConfigNfe => ({
 // Estilos
 // ─────────────────────────────────────────────────────────────
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
   borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 500 };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "20px 24px", marginBottom: 16 };
-const sH: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 14, paddingBottom: 8, borderBottom: "0.5px solid #EEF1F6" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "20px 24px", marginBottom: 16 };
+const sH: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#1A4870", marginBottom: 14, paddingBottom: 8, borderBottom: "0.5px solid var(--bg-tag)" };
 const hint: React.CSSProperties = { fontSize: 11, color: "var(--text-3)", marginTop: 5 };
 const alerta: React.CSSProperties = { background: "#FBF3E0", border: "0.5px solid #F6C87A", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", marginBottom: 14 };
 
@@ -308,7 +308,7 @@ export default function ConfigNfePage() {
 
         {/* Abas */}
         <div style={{ display: "flex", gap: 2, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10,
-          border: "0.5px solid #D4DCE8", padding: 4 }}>
+          border: "0.5px solid var(--border-table)", padding: 4 }}>
           {ABAS.map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
               style={{ flex: 1, padding: "8px 10px", border: "none", borderRadius: 8, cursor: "pointer",
@@ -516,7 +516,7 @@ export default function ConfigNfePage() {
                       label="RAT %" hint="Padrão: 0,2%" suffix="%" />
                     <div>
                       <label style={lbl}>Total Funrural</label>
-                      <div style={{ padding: "8px 10px", borderRadius: 8, background: "#F3F6F9", border: "0.5px solid #D4DCE8",
+                      <div style={{ padding: "8px 10px", borderRadius: 8, background: "var(--bg-page)", border: "0.5px solid var(--border-table)",
                         fontSize: 16, fontWeight: 700, color: "#1A4870" }}>
                         {totalFunrural.toFixed(2)}%
                       </div>
@@ -787,7 +787,7 @@ export default function ConfigNfePage() {
                   { label: "Envio XML por e-mail",   on: cfg.enviar_xml_email      },
                 ].map(({ label, on }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
-                    background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
+                    background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: on ? "#1A5C38" : "var(--border-table)", flexShrink: 0 }} />
                     <span style={{ fontSize: 12, color: on ? "var(--text-1)" : "var(--text-3)" }}>{label}</span>
                     <span style={{ marginLeft: "auto", fontSize: 10, color: on ? "#1A5C38" : "var(--text-muted)", fontWeight: 600 }}>{on ? "Ativo" : "Inativo"}</span>

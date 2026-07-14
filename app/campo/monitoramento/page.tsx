@@ -34,7 +34,7 @@ const NIVEL = [
 ];
 
 const inp: React.CSSProperties = {
-  width: "100%", padding: "12px 14px", border: "0.5px solid #D4DCE8",
+  width: "100%", padding: "12px 14px", border: "0.5px solid var(--border-table)",
   borderRadius: 10, fontSize: 15, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", WebkitAppearance: "none",
 };
@@ -222,7 +222,7 @@ export default function CampoMonitoramentoPage() {
       )}
 
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => setEtapa("form")} style={{ flex: 1, padding: "12px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 12, fontSize: 14, cursor: "pointer" }}>
+        <button onClick={() => setEtapa("form")} style={{ flex: 1, padding: "12px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 12, fontSize: 14, cursor: "pointer" }}>
           ← Voltar
         </button>
         <button onClick={() => setEtapa("foto")} style={{ flex: 2, padding: "12px", background: "#16A34A", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
@@ -239,7 +239,7 @@ export default function CampoMonitoramentoPage() {
       <div style={{ fontSize: 13, color: "var(--text-2)" }}>Tire até 3 fotos da ocorrência para documentar.</div>
 
       {fotos.length === 0 ? (
-        <div style={{ background: "var(--bg-page)", border: "2px dashed #D4DCE8", borderRadius: 14, padding: "40px 20px", textAlign: "center" }}>
+        <div style={{ background: "var(--bg-page)", border: "2px dashed var(--border-table)", borderRadius: 14, padding: "40px 20px", textAlign: "center" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📷</div>
           <div style={{ fontSize: 14, color: "var(--text-3)" }}>Nenhuma foto ainda</div>
         </div>
@@ -271,7 +271,7 @@ export default function CampoMonitoramentoPage() {
       {erro && <div style={{ padding: "10px 12px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 13 }}>{erro}</div>}
 
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => setEtapa("gps")} style={{ flex: 1, padding: "12px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 12, fontSize: 14, cursor: "pointer" }}>
+        <button onClick={() => setEtapa("gps")} style={{ flex: 1, padding: "12px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 12, fontSize: 14, cursor: "pointer" }}>
           ← GPS
         </button>
         <button onClick={salvar} disabled={salvando}

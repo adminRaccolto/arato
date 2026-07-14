@@ -33,7 +33,7 @@ const TIPOS: Record<PulverizacaoOp["tipo"], { label: string; bg: string; color: 
   fertilizante_foliar:{ label: "Fertilizante Foliar",   bg: "#D5E8F5", color: "#0B2D50" },
   regulador:          { label: "Regulador Crescimento", bg: "#FFF8EC", color: "#7A5200" },
   dessecacao:         { label: "Dessecação",            bg: "#F8EBE0", color: "#7A2E00" },
-  outros:             { label: "Outros",                bg: "#F3F6F9", color: "var(--text-2)"    },
+  outros:             { label: "Outros",                bg: "var(--bg-page)", color: "var(--text-2)"    },
 };
 
 const ESTADIOS = ["VE","V1","V2","V3","V4","V5","V6","R1","R2","R3","R4","R5","R6","R7","R8","Pós-emergência","Pré-emergência"];
@@ -153,7 +153,7 @@ export default function PulverizacaoPage() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
         <header style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
@@ -195,7 +195,7 @@ export default function PulverizacaoPage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {fazendas.length > 1 && <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Fazenda</th>}
                     <th style={{ padding: "8px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Safra / Talhão</th>
                     <th style={{ padding: "8px 14px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>Tipo</th>
@@ -282,7 +282,7 @@ export default function PulverizacaoPage() {
             )}
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead><tr style={{ background: "#F3F6F9" }}>
+                <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Produto", "Dose/ha", "Total Consumido", "Valor Unit.", "Custo/ha", "Custo Total"].map((h, i) => (
                     <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}
@@ -300,7 +300,7 @@ export default function PulverizacaoPage() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ background: "#F3F6F9", color: "var(--text-1)", fontWeight: 600 }}>
+                  <tr style={{ background: "var(--bg-page)", color: "var(--text-1)", fontWeight: 600 }}>
                     <td colSpan={4} style={{ padding: "7px 12px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL</td>
                     <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_ha, 0))}</td>
                     <td style={{ padding: "7px 12px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(detalhe.itens.reduce((s, it) => s + it.custo_total, 0))}</td>
@@ -401,7 +401,7 @@ export default function PulverizacaoPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                 {caldaTotal !== null && (
-                  <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 12 }}>
                     <div style={{ color: "var(--text-2)", fontSize: 10, marginBottom: 2 }}>Calda Total</div>
                     <strong>{fmtN(caldaTotal)} L</strong>
                   </div>
@@ -413,7 +413,7 @@ export default function PulverizacaoPage() {
             <div style={secTit}>Produtos Aplicados</div>
             <div style={{ overflowX: "auto", marginBottom: 10 }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead><tr style={{ background: "#F3F6F9" }}>
+                <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Produto (estoque)", "Un.", "Dose/ha", "Total", "Custo/ha", "Custo Total", ""].map((h, i) => (
                     <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}

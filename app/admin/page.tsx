@@ -51,7 +51,7 @@ function diasRestantes(venc?: string | null): number | null {
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
-  border: "0.5px solid #D4DCE8", borderRadius: 8,
+  border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
@@ -64,7 +64,7 @@ const btnPrimary: React.CSSProperties = {
 };
 const btnSecondary: React.CSSProperties = {
   padding: "8px 20px", background: "var(--bg-card)", color: "var(--text-2)",
-  border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+  border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
 // ─── Modal editar cliente ─────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
           {erro && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, color: "#991B1B", fontSize: 12, marginBottom: 12 }}>{erro}</div>}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
             <button style={btnSecondary} onClick={onClose}>Cancelar</button>
             <button style={btnPrimary} onClick={salvar} disabled={salvando || !form.nome}>
               {salvando ? "Salvando…" : "Salvar alterações"}
@@ -343,7 +343,7 @@ export default function AdminOverview() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid #D4DCE8", marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 0, borderBottom: "0.5px solid var(--border-table)", marginBottom: 24 }}>
         {ABAS.map(a => (
           <button key={a.key} onClick={() => setAba(a.key)} style={{
             padding: "10px 20px", border: "none", background: "none", cursor: "pointer",
@@ -364,7 +364,7 @@ export default function AdminOverview() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 14, marginBottom: 24 }}>
             {kpis.map(k => (
               <div key={k.label} style={{
-                background: k.bg, borderRadius: 12, border: "0.5px solid #DDE2EE",
+                background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)",
                 padding: "16px 18px",
               }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>{k.label}</div>
@@ -377,7 +377,7 @@ export default function AdminOverview() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
 
             {/* Distribuição */}
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35", marginBottom: 16 }}>Distribuição por Pacote</div>
               {(Object.keys(PACOTE_CFG) as PacoteCliente[]).map(p => {
                 const qtd = clientes.filter(c => c.pacote === p && c.status === "ativo").length;
@@ -395,7 +395,7 @@ export default function AdminOverview() {
                   </div>
                 );
               })}
-              <div style={{ borderTop: "0.5px solid #EEF1F6", paddingTop: 12, marginTop: 4 }}>
+              <div style={{ borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, marginTop: 4 }}>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>
                   {clientes.filter(c => !c.pacote && c.status === "ativo").length} ativo(s) sem pacote definido
                 </div>
@@ -403,7 +403,7 @@ export default function AdminOverview() {
             </div>
 
             {/* Vencimentos próximos */}
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35" }}>Vencimentos Próximos (14 dias)</div>
                 <span style={{
@@ -425,7 +425,7 @@ export default function AdminOverview() {
                 return (
                   <div key={c.id} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 0", borderBottom: "0.5px solid #EEF1F6",
+                    padding: "10px 0", borderBottom: "0.5px solid var(--bg-tag)",
                   }}>
                     <div>
                       <div style={{ fontWeight: 600, color: "var(--text-1)", fontSize: 13 }}>{c.nome}</div>
@@ -449,8 +449,8 @@ export default function AdminOverview() {
           </div>
 
           {/* Últimas contas criadas */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35" }}>Todas as Contas</div>
               <button onClick={() => setAba("clientes")} style={{ fontSize: 12, color: "#1A4870", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                 Ver lista completa →
@@ -458,9 +458,9 @@ export default function AdminOverview() {
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFC" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   {["Conta", "Pacote", "Status", "Vencimento", "Mensalidade"].map((h, i) => (
-                    <th key={i} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid #EEF1F6", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
+                    <th key={i} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--bg-tag)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -471,7 +471,7 @@ export default function AdminOverview() {
                   const dias = diasRestantes(c.data_vencimento);
                   const urgente = dias !== null && dias >= 0 && dias <= 14;
                   return (
-                    <tr key={c.id} style={{ borderBottom: i < 7 ? "0.5px solid #EEF1F6" : "none" }}>
+                    <tr key={c.id} style={{ borderBottom: i < 7 ? "0.5px solid var(--bg-tag)" : "none" }}>
                       <td style={{ padding: "11px 16px" }}>
                         <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.nome}</div>
                         {c.email_contato && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{c.email_contato}</div>}
@@ -516,7 +516,7 @@ export default function AdminOverview() {
       {aba === "clientes" && (
         <div>
           {/* Filtros */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <input style={{ ...inp, width: 240 }} placeholder="Buscar cliente..." value={busca} onChange={e => setBusca(e.target.value)} />
             <select style={{ ...inp, width: 160 }} value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as StatusCliente | "")}>
               <option value="">Todos os status</option>
@@ -531,7 +531,7 @@ export default function AdminOverview() {
           </div>
 
           {/* Tabela */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
             {loading ? (
               <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : clientesFiltrados.length === 0 ? (
@@ -539,9 +539,9 @@ export default function AdminOverview() {
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F8FAFC" }}>
+                  <tr style={{ background: "var(--bg-card)" }}>
                     {["Conta", "Pacote", "Status", "Desde", "Vencimento", "Mensalidade", "Fazendas", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 5 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid #D4DCE8", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 5 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -554,7 +554,7 @@ export default function AdminOverview() {
                     const vencido = dias !== null && dias < 0;
 
                     return (
-                      <tr key={c.id} style={{ borderBottom: i < clientesFiltrados.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                      <tr key={c.id} style={{ borderBottom: i < clientesFiltrados.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                         <td style={{ padding: "11px 14px" }}>
                           <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.nome}</div>
                           {c.email_contato && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{c.email_contato}</div>}
@@ -590,7 +590,7 @@ export default function AdminOverview() {
                           {fmtBRL(c.valor_mensalidade)}
                         </td>
                         <td style={{ padding: "11px 14px", textAlign: "center" }}>
-                          <span style={{ background: "#F3F6F9", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
+                          <span style={{ background: "var(--bg-page)", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
                             {c.fazendas_count}
                           </span>
                         </td>
@@ -608,7 +608,7 @@ export default function AdminOverview() {
                             )}
                             <button
                               onClick={() => setModalEdit(c)}
-                              style={{ padding: "5px 12px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 11, color: "#0B1E35", fontWeight: 600 }}
+                              style={{ padding: "5px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", cursor: "pointer", fontSize: 11, color: "#0B1E35", fontWeight: 600 }}
                             >
                               ✎ Editar
                             </button>
@@ -644,7 +644,7 @@ export default function AdminOverview() {
             {ORDEM_PLANOS.map(pid => {
               const p = PLANOS_DEFAULT[pid];
               return (
-                <div key={pid} style={{ background: "var(--bg-card)", borderRadius: 12, border: pid === "gestao" ? "2px solid #0B1E35" : "0.5px solid #D4DCE8", padding: "20px 22px" }}>
+                <div key={pid} style={{ background: "var(--bg-card)", borderRadius: 12, border: pid === "gestao" ? "2px solid #0B1E35" : "0.5px solid var(--border-table)", padding: "20px 22px" }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#0B1E35", marginBottom: 4 }}>{p.nome}</div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 12 }}>{p.descricao}</div>
                   <div style={{ fontSize: 26, fontWeight: 800, color: "#0B1E35", marginBottom: 4 }}>{fmtPreco(p.preco_mensal)}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/mês</span></div>
@@ -662,13 +662,13 @@ export default function AdminOverview() {
           </div>
 
           {/* Tabela comparativa */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
-            <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #EEF1F6" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
+            <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--bg-tag)" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#0B1E35" }}>Comparativo de Módulos</div>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFC" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   <th style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", width: "40%" }}>Módulo</th>
                   {ORDEM_PLANOS.map(pid => (
                     <th key={pid} style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, fontWeight: 700, color: "#0B1E35" }}>{PLANOS_DEFAULT[pid].nome}</th>
@@ -677,7 +677,7 @@ export default function AdminOverview() {
               </thead>
               <tbody>
                 {Object.keys(MODULOS_LABEL).map((modulo, i) => (
-                  <tr key={modulo} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                  <tr key={modulo} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                     <td style={{ padding: "9px 16px", fontSize: 12, color: "#333" }}>{MODULOS_LABEL[modulo]}</td>
                     {ORDEM_PLANOS.map(pid => (
                       <td key={pid} style={{ padding: "9px 14px", textAlign: "center" }}>

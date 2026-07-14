@@ -272,7 +272,7 @@ function FinanceiroRelatoriosInner() {
   if (!anosDispo.includes(String(anoAtual))) anosDispo.unshift(String(anoAtual));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
@@ -354,8 +354,8 @@ function FinanceiroRelatoriosInner() {
                     ${secHeader("Saídas", "var(--bg-page)", "var(--text-2)")}
                     ${d.saidasA.some(r => r.anos.some(c => c.real + c.prev > 0)) ? catRows(d.saidasA, "var(--text-1)") : `<tr><td colspan="${d.anosPresentes.length + 2}" style="padding:8px 20px;color:#888;font-size:11px">Nenhuma saída.</td></tr>`}
                     ${totalRow("Total Saídas", d.totSaiA, "var(--text-1)")}
-                    ${totalRow("Saldo do Ano", d.saldoAnoA, "", "#EFF3FA")}
-                    ${totalRow("Saldo Acumulado", d.saldoAcA, "", "#EFF3FA")}
+                    ${totalRow("Saldo do Ano", d.saldoAnoA, "", "var(--bg-tag)")}
+                    ${totalRow("Saldo Acumulado", d.saldoAcA, "", "var(--bg-tag)")}
                   </tbody>
                 </table>
                 </div>`;
@@ -723,7 +723,7 @@ function FinanceiroRelatoriosInner() {
 
                       {/* Painel de checkboxes Produtores / Contas */}
                       {filtroAberto && (
-                        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFC", display: "flex", gap: 32, flexWrap: "wrap" }}>
+                        <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", gap: 32, flexWrap: "wrap" }}>
                           {/* Produtores */}
                           {produtores.length > 0 && (
                             <div>
@@ -831,7 +831,7 @@ function FinanceiroRelatoriosInner() {
                                   <React.Fragment key={dia}>
                                     <tr
                                       onClick={() => toggleMes(dia)}
-                                      style={{ background: expandido ? "#F0F4FA" : "#F8FAFC", borderBottom: "0.5px solid var(--border-row)", cursor: "pointer", userSelect: "none" }}>
+                                      style={{ background: expandido ? "#F0F4FA" : "var(--bg-card)", borderBottom: "0.5px solid var(--border-row)", cursor: "pointer", userSelect: "none" }}>
                                       <td style={{ padding: "8px 14px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{expandido ? "▼" : "+"}</td>
                                       <td style={{ padding: "8px 14px", fontWeight: 600, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtDia(dia)}</td>
                                       <td style={{ padding: "8px 14px" }}>
@@ -869,7 +869,7 @@ function FinanceiroRelatoriosInner() {
                                               return <span style={{ fontSize: 10, background: "#DCFCE7", color: "#16A34A", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Previsão</span>;
                                             })()}
                                             {isPend && <span style={{ fontSize: 10, background: "#FEF3E2", color: "#7A4300", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Em Aberto</span>}
-                                            {isReal && <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
+                                            {isReal && <span style={{ fontSize: 10, background: "var(--bg-tag)", color: "#1A4870", padding: "2px 7px", borderRadius: 10, fontWeight: 600 }}>Realizado</span>}
                                           </td>
                                           <td style={{ padding: "6px 14px", textAlign: "right" }}>
                                             {r.entrada > 0 && <div style={{ color: "#16A34A", fontWeight: 600 }}>{fmtBRL(r.entrada, 2)}</div>}
@@ -999,7 +999,7 @@ function FinanceiroRelatoriosInner() {
                       return (
                         <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                           {/* Cabeçalho */}
-                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                          <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                             <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                               Entradas e saídas por categoria · {incluirPrevisoes ? "Baixados + pendentes" : "Apenas realizados"}
                             </div>
@@ -1025,7 +1025,7 @@ function FinanceiroRelatoriosInner() {
                               { label: "Resultado Líquido", v: totLiqAnual },
                               { label: "Saldo Acumulado",   v: saldoAcM[11] ?? totLiqAnual },
                             ].map((k, i) => (
-                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: "#F8FAFD" }}>
+                              <div key={i} style={{ padding: "12px 18px", borderRight: i < 3 ? "0.5px solid var(--border-row)" : "none", background: "var(--bg-card)" }}>
                                 <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div>
                                 <div style={{ fontSize: 16, fontWeight: 700, color: i === 0 ? "#1A4870" : i === 1 ? "var(--text-1)" : (k.v < 0 ? "#B91C1C" : "#1A4870") }}>{fmtBRL(k.v, 2)}</div>
                               </div>
@@ -1056,12 +1056,12 @@ function FinanceiroRelatoriosInner() {
                                   {totSaiM.map((v, i) => <td key={i} style={{ padding: "8px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v === 0 ? "#bbb" : "var(--text-1)", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{totSaiAnual === 0 ? "—" : fmtBRL(totSaiAnual, 2)}</td>
                                 </tr>
-                                <tr style={{ background: "#EFF3FA", borderTop: "1px solid #C7D7EC" }}>
+                                <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #C7D7EC" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Mês</td>
                                   {saldoMesM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: corSaldo(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldo(totLiqAnual), whiteSpace: "nowrap" }}>{totLiqAnual === 0 ? "—" : fmtBRL(totLiqAnual, 2)}</td>
                                 </tr>
-                                <tr style={{ background: "#EFF3FA" }}>
+                                <tr style={{ background: "var(--bg-tag)" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
                                   {saldoAcM.map((v, i) => <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: corSaldo(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldo(saldoAcM[11]??totLiqAnual), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcM[11]??totLiqAnual, 2)}</td>
@@ -1112,7 +1112,7 @@ function FinanceiroRelatoriosInner() {
                       ];
                       const inpA: React.CSSProperties = { padding: "5px 8px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none" };
                       const barraFiltros = (
-                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFD", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                           {/* Intervalo de vencimento */}
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 11, color: "var(--text-2)", whiteSpace: "nowrap" }}>Vencimento de</span>
@@ -1259,7 +1259,7 @@ function FinanceiroRelatoriosInner() {
                             {expandido && detItems.map(d => {
                               const totDet = d.anos.reduce((s, c) => s + c.real + c.prev, 0);
                               return (
-                                <tr key={d.label} style={{ background: "#F8FAFD", borderBottom: "0.5px solid #EEF1F8" }}>
+                                <tr key={d.label} style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #EEF1F8" }}>
                                   <td style={{ padding: "4px 14px 4px 34px", fontSize: 11, color: "var(--text-2)", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {d.label}
                                   </td>
@@ -1325,12 +1325,12 @@ function FinanceiroRelatoriosInner() {
                                   {totSaiA.map((v, i) => <td key={i} style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: v === 0 ? "#bbb" : "var(--text-1)", whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fmtBRL(totSaiA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
-                                <tr style={{ background: "#EFF3FA", borderTop: "1px solid #C7D7EC" }}>
+                                <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #C7D7EC" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo do Ano</td>
                                   {saldoAnoA.map((v, i) => <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(saldoAnoA.reduce((s, v) => s + v, 0)), whiteSpace: "nowrap" }}>{fmtBRL(saldoAnoA.reduce((s, v) => s + v, 0), 2)}</td>
                                 </tr>
-                                <tr style={{ background: "#EFF3FA" }}>
+                                <tr style={{ background: "var(--bg-tag)" }}>
                                   <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>Saldo Acumulado</td>
                                   {saldoAcA.map((v, i) => <td key={i} style={{ padding: "9px 8px", textAlign: "right", fontWeight: 700, fontSize: 12, color: corSaldoA(v), whiteSpace: "nowrap" }}>{v === 0 ? "—" : fmtBRL(v, 2)}</td>)}
                                   <td style={{ padding: "9px 10px", textAlign: "right", fontWeight: 800, fontSize: 13, color: corSaldoA(saldoAcA[saldoAcA.length - 1] ?? 0), whiteSpace: "nowrap" }}>{fmtBRL(saldoAcA[saldoAcA.length - 1] ?? 0, 2)}</td>
@@ -1677,7 +1677,7 @@ function FinanceiroRelatoriosInner() {
                   <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
 
                     {/* Cabeçalho */}
-                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "#F8FAFD", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                    <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-row)", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Fluxo de Caixa Mensal</div>
                         <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>
@@ -1762,8 +1762,8 @@ function FinanceiroRelatoriosInner() {
                           </tr>
 
                           {/* ── SALDO ACUMULADO ── */}
-                          <tr style={{ background: "#EFF3FA" }}>
-                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "#EFF3FA" }}>Saldo Acumulado</td>
+                          <tr style={{ background: "var(--bg-tag)" }}>
+                            <td style={{ padding: "9px 14px", fontWeight: 700, fontSize: 12, color: "#1A4870", position: "sticky", left: 0, background: "var(--bg-tag)" }}>Saldo Acumulado</td>
                             {saldoAcMensal.map((v, i) => (
                               <td key={i} style={{ padding: "9px 6px", textAlign: "right", fontWeight: 700, fontSize: 11, color: v >= 0 ? "#1A4870" : "#E24B4A", whiteSpace: "nowrap" }}>
                                 {fmtK(v)}
@@ -1821,7 +1821,7 @@ function FinanceiroRelatoriosInner() {
                         { label: "Entradas Projetadas",      valor: fmtBRL(posicoes.reduce((s, p) => s + p.entradasProj, 0)), cor: "#16A34A" },
                         { label: "Saldo Projetado",          valor: fmtBRL(totalProj), cor: totalProj >= 0 ? "#1A4870" : "#E24B4A" },
                       ].map(k => (
-                        <div key={k.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border-row)" }}>
+                        <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border-row)" }}>
                           <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                           <div style={{ fontSize: 18, fontWeight: 700, color: k.cor }}>{k.valor}</div>
                         </div>

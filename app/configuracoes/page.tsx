@@ -327,7 +327,7 @@ function ConfiguracoesInner() {
                         const depth = c.codigo ? c.codigo.split('.').length - 1 : 0;
                         const isGrupo = depth === 0;
                         const pad = "&nbsp;".repeat(depth * 4);
-                        return `<tr style="border-bottom:0.5px solid #EEF1F6;background:${isGrupo?"#F8FAFD":"#fff"}">
+                        return `<tr style="border-bottom:0.5px solid var(--bg-tag);background:${isGrupo?"var(--bg-card)":"#fff"}">
                           <td style="padding:6px 12px;font-family:monospace;font-size:11px;color:#1a1a1a">${c.codigo}</td>
                           <td style="padding:6px 12px;font-size:${isGrupo?12:11}px;font-weight:${isGrupo?700:400}">${pad}${c.nome}${c.transitoria?' <span style="font-size:9px;background:#FBF3E0;color:#8B5E14;padding:1px 4px;border-radius:3px">TRANS.</span>':""}</td>
                           <td style="padding:6px 12px;text-align:center"><span style="font-size:10px;background:${ct.bg};color:${ct.color};padding:2px 7px;border-radius:6px;font-weight:700">${ct.label}</span></td>
@@ -373,7 +373,7 @@ function ConfiguracoesInner() {
                     const depth = c.codigo ? c.codigo.split('.').length - 1 : 0;
                     const isGrupo = depth === 0;
                     return (
-                      <tr key={ci} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: isGrupo ? "#F8FAFD" : "transparent" }}>
+                      <tr key={ci} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: isGrupo ? "var(--bg-card)" : "transparent" }}>
                         <td style={{ padding: "8px 16px", fontFamily: "monospace", fontSize: 12, color: "var(--text-1)", width: 90 }}>{c.codigo}</td>
                         <td style={{ padding: "8px 16px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

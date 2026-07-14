@@ -166,7 +166,7 @@ export default function LCDPR() {
 
   if (!podeAcessarPlano("fiscal_sped")) return <PlanoGate modulo="fiscal_sped" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
@@ -219,7 +219,7 @@ export default function LCDPR() {
             <div style={{ display: "flex", borderBottom: "0.5px solid var(--border-table)" }}>
               {([["livro", "Livro Caixa"], ["resumo", "Resumo Anual"], ["exportacao", "Exportação"]] as [AbaLCDPR, string][]).map(([key, label]) => (
                 <button key={key} onClick={() => setAba(key)} style={{
-                  padding: "10px 20px", border: "none", background: aba === key ? "#fff" : "#F8FAFD",
+                  padding: "10px 20px", border: "none", background: aba === key ? "#fff" : "var(--bg-card)",
                   borderBottom: aba === key ? "2px solid #1A5C38" : "2px solid transparent",
                   cursor: "pointer", fontSize: 13, fontWeight: aba === key ? 600 : 400,
                   color: aba === key ? "#1A5C38" : "var(--text-2)",
@@ -243,7 +243,7 @@ export default function LCDPR() {
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Data", "Cód.", "Histórico", "Documento", "CPF/CNPJ", "Receita", "Despesa", "Saldo", ""].map((h, i) => (
                           <th key={i} style={{ padding: "8px 12px", textAlign: i >= 5 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
@@ -281,7 +281,7 @@ export default function LCDPR() {
                       })()}
                     </tbody>
                     <tfoot>
-                      <tr style={{ background: "#F3F6F9", borderTop: "1px solid var(--border-table)" }}>
+                      <tr style={{ background: "var(--bg-page)", borderTop: "1px solid var(--border-table)" }}>
                         <td colSpan={5} style={{ padding: "10px 12px", fontWeight: 700, color: "var(--text-1)" }}>TOTAL {anoSel}</td>
                         <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#1A5C38" }}>{fmtBRL(totalReceitas)}</td>
                         <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "#E24B4A" }}>{fmtBRL(totalDespesas)}</td>
@@ -304,7 +304,7 @@ export default function LCDPR() {
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 12 }}>Movimentação mensal — {anoSel}</div>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
+                        <tr style={{ background: "var(--bg-page)" }}>
                           {["Mês", "Receitas", "Despesas", "Resultado"].map((h, i) => (
                             <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                           ))}
@@ -335,7 +335,7 @@ export default function LCDPR() {
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {porCodigo.map(c => (
-                          <div key={c.cod} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#F8FAFD", borderRadius: 8, border: "0.5px solid var(--border-row)" }}>
+                          <div key={c.cod} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border-row)" }}>
                             <span style={{ fontSize: 11, background: c.tipo === "receita" ? "#EAF3DE" : "#FCEBEB", color: c.tipo === "receita" ? "#1A5C38" : "#791F1F", padding: "2px 7px", borderRadius: 6, fontWeight: 600, flexShrink: 0 }}>{c.cod}</span>
                             <span style={{ flex: 1, fontSize: 12, color: "var(--text-1)" }}>{c.desc}</span>
                             <span style={{ fontWeight: 700, color: c.tipo === "receita" ? "#1A5C38" : "#E24B4A", fontSize: 13 }}>{fmtBRL(c.total)}</span>
@@ -345,7 +345,7 @@ export default function LCDPR() {
                     )}
 
                     {/* Resultado apurado */}
-                    <div style={{ marginTop: 16, background: "#F3F6F9", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border-table)" }}>
+                    <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border-table)" }}>
                       <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 8 }}>Resultado apurado {anoSel}</div>
                       {[
                         { label: "(+) Total Receitas",     valor: totalReceitas,  cor: "#1A5C38" },
@@ -407,7 +407,7 @@ export default function LCDPR() {
                     </div>
                   </div>
 
-                  <div style={{ background: "#F8FAFD", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "18px 20px" }}>
                     <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 14 }}>Quem é obrigado a entregar?</div>
                     {[
                       "Produtor rural Pessoa Física",

@@ -59,12 +59,12 @@ const diasAte = (iso?: string | null) => {
 };
 
 // ── estilos ───────────────────────────────────────────────
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
 const PRIORIDADE: Record<Prioridade, { label: string; bg: string; color: string }> = {
   urgente: { label: "Urgente", bg: "#FCEBEB",  color: "#791F1F" },
@@ -516,7 +516,7 @@ export default function Planejamento() {
             e crie um Ano Safra e pelo menos um Ciclo.
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 20px", marginBottom: 18, display: "flex", gap: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ minWidth: 180 }}>
               <label style={lbl}>Ano Safra</label>
               <select style={inp} value={anoSelOrc} onChange={e => { setAnoSelOrc(e.target.value); setCicloSelOrc(""); }}>
@@ -540,7 +540,7 @@ export default function Planejamento() {
         )}
 
         {/* abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {ABAS.map(a => (
             <button key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
@@ -555,7 +555,7 @@ export default function Planejamento() {
         {aba === "orcamento" && (
           <div>
             {!cicloSelOrc && (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "var(--text-3)", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", color: "var(--text-3)", fontSize: 13 }}>
                 Selecione um Ano Safra e um Ciclo acima para ver ou criar o orçamento
               </div>
             )}
@@ -565,7 +565,7 @@ export default function Planejamento() {
             )}
 
             {cicloSelOrc && !loadingOrc && !orcamento && (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 34, marginBottom: 12 }}>◻</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhum orçamento para este ciclo</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Crie o orçamento informando área, produtividade esperada e preço de referência</div>
@@ -588,7 +588,7 @@ export default function Planejamento() {
                       { label: "Receita Bruta Esperada",valor: recBruta > 0 ? fmtR(recBruta) : "—",     bg: "#ECFDF5", color: "#14532D" },
                       { label: "Receita Líquida (após Funrural+SENAR)", valor: recLiq > 0 ? fmtR(recLiq) : "—", bg: "#F0FDF4", color: "#166534" },
                     ].map(k => (
-                      <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                      <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.valor}</div>
                       </div>
@@ -605,13 +605,13 @@ export default function Planejamento() {
                         <div style={{ fontSize: 11, color: viavel ? "#16A34A" : "#E24B4A", marginTop: 2 }}>{fmtN(lucrativ, 1)}% sobre receita líquida</div>
                       </div>
                       {/* Deduções */}
-                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Deduções Fiscais</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-2)" }}>{fmtR(deducoes)}</div>
                         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Funrural 1,5% + SENAR 0,2%</div>
                       </div>
                       {/* Ponto de equilíbrio */}
-                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                      <div style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
                         <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>Ponto de Equilíbrio</div>
                         <div style={{ fontSize: 17, fontWeight: 700, color: "#0C447C" }}>{peSacHa > 0 ? `${fmtN(peSacHa, 1)} sc/ha` : "—"}</div>
                         <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>para cobrir os custos</div>
@@ -635,7 +635,7 @@ export default function Planejamento() {
                   )}
 
                   {/* header do orçamento */}
-                  <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "12px 18px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 18px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>{orcamento.nome}</span>
                       <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 10 }}>
@@ -654,12 +654,12 @@ export default function Planejamento() {
                   </div>
 
                   {/* tabela agrupada por categoria */}
-                  <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
+                        <tr style={{ background: "var(--bg-page)" }}>
                           {["Descrição", "Qtd", "Un.", "Valor Unit.", "Total", ""].map((h, i) => (
-                            <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : i < 5 ? "right" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                            <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : i < 5 ? "right" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -670,11 +670,11 @@ export default function Planejamento() {
                           const subtotal = itens.reduce((s, i) => s + (i.valor_total ?? 0), 0);
                           return (
                             <>
-                              <tr key={cat.value + "_header"} style={{ background: "#F8FAFD" }}>
-                                <td colSpan={5} style={{ padding: "8px 14px", fontSize: 12, fontWeight: 700, color: cat.cor, borderBottom: "0.5px solid #EEF1F6", borderTop: "0.5px solid #EEF1F6" }}>
+                              <tr key={cat.value + "_header"} style={{ background: "var(--bg-card)" }}>
+                                <td colSpan={5} style={{ padding: "8px 14px", fontSize: 12, fontWeight: 700, color: cat.cor, borderBottom: "0.5px solid var(--bg-tag)", borderTop: "0.5px solid var(--bg-tag)" }}>
                                   {cat.label}
                                 </td>
-                                <td style={{ padding: "8px 14px", textAlign: "right", fontSize: 12, fontWeight: 700, color: cat.cor, borderBottom: "0.5px solid #EEF1F6", borderTop: "0.5px solid #EEF1F6" }}>
+                                <td style={{ padding: "8px 14px", textAlign: "right", fontSize: 12, fontWeight: 700, color: cat.cor, borderBottom: "0.5px solid var(--bg-tag)", borderTop: "0.5px solid var(--bg-tag)" }}>
                                   {fmtR(subtotal)}
                                 </td>
                               </tr>
@@ -734,7 +734,7 @@ export default function Planejamento() {
         {aba === "comparativo" && (
           <div>
             {!cicloSelOrc ? (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "var(--text-3)", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", color: "var(--text-3)", fontSize: 13 }}>
                 Selecione um Ano Safra e um Ciclo acima para ver o comparativo
               </div>
             ) : loadingOrc || loadingComp ? (
@@ -749,7 +749,7 @@ export default function Planejamento() {
                     { label: "Desvio",           valor: fmtR(totalRealizado - totalPlanejado), bg: totalRealizado > totalPlanejado ? "#FCEBEB" : "#ECFDF5", color: totalRealizado > totalPlanejado ? "#791F1F" : "#14532D" },
                     { label: "Execução",         valor: totalPlanejado > 0 ? `${fmtN(totalRealizado / totalPlanejado * 100, 1)}%` : "—", bg: "var(--bg-page)", color: "var(--text-2)" },
                   ].map(k => (
-                    <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                    <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
                       <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
                       <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.valor}</div>
                     </div>
@@ -757,12 +757,12 @@ export default function Planejamento() {
                 </div>
 
                 {/* tabela */}
-                <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Categoria", "Planejado", "Realizado", "Desvio (R$)", "Desvio (%)", "Execução"].map((h, i) => (
-                          <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                          <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -776,7 +776,7 @@ export default function Planejamento() {
                         const exec = plan > 0 ? real / plan * 100 : 0;
                         const barW = Math.min(exec, 150);
                         return (
-                          <tr key={cat.value} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                          <tr key={cat.value} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                             <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: cat.cor }}>{cat.label}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: "var(--text-1)" }}>{fmtR(plan)}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 13, color: "var(--text-1)" }}>{fmtR(real)}</td>
@@ -835,7 +835,7 @@ export default function Planejamento() {
                 { label: "Concluídas", valor: concluidas, bg: "#ECFDF5", color: "#14532D" },
                 { label: "Rec. Técnicas Pendentes", valor: recPend, bg: "#EDE9F8", color: "#4A2C8A" },
               ].map(k => (
-                <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+                <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
                   <div style={{ fontSize: 26, fontWeight: 700, color: k.color }}>{k.valor}</div>
                 </div>
@@ -863,7 +863,7 @@ export default function Planejamento() {
             {loading ? (
               <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             ) : tarefasFiltradas.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>◻</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma tarefa encontrada</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Use "+ Nova Tarefa" para criar a agenda do ciclo</div>
@@ -917,7 +917,7 @@ export default function Planejamento() {
             {loading ? (
               <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13 }}>Carregando...</div>
             ) : recomendacoes.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>◇</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhuma recomendação técnica</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>Registre recomendações do agrônomo para cada ciclo</div>
@@ -930,7 +930,7 @@ export default function Planejamento() {
                   const pr = PRIORIDADE[r.prioridade];
                   const aplicada = r.status === "aplicada";
                   return (
-                    <div key={r.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE", display: "flex", alignItems: "flex-start", gap: 14, opacity: aplicada ? 0.75 : 1 }}>
+                    <div key={r.id} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)", display: "flex", alignItems: "flex-start", gap: 14, opacity: aplicada ? 0.75 : 1 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: aplicada ? "var(--bg-page)" : "#EDE9F8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: aplicada ? "var(--text-3)" : "#6B3FAD" }}>◇</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>

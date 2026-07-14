@@ -34,11 +34,11 @@ import SelectBusca from "../../../components/SelectBusca";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "18px 20px", marginBottom: 16 };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "18px 20px", marginBottom: 16 };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -1073,7 +1073,7 @@ export default function NfCompraPage() {
         </div>
 
         {/* ── Painel SIEG ── */}
-        <div style={{ background: "white", border: "0.5px solid #DDE2EE", borderRadius: 12, padding: "14px 18px", marginBottom: 18 }}>
+        <div style={{ background: "white", border: "0.5px solid var(--border)", borderRadius: 12, padding: "14px 18px", marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#1A4870", marginRight: 4 }}>⟳ Sincronizar SIEG</span>
 
@@ -1084,7 +1084,7 @@ export default function NfCompraPage() {
                 {siegProdutores.length === 1
                   ? <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{siegProdutores[0].nome}</span>
                   : <select value={siegCnpjDest} onChange={e => setSiegCnpjDest(e.target.value)}
-                      style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "var(--text-1)" }}>
+                      style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", background: "white", color: "var(--text-1)" }}>
                       {siegProdutores.map(p => <option key={p.cnpj} value={p.cnpj}>{p.nome}</option>)}
                     </select>
                 }
@@ -1095,10 +1095,10 @@ export default function NfCompraPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>De:</span>
               <input type="date" value={siegDtInicio} onChange={e => setSiegDtInicio(e.target.value)}
-                style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)" }} />
+                style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)" }} />
               <span style={{ fontSize: 11, color: "var(--text-2)" }}>Até:</span>
               <input type="date" value={siegDtFim} onChange={e => setSiegDtFim(e.target.value)}
-                style={{ padding: "4px 8px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)" }} />
+                style={{ padding: "4px 8px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, outline: "none", color: "var(--text-1)" }} />
             </div>
 
             {/* Força re-importação */}
@@ -1126,7 +1126,7 @@ export default function NfCompraPage() {
             { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
             { label: "Canceladas",     value: String(nfs.filter(n=>n.status==="cancelada").length),  bg: "#FCEBEB" },
           ].map(({ label, value, bg }) => (
-            <div key={label} style={{ background: bg, border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
+            <div key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
             </div>
@@ -1178,9 +1178,9 @@ export default function NfCompraPage() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F3F6F9" }}>
+                <tr style={{ background: "var(--bg-page)" }}>
                   {["Nº / Série", "Emitente", "Emissão", "Entrada", "Tipo", "Origem", "Valor Total", "Status", "Manifest.", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 6 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 6 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -1190,7 +1190,7 @@ export default function NfCompraPage() {
                   const tm = nf.tipo_entrada ? TIPO_META[nf.tipo_entrada] : null;
                   const om = nf.origem ? ORIGEM_META[nf.origem] : null;
                   return (
-                    <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
@@ -1220,7 +1220,7 @@ export default function NfCompraPage() {
                                 {isBusy ? "⏳…" : stCfg.label} {!isBusy && "▾"}
                               </button>
                               {aberto && (
-                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 200, minWidth: 150, overflow: "hidden" }}>
+                                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 200, minWidth: 150, overflow: "hidden" }}>
                                   {MAN_CFG.map(m => (
                                     <button key={m.tipo}
                                       onClick={e => { e.stopPropagation(); setManDropdown(null); manifestar(nf, m.tipo); }}
@@ -1252,7 +1252,7 @@ export default function NfCompraPage() {
                             </a>
                           )}
                           {nf.status !== "processada" && nf.status !== "cancelada" && nf.origem !== "sieg" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A5C38", fontWeight: 600 }}>
                               Editar
                             </button>
                           )}
@@ -1309,7 +1309,7 @@ export default function NfCompraPage() {
                  onClick={e => e.stopPropagation()}>
 
               {/* Header */}
-              <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                     NF-e {nf.numero}/{nf.serie}
@@ -1336,12 +1336,12 @@ export default function NfCompraPage() {
 
                 {/* Emitente / Destinatário */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div style={{ background: "#F8FAFD", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Emitente (Fornecedor)</div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{nf.emitente_nome || "—"}</div>
                     {nf.emitente_cnpj && <div style={{ fontSize: 12, color: "var(--text-2)", fontFamily: "monospace", marginTop: 4 }}>{fmtDoc(nf.emitente_cnpj)}</div>}
                   </div>
-                  <div style={{ background: "#F8FAFD", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "14px 16px" }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "14px 16px" }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Destinatário</div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
                       {nf.cnpj_destino ? (() => {
@@ -1379,18 +1379,18 @@ export default function NfCompraPage() {
                     <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                       Itens ({itens.length})
                     </div>
-                    <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead>
                           <tr style={{ background: "var(--bg-page)" }}>
                             {["#", "Produto / Descrição", "NCM", "CFOP", "Unid.", "Qtde.", "Vl. Unit.", "Vl. Total"].map((h, i) => (
-                              <th key={h} style={{ padding: "8px 10px", textAlign: i >= 5 ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                              <th key={h} style={{ padding: "8px 10px", textAlign: i >= 5 ? "right" : "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {itens.map((it, idx) => (
-                            <tr key={it.id} style={{ borderBottom: idx < itens.length - 1 ? "0.5px solid #EEF1F6" : "none", background: idx % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                            <tr key={it.id} style={{ borderBottom: idx < itens.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: idx % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                               <td style={{ padding: "8px 10px", color: "var(--text-3)" }}>{idx + 1}</td>
                               <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-1)", maxWidth: 220, wordBreak: "break-word" }}>{it.descricao_produto || it.descricao_nf}</td>
                               <td style={{ padding: "8px 10px", color: "var(--text-2)", fontFamily: "monospace" }}>{it.ncm || "—"}</td>
@@ -1403,7 +1403,7 @@ export default function NfCompraPage() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid #DDE2EE" }}>
+                          <tr style={{ background: "var(--bg-page)", borderTop: "0.5px solid var(--border)" }}>
                             <td colSpan={7} style={{ padding: "8px 10px", fontWeight: 700, fontSize: 12, textAlign: "right", color: "var(--text-2)" }}>Total</td>
                             <td style={{ padding: "8px 10px", fontWeight: 700, fontSize: 13, textAlign: "right", color: "#1A4870" }}>
                               {fmtBRL(itens.reduce((s, it) => s + (it.valor_total ?? 0), 0))}
@@ -1418,7 +1418,7 @@ export default function NfCompraPage() {
               </div>
 
               {/* Footer */}
-              <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 {nf.status === "pendente" && (
                   <button onClick={() => { setNfViewer(null); abrirEditar(nf); }}
                     style={{ padding: "8px 20px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
@@ -1426,7 +1426,7 @@ export default function NfCompraPage() {
                   </button>
                 )}
                 <button onClick={() => setNfViewer(null)}
-                  style={{ padding: "8px 20px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid #DDE2EE", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                  style={{ padding: "8px 20px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border)", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
                   Fechar
                 </button>
               </div>
@@ -1443,7 +1443,7 @@ export default function NfCompraPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 900, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {nfEdit ? `NF ${nfEdit.numero}/${nfEdit.serie}` : "Nova NF de Compra"}
@@ -1456,7 +1456,7 @@ export default function NfCompraPage() {
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {(["origem", "cabecalho", "itens"] as Etapa[]).map((e, i) => (
                   <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: etapa === e ? "#1A5C38" : etapa > e ? "#D5E8F5" : "#F3F6F9", color: etapa === e ? "#fff" : etapa > e ? "#1A4870" : "var(--text-muted)" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: etapa === e ? "#1A5C38" : etapa > e ? "#D5E8F5" : "var(--bg-page)", color: etapa === e ? "#fff" : etapa > e ? "#1A4870" : "var(--text-muted)" }}>
                       {i + 1}
                     </div>
                     {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}
@@ -1822,7 +1822,7 @@ export default function NfCompraPage() {
                   </div>
 
                   {/* ── Classificação Contábil / LCDPR ── */}
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 7, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                       Classificação Contábil / LCDPR
                     </div>
@@ -1898,7 +1898,7 @@ export default function NfCompraPage() {
 
                   {/* Painel "Aplicar Centro de Custo a todos" — custo_direto e insumos */}
                   {(tipo === "custo_direto" || tipo === "insumos") && (
-                    <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                    <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 8, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>
                         Aplicar Centro de Custo a todos os itens
                       </div>
@@ -1928,14 +1928,14 @@ export default function NfCompraPage() {
                   )}
 
                   {/* Grid de itens */}
-                  <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
+                  <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 16 }}>
                     {/* Cabeçalho */}
                     <div style={{
                       display: "grid",
                       gridTemplateColumns: tipo === "insumos" ? "2fr 1.5fr 80px 90px 100px 110px 90px 32px" :
                                            tipo === "custo_direto" ? "2fr 80px 90px 100px 110px 1.5fr 32px" :
                                            "2fr 80px 90px 100px 110px 1.5fr 90px 32px",
-                      gap: 0, background: "#F3F6F9", borderBottom: "0.5px solid #D4DCE8"
+                      gap: 0, background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)"
                     }}>
                       {(tipo === "insumos"
                         ? ["Descrição NF", "Insumo / Centro Custo", "Un. NF", "Qtd NF", "Vl. Unit.", "Vl. Total", "Fator Conv.", ""]
@@ -2157,7 +2157,7 @@ export default function NfCompraPage() {
                     })}
 
                     {/* Rodapé totais */}
-                    <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", background: "#F8FAFB", borderTop: "0.5px solid #D4DCE8", gap: 24 }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 16px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border-table)", gap: 24 }}>
                       <span style={{ fontSize: 12, color: "var(--text-2)" }}>Cabeçalho NF: <strong>{fmtBRL(parseFloat(cab.valor_total)||0)}</strong></span>
                       <span style={{ fontSize: 12, color: "var(--text-2)" }}>Total itens: <strong style={{ color: Math.abs(totalItens - (parseFloat(cab.valor_total)||0)) > 0.01 ? "#E24B4A" : "#1A5C38" }}>{fmtBRL(totalItens)}</strong></span>
                     </div>
@@ -2189,7 +2189,7 @@ export default function NfCompraPage() {
                       ))}
                     </div>
                     {tipo === "insumos" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8" }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)" }}>
                         <div style={{ fontSize: 11, color: "var(--text-2)" }}>
                             {itens.filter(i => i.principio_ativo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque PA ·{" "}
                           {itens.filter(i => i.insumo_id && !i.principio_ativo_id && i.tipo_apropiacao !== "direto").length} item(s) → estoque insumo ·{" "}
@@ -2200,20 +2200,20 @@ export default function NfCompraPage() {
                       </div>
                     )}
                     {tipo === "custo_direto" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8", fontSize: 11, color: "#1A6B3C" }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)", fontSize: 11, color: "#1A6B3C" }}>
                         {itens.filter(i => i.centro_custo_id && i.descricao_nf.trim()).length} item(s) com centro de custo ·{" "}
                         {itens.filter(i => !i.centro_custo_id && i.descricao_nf.trim()).length} sem CC (serão lançados sem centro de custo).
                         Nenhuma movimentação de estoque será gerada.
                       </div>
                     )}
                     {tipo === "vef" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8", fontSize: 11, color: "#7A5A12" }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)", fontSize: 11, color: "#7A5A12" }}>
                         Um depósito de terceiro será criado automaticamente para {cab.emitente_nome || "o fornecedor"}.
                         Use uma NF de Remessa quando o produto for entregue fisicamente.
                       </div>
                     )}
                     {tipo === "remessa" && (
-                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid #D4DCE8", fontSize: 11, color: "#0C447C" }}>
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "0.5px solid var(--border-table)", fontSize: 11, color: "#0C447C" }}>
                         O saldo de terceiro (VEF anterior) será debitado e creditado em: {cab.deposito_destino_id ? nomeDeposito(cab.deposito_destino_id) : "depósito não selecionado"}.
                       </div>
                     )}
@@ -2275,7 +2275,7 @@ export default function NfCompraPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Emitir NF de Devolução de Compra</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
@@ -2327,8 +2327,8 @@ export default function NfCompraPage() {
                   Nenhum item de estoque encontrado na NF de origem.
                 </div>
               ) : (
-                <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", background: "#F3F6F9", borderBottom: "0.5px solid #D4DCE8" }}>
+                <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 80px 100px 100px 110px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
                     {["Produto", "Unidade", "Qtd Original", "Qtd Devolver", "Valor Devolução"].map((h, i) => (
                       <div key={i} style={{ padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--text-2)" }}>{h}</div>
                     ))}
@@ -2354,7 +2354,7 @@ export default function NfCompraPage() {
                                 : x
                             ));
                           }}
-                          style={{ ...inp, padding: "5px 8px", fontSize: 12, border: it.quantidade_devolver > 0 ? "0.5px solid #E24B4A" : "0.5px solid #D4DCE8" }}
+                          style={{ ...inp, padding: "5px 8px", fontSize: 12, border: it.quantidade_devolver > 0 ? "0.5px solid #E24B4A" : "0.5px solid var(--border-table)" }}
                         />
                       </div>
                       <div style={{ padding: "8px 12px", fontSize: 13, fontWeight: 600, color: it.quantidade_devolver > 0 ? "#E24B4A" : "var(--text-muted)", textAlign: "right" }}>
@@ -2363,7 +2363,7 @@ export default function NfCompraPage() {
                     </div>
                   ))}
                   {/* Rodapé total */}
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 24, padding: "10px 16px", background: "#F8FAFB", borderTop: "0.5px solid #D4DCE8" }}>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 24, padding: "10px 16px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border-table)" }}>
                     <span style={{ fontSize: 12, color: "var(--text-2)" }}>
                       Itens selecionados: <strong>{devItens.filter(i => i.quantidade_devolver > 0).length}</strong>
                     </span>
@@ -2400,7 +2400,7 @@ export default function NfCompraPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho */}
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Reclassificar NF</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
@@ -2451,7 +2451,7 @@ export default function NfCompraPage() {
             </div>
 
             {/* Rodapé */}
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalReclass(null)}>Cancelar</button>
               <button
                 onClick={salvarReclassificacao}
@@ -2641,10 +2641,10 @@ export default function NfCompraPage() {
               <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Justificativa * (mín. 15 caracteres)</label>
               <textarea value={siegJustText} onChange={e => setSiegJustText(e.target.value)} rows={3}
                 placeholder="Informe o motivo…"
-                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 6 }} />
               <div style={{ fontSize: 10, color: siegJustText.length >= 15 ? "#16A34A" : "var(--text-muted)", marginBottom: 16 }}>{siegJustText.length}/15 mínimos</div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setSiegJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
+                <button onClick={() => setSiegJustModal(null)} style={{ padding: "8px 16px", border: "0.5px solid var(--border)", borderRadius: 8, background: "white", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}>Cancelar</button>
                 <button disabled={siegJustText.length < 15}
                   onClick={async () => { const {nf,tipo} = siegJustModal; setSiegJustModal(null); await executarManifestacao(nf, tipo, siegJustText); }}
                   style={{ padding: "8px 20px", background: siegJustText.length < 15 ? "var(--border)" : m.cor, color: "white", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: siegJustText.length < 15 ? "default" : "pointer" }}>

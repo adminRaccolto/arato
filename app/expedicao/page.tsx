@@ -78,7 +78,7 @@ const STATUS_LABEL: Record<StatusCarga, string> = {
   encerrada:       "Encerrada",
 };
 const STATUS_COR: Record<StatusCarga, { bg: string; color: string }> = {
-  rascunho:        { bg: "#F3F6F9", color: "var(--text-2)" },
+  rascunho:        { bg: "var(--bg-page)", color: "var(--text-2)" },
   em_transito:     { bg: "#FEF3C7", color: "#92400E" },
   entregue:        { bg: "#DCFCE7", color: "#16A34A" },
   corrigindo_peso: { bg: "#FEE2E2", color: "#B91C1C" },
@@ -97,10 +97,10 @@ const campo = (label: string, children: React.ReactNode) => (
   </div>
 );
 const inp = (props: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, outline: "none", background: "var(--bg-card)", ...props.style }} />
+  <input {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", background: "var(--bg-card)", ...props.style }} />
 );
 const sel = (props: React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-card)", outline: "none", ...props.style }} />
+  <select {...props} style={{ padding: "7px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-card)", outline: "none", ...props.style }} />
 );
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -408,14 +408,14 @@ export default function Expedicao() {
         <div style={{
           width: contratoSel ? 380 : "100%",
           minWidth: 340,
-          borderRight: contratoSel ? "0.5px solid #DDE2EE" : "none",
+          borderRight: contratoSel ? "0.5px solid var(--border)" : "none",
           background: "var(--bg-card)",
           display: "flex", flexDirection: "column",
           transition: "width 0.2s",
           overflow: "hidden",
         }}>
           {/* Header */}
-          <div style={{ padding: "20px 20px 14px", borderBottom: "0.5px solid #EEF1F6" }}>
+          <div style={{ padding: "20px 20px 14px", borderBottom: "0.5px solid var(--bg-tag)" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>Comercial</div>
             <h1 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>Expedição de Grãos</h1>
 
@@ -424,13 +424,13 @@ export default function Expedicao() {
               placeholder="Buscar contrato, comprador, produto..."
               value={filtroBusca}
               onChange={e => setFiltroBusca(e.target.value)}
-              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, outline: "none", marginBottom: 8, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, outline: "none", marginBottom: 8, boxSizing: "border-box" }}
             />
             <div style={{ display: "flex", gap: 8 }}>
               <select
                 value={filtroAno}
                 onChange={e => { setFiltroAno(e.target.value); setFiltroCiclo(""); }}
-                style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, background: "var(--bg-card)", outline: "none" }}
+                style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}
               >
                 <option value="">Todos os anos</option>
                 {anosS.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
@@ -438,7 +438,7 @@ export default function Expedicao() {
               <select
                 value={filtroCiclo}
                 onChange={e => setFiltroCiclo(e.target.value)}
-                style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, background: "var(--bg-card)", outline: "none" }}
+                style={{ flex: 1, padding: "6px 8px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", outline: "none" }}
               >
                 <option value="">Todos os ciclos</option>
                 {ciclosFiltrados.map(c => <option key={c.id} value={c.id}>{c.cultura}</option>)}
@@ -448,7 +448,7 @@ export default function Expedicao() {
               <select
                 value={fazendaFiltro}
                 onChange={e => setFazendaFiltro(e.target.value)}
-                style={{ width: "100%", padding: "6px 8px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, background: "var(--bg-card)", outline: "none", marginTop: 6 }}
+                style={{ width: "100%", padding: "6px 8px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", outline: "none", marginTop: 6 }}
               >
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
@@ -477,7 +477,7 @@ export default function Expedicao() {
                   onClick={() => selecionarContrato(c)}
                   style={{
                     padding: "14px 20px", cursor: "pointer",
-                    borderBottom: "0.5px solid #EEF1F6",
+                    borderBottom: "0.5px solid var(--bg-tag)",
                     background: sel ? "#EBF4FF" : "transparent",
                     borderLeft: sel ? "3px solid #1A4870" : "3px solid transparent",
                   }}
@@ -514,7 +514,7 @@ export default function Expedicao() {
         {contratoSel && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg-page)" }}>
             {/* Header do contrato */}
-            <div style={{ background: "var(--bg-card)", padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ background: "var(--bg-card)", padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                   <button
@@ -547,7 +547,7 @@ export default function Expedicao() {
                 { label: "Em Trânsito", value: `${scTransito.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: "#FEF3C7", txt: "#92400E" },
                 { label: "Saldo",        value: `${scSaldo.toLocaleString("pt-BR",{maximumFractionDigits:0})} sc`, cor: scSaldo > 0 ? "#FBF3E0" : "#DCFCE7", txt: scSaldo > 0 ? "#C9921B" : "#16A34A" },
               ].map(k => (
-                <div key={k.label} style={{ background: k.cor, borderRadius: 8, padding: "12px 16px", border: "0.5px solid #DDE2EE" }}>
+                <div key={k.label} style={{ background: k.cor, borderRadius: 8, padding: "12px 16px", border: "0.5px solid var(--border)" }}>
                   <div style={{ fontSize: 11, color: k.txt, opacity: 0.7, marginBottom: 2, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: k.txt }}>{k.value}</div>
                 </div>
@@ -558,7 +558,7 @@ export default function Expedicao() {
             <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px" }}>
               {carregandoC && <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>Carregando cargas...</div>}
               {!carregandoC && cargas.length === 0 && (
-                <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "40px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                   Nenhuma carga registrada para este contrato.
                   <br />
                   <button
@@ -570,12 +570,12 @@ export default function Expedicao() {
                 </div>
               )}
               {!carregandoC && cargas.length > 0 && (
-                <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         {["Nº Carga","Data","Rota","Peso Liq. (kg)","NF-e","MDF-e","Status","Ações"].map(h => (
-                          <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -583,7 +583,7 @@ export default function Expedicao() {
                       {cargas.map(c => {
                         const sc = c.peso_liquido_kg != null ? c.peso_liquido_kg / 60 : null;
                         return (
-                          <tr key={c.id} style={{ borderBottom: "0.5px solid #EEF1F6", cursor: "pointer" }}
+                          <tr key={c.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", cursor: "pointer" }}
                               onClick={() => setModalCarga(c)}>
                             <td style={{ padding: "9px 12px", fontWeight: 700, color: "#1A4870", fontFamily: "monospace" }}>
                               {c.numero}
@@ -596,7 +596,7 @@ export default function Expedicao() {
                             </td>
                             <td style={{ padding: "9px 12px" }}>
                               <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 10,
-                                background: c.rota === "transbordo_sem_nf" ? "#F3F6F9" : c.rota === "transbordo_com_remessa" ? "#FBF3E0" : "#DCFCE7",
+                                background: c.rota === "transbordo_sem_nf" ? "var(--bg-page)" : c.rota === "transbordo_com_remessa" ? "#FBF3E0" : "#DCFCE7",
                                 color: "#333" }}>
                                 {c.rota === "transbordo_sem_nf" ? "Transbordo s/NF" : c.rota === "transbordo_com_remessa" ? "Remessa 5905" : "Venda 6101"}
                               </span>
@@ -658,7 +658,7 @@ export default function Expedicao() {
                                 )}
                                 {c.status !== "encerrada" && (
                                   <button onClick={() => avancarStatus(c)}
-                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", color: "#333", fontSize: 11, cursor: "pointer" }}>
+                                    style={{ padding: "3px 8px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "#333", fontSize: 11, cursor: "pointer" }}>
                                     →
                                   </button>
                                 )}
@@ -698,7 +698,7 @@ export default function Expedicao() {
                   <button key={r} onClick={() => setNova(p => ({ ...p, rota: r }))}
                     style={{
                       padding: "11px 10px", borderRadius: 8, cursor: "pointer", textAlign: "center",
-                      border: nova.rota === r ? "2px solid #1A4870" : "0.5px solid #DDE2EE",
+                      border: nova.rota === r ? "2px solid #1A4870" : "0.5px solid var(--border)",
                       background: nova.rota === r ? "#D5E8F5" : "var(--bg-card)",
                       fontWeight: nova.rota === r ? 700 : 400, fontSize: 12,
                       color: nova.rota === r ? "#0B2D50" : "#333",
@@ -763,7 +763,7 @@ export default function Expedicao() {
             )}
             {campo("Observação", inp({ value: nova.observacao ?? "", onChange: e => setNova(p => ({ ...p, observacao: e.target.value })) }))}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalNova(false)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarNovaCarga} disabled={saving || !nova.rota}
                 style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 {saving ? "Salvando..." : "Registrar Carga"}
@@ -784,7 +784,7 @@ export default function Expedicao() {
                 <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, fontFamily: "monospace" }}>{modalCarga.numero}</h3>
                 <div style={{ display: "flex", gap: 8 }}>
                   <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 11, fontWeight: 600, ...STATUS_COR[modalCarga.status] }}>{STATUS_LABEL[modalCarga.status]}</span>
-                  <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 11, background: "#F3F6F9", color: "var(--text-2)" }}>
+                  <span style={{ padding: "2px 9px", borderRadius: 10, fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)" }}>
                     {modalCarga.rota === "transbordo_sem_nf" ? "Transbordo s/NF" : modalCarga.rota === "transbordo_com_remessa" ? "Remessa 5905" : "Venda 6101"}
                   </span>
                 </div>
@@ -836,7 +836,7 @@ export default function Expedicao() {
             {/* Documentos fiscais */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
               {/* NF-e */}
-              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", border: "0.5px solid #DDE2EE" }}>
+              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 8 }}>NF-e</div>
                 {modalCarga.nfe_chave ? (
                   <>
@@ -848,7 +848,7 @@ export default function Expedicao() {
                           Ver / Imprimir
                         </button>
                         <button onClick={() => { window.open(`/fiscal?busca=${modalCarga.nfe_numero}`, "_blank"); }}
-                          style={{ padding: "3px 10px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid #DDE2EE", borderRadius: 5, fontSize: 11, cursor: "pointer" }}>
+                          style={{ padding: "3px 10px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border)", borderRadius: 5, fontSize: 11, cursor: "pointer" }}>
                           Monitor NF-e
                         </button>
                       </div>
@@ -868,7 +868,7 @@ export default function Expedicao() {
                 )}
               </div>
               {/* MDF-e */}
-              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", border: "0.5px solid #DDE2EE" }}>
+              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", marginBottom: 8 }}>MDF-e</div>
                 {modalCarga.mdfe_chave ? (
                   <>
@@ -901,7 +901,7 @@ export default function Expedicao() {
                   Avançar Status →
                 </button>
               )}
-              <button onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+              <button onClick={() => setModalCarga(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
             </div>
           </div>
         </div>
@@ -968,7 +968,7 @@ export default function Expedicao() {
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Descrição", "NCM", "CFOP", "Qtd", "Un", "Peso Líq. (kg)", "Sacas"].map(h => (
-                        <th key={h} style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, fontSize: 10, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                        <th key={h} style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, fontSize: 10, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -997,7 +997,7 @@ export default function Expedicao() {
                   ["Tara", `${(modalDanfe.tara_origem_kg ?? 0).toLocaleString("pt-BR")} kg`],
                   ["Peso Líquido", `${(modalDanfe.peso_liquido_kg ?? 0).toLocaleString("pt-BR")} kg`],
                 ].map(([k, v]) => (
-                  <div key={k} style={{ textAlign: "center", border: "0.5px solid #DDE2EE", borderRadius: 4, padding: "6px 8px" }}>
+                  <div key={k} style={{ textAlign: "center", border: "0.5px solid var(--border)", borderRadius: 4, padding: "6px 8px" }}>
                     <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase" }}>{k}</div>
                     <div style={{ fontSize: 13, fontWeight: 700 }}>{v}</div>
                   </div>
@@ -1011,7 +1011,7 @@ export default function Expedicao() {
               </div>
 
               {/* Observações */}
-              <div style={{ fontSize: 10, color: "var(--text-2)", borderTop: "0.5px solid #DDE2EE", paddingTop: 8, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 10, color: "var(--text-2)", borderTop: "0.5px solid var(--border)", paddingTop: 8, lineHeight: 1.6 }}>
                 <strong>Informações Complementares:</strong> ICMS diferido nas operações internas — RICMS/MT (Dec. 2.993/2010).
                 Nas saídas interestaduais, base de cálculo reduzida a 61,11% (carga efetiva: 7,33%) — Conv. ICMS 100/97.
                 PIS/COFINS: alíquota zero — Art. 1°, I da Lei 10.925/2004. Sujeito ao recolhimento do FUNRURAL.
@@ -1019,7 +1019,7 @@ export default function Expedicao() {
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-              <button onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
+              <button onClick={() => setModalDanfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Fechar</button>
               <button onClick={() => window.print()} style={{ padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🖨 Imprimir DANFE</button>
             </div>
           </div>
@@ -1064,7 +1064,7 @@ export default function Expedicao() {
               {campo("Observação", inp({ value: obsCorrecao, onChange: e => setObsCorrecao(e.target.value), placeholder: "Ex: classificação destino, reclamação..." }))}
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalPeso(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               <button onClick={salvarCorrecaoPeso} disabled={!pesoDestino || saving}
                 style={{ padding: "8px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: pesoDestino ? "pointer" : "not-allowed" }}>
                 {saving ? "Salvando..." : "Confirmar e Encerrar Carga"}
@@ -1108,7 +1108,7 @@ export default function Expedicao() {
             </div>
             {campo("Observações", inp({ value: mdfeForm.obs, onChange: e => setMdfeForm(p => ({ ...p, obs: e.target.value })) }))}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 20 }}>
-              <button onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid #DDE2EE", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => setModalMdfe(null)} style={{ padding: "8px 20px", border: "0.5px solid var(--border)", borderRadius: 8, background: "var(--bg-card)", fontSize: 13, cursor: "pointer" }}>Cancelar</button>
               {(modalMdfe.nfe_chave || modalMdfe.rota === "transbordo_sem_nf") && (
                 <button onClick={() => emitirMdfe(modalMdfe)}
                   style={{ padding: "8px 22px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>

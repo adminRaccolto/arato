@@ -80,7 +80,7 @@ const inp = (v: string, onChange: (v: string) => void, placeholder?: string, typ
     value={v}
     onChange={e => onChange(e.target.value)}
     placeholder={placeholder}
-    style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "0.5px solid #DDE2EE",
+    style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "0.5px solid var(--border)",
              fontSize: 13, boxSizing: "border-box", outline: "none" }}
   />
 );
@@ -246,7 +246,7 @@ function ModalSieg({
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "0.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
           {([
             { id: "config", label: "Configuração" },
             { id: "cert",   label: "Registro no Sieg" },
@@ -283,7 +283,7 @@ function ModalSieg({
                 placeholder="Cole aqui a API Key da sua conta Sieg"
                 value={cfg.api_key ?? ""}
                 onChange={e => setCfg(prev => ({ ...prev, api_key: e.target.value }))}
-                style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                style={{ width: "100%", padding: "9px 12px", border: "0.5px solid var(--border)", borderRadius: 8,
                          fontSize: 13, boxSizing: "border-box", fontFamily: "monospace" }}
               />
               {/* Diagnóstico de qual chave está ativa */}
@@ -370,14 +370,14 @@ function ModalSieg({
                 onKeyDown={e => e.key === "Enter" && adicionarDoc()}
                 maxLength={14}
                 placeholder="CPF (11 dígitos) ou CNPJ (14 dígitos)"
-                style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "0.5px solid #DDE2EE",
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "0.5px solid var(--border)",
                          fontSize: 13, outline: "none", fontFamily: "monospace" }}
               />
               <button onClick={adicionarDoc} disabled={novoDoc.length < 11}
                 style={{ padding: "8px 18px",
                          background: novoDoc.length >= 11 ? "#1A4870" : "var(--bg-page)",
                          color: novoDoc.length >= 11 ? "#fff" : "var(--text-3)",
-                         border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 13,
+                         border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 13,
                          fontWeight: 600, cursor: novoDoc.length >= 11 ? "pointer" : "not-allowed" }}>
                 + Adicionar
               </button>
@@ -436,7 +436,7 @@ function ModalSieg({
               </button>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={onClose}
-                  style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid #DDE2EE",
+                  style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid var(--border)",
                            borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                   Cancelar
                 </button>
@@ -449,7 +449,7 @@ function ModalSieg({
             </div>
 
             <div style={{ marginTop: 20, padding: "10px 14px", background: "var(--bg-page)",
-                          border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666" }}>
+                          border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 11, color: "#666" }}>
               💡 A sincronização automática diária já está configurada via Cron Job na Vercel.
               Use o botão acima para sincronizar manualmente a qualquer momento.
             </div>
@@ -479,7 +479,7 @@ function ModalSieg({
                   onChange={e => setCertCnpj(e.target.value.replace(/\D/g, ""))}
                   maxLength={14}
                   placeholder="Deixe em branco para registrar todos da lista"
-                  style={{ flex: 1, padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                  style={{ flex: 1, padding: "9px 12px", border: "0.5px solid var(--border)", borderRadius: 8,
                            fontSize: 13, fontFamily: "monospace", boxSizing: "border-box" }}
                 />
               </div>
@@ -545,20 +545,20 @@ function ModalSieg({
             </button>
 
             <div style={{ marginTop: 16, padding: "10px 14px", background: "var(--bg-page)",
-                          border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 11, color: "#666",
+                          border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 11, color: "#666",
                           lineHeight: 1.6 }}>
               💡 Se os CNPJs já foram registrados anteriormente no portal Sieg, este botão apenas
               confirma o registro (não causa duplicatas). Pode executar quantas vezes precisar.
             </div>
 
             {/* Diagnóstico */}
-            <div style={{ marginTop: 20, borderTop: "0.5px solid #DDE2EE", paddingTop: 20 }}>
+            <div style={{ marginTop: 20, borderTop: "0.5px solid var(--border)", paddingTop: 20 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                             marginBottom: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)" }}>Diagnóstico da chave</div>
                 <button onClick={testarDiagnostico} disabled={diagLoading}
                   style={{ padding: "6px 14px", background: diagLoading ? "var(--bg-page)" : "var(--bg-card)",
-                           border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12,
+                           border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12,
                            cursor: diagLoading ? "not-allowed" : "pointer", color: "#1A4870", fontWeight: 600 }}>
                   {diagLoading ? "Testando…" : "Testar chave agora"}
                 </button>
@@ -731,14 +731,14 @@ function ModalConfigurar({
                                 textTransform: "uppercase" }}>{f.label}</div>
                   <select value={String(config[f.key] ?? "")} disabled
                     style={{ width: "100%", padding: "6px 10px", borderRadius: 6,
-                             border: "0.5px solid #DDE2EE", fontSize: 13, background: "var(--bg-page)", color: "var(--text-2)" }}>
+                             border: "0.5px solid var(--border)", fontSize: 13, background: "var(--bg-page)", color: "var(--text-2)" }}>
                     {f.opts.map(o => <option key={o}>{o}</option>)}
                   </select>
                 </div>
               ))}
             </div>
             <button onClick={testarBalanca} disabled={testing}
-              style={{ marginTop: 16, padding: "9px 20px", background: "var(--bg-page)", border: "0.5px solid #DDE2EE",
+              style={{ marginTop: 16, padding: "9px 20px", background: "var(--bg-page)", border: "0.5px solid var(--border)",
                        borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#1A4870" }}>
               {testing ? "Aguardando leitura..." : "Testar Balança (Web Serial)"}
             </button>
@@ -766,12 +766,12 @@ function ModalConfigurar({
                 <input placeholder={f.placeholder} value={String(config[f.key] ?? "")}
                   onChange={e => setField(f.key, e.target.value)}
                   style={{ width: "100%", padding: "8px 12px", borderRadius: 6,
-                           border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }} />
+                           border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }} />
               </div>
             ))}
 
             {/* Reconectar WhatsApp */}
-            <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 16, marginTop: 4 }}>
+            <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 16, marginTop: 4 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", marginBottom: 10 }}>
                 Conexão WhatsApp
               </div>
@@ -800,7 +800,7 @@ function ModalConfigurar({
                   </div>
                   <button onClick={reconectarWhatsApp} disabled={qrLoading}
                     style={{ marginTop: 8, padding: "6px 14px", background: "var(--bg-page)",
-                             border: "0.5px solid #DDE2EE", borderRadius: 6,
+                             border: "0.5px solid var(--border)", borderRadius: 6,
                              fontSize: 12, cursor: "pointer", color: "#1A4870" }}>
                     Renovar QR Code
                   </button>
@@ -822,7 +822,7 @@ function ModalConfigurar({
                 <input placeholder={f.placeholder} value={String(config[f.key] ?? "")}
                   onChange={e => setField(f.key, e.target.value)}
                   style={{ width: "100%", padding: "8px 12px", borderRadius: 6,
-                           border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }} />
+                           border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }} />
               </div>
             ))}
           </div>
@@ -836,7 +836,7 @@ function ModalConfigurar({
 
         <div style={{ display: "flex", gap: 12, marginTop: 28, justifyContent: "flex-end" }}>
           <button onClick={onClose}
-            style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid #DDE2EE",
+            style={{ padding: "9px 20px", background: "var(--bg-card)", border: "0.5px solid var(--border)",
                      borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
             Cancelar
           </button>
@@ -922,7 +922,7 @@ export default function IntegracoesPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24, borderBottom: "0.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 24, borderBottom: "0.5px solid var(--border)" }}>
           {CATEGORIAS.map(cat => {
             const ativosNoCat = cat.id === "fiscal"
               ? (siegAtivo ? 1 : 0)
@@ -1007,7 +1007,7 @@ export default function IntegracoesPage() {
                 </div>
 
                 {/* OFX */}
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EAF3FB", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🏦</div>
                     <div>
@@ -1026,7 +1026,7 @@ export default function IntegracoesPage() {
                 </div>
 
                 {/* GNRE */}
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#FEF3C7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>📋</div>
                     <div>
@@ -1045,7 +1045,7 @@ export default function IntegracoesPage() {
                 </div>
 
                 {/* eSocial Rural */}
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 20, display: "flex", flexDirection: "column", gap: 10, minHeight: 160 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#EDE9FE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>👷</div>
                     <div>
@@ -1173,7 +1173,7 @@ export default function IntegracoesPage() {
                   </div>
 
                   {/* Teste de conexão ao vivo */}
-                  <div style={{ borderTop: "0.5px solid #EEF1F6", paddingTop: 14 }}>
+                  <div style={{ borderTop: "0.5px solid var(--bg-tag)", paddingTop: 14 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>Testar conexão</div>
                     <BalancaSerial
                       onCapturarBruto={kg => alert(`✓ Peso Bruto capturado: ${kg.toLocaleString("pt-BR")} kg`)}

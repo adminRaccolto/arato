@@ -9,11 +9,11 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
-const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid #EEF1F6", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -532,7 +532,7 @@ export default function CtePage() {
             { label: "Rascunho",            value: ctes.filter(c => c.status === "rascunho").length.toString(), sub: "aguardando autorização", color: "#C9921B" },
             { label: "Valor Total Fretes",  value: fmtBRL(totalFretes),           sub: "autorizados",           color: "#1A4870" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -558,16 +558,16 @@ export default function CtePage() {
 
         {/* Tabela */}
         {ctesFiltrados.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             {ctes.length === 0 ? "Nenhum CT-e emitido." : "Nenhum CT-e encontrado para o filtro aplicado."}
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ background: "#F8FAFB" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   {["Nº/Série","Data","Remetente → Destinatário","Percurso","Veículo","Motorista","Valor Frete","Status",""].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor Frete" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Valor Frete" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -575,7 +575,7 @@ export default function CtePage() {
                 {ctesFiltrados.map(c => {
                   const sm = STATUS_META[c.status];
                   return (
-                    <tr key={c.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                    <tr key={c.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                       <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1A4870" }}>
                         {c.numero_cte}/{c.serie}
                         <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 400 }}>{c.cfop}</div>
@@ -603,11 +603,11 @@ export default function CtePage() {
                               Autorizar SEFAZ
                             </button>
                           )}
-                          <button onClick={() => imprimirDacte(c, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                          <button onClick={() => imprimirDacte(c, logoCliente)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
                             DACTE
                           </button>
                           {c.status !== "cancelado" && (
-                            <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                            <button onClick={() => abrirEditar(c)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Editar
                             </button>
                           )}
@@ -635,7 +635,7 @@ export default function CtePage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 800, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Cabeçalho modal */}
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{cteEdit ? `CT-e ${cteEdit.numero_cte}/${cteEdit.serie}` : "Emitir CT-e"}</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Conhecimento de Transporte Eletrônico — Modal Rodoviário</div>
@@ -807,7 +807,7 @@ export default function CtePage() {
               </div>
               <div>
                 <label style={lbl}>Valor ICMS (calculado)</label>
-                <div style={{ ...inp, background: "#F8FAFB", color: "#1A4870", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
+                <div style={{ ...inp, background: "var(--bg-card)", color: "#1A4870", fontWeight: 600 }}>{fmtBRL(valorIcms)}</div>
               </div>
 
               {/* ── Vínculo NF-e ── */}
@@ -823,7 +823,7 @@ export default function CtePage() {
             </div>
 
             {/* Rodapé modal */}
-            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                 Transmissão à SEFAZ via integração com biblioteca NF-e · Fluxo simulado por enquanto
               </div>

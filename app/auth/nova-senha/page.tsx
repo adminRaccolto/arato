@@ -62,7 +62,7 @@ export default function NovaSenha() {
         {/* Topo */}
         <div style={{
           background: "var(--bg-card)", padding: "32px 40px 24px",
-          textAlign: "center", borderBottom: "0.5px solid #EEF1F6",
+          textAlign: "center", borderBottom: "0.5px solid var(--bg-tag)",
         }}>
           <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 48, width: "auto", objectFit: "contain", marginBottom: 12 }} />
           <div style={{ color: "var(--text-muted)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase" }}>
@@ -160,7 +160,7 @@ export default function NovaSenha() {
         </div>
 
         <div style={{
-          padding: "12px 40px 16px", borderTop: "0.5px solid #EEF1F6",
+          padding: "12px 40px 16px", borderTop: "0.5px solid var(--bg-tag)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <span style={{ fontSize: 11, color: "#bbb" }}>Raccolto Consultoria</span>

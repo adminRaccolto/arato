@@ -9,11 +9,11 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
-const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid #EEF1F6", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const divider: React.CSSProperties = { gridColumn: "1 / -1", borderTop: "0.5px solid var(--bg-tag)", paddingTop: 12, marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -300,7 +300,7 @@ export default function MdfePage() {
             { label: "Carga em Trânsito",     value: pesoTransito > 0 ? `${(pesoTransito/1000).toFixed(0)} ton` : "—", sub: "peso total", color: "#C9921B" },
             { label: "Cancelados",            value: mdfes.filter(m => m.status === "cancelado").length.toString(), sub: "total", color: "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -323,16 +323,16 @@ export default function MdfePage() {
 
         {/* Tabela */}
         {mdfesFiltrados.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             {mdfes.length === 0 ? "Nenhum MDF-e emitido." : "Nenhum MDF-e encontrado para o filtro aplicado."}
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ background: "#F8FAFB" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   {["Nº/Série","Data","Percurso","Veículo","Motorista","Documentos","Peso","Status",""].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Peso" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Peso" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -342,7 +342,7 @@ export default function MdfePage() {
                   const nCtes = m.documentos.filter(d => d.tipo === "cte").length;
                   const nNfes = m.documentos.filter(d => d.tipo === "nfe").length;
                   return (
-                    <tr key={m.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                    <tr key={m.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                       <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1A4870" }}>
                         {m.numero_mdfe}/{m.serie}
                         {m.chave_acesso && <div style={{ fontSize: 9, color: "var(--text-muted)", fontWeight: 400, fontFamily: "monospace" }}>{m.chave_acesso.slice(0, 12)}…</div>}
@@ -384,7 +384,7 @@ export default function MdfePage() {
                             </button>
                           )}
                           {m.status === "rascunho" && (
-                            <button onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                            <button onClick={() => abrirEditar(m)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                               Editar
                             </button>
                           )}
@@ -417,7 +417,7 @@ export default function MdfePage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mdfeEdit ? `MDF-e ${mdfeEdit.numero_mdfe}/${mdfeEdit.serie}` : "Emitir MDF-e"}</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Manifesto de Documentos Fiscais Eletrônico</div>
@@ -501,7 +501,7 @@ export default function MdfePage() {
                 {ctes.length === 0 ? (
                   <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "8px 0" }}>Nenhum CT-e autorizado disponível. Emita e autorize CT-e antes de emitir o MDF-e.</div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: 10 }}>
                     {ctes.map(c => {
                       const sel = form.cte_ids.includes(c.id);
                       return (
@@ -553,7 +553,7 @@ export default function MdfePage() {
               </div>
             </div>
 
-            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "14px 24px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>
                 Frota própria · Motoristas CLT · Sem CIOT · Transmissão futura à ANTT/SEFAZ
               </div>
@@ -574,7 +574,7 @@ export default function MdfePage() {
       {modalEnc && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 420, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Encerrar MDF-e</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>MDF-e {modalEnc.numero_mdfe}/{modalEnc.serie} — {modalEnc.veiculo_placa}</div>
@@ -597,7 +597,7 @@ export default function MdfePage() {
                 <input value={encForm.municipio_encerramento} onChange={e => setEncForm(f => ({ ...f, municipio_encerramento: e.target.value }))} style={inp} placeholder="Cidade onde a carga foi entregue" />
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalEnc(null)}>Cancelar</button>
               <button onClick={encerrar} disabled={encSaving} style={{ ...btnV, background: encSaving ? "var(--text-muted)" : "#1A6B3C", cursor: encSaving ? "default" : "pointer" }}>
                 {encSaving ? "Encerrando…" : "Confirmar Encerramento"}

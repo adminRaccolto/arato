@@ -89,7 +89,7 @@ export default function SeletorCliente() {
 
       {/* Cabeçalho */}
       <div style={{
-        background: "var(--bg-card)", borderBottom: "0.5px solid #DDE2EE",
+        background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)",
         padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -99,13 +99,13 @@ export default function SeletorCliente() {
         <div style={{ display: "flex", gap: 8 }}>
           <button
             onClick={() => router.push("/admin/clientes")}
-            style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600 }}
+            style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600 }}
           >
             Gestão Arato →
           </button>
           <button
             onClick={() => supabase.auth.signOut()}
-            style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}
+            style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}
           >
             Sair
           </button>
@@ -128,7 +128,7 @@ export default function SeletorCliente() {
           onChange={e => setBusca(e.target.value)}
           style={{
             width: "100%", padding: "10px 14px", marginBottom: 24,
-            border: "0.5px solid #D4DCE8", borderRadius: 8,
+            border: "0.5px solid var(--border-table)", borderRadius: 8,
             fontSize: 13, outline: "none", boxSizing: "border-box", background: "var(--bg-card)",
           }}
         />
@@ -140,7 +140,7 @@ export default function SeletorCliente() {
         ) : lista.length === 0 ? (
           <div style={{
             textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 13,
-            background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE",
+            background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)",
           }}>
             {busca
               ? "Nenhum cliente encontrado para essa busca."
@@ -159,7 +159,7 @@ export default function SeletorCliente() {
                   onClick={() => acessarCliente(c)}
                   style={{
                     background: "var(--bg-card)",
-                    border: "0.5px solid #DDE2EE",
+                    border: "0.5px solid var(--border)",
                     borderRadius: 12,
                     padding: "16px",
                     textAlign: "left",
@@ -209,7 +209,7 @@ export default function SeletorCliente() {
                         <span key={f.id} style={{
                           fontSize: 10, padding: "2px 7px",
                           background: "var(--bg-page)", color: "var(--text-2)",
-                          borderRadius: 99, border: "0.5px solid #DDE2EE",
+                          borderRadius: 99, border: "0.5px solid var(--border)",
                         }}>{f.nome}</span>
                       ))}
                       {c.fazendas.length > 3 && (

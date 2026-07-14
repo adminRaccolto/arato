@@ -17,11 +17,11 @@ import PlanoGate from "../../components/PlanoGate";
 import AnexoDocumentos from "../../components/AnexoDocumentos";
 
 // ── Estilos base ─────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 16, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5CB8", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
+const btnR: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-card)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 const btnX: React.CSSProperties = { padding: "3px 8px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
 
 function SearchableSelect({
@@ -60,7 +60,7 @@ function SearchableSelect({
       />
       <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "#999", pointerEvents: "none" }}>▾</span>
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 220, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)" }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 8px 8px", maxHeight: 220, overflowY: "auto", boxShadow: "0 6px 18px rgba(0,0,0,0.13)" }}>
           <div
             style={{ padding: "6px 10px", fontSize: 13, color: "var(--text-muted)", cursor: "pointer", borderBottom: "0.5px solid #F0F0F0" }}
             onMouseDown={() => { onChange(""); setOpen(false); setQuery(""); }}
@@ -91,7 +91,7 @@ const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const hoje = () => new Date().toISOString().split("T")[0];
 
 const STATUS_MAP: Record<PedidoCompra["status"], { label: string; bg: string; color: string }> = {
-  rascunho:               { label: "Rascunho",          bg: "#F3F6F9", color: "var(--text-2)"    },
+  rascunho:               { label: "Rascunho",          bg: "var(--bg-page)", color: "var(--text-2)"    },
   aprovado:               { label: "Aprovado",           bg: "#D5E8F5", color: "#0B2D50" },
   parcialmente_entregue:  { label: "Parc. Entregue",    bg: "#FBF3E0", color: "#7A5200" },
   entregue:               { label: "Entregue",           bg: "#DCFCE7", color: "#166534" },
@@ -601,7 +601,7 @@ export default function ComprasPage() {
       <main style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, color: "var(--text-1)", fontWeight: 600 }}>Pedidos de Compra</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Controle de compras de insumos, serviços e materiais</p>
@@ -630,7 +630,7 @@ export default function ComprasPage() {
               { label: "Valor em aberto",    valor: fmtBRL(valorAberto),        cor: "#E24B4A" },
               { label: "Pedidos entregues",  valor: String(totalEntregues),     cor: "#16A34A" },
             ].map((s, i) => (
-              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
+              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: s.cor }}>{s.valor}</div>
               </div>
@@ -648,15 +648,15 @@ export default function ComprasPage() {
             <input
               placeholder="Buscar fornecedor, nº pedido..."
               value={filtroBusca} onChange={e => setFiltroBusca(e.target.value)}
-              style={{ flex: 1, minWidth: 200, padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)" }}
+              style={{ flex: 1, minWidth: 200, padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)" }}
             />
             <select value={filtroSafra} onChange={e => setFiltroSafra(e.target.value)}
-              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
               <option value="">Todas as safras</option>
               {anosSafra.map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
             </select>
             <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}
-              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 150 }}>
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 150 }}>
               <option value="">Todos os status</option>
               <option value="rascunho">Rascunho</option>
               <option value="aprovado">Aprovado</option>
@@ -665,7 +665,7 @@ export default function ComprasPage() {
               <option value="cancelado">Cancelado</option>
             </select>
             <select value={filtroMoeda} onChange={e => setFiltroMoeda(e.target.value)}
-              style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 120 }}>
+              style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 120 }}>
               <option value="">Todas as moedas</option>
               <option value="R$">R$ (Real)</option>
               <option value="USD">US$ (Dólar)</option>
@@ -673,14 +673,14 @@ export default function ComprasPage() {
             </select>
             {fazendas.length > 1 && (
               <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-                style={{ padding: "7px 11px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
+                style={{ padding: "7px 11px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
                 <option value="">Todas as fazendas</option>
                 {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
               </select>
             )}
             {(filtroSafra || filtroBusca || filtroStatus || filtroMoeda || fazendaFiltro) && (
               <button onClick={() => { setFiltroSafra(""); setFiltroBusca(""); setFiltroStatus(""); setFiltroMoeda(""); setFazendaFiltro(""); }}
-                style={{ padding: "7px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)" }}>
+                style={{ padding: "7px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)" }}>
                 Limpar filtros
               </button>
             )}
@@ -690,16 +690,16 @@ export default function ComprasPage() {
           {loading ? (
             <div style={{ textAlign: "center", padding: 48, color: "var(--text-2)" }}>Carregando...</div>
           ) : pedidosFiltrados.length === 0 ? (
-            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-2)" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-2)" }}>
               {pedidos.length === 0 ? "Nenhum pedido de compra cadastrado." : "Nenhum pedido encontrado para os filtros selecionados."}
             </div>
           ) : (
-            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Nº", "Fornecedor", "Ano Safra", "Operação", "Data", "Moeda", "Total", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 || i === 5 || i === 6 || i === 7 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 || i === 5 || i === 6 || i === 7 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -761,7 +761,7 @@ export default function ComprasPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 1180, maxWidth: "98vw", maxHeight: "95vh", overflowY: "auto" }}>
 
             {/* Header modal */}
-            <div style={{ padding: "16px 22px 0", borderBottom: "0.5px solid #D4DCE8" }}>
+            <div style={{ padding: "16px 22px 0", borderBottom: "0.5px solid var(--border-table)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div style={{ fontWeight: 600, fontSize: 15, color: "var(--text-1)" }}>{pedidoEdit ? "Editar Pedido de Compra" : "Novo Pedido de Compra"}</div>
                 <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>×</button>
@@ -970,7 +970,7 @@ export default function ComprasPage() {
                           {nomeOp(f.operacao_nf)}
                         </div>
                         <button type="button" onClick={() => setF(p => ({ ...p, operacao_nf_auto: false }))}
-                          style={{ fontSize: 11, padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 7, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                          style={{ fontSize: 11, padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 7, background: "var(--bg-card)", cursor: "pointer", color: "var(--text-2)", whiteSpace: "nowrap" }}>
                           Alterar
                         </button>
                       </div>
@@ -1081,15 +1081,15 @@ export default function ComprasPage() {
                     {tabItens("servicos", "Serviços")}
                     {tabItens("cc",       "Centro de Custo")}
                   </div>
-                  <div style={{ border: "0.5px solid #D4DCE8", borderRadius: "0 8px 8px 8px", padding: 12 }}>
+                  <div style={{ border: "0.5px solid var(--border-table)", borderRadius: "0 8px 8px 8px", padding: 12 }}>
                     {(abaItens === "itens" || abaItens === "servicos") && (() => {
                       const tipo = abaItens === "itens" ? "produto" : "servico";
                       const lista = itens.map((it, idx) => ({ ...it, _idx: idx })).filter(it => it.tipo_item === tipo);
                       return (<>
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead><tr style={{ background: "#F3F6F9" }}>
+                          <thead><tr style={{ background: "var(--bg-page)" }}>
                             {["Tipo Item","Item","Un.","Quantidade","Valor Unitário","Valor Total","Qtd. Cancel.",""].map((h, i) => (
-                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                              <th key={i} style={{ padding: "6px 8px", textAlign: i >= 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}
                           </tr></thead>
                           <tbody>
@@ -1151,7 +1151,7 @@ export default function ComprasPage() {
                             ))}
                           </tbody>
                           <tfoot>
-                            <tr style={{ background: "#F3F6F9" }}>
+                            <tr style={{ background: "var(--bg-page)" }}>
                               <td colSpan={5} style={{ padding: "6px 8px", textAlign: "right", fontSize: 11, color: "var(--text-2)", fontWeight: 600 }}>Total {tipo === "produto" ? "Produtos" : "Serviços"}</td>
                               <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtMoeda(lista.reduce((s, it) => s + calcItem(it), 0), f.cotacao_moeda)}</td>
                               <td colSpan={2} />
@@ -1165,7 +1165,7 @@ export default function ComprasPage() {
                       <div>
                         <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 10 }}>Vincule cada item a um centro de custo:</div>
                         {itens.filter(it => it.nome_item || it.insumo_id).map((it, idx) => (
-                          <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8, padding: "8px 10px", background: "#F8FAFD", borderRadius: 7, border: "0.5px solid #D4DCE8" }}>
+                          <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8, padding: "8px 10px", background: "var(--bg-card)", borderRadius: 7, border: "0.5px solid var(--border-table)" }}>
                             <div style={{ fontSize: 12, color: "var(--text-1)", display: "flex", alignItems: "center" }}>{it.nome_item || insumos.find(i => i.id === it.insumo_id)?.nome || "Item sem nome"}</div>
                             <div>
                               <label style={lbl}>Centro de Custo</label>
@@ -1271,7 +1271,7 @@ export default function ComprasPage() {
               )}
 
               {/* Footer */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid #D4DCE8" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, paddingTop: 14, borderTop: "0.5px solid var(--border-table)" }}>
                 <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                   {f.meio_pagamento === "barter" ? (() => {
                     const cicloB = ciclos.find(c => c.id === f.barter_ciclo_id);
@@ -1310,7 +1310,7 @@ export default function ComprasPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalEntrega(null); }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 720, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Entregas — {nomePessoa(modalEntrega.pedido.fornecedor_id)}</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>Pedido #{modalEntrega.pedido.numero} · {fmtData(modalEntrega.pedido.data_registro)}</div>
@@ -1322,9 +1322,9 @@ export default function ComprasPage() {
               {/* Situação dos itens */}
               <div style={secTit}>Situação dos Itens</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>
-                <thead><tr style={{ background: "#F3F6F9" }}>
+                <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Item","Un.","Qtd. Pedida","Qtd. Entregue","Saldo","Status"].map((h, i) => (
-                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
@@ -1385,9 +1385,9 @@ export default function ComprasPage() {
               {entregas.length > 0 && (<>
                 <div style={{ ...secTit, marginTop: 20 }}>Histórico de Entregas</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead><tr style={{ background: "#F3F6F9" }}>
+                  <thead><tr style={{ background: "var(--bg-page)" }}>
                     {["Item","Data","Qtd. Entregue","Obs."].map((h, i) => (
-                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>
@@ -1412,7 +1412,7 @@ export default function ComprasPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalRelatorio(null); }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 700, maxWidth: "97vw", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Relatório do Pedido #{modalRelatorio.pedido.numero}</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)" }}>{nomePessoa(modalRelatorio.pedido.fornecedor_id)} · {fmtData(modalRelatorio.pedido.data_registro)}</div>
@@ -1422,9 +1422,9 @@ export default function ComprasPage() {
             <div style={{ padding: 22 }}>
               <div style={secTit}>Itens do Pedido</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead><tr style={{ background: "#F3F6F9" }}>
+                <thead><tr style={{ background: "var(--bg-page)" }}>
                   {["Item","Un.","Qtd.","Valor Unit.","Valor Total","Qtd. Entregue","Saldo"].map((h, i) => (
-                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
@@ -1441,7 +1441,7 @@ export default function ComprasPage() {
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ background: "#F3F6F9", fontWeight: 600 }}>
+                  <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
                     <td colSpan={4} style={{ padding: "8px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAL PEDIDO</td>
                     <td style={{ padding: "8px 10px", textAlign: "right", color: "#1A4870" }}>{fmtBRL(modalRelatorio.itens.reduce((s, it) => s + (it.valor_total ?? it.quantidade * it.valor_unitario), 0))}</td>
                     <td colSpan={2} />
@@ -1452,9 +1452,9 @@ export default function ComprasPage() {
               {modalRelatorio.entregas.length > 0 && (<>
                 <div style={{ ...secTit, marginTop: 20 }}>Entregas Registradas</div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead><tr style={{ background: "#F3F6F9" }}>
+                  <thead><tr style={{ background: "var(--bg-page)" }}>
                     {["Item","Data Entrega","Qtd. Entregue","Obs."].map((h, i) => (
-                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "6px 10px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>

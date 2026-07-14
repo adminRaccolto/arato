@@ -190,9 +190,9 @@ export default function SuportePage() {
         <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, height: "calc(100vh - 140px)" }}>
 
           {/* Sidebar de conversas */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {/* Header */}
-            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1A4870" }}>Suporte IA</div>
                 <div style={{ fontSize: 11, color: "var(--text-3)" }}>Assistente Arato</div>
@@ -261,7 +261,7 @@ export default function SuportePage() {
             </div>
 
             {/* Info */}
-            <div style={{ padding: "10px 14px", borderTop: "0.5px solid #DDE2EE", background: "var(--bg-page)" }}>
+            <div style={{ padding: "10px 14px", borderTop: "0.5px solid var(--border)", background: "var(--bg-page)" }}>
               <div style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5 }}>
                 Assistente com conhecimento completo do Arato e do agronegócio brasileiro.
               </div>
@@ -269,11 +269,11 @@ export default function SuportePage() {
           </div>
 
           {/* Área de chat */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {conversaAtiva ? (
               <>
                 {/* Header do chat */}
-                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
                     width: 32, height: 32, background: "#1A4870", borderRadius: "50%",
                     display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, flexShrink: 0,
@@ -303,7 +303,7 @@ export default function SuportePage() {
                             key={s}
                             onClick={() => { setInput(s); setTimeout(() => inputRef.current?.focus(), 50); }}
                             style={{
-                              background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 99,
+                              background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 99,
                               padding: "6px 14px", fontSize: 12, color: "var(--text-2)", cursor: "pointer",
                             }}
                           >
@@ -336,7 +336,7 @@ export default function SuportePage() {
                           borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                           padding: "10px 14px",
                           fontSize: 13, lineHeight: 1.6,
-                          border: msg.role === "assistant" ? "0.5px solid #DDE2EE" : "none",
+                          border: msg.role === "assistant" ? "0.5px solid var(--border)" : "none",
                           whiteSpace: "pre-wrap",
                         }}>
                           {msg.content}
@@ -362,7 +362,7 @@ export default function SuportePage() {
                         display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 14, flexShrink: 0,
                       }}>🤖</div>
                       <div style={{
-                        background: "var(--bg-page)", border: "0.5px solid #DDE2EE",
+                        background: "var(--bg-page)", border: "0.5px solid var(--border)",
                         borderRadius: "16px 16px 16px 4px", padding: "12px 16px",
                       }}>
                         <div style={{ display: "flex", gap: 4 }}>
@@ -380,7 +380,7 @@ export default function SuportePage() {
                 </div>
 
                 {/* Input */}
-                <div style={{ padding: "12px 16px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <div style={{ padding: "12px 16px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8, alignItems: "flex-end" }}>
                   <textarea
                     ref={inputRef}
                     value={input}
@@ -390,7 +390,7 @@ export default function SuportePage() {
                     disabled={enviando}
                     rows={1}
                     style={{
-                      flex: 1, border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "9px 14px",
+                      flex: 1, border: "0.5px solid var(--border)", borderRadius: 10, padding: "9px 14px",
                       fontSize: 13, resize: "none", outline: "none", lineHeight: 1.5,
                       minHeight: 40, maxHeight: 120, overflowY: "auto",
                       fontFamily: "system-ui, sans-serif",

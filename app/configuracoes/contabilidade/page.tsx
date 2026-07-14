@@ -8,9 +8,9 @@ import type { ConfigContabilidade } from "../../../lib/supabase";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "24px 28px", marginBottom: 20 };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "24px 28px", marginBottom: 20 };
 const secTitle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase" as const, letterSpacing: "0.06em", marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #E8EEF5" };
 
 const ESCRITURACAO_LABELS: Record<string, string> = {

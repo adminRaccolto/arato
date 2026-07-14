@@ -146,7 +146,7 @@ export default function ControllerPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600 }}>FILTRAR:</span>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -184,7 +184,7 @@ export default function ControllerPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "#999", fontSize: 14 }}>Carregando alertas...</div>
         ) : alertasFiltrados.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 48, textAlign: "center" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>{totalAtivos === 0 ? "✅" : "🔍"}</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: totalAtivos === 0 ? "#16A34A" : "#1A4870" }}>
               {totalAtivos === 0 ? "Tudo em ordem!" : "Nenhum alerta para os filtros selecionados"}
@@ -225,7 +225,7 @@ export default function ControllerPage() {
                           {resolved ? "Resolvido" : SEV_LABEL[a.severidade]}
                         </span>
                         <span style={{
-                          fontSize: 10, background: "var(--bg-page)", border: "0.5px solid #DDE2EE",
+                          fontSize: 10, background: "var(--bg-page)", border: "0.5px solid var(--border)",
                           color: "var(--text-2)", padding: "2px 7px", borderRadius: 99,
                         }}>
                           {a.categoria}
@@ -257,7 +257,7 @@ export default function ControllerPage() {
                           <button
                             onClick={() => ackAlerta(a.id)}
                             style={{
-                              background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 6,
+                              background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 6,
                               padding: "5px 10px", fontSize: 11, color: "var(--text-2)", cursor: "pointer",
                               whiteSpace: "nowrap",
                             }}
@@ -285,7 +285,7 @@ export default function ControllerPage() {
         )}
 
         {/* Info */}
-        <div style={{ marginTop: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: 16 }}>
+        <div style={{ marginTop: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8 }}>VERIFICAÇÕES DISPONÍVEIS</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
             {[

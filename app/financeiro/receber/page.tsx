@@ -1046,7 +1046,7 @@ export default function ContasReceber() {
               <button onClick={() => setModalBaixa(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 16 }}>{modalBaixa.descricao}</div>
-            <div style={{ background: "#F8FAFB", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--text-2)", marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
               <span>Valor original: <strong style={{ color: "#1A4870" }}>{fmtBRL(valorTotal)}</strong></span>
               {jaPago > 0 && <span>Já recebido: <strong style={{ color: "#16A34A" }}>{fmtBRL(jaPago)}</strong></span>}
               {jaPago > 0 && <span>Saldo restante: <strong style={{ color: "#C9921B" }}>{fmtBRL(valorOrig)}</strong></span>}
@@ -1191,7 +1191,7 @@ export default function ContasReceber() {
               ◈ Ação manual — você confirma que o valor foi recebido na conta selecionada.
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-              <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={confirmarBaixa}
                 disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta))}
                 style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
@@ -1208,7 +1208,7 @@ export default function ContasReceber() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) setModalLote(false); }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "100%", maxWidth: 580, maxHeight: "90vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>Recebimento em Lote (Borderô)</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{itensLote.length} título{itensLote.length !== 1 ? "s" : ""} · total {fmtBRL(totalLote)}</div>
@@ -1238,18 +1238,18 @@ export default function ContasReceber() {
                 </div>
               </div>
 
-              <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
-                <div style={{ background: "#F3F6F9", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase" as const, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
+              <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+                <div style={{ background: "var(--bg-page)", padding: "6px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase" as const, display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 }}>
                   <span>Título</span><span>Vencimento</span><span style={{ textAlign: "right" as const }}>Valor</span>
                 </div>
                 {itensLote.map((l, i) => (
-                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "8px 12px", borderTop: i > 0 ? "0.5px solid #EEF1F6" : "none", fontSize: 12, alignItems: "center" }}>
+                  <div key={l.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "8px 12px", borderTop: i > 0 ? "0.5px solid var(--bg-tag)" : "none", fontSize: 12, alignItems: "center" }}>
                     <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{exibirFornecedor(l.descricao)}</span>
                     <span style={{ color: "var(--text-2)", whiteSpace: "nowrap" as const }}>{fmtData(l.data_vencimento)}</span>
                     <span style={{ fontWeight: 600, color: "#16A34A", textAlign: "right" as const, whiteSpace: "nowrap" as const }}>{exibirValor(l)}</span>
                   </div>
                 ))}
-                <div style={{ background: "#F3F6F9", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid #D4DCE8" }}>
+                <div style={{ background: "var(--bg-page)", padding: "8px 12px", display: "flex", justifyContent: "space-between", borderTop: "0.5px solid var(--border-table)" }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do lote</span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>{fmtBRL(totalLote)}</span>
                 </div>
@@ -1286,13 +1286,13 @@ export default function ContasReceber() {
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "95vw", maxWidth: 920, maxHeight: "92vh", overflowY: "auto" as const, boxShadow: "0 8px 40px rgba(0,0,0,0.6)", border: "0.5px solid var(--border)", display: "flex", flexDirection: "column" }}>
 
             {/* ── Cabeçalho ── */}
-            <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid #DEE5EE" }}>
+            <div style={{ padding: "16px 24px 0", borderBottom: "0.5px solid var(--border-row)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>
                     {editandoId ? "✏ Editar Conta a Receber" : "Nova Conta a Receber"}
                   </span>
-                  <div style={{ display: "flex", gap: 0, border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ display: "flex", gap: 0, border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
                     {(["real", "previsao"] as const).map(n => (
                       <button key={n} onClick={() => setForm(p => ({ ...p, natureza: n }))}
                         style={{ padding: "4px 14px", border: "none", cursor: "pointer", fontSize: 12, fontWeight: form.natureza === n ? 700 : 400,
@@ -1491,14 +1491,14 @@ export default function ContasReceber() {
                   <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
                     <div>
                       <label style={lbl}>Condição de Recebimento</label>
-                      <div style={{ display: "flex", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ display: "flex", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
                         {([false, true] as const).map((v, idx) => (
                           <button key={String(v)} type="button"
                             onClick={() => setForm(p => ({ ...p, parcelar: v }))}
                             style={{
                               padding: "7px 14px", fontSize: 12, fontWeight: form.parcelar === v ? 600 : 400,
                               cursor: "pointer", border: "none",
-                              borderRight: idx === 0 ? "0.5px solid #D4DCE8" : "none",
+                              borderRight: idx === 0 ? "0.5px solid var(--border-table)" : "none",
                               background: form.parcelar === v ? "#1A4870" : "var(--bg-card)",
                               color: form.parcelar === v ? "#fff" : "var(--text-2)",
                               whiteSpace: "nowrap",
@@ -1540,12 +1540,12 @@ export default function ContasReceber() {
                           {valParcela > 0 && <span style={{ float: "right", fontWeight: 700 }}>Total: {fmtBRL(valParcela * qtdRec)}</span>}
                         </div>
                         {form.vencimento && valParcela > 0 && (
-                          <div style={{ overflowX: "auto", maxHeight: 220, overflowY: "auto", borderRadius: 8, border: "0.5px solid #D4DCE8" }}>
+                          <div style={{ overflowX: "auto", maxHeight: 220, overflowY: "auto", borderRadius: 8, border: "0.5px solid var(--border-table)" }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                              <thead style={{ position: "sticky", top: 0, background: "#F3F6F9" }}>
+                              <thead style={{ position: "sticky", top: 0, background: "var(--bg-page)" }}>
                                 <tr>
                                   {["#", "Vencimento", "Valor"].map((h, i) => (
-                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                                    <th key={i} style={{ padding: "6px 10px", textAlign: i === 2 ? "right" : i === 0 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -1554,7 +1554,7 @@ export default function ContasReceber() {
                                   const d = new Date(form.vencimento + "T12:00:00");
                                   d.setMonth(d.getMonth() + i * freqRec);
                                   return (
-                                    <tr key={i} style={{ borderBottom: i < qtdRec - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                    <tr key={i} style={{ borderBottom: i < qtdRec - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                                       <td style={{ padding: "4px 10px", textAlign: "center", color: "var(--text-3)", fontSize: 11, width: 50 }}>{i + 1}/{qtdRec}</td>
                                       <td style={{ padding: "4px 10px", fontSize: 11 }}>{fmtData(d.toISOString().split("T")[0])}</td>
                                       <td style={{ padding: "4px 10px", textAlign: "right", fontSize: 11, color: "#16A34A", fontWeight: 600 }}>{fmtBRL(valParcela)}</td>
@@ -1611,7 +1611,7 @@ export default function ContasReceber() {
             </div>
 
             {/* ── Rodapé ── */}
-            <div style={{ padding: "12px 24px", borderTop: "0.5px solid #DEE5EE", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
+            <div style={{ padding: "12px 24px", borderTop: "0.5px solid var(--border-row)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center", background: "#FAFBFC", borderRadius: "0 0 12px 12px" }}>
               {/* Botão Efetivar — visível só ao editar uma previsão */}
               {editandoId && form.natureza === "previsao" && (
                 <button
@@ -1622,7 +1622,7 @@ export default function ContasReceber() {
                   ⚡ Efetivar
                 </button>
               )}
-              <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={fecharModal} style={{ padding: "8px 20px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={adicionarLancamento} disabled={disabled}
                 style={{ padding: "8px 20px", background: disabled ? "var(--text-muted)" : "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
                 {salvando ? "Salvando…" : editandoId ? "✓ Salvar alterações" : form.parcelar && totalParcDisplay > 1 ? `◈ Criar ${totalParcDisplay} repetições` : "◈ Salvar"}

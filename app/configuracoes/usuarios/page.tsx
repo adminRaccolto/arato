@@ -144,19 +144,19 @@ const permFromGrupo = (g: GrupoUsuario): PermMap => {
 };
 
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8,
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "9px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" };
-const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, cursor: "pointer" };
+const btnR: React.CSSProperties = { padding: "9px 16px", background: "var(--bg-page)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, cursor: "pointer" };
 
 function Modal({ titulo, onClose, width = 560, children }: { titulo: string; onClose: () => void; width?: number; children: React.ReactNode }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
       <div style={{ background: "var(--bg-card)", borderRadius: 12, width, maxWidth: "96vw", maxHeight: "90vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+        <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{titulo}</span>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
         </div>
@@ -197,13 +197,13 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
-            <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid #DEE5EE" }}>Módulo</th>
+            <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", minWidth: 200, borderBottom: "0.5px solid var(--border-row)" }}>Módulo</th>
             {(Object.keys(ACAO_META) as Acao[]).map(a => (
-              <th key={a} style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: ACAO_META[a].cor, borderBottom: "0.5px solid #DEE5EE", whiteSpace: "nowrap", minWidth: 66 }}>
+              <th key={a} style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 11, color: ACAO_META[a].cor, borderBottom: "0.5px solid var(--border-row)", whiteSpace: "nowrap", minWidth: 66 }}>
                 {ACAO_META[a].label}
               </th>
             ))}
-            <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 10, color: "var(--text-3)", borderBottom: "0.5px solid #DEE5EE", width: 50 }}>Tudo</th>
+            <th style={{ padding: "8px 10px", textAlign: "center", fontWeight: 600, fontSize: 10, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-row)", width: 50 }}>Tudo</th>
           </tr>
         </thead>
         <tbody>
@@ -211,7 +211,7 @@ function MatrizPermissoes({ perms, onChange }: { perms: PermMap; onChange: (p: P
             const modsGrupo = MODULOS_PERM.filter(m => m.grupo === grupo);
             return (
               <>
-                <tr key={`g-${grupo}`} style={{ background: "#EFF3FA" }}>
+                <tr key={`g-${grupo}`} style={{ background: "var(--bg-tag)" }}>
                   <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 11, color: "#1A4870", letterSpacing: "0.5px" }}>
                     {grupo.toUpperCase()}
                   </td>
@@ -485,7 +485,7 @@ export default function UsuariosPermissoes() {
         )}
 
         {/* Abas */}
-        <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid #D4DCE8" }}>
+        <div style={{ display: "flex", background: "var(--bg-card)", borderRadius: "12px 12px 0 0", border: "0.5px solid var(--border-table)" }}>
           {([
             { key: "grupos",   label: `Grupos de Acesso (${grupos.length})`  },
             { key: "usuarios", label: `Usuários (${usuarios.length})`        },
@@ -503,7 +503,7 @@ export default function UsuariosPermissoes() {
 
         {/* ── ABA: GRUPOS ── */}
         {aba === "grupos" && (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 20 }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 12px 12px", padding: 20 }}>
             {carregando ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
             ) : grupos.length === 0 ? (
@@ -516,7 +516,7 @@ export default function UsuariosPermissoes() {
                   const res = resumoPerms(g);
                   const pct = res.total > 0 ? Math.round(res.comAcesso / res.total * 100) : 0;
                   return (
-                    <div key={g.id} style={{ border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "16px 18px", background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div key={g.id} style={{ border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "16px 18px", background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>{g.nome}</div>
@@ -524,7 +524,7 @@ export default function UsuariosPermissoes() {
                         </div>
                         <div style={{ display: "flex", gap: 6 }}>
                           <button onClick={() => abrirModalGrupo(g)}
-                            style={{ padding: "4px 10px", background: "#EFF3FA", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                            style={{ padding: "4px 10px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
                             Editar
                           </button>
                           <button onClick={() => excluirGrupo(g.id)}
@@ -539,7 +539,7 @@ export default function UsuariosPermissoes() {
                           <span>{res.comAcesso} de {res.total} módulos com acesso</span>
                           <span style={{ fontWeight: 600 }}>{pct}%</span>
                         </div>
-                        <div style={{ height: 5, background: "#EFF3FA", borderRadius: 10, overflow: "hidden" }}>
+                        <div style={{ height: 5, background: "var(--bg-tag)", borderRadius: 10, overflow: "hidden" }}>
                           <div style={{ width: pct + "%", height: "100%", background: pct > 80 ? "#1A4870" : pct > 40 ? "#C9921B" : "#378ADD", borderRadius: 10 }} />
                         </div>
                       </div>
@@ -574,14 +574,14 @@ export default function UsuariosPermissoes() {
 
         {/* ── ABA: USUÁRIOS ── */}
         {aba === "usuarios" && (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderTop: "none", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
 
             {/* Acesso Raccolto (LGPD) */}
             <div style={{
               margin: "16px 16px 0",
               borderRadius: 10,
               border: `1.5px solid ${raccoltoAcesso ? "#1A4870" : "var(--border-table)"}`,
-              background: raccoltoAcesso ? "#EBF3FC" : "#F8FAFD",
+              background: raccoltoAcesso ? "#EBF3FC" : "var(--bg-card)",
               padding: "14px 18px",
               display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16,
             }}>
@@ -630,7 +630,7 @@ export default function UsuariosPermissoes() {
                 <thead>
                   <tr style={{ background: "var(--bg-page)" }}>
                     {["Nome", "E-mail", "Grupo de Acesso", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid #DEE5EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-row)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -655,7 +655,7 @@ export default function UsuariosPermissoes() {
                         <td style={{ padding: "11px 16px", color: "var(--text-2)" }}>{u.email}</td>
                         <td style={{ padding: "11px 16px" }}>
                           {grupo
-                            ? <span style={{ fontSize: 11, background: "#EFF3FA", color: "#1A4870", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{grupo.nome}</span>
+                            ? <span style={{ fontSize: 11, background: "var(--bg-tag)", color: "#1A4870", padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>{grupo.nome}</span>
                             : <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Sem grupo</span>}
                         </td>
                         <td style={{ padding: "11px 16px" }}>
@@ -666,7 +666,7 @@ export default function UsuariosPermissoes() {
                         <td style={{ padding: "11px 16px", textAlign: "right" }}>
                           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                             <button onClick={() => abrirModalUser(u)}
-                              style={{ padding: "4px 12px", background: "#EFF3FA", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
+                              style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
                               Editar
                             </button>
                             <button onClick={() => excluirUser(u.id)}
@@ -704,7 +704,7 @@ export default function UsuariosPermissoes() {
                   </button>
                 ))}
                 <button onClick={() => { setPermGrupo(permEmpty()); setPresetAtivo(null); }}
-                  style={{ padding: "6px 14px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
+                  style={{ padding: "6px 14px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "var(--bg-page)", color: "var(--text-2)", fontSize: 12, cursor: "pointer" }}>
                   Limpar tudo
                 </button>
               </div>
@@ -717,13 +717,13 @@ export default function UsuariosPermissoes() {
 
             <div>
               <label style={{ ...lbl, fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>Matriz de Permissões</label>
-              <div style={{ border: "0.5px solid #D4DCE8", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 10, overflow: "hidden" }}>
                 <MatrizPermissoes perms={permGrupo} onChange={setPermGrupo} />
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, paddingTop: 16, borderTop: "0.5px solid #DEE5EE" }}>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, paddingTop: 16, borderTop: "0.5px solid var(--border-row)" }}>
             <button style={btnR} onClick={() => setModalGrupo(false)}>Cancelar</button>
             <button style={{ ...btnV, opacity: salvando || !fGrupo.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fGrupo.nome.trim()} onClick={salvarGrupo}>
               {salvando ? "Salvando…" : "Salvar Grupo"}
@@ -785,7 +785,7 @@ export default function UsuariosPermissoes() {
                     {grupos.map(g => <option key={g.id} value={g.id}>{g.nome}</option>)}
                   </select>
                   {fUser.grupo_id && (
-                    <div style={{ marginTop: 6, padding: "8px 12px", background: "#EFF3FA", borderRadius: 8, fontSize: 11, color: "var(--text-2)" }}>
+                    <div style={{ marginTop: 6, padding: "8px 12px", background: "var(--bg-tag)", borderRadius: 8, fontSize: 11, color: "var(--text-2)" }}>
                       {(() => {
                         const g = grupos.find(x => x.id === fUser.grupo_id)!;
                         if (!g) return null;
@@ -802,7 +802,7 @@ export default function UsuariosPermissoes() {
                 </div>
 
                 {!editUser && (
-                  <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px" }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                       <input type="checkbox" id="enviarEmail" checked={fUser.enviarEmail} onChange={e => setFUser(p => ({ ...p, enviarEmail: e.target.checked }))} style={{ marginTop: 2 }} />
                       <label htmlFor="enviarEmail" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", lineHeight: 1.4 }}>

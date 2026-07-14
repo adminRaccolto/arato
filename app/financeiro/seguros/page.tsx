@@ -9,10 +9,10 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string | null) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -86,13 +86,13 @@ const RAMO_META: Record<RamoSeguro, { label: string; bg: string; cl: string }> =
   automovel:              { label: "Automóvel",            bg: "#F3E8FF", cl: "#6B21A8" },
   responsabilidade_civil: { label: "Resp. Civil",          bg: "#FFF3E0", cl: "#7B4A00" },
   maquinas:               { label: "Máquinas/Equip.",      bg: "#E6F1FB", cl: "#0C447C" },
-  outro:                  { label: "Outro",                bg: "#F3F6F9", cl: "var(--text-2)"    },
+  outro:                  { label: "Outro",                bg: "var(--bg-page)", cl: "var(--text-2)"    },
 };
 
 const STATUS_APOLICE_META: Record<StatusApolice, { label: string; bg: string; cl: string }> = {
   vigente:       { label: "Vigente",       bg: "#E8F5E9", cl: "#1A6B3C" },
   vencida:       { label: "Vencida",       bg: "#FCEBEB", cl: "#791F1F" },
-  cancelada:     { label: "Cancelada",     bg: "#F3F6F9", cl: "var(--text-2)"    },
+  cancelada:     { label: "Cancelada",     bg: "var(--bg-page)", cl: "var(--text-2)"    },
   em_renovacao:  { label: "Em Renovação",  bg: "#FBF3E0", cl: "#7B4A00" },
 };
 
@@ -330,7 +330,7 @@ export default function SegurosPage() {
             { label: "Prêmio Anual Total",   value: fmtBRL(totalAnual),          sub: "custo do seguro",  color: "#C9921B" },
             { label: "Vencendo em 30 dias",  value: vencendoEm30.length.toString(), sub: `+ ${premiosVencidos.length} prêmios atrasados`, color: vencendoEm30.length > 0 ? "#E24B4A" : "var(--text-2)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -356,7 +356,7 @@ export default function SegurosPage() {
         )}
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid #D4DCE8" }}>
+        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border-table)" }}>
           {([
             { id: "apolices",    label: "Apólices"           },
             { id: "vencimentos", label: "Vencimentos de Prêmio" },
@@ -380,7 +380,7 @@ export default function SegurosPage() {
             </div>
 
             {apolices.length === 0 ? (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhuma apólice cadastrada.
               </div>
             ) : (
@@ -425,7 +425,7 @@ export default function SegurosPage() {
                           <button onClick={e => { e.stopPropagation(); abrirSinistro(a); }} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F", fontWeight: 600 }}>
                             Sinistro
                           </button>
-                          <button onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
+                          <button onClick={e => { e.stopPropagation(); abrirApolice(a); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>
                             Editar
                           </button>
                         </div>
@@ -433,7 +433,7 @@ export default function SegurosPage() {
 
                       {/* Sinistros da apólice */}
                       {exp && (
-                        <div style={{ borderTop: "0.5px solid #EEF1F6", padding: "12px 18px", background: "#F8FAFB" }}>
+                        <div style={{ borderTop: "0.5px solid var(--bg-tag)", padding: "12px 18px", background: "var(--bg-card)" }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8 }}>
                             Sinistros ({apolSinistros.length})
                           </div>
@@ -452,7 +452,7 @@ export default function SegurosPage() {
                                 {apolSinistros.map(s => {
                                   const sm2 = STATUS_SINISTRO_META[s.status];
                                   return (
-                                    <tr key={s.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                                    <tr key={s.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                                       <td style={{ padding: "6px 10px" }}>{fmtData(s.data_ocorrencia)}</td>
                                       <td style={{ padding: "6px 10px", color: "#666" }}>{s.numero_protocolo ?? "—"}</td>
                                       <td style={{ padding: "6px 10px" }}>{s.descricao}</td>
@@ -460,7 +460,7 @@ export default function SegurosPage() {
                                       <td style={{ padding: "6px 10px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                                       <td style={{ padding: "6px 10px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
                                       <td style={{ padding: "6px 10px" }}>
-                                        <button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+                                        <button onClick={() => abrirSinistro(a, s)} style={{ padding: "3px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
                                       </td>
                                     </tr>
                                   );
@@ -482,16 +482,16 @@ export default function SegurosPage() {
         {aba === "vencimentos" && (
           <div>
             {premiosVisiveis.length === 0 ? (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum prêmio pendente.
               </div>
             ) : (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: "#F8FAFB" }}>
+                    <tr style={{ background: "var(--bg-card)" }}>
                       {["Vencimento", "Apólice", "Seguradora", "Valor", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 14px", textAlign: h === "Valor" ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -500,7 +500,7 @@ export default function SegurosPage() {
                       const ap = apolices.find(a => a.id === p.apolice_id);
                       const vencido = new Date(p.data_vencimento) < new Date();
                       return (
-                        <tr key={p.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: vencido ? "#FFFCF5" : "var(--bg-card)" }}>
+                        <tr key={p.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: vencido ? "#FFFCF5" : "var(--bg-card)" }}>
                           <td style={{ padding: "10px 14px", color: vencido ? "#E24B4A" : "var(--text-1)", fontWeight: vencido ? 600 : 400 }}>{fmtData(p.data_vencimento)}</td>
                           <td style={{ padding: "10px 14px" }}>{ap?.numero_apolice ?? "—"}</td>
                           <td style={{ padding: "10px 14px", color: "#666" }}>{ap?.seguradora ?? "—"}</td>
@@ -529,16 +529,16 @@ export default function SegurosPage() {
         {aba === "sinistros" && (
           <div>
             {sinistrosVisiveis.length === 0 ? (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum sinistro registrado.
               </div>
             ) : (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: "#F8FAFB" }}>
+                    <tr style={{ background: "var(--bg-card)" }}>
                       {["Ocorrência", "Apólice", "Seguradora", "Protocolo", "Descrição", "Reclamado", "Indenizado", "Status", ""].map(h => (
-                        <th key={h} style={{ padding: "10px 14px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                        <th key={h} style={{ padding: "10px 14px", textAlign: ["Reclamado","Indenizado"].includes(h) ? "right" : "left", color: "var(--text-2)", fontWeight: 600, fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -547,7 +547,7 @@ export default function SegurosPage() {
                       const ap = apolices.find(a => a.id === s.apolice_id);
                       const sm2 = STATUS_SINISTRO_META[s.status];
                       return (
-                        <tr key={s.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                        <tr key={s.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                           <td style={{ padding: "10px 14px" }}>{fmtData(s.data_ocorrencia)}</td>
                           <td style={{ padding: "10px 14px" }}>{ap?.numero_apolice ?? "—"}</td>
                           <td style={{ padding: "10px 14px", color: "#666" }}>{ap?.seguradora ?? "—"}</td>
@@ -557,7 +557,7 @@ export default function SegurosPage() {
                           <td style={{ padding: "10px 14px", textAlign: "right", color: s.valor_indenizado > 0 ? "#16A34A" : "var(--text-muted)" }}>{s.valor_indenizado > 0 ? fmtBRL(s.valor_indenizado) : "—"}</td>
                           <td style={{ padding: "10px 14px" }}>{badge(sm2.label, sm2.bg, sm2.cl)}</td>
                           <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                            {ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>}
+                            {ap && <button onClick={() => abrirSinistro(ap, s)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>}
                           </td>
                         </tr>
                       );
@@ -576,7 +576,7 @@ export default function SegurosPage() {
       {modalApolice && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 640, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{apoliceEdit ? "Editar Apólice" : "Nova Apólice"}</div>
               <button onClick={() => setModalApolice(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
@@ -644,7 +644,7 @@ export default function SegurosPage() {
                 </div>
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalApolice(false)}>Cancelar</button>
               <button onClick={salvarApolice} disabled={aSaving} style={{ ...btnV, background: aSaving ? "var(--text-muted)" : "#1A4870", cursor: aSaving ? "default" : "pointer" }}>
                 {aSaving ? "Salvando…" : "Salvar"}
@@ -660,7 +660,7 @@ export default function SegurosPage() {
       {modalSinistro && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{sinistroEdit ? "Editar Sinistro" : "Registrar Sinistro"}</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Apólice {modalSinistro.numero_apolice} — {modalSinistro.seguradora}</div>
@@ -706,7 +706,7 @@ export default function SegurosPage() {
                 </div>
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalSinistro(null)}>Cancelar</button>
               <button onClick={salvarSinistro} disabled={sSaving} style={{ ...btnV, background: sSaving ? "var(--text-muted)" : "#E24B4A", cursor: sSaving ? "default" : "pointer" }}>
                 {sSaving ? "Registrando…" : "Salvar Sinistro"}
@@ -722,7 +722,7 @@ export default function SegurosPage() {
       {modalPremio && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 360, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Confirmar Pagamento</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Venc. {fmtData(modalPremio.data_vencimento)} — {fmtBRL(modalPremio.valor)}</div>
@@ -733,7 +733,7 @@ export default function SegurosPage() {
               <label style={lbl}>Data do Pagamento</label>
               <input type="date" value={premioData} onChange={e => setPremioData(e.target.value)} style={inp} />
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalPremio(null)}>Cancelar</button>
               <button onClick={pagarPremio} disabled={premioSaving} style={{ ...btnV, background: premioSaving ? "var(--text-muted)" : "#1A4870", cursor: premioSaving ? "default" : "pointer" }}>
                 {premioSaving ? "Salvando…" : "Confirmar Pagamento"}

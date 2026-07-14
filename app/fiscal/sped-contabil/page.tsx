@@ -234,9 +234,9 @@ function gerarSpedEcd(
 // ─────────────────────────────────────────────────────────────
 // Componente
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "20px 24px", marginBottom: 20 };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "20px 24px", marginBottom: 20 };
 
 export default function SpedContabilPage() {
   const { fazendaId } = useAuth();
@@ -429,7 +429,7 @@ export default function SpedContabilPage() {
                     key={v}
                     onClick={() => setEntidade(v as "pf" | "pj")}
                     style={{
-                      flex: 1, padding: "9px 0", border: entidade === v ? "none" : "0.5px solid #D4DCE8",
+                      flex: 1, padding: "9px 0", border: entidade === v ? "none" : "0.5px solid var(--border-table)",
                       borderRadius: 8, background: entidade === v ? "#1A5CB8" : "var(--bg-card)",
                       color: entidade === v ? "#fff" : "var(--text-2)", fontWeight: entidade === v ? 700 : 400,
                       cursor: "pointer", fontSize: 13,
@@ -544,7 +544,7 @@ export default function SpedContabilPage() {
         </div>
 
         {/* Nota rodapé */}
-        <div style={{ marginTop: 32, padding: "14px 18px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", fontSize: 12, color: "#666", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 32, padding: "14px 18px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", fontSize: 12, color: "#666", lineHeight: 1.6 }}>
           <strong style={{ color: "#1A4870" }}>Sobre o arquivo gerado:</strong>
           <ul style={{ margin: "8px 0 0", paddingLeft: 18 }}>
             <li>Formato: texto plano, separado por pipe <code style={{ background: "var(--bg-page)", padding: "1px 4px", borderRadius: 4 }}>|</code>, CRLF, codificação UTF-8</li>

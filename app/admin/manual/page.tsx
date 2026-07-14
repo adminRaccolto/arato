@@ -81,7 +81,7 @@ function Tabela({ colunas, linhas }: { colunas: string[]; linhas: string[][] }) 
       <thead>
         <tr style={{ background: "var(--bg-page)" }}>
           {colunas.map(c => (
-            <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "#1A4870", border: "0.5px solid #DDE2EE" }}>{c}</th>
+            <th key={c} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "#1A4870", border: "0.5px solid var(--border)" }}>{c}</th>
           ))}
         </tr>
       </thead>
@@ -89,7 +89,7 @@ function Tabela({ colunas, linhas }: { colunas: string[]; linhas: string[][] }) 
         {linhas.map((linha, i) => (
           <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
             {linha.map((cel, j) => (
-              <td key={j} style={{ padding: "8px 12px", border: "0.5px solid #DDE2EE", verticalAlign: "top" }}>{cel}</td>
+              <td key={j} style={{ padding: "8px 12px", border: "0.5px solid var(--border)", verticalAlign: "top" }}>{cel}</td>
             ))}
           </tr>
         ))}
@@ -105,7 +105,7 @@ function ManualContent() {
     <>
 
 
-      <div className="no-print" style={{ background: "var(--bg-page)", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #DDE2EE" }}>
+      <div className="no-print" style={{ background: "var(--bg-page)", padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid var(--border)" }}>
         <div>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>Manual do Proprietário — Arato SaaS</span>
           <span style={{ fontSize: 12, color: "var(--text-3)", marginLeft: 12 }}>Versão 2.0 · Abril 2026 · Uso interno Raccolto</span>
@@ -139,7 +139,7 @@ function ManualContent() {
           <div style={{ fontSize: 16, color: "var(--text-2)", marginBottom: 28 }}>Manual Completo do Proprietário do Sistema</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
             {["Versão 2.0", "Abril 2026", "Uso interno"].map(t => (
-              <span key={t} style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "var(--text-3)" }}>{t}</span>
+              <span key={t} style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 6, padding: "5px 14px", fontSize: 12, color: "var(--text-3)" }}>{t}</span>
             ))}
           </div>
         </div>
@@ -726,7 +726,7 @@ DELETE FROM fazendas             WHERE id          = 'UUID';
         </Secao>
 
         {/* Rodapé */}
-        <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 20, marginTop: 12, display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}>
+        <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 20, marginTop: 12, display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)" }}>
           <span>Arato SaaS — Manual do Proprietário v2.0 · Abril 2026</span>
           <span>Raccolto Consultoria · Documento Interno · Não distribuir</span>
         </div>

@@ -420,7 +420,7 @@ export default function PragasPage() {
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid var(--border)" }}>
+                    <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                       {["Data","Talhão","Ciclo","Tipo","Ocorrência","Nível","% Pl.","Estágio","GPS","Foto","Ação Recomendada"].map(h => (
                         <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
@@ -571,7 +571,7 @@ export default function PragasPage() {
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid var(--border)" }}>
+                    <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                       {["Talhão","Total","Crítico","Alto","Médio","Baixo","Últimas Ocorrências"].map(h => (
                         <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase" }}>{h}</th>
                       ))}

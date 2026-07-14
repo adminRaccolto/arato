@@ -1208,12 +1208,12 @@ function ContasPagarInner() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
-                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Nº NF</th>
-                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Emitente</th>
-                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Emissão</th>
-                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Vencimento</th>
-                        <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Valor</th>
-                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Status</th>
+                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Nº NF</th>
+                        <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Emitente</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Emissão</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Vencimento</th>
+                        <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Valor</th>
+                        <th style={{ padding: "7px 10px", textAlign: "center", fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1246,7 +1246,7 @@ function ContasPagarInner() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "12px 22px", borderTop: "0.5px solid #DDE2EE", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+            <div style={{ padding: "12px 22px", borderTop: "0.5px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
               {nfVinculoSelecionada && (
                 <span style={{ fontSize: 12, color: "#0B2D50", background: "#D5E8F5", padding: "4px 12px", borderRadius: 8, fontWeight: 600, marginRight: "auto" }}>
                   NF {nfVinculoSelecionada.numero} selecionada
@@ -1523,7 +1523,7 @@ function ContasPagarInner() {
               ◈ Ação manual — você confirma que o pagamento foi efetuado.
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-              <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
+              <button onClick={() => setModalBaixa(null)} style={{ padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13 }}>Cancelar</button>
               <button onClick={confirmarBaixa}
                 disabled={salvando || (modalBaixa.moeda !== "barter" && (!baixa.valorMask || !baixa.conta))}
                 style={{ padding: "8px 18px", background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
@@ -1834,7 +1834,7 @@ function ContasPagarInner() {
                   <div style={{ display: "grid", gridTemplateColumns: "auto auto 1fr", gap: 12, alignItems: "end" }}>
                     <div>
                       <label style={lbl}>Condição de Pagamento</label>
-                      <div style={{ display: "flex", border: "0.5px solid #D4DCE8", borderRadius: 8, overflow: "hidden" }}>
+                      <div style={{ display: "flex", border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
                         {(["avista", "prazo", "recorrencia"] as const).map((v, idx) => (
                           <button key={v} type="button"
                             onClick={() => { setForm(p => ({ ...p, condicao: v })); if (v !== "prazo") setParcelas([]); }}

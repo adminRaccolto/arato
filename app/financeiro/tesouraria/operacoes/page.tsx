@@ -4,10 +4,10 @@ import TopNav from "../../../../components/TopNav";
 import { useAuth } from "../../../../components/AuthProvider";
 import { supabase } from "../../../../lib/supabase";
 
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 interface OpTesoura {
   id: string; fazenda_id: string; nome: string;
@@ -103,8 +103,8 @@ export default function OperacoesTesourariaPage() {
         </div>
 
         {/* Operações padrão do sistema */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden", marginBottom: 20 }}>
-          <div style={{ padding: "12px 18px", background: "#F3F6F9", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 20 }}>
+          <div style={{ padding: "12px 18px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Operações padrão do sistema</span>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>Não editáveis</span>
           </div>
@@ -112,7 +112,7 @@ export default function OperacoesTesourariaPage() {
             <thead>
               <tr style={{ background: "#FAFBFC" }}>
                 {["Operação", "Tipo", "Descrição"].map(h => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -120,7 +120,7 @@ export default function OperacoesTesourariaPage() {
               {TIPOS_OP_PADRAO.map((op, i) => {
                 const tm = TIPO_META[op.tipo] ?? TIPO_META.ambos;
                 return (
-                  <tr key={op.id} style={{ borderBottom: i < TIPOS_OP_PADRAO.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                  <tr key={op.id} style={{ borderBottom: i < TIPOS_OP_PADRAO.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                     <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{op.nome}</td>
                     <td style={{ padding: "9px 16px" }}>
                       <span style={{ fontSize: 10, background: tm.bg, color: tm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
@@ -134,8 +134,8 @@ export default function OperacoesTesourariaPage() {
         </div>
 
         {/* Operações personalizadas */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
-          <div style={{ padding: "12px 18px", background: "#F3F6F9", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
+          <div style={{ padding: "12px 18px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Operações personalizadas da fazenda</span>
             <button onClick={abrirNova} style={btnV}>+ Nova Operação</button>
           </div>
@@ -150,7 +150,7 @@ export default function OperacoesTesourariaPage() {
               <thead>
                 <tr style={{ background: "#FAFBFC" }}>
                   {["Operação", "Tipo", "Categoria", ""].map(h => (
-                    <th key={h} style={{ padding: "8px 16px", textAlign: h === "" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                    <th key={h} style={{ padding: "8px 16px", textAlign: h === "" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -158,7 +158,7 @@ export default function OperacoesTesourariaPage() {
                 {ops.map((op, i) => {
                   const tm = TIPO_META[op.tipo] ?? TIPO_META.ambos;
                   return (
-                    <tr key={op.id} style={{ borderBottom: i < ops.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                    <tr key={op.id} style={{ borderBottom: i < ops.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                       <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{op.nome}</td>
                       <td style={{ padding: "9px 16px" }}>
                         <span style={{ fontSize: 10, background: tm.bg, color: tm.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{tm.label}</span>
@@ -166,7 +166,7 @@ export default function OperacoesTesourariaPage() {
                       <td style={{ padding: "9px 16px", fontSize: 12, color: "var(--text-2)" }}>{op.categoria ?? "—"}</td>
                       <td style={{ padding: "9px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
+                          <button onClick={() => abrirEditar(op)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
                           <button onClick={() => excluir(op.id)} style={{ padding: "4px 10px", border: "0.5px solid #E24B4A40", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" }}>Excluir</button>
                         </div>
                       </td>
@@ -183,7 +183,7 @@ export default function OperacoesTesourariaPage() {
       {modalOp && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 460, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{opEdit ? "Editar Operação" : "Nova Operação de Tesouraria"}</div>
               <button onClick={() => setModalOp(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
@@ -212,7 +212,7 @@ export default function OperacoesTesourariaPage() {
                 <textarea value={form.observacao} onChange={e => setForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
               </div>
             </div>
-            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalOp(false)}>Cancelar</button>
               <button onClick={salvar} disabled={saving} style={{ ...btnV, background: saving ? "var(--text-muted)" : "#1A4870", cursor: saving ? "default" : "pointer" }}>
                 {saving ? "Salvando…" : "Salvar"}

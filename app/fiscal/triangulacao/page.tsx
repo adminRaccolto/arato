@@ -81,12 +81,12 @@ const CFOP_LABEL: Record<string, string> = {
 // ── Helpers de estilo ────────────────────────────────────────────────────────
 
 const card = (extra?: React.CSSProperties): React.CSSProperties => ({
-  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE",
+  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)",
   padding: "18px 20px", ...extra,
 });
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px", borderRadius: 7,
-  border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box",
+  border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box",
   fontFamily: "inherit",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", display: "block", marginBottom: 4, fontWeight: 600 };
@@ -477,7 +477,7 @@ export default function TriangulacaoPage() {
                 {/* Detalhe expandido */}
                 {exp && (
                   <div>
-                    <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 16 }}>
+                    <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 16 }}>
                       {/* Chain de documentos */}
                       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
                         Cadeia de Documentos Fiscais
@@ -509,7 +509,7 @@ export default function TriangulacaoPage() {
                                 {nf.chave && <div style={{ fontSize: 10, color: "var(--text-3)", wordBreak: "break-all" }}>Chave: {nf.chave}</div>}
                               </div>
                               {CFOP_LABEL[nf.cfop] && (
-                                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6, borderTop: "0.5px solid #DDE2EE", paddingTop: 6 }}>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 6, borderTop: "0.5px solid var(--border)", paddingTop: 6 }}>
                                   {CFOP_LABEL[nf.cfop]}
                                 </div>
                               )}
@@ -567,7 +567,7 @@ export default function TriangulacaoPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 780, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {/* Modal header */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {editItem ? "Editar Triangulação" : "Nova Triangulação de NF"}
@@ -580,7 +580,7 @@ export default function TriangulacaoPage() {
             </div>
 
             {/* Progress */}
-            <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "var(--bg-page)", borderBottom: "0.5px solid #DDE2EE" }}>
+            <div style={{ display: "flex", gap: 0, padding: "0 24px", background: "var(--bg-page)", borderBottom: "0.5px solid var(--border)" }}>
               {[1, 2, 3].map(s => (
                 <div key={s} style={{ padding: "10px 16px", fontSize: 12, fontWeight: step >= s ? 700 : 400, color: step >= s ? "#1A4870" : "var(--text-3)",
                   borderBottom: step === s ? "2px solid #1A4870" : "2px solid transparent", cursor: step < s ? "default" : "pointer" }}
@@ -648,7 +648,7 @@ export default function TriangulacaoPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                   {/* Seção: Dados Gerais */}
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Dados Gerais
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
@@ -671,7 +671,7 @@ export default function TriangulacaoPage() {
 
                   {/* Seção: Produto */}
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Produto
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
@@ -715,7 +715,7 @@ export default function TriangulacaoPage() {
 
                   {/* Seção: Partes — varia por tipo */}
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid #DDE2EE" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12, paddingBottom: 6, borderBottom: "0.5px solid var(--border)" }}>
                       Partes Envolvidas
                     </div>
 
@@ -890,7 +890,7 @@ export default function TriangulacaoPage() {
                           </div>
                         </div>
 
-                        <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 14 }}>
+                        <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 14 }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "#14532D", marginBottom: 10 }}>
                             Detalhes do Local de Entrega (para infCpl da NF)
                           </div>
@@ -950,7 +950,7 @@ export default function TriangulacaoPage() {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {gerarNfs().map((nf, i) => (
-                        <div key={i} style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 16px", background: "#FAFBFC", display: "flex", alignItems: "flex-start", gap: 14 }}>
+                        <div key={i} style={{ border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", background: "#FAFBFC", display: "flex", alignItems: "flex-start", gap: 14 }}>
                           <div style={{ background: "#D5E8F5", color: "#1A4870", fontWeight: 800, fontSize: 14, padding: "6px 12px", borderRadius: 7, whiteSpace: "nowrap" }}>
                             CFOP {nf.cfop}
                           </div>
@@ -995,7 +995,7 @@ export default function TriangulacaoPage() {
             </div>
 
             {/* Footer do modal */}
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "var(--bg-card)" }}>
+            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", gap: 10, position: "sticky", bottom: 0, background: "var(--bg-card)" }}>
               <button style={btnO} onClick={() => step === 1 ? setModal(false) : setStep(s => (s - 1) as 1|2|3)}>
                 {step === 1 ? "Cancelar" : "← Voltar"}
               </button>

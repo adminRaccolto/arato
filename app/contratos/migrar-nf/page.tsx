@@ -142,7 +142,7 @@ export default function MigrarNF() {
     setContratoDestinoId(""); setMotivo(""); setSucesso(false);
   }
 
-  const inp: React.CSSProperties = { padding: "8px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", width: "100%", boxSizing: "border-box" };
+  const inp: React.CSSProperties = { padding: "8px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", width: "100%", boxSizing: "border-box" };
   const btn = (active: boolean): React.CSSProperties => ({
     padding: "10px 24px", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer",
     background: active ? "#1A4870" : "#EEE", color: active ? "#fff" : "#999",
@@ -157,9 +157,9 @@ export default function MigrarNF() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>
         {/* ── Wizard ── */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
           {/* Steps header */}
-          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid #EEF1F6", display: "flex", gap: 0 }}>
+          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", gap: 0 }}>
             {[
               { n: 1, label: "Contrato Origem" },
               { n: 2, label: "Selecionar NF" },
@@ -388,8 +388,8 @@ export default function MigrarNF() {
         </div>
 
         {/* ── Log de Auditoria ── */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+          <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>Log de Auditoria</span>
             <span style={{ fontSize: 11, color: "var(--text-3)" }}>{logs.length} migração{logs.length !== 1 ? "ões" : ""}</span>
           </div>

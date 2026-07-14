@@ -37,7 +37,7 @@ export default function CampoLayout({ children }: { children: React.ReactNode })
       </div>
 
       {/* Barra inferior de navegação */}
-      <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "var(--bg-card)", borderTop: "0.5px solid #DDE2EE", display: "flex", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0)" }}>
+      <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "var(--bg-card)", borderTop: "0.5px solid var(--border)", display: "flex", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom, 0)" }}>
         {NAV_ITEMS.map(item => {
           const active = path === item.href || (item.href !== "/campo" && path.startsWith(item.href));
           return (

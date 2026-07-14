@@ -253,7 +253,7 @@ export default function AutomacoesPage() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{aut.nome}</span>
-                          <span style={{ fontSize: 11, color: "var(--text-3)", background: "#F3F6F9", padding: "2px 8px", borderRadius: 20, border: "0.5px solid var(--border)" }}>
+                          <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg-page)", padding: "2px 8px", borderRadius: 20, border: "0.5px solid var(--border)" }}>
                             🕐 {aut.scheduleLabel}
                           </span>
                           {ativa && (
@@ -347,7 +347,7 @@ export default function AutomacoesPage() {
                           disabled={st === "running"}
                           style={{
                             padding: "7px 14px", borderRadius: 7, border: "none", cursor: st === "running" ? "not-allowed" : "pointer",
-                            background: st === "running" ? "#F3F6F9"
+                            background: st === "running" ? "var(--bg-page)"
                               : st === "ok"      ? "#16A34A"
                               : st === "error"   ? "#E24B4A"
                               : aut.cor,
@@ -413,7 +413,7 @@ export default function AutomacoesPage() {
               <div key={v.key} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: "0.5px solid #F0F2F8" }}>
                 <code style={{ fontSize: 12, background: "#F0F2F8", padding: "2px 8px", borderRadius: 5, color: "#1A4870", minWidth: 240, flexShrink: 0 }}>{v.key}</code>
                 <span style={{ fontSize: 12, color: "var(--text-2)", flex: 1 }}>{v.desc}</span>
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: v.obrig ? "#FEF2F2" : "#F3F6F9", color: v.obrig ? "#991B1B" : "var(--text-3)", border: `0.5px solid ${v.obrig ? "#FECACA" : "var(--border)"}`, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: v.obrig ? "#FEF2F2" : "var(--bg-page)", color: v.obrig ? "#991B1B" : "var(--text-3)", border: `0.5px solid ${v.obrig ? "#FECACA" : "var(--border)"}`, flexShrink: 0 }}>
                   {v.obrig ? "Obrigatório" : "Opcional"}
                 </span>
               </div>

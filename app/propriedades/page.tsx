@@ -49,11 +49,11 @@ export default function Propriedades() {
   const areaTalhoes  = fazendas.reduce((s, f) => s + f.talhoes.reduce((st, t) => st + (t.area_ha ?? 0), 0), 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Propriedades e Talhões</h1>
             <p style={{ margin: 0, fontSize: 11, color: "#444" }}>Visão geral das fazendas e talhões cadastrados</p>
@@ -84,7 +84,7 @@ export default function Propriedades() {
                   { label: "Talhões",           valor: String(totalTalhoes),              cor: "#C9921B" },
                   { label: "Georreferenciados", valor: `${comGps}/${totalTalhoes}`,       cor: comGps === totalTalhoes && totalTalhoes > 0 ? "#1A4870" : "#EF9F27" },
                 ].map((s, i) => (
-                  <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 16px" }}>
+                  <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 16px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 6 }}>{s.label}</div>
                     <div style={{ fontSize: 22, fontWeight: 600, color: s.cor }}>{s.valor}</div>
                   </div>
@@ -113,7 +113,7 @@ export default function Propriedades() {
                   const pct         = fazenda.area_total_ha > 0 ? Math.min(100, Math.round(areaMapeada / fazenda.area_total_ha * 100)) : 0;
 
                   return (
-                    <div key={fazenda.id} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                    <div key={fazenda.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => toggle(fazenda.id)}>
                         <div style={{ width: 40, height: 40, background: "#D5E8F5", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>⬡</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -136,15 +136,15 @@ export default function Propriedades() {
                           </div>
                         </div>
                         <Link href={`/cadastros?tab=fazendas`} onClick={e => e.stopPropagation()}
-                          style={{ fontSize: 11, padding: "4px 12px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "#666", textDecoration: "none" }}>
+                          style={{ fontSize: 11, padding: "4px 12px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "#666", textDecoration: "none" }}>
                           Editar
                         </Link>
                         <span style={{ color: "#444", fontSize: 11, flexShrink: 0, display: "inline-block", transform: exp ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▶</span>
                       </div>
 
                       {exp && (
-                        <div style={{ borderTop: "0.5px solid #DEE5EE" }}>
-                          <div style={{ padding: "8px 16px", background: "#F3F6F9", display: "flex", flexWrap: "wrap", gap: "6px 24px", fontSize: 11, color: "#666", borderBottom: "0.5px solid #DEE5EE" }}>
+                        <div style={{ borderTop: "0.5px solid var(--border-row)" }}>
+                          <div style={{ padding: "8px 16px", background: "var(--bg-page)", display: "flex", flexWrap: "wrap", gap: "6px 24px", fontSize: 11, color: "#666", borderBottom: "0.5px solid var(--border-row)" }}>
                             <span>CNPJ: <strong style={{ color: "var(--text-1)" }}>{fazenda.cnpj || "—"}</strong></span>
                             <span>CAR: <strong style={{ color: "var(--text-1)" }}>{fazenda.car ? fazenda.car.substring(0, 20) + "…" : "—"}</strong></span>
                             <span>ITR: <strong style={{ color: "var(--text-1)" }}>{fazenda.itr || "—"}</strong></span>
@@ -154,9 +154,9 @@ export default function Propriedades() {
                           {fazenda.talhoes.length > 0 ? (
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
-                                <tr style={{ background: "#F3F6F9" }}>
+                                <tr style={{ background: "var(--bg-page)" }}>
                                   {["Talhão", "Área (ha)", "Solo", "Safra Ativa", "GPS"].map((h, i) => (
-                                    <th key={i} style={{ padding: "8px 16px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                                    <th key={i} style={{ padding: "8px 16px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -164,7 +164,7 @@ export default function Propriedades() {
                                 {fazenda.talhoes.map((t, ti) => {
                                   const cs = corSafra(t.safraAtiva);
                                   return (
-                                    <tr key={t.id} style={{ borderBottom: ti < fazenda.talhoes.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                                    <tr key={t.id} style={{ borderBottom: ti < fazenda.talhoes.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                                       <td style={{ padding: "10px 16px", color: "var(--text-1)", fontWeight: 600 }}>{t.nome}</td>
                                       <td style={{ padding: "10px 16px", textAlign: "center" }}>{(t.area_ha ?? 0).toLocaleString("pt-BR")}</td>
                                       <td style={{ padding: "10px 16px", textAlign: "center" }}>
@@ -190,7 +190,7 @@ export default function Propriedades() {
                             </div>
                           )}
 
-                          <div style={{ padding: "10px 16px", borderTop: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ fontSize: 11, color: "#444" }}>
                               {areaMapeada.toLocaleString("pt-BR")} ha mapeados de {(fazenda.area_total_ha ?? 0).toLocaleString("pt-BR")} ha totais
                             </div>

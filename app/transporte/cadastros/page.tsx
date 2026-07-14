@@ -68,7 +68,7 @@ function Modal({ titulo, onClose, children, width = 720 }: { titulo: string; onC
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 24 }}>
       <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: width, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #DEE5EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>{titulo}</span>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>×</button>
         </div>
@@ -226,7 +226,7 @@ export default function TransporteCadastrosPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", gap: 0, marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {([
             ["transportadoras", `Transportadoras (${transFilt.length})`],
             ["veiculos",        `Veículos / Caminhões (${veicFilt.length})`],
@@ -246,12 +246,12 @@ export default function TransporteCadastrosPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={btnV} onClick={() => setModalT({ ativa: true })}>+ Nova Transportadora</button>
             </div>
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Razão Social / Nome Fantasia", "CNPJ / CPF", "IE", "RNTRC", "Município / UF", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -293,12 +293,12 @@ export default function TransporteCadastrosPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={btnV} onClick={() => setModalV({ ativo: true })}>+ Novo Veículo</button>
             </div>
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Placa", "Tipo", "Carroceria", "Tara / Cap.", "RENAVAM", "Transportadora", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -344,12 +344,12 @@ export default function TransporteCadastrosPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={btnV} onClick={() => setModalM({ ativo: true })}>+ Novo Motorista</button>
             </div>
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#F3F6FB" }}>
                     {["Nome", "CPF", "CNH / Categoria / UF", "Validade CNH", "Transportadora", "Telefone", "Status", ""].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -434,7 +434,7 @@ export default function TransporteCadastrosPage() {
               </Campo>
             </div>
 
-            <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
+            <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 8, border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Endereço</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
                 <Campo label="CEP">

@@ -135,7 +135,7 @@ export default function PlantioPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, padding: "24px 28px" }}>
         <header style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "10px 18px", display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 16 }}>
@@ -179,7 +179,7 @@ export default function PlantioPage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {fazendas.length > 1 && <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Fazenda</th>}
                     <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Safra / Talhão</th>
                     <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>Semente / Cultivar</th>
@@ -357,7 +357,7 @@ export default function PlantioPage() {
               {/* Preview */}
               {(qtdKg || custoSementes || receitaEsperada) && (
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                  <div style={{ background: "#F3F6F9", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "8px 10px", fontSize: 11 }}>
                     {qtdKg && <div>Semente total: <strong>{fmtN(qtdKg)} kg</strong></div>}
                     {custoSementes && <div>Custo semente: <strong style={{ color: "#E24B4A" }}>{fmtBRL(custoSementes)}</strong></div>}
                     {receitaEsperada && <div>Receita esperada: <strong style={{ color: "#1A4870" }}>{fmtBRL(receitaEsperada)}</strong></div>}

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"; // sempre busca preços atuais do banco
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR: Record<PlanoId, { borda: string; bg: string; badge: string; btn: string }> = {
-  essencial:   { borda: "var(--border-table)", bg: "var(--bg-card)",    badge: "#F3F6F9", btn: "#1A4870" },
+  essencial:   { borda: "var(--border-table)", bg: "var(--bg-card)",    badge: "var(--bg-page)", btn: "#1A4870" },
   gestao:      { borda: "#1A4870", bg: "#F0F7FF", badge: "#1A4870", btn: "#1A4870" },
   performance: { borda: "#C9921B", bg: "#FEFCF5", badge: "#C9921B", btn: "#C9921B" },
 };
@@ -20,14 +20,14 @@ export default async function PlanosPage() {
 
       {/* ── Navbar pública ── */}
       <nav style={{
-        background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8",
+        background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)",
         padding: "0 32px", height: 60,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         position: "sticky", top: 0, zIndex: 100,
       }}>
         <img src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" style={{ height: 34, objectFit: "contain" }} />
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/login" style={{ fontSize: 13, color: "var(--text-2)", textDecoration: "none", padding: "7px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
+          <Link href="/login" style={{ fontSize: 13, color: "var(--text-2)", textDecoration: "none", padding: "7px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8 }}>
             Já tenho conta
           </Link>
           <Link href="/cadastro" style={{ fontSize: 13, color: "#fff", textDecoration: "none", padding: "8px 20px", background: "#1A4870", borderRadius: 8, fontWeight: 600 }}>
@@ -122,7 +122,7 @@ export default async function PlanosPage() {
                   Começar grátis
                 </Link>
 
-                <div style={{ borderTop: "0.5px solid #DDE2EE", paddingTop: 20 }}>
+                <div style={{ borderTop: "0.5px solid var(--border)", paddingTop: 20 }}>
                   {p.features_marketing.map((f, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
                       <span style={{ color: "#16A34A", fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
@@ -136,13 +136,13 @@ export default async function PlanosPage() {
         </div>
 
         {/* ── Comparativo completo ── */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "0.5px solid #D4DCE8", overflow: "hidden", marginBottom: 64 }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 16, border: "0.5px solid var(--border-table)", overflow: "hidden", marginBottom: 64 }}>
           <div style={{ padding: "24px 32px", borderBottom: "0.5px solid #E4E9F0" }}>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B2D50" }}>Comparativo completo</h2>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F3F6F9" }}>
+              <tr style={{ background: "var(--bg-page)" }}>
                 <th style={{ padding: "12px 24px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-2)", width: "40%" }}>Funcionalidade</th>
                 {ORDEM.map(pid => (
                   <th key={pid} style={{ padding: "12px 16px", textAlign: "center", fontSize: 13, fontWeight: 700, color: COR[pid].btn, width: "20%" }}>
@@ -171,7 +171,7 @@ export default async function PlanosPage() {
                 ["Agente WhatsApp (IA)", false, false, true],
                 ["Usuários", "2", "5", "Ilimitado"],
               ].map(([label, ess, gest, perf], i) => (
-                <tr key={i} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
+                <tr key={i} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: i % 2 === 0 ? "#fff" : "#FAFBFD" }}>
                   <td style={{ padding: "11px 24px", fontSize: 13, color: "#333" }}>{label}</td>
                   {[ess, gest, perf].map((v, j) => (
                     <td key={j} style={{ padding: "11px 16px", textAlign: "center" }}>
@@ -199,7 +199,7 @@ export default async function PlanosPage() {
             ["Meus dados ficam seguros?", "Sim. Todos os dados ficam no Supabase (PostgreSQL) com isolamento por empresa (RLS). Nenhum dado de um cliente é visível para outro."],
             ["Aceita PIX e boleto?", "Sim. A cobrança é feita via Asaas — aceita PIX, boleto bancário e cartão de crédito."],
           ].map(([q, a], i) => (
-            <details key={i} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 10, marginBottom: 10, padding: "16px 20px" }}>
+            <details key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, marginBottom: 10, padding: "16px 20px" }}>
               <summary style={{ fontSize: 14, fontWeight: 600, color: "#0B2D50", cursor: "pointer", listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 {q} <span style={{ fontSize: 18, color: "var(--text-3)" }}>+</span>
               </summary>
@@ -223,7 +223,7 @@ export default async function PlanosPage() {
 
       </main>
 
-      <footer style={{ textAlign: "center", padding: "24px", fontSize: 12, color: "var(--text-muted)", borderTop: "0.5px solid #D4DCE8", background: "var(--bg-card)" }}>
+      <footer style={{ textAlign: "center", padding: "24px", fontSize: 12, color: "var(--text-muted)", borderTop: "0.5px solid var(--border-table)", background: "var(--bg-card)" }}>
         © {new Date().getFullYear()} Arato — Gestão Agrícola · <a href="/login" style={{ color: "#1A4870", textDecoration: "none" }}>Entrar</a>
       </footer>
     </div>

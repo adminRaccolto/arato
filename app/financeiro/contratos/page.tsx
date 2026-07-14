@@ -26,13 +26,13 @@ import type {
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
-const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 18, paddingBottom: 4, borderBottom: "0.5px solid #D4DCE8" };
+const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 18, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtNum = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -1034,7 +1034,7 @@ export default function ContratosFinanceiros() {
   // ────────────────────────────────────────────────────────
   if (!podeAcessarPlano("fin_contratos")) return <PlanoGate modulo="fin_contratos" />;
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "28px 24px", width: "100%" }}>
@@ -1046,10 +1046,10 @@ export default function ContratosFinanceiros() {
               <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>Custeio, CPR, investimento, securitização, EGF</div>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              {ptax && <span style={{ fontSize: 11, color: "var(--text-2)", background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
+              {ptax && <span style={{ fontSize: 11, color: "var(--text-2)", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, padding: "4px 10px" }}>PTAX: R$ {fmtNum(ptax, 4)}</span>}
               {fazendas.length > 1 && (
                 <select value={fazendaFiltro} onChange={e => setFazendaFiltro(e.target.value)}
-                  style={{ padding: "8px 12px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
+                  style={{ padding: "8px 12px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, background: "var(--bg-card)", minWidth: 160 }}>
                   <option value="">Todas as fazendas</option>
                   {fazendas.map(fz => <option key={fz.id} value={fz.id}>{fz.nome}</option>)}
                 </select>
@@ -1067,7 +1067,7 @@ export default function ContratosFinanceiros() {
                 { label: "Total Captado",     valor: totalFinanciado,                                      fmt: fmtBRL,                           cor: "#1A5C38", suf: ptax ? " (conv. PTAX)" : "" },
                 { label: "Quitados/Cancelados", valor: contratosFiltrados.filter(c => c.status !== "ativo").length, fmt: (v: number) => String(v),        cor: "var(--text-2)",    suf: "" },
               ].map((k, i) => (
-                <div key={i} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 18px" }}>
+                <div key={i} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 18px" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{k.label}{k.suf}</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: k.cor }}>{k.fmt(k.valor)}</div>
                 </div>
@@ -1085,18 +1085,18 @@ export default function ContratosFinanceiros() {
               </button>
             </div>
           ) : contratosFiltrados.length === 0 ? (
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid #DDE2EE", padding: "56px 0", textAlign: "center" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", padding: "56px 0", textAlign: "center" }}>
               <div style={{ fontSize: 40, marginBottom: 10 }}>🏦</div>
               <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 4 }}>Nenhum contrato financeiro cadastrado</div>
               <div style={{ fontSize: 12, color: "var(--text-3)" }}>Custeio bancário, CPR, Pronaf, financiamento de máquinas…</div>
             </div>
           ) : (
-            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 14, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Descrição / Credor", "Nº Operação", "Tipo", "Cálculo", "Taxa a.a.", "Valor", "Data Contrato", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 4 && i <= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                      <th key={i} style={{ padding: "10px 14px", textAlign: i >= 4 && i <= 6 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1105,7 +1105,7 @@ export default function ContratosFinanceiros() {
                     const tm = TIPO_META[c.tipo];
                     const sm = STATUS_META[c.status];
                     return (
-                      <tr key={c.id} style={{ borderBottom: idx < contratosFiltrados.length - 1 ? "0.5px solid #EEF1F6" : "none", cursor: "pointer" }}
+                      <tr key={c.id} style={{ borderBottom: idx < contratosFiltrados.length - 1 ? "0.5px solid var(--bg-tag)" : "none", cursor: "pointer" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "#FAFBFD")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
                         <td style={{ padding: "10px 14px" }}>
@@ -1143,7 +1143,7 @@ export default function ContratosFinanceiros() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) { setModalImport(false); setImportPreview(null); setImportLog([]); } }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(940px, 95vw)", maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #D4DCE8", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Importar Contratos Financeiros — XLSX</div>
                 <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>AgroSoft · Formato alternativo · Formato livre (1 linha por contrato, qualquer fonte)</div>
@@ -1157,7 +1157,7 @@ export default function ContratosFinanceiros() {
                   <div style={{ marginBottom: 12, fontWeight: 600, fontSize: 14, color: "#1A4870" }}>
                     Resultado da importação — {importLog.filter(l => l.startsWith("✓")).length} sucesso{importLog.filter(l => l.startsWith("✗")).length > 0 ? `, ${importLog.filter(l => l.startsWith("✗")).length} erro` : ""}
                   </div>
-                  <div style={{ background: "#F3F6F9", borderRadius: 10, padding: 14, fontFamily: "monospace", fontSize: 12, maxHeight: 360, overflowY: "auto" }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 14, fontFamily: "monospace", fontSize: 12, maxHeight: 360, overflowY: "auto" }}>
                     {importLog.map((l, i) => (
                       <div key={i} style={{ color: l.startsWith("✓") ? "#1A5C38" : "#E24B4A", marginBottom: 4 }}>{l}</div>
                     ))}
@@ -1236,7 +1236,7 @@ export default function ContratosFinanceiros() {
 
                       <div style={{ marginBottom: 10 }}>
                         <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Colunas encontradas no arquivo:</div>
-                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "var(--text-2)", lineHeight: 1.8, background: "white", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE" }}>
+                        <div style={{ fontFamily: "monospace", fontSize: 10, color: "var(--text-2)", lineHeight: 1.8, background: "white", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)" }}>
                           {importDiag.colunas.join(" · ") || "(nenhuma)"}
                         </div>
                       </div>
@@ -1257,7 +1257,7 @@ export default function ContratosFinanceiros() {
                     </div>
                   )}
 
-                  <label style={{ display: "block", border: "2px dashed #D4DCE8", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
+                  <label style={{ display: "block", border: "2px dashed var(--border-table)", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border-table)")}>
                     <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
@@ -1289,12 +1289,12 @@ export default function ContratosFinanceiros() {
                     </div>
                     <button style={{ ...btnR, fontSize: 12 }} onClick={() => setImportPreview(null)}>← Selecionar outro arquivo</button>
                   </div>
-                  <div style={{ border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
+                  <div style={{ border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden", marginBottom: 18 }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
+                        <tr style={{ background: "var(--bg-page)" }}>
                           {["Nº Contrato", "Descrição / Data", "Credor", "Tipo", "Taxa a.a.", "Valor Financiado", "Parcelas"].map((h, i) => (
-                            <th key={i} style={{ padding: "8px 10px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                            <th key={i} style={{ padding: "8px 10px", textAlign: i >= 4 ? "center" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1304,7 +1304,7 @@ export default function ContratosFinanceiros() {
                           const primeiraParc = c.parcelas[0];
                           const ultimaParc = c.parcelas[c.parcelas.length - 1];
                           return (
-                            <tr key={idx} style={{ borderBottom: idx < importPreview.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                            <tr key={idx} style={{ borderBottom: idx < importPreview.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                               <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1A4870" }}>{c.nr_contrato || c.cd_divida}</td>
                               <td style={{ padding: "8px 10px" }}>
                                 <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{c.descricao}</div>
@@ -1333,7 +1333,7 @@ export default function ContratosFinanceiros() {
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 8 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
                       <input type="checkbox" checked={importCriarLanc} onChange={e => setImportCriarLanc(e.target.checked)} />
                       <span>Criar lançamentos financeiros (CP/CR) automaticamente</span>
@@ -1369,7 +1369,7 @@ export default function ContratosFinanceiros() {
           <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "min(1160px, 97vw)", maxHeight: "95vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Cabeçalho do modal */}
-            <div style={{ padding: "18px 26px 0", borderBottom: "0.5px solid #D4DCE8", flexShrink: 0 }}>
+            <div style={{ padding: "18px 26px 0", borderBottom: "0.5px solid var(--border-table)", flexShrink: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>
@@ -1633,10 +1633,10 @@ export default function ContratosFinanceiros() {
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhuma parcela de liberação registrada</div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Data", contratoModal.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", contratoModal.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th> : null)}</tr></thead>
+                      <thead><tr style={{ background: "var(--bg-page)" }}>{["Nº", "Data", contratoModal.moeda === "USD" ? "Valor (US$)" : "Valor (R$)", contratoModal.moeda === "USD" ? "Equiv. R$" : "", "Lançto.CR", ""].map((h, i) => h ? <th key={i} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th> : null)}</tr></thead>
                       <tbody>
                         {parcelasLiberacao.map((p, i) => (
-                          <tr key={p.id} style={{ borderBottom: i < parcelasLiberacao.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                          <tr key={p.id} style={{ borderBottom: i < parcelasLiberacao.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.num_parcela}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center" }}>{fmtData(p.data_liberacao)}</td>
                             <td style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600 }}>{contratoModal.moeda === "USD" ? `US$ ${fmtNum(p.valor_liberado)}` : fmtBRL(p.valor_liberado)}</td>
@@ -1658,7 +1658,7 @@ export default function ContratosFinanceiros() {
               {/* ── Pagamento ── */}
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
-                  <div style={{ background: "#F3F6F9", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
                       <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
@@ -1676,12 +1676,12 @@ export default function ContratosFinanceiros() {
                   ) : (
                     <>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                        <thead><tr style={{ background: "#F3F6F9" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <thead><tr style={{ background: "var(--bg-page)" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {parcelasPagamento.map((p, i) => {
                             const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
                             return (
-                              <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid #DEE5EE" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
+                              <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
                                 <td style={{ padding: "7px 10px", textAlign: "center" }}>{p.num_parcela}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtData(p.data_vencimento)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.amortizacao)}</td>
@@ -1697,7 +1697,7 @@ export default function ContratosFinanceiros() {
                           })}
                         </tbody>
                         <tfoot>
-                          <tr style={{ background: "#F3F6F9", fontWeight: 600 }}>
+                          <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
                             <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
                             <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
                             <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
@@ -1720,7 +1720,7 @@ export default function ContratosFinanceiros() {
               {/* ── Garantias ── */}
               {abaModal === "garantias" && (!contratoModal ? <AbaDisabled nome="Garantias" /> : (
                 <div>
-                  <div style={{ background: "#F8FAFD", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>Nova Garantia</div>
                     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.5fr", gap: 10, marginBottom: 10 }}>
                       <div>
@@ -1770,14 +1770,14 @@ export default function ContratosFinanceiros() {
                   ) : (
                     <>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead><tr style={{ background: "#F3F6F9" }}>{["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                        <thead><tr style={{ background: "var(--bg-page)" }}>{["Tipo de Garantia", "Grau", "Bem / Descrição", "Tipo de Bem", "% Bem", "Valor Avaliação", "Cobertura", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i <= 2 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {garantias.map((g, i) => {
                             const tipoMeta = g.tipo_garantia ? TIPO_GAR_META[g.tipo_garantia] : null;
                             const cobertura = g.valor_avaliacao ? (g.valor_avaliacao * ((g.percentual_bem ?? 100) / 100) / (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado)) * 100 : null;
                             const bemDesc = g.tipo_bem === "imovel" && g.matricula_id ? `Matr. ${matriculas.find(m => m.id === g.matricula_id)?.numero ?? "?"}` : g.tipo_bem === "imovel_urbano" && g.imovel_urbano_id ? (imoveisUrbanos.find(u => u.id === g.imovel_urbano_id)?.descricao ?? "Imóvel Urbano") : g.tipo_bem === "maquina" && g.maquina_id ? (maquinas.find(m => m.id === g.maquina_id)?.nome ?? "Máquina") : g.descricao;
                             return (
-                              <tr key={g.id} style={{ borderBottom: i < garantias.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                              <tr key={g.id} style={{ borderBottom: i < garantias.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                                 <td style={{ padding: "9px 12px" }}>{tipoMeta ? <span style={{ fontSize: 11, background: tipoMeta.bg, color: tipoMeta.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{tipoMeta.label}</span> : "—"}</td>
                                 <td style={{ padding: "9px 12px", textAlign: "center", fontSize: 11, fontWeight: 600 }}>{g.grau ? GRAU_META[g.grau as keyof typeof GRAU_META] : "—"}</td>
                                 <td style={{ padding: "9px 12px", fontSize: 12, fontWeight: 600 }}>{bemDesc}</td>
@@ -1811,10 +1811,10 @@ export default function ContratosFinanceiros() {
                 <div>
                   <div style={{ marginBottom: 10, fontSize: 12, color: "var(--text-2)" }}>Defina como o valor captado é rateado entre centros de custo / safras (deve totalizar 100%).</div>
                   <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
-                    <thead><tr style={{ background: "#F3F6F9" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                    <thead><tr style={{ background: "var(--bg-page)" }}>{["Centro de Custo / Safra", "%", "Valor (R$)", ""].map((h, i) => <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>)}</tr></thead>
                     <tbody>
                       {centrosForm.map((c, i) => (
-                        <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid #DEE5EE" : "none" }}>
+                        <tr key={i} style={{ borderBottom: i < centrosForm.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                           <td style={{ padding: "6px 8px" }}><input style={inp} placeholder="Ex: Soja 2026/27 — Talhão A" value={c.descricao} onChange={e => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, descricao: e.target.value } : x))} /></td>
                           <td style={{ padding: "6px 8px", width: 80 }}><InputMonetario style={{ ...inp, textAlign: "center" }} value={c.percentual} onChange={v => { const pct = Number(v) || 0; setCentrosForm(p => p.map((x, j) => j === i ? { ...x, percentual: String(v), valor: fmtNum((pct / 100) * (contratoModal.valor_financiado_brl ?? contratoModal.valor_financiado), 2) } : x)); }} /></td>
                           <td style={{ padding: "6px 8px", width: 140 }}><InputMonetario style={inp} value={c.valor} onChange={v => setCentrosForm(p => p.map((x, j) => j === i ? { ...x, valor: String(v) } : x))} /></td>
@@ -1852,7 +1852,7 @@ export default function ContratosFinanceiros() {
                     <div style={{ background: "#FBF3E0", border: "0.5px solid #C9921B40", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#7A5400" }}>
                       Registre alterações formais: prorrogações, renegociações de taxa, capitalizações e outros termos aditados entre as partes.
                     </div>
-                    <div style={{ background: "#F8F9FB", border: "0.5px solid #D4DCE8", borderRadius: 10, padding: 16, marginBottom: 18 }}>
+                    <div style={{ background: "#F8F9FB", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 16, marginBottom: 18 }}>
                       <SecTitle>Novo Aditivo</SecTitle>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10, marginBottom: 10 }}>
                         <div><label style={lbl}>Data do Aditivo *</label><input style={inp} type="date" value={fAdit.data_aditivo} onChange={e => setFAdit(p => ({ ...p, data_aditivo: e.target.value }))} /></div>
@@ -1876,7 +1876,7 @@ export default function ContratosFinanceiros() {
                       <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-3)", fontSize: 12 }}>Nenhum aditivo registrado.</div>
                     ) : (
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead><tr style={{ background: "#F3F6F9" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>)}</tr></thead>
+                        <thead><tr style={{ background: "var(--bg-page)" }}>{["Data", "Tipo", "Descrição", "Novos Termos", ""].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>)}</tr></thead>
                         <tbody>
                           {aditivos.map((a, i) => {
                             const meta = TIPO_ADIT[a.tipo];
@@ -1886,7 +1886,7 @@ export default function ContratosFinanceiros() {
                             if (a.novo_valor_financiado) termos.push(`Valor → ${fmtBRL(a.novo_valor_financiado)}`);
                             if (a.novo_num_parcelas) termos.push(`Parcelas → ${a.novo_num_parcelas}x`);
                             return (
-                              <tr key={a.id} style={{ borderBottom: i < aditivos.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                              <tr key={a.id} style={{ borderBottom: i < aditivos.length - 1 ? "0.5px solid var(--border-row)" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                                 <td style={{ padding: "8px 10px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(a.data_aditivo)}</td>
                                 <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, background: meta.bg, color: meta.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{meta.label}</span></td>
                                 <td style={{ padding: "8px 10px", fontSize: 12 }}><div>{a.descricao}</div>{a.obs && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{a.obs}</div>}</td>
@@ -1923,9 +1923,9 @@ export default function ContratosFinanceiros() {
                     ) : (
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                          <tr style={{ background: "#F3F6F9" }}>
+                          <tr style={{ background: "var(--bg-page)" }}>
                             {["Data", "Evento", "Amortização", "Juros", "Acessórios", "Valor", "Saldo Devedor", "Status"].map((h, i) => (
-                              <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                              <th key={i} style={{ padding: "7px 8px", textAlign: i >= 2 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -1940,7 +1940,7 @@ export default function ContratosFinanceiros() {
                             };
                             const sm = m.status ? (statusMeta[m.status] ?? statusMeta.pendente) : null;
                             return (
-                              <tr key={i} style={{ borderBottom: i < movs.length - 1 ? "0.5px solid #DEE5EE" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
+                              <tr key={i} style={{ borderBottom: i < movs.length - 1 ? "0.5px solid var(--border-row)" : "none", background: i % 2 === 0 ? "#fff" : "#FAFBFC" }}>
                                 <td style={{ padding: "7px 8px", fontSize: 12, whiteSpace: "nowrap" }}>{fmtData(m.data)}</td>
                                 <td style={{ padding: "7px 8px", fontSize: 12 }}>
                                   <span style={{ fontSize: 10, background: isLib ? "#D5E8F5" : "#F3F4F6", color: isLib ? "#0B2D50" : "#333", padding: "2px 7px", borderRadius: 8, fontWeight: 600, marginRight: 6 }}>{isLib ? "Lib" : "Pag"}</span>

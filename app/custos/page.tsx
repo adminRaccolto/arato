@@ -99,7 +99,7 @@ function FiltroBar({ anosSafra, anoSafraId, setAnoSafraId, ciclos, cicloIds, set
   const areaTotal = ciclosSel.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
 
   return (
-    <div style={{ background: "#F8FAFD", borderBottom: "0.5px solid var(--border-table)", padding: "12px 22px" }}>
+    <div style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "12px 22px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16, alignItems: "end" }}>
         <div>
           <label style={lbl}>Ano Safra</label>
@@ -344,7 +344,7 @@ function CustosInner() {
   // ═══════════════════════════════════════════════════════════
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
@@ -420,7 +420,7 @@ function CustosInner() {
 
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Conta", "Total (R$)", "R$/ha", "R$/sc", "% Receita"].map((h, i) => (
                           <th key={i} style={{ padding: "8px 20px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                         ))}
@@ -526,7 +526,7 @@ function CustosInner() {
 
                   {/* Ponto de equilíbrio */}
                   {totalSacas > 0 && precoMedioSc > 0 && (
-                    <div style={{ padding: "16px 20px", borderTop: "0.5px solid var(--border-row)", background: "#F8FAFD" }}>
+                    <div style={{ padding: "16px 20px", borderTop: "0.5px solid var(--border-row)", background: "var(--bg-card)" }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Análise do Ponto de Equilíbrio</div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 12 }}>
                         {[
@@ -635,7 +635,7 @@ function CustosInner() {
                             { label: "Overhead/sc",       v: (despIndirTotal + overheadSemRateio) / totalSacas, cor: "#7C3AED" },
                             { label: "Custo total/sc",    v: custoTotal / totalSacas,  cor: "var(--text-1)" },
                           ].map((k, i) => (
-                            <div key={i} style={{ background: "#F3F6F9", borderRadius: 10, padding: "12px 14px" }}>
+                            <div key={i} style={{ background: "var(--bg-page)", borderRadius: 10, padding: "12px 14px" }}>
                               <div style={{ fontSize: 10, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
                               <div style={{ fontSize: 16, fontWeight: 600, color: k.cor }}>{fmtBRL(k.v, 2)}</div>
                             </div>
@@ -668,7 +668,7 @@ function CustosInner() {
                         const sc = statusCors[s.status] ?? statusCors.planejada;
                         const stLbl: Record<string, string> = { colhida: "Colhida", em_andamento: "Em andamento", planejada: "Planejada", cancelada: "Cancelada" };
                         return (
-                          <div key={s.id} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: 10, border: "0.5px solid var(--border-table)", background: i === safrasOrd.length - 1 ? "#F8FAFD" : "transparent" }}>
+                          <div key={s.id} style={{ display: "flex", gap: 14, alignItems: "center", padding: "12px 14px", borderRadius: 10, border: "0.5px solid var(--border-table)", background: i === safrasOrd.length - 1 ? "var(--bg-card)" : "transparent" }}>
                             <div style={{ width: 110, flexShrink: 0 }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{s.cultura} {s.ano_agricola}</div>
                               <span style={{ fontSize: 10, background: sc.bg, color: sc.color, padding: "1px 6px", borderRadius: 6 }}>{stLbl[s.status]}</span>
@@ -810,7 +810,7 @@ function CustosInner() {
 export default function Custos() {
   return (
     <PlanoGate modulo="custos">
-      <Suspense fallback={<div style={{ minHeight: "100vh", background: "#F3F6F9" }} />}>
+      <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--bg-page)" }} />}>
         <CustosInner />
       </Suspense>
     </PlanoGate>

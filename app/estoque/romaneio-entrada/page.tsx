@@ -541,7 +541,7 @@ export default function RomaneioEntradaPage() {
             {([["proprio", "Pesagem por Balança", "#1A5CB8"], ["terceiro", "Romaneio de Terceiro", "#7C3AED"]] as const).map(([v, l, c]) => (
               <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, tipo: v }))} style={{
                 flex: 1, padding: "10px 0", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
-                background: form.tipo === v ? c : "#F8FAFD",
+                background: form.tipo === v ? c : "var(--bg-card)",
                 color:      form.tipo === v ? "#fff" : "var(--text-2)",
                 transition: "background .15s",
               }}>{l}</button>
@@ -555,7 +555,7 @@ export default function RomaneioEntradaPage() {
               {([["balanca", "⚖ Balança Física"], ["manual", "✎ Entrada Manual"]] as const).map(([v, l]) => (
                 <button key={v} disabled={editRom?.status === "confirmado"} onClick={() => setForm(p => ({ ...p, modo_pesagem: v }))} style={{
                   padding: "4px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "0.5px solid",
-                  background: form.modo_pesagem === v ? "#EBF3FF" : "#F8FAFD",
+                  background: form.modo_pesagem === v ? "#EBF3FF" : "var(--bg-card)",
                   color:      form.modo_pesagem === v ? "#1A5CB8" : "#777",
                   borderColor: form.modo_pesagem === v ? "#1A5CB8" : "#CDD5E0",
                 }}>{l}</button>
@@ -679,7 +679,7 @@ export default function RomaneioEntradaPage() {
           </div>
 
           {/* Pesagem */}
-          <div style={{ background: "#F8FAFD", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px", marginBottom: 16 }}>
             <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)", marginBottom: 12 }}>Pesagem</div>
 
             {/* Integração balança Toledo PRIX — só no modo Balança Física (sua própria balança) */}

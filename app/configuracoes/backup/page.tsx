@@ -161,7 +161,7 @@ export default function BackupPage() {
               bg: "#ECFDF5",
             },
           ].map(c => (
-            <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: "16px 18px", border: "0.5px solid #DDE2EE" }}>
+            <div key={c.label} style={{ background: c.bg, borderRadius: 10, padding: "16px 18px", border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 5 }}>{c.label}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: c.cor }}>{c.valor}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{c.sub}</div>
@@ -170,7 +170,7 @@ export default function BackupPage() {
         </div>
 
         {/* Ação principal */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 22, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 22, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)", marginBottom: 4 }}>Criar Backup Agora</div>
             <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
@@ -192,10 +192,10 @@ export default function BackupPage() {
         </div>
 
         {/* Tabela de backups */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", marginBottom: 22 }}>
-          <div style={{ padding: "14px 18px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden", marginBottom: 22 }}>
+          <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Histórico de Backups</span>
-            <button onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
+            <button onClick={carregarBackups} disabled={loading} style={{ padding: "5px 10px", borderRadius: 7, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 12, cursor: "pointer", color: "var(--text-2)" }}>
               {loading ? "…" : "↻ Atualizar"}
             </button>
           </div>
@@ -213,15 +213,15 @@ export default function BackupPage() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFD" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   {["Data/Hora", "Arquivo", "Tamanho", "Ações"].map((h, i) => (
-                    <th key={h} style={{ padding: "9px 16px", textAlign: i === 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                    <th key={h} style={{ padding: "9px 16px", textAlign: i === 3 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {backups.map((b, i) => (
-                  <tr key={b.nome} style={{ borderBottom: i < backups.length - 1 ? "0.5px solid #EEF1F6" : "none" }}>
+                  <tr key={b.nome} style={{ borderBottom: i < backups.length - 1 ? "0.5px solid var(--bg-tag)" : "none" }}>
                     <td style={{ padding: "10px 16px", fontSize: 13, color: "var(--text-1)", fontWeight: 500 }}>{nomeParaData(b.nome)}</td>
                     <td style={{ padding: "10px 16px", fontSize: 11, color: "var(--text-3)", fontFamily: "monospace" }}>{b.nome}</td>
                     <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-2)" }}>{fmtTamanho(b.tamanho_bytes)}</td>
@@ -230,7 +230,7 @@ export default function BackupPage() {
                         <a
                           href={b.download_url}
                           download={b.nome}
-                          style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 11, color: "#1A4870", textDecoration: "none", fontWeight: 600 }}
+                          style={{ padding: "5px 12px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 11, color: "#1A4870", textDecoration: "none", fontWeight: 600 }}
                         >
                           ⬇ Baixar
                         </a>
@@ -253,8 +253,8 @@ export default function BackupPage() {
 
         {/* Detalhes da última restauração */}
         {detalhes && (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden", marginBottom: 22 }}>
-            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Detalhes da Restauração</div>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden", marginBottom: 22 }}>
+            <div style={{ padding: "12px 18px", borderBottom: "0.5px solid var(--border)", fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Detalhes da Restauração</div>
             <div style={{ padding: "14px 18px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10 }}>
               {Object.entries(detalhes).filter(([, v]) => v.restaurados > 0 || v.erro).map(([tabela, v]) => (
                 <div key={tabela} style={{ padding: "8px 10px", borderRadius: 7, background: v.erro ? "#FCEBEB" : "#ECFDF5", border: `0.5px solid ${v.erro ? "#FECACA" : "#BBF7D0"}` }}>
@@ -268,7 +268,7 @@ export default function BackupPage() {
         )}
 
         {/* Instruções de configuração */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 22px" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 22px" }}>
           <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 14 }}>Configuração Necessária</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
@@ -348,7 +348,7 @@ export default function BackupPage() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={() => { setModalRestaura(null); setConfirmacao(""); }}
-                style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid #D4DCE8", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
+                style={{ padding: "9px 20px", borderRadius: 8, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", fontSize: 13, cursor: "pointer", color: "var(--text-2)" }}
               >
                 Cancelar
               </button>

@@ -229,7 +229,7 @@ export default function PendenciasNfPage() {
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <a href="/configuracoes/classificacao" style={{ padding: "8px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>
+            <a href="/configuracoes/classificacao" style={{ padding: "8px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}>
               ⚙️ Regras Automáticas
             </a>
             <a href="/configuracoes/automacoes" style={{ padding: "8px 14px", borderRadius: 7, background: "#1A4870", fontSize: 12, fontWeight: 600, color: "#fff", textDecoration: "none" }}>
@@ -243,10 +243,10 @@ export default function PendenciasNfPage() {
           {[
             { label: "Pendentes", valor: totPendentes, sub: fmt(valorPendente), cor: "#C9921B", bg: "#FBF3E0" },
             { label: "Classificadas", valor: totClassific, sub: "automaticamente + manual", cor: "#16A34A", bg: "#F0FDF4" },
-            { label: "Ignoradas", valor: totIgnoradas, sub: "sem movimentação", cor: "var(--text-3)", bg: "#F3F6F9" },
+            { label: "Ignoradas", valor: totIgnoradas, sub: "sem movimentação", cor: "var(--text-3)", bg: "var(--bg-page)" },
             { label: "Total importado", valor: nfs.length, sub: "últimos 30 dias", cor: "#1A4870", bg: "#EBF5FF" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
               <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: k.cor }}>{k.valor}</div>
               <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>
@@ -255,7 +255,7 @@ export default function PendenciasNfPage() {
         </div>
 
         {/* Filtros */}
-        <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "12px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {["pendente", "classificada", "ignorada", "todas"].map(s => (
             <button
               key={s}
@@ -277,7 +277,7 @@ export default function PendenciasNfPage() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
             placeholder="Buscar por fornecedor ou NF..."
-            style={{ marginLeft: "auto", padding: "7px 12px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, width: 240 }}
+            style={{ marginLeft: "auto", padding: "7px 12px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 240 }}
           />
         </div>
 
@@ -285,17 +285,17 @@ export default function PendenciasNfPage() {
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)", fontSize: 13 }}>Carregando…</div>
         ) : nfsFiltradas.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 48, textAlign: "center", color: "var(--text-3)" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 48, textAlign: "center", color: "var(--text-3)" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
             <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-2)" }}>
               {filtroStatus === "pendente" ? "Nenhuma NF pendente — tudo classificado!" : "Nenhuma NF encontrada"}
             </div>
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ background: "#F8FAFC", borderBottom: "0.5px solid #DDE2EE" }}>
+                <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["NF", "Fornecedor", "CNPJ Emitente", "Emissão", "Valor Total", "Status", ""].map(h => (
                     <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                   ))}
@@ -303,7 +303,7 @@ export default function PendenciasNfPage() {
               </thead>
               <tbody>
                 {nfsFiltradas.map((nf, i) => (
-                  <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)" }}>
+                  <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)" }}>
                     <td style={{ padding: "10px 14px", fontWeight: 600, color: "#1A4870" }}>
                       {nf.numero}/{nf.serie}
                     </td>
@@ -347,7 +347,7 @@ export default function PendenciasNfPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(900px, 97vw)", maxHeight: "calc(100vh - 80px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
             {/* Header */}
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
                   NF {modal.numero}/{modal.serie} — {modal.nome_emitente || "—"}
@@ -360,7 +360,7 @@ export default function PendenciasNfPage() {
                 {modal.status === "pendente" && (
                   <button
                     onClick={() => ignorarNf(modal.id)}
-                    style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    style={{ padding: "7px 14px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-3)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >
                     Ignorar NF
                   </button>
@@ -430,7 +430,7 @@ export default function PendenciasNfPage() {
                             <select
                               value={c.categoria}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, categoria: e.target.value } }))}
-                              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12 }}
+                              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12 }}
                             >
                               <option value="">— Selecionar —</option>
                               {CATEGORIAS.map(cat => <option key={cat} value={cat}>{CAT_LABEL[cat]}</option>)}
@@ -442,7 +442,7 @@ export default function PendenciasNfPage() {
                             <select
                               value={c.insumo_id}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, insumo_id: e.target.value } }))}
-                              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12 }}
+                              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12 }}
                             >
                               <option value="">— Nenhum —</option>
                               {insumos
@@ -457,7 +457,7 @@ export default function PendenciasNfPage() {
                             <select
                               value={c.centro_custo_id}
                               onChange={e => setClassif(prev => ({ ...prev, [item.id]: { ...c, centro_custo_id: e.target.value } }))}
-                              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12 }}
+                              style={{ width: "100%", padding: "7px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12 }}
                             >
                               <option value="">— Nenhum —</option>
                               {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
@@ -499,7 +499,7 @@ export default function PendenciasNfPage() {
               com o NCM <strong>{modalRegra.item.ncm || "(qualquer)"}</strong>?
             </p>
 
-            <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 8, padding: "12px 14px", marginBottom: 16, fontSize: 12, color: "var(--text-2)" }}>
               <div><strong>Fornecedor:</strong> {modalRegra.nomeEmit} ({(modalRegra.cnpj || "").replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")})</div>
               <div><strong>NCM:</strong> {modalRegra.item.ncm || "—"} · <strong>Produto:</strong> {modalRegra.item.descricao}</div>
               <div><strong>Classificação:</strong> {CAT_LABEL[classif[modalRegra.item.id]?.categoria || modalRegra.item.categoria || ""] || "—"} {insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome ? `→ ${insumos.find(i => i.id === (classif[modalRegra.item.id]?.insumo_id || modalRegra.item.insumo_id))?.nome}` : ""}</div>
@@ -511,14 +511,14 @@ export default function PendenciasNfPage() {
                 value={nomeRegra}
                 onChange={e => setNomeRegra(e.target.value)}
                 placeholder={`${modalRegra.nomeEmit} — ${modalRegra.item.descricao.substring(0, 30)}`}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
               />
             </div>
 
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={() => { setModalRegra(null); setNomeRegra(""); }}
-                style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ padding: "8px 18px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 Não, obrigado
               </button>

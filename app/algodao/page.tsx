@@ -110,13 +110,13 @@ const STATUS_BENEF_LABEL: Record<string, { label: string; cor: string }> = {
 // ─── Estilos base ─────────────────────────────────────────────────────────────
 
 const card: React.CSSProperties = {
-  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE",
+  background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)",
   padding: "20px 24px",
 };
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
-  border: "0.5px solid #D4DCE8", borderRadius: 8,
+  border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
@@ -132,7 +132,7 @@ const btnPrimary: React.CSSProperties = {
 
 const btnSec: React.CSSProperties = {
   padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)",
-  border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13,
+  border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13,
 };
 
 // ─── Página Principal ─────────────────────────────────────────────────────────
@@ -509,7 +509,7 @@ export default function AlgodaoPage() {
       )}
 
       {/* ── Abas ── */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "0.5px solid #DDE2EE" }}>
+      <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "0.5px solid var(--border)" }}>
         {ABAS.map(a => (
           <button key={a.key} onClick={() => setAba(a.key)} style={{
             padding: "9px 16px", border: "none", cursor: "pointer",
@@ -560,9 +560,9 @@ export default function AlgodaoPage() {
                 ) : (
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Tipo","Data","Talhão","Produto","Dose","Área (ha)","NAWF / Alt. (cm)","Açab. Maçãs","Ações"].map(h => (
-                          <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -608,9 +608,9 @@ export default function AlgodaoPage() {
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
+                        <tr style={{ background: "var(--bg-page)" }}>
                           {["Armadilha","Talhão","Última leitura","Capturas","Status",""].map(h => (
-                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -654,9 +654,9 @@ export default function AlgodaoPage() {
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                       <thead>
-                        <tr style={{ background: "#F3F6F9" }}>
+                        <tr style={{ background: "var(--bg-page)" }}>
                           {["Data","Armadilha","Capturas","Situação"].map(h => (
-                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                            <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -699,13 +699,13 @@ export default function AlgodaoPage() {
                 {Object.entries(STATUS_MODULO_LABEL).map(([k, v]) => {
                   const cnt = modulos.filter(m => m.status === k).length;
                   return (
-                    <div key={k} style={{ background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", borderLeft: `4px solid ${v.cor}` }}>
+                    <div key={k} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: `4px solid ${v.cor}` }}>
                       <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{v.label}</div>
                       <div style={{ fontSize: 24, fontWeight: 800, color: v.cor }}>{cnt}</div>
                     </div>
                   );
                 })}
-                <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #1A4870" }}>
+                <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", borderLeft: "4px solid #1A4870" }}>
                   <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>Peso Estimado Total</div>
                   <div style={{ fontSize: 18, fontWeight: 800, color: "#1A4870" }}>{fmtN(pesoEstimadoKg / 1000, 1)} ton</div>
                 </div>
@@ -716,9 +716,9 @@ export default function AlgodaoPage() {
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "#F3F6F9" }}>
+                    <tr style={{ background: "var(--bg-page)" }}>
                       {["Nº","Talhão","Data Colheita","Peso Est. (kg)","Status","Algodoeira","Entrega","Romaneio","Ações"].map(h => (
-                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -766,7 +766,7 @@ export default function AlgodaoPage() {
                   { l: "Rend. Médio", v: rendMedPct ? `${fmtN(rendMedPct, 1)}%` : "—" },
                   { l: "Valor Pluma", v: fmtR(valorEstoqueR) },
                 ].map(c => (
-                  <div key={c.l} style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px" }}>
+                  <div key={c.l} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600 }}>{c.l}</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "#0B1E35" }}>{c.v}</div>
                   </div>
@@ -778,9 +778,9 @@ export default function AlgodaoPage() {
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "#F3F6F9" }}>
+                    <tr style={{ background: "var(--bg-page)" }}>
                       {["Algodoeira","Entrada","Benefic.","Módulos","Peso Caroço (kg)","Fardos","Pluma (kg)","Rend.%","Caroço Ret. (kg)","Custo","Status","Ações"].map(h => (
-                        <th key={h} style={{ padding: "8px 8px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "8px 8px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -830,7 +830,7 @@ export default function AlgodaoPage() {
               </div>
 
               {/* Referências */}
-              <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 11, color: "var(--text-2)" }}>
+              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 11, color: "var(--text-2)" }}>
                 <strong>Referências MT:</strong>{" "}
                 Comprimento ≥ 28,5mm · Uniformidade ≥ 82% · Resistência ≥ 30 g/tex · Micronaire 3,5–4,9 · Rd ≥ 72% · +b &lt; 9 · SFI &lt; 10%
               </div>
@@ -841,9 +841,9 @@ export default function AlgodaoPage() {
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                      <tr style={{ background: "#F3F6F9" }}>
+                      <tr style={{ background: "var(--bg-page)" }}>
                         {["Algodoeira","Fardos","Tipo","Compr.\n(mm)","Unif.\n(%)","Resist.\n(g/tex)","Micro\n(μg/pol)","Elongação","Rd (%)","Amar.\n(+b)","SFI\n(%)","Neps","Prêmio/\nDesconto",""].map(h => (
-                          <th key={h} style={{ padding: "7px 8px", textAlign: "left", fontSize: 10, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "pre" }}>{h}</th>
+                          <th key={h} style={{ padding: "7px 8px", textAlign: "left", fontSize: 10, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "pre" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -924,7 +924,7 @@ export default function AlgodaoPage() {
                       { l: "Fardos produzidos", v: `${fmtN(totalFardos)} fardos  (${fmtN(totalPlumaKg / 1000, 1)} ton pluma)`, cor: "#0B1E35" },
                       { l: "Caroço retornado", v: `${fmtN(totalCarocoKg / 1000, 1)} ton`, cor: "var(--text-3)" },
                     ].map(r => (
-                      <div key={r.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "#F3F6F9", borderRadius: 8, borderLeft: `4px solid ${r.cor}` }}>
+                      <div key={r.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "var(--bg-page)", borderRadius: 8, borderLeft: `4px solid ${r.cor}` }}>
                         <span style={{ fontSize: 12, color: "var(--text-2)" }}>{r.l}</span>
                         <span style={{ fontWeight: 700, color: r.cor, fontSize: 14 }}>{r.v}</span>
                       </div>
@@ -936,7 +936,7 @@ export default function AlgodaoPage() {
                 <div style={{ ...card }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "#0B1E35", marginBottom: 14 }}>Análise de Mercado</div>
 
-                  <div style={{ background: "#F3F6F9", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Equivalências de Preço Hoje</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -998,9 +998,9 @@ export default function AlgodaoPage() {
                     return (
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                          <tr style={{ background: "#F3F6F9" }}>
+                          <tr style={{ background: "var(--bg-page)" }}>
                             {["Algodoeira","Fardos","Pluma (ton)","Caroço (ton)","Valor Estimado"].map(h => (
-                              <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                              <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -1355,7 +1355,7 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
   const [data, setData]   = useState(hoje);
   const [qtd,  setQtd]    = useState(0);
   const alerta = qtd >= threshold;
-  const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+  const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
   const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
   return (
     <div>
@@ -1373,7 +1373,7 @@ function CapForm({ armadilhaId, onSalvar, onCancel, salvando, threshold }: {
         </div>
       )}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button style={{ padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
+        <button style={{ padding: "8px 14px", background: "var(--bg-card)", color: "var(--text-2)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 500, cursor: "pointer", fontSize: 13 }} onClick={onCancel}>Cancelar</button>
         <button style={{ padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 }} disabled={salvando} onClick={() => onSalvar(armadilhaId, data, qtd)}>
           {salvando ? "Salvando…" : "Salvar Leitura"}
         </button>

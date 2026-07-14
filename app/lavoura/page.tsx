@@ -270,7 +270,7 @@ export default function PlanoAgricola() {
   // RENDER
   // ────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
@@ -462,7 +462,7 @@ export default function PlanoAgricola() {
                                     ) : (
                                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                         <thead>
-                                          <tr style={{ background: "#F3F6F9" }}>
+                                          <tr style={{ background: "var(--bg-page)" }}>
                                             {["Tipo", "Operação / Descrição", "Data prevista", "Data realizada", "Custo/ha", "Status", ""].map((h, i) => (
                                               <th key={i} style={{ padding: "7px 14px", textAlign: i <= 1 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                                             ))}
@@ -554,7 +554,7 @@ export default function PlanoAgricola() {
                     <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                          <tr style={{ background: "#F3F6F9" }}>
+                          <tr style={{ background: "var(--bg-page)" }}>
                             {["Ano / Cultura", "Área", "Plantio", "Colheita", "Ciclo", "Produtiv.", "Custo/ha", "Sacas Totais", "Status"].map((h, i) => (
                               <th key={i} style={{ padding: "8px 14px", textAlign: i <= 1 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                             ))}

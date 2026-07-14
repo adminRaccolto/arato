@@ -198,14 +198,14 @@ export default function IdentidadePage() {
       {/* ── Logo ── */}
       <div style={{
         background: "var(--bg-card)", borderRadius: 12,
-        border: "0.5px solid #DDE2EE",
+        border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: "0 0 16px" }}>Logo do Produto</h2>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
           <div style={{
-            width: 200, height: 80, border: "0.5px dashed #DDE2EE",
-            borderRadius: 10, background: "#F8FAFC",
+            width: 200, height: 80, border: "0.5px dashed var(--border)",
+            borderRadius: 10, background: "var(--bg-card)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             {logoUrl
@@ -247,7 +247,7 @@ export default function IdentidadePage() {
       {/* ── Paleta de Cores ── */}
       <div style={{
         background: "var(--bg-card)", borderRadius: 12,
-        border: "0.5px solid #DDE2EE",
+        border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
@@ -258,7 +258,7 @@ export default function IdentidadePage() {
                 onClick={cancelarPaleta}
                 style={{
                   padding: "7px 14px", borderRadius: 8,
-                  border: "0.5px solid #DDE2EE", background: "var(--bg-card)",
+                  border: "0.5px solid var(--border)", background: "var(--bg-card)",
                   fontSize: 12, cursor: "pointer", color: "var(--text-2)",
                 }}
               >
@@ -292,7 +292,7 @@ export default function IdentidadePage() {
                 key={cor.key}
                 onClick={() => !editando && editarCor(idx)}
                 style={{
-                  border: editando ? "1.5px solid #1A4870" : "0.5px solid #DDE2EE",
+                  border: editando ? "1.5px solid #1A4870" : "0.5px solid var(--border)",
                   borderRadius: 10, overflow: "hidden",
                   cursor: editando ? "default" : "pointer",
                   transition: "border 0.15s",
@@ -361,7 +361,7 @@ export default function IdentidadePage() {
       {/* ── Identificação do Produto ── */}
       <div style={{
         background: "var(--bg-card)", borderRadius: 12,
-        border: "0.5px solid #DDE2EE",
+        border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -378,7 +378,7 @@ export default function IdentidadePage() {
                   onClick={() => { setIdentidadeEdit(false); carregar(); }}
                   style={{
                     padding: "7px 14px", borderRadius: 8,
-                    border: "0.5px solid #DDE2EE", background: "var(--bg-card)",
+                    border: "0.5px solid var(--border)", background: "var(--bg-card)",
                     fontSize: 12, cursor: "pointer", color: "var(--text-2)",
                   }}
                 >
@@ -414,9 +414,9 @@ export default function IdentidadePage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {CAMPOS_IDENTIDADE.map(({ key, label, tipo }) => (
             <div key={key} style={{
-              background: identidadeEdit ? "#fff" : "#F8FAFC",
+              background: identidadeEdit ? "#fff" : "var(--bg-card)",
               borderRadius: 8,
-              border: identidadeEdit ? "1px solid #1A487040" : "0.5px solid #DDE2EE",
+              border: identidadeEdit ? "1px solid #1A487040" : "0.5px solid var(--border)",
               padding: "12px 16px",
               transition: "all 0.15s",
             }}>
@@ -450,7 +450,7 @@ export default function IdentidadePage() {
       {/* ── Variáveis de Ambiente ── */}
       <div style={{
         background: "var(--bg-card)", borderRadius: 12,
-        border: "0.5px solid #DDE2EE",
+        border: "0.5px solid var(--border)",
         padding: "24px 28px", marginBottom: 20,
       }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: "0 0 4px" }}>Variáveis de Ambiente</h2>
@@ -459,10 +459,10 @@ export default function IdentidadePage() {
         </p>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#F8FAFC" }}>
-              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Variável</th>
-              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Descrição</th>
-              <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", width: 110 }}>Status</th>
+            <tr style={{ background: "var(--bg-card)" }}>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Variável</th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Descrição</th>
+              <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", width: 110 }}>Status</th>
             </tr>
           </thead>
           <tbody>

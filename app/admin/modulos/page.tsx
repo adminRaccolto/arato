@@ -93,7 +93,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
-  border: "0.5px solid #D4DCE8", borderRadius: 8,
+  border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
@@ -109,7 +109,7 @@ const btnPrimary: React.CSSProperties = {
 
 const btnSecondary: React.CSSProperties = {
   padding: "9px 18px", background: "var(--bg-card)", color: "var(--text-2)",
-  border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+  border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
 // ─── Página ───────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ export default function ModulosPage() {
       )}
 
       {/* Seleção de conta */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px", marginBottom: 20 }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px", marginBottom: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "flex-end" }}>
           <div>
             <label style={lbl}>Selecionar conta *</label>
@@ -265,8 +265,8 @@ export default function ModulosPage() {
         ) : (
           <>
             {GRUPOS_MODULOS.map(grupo => (
-              <div key={grupo.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", marginBottom: 14, overflow: "hidden" }}>
-                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #EEF1F6", background: "#F8FAFC" }}>
+              <div key={grupo.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 14, overflow: "hidden" }}>
+                <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--bg-tag)", background: "var(--bg-card)" }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {grupo.label}
                   </span>

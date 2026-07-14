@@ -128,7 +128,7 @@ export default function LearningPage() {
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 16px" }}>
 
         {/* Header com progresso */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 24, marginBottom: 20, border: "0.5px solid #DDE2EE" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 24, marginBottom: 20, border: "0.5px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 600, color: "#1A4870", margin: 0 }}>Arato Academy</h1>
@@ -186,7 +186,7 @@ export default function LearningPage() {
           <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 20, alignItems: "start" }}>
 
             {/* Lista de fluxos */}
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Processos do Sistema</div>
                 <div style={{ fontSize: 11, opacity: 0.75 }}>{FLUXOS_BPMN.length} fluxos mapeados</div>
@@ -198,7 +198,7 @@ export default function LearningPage() {
                   style={{
                     width: "100%", textAlign: "left", border: "none", background: fluxoAtivo?.id === f.id ? "#D5E8F5" : "transparent",
                     borderLeft: fluxoAtivo?.id === f.id ? "3px solid #1A4870" : "3px solid transparent",
-                    borderBottom: "0.5px solid #DDE2EE", padding: "12px 14px", cursor: "pointer",
+                    borderBottom: "0.5px solid var(--border)", padding: "12px 14px", cursor: "pointer",
                     display: "flex", alignItems: "flex-start", gap: 10,
                   }}
                 >
@@ -222,9 +222,9 @@ export default function LearningPage() {
             {/* Área do diagrama */}
             <div>
               {fluxoAtivo ? (
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                   {/* Cabeçalho */}
-                  <div style={{ padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                         <span style={{ fontSize: 22 }}>{fluxoAtivo.icone}</span>
@@ -239,7 +239,7 @@ export default function LearningPage() {
                     <button
                       onClick={() => window.print()}
                       style={{
-                        background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                        background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8,
                         padding: "7px 14px", fontSize: 12, color: "var(--text-2)", cursor: "pointer", flexShrink: 0,
                       }}
                     >
@@ -281,7 +281,7 @@ export default function LearningPage() {
                   )}
 
                   {/* Legenda */}
-                  <div style={{ padding: "12px 24px 20px", borderTop: "0.5px solid #DDE2EE" }}>
+                  <div style={{ padding: "12px 24px 20px", borderTop: "0.5px solid var(--border)" }}>
                     <div style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Legenda</div>
                     <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                       {[
@@ -300,7 +300,7 @@ export default function LearningPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 56, textAlign: "center" }}>
+                <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 56, textAlign: "center" }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
                   <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Fluxogramas BPMN</div>
                   <div style={{ fontSize: 14, color: "#666", maxWidth: 460, margin: "0 auto", lineHeight: 1.6 }}>
@@ -312,7 +312,7 @@ export default function LearningPage() {
                         key={f.id}
                         onClick={() => setFluxoAtivo(f)}
                         style={{
-                          background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8,
+                          background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8,
                           padding: "14px", cursor: "pointer", textAlign: "left",
                         }}
                       >
@@ -333,7 +333,7 @@ export default function LearningPage() {
         <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 20, alignItems: "start" }}>
 
           {/* Sidebar — índice de fases e módulos */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             <div style={{ padding: "12px 16px", background: "#1A4870", color: "#fff" }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>Conteúdo do Curso</div>
               <div style={{ fontSize: 11, opacity: 0.75 }}>{FASES.length} fases • {total} lições</div>
@@ -348,7 +348,7 @@ export default function LearningPage() {
                 const aberta = faseAberta === fase.id;
 
                 return (
-                  <div key={fase.id} style={{ borderBottom: "0.5px solid #DDE2EE" }}>
+                  <div key={fase.id} style={{ borderBottom: "0.5px solid var(--border)" }}>
                     {/* Cabeçalho da fase */}
                     <button
                       onClick={() => { setFaseAberta(aberta ? "" : fase.id); setLicaoAtiva(null); }}
@@ -423,9 +423,9 @@ export default function LearningPage() {
           {/* Área de conteúdo */}
           <div>
             {licaoAtiva ? (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
                 {/* Cabeçalho da lição */}
-                <div style={{ padding: "20px 24px", borderBottom: "0.5px solid #DDE2EE" }}>
+                <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{
                       fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px",
@@ -471,7 +471,7 @@ export default function LearningPage() {
                 )}
 
                 {/* Ações */}
-                <div style={{ padding: "16px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   {/* Navegação */}
                   <div style={{ display: "flex", gap: 8 }}>
                     <LicaoNavButton
@@ -506,7 +506,7 @@ export default function LearningPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 48, textAlign: "center" }}>
+              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: 48, textAlign: "center" }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: "#1A4870", marginBottom: 8 }}>Bem-vindo ao Arato Academy</div>
                 <div style={{ fontSize: 14, color: "#666", maxWidth: 400, margin: "0 auto" }}>
@@ -527,7 +527,7 @@ export default function LearningPage() {
                       key={fase.id}
                       onClick={() => { setFaseAberta(fase.id); }}
                       style={{
-                        background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10,
+                        background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10,
                         padding: "16px", textAlign: "left", cursor: "pointer",
                       }}
                     >
@@ -549,14 +549,14 @@ export default function LearningPage() {
       </div>
 
       <style>{`
-        .learning-content h2 { font-size: 18px; font-weight: 700; color: #1A4870; margin: 24px 0 12px; border-bottom: 0.5px solid #DDE2EE; padding-bottom: 8px; }
+        .learning-content h2 { font-size: 18px; font-weight: 700; color: #1A4870; margin: 24px 0 12px; border-bottom: 0.5px solid var(--border); padding-bottom: 8px; }
         .learning-content h3 { font-size: 15px; font-weight: 600; color: #333; margin: 20px 0 8px; }
         .learning-content p { margin: 0 0 12px; }
         .learning-content table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
         .learning-content th { background: #1A4870; color: #fff; padding: 8px 12px; text-align: left; font-weight: 600; }
-        .learning-content td { padding: 7px 12px; border-bottom: 0.5px solid #DDE2EE; }
+        .learning-content td { padding: 7px 12px; border-bottom: 0.5px solid var(--border); }
         .learning-content tr:nth-child(even) td { background: #F4F6FA; }
-        .learning-content code { background: #F4F6FA; border: 0.5px solid #DDE2EE; border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: monospace; }
+        .learning-content code { background: #F4F6FA; border: 0.5px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; font-family: monospace; }
         .learning-content pre { background: #1a1a2e; color: #e2e8f0; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; overflow-x: auto; line-height: 1.6; }
         @media print {
           nav, header, button, .no-print { display: none !important; }
@@ -597,7 +597,7 @@ function LicaoNavButton({
     <button
       onClick={() => { onFaseAberta(alvo.fase.id); onSelect(alvo); }}
       style={{
-        background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8,
+        background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8,
         padding: "7px 14px", fontSize: 12, color: "var(--text-2)", cursor: "pointer",
         display: "flex", alignItems: "center", gap: 6,
       }}

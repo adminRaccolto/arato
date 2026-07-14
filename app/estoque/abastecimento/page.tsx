@@ -496,7 +496,7 @@ export default function AbastecimentoPage() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFB", borderBottom: "0.5px solid var(--border)" }}>
+                <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["Data", "Bomba / Combustível", "Veículo / Máquina", "Km / Horas", "Litros", "Valor/L", "Total", "CP", ""].map(h => (
                     <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
@@ -567,7 +567,7 @@ export default function AbastecimentoPage() {
                 })}
               </tbody>
               <tfoot>
-                <tr style={{ background: "#F8FAFB", borderTop: "0.5px solid var(--border)" }}>
+                <tr style={{ background: "var(--bg-card)", borderTop: "0.5px solid var(--border)" }}>
                   <td colSpan={4} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Total do período</td>
                   <td style={{ padding: "10px 14px", fontSize: 13, fontWeight: 700, color: "#1A4870" }}>{fmtNum(totalLitrosMes, 0)} L</td>
                   <td style={{ padding: "10px 14px" }} />
@@ -599,7 +599,7 @@ export default function AbastecimentoPage() {
               <div>
                 <label style={lbl}>Bomba / Tanque *</label>
                 {editando ? (
-                  <div style={{ ...inp, background: "#F8FAFB", color: "var(--text-2)", cursor: "default" }}>
+                  <div style={{ ...inp, background: "var(--bg-card)", color: "var(--text-2)", cursor: "default" }}>
                     {bombaSelecionada?.nome ?? editando.bomba_nome ?? "—"}
                     {bombaSelecionada && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-3)" }}>({COMB_LABEL[bombaSelecionada.combustivel] ?? bombaSelecionada.combustivel})</span>}
                   </div>

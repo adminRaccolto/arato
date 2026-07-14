@@ -250,7 +250,7 @@ export default function RelatorioEndividamento() {
           ${anos.map(a => `
             <td style="padding:3px 7px;text-align:right;font-size:9px">${(n2.porAno[a]?.amort ?? 0) > 0 ? fmtBRL(n2.porAno[a].amort) : "—"}</td>
             <td style="padding:3px 7px;text-align:right;font-size:9px;color:#C9921B">${(n2.porAno[a]?.juros ?? 0) > 0 ? fmtBRL(n2.porAno[a].juros) : "—"}</td>
-            <td style="padding:3px 7px;text-align:right;font-size:9px;border-right:2px solid #EEF1F6">${(n2.porAno[a]?.total ?? 0) > 0 ? fmtBRL(n2.porAno[a].total) : "—"}</td>
+            <td style="padding:3px 7px;text-align:right;font-size:9px;border-right:2px solid var(--bg-tag)">${(n2.porAno[a]?.total ?? 0) > 0 ? fmtBRL(n2.porAno[a].total) : "—"}</td>
           `).join("")}
           <td style="padding:3px 7px;text-align:right;font-size:9px">${fmtBRL(n2Total)}</td>
         </tr>`;
@@ -360,7 +360,7 @@ export default function RelatorioEndividamento() {
   }
 
   // ── Estilos ─────────────────────────────────────────────────────
-  const sel: React.CSSProperties = { padding: "7px 10px", borderRadius: 8, border: "0.5px solid #DDE2EE", fontSize: 12, background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", outline: "none" };
+  const sel: React.CSSProperties = { padding: "7px 10px", borderRadius: 8, border: "0.5px solid var(--border)", fontSize: 12, background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer", outline: "none" };
   const colV: React.CSSProperties = { padding: "7px 8px", textAlign: "right", fontSize: 11, whiteSpace: "nowrap" };
   const colS: React.CSSProperties = { ...colV, color: "#C9921B" };
 
@@ -404,7 +404,7 @@ export default function RelatorioEndividamento() {
           {/* Status */}
           {[{ label: "Todos", val: "" }, { label: "Ativos", val: "ativo" }, { label: "Quitados", val: "quitado" }].map(f => (
             <button key={f.val} onClick={() => setFiltroStatus(f.val)}
-              style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid #DDE2EE", fontSize: 12,
+              style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid var(--border)", fontSize: 12,
                 background: filtroStatus === f.val ? "#1A4870" : "var(--bg-card)", color: filtroStatus === f.val ? "#fff" : "var(--text-2)", cursor: "pointer" }}>
               {f.label}
             </button>
@@ -423,7 +423,7 @@ export default function RelatorioEndividamento() {
 
           {/* Parcelas */}
           <button onClick={() => setApenasEmAberto(!apenasEmAberto)}
-            style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid #DDE2EE", fontSize: 12,
+            style={{ padding: "6px 14px", borderRadius: 20, border: "0.5px solid var(--border)", fontSize: 12,
               background: apenasEmAberto ? "#FBF3E0" : "var(--bg-card)", color: apenasEmAberto ? "#C9921B" : "var(--text-2)",
               cursor: "pointer", fontWeight: apenasEmAberto ? 700 : 400 }}>
             {apenasEmAberto ? "⚠ Apenas em aberto" : "Todas as parcelas"}
@@ -431,7 +431,7 @@ export default function RelatorioEndividamento() {
         </div>
 
         {/* Filtro de intervalo de anos */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "12px 16px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "12px 16px", flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>Período (colunas):</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>De</span>
@@ -454,7 +454,7 @@ export default function RelatorioEndividamento() {
               { l: "Tudo",           i: "",        f: "" },
             ].map(s => (
               <button key={s.l} onClick={() => { setAnoInicio(s.i); setAnoFim(s.f); }}
-                style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid #DDE2EE", fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border)", fontSize: 11, background: "var(--bg-page)", color: "var(--text-2)", cursor: "pointer" }}>
                 {s.l}
               </button>
             ))}
@@ -476,7 +476,7 @@ export default function RelatorioEndividamento() {
               sub: `amort. ${fmtBRL(totalJanelaAmort)} · juros ${fmtBRL(totalJanelaJuros)}` },
             { l: "Juros Acumulados",       v: fmtBRL(totalJuros),           cor: "#C9921B" },
           ].map(k => (
-            <div key={k.l} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 20px", flex: 1, minWidth: 150 }}>
+            <div key={k.l} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 20px", flex: 1, minWidth: 150 }}>
               <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 5 }}>{k.l}</div>
               <div style={{ fontSize: 19, fontWeight: 700, color: k.cor }}>{k.v}</div>
               {k.sub && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3 }}>{k.sub}</div>}
@@ -496,17 +496,17 @@ export default function RelatorioEndividamento() {
             </button>
           </div>
         ) : filtrados.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Nenhum contrato encontrado</div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Cadastre contratos financeiros em Financeiro → Contratos Financeiros.</div>
           </div>
         ) : anos.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+          <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Nenhum vencimento no período selecionado</div>
             <div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Ajuste o intervalo de anos ou desmarque "Apenas em aberto".</div>
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: anos.length * 210 + 380 }}>
                 <thead>
@@ -629,19 +629,19 @@ export default function RelatorioEndividamento() {
                                       const totA = parcsAno.reduce((s, p) => s + p.valor_parcela, 0);
                                       return (
                                         <React.Fragment key={a}>
-                                          <td style={{ ...colV, fontSize: 11, borderLeft: "1.5px solid #EEF1F6" }}>
+                                          <td style={{ ...colV, fontSize: 11, borderLeft: "1.5px solid var(--bg-tag)" }}>
                                             {amA > 0 ? fmtBRL(amA) : <span style={{ color: "#ddd" }}>—</span>}
                                           </td>
                                           <td style={{ ...colS, fontSize: 11 }}>
                                             {juA > 0 ? fmtBRL(juA) : <span style={{ color: "#ddd" }}>—</span>}
                                           </td>
-                                          <td style={{ ...colV, fontSize: 11, fontWeight: 600, borderRight: "2px solid #EEF1F6" }}>
+                                          <td style={{ ...colV, fontSize: 11, fontWeight: 600, borderRight: "2px solid var(--bg-tag)" }}>
                                             {totA > 0 ? fmtBRL(totA) : <span style={{ color: "#ddd" }}>—</span>}
                                           </td>
                                         </React.Fragment>
                                       );
                                     })}
-                                    <td style={{ ...colV, fontSize: 11, borderLeft: "2px solid #EEF1F6" }}>{fmtBRL(cTotalPer)}</td>
+                                    <td style={{ ...colV, fontSize: 11, borderLeft: "2px solid var(--bg-tag)" }}>{fmtBRL(cTotalPer)}</td>
                                     <td />
                                   </tr>
                                 );

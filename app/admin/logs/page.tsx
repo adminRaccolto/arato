@@ -52,7 +52,7 @@ const MODULOS_LISTA = [
 ];
 
 const inputStyle: React.CSSProperties = {
-  padding: "7px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8,
+  padding: "7px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 12, color: "var(--text-1)", background: "var(--bg-card)", outline: "none",
 };
 
@@ -125,12 +125,12 @@ export default function LogSistema() {
   const usuariosUnicos = Array.from(new Set(logs.map(l => l.usuario_nome ?? l.usuario_email ?? "Sistema").filter(Boolean)));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
 
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
         {/* Cabeçalho */}
-        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--text-1)" }}>Log do Sistema</h1>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-2)" }}>Rastreamento completo de inserções, edições e exclusões por usuário</p>
@@ -161,7 +161,7 @@ export default function LogSistema() {
               { label: "Edições",           valor: kpis.update, cor: "#C9921B", bg: "#FBF3E0" },
               { label: "Exclusões",         valor: kpis.delete, cor: "#E24B4A", bg: "#FCEBEB" },
             ].map((k, i) => (
-              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: k.cor }}>
                   {k.valor.toLocaleString("pt-BR")}
                 </div>
@@ -176,7 +176,7 @@ export default function LogSistema() {
           </div>
 
           {/* Filtros */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <label style={{ fontSize: 10, color: "var(--text-2)" }}>Início</label>
               <input type="date" value={filtro.inicio} onChange={e => setF({ inicio: e.target.value })} style={{ ...inputStyle, width: 130 }} />
@@ -214,24 +214,24 @@ export default function LogSistema() {
                 placeholder="Descrição, entidade…" style={{ ...inputStyle, width: "100%" }} />
             </div>
             <button onClick={() => { setFiltro({ modulo: "", acao: "", usuario: "", inicio: "", fim: hoje, busca: "" }); setPagina(1); }}
-              style={{ padding: "7px 14px", background: "var(--bg-page)", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
+              style={{ padding: "7px 14px", background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 12, color: "var(--text-2)", cursor: "pointer" }}>
               Limpar
             </button>
           </div>
 
           {/* Tabela */}
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
-            <div style={{ padding: "11px 18px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ padding: "11px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>
                 {logsFiltrados.length.toLocaleString("pt-BR")} evento{logsFiltrados.length !== 1 ? "s" : ""}
               </span>
               {totalPaginas > 1 && (
                 <div style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12 }}>
                   <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
-                    style={{ padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "var(--bg-card)", cursor: pagina === 1 ? "not-allowed" : "pointer", opacity: pagina === 1 ? 0.4 : 1 }}>‹</button>
+                    style={{ padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", cursor: pagina === 1 ? "not-allowed" : "pointer", opacity: pagina === 1 ? 0.4 : 1 }}>‹</button>
                   <span style={{ color: "var(--text-2)" }}>Página {pagina} de {totalPaginas}</span>
                   <button onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}
-                    style={{ padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "var(--bg-card)", cursor: pagina === totalPaginas ? "not-allowed" : "pointer", opacity: pagina === totalPaginas ? 0.4 : 1 }}>›</button>
+                    style={{ padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "var(--bg-card)", cursor: pagina === totalPaginas ? "not-allowed" : "pointer", opacity: pagina === totalPaginas ? 0.4 : 1 }}>›</button>
                 </div>
               )}
             </div>
@@ -252,7 +252,7 @@ export default function LogSistema() {
                   <thead>
                     <tr style={{ background: "var(--bg-page)" }}>
                       {["Data / Hora", "Usuário", "Módulo", "Ação", "Descrição", "Entidade", ""].map(h => (
-                        <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid #DEE5EE", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "8px 14px", textAlign: "left", fontWeight: 600, fontSize: 11, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-row)", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -267,7 +267,7 @@ export default function LogSistema() {
                             {l.usuario_email && <div style={{ fontSize: 10, color: "var(--text-3)" }}>{l.usuario_email}</div>}
                           </td>
                           <td style={{ padding: "8px 14px" }}>
-                            <span style={{ fontSize: 10, background: "#EFF3FA", color: "#1A4870", padding: "2px 7px", borderRadius: 8, fontWeight: 600, textTransform: "capitalize" }}>{l.modulo}</span>
+                            <span style={{ fontSize: 10, background: "var(--bg-tag)", color: "#1A4870", padding: "2px 7px", borderRadius: 8, fontWeight: 600, textTransform: "capitalize" }}>{l.modulo}</span>
                           </td>
                           <td style={{ padding: "8px 14px" }}>
                             <span style={{ fontSize: 10, background: meta.bg, color: meta.cor, padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{meta.label}</span>
@@ -277,7 +277,7 @@ export default function LogSistema() {
                           <td style={{ padding: "8px 14px" }}>
                             {(l.dados_antes || l.dados_depois) && (
                               <button onClick={() => setDetalhe(l)}
-                                style={{ background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, padding: "3px 8px", fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
+                                style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "3px 8px", fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                                 Detalhes
                               </button>
                             )}
@@ -327,7 +327,7 @@ CREATE POLICY logs_leitura ON logs_sistema FOR SELECT USING (fazenda_id = curren
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => { if (e.target === e.currentTarget) setDetalhe(null); }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: 700, maxWidth: "95vw", maxHeight: "85vh", overflow: "auto", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid #DEE5EE", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ padding: "16px 22px", borderBottom: "0.5px solid var(--border-row)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>Detalhe do Log</div>
                 <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{fmtDt(detalhe.created_at)} · {detalhe.usuario_nome ?? detalhe.usuario_email ?? "Sistema"}</div>

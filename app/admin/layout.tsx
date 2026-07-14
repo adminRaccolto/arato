@@ -177,7 +177,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div style={{
           position: "sticky", top: 0, zIndex: 50,
           background: "var(--bg-card)",
-          borderBottom: "0.5px solid #DDE2EE",
+          borderBottom: "0.5px solid var(--border)",
           padding: "0 28px",
           height: 52,
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -212,7 +212,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               rel="noopener noreferrer"
               style={{
                 padding: "6px 14px", borderRadius: 6,
-                border: "0.5px solid #DDE2EE", background: "#F8FAFC",
+                border: "0.5px solid var(--border)", background: "var(--bg-card)",
                 fontSize: 12, color: "var(--text-2)", textDecoration: "none", fontWeight: 500,
               }}
             >

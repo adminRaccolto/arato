@@ -164,7 +164,7 @@ export default function ClassificacaoPage() {
             { label: "Total Aplicações",   valor: aplicacoes.toLocaleString("pt-BR"),                cor: "#1A4870" },
             { label: "Eficácia",           valor: regras.length > 0 ? `${Math.round((ativas / regras.length) * 100)}%` : "—", cor: "#C9921B" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: "16px 20px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: "16px 20px" }}>
               <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 26, fontWeight: 700, color: k.cor }}>{k.valor}</div>
             </div>
@@ -184,14 +184,14 @@ export default function ClassificacaoPage() {
             value={busca}
             onChange={e => setBusca(e.target.value)}
             placeholder="Buscar por nome, CNPJ, NCM ou descrição..."
-            style={{ padding: "8px 12px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 12, width: 320, background: "var(--bg-card)" }}
+            style={{ padding: "8px 12px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 12, width: 320, background: "var(--bg-card)" }}
           />
         </div>
 
         {loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "var(--text-3)" }}>Carregando…</div>
         ) : regrasFiltradas.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, padding: 48, textAlign: "center" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, padding: 48, textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🤖</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>
               {regras.length === 0 ? "Nenhuma regra criada ainda" : "Nenhuma regra encontrada"}
@@ -206,10 +206,10 @@ export default function ClassificacaoPage() {
             )}
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", border: "0.5px solid #DDE2EE", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ background: "#F8FAFC", borderBottom: "0.5px solid #DDE2EE" }}>
+                <tr style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border)" }}>
                   {["Regra", "Critérios de Match", "Classificação Destino", "Aplicações", "Última Aplicação", "Ativa", ""].map(h => (
                     <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                   ))}
@@ -220,7 +220,7 @@ export default function ClassificacaoPage() {
                   const insumo = insumos.find(ins => ins.id === r.insumo_id);
                   const cc     = centrosCusto.find(c => c.id === r.centro_custo_id);
                   return (
-                    <tr key={r.id} style={{ borderBottom: "0.5px solid #EEF1F6", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)", opacity: r.ativo ? 1 : 0.5 }}>
+                    <tr key={r.id} style={{ borderBottom: "0.5px solid var(--bg-tag)", background: i % 2 === 1 ? "#FAFBFD" : "var(--bg-card)", opacity: r.ativo ? 1 : 0.5 }}>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ fontWeight: 600 }}>{r.nome_regra || `Regra #${i + 1}`}</div>
                       </td>
@@ -251,7 +251,7 @@ export default function ClassificacaoPage() {
                       </td>
                       <td style={{ padding: "10px 14px" }}>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>Editar</button>
+                          <button onClick={() => abrirEditar(r)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid var(--border)", background: "var(--bg-card)", fontSize: 11, cursor: "pointer" }}>Editar</button>
                           <button onClick={() => excluir(r.id)} style={{ padding: "4px 10px", borderRadius: 5, border: "0.5px solid #FECACA", background: "var(--bg-card)", color: "#E24B4A", fontSize: 11, cursor: "pointer" }}>Excluir</button>
                         </div>
                       </td>
@@ -268,7 +268,7 @@ export default function ClassificacaoPage() {
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex:2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 12, width: "min(660px, 97vw)", maxHeight: "90vh", overflow: "auto" }}>
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid #DDE2EE" }}>
+            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>{editId ? "Editar Regra" : "Nova Regra de Classificação"}</div>
               <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Todos os critérios são opcionais — preencha apenas os que tornam a regra específica.</div>
             </div>
@@ -280,7 +280,7 @@ export default function ClassificacaoPage() {
                   value={form.nome_regra ?? ""}
                   onChange={e => setForm(f => ({ ...f, nome_regra: e.target.value }))}
                   placeholder="Ex: Agrícola Premium — Defensivos"
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                  style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                 />
               </div>
 
@@ -293,7 +293,7 @@ export default function ClassificacaoPage() {
                       value={form.cnpj_emitente ?? ""}
                       onChange={e => setForm(f => ({ ...f, cnpj_emitente: e.target.value }))}
                       placeholder="00.000.000/0000-00"
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                     />
                   </div>
                   <div>
@@ -302,7 +302,7 @@ export default function ClassificacaoPage() {
                       value={form.ncm ?? ""}
                       onChange={e => setForm(f => ({ ...f, ncm: e.target.value }))}
                       placeholder="3808.93"
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                     />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
@@ -311,7 +311,7 @@ export default function ClassificacaoPage() {
                       value={form.descricao_contem ?? ""}
                       onChange={e => setForm(f => ({ ...f, descricao_contem: e.target.value }))}
                       placeholder="Ex: GLIFOSATO, ADUBO NPK"
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13, boxSizing: "border-box" }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, boxSizing: "border-box" }}
                     />
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export default function ClassificacaoPage() {
                     <select
                       value={form.categoria ?? ""}
                       onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
                     >
                       <option value="">— Nenhuma —</option>
                       {CATEGORIAS.map(c => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
@@ -336,7 +336,7 @@ export default function ClassificacaoPage() {
                     <select
                       value={form.insumo_id ?? ""}
                       onChange={e => setForm(f => ({ ...f, insumo_id: e.target.value }))}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
                     >
                       <option value="">— Nenhum —</option>
                       {insumos
@@ -349,7 +349,7 @@ export default function ClassificacaoPage() {
                     <select
                       value={form.centro_custo_id ?? ""}
                       onChange={e => setForm(f => ({ ...f, centro_custo_id: e.target.value }))}
-                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid #DDE2EE", fontSize: 13 }}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13 }}
                     >
                       <option value="">— Nenhum —</option>
                       {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(cc => <option key={cc.id} value={cc.id}>{cc.codigo ? `${cc.codigo} · ` : ""}{cc.nome}</option>)}
@@ -364,7 +364,7 @@ export default function ClassificacaoPage() {
               </div>
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                <button onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid #DDE2EE", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+                <button onClick={() => setModal(false)} style={{ padding: "8px 20px", borderRadius: 7, border: "0.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-2)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
                 <button onClick={salvar} disabled={saving} style={{ padding: "8px 22px", borderRadius: 7, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   {saving ? "Salvando…" : editId ? "Salvar" : "Criar Regra"}
                 </button>

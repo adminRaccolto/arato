@@ -85,13 +85,13 @@ function isoData(ano: number, mes: number, dia: number): string {
 }
 
 // ── estilos ───────────────────────────────────────────────
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const inpSm: React.CSSProperties = { ...inp, padding: "5px 8px", fontSize: 12 };
 const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E24B4A50", borderRadius: 6, background: "#FCEBEB", cursor: "pointer", fontSize: 11, color: "#791F1F" };
-const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
+const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 
 function Modal({ titulo, subtitulo, onClose, width = 760, children }: {
   titulo: string; subtitulo?: string; onClose: () => void; width?: number; children: React.ReactNode;
@@ -848,7 +848,7 @@ export default function Arrendamentos() {
             { label: "Parcelas Pendentes",   valor: pagPend,                 bg: "#FBF3E0", color: "#7A5A12" },
             { label: "Vencidas (atrasadas)", valor: pagAtras, bg: pagAtras > 0 ? "#FCEBEB" : "var(--bg-page)", color: pagAtras > 0 ? "#791F1F" : "var(--text-3)" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid #DDE2EE" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 10, padding: "14px 18px", border: "0.5px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{k.label}</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: k.color }}>{k.valor}</div>
             </div>
@@ -856,7 +856,7 @@ export default function Arrendamentos() {
         </div>
 
         {/* abas */}
-        <div style={{ display: "flex", marginBottom: 20, borderBottom: "0.5px solid #DDE2EE" }}>
+        <div style={{ display: "flex", marginBottom: 20, borderBottom: "0.5px solid var(--border)" }}>
           {ABAS.map(a => (
             <button key={a.key} onClick={() => setAba(a.key)} style={{
               padding: "9px 22px", border: "none", background: "transparent", cursor: "pointer",
@@ -890,7 +890,7 @@ export default function Arrendamentos() {
           return (
           <div>
             {arrendamentos.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE" }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)" }}>
                 <div style={{ fontSize: 34, marginBottom: 12 }}>◻</div>
                 <div style={{ fontWeight: 600, color: "var(--text-1)", marginBottom: 6 }}>Nenhum contrato cadastrado</div>
                 <div style={{ fontSize: 13, color: "var(--text-3)" }}>Cadastre os contratos em Cadastros → Fazendas → aba Arrendamentos</div>
@@ -903,7 +903,7 @@ export default function Arrendamentos() {
                   return (
                     <div key={prodId}>
                       {/* Cabeçalho do grupo — Produtor */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: "0.5px solid #D4DCE8" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: "0.5px solid var(--border-table)" }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.05em" }}>🌾 Produtor Responsável</span>
                         {produtor ? (
                           <span style={{ fontWeight: 700, fontSize: 13, color: "#0B2D50" }}>
@@ -926,7 +926,7 @@ export default function Arrendamentos() {
                   const ehMisto = arr.forma_pagamento === "sc_soja_milho";
 
                   return (
-                    <div key={arr.id} style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+                    <div key={arr.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                       {/* cabeçalho do contrato */}
                       <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
                         onClick={() => toggleArr(arr.id)}>
@@ -1011,7 +1011,7 @@ export default function Arrendamentos() {
 
                       {/* tabela de pagamentos expandida */}
                       {expanded && (
-                        <div style={{ borderTop: "0.5px solid #EEF1F6" }}>
+                        <div style={{ borderTop: "0.5px solid var(--bg-tag)" }}>
                           {pags.length === 0 ? (
                             <div style={{ padding: "20px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>
                               Nenhuma parcela registrada — use "Gerar por Safra" ou "+ Parcela Manual"
@@ -1020,23 +1020,23 @@ export default function Arrendamentos() {
                             /* TABELA ESPECIAL sc_soja_milho — 1 linha por safra com 2 grupos de colunas */
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
-                                <tr style={{ background: "#F8FAFD" }}>
-                                  <th rowSpan={2} style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", verticalAlign: "bottom" }}>Ano Safra</th>
+                                <tr style={{ background: "var(--bg-card)" }}>
+                                  <th rowSpan={2} style={{ padding: "7px 12px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", verticalAlign: "bottom" }}>Ano Safra</th>
                                   <th colSpan={4} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #C6E8D9", borderLeft: "0.5px solid #C6E8D9", background: "#F0FDF7" }}>Soja — venc. 30/Abr</th>
                                   <th colSpan={4} style={{ padding: "7px 12px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #C5D9F1", borderLeft: "0.5px solid #C5D9F1", background: "#EBF3FC" }}>Milho — venc. 31/Jul</th>
-                                  <th rowSpan={2} style={{ padding: "7px 12px", fontSize: 11, borderBottom: "0.5px solid #EEF1F6" }}></th>
+                                  <th rowSpan={2} style={{ padding: "7px 12px", fontSize: 11, borderBottom: "0.5px solid var(--bg-tag)" }}></th>
                                 </tr>
-                                <tr style={{ background: "#F8FAFD" }}>
+                                <tr style={{ background: "var(--bg-card)" }}>
                                   {/* soja */}
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", borderLeft: "0.5px solid #C6E8D9", background: "#F0FDF7" }}>Prev.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Entregue</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Venc.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#F0FDF7" }}>Status</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", borderLeft: "0.5px solid #C6E8D9", background: "#F0FDF7" }}>Prev.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", background: "#F0FDF7" }}>Entregue</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", background: "#F0FDF7" }}>Venc.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", background: "#F0FDF7" }}>Status</th>
                                   {/* milho */}
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", borderLeft: "0.5px solid #C5D9F1", background: "#EBF3FC" }}>Prev.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Entregue</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Venc.</th>
-                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6", background: "#EBF3FC" }}>Status</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", borderLeft: "0.5px solid #C5D9F1", background: "#EBF3FC" }}>Prev.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", background: "#EBF3FC" }}>Entregue</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", background: "#EBF3FC" }}>Venc.</th>
+                                  <th style={{ padding: "5px 10px", textAlign: "right", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)", background: "#EBF3FC" }}>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1099,9 +1099,9 @@ export default function Arrendamentos() {
                             /* TABELA PADRÃO (sc_soja, sc_milho, brl) */
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                               <thead>
-                                <tr style={{ background: "#F8FAFD" }}>
+                                <tr style={{ background: "var(--bg-card)" }}>
                                   {["Ano Safra", "Vencimento", ehSc ? "Sacas Prev." : "Valor Prev.", ehSc ? "Sacas Entregues" : "Valor Pago", ehSc ? "Equiv. R$" : "Diff.", "Pgto", "Status", ""].map((h, i) => (
-                                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #EEF1F6" }}>{h}</th>
+                                    <th key={i} style={{ padding: "7px 12px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--bg-tag)" }}>{h}</th>
                                   ))}
                                 </tr>
                               </thead>
@@ -1195,12 +1195,12 @@ export default function Arrendamentos() {
                 <option value="cancelado">Cancelado</option>
               </select>
             </div>
-            <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Proprietário / Contrato", "Commodity", "Ano Safra", "Vencimento", "Previsto", "Pago", "Pgto", "Status", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "9px 14px", textAlign: i === 0 ? "left" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1216,7 +1216,7 @@ export default function Arrendamentos() {
                     const prevStr = ehSc ? (p.sacas_previstas != null ? `${fmtN(p.sacas_previstas)} sc` : "—") : (p.valor_previsto != null ? fmtR(p.valor_previsto) : "—");
                     const pagoStr = ehSc ? (p.sacas_pagas != null ? `${fmtN(p.sacas_pagas)} sc` : "—") : (p.valor_pago != null ? fmtR(p.valor_pago) : "—");
                     return (
-                      <tr key={p.id} style={{ borderBottom: pi < pagsFiltrados.length - 1 ? "0.5px solid #EEF1F6" : "none", background: atrasado ? "#FFFBF5" : "transparent" }}>
+                      <tr key={p.id} style={{ borderBottom: pi < pagsFiltrados.length - 1 ? "0.5px solid var(--bg-tag)" : "none", background: atrasado ? "#FFFBF5" : "transparent" }}>
                         <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{nomeArr(p.arrendamento_id)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--text-2)" }}>{p.commodity ?? (arr?.forma_pagamento === "brl" ? "R$" : "—")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12, color: "var(--text-2)" }}>{anosSafra.find(a => a.id === p.ano_safra_id)?.descricao ?? "—"}</td>
@@ -1246,7 +1246,7 @@ export default function Arrendamentos() {
         {!loading && aba === "calendario" && (
           <div>
             {proximos.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", color: "var(--text-3)", fontSize: 13 }}>
+              <div style={{ textAlign: "center", padding: 60, background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", color: "var(--text-3)", fontSize: 13 }}>
                 Nenhum vencimento nos próximos 12 meses
               </div>
             ) : (
@@ -1341,7 +1341,7 @@ export default function Arrendamentos() {
                 onChange={e => setFC(f => ({ ...f, locatario_nome: e.target.value }))}
                 placeholder="Ex: Rancho Alegre Ltda" />
             </div>
-            <div style={{ gridColumn: "1/-1", fontSize: 11, color: "var(--text-3)", background: "#F8FAFC", borderRadius: 6, padding: "6px 10px", lineHeight: 1.5 }}>
+            <div style={{ gridColumn: "1/-1", fontSize: 11, color: "var(--text-3)", background: "var(--bg-card)", borderRadius: 6, padding: "6px 10px", lineHeight: 1.5 }}>
               ℹ️ <strong>Locatário</strong> = quem assina o contrato como arrendatário (pode ser o grupo econômico ou empresa familiar).
               O campo <strong>Agricultor Responsável (LCDPR)</strong> abaixo deve ser o produtor físico com IE que explora a área.
             </div>
@@ -1639,33 +1639,33 @@ export default function Arrendamentos() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}>
               <thead>
-                <tr style={{ background: "#F3F6F9" }}>
-                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", width: 30 }}>
+                <tr style={{ background: "var(--bg-page)" }}>
+                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", width: 30 }}>
                     <input type="checkbox" checked={configSafras.every(c => c.incluir)}
                       onChange={e => setConfigSafras(cs => cs.map(c => ({ ...c, incluir: e.target.checked })))} />
                   </th>
-                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE" }}>Ano Safra</th>
+                  <th style={{ padding: "8px 10px", textAlign: "left",   fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)" }}>Ano Safra</th>
                   {(selArrGerador.forma_pagamento === "sc_soja" || selArrGerador.forma_pagamento === "sc_soja_milho") && <>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Soja sc/ha</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Total Soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Preço R$/sc</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Venc. Soja</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Soja sc/ha</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Total Soja</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Preço R$/sc</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Venc. Soja</th>
                   </>}
                   {(selArrGerador.forma_pagamento === "sc_milho" || selArrGerador.forma_pagamento === "sc_soja_milho") && <>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Milho sc/ha</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Total Milho</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Preço R$/sc</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Venc. Milho</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Milho sc/ha</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Total Milho</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Preço R$/sc</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Venc. Milho</th>
                   </>}
                   {selArrGerador.forma_pagamento === "brl" && <>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Soja sc/ha</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Cotação soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Valor Soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid #DDE2EE", background: "#F0FDF7" }}>Venc. Soja</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Milho sc/ha</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Cotação milho</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Valor Milho</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid #DDE2EE", background: "#EBF3FC" }}>Venc. Milho</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Soja sc/ha</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Cotação soja</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Valor Soja</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#14532D", borderBottom: "0.5px solid var(--border)", background: "#F0FDF7" }}>Venc. Soja</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Milho sc/ha</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Cotação milho</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Valor Milho</th>
+                    <th style={{ padding: "8px 10px", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#0C447C", borderBottom: "0.5px solid var(--border)", background: "#EBF3FC" }}>Venc. Milho</th>
                   </>}
                 </tr>
               </thead>
@@ -1678,7 +1678,7 @@ export default function Arrendamentos() {
                   const precoSojaN  = parseFloat(cfg.preco_soja.replace(",", ".")) || 0;
                   const precoMilhoN = parseFloat(cfg.preco_milho.replace(",", ".")) || 0;
                   return (
-                    <tr key={cfg.ano_safra_id || i} style={{ borderBottom: "0.5px solid #EEF1F6", opacity: cfg.incluir ? 1 : 0.4 }}>
+                    <tr key={cfg.ano_safra_id || i} style={{ borderBottom: "0.5px solid var(--bg-tag)", opacity: cfg.incluir ? 1 : 0.4 }}>
                       <td style={{ padding: "6px 10px", textAlign: "center" }}>
                         <input type="checkbox" checked={cfg.incluir}
                           onChange={e => setConfigSafras(cs => cs.map((c, j) => j === i ? { ...c, incluir: e.target.checked } : c))} />

@@ -24,7 +24,7 @@ const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const fmtN    = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 
 const MODALIDADES: Record<AdubacaoBase["modalidade"], { label: string; bg: string; color: string }> = {
-  convencional:  { label: "Convencional",   bg: "#F3F6F9", color: "var(--text-1)" },
+  convencional:  { label: "Convencional",   bg: "var(--bg-page)", color: "var(--text-1)" },
   sulco:         { label: "Sulco",          bg: "#E6F1FB", color: "#0C447C" },
   broadcast:     { label: "Broadcast",      bg: "#FBF3E0", color: "#7A5A12" },
   foliar:        { label: "Foliar",         bg: "#ECFDF5", color: "#14532D" },
@@ -153,7 +153,7 @@ export default function AdubacaoBasePage() {
   const talhaoLabel = (id?: string) => talhoes.find(t => t.id === id)?.nome ?? "—";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -195,7 +195,7 @@ export default function AdubacaoBasePage() {
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Safra / Talhão", "Modalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
                       <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
@@ -303,7 +303,7 @@ export default function AdubacaoBasePage() {
                     onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, produto_nome: e.target.value } : x))} />
                   <InputNumerico style={inp} decimais={0} placeholder="Ex: 350" value={it.dose_kg_ha}
                     onChange={v => setItens(p => p.map((x, i) => i === idx ? { ...x, dose_kg_ha: v } : x))} />
-                  <div style={{ ...inp, background: "#F3F6F9", color: "var(--text-2)", textAlign: "center" as const }}>
+                  <div style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)", textAlign: "center" as const }}>
                     {qtd > 0 ? fmtN(qtd, 0) : "—"} kg
                   </div>
                   <button style={btnX} onClick={() => removeItem(idx)}>✕</button>

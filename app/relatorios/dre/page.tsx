@@ -583,7 +583,7 @@ export default function DrePage() {
                     onClick={() => setCiclosSel(sel ? ciclosSel.filter(x => x !== c.id) : [...ciclosSel, c.id])}
                     style={{
                       padding: "5px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer",
-                      background: sel ? "#1A4870" : "#F3F6F9",
+                      background: sel ? "#1A4870" : "var(--bg-page)",
                       color: sel ? "#fff" : "#333",
                       border: sel ? "none" : "0.5px solid var(--border)",
                       fontWeight: sel ? 600 : 400,
@@ -605,7 +605,7 @@ export default function DrePage() {
                 onClick={() => setViewMode(m)}
                 style={{
                   padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer",
-                  background: viewMode === m ? "#1A4870" : "#F3F6F9",
+                  background: viewMode === m ? "#1A4870" : "var(--bg-page)",
                   color: viewMode === m ? "#fff" : "#333",
                   border: viewMode === m ? "none" : "0.5px solid var(--border)",
                 }}
@@ -691,7 +691,7 @@ export default function DrePage() {
                       const bg = isSubtotal
                         ? l.tipo === "resultado"
                           ? l.valor >= 0 ? "#EBF9F1" : "#FEF2F2"
-                          : "#F3F6F9"
+                          : "var(--bg-page)"
                         : isHeader ? "#FAFBFD" : "#fff";
 
                       const textColor = isSubtotal && l.tipo === "resultado"
@@ -846,7 +846,7 @@ export default function DrePage() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, color: "var(--text-2)", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>Indicador</th>
                     {dres.map(d => (
                       <th key={d.ciclo.id} style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontSize: 12, border: "0.5px solid var(--bg-tag)" }}>

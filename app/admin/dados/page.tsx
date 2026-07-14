@@ -289,7 +289,7 @@ export default function DadosAdminPage() {
     setSubSelecionados(novo);
   }
 
-  const card: React.CSSProperties = { background: "white", borderRadius: 10, border: "0.5px solid #DDE2EE" };
+  const card: React.CSSProperties = { background: "white", borderRadius: 10, border: "0.5px solid var(--border)" };
 
   return (
     <div>
@@ -324,11 +324,11 @@ export default function DadosAdminPage() {
             <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", whiteSpace: "nowrap" }}>1. Cliente</span>
             <select value={contaSelecionada}
               onChange={e => { setContaSelecionada(e.target.value); setConfirmaTexto(""); setResultadoCliente(null); }}
-              style={{ flex: 1, padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
+              style={{ flex: 1, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
               <option value="">— selecione —</option>
               {contas.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.fazendas.length} faz.)</option>)}
             </select>
-            <button onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
+            <button onClick={carregarContas} title="Recarregar" style={{ padding: "7px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
               {carregandoContas ? "⏳" : "↺"}
             </button>
           </div>
@@ -388,7 +388,7 @@ export default function DadosAdminPage() {
               <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>1. Cliente</div>
               <select value={contaLimpar}
                 onChange={e => { setContaLimpar(e.target.value); setFazendaLimpar(""); setContagens({}); setSubSelecionados(new Set()); setResultadoLimpeza(null); }}
-                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
                 <option value="">— selecione —</option>
                 {contas.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.fazendas.length} faz.)</option>)}
               </select>
@@ -399,7 +399,7 @@ export default function DadosAdminPage() {
                 <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>2. Fazenda</div>
                 <select value={fazendaLimpar}
                   onChange={e => { setFazendaLimpar(e.target.value); setContagens({}); setSubSelecionados(new Set()); setResultadoLimpeza(null); }}
-                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
+                  style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}>
                   <option value="">— selecione —</option>
                   {contaLimparObj.fazendas.length > 1 && <option value="todas">Todas as fazendas</option>}
                   {contaLimparObj.fazendas.map(f => <option key={f.id} value={f.id}>{f.nome} ({f.municipio}/{f.estado})</option>)}
@@ -460,11 +460,11 @@ export default function DadosAdminPage() {
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={selecionarTudo}
-                      style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
+                      style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                       Marcar tudo
                     </button>
                     <button onClick={() => { setSubSelecionados(new Set()); setGruposExpandidos(new Set()); }}
-                      style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
+                      style={{ padding: "5px 10px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 11, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                       Limpar
                     </button>
                   </div>
@@ -595,9 +595,9 @@ export default function DadosAdminPage() {
                 {/* Resultado */}
                 {resultadoLimpeza && (
                   <div style={{ marginTop: 14, ...card, overflow: "hidden" }}>
-                    <div style={{ padding: "10px 18px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Resultado da limpeza</div>
+                    <div style={{ padding: "10px 18px", borderBottom: "0.5px solid var(--border)", fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Resultado da limpeza</div>
                     {resultadoLimpeza.map((r, i) => (
-                      <div key={i} style={{ padding: "10px 18px", borderBottom: "0.5px solid #DDE2EE", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <div key={i} style={{ padding: "10px 18px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 10, alignItems: "flex-start" }}>
                         <span style={{ fontSize: 14 }}>{r.ok ? "✅" : "⚠️"}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 13, color: r.ok ? "#15803D" : "#C9921B" }}>

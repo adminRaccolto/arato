@@ -250,7 +250,7 @@ export default function AdiantamentosPage() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFC" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   {["Fornecedor", "Descrição", "Nº Doc", "Emissão", "Previsão Entrega", "Valor", "Aplicado", "Saldo", "Status", ""].map((h, i) => (
                     <th key={i} style={{ ...thS, textAlign: i >= 5 && i <= 7 ? "right" : "left" }}>{h}</th>
                   ))}
@@ -460,7 +460,7 @@ export default function AdiantamentosPage() {
               ["Aplicado", fmtBRL(modalDetalhe.valor_aplicado ?? 0)],
               ["Saldo", fmtBRL(modalDetalhe.valor - (modalDetalhe.valor_aplicado ?? 0))],
             ].map(([k, v]) => (
-              <div key={k} style={{ background: "#F8FAFC", borderRadius: 8, padding: "10px 12px" }}>
+              <div key={k} style={{ background: "var(--bg-card)", borderRadius: 8, padding: "10px 12px" }}>
                 <div style={{ fontSize: 10, color: "#666", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{k}</div>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{v}</div>
               </div>
@@ -489,7 +489,7 @@ export default function AdiantamentosPage() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F8FAFC" }}>
+                <tr style={{ background: "var(--bg-card)" }}>
                   {["Data", "Descrição", "NF / Ref.", "Valor Aplicado"].map((h, i) => (
                     <th key={i} style={{ ...thS, textAlign: i === 3 ? "right" : "left" }}>{h}</th>
                   ))}

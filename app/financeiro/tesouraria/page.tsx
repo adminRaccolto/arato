@@ -9,10 +9,10 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos base
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
 
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtData = (s?: string) => s ? new Date(s + "T12:00:00").toLocaleDateString("pt-BR") : "—";
@@ -175,7 +175,7 @@ export default function TesourariaPage() {
             { label: "Total Saídas",      value: fmtBRL(totalSaidas),   color: "#E24B4A" },
             { label: "Lançamentos em Aberto", value: String(emAberto),  color: "#1A4870" },
           ].map(k => (
-            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "16px 18px" }}>
+            <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: k.color }}>{k.value}</div>
             </div>
@@ -184,23 +184,23 @@ export default function TesourariaPage() {
 
         {/* Lista de lançamentos */}
         {lancamentos.length === 0 ? (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             Nenhum lançamento de tesouraria registrado.<br />
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Use o botão "+ Novo Lançamento" para registrar.</span>
           </div>
         ) : (
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F3F6F9" }}>
+                <tr style={{ background: "var(--bg-page)" }}>
                   {["Data", "Operação", "Descrição", "Conta", "Entrada", "Saída", "Status", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Entrada" || h === "Saída" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 12px", textAlign: h === "Entrada" || h === "Saída" ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {lancamentos.map((l, li) => (
-                  <tr key={l.id} style={{ borderBottom: li < lancamentos.length - 1 ? "0.5px solid #DEE5EE" : "none", borderLeft: `3px solid ${l.tipo === "receber" ? "#16A34A" : "#E24B4A"}` }}>
+                  <tr key={l.id} style={{ borderBottom: li < lancamentos.length - 1 ? "0.5px solid var(--border-row)" : "none", borderLeft: `3px solid ${l.tipo === "receber" ? "#16A34A" : "#E24B4A"}` }}>
                     <td style={{ padding: "9px 12px", fontSize: 12, color: "#444", whiteSpace: "nowrap" }}>{fmtData(l.data_lancamento)}</td>
                     <td style={{ padding: "9px 12px" }}>
                       <span style={{ fontSize: 10, background: "#EEE6F8", color: "#4A1A7A", padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{l.categoria}</span>
@@ -244,7 +244,7 @@ export default function TesourariaPage() {
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
             <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
-              <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Novo Lançamento de Tesouraria</div>
                 <button onClick={() => setModalLanc(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
               </div>
@@ -383,7 +383,7 @@ export default function TesourariaPage() {
                   <textarea value={lForm.observacao} onChange={e => setLForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                 </div>
               </div>
-              <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid #EEF1F6", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button style={btnR} onClick={() => setModalLanc(false)}>Cancelar</button>
                 <button onClick={salvarLancTesoura} disabled={lSaving} style={{ ...btnV, background: lSaving ? "var(--text-muted)" : "#1A4870", cursor: lSaving ? "default" : "pointer" }}>
                   {lSaving ? "Salvando…" : "Salvar"}

@@ -85,7 +85,7 @@ function diasRestantes(venc?: string | null): number | null {
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "8px 10px",
-  border: "0.5px solid #D4DCE8", borderRadius: 8,
+  border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
@@ -101,12 +101,12 @@ const btnPrimary: React.CSSProperties = {
 
 const btnSecondary: React.CSSProperties = {
   padding: "8px 18px", background: "var(--bg-card)", color: "var(--text-2)",
-  border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+  border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
 const btnSmall: React.CSSProperties = {
   padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-  cursor: "pointer", border: "0.5px solid #D4DCE8", background: "var(--bg-card)", color: "#0B1E35",
+  cursor: "pointer", border: "0.5px solid var(--border-table)", background: "var(--bg-card)", color: "#0B1E35",
 };
 
 // ─── Modal editar cliente (reutilizado do admin/page.tsx) ─────────────────────
@@ -263,7 +263,7 @@ function ModalCliente({ conta, onClose, onSalvo }: { conta: ContaAdmin; onClose:
 
           {erro && <div style={{ padding: "8px 12px", background: "#FEF2F2", borderRadius: 8, color: "#991B1B", fontSize: 12, marginBottom: 12 }}>{erro}</div>}
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid #EEF1F6" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20, paddingTop: 16, borderTop: "0.5px solid var(--bg-tag)" }}>
             <button style={btnSecondary} onClick={onClose}>Cancelar</button>
             <button style={btnPrimary} onClick={salvar} disabled={salvando || !form.nome}>
               {salvando ? "Salvando…" : "Salvar alterações"}
@@ -609,7 +609,7 @@ export default function ClientesPage() {
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map(k => (
-          <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
+          <div key={k.label} style={{ background: k.bg, borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 16px" }}>
             <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{k.label}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: k.cor }}>{k.valor}</div>
           </div>
@@ -697,7 +697,7 @@ export default function ClientesPage() {
       )}
 
       {/* Filtros */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", padding: "12px 16px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <input style={{ ...inp, width: 240 }} placeholder="Buscar por nome ou e-mail..." value={busca} onChange={e => setBusca(e.target.value)} />
         <select style={{ ...inp, width: 150 }} value={filtroPacote} onChange={e => setFiltroPacote(e.target.value as PacoteCliente | "")}>
           <option value="">Todos os pacotes</option>
@@ -724,7 +724,7 @@ export default function ClientesPage() {
       </div>
 
       {/* Tabela */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #D4DCE8", overflow: "hidden" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
         {loading ? (
           <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)" }}>Carregando…</div>
         ) : filtrados.length === 0 ? (
@@ -732,12 +732,12 @@ export default function ClientesPage() {
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F8FAFC" }}>
+              <tr style={{ background: "var(--bg-card)" }}>
                 {["Cliente", "Pacote", "Status", "CRM", "Local", "Desde", "Vencimento", "Mensalidade", "Fazendas", "Ações"].map((h, i) => (
                   <th key={i} style={{
                     padding: "10px 12px", textAlign: i >= 5 && i <= 8 ? "center" : "left",
                     fontSize: 11, fontWeight: 600, color: "var(--text-3)",
-                    borderBottom: "0.5px solid #D4DCE8",
+                    borderBottom: "0.5px solid var(--border-table)",
                     textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap",
                   }}>{h}</th>
                 ))}
@@ -753,7 +753,7 @@ export default function ClientesPage() {
 
                 return (
                   <tr key={c.id} style={{
-                    borderBottom: i < filtrados.length - 1 ? "0.5px solid #EEF1F6" : "none",
+                    borderBottom: i < filtrados.length - 1 ? "0.5px solid var(--bg-tag)" : "none",
                     background: c._sem_conta ? "#FFFBF0" : c.status === "pro_bono" ? "#F0F7FF" : "transparent",
                   }}>
                     <td style={{ padding: "10px 12px", minWidth: 160 }}>
@@ -825,7 +825,7 @@ export default function ClientesPage() {
                       {fmtBRL(c.valor_mensalidade)}
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                      <span style={{ background: "#F3F6F9", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
+                      <span style={{ background: "var(--bg-page)", borderRadius: 6, padding: "2px 10px", fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
                         {c.fazendas_count}
                       </span>
                     </td>

@@ -47,7 +47,7 @@ export default function PlanosPage() {
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0B2D50", margin: "0 0 4px" }}>Planos & Módulos</h1>
         <p style={{ fontSize: 13, color: "#666", margin: 0 }}>
-          Para alterar preços, edite <code style={{ background: "#F3F6F9", padding: "1px 6px", borderRadius: 4 }}>lib/planos.ts</code> e faça deploy.
+          Para alterar preços, edite <code style={{ background: "var(--bg-page)", padding: "1px 6px", borderRadius: 4 }}>lib/planos.ts</code> e faça deploy.
           Cobrança e links de pagamento são gerenciados pelo <strong>Mentorasys</strong>.
         </p>
       </div>
@@ -100,17 +100,17 @@ export default function PlanosPage() {
       </div>
 
       {/* Tabela comparativa */}
-      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid #DDE2EE", background: "#F8FAFC" }}>
+      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: "0.5px solid var(--border)", background: "var(--bg-card)" }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "#0B2D50", margin: 0 }}>Tabela Comparativa de Módulos</h2>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#F8FAFC" }}>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid #DDE2EE", width: 220 }}>Módulo</th>
+              <tr style={{ background: "var(--bg-card)" }}>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "var(--text-2)", borderBottom: "0.5px solid var(--border)", width: 220 }}>Módulo</th>
                 {PLANO_IDS.map(pid => (
-                  <th key={pid} style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, fontWeight: 700, borderBottom: "0.5px solid #DDE2EE", color: COR[pid].label }}>
+                  <th key={pid} style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, fontWeight: 700, borderBottom: "0.5px solid var(--border)", color: COR[pid].label }}>
                     {PLANOS_DEFAULT[pid].nome}
                     <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginTop: 2 }}>{fmtPreco(PLANOS_DEFAULT[pid].preco_mensal)}/mês</div>
                   </th>

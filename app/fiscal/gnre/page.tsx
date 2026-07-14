@@ -74,12 +74,12 @@ const VAZIO: Omit<GnreGuia, "id" | "fazenda_id" | "created_at"> = {
 
 // ─── Estilos base ─────────────────────────────────────────────
 const inp: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8",
+  width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)",
   borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 22px" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 22px" };
 
 // ─── Componente ───────────────────────────────────────────────
 export default function GnrePage() {
@@ -267,7 +267,7 @@ export default function GnrePage() {
               <thead>
                 <tr style={{ background: "#F8FAFF" }}>
                   {["Tipo/Receita","UF","Doc. Origem","Competência","Vencimento","Valor Total","Status","Ações"].map(h => (
-                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                    <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -309,7 +309,7 @@ export default function GnrePage() {
                             </button>
                           )}
                           <button onClick={() => abrirModal(g)}
-                            style={{ padding: "4px 10px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 6, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
+                            style={{ padding: "4px 10px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "var(--text-2)", cursor: "pointer" }}>
                             Editar
                           </button>
                           {g.status !== "paga" && g.status !== "cancelada" && (
@@ -335,7 +335,7 @@ export default function GnrePage() {
           onClick={e => { if (e.target === e.currentTarget) fecharModal(); }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 680, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
 
-            <div style={{ padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>{editando ? "Editar GNRE" : "Nova GNRE"}</span>
               <button onClick={fecharModal} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
             </div>
@@ -432,8 +432,8 @@ export default function GnrePage() {
               </div>
             </div>
 
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
+            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button onClick={fecharModal} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
               <button onClick={salvar} disabled={salvando || !form.tipo_receita || !form.uf_favorecida}
                 style={{ padding: "9px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvando ? 0.7 : 1 }}>
                 {salvando ? "Salvando..." : editando ? "Salvar" : "Criar GNRE"}
@@ -455,7 +455,7 @@ export default function GnrePage() {
             <label style={lbl}>Data do Pagamento</label>
             <input type="date" value={dataPgto} onChange={e => setDataPgto(e.target.value)} style={{ ...inp, marginBottom: 20 }} />
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
+              <button onClick={() => setPagarModal(null)} style={{ flex: 1, padding: "9px 0", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
               <button onClick={registrarPagamento} style={{ flex: 1, padding: "9px 0", background: "#16A34A", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Confirmar</button>
             </div>
           </div>

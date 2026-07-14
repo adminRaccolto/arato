@@ -68,7 +68,7 @@ export default function AlterarSenha() {
                   autoFocus
                   placeholder="Mínimo 8 caracteres"
                   style={{
-                    width: "100%", padding: "10px 44px 10px 12px", border: "0.5px solid #D4DCE8",
+                    width: "100%", padding: "10px 44px 10px 12px", border: "0.5px solid var(--border-table)",
                     borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
                     boxSizing: "border-box", outline: "none",
                     borderColor: novaSenha && novaSenha.length < 8 ? "#E24B4A" : "var(--border-table)",
@@ -97,7 +97,7 @@ export default function AlterarSenha() {
                 required
                 placeholder="Repita a nova senha"
                 style={{
-                  width: "100%", padding: "10px 12px", border: "0.5px solid #D4DCE8",
+                  width: "100%", padding: "10px 12px", border: "0.5px solid var(--border-table)",
                   borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
                   boxSizing: "border-box", outline: "none",
                   borderColor: confirmSenha && confirmSenha !== novaSenha ? "#E24B4A" : "var(--border-table)",

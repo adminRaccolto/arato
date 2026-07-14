@@ -24,7 +24,7 @@ const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 const fmtN    = (v?: number | null, d = 2) => v != null ? v.toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d }) : "—";
 
 const FINALIDADES: Record<CorrecaoSolo["finalidade"], { label: string; bg: string; color: string }> = {
-  calcario:        { label: "Calcário",        bg: "#F3F6F9", color: "var(--text-1)" },
+  calcario:        { label: "Calcário",        bg: "var(--bg-page)", color: "var(--text-1)" },
   gesso:           { label: "Gesso Agrícola",  bg: "#FBF3E0", color: "#7A5A12" },
   micronutrientes: { label: "Micronutrientes", bg: "#E6F1FB", color: "#0C447C" },
   organico:        { label: "Orgânico",        bg: "#ECFDF5", color: "#14532D" },
@@ -152,7 +152,7 @@ export default function CorrecaoSoloPage() {
   const talhaoLabel = (id?: string) => talhoes.find(t => t.id === id)?.nome ?? "—";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#F3F6F9", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-page)", fontFamily: "system-ui, sans-serif", fontSize: 13 }}>
       <TopNav />
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <header style={{ background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)", padding: "10px 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -194,7 +194,7 @@ export default function CorrecaoSoloPage() {
             <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Safra / Talhão", "Finalidade", "Área", "Data", "Custo Total", ""].map((h, i) => (
                       <th key={i} style={{ padding: "8px 14px", textAlign: i === 0 ? "left" : "center", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
@@ -302,7 +302,7 @@ export default function CorrecaoSoloPage() {
                     onChange={e => setItens(p => p.map((x, i) => i === idx ? { ...x, produto_nome: e.target.value } : x))} />
                   <InputNumerico style={inp} placeholder="Ex: 2,5" value={it.dose_ton_ha}
                     onChange={v => setItens(p => p.map((x, i) => i === idx ? { ...x, dose_ton_ha: v } : x))} />
-                  <div style={{ ...inp, background: "#F3F6F9", color: "var(--text-2)", textAlign: "center" as const }}>
+                  <div style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)", textAlign: "center" as const }}>
                     {qtd > 0 ? fmtN(qtd) : "—"} t
                   </div>
                   <button style={btnX} onClick={() => removeItem(idx)}>✕</button>

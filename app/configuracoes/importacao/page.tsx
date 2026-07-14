@@ -918,11 +918,11 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ background: "var(--bg-page)" }}>
-            <th style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>#</th>
+            <th style={{ padding: "6px 10px", border: "0.5px solid var(--border)", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>#</th>
             {colunas.map(c => (
-              <th key={c} style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>{c}</th>
+              <th key={c} style={{ padding: "6px 10px", border: "0.5px solid var(--border)", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>{c}</th>
             ))}
-            <th style={{ padding: "6px 10px", border: "0.5px solid #DDE2EE", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Status</th>
+            <th style={{ padding: "6px 10px", border: "0.5px solid var(--border)", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -931,13 +931,13 @@ function PreviewTable({ rows, colunas }: { rows: Record<string, unknown>[]; colu
             const msg    = (row as Record<string, unknown>)._msg as string;
             return (
               <tr key={i} style={{ background: status === "erro" ? "#FFF0F0" : status === "duplicado" ? "#FFFBE0" : status === "aviso" ? "#FFF8EC" : "white" }}>
-                <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "var(--text-3)" }}>{i + 1}</td>
+                <td style={{ padding: "5px 10px", border: "0.5px solid var(--border)", color: "var(--text-3)" }}>{i + 1}</td>
                 {colunas.map(c => (
-                  <td key={c} style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE", color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <td key={c} style={{ padding: "5px 10px", border: "0.5px solid var(--border)", color: "var(--text-1)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {String((row as Record<string, unknown>)[c] ?? "")}
                   </td>
                 ))}
-                <td style={{ padding: "5px 10px", border: "0.5px solid #DDE2EE" }}>
+                <td style={{ padding: "5px 10px", border: "0.5px solid var(--border)" }}>
                   {status === "ok"        && <span style={{ color: "#16A34A", fontWeight: 600 }}>✓ ok</span>}
                   {status === "aviso"     && <span style={{ color: "#C9921B", fontWeight: 600 }}>⚡ {msg}</span>}
                   {status === "duplicado" && <span style={{ color: "var(--text-3)",    fontWeight: 600 }}>⏭ {msg || "duplicado"}</span>}
@@ -976,7 +976,7 @@ function Resultado({ ok, erros, duplicados, atualizados, total, labelDuplicados 
 // ─── Referência de categorias (Produtos) ─────────────────────
 function RefCategorias() {
   return (
-    <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "14px 16px" }}>
+    <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "14px 16px" }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: "#1A4870", marginBottom: 10 }}>
         Categorias de Produtos
       </div>
@@ -988,7 +988,7 @@ function RefCategorias() {
           { cat: "escritorio",  label: "Escritório",    desc: "Papelaria, cartuchos, informática" },
           { cat: "outros",      label: "Outros",        desc: "Demais itens não classificados" },
         ].map(({ cat, label, desc }) => (
-          <div key={cat} style={{ padding: "8px 12px", background: "white", borderRadius: 8, border: "0.5px solid #DDE2EE" }}>
+          <div key={cat} style={{ padding: "8px 12px", background: "white", borderRadius: 8, border: "0.5px solid var(--border)" }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>{label}</div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{desc}</div>
             <code style={{ fontSize: 11, color: "#1A4870", background: "#D5E8F5", padding: "1px 5px", borderRadius: 4, marginTop: 4, display: "inline-block" }}>{cat}</code>
@@ -2422,7 +2422,7 @@ function ImportacaoInner() {
 
         {/* Sidebar de abas */}
         <div style={{ width: 200, flexShrink: 0 }}>
-          <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
+          <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
             {(["pessoas", "cp", "cr", "insumos", "produtos", "maquinas", "contratos_fin", "arrendamentos", "contratos_venda", "produtores_imp", "fazendas_imp", "talhoes_imp", "funcionarios"] as Aba[]).map(a => {
               const c = ABA_CONFIG[a];
               return (
@@ -2432,7 +2432,7 @@ function ImportacaoInner() {
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     width: "100%", padding: "12px 16px",
-                    border: "none", borderBottom: "0.5px solid #DDE2EE",
+                    border: "none", borderBottom: "0.5px solid var(--border)",
                     background: aba === a ? "#D5E8F5" : "transparent",
                     color: aba === a ? "#1A4870" : "var(--text-2)",
                     fontWeight: aba === a ? 700 : 400,
@@ -2459,7 +2459,7 @@ function ImportacaoInner() {
 
         {/* Área principal */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 24 }}>
+          <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: 24 }}>
 
             {/* Cabeçalho da aba */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
@@ -2558,7 +2558,7 @@ function ImportacaoInner() {
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={limpar}
-                      style={{ padding: "7px 14px", background: "white", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}
+                      style={{ padding: "7px 14px", background: "white", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--text-3)", cursor: "pointer" }}
                     >
                       Limpar
                     </button>

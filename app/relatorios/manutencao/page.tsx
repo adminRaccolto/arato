@@ -498,7 +498,7 @@ function RelManutInner() {
                               </td>
                             </tr>
                           ))}
-                          <tr style={{ background: "#EFF3FA", borderTop: "1px solid #D5E8F5" }}>
+                          <tr style={{ background: "var(--bg-tag)", borderTop: "1px solid #D5E8F5" }}>
                             <td colSpan={3} style={{ padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#1A4870", textAlign: "right" }}>
                               Subtotal — {g.maquina_nome}
                             </td>

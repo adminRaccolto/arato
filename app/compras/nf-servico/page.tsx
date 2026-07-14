@@ -11,11 +11,11 @@ import PlanoGate from "../../../components/PlanoGate";
 // ─────────────────────────────────────────────────────────────
 // Estilos
 // ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-input)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
 const btnV: React.CSSProperties = { padding: "8px 20px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", padding: "18px 20px", marginBottom: 16 };
+const btnR: React.CSSProperties = { padding: "8px 18px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-1)" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "18px 20px", marginBottom: 16 };
 const toggle: React.CSSProperties = { width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s" };
 
 const fmtBRL  = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -370,7 +370,7 @@ export default function NfServicoPage() {
             { label: "Processadas",    value: String(nfs.filter(n=>n.status==="processada").length), bg: "#E8F5E9" },
             { label: "Pendentes",      value: String(nfs.filter(n=>n.status==="pendente").length),   bg: "#FBF3E0" },
           ].map(({ label, value, bg }) => (
-            <div key={label} style={{ background: bg, border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "14px 18px" }}>
+            <div key={label} style={{ background: bg, border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-1)" }}>{value}</div>
             </div>
@@ -400,9 +400,9 @@ export default function NfServicoPage() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#F3F6F9" }}>
+                <tr style={{ background: "var(--bg-page)" }}>
                   {["Nº", "Prestador", "Competência", "Serviço (LC 116)", "Valor Serv.", "ISS", "Líquido", "Status", "Ações"].map((c, i) => (
-                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8", whiteSpace: "nowrap" }}>{c}</th>
+                    <th key={i} style={{ padding: "8px 12px", textAlign: i >= 4 ? "right" : "left", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
@@ -410,7 +410,7 @@ export default function NfServicoPage() {
                 {nfsFilt.map(nf => {
                   const sm = STATUS_META[nf.status] ?? STATUS_META["pendente"];
                   return (
-                    <tr key={nf.id} style={{ borderBottom: "0.5px solid #EEF1F6" }}>
+                    <tr key={nf.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
                       <td style={{ padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>
                         {nf.numero_nf}<span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400 }}>/{nf.serie}</span>
                       </td>
@@ -436,7 +436,7 @@ export default function NfServicoPage() {
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                           {nf.status !== "processada" && nf.status !== "cancelada" && (
-                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
+                            <button onClick={() => abrirEditar(nf)} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#1A4870", fontWeight: 600 }}>
                               Editar
                             </button>
                           )}
@@ -469,7 +469,7 @@ export default function NfServicoPage() {
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 860, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
             {/* Header modal */}
-            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid #EEF1F6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ padding: "20px 24px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>
                   {nfEdit ? `NF Serviço ${nfEdit.numero_nf}` : "Nova NF de Serviço"}
@@ -486,7 +486,7 @@ export default function NfServicoPage() {
                   const passado = ordem.indexOf(etapa) > i;
                   return (
                     <div key={e} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#1A4870" : passado ? "#D5E8F5" : "#F3F6F9", color: ativo ? "#fff" : passado ? "#1A4870" : "var(--text-muted)" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, background: ativo ? "#1A4870" : passado ? "#D5E8F5" : "var(--bg-page)", color: ativo ? "#fff" : passado ? "#1A4870" : "var(--text-muted)" }}>
                         {i + 1}
                       </div>
                       {i < 2 && <div style={{ width: 20, height: 1, background: "var(--border-table)" }} />}

@@ -107,7 +107,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
     <aside style={{
       width: aberto ? 220 : 52,
       background: "var(--bg-card)",
-      borderRight: "0.5px solid #D4DCE8",
+      borderRight: "0.5px solid var(--border-table)",
       display: "flex",
       flexDirection: "column",
       transition: "width 0.18s",
@@ -115,7 +115,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
       flexShrink: 0,
     }}>
       {/* Logo */}
-      <div style={{ padding: "14px 12px", borderBottom: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ padding: "14px 12px", borderBottom: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 30, height: 30, background: "#1A4870", borderRadius: 7,
           display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -133,7 +133,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
 
       {/* Fazenda ativa */}
       {aberto && fazenda && (
-        <div style={{ padding: "8px 12px 10px", borderBottom: "0.5px solid #D4DCE8" }}>
+        <div style={{ padding: "8px 12px 10px", borderBottom: "0.5px solid var(--border-table)" }}>
           <div style={{ fontSize: 10, color: "#444", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             Fazenda ativa
           </div>
@@ -182,7 +182,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
 
                 {/* Sub-itens */}
                 {aberto && expanded && (
-                  <div style={{ background: "#F8FAFD", borderBottom: "0.5px solid #DEE5EE" }}>
+                  <div style={{ background: "#F8FAFD", borderBottom: "0.5px solid var(--border-row)" }}>
                     {item.children.map(child => {
                       const ativoChild = isAtivo(child.path);
                       return (
@@ -244,7 +244,7 @@ export default function Sidebar({ automacoesAtivas = 5 }: SidebarProps) {
       </nav>
 
       {/* Usuário */}
-      <div style={{ padding: "10px 12px", borderTop: "0.5px solid #D4DCE8", display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ padding: "10px 12px", borderTop: "0.5px solid var(--border-table)", display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{
           width: 28, height: 28, background: "#FDE9BB", borderRadius: "50%",
           display: "flex", alignItems: "center", justifyContent: "center",

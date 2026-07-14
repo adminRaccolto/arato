@@ -122,9 +122,9 @@ const VAZIO_EVT: Omit<EsocialEvento, "id" | "fazenda_id" | "created_at"> = {
 // ─── Utilitários ──────────────────────────────────────────────
 const fmt  = (v?: number) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDt = (d?: string) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
+const inp: React.CSSProperties  = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties  = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block", fontWeight: 600 };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "18px 22px" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "18px 22px" };
 
 // ─── Componente ───────────────────────────────────────────────
 export default function EsocialPage() {
@@ -289,7 +289,7 @@ export default function EsocialPage() {
         </div>
 
         {/* Abas */}
-        <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: 4, width: "fit-content" }}>
+        <div style={{ display: "flex", gap: 2, marginBottom: 16, background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: 4, width: "fit-content" }}>
           {[
             { id: "trabalhadores", label: "Trabalhadores" },
             { id: "eventos",       label: `Eventos${qtdPend > 0 ? ` (${qtdPend})` : ""}` },
@@ -327,7 +327,7 @@ export default function EsocialPage() {
                   <thead>
                     <tr style={{ background: "#F8FAFF" }}>
                       {["Nome","CPF","Vínculo","Função","Admissão","Salário Base","Status","Ações"].map(h => (
-                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                        <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -386,7 +386,7 @@ export default function EsocialPage() {
                 <thead>
                   <tr style={{ background: "#F8FAFF" }}>
                     {["Evento","Descrição","Trabalhador","Competência","Status","Protocolo","Ações"].map(h => (
-                      <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE", whiteSpace: "nowrap" }}>{h}</th>
+                      <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -450,7 +450,7 @@ export default function EsocialPage() {
                     <thead>
                       <tr style={{ background: "#F8FAFF" }}>
                         {["Trabalhador","Vínculo","Salário Bruto","INSS Desc.","Salário Líquido"].map(h => (
-                          <th key={h} style={{ padding: "7px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid #DDE2EE" }}>{h}</th>
+                          <th key={h} style={{ padding: "7px 10px", textAlign: "left", color: "var(--text-2)", fontWeight: 600, borderBottom: "0.5px solid var(--border)" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -474,7 +474,7 @@ export default function EsocialPage() {
                       })}
                     </tbody>
                     <tfoot>
-                      <tr style={{ background: "#F8FAFF", borderTop: "1px solid #DDE2EE" }}>
+                      <tr style={{ background: "#F8FAFF", borderTop: "1px solid var(--border)" }}>
                         <td colSpan={2} style={{ padding: "8px 10px", fontWeight: 700, fontSize: 13 }}>TOTAL</td>
                         <td style={{ padding: "8px 10px", fontWeight: 700 }}>{fmt(totalRemuneracao)}</td>
                         <td style={{ padding: "8px 10px", fontWeight: 700, color: "#991B1B" }}>({fmt(inssEmpregado)})</td>
@@ -502,7 +502,7 @@ export default function EsocialPage() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: e.cor }}>{fmt(e.value)}</div>
                     </div>
                   ))}
-                  <div style={{ marginTop: 12, padding: "10px 0 0", borderTop: "1px solid #DDE2EE", display: "flex", justifyContent: "space-between" }}>
+                  <div style={{ marginTop: 12, padding: "10px 0 0", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>Total Encargos</span>
                     <span style={{ fontWeight: 700, fontSize: 15, color: "#1A4870" }}>{fmt(funruralEmpregador + senarEmpregador + fgts)}</span>
                   </div>
@@ -567,7 +567,7 @@ export default function EsocialPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}
           onClick={e => { if (e.target === e.currentTarget) { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); } }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 500, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ padding: "16px 24px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "16px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700, fontSize: 15 }}>Evento Manual</span>
               <button onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }}>✕</button>
             </div>
@@ -591,8 +591,8 @@ export default function EsocialPage() {
                 <input type="month" value={formEvt.competencia} onChange={e => setFormEvt(f => ({ ...f, competencia: e.target.value }))} style={inp} />
               </div>
             </div>
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid #DDE2EE", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ padding: "9px 20px", background: "none", border: "0.5px solid #D4DCE8", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
+            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button onClick={() => { setModalEvt(false); setFormEvt({ ...VAZIO_EVT }); }} style={{ padding: "9px 20px", background: "none", border: "0.5px solid var(--border-table)", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
               <button onClick={salvarEvt} disabled={salvandoE || !formEvt.codigo_evento}
                 style={{ padding: "9px 22px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, opacity: salvandoE ? 0.7 : 1 }}>
                 {salvandoE ? "Salvando..." : "Criar Evento"}

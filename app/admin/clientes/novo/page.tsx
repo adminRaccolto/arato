@@ -53,7 +53,7 @@ const PLANOS_CFG: Record<Pacote, { label: string; preco: number }> = {
 
 const inp: React.CSSProperties = {
   width: "100%", padding: "9px 11px",
-  border: "0.5px solid #D4DCE8", borderRadius: 8,
+  border: "0.5px solid var(--border-table)", borderRadius: 8,
   fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)",
   boxSizing: "border-box", outline: "none",
 };
@@ -64,7 +64,7 @@ const lbl: React.CSSProperties = {
 
 const secTitle: React.CSSProperties = {
   fontSize: 14, fontWeight: 700, color: "#0B1E35", marginBottom: 16,
-  paddingBottom: 10, borderBottom: "0.5px solid #EEF1F6",
+  paddingBottom: 10, borderBottom: "0.5px solid var(--bg-tag)",
 };
 
 const btnPrimary: React.CSSProperties = {
@@ -74,7 +74,7 @@ const btnPrimary: React.CSSProperties = {
 
 const btnSecondary: React.CSSProperties = {
   padding: "10px 22px", background: "var(--bg-card)", color: "var(--text-2)",
-  border: "0.5px solid #D4DCE8", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
+  border: "0.5px solid var(--border-table)", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13,
 };
 
 // ─── Página ───────────────────────────────────────────────────────────────────
@@ -205,18 +205,18 @@ export default function NovoClientePage() {
             O acesso foi configurado e o cliente já pode fazer login.
           </div>
 
-          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid #DDE2EE", padding: "18px 20px", textAlign: "left", marginBottom: 20 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35", marginBottom: 14, borderBottom: "0.5px solid #EEF1F6", paddingBottom: 10 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)", padding: "18px 20px", textAlign: "left", marginBottom: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1E35", marginBottom: 14, borderBottom: "0.5px solid var(--bg-tag)", paddingBottom: 10 }}>
               Dados da conta criada
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Conta ID</div>
-                <div style={{ fontSize: 12, fontFamily: "monospace", color: "#333", background: "#F3F6F9", padding: "4px 8px", borderRadius: 6 }}>{resultado.conta_id}</div>
+                <div style={{ fontSize: 12, fontFamily: "monospace", color: "#333", background: "var(--bg-page)", padding: "4px 8px", borderRadius: 6 }}>{resultado.conta_id}</div>
               </div>
               <div>
                 <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Fazenda ID</div>
-                <div style={{ fontSize: 12, fontFamily: "monospace", color: "#333", background: "#F3F6F9", padding: "4px 8px", borderRadius: 6 }}>{resultado.fazenda_id}</div>
+                <div style={{ fontSize: 12, fontFamily: "monospace", color: "#333", background: "var(--bg-page)", padding: "4px 8px", borderRadius: 6 }}>{resultado.fazenda_id}</div>
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>E-mail de acesso</div>
@@ -274,7 +274,7 @@ export default function NovoClientePage() {
         <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16 }}>
 
           {/* Seção 1 — Dados do cliente */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
             <div style={secTitle}>Identificação do Cliente</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
@@ -309,7 +309,7 @@ export default function NovoClientePage() {
           </div>
 
           {/* Seção 2 — Fazenda */}
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
             <div style={secTitle}>Fazenda Principal</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div style={{ gridColumn: "1 / -1" }}>
@@ -333,7 +333,7 @@ export default function NovoClientePage() {
         </div>
 
         {/* Linha 2 — Acesso & Assinatura (largura total) */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "20px 24px" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "20px 24px" }}>
           <div style={secTitle}>Acesso & Assinatura</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr", gap: 14 }}>
             <div style={{ gridColumn: "1 / 3" }}>

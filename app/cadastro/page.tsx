@@ -9,7 +9,7 @@ import type { PlanoId } from "../../lib/planos";
 const ORDEM: PlanoId[] = ["essencial", "gestao", "performance"];
 
 const COR_PLANO: Record<PlanoId, { borda: string; badge: string; btn: string }> = {
-  essencial:   { borda: "var(--border-table)", badge: "#F3F6F9", btn: "#1A4870" },
+  essencial:   { borda: "var(--border-table)", badge: "var(--bg-page)", btn: "#1A4870" },
   gestao:      { borda: "#1A4870", badge: "#1A4870", btn: "#1A4870" },
   performance: { borda: "#C9921B", badge: "#C9921B", btn: "#C9921B" },
 };
@@ -105,7 +105,7 @@ function CadastroInner() {
 
       {/* Navbar */}
       <nav style={{
-        background: "var(--bg-card)", borderBottom: "0.5px solid #D4DCE8",
+        background: "var(--bg-card)", borderBottom: "0.5px solid var(--border-table)",
         padding: "0 32px", height: 60,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         position: "sticky", top: 0, zIndex: 100,
@@ -113,7 +113,7 @@ function CadastroInner() {
         <Link href="/planos">
           <Image src="https://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logoshttps://ptbougxydvxxdlhywhps.supabase.co/storage/v1/object/public/logos/Logo_Arato_Nova.png" alt="Arato" width={82} height={34} priority style={{ objectFit: "contain", cursor: "pointer" }} />
         </Link>
-        <Link href="/login" style={{ fontSize: 13, color: "var(--text-2)", textDecoration: "none", padding: "7px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
+        <Link href="/login" style={{ fontSize: 13, color: "var(--text-2)", textDecoration: "none", padding: "7px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8 }}>
           Já tenho conta
         </Link>
       </nav>
@@ -326,7 +326,7 @@ function CadastroInner() {
 
             {/* PIX */}
             {resultado.pix_payload ? (
-              <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <span style={{ fontSize: 20 }}>💳</span>
                   <div>
@@ -347,7 +347,7 @@ function CadastroInner() {
                 </button>
               </div>
             ) : resultado.invoice_url ? (
-              <div style={{ background: "var(--bg-card)", border: "0.5px solid #D4DCE8", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
+              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#0B2D50", marginBottom: 8 }}>Link de pagamento</div>
                 <a href={resultado.invoice_url} target="_blank" rel="noreferrer"
                   style={{ display: "block", textAlign: "center", padding: "10px 0", background: "#1A4870", color: "#fff", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
@@ -385,7 +385,7 @@ function CadastroInner() {
 
       </main>
 
-      <footer style={{ textAlign: "center", padding: "20px", fontSize: 12, color: "var(--text-muted)", borderTop: "0.5px solid #D4DCE8", background: "var(--bg-card)" }}>
+      <footer style={{ textAlign: "center", padding: "20px", fontSize: 12, color: "var(--text-muted)", borderTop: "0.5px solid var(--border-table)", background: "var(--bg-card)" }}>
         © {new Date().getFullYear()} Arato — Gestão Agrícola
       </footer>
     </div>

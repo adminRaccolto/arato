@@ -143,12 +143,12 @@ export default function MapaPage() {
 
       {/* ── PAINEL LATERAL ── */}
       <div style={{
-        width: 300, background: "var(--bg-card)", borderRight: "0.5px solid #DDE2EE",
+        width: 300, background: "var(--bg-card)", borderRight: "0.5px solid var(--border)",
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
 
         {/* Cabeçalho */}
-        <div style={{ padding: "16px 18px 12px", borderBottom: "0.5px solid #EEF1F6" }}>
+        <div style={{ padding: "16px 18px 12px", borderBottom: "0.5px solid var(--bg-tag)" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Mapa de Talhões</div>
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
             {talhoes.length} talhão(ões) · {comPlantio.length} com plantio ativo · {comKml.length} com KML
@@ -227,7 +227,7 @@ export default function MapaPage() {
                         ✓ KML
                       </span>
                     ) : (
-                      <span style={{ fontSize: 10, background: "var(--bg-page)", color: "var(--text-muted)", border: "0.5px solid #DDE2EE", borderRadius: 5, padding: "2px 7px" }}>
+                      <span style={{ fontSize: 10, background: "var(--bg-page)", color: "var(--text-muted)", border: "0.5px solid var(--border)", borderRadius: 5, padding: "2px 7px" }}>
                         sem KML
                       </span>
                     )}
@@ -235,8 +235,8 @@ export default function MapaPage() {
                       onClick={e => { e.stopPropagation(); setUploadId(t.id); fileRef.current?.click(); }}
                       disabled={uploading}
                       style={{
-                        fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "0.5px solid #DDE2EE",
-                        background: "#F8FAFD", color: "var(--text-2)", cursor: "pointer",
+                        fontSize: 10, padding: "2px 8px", borderRadius: 5, border: "0.5px solid var(--border)",
+                        background: "var(--bg-card)", color: "var(--text-2)", cursor: "pointer",
                       }}
                     >
                       {uploading && uploadId === t.id ? "Enviando…" : t.kml_url ? "↻ KML" : "+ KML"}
@@ -250,7 +250,7 @@ export default function MapaPage() {
 
         {/* Legenda de culturas */}
         {comPlantio.length > 0 && (
-          <div style={{ padding: "10px 16px", borderTop: "0.5px solid #EEF1F6" }}>
+          <div style={{ padding: "10px 16px", borderTop: "0.5px solid var(--bg-tag)" }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Legenda</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
               {Object.entries(CULTURA_COR).filter(([k]) => talhoes.some(t => t.plantio?.cultura?.toLowerCase().includes(k))).map(([k, c]) => (
@@ -275,7 +275,7 @@ export default function MapaPage() {
           <div style={{
             position: "absolute", top: 16, right: 16, zIndex: 1000,
             background: "var(--bg-card)", borderRadius: 12, boxShadow: "0 4px 12px rgba(11,45,80,0.08)",
-            border: "0.5px solid #DDE2EE", padding: "16px 20px", minWidth: 240, maxWidth: 300,
+            border: "0.5px solid var(--border)", padding: "16px 20px", minWidth: 240, maxWidth: 300,
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{selecionado.nome}</div>

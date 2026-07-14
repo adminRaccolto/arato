@@ -4,11 +4,11 @@ import { supabase } from "../../../lib/supabase";
 import type { OperacaoGerencial } from "../../../lib/supabase";
 
 // ─── Estilos base ─────────────────────────────────────────────────────────────
-const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid #D4DCE8", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box" };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 3, display: "block" };
-const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid #D4DCE8", overflow: "hidden" };
+const card: React.CSSProperties = { background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" };
 const btnP: React.CSSProperties = { padding: "8px 18px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: 13 };
-const btnS: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid #D4DCE8", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
+const btnS: React.CSSProperties = { padding: "8px 16px", border: "0.5px solid var(--border-table)", borderRadius: 8, background: "transparent", cursor: "pointer", fontSize: 13, color: "var(--text-2)" };
 
 // ─── Tipo local ───────────────────────────────────────────────────────────────
 type OpTemplate = OperacaoGerencial;
@@ -228,7 +228,7 @@ export default function PadroesPage() {
             >
               Sincronizar agora →
             </button>
-            <button onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#666" }}>
+            <button onClick={() => setSyncBanner(null)} style={{ padding: "5px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 12, color: "#666" }}>
               Depois
             </button>
           </div>
@@ -242,10 +242,10 @@ export default function PadroesPage() {
             {m.label}
           </div>
         ))}
-        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed #D4DCE8", color: "var(--text-muted)", fontSize: 13, cursor: "default" }}>
+        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed var(--border-table)", color: "var(--text-muted)", fontSize: 13, cursor: "default" }}>
           Regras de Classificação — em breve
         </div>
-        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed #D4DCE8", color: "var(--text-muted)", fontSize: 13, cursor: "default" }}>
+        <div style={{ padding: "8px 18px", borderRadius: 8, border: "0.5px dashed var(--border-table)", color: "var(--text-muted)", fontSize: 13, cursor: "default" }}>
           CFOPs — em breve
         </div>
       </div>
@@ -291,9 +291,9 @@ export default function PadroesPage() {
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#F3F6F9" }}>
+                  <tr style={{ background: "var(--bg-page)" }}>
                     {["Código", "Descrição", "Tipo", "LCDPR", "Débito", "Crédito", ""].map((h, i) => (
-                      <th key={i} style={{ padding: "8px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid #D4DCE8" }}>{h}</th>
+                      <th key={i} style={{ padding: "8px 14px", textAlign: i >= 2 ? "center" : "left", fontSize: 10, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -303,7 +303,7 @@ export default function PadroesPage() {
                     const ct = corTipo(op.tipo);
                     const isGrupo = d === 0;
                     return (
-                      <tr key={op.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: isGrupo ? "#F8FAFD" : op.inativo ? "#FAFAFA" : "white" }}>
+                      <tr key={op.id} style={{ borderBottom: "0.5px solid #F0F2F7", background: isGrupo ? "var(--bg-card)" : op.inativo ? "#FAFAFA" : "white" }}>
                         <td style={{ padding: "7px 14px", fontFamily: "monospace", fontSize: 12, color: "var(--text-1)", whiteSpace: "nowrap" }}>
                           {op.classificacao}
                         </td>
@@ -326,7 +326,7 @@ export default function PadroesPage() {
                           {op.conta_credito || "—"}
                         </td>
                         <td style={{ padding: "7px 10px", textAlign: "right", whiteSpace: "nowrap" }}>
-                          <button onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid #D4DCE8", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
+                          <button onClick={() => abrirEditar(op)} style={{ fontSize: 11, padding: "3px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", color: "var(--text-2)", cursor: "pointer", marginRight: 4 }}>
                             Editar
                           </button>
                           <button
@@ -358,7 +358,7 @@ export default function PadroesPage() {
         {/* ── COLUNA DIREITA: Sincronização ── */}
         <div style={{ position: "sticky", top: 80 }}>
           <div style={{ ...card, border: "0.5px solid #1A4870" }}>
-            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #D4DCE8", background: "#F0F5FA" }}>
+            <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border-table)", background: "#F0F5FA" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#1A4870" }}>Sincronizar com Clientes</div>
               <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>
                 Modo: <strong>Merge</strong> — adiciona novos e atualiza existentes. Nunca remove.
@@ -375,19 +375,19 @@ export default function PadroesPage() {
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
                       onClick={() => setSyncSelect(new Set(fazendas.map(f => f.id)))}
-                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
+                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
                       Todas
                     </button>
                     <button
                       onClick={() => setSyncSelect(new Set())}
-                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid #D4DCE8", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
+                      style={{ fontSize: 10, padding: "2px 8px", border: "0.5px solid var(--border-table)", borderRadius: 5, background: "transparent", cursor: "pointer", color: "var(--text-2)" }}
                     >
                       Limpar
                     </button>
                   </div>
                 </div>
-                <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid #D4DCE8", borderRadius: 8 }}>
+                <div style={{ maxHeight: 220, overflowY: "auto", border: "0.5px solid var(--border-table)", borderRadius: 8 }}>
                   {fazendas.length === 0 ? (
                     <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: "var(--text-3)" }}>Nenhuma fazenda encontrada</div>
                   ) : fazendas.map(f => (
@@ -473,7 +473,7 @@ export default function PadroesPage() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,45,80,0.32)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, padding: 24 }}>
           <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 700, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
 
-            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid #EEF1F6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ padding: "18px 24px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>
                 {modal === "novo" ? "Nova Operação — Template" : `Editar: ${form.classificacao}`}
               </div>
@@ -529,7 +529,7 @@ export default function PadroesPage() {
               </div>
 
               {/* Permissões */}
-              <div style={{ background: "var(--bg-page)", border: "0.5px solid #DDE2EE", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+              <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border)", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", marginBottom: 10, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>Permite usar em</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px" }}>
                   {([

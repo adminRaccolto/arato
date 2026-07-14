@@ -998,7 +998,7 @@ export default function Contratos() {
   // ── render ────────────────────────────────────────────────────
   if (!podeAcessarPlano("contratos")) return <PlanoGate modulo="contratos" />;
   return (
-    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#F3F6F9", fontFamily:"system-ui, sans-serif", fontSize:13 }}>
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg-page)", fontFamily:"system-ui, sans-serif", fontSize:13 }}>
       <TopNav />
       <main style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
 
@@ -1135,7 +1135,7 @@ export default function Contratos() {
                   ) : (
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
-                        <tr style={{ background:"#F3F6F9" }}>
+                        <tr style={{ background:"var(--bg-page)" }}>
                           {["Contrato","Produtor / Cliente","Produto","Volume","Entregue","Saldo","Preço","Prazo","Status",""].map((h,i) => (
                             <th key={i} style={{ padding:"8px 12px", textAlign: i>=3&&i<=7?"center":"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
@@ -1230,7 +1230,7 @@ export default function Contratos() {
                               </tr>
                               {exp && (
                                 <tr key={`${c.id}-exp`}>
-                                  <td colSpan={10} style={{ background:"#F8FAFD", padding:0, borderBottom:"0.5px solid var(--border-row)" }}>
+                                  <td colSpan={10} style={{ background:"var(--bg-card)", padding:0, borderBottom:"0.5px solid var(--border-row)" }}>
                                     <div style={{ padding:"12px 16px" }}>
                                       {/* Itens do contrato */}
                                       {c.itens && c.itens.length > 0 && (
@@ -1238,7 +1238,7 @@ export default function Contratos() {
                                           <div style={{ fontSize:11, fontWeight:600, color:"var(--text-2)", marginBottom:6 }}>Itens do Contrato</div>
                                           <table style={{ width:"100%", borderCollapse:"collapse", background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:8, overflow:"hidden" }}>
                                             <thead>
-                                              <tr style={{ background:"#F3F6F9" }}>
+                                              <tr style={{ background:"var(--bg-page)" }}>
                                                 {["Tipo","Produto","Qtd","Unid","Vlr Unit.","Vlr Total","Classificação"].map((h,i) => (
                                                   <th key={i} style={{ padding:"6px 10px", textAlign: i>=2?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)" }}>{h}</th>
                                                 ))}
@@ -1387,7 +1387,7 @@ export default function Contratos() {
                   ) : (
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
-                        <tr style={{ background:"#F3F6F9" }}>
+                        <tr style={{ background:"var(--bg-page)" }}>
                           {["Romaneio","Data","Contrato","Comprador","Produto","Placa","P. Bruto","Tara","P. Líquido","Sacas","NF-e"].map((h,i) => (
                             <th key={i} style={{ padding:"8px 12px", textAlign:i>=6?"center":"left", fontSize:11, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
@@ -1422,14 +1422,14 @@ export default function Contratos() {
 
               {/* ── ABA POSIÇÃO DE ESTOQUE ── */}
               {abaLista === "posicao" && (
-                <div style={{ background:"#F3F6F9", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", padding:20 }}>
+                <div style={{ background:"var(--bg-page)", border:"0.5px solid var(--border-table)", borderTop:"none", borderRadius:"0 0 12px 12px", padding:20 }}>
                   {posicao.length === 0 ? (
                     <div style={{ textAlign:"center", padding:48, color:"var(--text-3)", fontSize:13 }}>Nenhum contrato ativo com saldo.</div>
                   ) : (
                     <div style={{ background:"var(--bg-card)", border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden" }}>
                       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
                         <thead>
-                          <tr style={{ background:"#F8FAFD", borderBottom:"0.5px solid var(--border-table)" }}>
+                          <tr style={{ background:"var(--bg-card)", borderBottom:"0.5px solid var(--border-table)" }}>
                             <th style={{ padding:"10px 16px", textAlign:"left", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Cultura</th>
                             <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Contratado (sc)</th>
                             <th style={{ padding:"10px 16px", textAlign:"right", fontWeight:600, fontSize:12, color:"var(--text-2)" }}>Entregue (sc)</th>
@@ -1489,7 +1489,7 @@ export default function Contratos() {
             </div>
 
             {/* Abas Principal / Adicionais */}
-            <div style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"#F8FAFD" }}>
+            <div style={{ display:"flex", borderBottom:"0.5px solid var(--border-table)", background:"var(--bg-card)" }}>
               {(["principal","adicionais"] as AbaForm[]).map(a => (
                 <button key={a} onClick={() => setAbaForm(a)} style={{
                   padding:"9px 20px", border:"none", background:"transparent", cursor:"pointer",
@@ -1721,14 +1721,14 @@ export default function Contratos() {
 
                   {/* ── GRID DE ITENS ── */}
                   <div style={{ border:"0.5px solid var(--border-table)", borderRadius:10, overflow:"hidden", marginBottom:8 }}>
-                    <div style={{ padding:"8px 14px", background:"#F3F6F9", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <div style={{ padding:"8px 14px", background:"var(--bg-page)", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                       <span style={{ fontSize:12, fontWeight:600, color:"var(--text-2)" }}>Itens do Contrato</span>
                       <button style={{ fontSize:11, padding:"3px 10px", border:"0.5px solid #1A5CB8", borderRadius:5, background:"#E6F1FB", color:"#1A5CB8", cursor:"pointer" }}
                         onClick={() => setItens(p => [...p, itemVazio()])}>+ Item</button>
                     </div>
                     <table style={{ width:"100%", borderCollapse:"collapse" }}>
                       <thead>
-                        <tr style={{ background:"#F8FAFD" }}>
+                        <tr style={{ background:"var(--bg-card)" }}>
                           {["Tipo","Item / Produto","Peso (kg)","Equiv. (sc)", fC.moeda === "USD" ? "Valor (US$/sc)" : "Valor (R$/sc)","Valor Total",""].map((h,i) => (
                             <th key={i} style={{ padding:"6px 10px", textAlign: i>=2&&i<=5?"center":"left", fontSize:10, fontWeight:600, color:"var(--text-2)", borderBottom:"0.5px solid var(--border-table)", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
@@ -1782,7 +1782,7 @@ export default function Contratos() {
                     {(() => {
                       const fmtValor = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });
                       return (
-                        <div style={{ padding:"8px 14px", background:"#F3F6F9", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:32 }}>
+                        <div style={{ padding:"8px 14px", background:"var(--bg-page)", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"flex-end", gap:32 }}>
                           <span style={{ fontSize:12, color:"var(--text-2)" }}>Valor Financeiro: <strong style={{ color:"var(--text-1)" }}>{fmtValor(valorFinanceiro)}</strong></span>
                           <span style={{ fontSize:12, color:"var(--text-2)" }}>Frete: <strong style={{ color:"var(--text-1)" }}>{fmtR$(fC.valor_frete||0)}</strong></span>
                           <span style={{ fontSize:13, fontWeight:600, color:"#1A4870" }}>Valor Total: {fmtValor(valorTotal)}</span>
@@ -1947,7 +1947,7 @@ export default function Contratos() {
             </div>
 
             {/* Rodapé do modal */}
-            <div style={{ padding:"12px 20px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"space-between", alignItems:"center", background:"#F8FAFD" }}>
+            <div style={{ padding:"12px 20px", borderTop:"0.5px solid var(--border-table)", display:"flex", justifyContent:"space-between", alignItems:"center", background:"var(--bg-card)" }}>
               <div style={{ fontSize:11, color:"var(--text-2)" }}>
                 {(() => {
                   const fv = (v: number) => v.toLocaleString("pt-BR", { style:"currency", currency: fC.moeda === "USD" ? "USD" : "BRL" });

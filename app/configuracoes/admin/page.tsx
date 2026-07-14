@@ -323,12 +323,12 @@ export default function AdminPage() {
           <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 20, alignItems: "flex-start" }}>
 
             {/* Lista de contas */}
-            <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid #DDE2EE", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)" }}>
                   Contas ({contas.length})
                 </span>
-                <button onClick={carregarContas} style={{ padding: "4px 10px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
+                <button onClick={carregarContas} style={{ padding: "4px 10px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}>
                   {carregandoContas ? "⏳" : "↺"} Recarregar
                 </button>
               </div>
@@ -343,7 +343,7 @@ export default function AdminPage() {
                     onClick={() => { setContaSelecionada(c.id); setConfirmaTexto(""); setResultadoCliente(null); }}
                     style={{
                       display: "block", width: "100%", padding: "12px 16px",
-                      borderBottom: "0.5px solid #DDE2EE", border: "none",
+                      borderBottom: "0.5px solid var(--border)", border: "none",
                       background: contaSelecionada === c.id ? "#FFF0F0" : "transparent",
                       textAlign: "left", cursor: "pointer",
                     }}
@@ -363,7 +363,7 @@ export default function AdminPage() {
             {/* Painel de exclusão */}
             <div>
               {!contaExcluirObj ? (
-                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                   Selecione um cliente à esquerda para ver as opções de exclusão.
                 </div>
               ) : (
@@ -389,7 +389,7 @@ export default function AdminPage() {
                   </div>
 
                   {/* Detalhes da conta */}
-                  <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px", marginBottom: 20 }}>
+                  <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px", marginBottom: 20 }}>
                     <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-1)", marginBottom: 12 }}>
                       Resumo do cliente selecionado
                     </div>
@@ -472,12 +472,12 @@ export default function AdminPage() {
 
             {/* Painel esquerdo: seleção de conta + fazenda */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+              <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
                 <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>1. Selecione o cliente</div>
                 <select
                   value={contaLimpar}
                   onChange={e => { setContaLimpar(e.target.value); setFazendaLimpar(""); setContagens({}); setGruposSelecionados(new Set()); setResultadoLimpeza(null); }}
-                  style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}
+                  style={{ width: "100%", padding: "9px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}
                 >
                   <option value="">— selecione —</option>
                   {contas.map(c => (
@@ -487,12 +487,12 @@ export default function AdminPage() {
               </div>
 
               {contaLimparObj && (
-                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "16px 20px" }}>
+                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-2)", marginBottom: 8 }}>2. Selecione a fazenda</div>
                   <select
                     value={fazendaLimpar}
                     onChange={e => { setFazendaLimpar(e.target.value); setContagens({}); setGruposSelecionados(new Set()); setResultadoLimpeza(null); }}
-                    style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #DDE2EE", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}
+                    style={{ width: "100%", padding: "9px 12px", border: "0.5px solid var(--border)", borderRadius: 8, fontSize: 13, outline: "none", background: "white" }}
                   >
                     <option value="">— selecione —</option>
                     {contaLimparObj.fazendas.length > 1 && <option value="todas">Todas as fazendas</option>}
@@ -543,13 +543,13 @@ export default function AdminPage() {
             {/* Painel direito: grupos + confirmação */}
             <div>
               {!fazendaLimpar ? (
-                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+                <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
                   Selecione um cliente e uma fazenda para ver os grupos disponíveis.
                 </div>
               ) : (
                 <>
                   {/* Cabeçalho dos grupos */}
-                  <div style={{ background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", padding: "14px 20px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ background: "white", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 20px", marginBottom: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
                         {fazLimparNome || "—"}
@@ -563,13 +563,13 @@ export default function AdminPage() {
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={() => setGruposSelecionados(new Set(GRUPOS.map(g => g.id)))}
-                        style={{ padding: "6px 12px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}
+                        style={{ padding: "6px 12px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}
                       >
                         Marcar todos
                       </button>
                       <button
                         onClick={() => setGruposSelecionados(new Set())}
-                        style={{ padding: "6px 12px", border: "0.5px solid #DDE2EE", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}
+                        style={{ padding: "6px 12px", border: "0.5px solid var(--border)", borderRadius: 6, fontSize: 12, background: "white", cursor: "pointer", color: "var(--text-2)" }}
                       >
                         Limpar seleção
                       </button>
@@ -667,12 +667,12 @@ export default function AdminPage() {
 
                   {/* Resultado da limpeza */}
                   {resultadoLimpeza && (
-                    <div style={{ marginTop: 16, background: "white", borderRadius: 12, border: "0.5px solid #DDE2EE", overflow: "hidden" }}>
-                      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
+                    <div style={{ marginTop: 16, background: "white", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                      <div style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", fontWeight: 700, fontSize: 14, color: "var(--text-1)" }}>
                         Resultado da limpeza
                       </div>
                       {resultadoLimpeza.map((r, i) => (
-                        <div key={i} style={{ padding: "12px 20px", borderBottom: "0.5px solid #DDE2EE", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        <div key={i} style={{ padding: "12px 20px", borderBottom: "0.5px solid var(--border)", display: "flex", gap: 12, alignItems: "flex-start" }}>
                           <span style={{ fontSize: 16 }}>{r.ok ? "✅" : "⚠️"}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, fontSize: 13, color: r.ok ? "#15803D" : "#C9921B" }}>
