@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { type: "divider", label: "Clientes" },
   { type: "link",    id: "clientes",  label: "Lista de Clientes",      icon: "👥", path: "/admin/clientes"     },
   { type: "link",    id: "novo",      label: "Novo Cliente",           icon: "＋", path: "/admin/clientes/novo" },
+  { type: "link",    id: "onboarding",label: "Agente Implantador",     icon: "🤖", path: "/admin/onboarding"   },
   { type: "link",    id: "dados",     label: "Dados & Limpeza",        icon: "🗑️", path: "/admin/dados"       },
   { type: "divider", label: "Produto" },
   { type: "link",    id: "planos",    label: "Planos & Preços",        icon: "💰", path: "/admin/planos"   },

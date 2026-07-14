@@ -7279,3 +7279,22 @@ CREATE POLICY "doc_anexos_conta" ON documentos_anexos
   );
 
 NOTIFY pgrst, 'reload schema';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Seção 67 — Agente Implantador: sessões de onboarding autônomo
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS agente_onboarding (
+  id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  telefone         text        NOT NULL UNIQUE,
+  conta_id         uuid        REFERENCES contas(id),
+  fazenda_id       uuid        REFERENCES fazendas(id),
+  etapa            text        NOT NULL DEFAULT 'inicio',
+  dados_coletados  jsonb       NOT NULL DEFAULT '{}',
+  messages         jsonb       NOT NULL DEFAULT '[]',
+  concluido        boolean     NOT NULL DEFAULT false,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS agente_onboarding_concluido_idx ON agente_onboarding(concluido, updated_at DESC);
