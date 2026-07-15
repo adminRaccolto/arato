@@ -370,9 +370,10 @@ export default function BI() {
   const [fazendas,     setFazendas]     = useState<FazendaBI[]>([]);
   const [cicloTals,    setCicloTals]    = useState<CicloTalhao[]>([]);
   const [abaProducao,  setAbaProducao]  = useState<"posicao" | "ciclos" | "colheita">("posicao");
-  const [pcFazFiltro,  setPcFazFiltro]  = useState("");
-  const [pcCultFiltro, setPcCultFiltro] = useState("");
-  const [pcSort,       setPcSort]       = useState<{ col: string; dir: "asc" | "desc" }>({ col: "volPrev", dir: "desc" });
+  const [pcFazFiltro,    setPcFazFiltro]    = useState("");
+  const [pcCultFiltro,   setPcCultFiltro]   = useState("");
+  const [pcSort,         setPcSort]         = useState<{ col: string; dir: "asc" | "desc" }>({ col: "volPrev", dir: "desc" });
+  const [modalComprHa,   setModalComprHa]   = useState(false);
 
   // Guard
   useEffect(() => {
@@ -1454,22 +1455,31 @@ export default function BI() {
                         </div>
 
                         {/* KPI 2×3 grid */}
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
-                          {[
-                            { label: "Volume Previsto",     val: `${fmtN(kpiVolPrev,0)} sc`,  sub: `${fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha`, cor: "#1A4870", bg: "#EBF3FC" },
-                            { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),              sub: kpiVolPrev>0?`${fmtR2(kpiFatPrev/kpiVolPrev)}/sc`:"", cor: "#14532D", bg: "#ECFDF5" },
-                            { label: "Comprometido",        val: `${fmtN(kpiCompr,0)} sc`,     sub: `${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0" },
-                            { label: "Disponível p/ venda", val: `${fmtN(kpiDisp,0)} sc`,      sub: `${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,0)}% do previsto`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
-                            { label: "Valor a Faturar",     val: fmtR(kpiDisp * (kpiFatPrev / Math.max(kpiVolPrev,1))), sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4" },
-                            { label: "Colhido",             val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"var(--text-3)", bg: kpiColhido>0?"#F0FDFA":"var(--bg-card)" },
-                          ].map(k => (
-                            <div key={k.label} style={{ background: k.bg, borderRadius: 9, padding: "10px 13px", border: "0.5px solid var(--border)" }}>
-                              <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>{k.label}</div>
-                              <div style={{ fontSize: 15, fontWeight: 700, color: k.cor, fontVariantNumeric: "tabular-nums" }}>{k.val}</div>
-                              {k.sub && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>}
+                        {(() => {
+                          const totalArea = pcRows.reduce((s, r) => s + r.area, 0);
+                          const scHaCompr = totalArea > 0 ? kpiCompr / totalArea : 0;
+                          const scHaPrec  = kpiVolPrev > 0 ? kpiFatPrev / kpiVolPrev : 0;
+                          return (
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
+                              {[
+                                { label: "Volume Previsto",     val: `${fmtN(kpiVolPrev,0)} sc`,  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC", click: undefined as (() => void) | undefined },
+                                { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),              sub: kpiVolPrev>0?`${fmtR2(scHaPrec)}/sc`:"", cor: "#14532D", bg: "#ECFDF5", click: undefined },
+                                { label: "Comprometido / ha",   val: `${fmtN(scHaCompr,1)} sc/ha`, sub: `${fmtN(kpiCompr,0)} sc · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0", click: () => setModalComprHa(true) },
+                                { label: "Disponível p/ venda", val: `${fmtN(kpiDisp,0)} sc`,      sub: `${totalArea>0?fmtN(kpiDisp/totalArea,1):0} sc/ha · ${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,0)}%`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB", click: undefined },
+                                { label: "Valor a Faturar",     val: fmtR(kpiDisp * scHaPrec),      sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4", click: undefined },
+                                { label: "Colhido",             val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"var(--text-3)", bg: kpiColhido>0?"#F0FDFA":"var(--bg-card)", click: undefined },
+                              ].map(k => (
+                                <div key={k.label} onClick={k.click}
+                                  style={{ background: k.bg, borderRadius: 9, padding: "10px 13px", border: k.click ? "1.5px solid #C9921B" : "0.5px solid var(--border)", cursor: k.click ? "pointer" : "default", position: "relative" }}>
+                                  <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4, paddingRight: k.click ? 18 : 0 }}>{k.label}</div>
+                                  <div style={{ fontSize: 15, fontWeight: 700, color: k.cor, fontVariantNumeric: "tabular-nums" }}>{k.val}</div>
+                                  {k.sub && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>}
+                                  {k.click && <div style={{ position: "absolute", top: 8, right: 10, fontSize: 11, color: "#C9921B", fontWeight: 700 }}>▸</div>}
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* ── Row 2: Barras horizontais por produto (interativas) ── */}
@@ -1701,6 +1711,135 @@ export default function BI() {
                           </table>
                         </div>
                       </div>
+
+                      {/* ── Modal: Comprometido por Hectare ── */}
+                      {modalComprHa && (() => {
+                        const totalArea = pcRows.reduce((s, r) => s + r.area, 0) || 1;
+                        const cats = [
+                          { label: "Arrendamento", sc: kpiArr,    cor: "#C9921B", bg: "#FBF3E0" },
+                          { label: "Venda fixada",  sc: kpiVenda,  cor: "#1A4870", bg: "#D5E8F5" },
+                          { label: "Barter",        sc: kpiBarter, cor: "#7C3AED", bg: "#F5F3FF" },
+                          { label: "Total comprometido", sc: kpiCompr, cor: "#7A5200", bg: "#FBF3E0" },
+                          { label: "Disponível",    sc: kpiDisp,   cor: "#16A34A", bg: "#ECFDF5" },
+                          { label: "Previsto total",sc: kpiVolPrev,cor: "#1A4870", bg: "#EBF3FC" },
+                        ];
+                        return (
+                          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}
+                            onClick={() => setModalComprHa(false)}>
+                            <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 620, maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" }}
+                              onClick={e => e.stopPropagation()}>
+                              {/* Header */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>Comprometido por Hectare</div>
+                                  <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
+                                    {fmtN(totalArea, 0)} ha · {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} selecionados
+                                  </div>
+                                </div>
+                                <button onClick={() => setModalComprHa(false)}
+                                  style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--text-3)", lineHeight: 1, padding: "0 4px" }}>✕</button>
+                              </div>
+
+                              {/* Indicador grande */}
+                              <div style={{ background: "#FBF3E0", borderRadius: 12, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 20 }}>
+                                <div>
+                                  <div style={{ fontSize: 11, color: "#7A5200", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em" }}>Comprometido total</div>
+                                  <div style={{ fontSize: 32, fontWeight: 800, color: "#7A5200", fontVariantNumeric: "tabular-nums", lineHeight: 1.1 }}>
+                                    {fmtN(kpiCompr / totalArea, 1)} <span style={{ fontSize: 16, fontWeight: 600 }}>sc/ha</span>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#7A5200", marginTop: 4 }}>
+                                    {fmtN(kpiCompr, 0)} sc · {fmtN(kpiVolPrev > 0 ? (kpiCompr / kpiVolPrev) * 100 : 0, 1)}% do volume previsto
+                                  </div>
+                                </div>
+                                {/* Mini barra */}
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ display: "flex", height: 14, borderRadius: 4, overflow: "hidden", background: "#F0F4F8" }}>
+                                    {kpiArr    > 0 && <div style={{ width: `${(kpiArr/kpiVolPrev)*100}%`,    background: "#C9921B" }} />}
+                                    {kpiVenda  > 0 && <div style={{ width: `${(kpiVenda/kpiVolPrev)*100}%`,  background: "#1A4870" }} />}
+                                    {kpiBarter > 0 && <div style={{ width: `${(kpiBarter/kpiVolPrev)*100}%`, background: "#7C3AED" }} />}
+                                    {kpiDisp   > 0 && <div style={{ width: `${(kpiDisp/kpiVolPrev)*100}%`,   background: "#86EFAC" }} />}
+                                  </div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-3)", marginTop: 3 }}>
+                                    <span>0 sc/ha</span>
+                                    <span>Previsto: {fmtN(kpiVolPrev/totalArea, 1)} sc/ha</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Tabela por categoria */}
+                              <div style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Categorias de comprometimento</div>
+                              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 20 }}>
+                                <thead>
+                                  <tr style={{ background: "var(--bg-tag)" }}>
+                                    {["Categoria", "Sacas", "sc/ha", "% do Previsto", ""].map(h => (
+                                      <th key={h} style={{ padding: "7px 12px", textAlign: h === "Sacas" || h === "sc/ha" || h === "% do Previsto" ? "right" : "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)" }}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {cats.map((c, i) => {
+                                    const scHa = c.sc / totalArea;
+                                    const pct  = kpiVolPrev > 0 ? (c.sc / kpiVolPrev) * 100 : 0;
+                                    const isTot = c.label.includes("Total");
+                                    const isFim = c.label.includes("Previsto");
+                                    return (
+                                      <tr key={c.label} style={{ borderTop: (i > 0 && !isTot) ? "0.5px solid var(--border-row)" : isTot || isFim ? "1.5px solid var(--border-table)" : "none", background: isTot || isFim ? c.bg : "transparent" }}>
+                                        <td style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                                          <div style={{ width: 10, height: 10, borderRadius: 2, background: c.cor, flexShrink: 0 }} />
+                                          <span style={{ fontWeight: isTot || isFim ? 700 : 400, color: isTot || isFim ? c.cor : "var(--text-1)" }}>{c.label}</span>
+                                        </td>
+                                        <td style={{ padding: "8px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: isTot || isFim ? 700 : 400, color: c.cor }}>{c.sc > 0 ? fmtN(c.sc, 0) : "—"}</td>
+                                        <td style={{ padding: "8px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: isTot || isFim ? 700 : 400, color: c.cor }}>{c.sc > 0 ? fmtN(scHa, 1) : "—"}</td>
+                                        <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{c.sc > 0 ? `${fmtN(pct, 1)}%` : "—"}</td>
+                                        <td style={{ padding: "8px 8px" }}>
+                                          {c.sc > 0 && (
+                                            <div style={{ width: `${Math.min(100, pct)}%`, minWidth: pct > 0 ? 4 : 2, height: 6, borderRadius: 3, background: c.cor }} />
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+
+                              {/* Breakdown por produto */}
+                              {commSummary.length > 1 && (
+                                <>
+                                  <div style={{ fontWeight: 700, fontSize: 11, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Por Produto Agrícola</div>
+                                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                                    <thead>
+                                      <tr style={{ background: "var(--bg-tag)" }}>
+                                        {["Produto", "Área (ha)", "Prev. sc/ha", "Arr. sc/ha", "Venda sc/ha", "Barter sc/ha", "Compr. sc/ha", "Disp. sc/ha"].map(h => (
+                                          <th key={h} style={{ padding: "6px 10px", textAlign: h === "Produto" ? "left" : "right", fontSize: 9, fontWeight: 700, color: "var(--text-3)", whiteSpace: "nowrap" }}>{h}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {commSummary.map((cs, i) => {
+                                        const areaComm  = pcRows.filter(r => r.comm === cs.comm).reduce((s, r) => s + r.area, 0) || 1;
+                                        return (
+                                          <tr key={cs.comm} style={{ borderTop: i > 0 ? "0.5px solid var(--border-row)" : "none" }}>
+                                            <td style={{ padding: "7px 10px" }}>
+                                              <span style={{ background: COMM_BG(cs.comm), color: COMM_COR(cs.comm), borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{cs.comm}</span>
+                                            </td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{fmtN(areaComm, 0)}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.volPrev / areaComm, 1)}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{cs.arr > 0 ? fmtN(cs.arr / areaComm, 1) : "—"}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{cs.venda > 0 ? fmtN(cs.venda / areaComm, 1) : "—"}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{cs.barter > 0 ? fmtN(cs.barter / areaComm, 1) : "—"}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#7A5200", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.comprTotal / areaComm, 1)}</td>
+                                            <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: cs.disponivel > 0 ? "#16A34A" : "#E24B4A", fontVariantNumeric: "tabular-nums" }}>{fmtN(cs.disponivel / areaComm, 1)}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </>);
                   })()}
                 </div>
