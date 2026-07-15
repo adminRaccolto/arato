@@ -1337,6 +1337,239 @@ export default function BI() {
           const maxBar = Math.max(...todasRows.map(r => Math.max(r.volPrev, r.colhido)), 1);
           const totalColhido = todasRows.reduce((s, r) => s + r.colhido, 0);
 
+          // ── PDF: Posição do Produto ───────────────────────────────────────
+          function imprimirPosicaoProduto() {
+            const totalArea = pcRows.reduce((s, r) => s + r.area, 0) || 1;
+            const scHaPrec  = kpiVolPrev > 0 ? kpiFatPrev / kpiVolPrev : 0;
+            const scHaCompr = kpiCompr / totalArea;
+            const fazNomeAtual = fazenda?.nome ?? "—";
+            const anoDesc  = anosSafra.find(a => a.id === filtroAnoSafraId)?.descricao ?? "";
+            const dataHora = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+            const logoUrl  = window.location.origin + "/logo_Arato_Nova.png";
+            const fazIds   = [...new Set(pcRows.map(r => r.fazId))];
+            const commKeys = [...new Set(pcRows.map(r => r.comm))];
+            const filtrosInfo = [
+              pcCultFiltro ? `Produto: ${pcCultFiltro}` : "",
+              pcFazFiltro  ? `Fazenda: ${fazendas.find(f => f.id === pcFazFiltro)?.nome ?? pcFazFiltro}` : "",
+            ].filter(Boolean).join(" · ") || "Todos os produtos e fazendas";
+
+            const kpis = [
+              { label: "Volume Previsto",      val: `${fmtN(kpiVolPrev,0)} sc`,  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC" },
+              { label: "Faturamento Previsto", val: fmtR(kpiFatPrev),             sub: kpiVolPrev > 0 ? `${fmtR2(scHaPrec)}/sc` : "", cor: "#14532D", bg: "#ECFDF5" },
+              { label: "Comprometido / ha",    val: `${fmtN(scHaCompr,1)} sc/ha`, sub: `${fmtN(kpiCompr,0)} sc · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0" },
+              { label: "Disponível p/ venda",  val: `${fmtN(kpiDisp,0)} sc`,      sub: `${fmtN(kpiDisp/totalArea,1)} sc/ha`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
+              { label: "Valor a Faturar",      val: fmtR(kpiDisp * scHaPrec),     sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4" },
+              { label: "Colhido",              val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"#888", bg: kpiColhido>0?"#F0FDFA":"#f4f6fa" },
+            ];
+            const kpiHtml = kpis.map(k => `
+              <div style="background:${k.bg};border-radius:7px;padding:9px 12px;border:0.5px solid #dde2ee;">
+                <div style="font-size:8px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">${k.label}</div>
+                <div style="font-size:13px;font-weight:700;color:${k.cor};">${k.val}</div>
+                ${k.sub ? `<div style="font-size:8px;color:#888;margin-top:2px;">${k.sub}</div>` : ""}
+              </div>`).join("");
+
+            const posicaoHtml = commSummary.map(cs => {
+              const tot = cs.volPrev || 1;
+              return `<tr>
+                <td style="padding:6px 10px;font-weight:700;color:#1a1a1a;">
+                  <span style="display:inline-flex;align-items:center;gap:5px;">
+                    <span style="width:8px;height:8px;border-radius:2px;background:${COMM_COR(cs.comm)};display:inline-block;flex-shrink:0;"></span>
+                    ${cs.comm}
+                  </span>
+                </td>
+                <td style="padding:6px 8px;text-align:right;font-weight:600;color:#1A4870;">${fmtN(cs.volPrev,0)}</td>
+                <td style="padding:6px 8px;text-align:right;color:#14532D;">${fmtR(cs.fatPrev)}</td>
+                <td style="padding:6px 8px;text-align:right;color:#C9921B;">${cs.arr>0?`${fmtN(cs.arr,0)} sc (${fmtN((cs.arr/tot)*100,0)}%)`:"—"}</td>
+                <td style="padding:6px 8px;text-align:right;color:#1A4870;">${cs.venda>0?`${fmtN(cs.venda,0)} sc (${fmtN((cs.venda/tot)*100,0)}%)`:"—"}</td>
+                <td style="padding:6px 8px;text-align:right;color:#7C3AED;">${cs.barter>0?`${fmtN(cs.barter,0)} sc (${fmtN((cs.barter/tot)*100,0)}%)`:"—"}</td>
+                <td style="padding:6px 8px;text-align:right;color:${cs.disponivel>0?"#16A34A":"#E24B4A"};font-weight:600;">${fmtN(cs.disponivel,0)} sc (${fmtN((cs.disponivel/tot)*100,0)}%)</td>
+                <td style="padding:6px 8px;width:120px;">
+                  <div style="display:flex;height:9px;border-radius:3px;overflow:hidden;background:#F0F4F8;">
+                    ${cs.arr>0?`<div style="width:${(cs.arr/tot)*100}%;background:#C9921B;"></div>`:""}
+                    ${cs.venda>0?`<div style="width:${(cs.venda/tot)*100}%;background:#1A4870;"></div>`:""}
+                    ${cs.barter>0?`<div style="width:${(cs.barter/tot)*100}%;background:#7C3AED;"></div>`:""}
+                    ${cs.disponivel>0?`<div style="width:${(cs.disponivel/tot)*100}%;background:#86EFAC;"></div>`:""}
+                  </div>
+                </td>
+              </tr>`;
+            }).join("");
+
+            const pivotHeaderCols = commKeys.map(c =>
+              `<th colspan="3" style="padding:5px 7px;text-align:center;color:${COMM_COR(c)};background:${COMM_BG(c)};border-left:1.5px solid #dde2ee;font-size:8px;">${c}</th>`
+            ).join("");
+            const pivotSubCols = commKeys.map(() =>
+              `<th style="padding:4px 6px;text-align:right;font-size:7px;color:#888;">Previsto</th>
+               <th style="padding:4px 6px;text-align:right;font-size:7px;color:#888;">Venda</th>
+               <th style="padding:4px 6px;text-align:right;font-size:7px;color:#888;border-right:0.5px solid #eee;">Disponível</th>`
+            ).join("");
+            const pivotRows = fazIds.map((fid, fi) => {
+              const fNome = fazendas.find(f => f.id === fid)?.nome ?? fid;
+              const rows  = pcRows.filter(r => r.fazId === fid);
+              const cells = commKeys.map(c => {
+                const cRows = rows.filter(r => r.comm === c);
+                const vol  = cRows.reduce((s,r) => s + r.volPrev, 0);
+                const vnd  = cRows.reduce((s,r) => s + r.venda, 0);
+                const disp = Math.max(0, vol - vnd);
+                return vol === 0
+                  ? `<td colspan="3" style="text-align:center;color:#aaa;padding:5px 7px;border-left:1.5px solid #dde2ee;font-size:9px;">—</td>`
+                  : `<td style="padding:5px 6px;text-align:right;color:#1A4870;font-weight:600;border-left:1.5px solid #dde2ee;">${fmtN(vol,0)}</td>
+                     <td style="padding:5px 6px;text-align:right;color:#7C3AED;">${vnd>0?fmtN(vnd,0):"—"}</td>
+                     <td style="padding:5px 6px;text-align:right;color:${disp>0?"#16A34A":"#888"};font-weight:600;">${fmtN(disp,0)}</td>`;
+              }).join("");
+              return `<tr style="border-top:${fi>0?"0.5px solid #eee":"none"};">
+                <td style="padding:5px 10px;font-weight:600;color:#1a1a1a;white-space:nowrap;font-size:10px;">${fNome}</td>
+                ${cells}
+              </tr>`;
+            }).join("");
+
+            const cicloRowsHtml = sortedRows.map((r, i) => {
+              const commCS  = commSummary.find(cs => cs.comm === r.comm);
+              const baseVol = pcRows.filter(x => x.comm === r.comm && x.fazId === r.fazId).reduce((s,x)=>s+x.volPrev,0) || 1;
+              const peso    = r.volPrev / baseVol;
+              const rowArr  = commCS ? Math.round(commCS.arr * peso) : 0;
+              const rowBart = commCS ? Math.round(commCS.barter * peso) : 0;
+              const disp    = Math.max(0, r.volPrev - r.venda - rowArr - rowBart);
+              const dispPct = r.volPrev > 0 ? (disp / r.volPrev) * 100 : 0;
+              const rowBg   = i % 2 === 0 ? "#fff" : "#f9fafb";
+              return `<tr style="border-top:${i>0?"0.5px solid #eee":"none"};background:${rowBg};">
+                <td style="padding:5px 10px;">
+                  <div style="font-size:8px;color:#888;font-weight:600;">${r.fazNome}</div>
+                  <div style="font-weight:600;color:#1a1a1a;font-size:10px;">${r.descricao}</div>
+                </td>
+                <td style="padding:5px 7px;">
+                  <span style="background:${COMM_BG(r.comm)};color:${COMM_COR(r.comm)};border-radius:3px;padding:1px 5px;font-size:8px;font-weight:700;">${r.comm}</span>
+                </td>
+                <td style="padding:5px 7px;text-align:right;color:#555;">${fmtN(r.area,0)} ha</td>
+                <td style="padding:5px 7px;text-align:right;font-weight:600;color:#1A4870;">${r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
+                <td style="padding:5px 7px;text-align:right;color:#14532D;">${r.fatPrev>0?fmtR(r.fatPrev):"—"}</td>
+                <td style="padding:5px 7px;text-align:right;color:#C9921B;">${rowArr>0?`${fmtN(rowArr,0)} (${fmtN(r.volPrev>0?(rowArr/r.volPrev)*100:0,0)}%)`:"—"}</td>
+                <td style="padding:5px 7px;text-align:right;color:#1A4870;font-weight:600;">${r.venda>0?`${fmtN(r.venda,0)} (${fmtN(r.volPrev>0?(r.venda/r.volPrev)*100:0,0)}%)`:"—"}</td>
+                <td style="padding:5px 7px;text-align:right;color:#7C3AED;">${rowBart>0?fmtN(rowBart,0):"—"}</td>
+                <td style="padding:5px 7px;text-align:right;color:${dispPct>30?"#16A34A":dispPct>10?"#C9921B":"#E24B4A"};font-weight:600;">${fmtN(disp,0)} (${fmtN(dispPct,0)}%)</td>
+                <td style="padding:5px 7px;text-align:right;color:${r.colhido>0?"#16A34A":"#888"};">${r.colhido>0?`${fmtN(r.colhido,0)} sc`:"Aguard."}</td>
+              </tr>`;
+            }).join("");
+
+            const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+              <title>Posição do Produto — ${fazNomeAtual}</title>
+              <style>
+                * { margin:0; padding:0; box-sizing:border-box; }
+                body { font-family: system-ui, Arial, sans-serif; font-size: 10px; color: #1a1a1a; padding: 22px 26px; }
+                @page { size: A4 landscape; margin: 10mm 12mm; }
+                @media print { body { padding: 0; } }
+                table { width:100%; border-collapse:collapse; }
+                thead th { background:#f4f6fa; font-size:8px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:.04em; padding:5px 7px; text-align:right; }
+                thead th:first-child, thead th[data-left] { text-align:left; }
+                h2 { font-size:10px; font-weight:700; color:#1a1a1a; margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid #eee; }
+                thead { display:table-header-group; }
+                tbody tr { page-break-inside:avoid; }
+                table { page-break-inside:auto; }
+              </style>
+            </head><body>
+              <!-- CABEÇALHO -->
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #1A4870;padding-bottom:10px;margin-bottom:14px;">
+                <div>
+                  <div style="font-size:9px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">${fazNomeAtual}${anoDesc ? " · Safra " + anoDesc : ""}</div>
+                  <div style="font-size:19px;font-weight:800;color:#1A4870;">Posição do Produto</div>
+                  <div style="font-size:8px;color:#888;margin-top:3px;">Filtros: ${filtrosInfo} · ${pcRows.length} ciclo${pcRows.length!==1?"s":""} · ${fmtN(totalArea,0)} ha · Gerado em ${dataHora}</div>
+                </div>
+                <img src="${logoUrl}" alt="Arato" style="height:30px;object-fit:contain;" />
+              </div>
+
+              <!-- KPI GRID -->
+              <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:14px;">
+                ${kpiHtml}
+              </div>
+
+              <!-- POSIÇÃO POR PRODUTO -->
+              <div style="margin-bottom:14px;">
+                <h2>Posição por Produto
+                  <span style="float:right;font-size:7px;font-weight:400;color:#888;">
+                    <span style="display:inline-block;width:7px;height:7px;background:#C9921B;border-radius:2px;"></span> Arrendamento &nbsp;
+                    <span style="display:inline-block;width:7px;height:7px;background:#1A4870;border-radius:2px;"></span> Venda &nbsp;
+                    <span style="display:inline-block;width:7px;height:7px;background:#7C3AED;border-radius:2px;"></span> Barter &nbsp;
+                    <span style="display:inline-block;width:7px;height:7px;background:#86EFAC;border-radius:2px;"></span> Disponível
+                  </span>
+                </h2>
+                <table>
+                  <thead><tr>
+                    <th style="text-align:left;">Produto</th>
+                    <th>Previsto (sc)</th>
+                    <th>Fat. Previsto</th>
+                    <th style="color:#C9921B;">Arrendamento</th>
+                    <th style="color:#1A4870;">Venda</th>
+                    <th style="color:#7C3AED;">Barter</th>
+                    <th style="color:#16A34A;">Disponível</th>
+                    <th>Distribuição</th>
+                  </tr></thead>
+                  <tbody>${posicaoHtml}</tbody>
+                </table>
+              </div>
+
+              <!-- POR FAZENDA × PRODUTO -->
+              ${fazIds.length > 0 && commKeys.length > 0 ? `
+              <div style="margin-bottom:14px;">
+                <h2>Por Fazenda × Produto</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="text-align:left;">Fazenda</th>
+                      ${pivotHeaderCols}
+                    </tr>
+                    <tr>
+                      <th></th>
+                      ${pivotSubCols}
+                    </tr>
+                  </thead>
+                  <tbody>${pivotRows}</tbody>
+                </table>
+              </div>` : ""}
+
+              <!-- DETALHE POR CICLO -->
+              <div>
+                <h2>Detalhe por Ciclo</h2>
+                <table>
+                  <thead><tr>
+                    <th style="text-align:left;">Fazenda / Ciclo</th>
+                    <th style="text-align:left;">Produto</th>
+                    <th>Área</th>
+                    <th>Previsto (sc)</th>
+                    <th>Fat. Prev.</th>
+                    <th style="color:#C9921B;">Arrendamento</th>
+                    <th style="color:#1A4870;">Venda</th>
+                    <th style="color:#7C3AED;">Barter</th>
+                    <th style="color:#16A34A;">Disponível</th>
+                    <th>Colhido</th>
+                  </tr></thead>
+                  <tbody>${cicloRowsHtml}</tbody>
+                  <tr style="border-top:1.5px solid #1A4870;background:#D5E8F5;">
+                    <td colspan="2" style="padding:5px 10px;font-weight:700;color:#1A4870;font-size:10px;">TOTAL</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:600;">${fmtN(totalArea,0)} ha</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#1A4870;">${fmtN(kpiVolPrev,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#14532D;">${fmtR(kpiFatPrev)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#C9921B;">${fmtN(kpiArr,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#1A4870;">${fmtN(kpiVenda,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#7C3AED;">${fmtN(kpiBarter,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:#16A34A;">${fmtN(kpiDisp,0)}</td>
+                    <td style="padding:5px 7px;text-align:right;font-weight:700;color:${kpiColhido>0?"#16A34A":"#888"};">${kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- RODAPÉ -->
+              <div style="margin-top:18px;padding-top:7px;border-top:0.5px solid #ddd;display:flex;justify-content:space-between;font-size:7px;color:#aaa;">
+                <span>Arato — Sistema de Gestão Agrícola</span>
+                <span>${fazNomeAtual} · ${dataHora}</span>
+              </div>
+            </body></html>`;
+
+            const w = window.open("", "_blank", "width=1200,height=800");
+            if (!w) return;
+            w.document.write(html);
+            w.document.close();
+            w.onload = () => { w.focus(); w.print(); };
+          }
+
           return (
             <div>
               {/* ── Sub-tab bar ── */}
@@ -1386,9 +1619,15 @@ export default function BI() {
                         Limpar ✕
                       </button>
                     )}
-                    <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
-                      {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} · {fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha
-                    </span>
+                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                        {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} · {fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha
+                      </span>
+                      <button onClick={imprimirPosicaoProduto}
+                        style={{ padding: "4px 12px", background: "#1A4870", color: "#fff", border: "none", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                        🖨 PDF
+                      </button>
+                    </div>
                   </div>
 
                   {kpiVolPrev === 0 ? (
