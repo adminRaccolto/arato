@@ -58,7 +58,35 @@ export async function GET() {
     contaMap = Object.fromEntries((contas ?? []).map(c => [c.id, c]));
   }
 
-  // 4. Agrupar por conta_id — uma entrada por cliente
+  // 4. Buscar perfis vinculados às fazendas — fallback para nome quando não há produtor_id
+  const fazendaIds = (fazendas ?? []).map(f => f.id);
+  let perfilPorFazenda: Record<string, string> = {};
+  if (fazendaIds.length > 0) {
+    const { data: perfis } = await admin
+      .from("perfis")
+      .select("fazenda_id, nome_completo, conta_id")
+      .in("fazenda_id", fazendaIds);
+
+    // Também busca perfis por conta_id para clientes com conta
+    const contaIdsParaPerfil = contaIds;
+    let perfisPorConta: typeof perfis = [];
+    if (contaIdsParaPerfil.length > 0) {
+      const { data: pc } = await admin
+        .from("perfis")
+        .select("fazenda_id, nome_completo, conta_id")
+        .in("conta_id", contaIdsParaPerfil);
+      perfisPorConta = pc ?? [];
+    }
+
+    const todosPerfis = [...(perfis ?? []), ...perfisPorConta];
+    for (const p of todosPerfis) {
+      if (p.fazenda_id && p.nome_completo && !perfilPorFazenda[p.fazenda_id]) {
+        perfilPorFazenda[p.fazenda_id] = p.nome_completo;
+      }
+    }
+  }
+
+  // 5. Agrupar por conta_id — uma entrada por cliente
   const idx: Record<string, {
     conta_id: string | null;
     conta_nome: string;
@@ -71,20 +99,24 @@ export async function GET() {
   for (const f of fazendas ?? []) {
     const cid = f.conta_id ?? `sem_conta_${f.id}`;
     const prodNome = f.produtor_id ? (produtorMap[f.produtor_id] ?? null) : null;
+    // Fallback: nome via perfil do usuário daquela fazenda
+    const perfilNome = perfilPorFazenda[f.id] ?? null;
+    const nomeRepresentante = prodNome ?? perfilNome;
+
     const contaDados = f.conta_id ? (contaMap[f.conta_id] ?? null) : null;
     const contaNome = contaDados ? String(contaDados.nome ?? f.nome) : f.nome;
 
     if (!idx[cid]) {
       idx[cid] = {
-        conta_id:     f.conta_id ?? null,
-        conta_nome:   contaNome,
-        produtor_nome: prodNome,
-        fazendas:     [],
-        area_total:   0,
-        conta_data:   contaDados,
+        conta_id:      f.conta_id ?? null,
+        conta_nome:    contaNome,
+        produtor_nome: nomeRepresentante,
+        fazendas:      [],
+        area_total:    0,
+        conta_data:    contaDados,
       };
     }
-    if (!idx[cid].produtor_nome && prodNome) idx[cid].produtor_nome = prodNome;
+    if (!idx[cid].produtor_nome && nomeRepresentante) idx[cid].produtor_nome = nomeRepresentante;
     idx[cid].fazendas.push({ id: f.id, nome: f.nome, municipio: f.municipio, estado: f.estado, area_total_ha: f.area_total_ha });
     idx[cid].area_total += f.area_total_ha ?? 0;
   }
