@@ -168,11 +168,39 @@ function grupoCategoria(cat?: string): string {
   return "Outros";
 }
 
-const BENCHMARK: Record<string, { sc_ha: number; custo_ha: number; unidade: string }> = {
-  Soja:    { sc_ha: 62,  custo_ha: 5800, unidade: "sc/ha" },
-  Milho:   { sc_ha: 110, custo_ha: 3500, unidade: "sc/ha" },
-  Algodão: { sc_ha: 250, custo_ha: 8500, unidade: "@/ha"  },
+const BENCHMARK: Record<string, { sc_ha: number; custo_ha: number; unidade: string; label?: string }> = {
+  // Soja transgênica (RR, Intacta, XTRA) — referência MT CONAB
+  "Soja":                  { sc_ha: 62,  custo_ha: 5800, unidade: "sc/ha", label: "Soja Transgênica" },
+  // Soja Convencional / IP — sem proteção PRR/Intacta, menor teto produtivo
+  "Soja Convencional":     { sc_ha: 55,  custo_ha: 5200, unidade: "sc/ha" },
+  "Soja IP":               { sc_ha: 55,  custo_ha: 5200, unidade: "sc/ha" },
+  // Milho 1ª safra / 2ª safra (safrinha)
+  "Milho":                 { sc_ha: 110, custo_ha: 3500, unidade: "sc/ha" },
+  "Milho 1ª Safra":        { sc_ha: 120, custo_ha: 4200, unidade: "sc/ha" },
+  "Milho Safrinha":        { sc_ha: 95,  custo_ha: 2800, unidade: "sc/ha" },
+  // Algodão — unidade em @ (arroba de 15 kg)
+  "Algodão":               { sc_ha: 250, custo_ha: 8500, unidade: "@/ha"  },
 };
+
+// Lookup tolerante — tenta chave exata, depois fuzzy por keywords do produto agrícola
+function getBenchmark(prodNome: string) {
+  if (!prodNome) return undefined;
+  if (BENCHMARK[prodNome]) return BENCHMARK[prodNome];
+  const n = prodNome.toLowerCase();
+  if (n.includes("soja")) {
+    if (n.includes("conv") || n.includes(" ip"))        return BENCHMARK["Soja Convencional"];
+    if (n.includes("safrinha") || n.includes("2ª"))     return undefined;
+    if (n.includes("1ª"))                               return BENCHMARK["Milho 1ª Safra"];
+    return BENCHMARK["Soja"]; // transgênica como padrão
+  }
+  if (n.includes("milho")) {
+    if (n.includes("safrinha") || n.includes("2ª"))     return BENCHMARK["Milho Safrinha"];
+    if (n.includes("1ª"))                               return BENCHMARK["Milho 1ª Safra"];
+    return BENCHMARK["Milho"];
+  }
+  if (n.includes("algodão") || n.includes("algodao"))   return BENCHMARK["Algodão"];
+  return undefined;
+}
 
 const GRUPOS_CUSTO = ["Sementes", "Fertilizantes", "Defensivos", "Operações", "Arrendamento", "Mão de Obra", "Encargos Financeiros", "Outros"] as const;
 const CORES_GRUPO: Record<string, string> = {
@@ -357,7 +385,7 @@ export default function BI() {
     const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR, fazsR, talR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
-      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha,produto_agricola_nome").in("fazenda_id", fids),
+      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha").in("fazenda_id", fids),
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
@@ -671,7 +699,7 @@ export default function BI() {
     const m = calcCicloMetrics(ciclo.id);
     if (m.area === 0) return;
     const comm = culturaToCommodity(ciclo.cultura);
-    const benchScHa = BENCHMARK[comm]?.sc_ha ?? 62;
+    const benchScHa = getBenchmark(comm)?.sc_ha ?? 62;
     if (m.scHaEsperado > 0 && m.scHaEsperado < benchScHa * 0.85)
       diagnostico.push({ tipo: "warn", msg: `${ciclo.descricao}: produtividade esperada ${fmtN(m.scHaEsperado, 1)} sc/ha abaixo da média MT (${benchScHa})` });
   });
@@ -1069,7 +1097,7 @@ export default function BI() {
                       {ciclosFiltrados.map((ciclo, i) => {
                         const m   = calcCicloMetrics(ciclo.id);
                         const comm = culturaToCommodity(ciclo.cultura);
-                        const bm  = BENCHMARK[comm]?.sc_ha ?? 62;
+                        const bm  = getBenchmark(comm)?.sc_ha ?? 62;
                         const saude: "verde" | "amarelo" | "vermelho" =
                           m.area === 0 ? "amarelo" :
                           m.scHaEsperado < bm * 0.85 ? "amarelo" : "verde";
@@ -1128,8 +1156,8 @@ export default function BI() {
           // Per-ciclo metrics para Posição Comercial
           const todasRows = ciclosFiltrados.map(c => {
             const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? c.fazenda_id;
-            // Produto agrícola (ex: "Soja Convencional", "Soja Transgênica RR") tem precedência sobre cultura genérica
-            const comm    = c.produto_agricola_nome?.trim() || culturaToCommodity(c.cultura, cultMap);
+            // cultMap retorna o nome exato da cultura (ex: "Soja Convencional", "Soja Transgênica") se cadastrada
+            const comm    = culturaToCommodity(c.cultura, cultMap);
             const pls     = plantios.filter(p => p.ciclo_id === c.id);
             // Usa plantios quando existem; caso contrário usa os campos do próprio ciclo
             const area    = pls.length > 0
@@ -1472,8 +1500,8 @@ export default function BI() {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginBottom: 20 }}>
                       {ciclosFiltrados.map(ciclo => {
                         const m      = calcCicloMetrics(ciclo.id);
-                        const comm   = ciclo.produto_agricola_nome?.trim() || culturaToCommodity(ciclo.cultura, cultMap);
-                        const bm     = BENCHMARK[comm] ?? BENCHMARK[culturaToCommodity(ciclo.cultura)];
+                        const comm   = culturaToCommodity(ciclo.cultura, cultMap);
+                        const bm     = getBenchmark(comm) ?? getBenchmark(culturaToCommodity(ciclo.cultura));
                         const devPct = bm && m.scHaEsperado > 0 ? ((m.scHaEsperado - bm.sc_ha) / bm.sc_ha) * 100 : null;
                         const realPct= m.scHaEsperado > 0 && m.scHaReal > 0 ? (m.scHaReal / m.scHaEsperado) * 100 : null;
                         const colhido= m.sacasReais > 0;
@@ -1940,7 +1968,8 @@ export default function BI() {
                       <>
                         <div style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)", marginBottom: 12 }}>Custo/ha vs Benchmarks MT</div>
                         {(["Soja", "Milho"] as const).map(comm => {
-                          const bm = BENCHMARK[comm];
+                          const bm = getBenchmark(comm);
+                          if (!bm) return null;
                           const cultArea = plantiosFiltrados.filter(p => {
                             const c = ciclos.find(x => x.id === p.ciclo_id);
                             return c && culturaToCommodity(c.cultura) === comm;
