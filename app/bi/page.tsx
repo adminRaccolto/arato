@@ -1262,7 +1262,7 @@ export default function BI() {
 
           // Opções de filtro
           const fazOpts  = [...new Set(ciclosFiltrados.map(c => c.fazenda_id))].map(fid => ({ id: fid, nome: fazendas.find(f => f.id === fid)?.nome ?? fid }));
-          const cultOpts = [...new Set(ciclosFiltrados.map(c => culturaToCommodity(c.cultura, cultMap)))];
+          const cultOpts = [...new Set(todasRows.map(r => r.comm))];
 
           // Cabeçalho de coluna ordenável
           const sortTh = (col: string, label: string) => (
@@ -1306,7 +1306,7 @@ export default function BI() {
             <div>
               {/* ── Sub-tab bar ── */}
               <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
-                {([["posicao", "Posição Comercial"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
+                {([["posicao", "Posição do Produto"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
                   <button key={k} onClick={() => setAbaProducao(k)}
                     style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
                     {l}
@@ -1315,29 +1315,39 @@ export default function BI() {
                 ))}
               </div>
 
-              {/* ════════ POSIÇÃO COMERCIAL ════════ */}
+              {/* ════════ POSIÇÃO DO PRODUTO ════════ */}
               {abaProducao === "posicao" && (
                 <div>
-                  {/* Filtros */}
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "10px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
-                    <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, marginRight: 4 }}>Filtrar:</span>
+                  {/* ── Filtros: chips de produto + fazenda ── */}
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "9px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginRight: 2 }}>Produto:</span>
+                    <button onClick={() => setPcCultFiltro("")}
+                      style={{ padding: "3px 10px", borderRadius: 20, border: "none", cursor: "pointer", background: !pcCultFiltro ? "#1A4870" : "#EEF2F7", color: !pcCultFiltro ? "#fff" : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
+                      Todos
+                    </button>
+                    {cultOpts.map(c => (
+                      <button key={c} onClick={() => setPcCultFiltro(pcCultFiltro === c ? "" : c)}
+                        style={{ padding: "3px 11px", borderRadius: 20, border: `1.5px solid ${pcCultFiltro === c ? COMM_COR(c) : "transparent"}`, cursor: "pointer", background: pcCultFiltro === c ? COMM_BG(c) : "#EEF2F7", color: pcCultFiltro === c ? COMM_COR(c) : "var(--text-2)", fontSize: 11, fontWeight: 600 }}>
+                        {c}
+                        <span style={{ marginLeft: 5, background: pcCultFiltro === c ? COMM_COR(c) : "#DDE2EE", color: pcCultFiltro === c ? "#fff" : "var(--text-3)", borderRadius: 8, padding: "0 5px", fontSize: 10 }}>
+                          {todasRows.filter(r => r.comm === c).length}
+                        </span>
+                      </button>
+                    ))}
                     {fazOpts.length > 1 && (
-                      <select value={pcFazFiltro} onChange={e => setPcFazFiltro(e.target.value)}
-                        style={{ padding: "5px 10px", border: `0.5px solid ${pcFazFiltro ? "#1A4870" : "var(--border-table)"}`, borderRadius: 7, fontSize: 12, background: pcFazFiltro ? "#D5E8F5" : "var(--bg-card)", color: pcFazFiltro ? "#0B2D50" : "var(--text-1)", fontWeight: pcFazFiltro ? 600 : 400 }}>
-                        <option value="">Todas as fazendas</option>
-                        {fazOpts.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                      </select>
-                    )}
-                    {cultOpts.length > 1 && (
-                      <select value={pcCultFiltro} onChange={e => setPcCultFiltro(e.target.value)}
-                        style={{ padding: "5px 10px", border: `0.5px solid ${pcCultFiltro ? "#1A4870" : "var(--border-table)"}`, borderRadius: 7, fontSize: 12, background: pcCultFiltro ? "#D5E8F5" : "var(--bg-card)", color: pcCultFiltro ? "#0B2D50" : "var(--text-1)", fontWeight: pcCultFiltro ? 600 : 400 }}>
-                        <option value="">Todos os produtos</option>
-                        {cultOpts.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      <>
+                        <div style={{ width: 1, height: 18, background: "var(--border-table)", margin: "0 4px" }} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)" }}>Fazenda:</span>
+                        <select value={pcFazFiltro} onChange={e => setPcFazFiltro(e.target.value)}
+                          style={{ padding: "3px 8px", border: `0.5px solid ${pcFazFiltro ? "#1A4870" : "var(--border-table)"}`, borderRadius: 7, fontSize: 11, background: pcFazFiltro ? "#D5E8F5" : "var(--bg-card)", color: pcFazFiltro ? "#0B2D50" : "var(--text-1)" }}>
+                          <option value="">Todas</option>
+                          {fazOpts.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                        </select>
+                      </>
                     )}
                     {(pcFazFiltro || pcCultFiltro) && (
                       <button onClick={() => { setPcFazFiltro(""); setPcCultFiltro(""); }}
-                        style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#E24B4A18", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                        style={{ padding: "3px 9px", border: "none", borderRadius: 6, background: "#E24B4A18", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                         Limpar ✕
                       </button>
                     )}
@@ -1348,186 +1358,317 @@ export default function BI() {
 
                   {kpiVolPrev === 0 ? (
                     <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-3)", border: "0.5px solid var(--border)" }}>
-                      {ciclosFiltrados.length === 0 ? "Selecione um ano safra para ver a posição comercial." : "Ciclos selecionados não têm plantios com produtividade registrada."}
+                      {ciclosFiltrados.length === 0 ? "Selecione um ano safra para ver a posição do produto." : "Ciclos selecionados não têm produtividade registrada."}
                     </div>
-                  ) : (<>
-                    {/* ── KPI Cards ── */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10, marginBottom: 16 }}>
-                      {[
-                        { label: "Volume Previsto",     val: `${fmtN(kpiVolPrev,0)} sc`,   sub: `${fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha plantados`, color: "#1A4870",  bg: "#EBF3FC" },
-                        { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),              sub: kpiVolPrev>0?`${fmtR2(kpiFatPrev/kpiVolPrev)}/sc`:"",        color: "#14532D",  bg: "#ECFDF5" },
-                        { label: "Comprometido total",  val: `${fmtN(kpiCompr,0)} sc`,     sub: `${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,1)}% do previsto`, color: "#7A5200", bg: "#FBF3E0" },
-                        { label: "Disponível p/ venda", val: `${fmtN(kpiDisp,0)} sc`,      sub: `${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,1)}% do previsto`, color: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
-                        { label: "Colhido",             val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando colheita", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,1)}% do previsto`:"", color: kpiColhido>0?"#16A34A":"var(--text-3)", bg: kpiColhido>0?"#ECFDF5":"var(--bg-card)" },
-                      ].map(k => (
-                        <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border)" }}>
-                          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>{k.label}</div>
-                          <div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.val}</div>
-                          {k.sub && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{k.sub}</div>}
-                        </div>
-                      ))}
-                    </div>
+                  ) : (() => {
+                    /* ── Donut chart helpers ── */
+                    const R = 36, CX = 50, CY = 50;
+                    const CIRC = 2 * Math.PI * R;
+                    const donutSegs = [
+                      { sc: kpiArr,    cor: "#C9921B", label: "Arrendamento" },
+                      { sc: kpiVenda,  cor: "#1A4870", label: "Venda" },
+                      { sc: kpiBarter, cor: "#7C3AED", label: "Barter" },
+                      { sc: kpiDisp,   cor: "#86EFAC", label: "Disponível" },
+                    ].filter(s => s.sc > 0);
+                    let cumOff = 0;
+                    const donutTotal = donutSegs.reduce((s, x) => s + x.sc, 0) || 1;
 
-                    {/* ── Legenda de comprometimento ── */}
-                    <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14, padding: "8px 14px", background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border)", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700 }}>COMPROMETIDO:</span>
-                      {[
-                        { label: "Arrendamento", val: kpiArr,    cor: "#C9921B" },
-                        { label: "Venda fixada",  val: kpiVenda,  cor: "#1A4870" },
-                        { label: "Barter",        val: kpiBarter, cor: "#7C3AED" },
-                      ].map(item => item.val > 0 && (
-                        <span key={item.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: 2, background: item.cor, display: "inline-block" }} />
-                          <strong style={{ color: item.cor }}>{fmtN(item.val,0)} sc</strong>
-                          <span style={{ color: "var(--text-3)" }}>{item.label} ({fmtN(kpiVolPrev>0?(item.val/kpiVolPrev)*100:0,1)}%)</span>
-                        </span>
-                      ))}
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginLeft: "auto" }}>
-                        <span style={{ width: 10, height: 10, borderRadius: 2, background: "#16A34A", display: "inline-block" }} />
-                        <strong style={{ color: "#16A34A" }}>{fmtN(kpiDisp,0)} sc</strong>
-                        <span style={{ color: "var(--text-3)" }}>Disponível</span>
-                      </span>
-                    </div>
+                    /* ── Per-fazenda × produto pivot ── */
+                    const fazIds = [...new Set(pcRows.map(r => r.fazId))];
+                    const commKeys = [...new Set(pcRows.map(r => r.comm))];
 
-                    {/* ── Blocos por commodity ── */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-                      {commSummary.map(cs => {
-                        const total   = cs.volPrev || 1;
-                        const arrPct  = (cs.arr      / total) * 100;
-                        const vendPct = (cs.venda    / total) * 100;
-                        const bartPct = (cs.barter   / total) * 100;
-                        const dispPct = (cs.disponivel / total) * 100;
-                        return (
-                          <div key={cs.comm} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                            <div style={{ padding: "13px 18px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center", background: COMM_BG(cs.comm) }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <span style={{ width: 12, height: 12, borderRadius: 3, background: COMM_COR(cs.comm), display: "inline-block" }} />
-                                <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{cs.comm}</span>
-                                {cs.colhido > 0 && <span style={{ fontSize: 10, background: "#16A34A", color: "#fff", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>
-                                  {fmtN((cs.colhido/cs.volPrev)*100,1)}% colhido
-                                </span>}
-                              </div>
-                              <div style={{ display: "flex", gap: 20, fontSize: 12 }}>
-                                <span><strong style={{ color: "#1A4870" }}>{fmtN(cs.volPrev,0)} sc</strong> <span style={{ color: "var(--text-3)", fontSize: 11 }}>previsto</span></span>
-                                <span><strong style={{ color: "#14532D" }}>{fmtR(cs.fatPrev)}</strong> <span style={{ color: "var(--text-3)", fontSize: 11 }}>faturamento prev.</span></span>
-                                <span style={{ color: "var(--text-3)", fontSize: 11 }}>preço médio {fmtR2(cs.precMed)}/sc</span>
-                              </div>
-                            </div>
-                            <div style={{ padding: "16px 18px" }}>
-                              {/* Barra empilhada */}
-                              <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", marginBottom: 12, background: "#F0F4F8" }}>
-                                {cs.arr    > 0 && <div style={{ width: `${arrPct}%`,  background: "#C9921B" }} title={`Arrendamento: ${fmtN(cs.arr,0)} sc`} />}
-                                {cs.venda  > 0 && <div style={{ width: `${vendPct}%`, background: "#1A4870" }} title={`Venda: ${fmtN(cs.venda,0)} sc`} />}
-                                {cs.barter > 0 && <div style={{ width: `${bartPct}%`, background: "#7C3AED" }} title={`Barter: ${fmtN(cs.barter,0)} sc`} />}
-                                {cs.disponivel > 0 && <div style={{ width: `${dispPct}%`, background: "#D1FAE5" }} />}
-                              </div>
-                              {/* Linha de colheita (overlay visual) */}
-                              {cs.colhido > 0 && (
-                                <div style={{ marginBottom: 10 }}>
-                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>
-                                    <span>Colheita realizada</span>
-                                    <span>{fmtN(cs.colhido,0)} sc ({fmtN((cs.colhido/cs.volPrev)*100,1)}% do previsto)</span>
-                                  </div>
-                                  <div style={{ height: 8, borderRadius: 4, background: "#F0F4F8", overflow: "hidden" }}>
-                                    <div style={{ width: `${Math.min(100,(cs.colhido/cs.volPrev)*100)}%`, height: "100%", background: "#16A34A", borderRadius: 4 }} />
-                                  </div>
-                                </div>
-                              )}
-                              {/* Cards de breakdown */}
-                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
-                                {[
-                                  { label: "Arrendamento", sc: cs.arr,       pct: arrPct,  cor: "#C9921B", bg: "#FBF3E0" },
-                                  { label: "Venda fixada",  sc: cs.venda,    pct: vendPct, cor: "#1A4870", bg: "#D5E8F5" },
-                                  { label: "Barter",        sc: cs.barter,   pct: bartPct, cor: "#7C3AED", bg: "#F5F3FF" },
-                                  { label: "Disponível",    sc: cs.disponivel,pct: dispPct, cor: "#16A34A", bg: "#ECFDF5" },
-                                  ...(cs.colhido > 0 ? [{ label: "Colhido", sc: cs.colhido, pct: (cs.colhido/total)*100, cor: "#0D9488", bg: "#D1FAE5" }] : []),
-                                ].map(row => (
-                                  <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px", background: row.bg, borderRadius: 8 }}>
-                                    <div style={{ width: 8, height: 8, borderRadius: 2, background: row.cor, flexShrink: 0 }} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600 }}>{row.label}</div>
-                                      <div style={{ fontSize: 13, fontWeight: 700, color: row.cor }}>{fmtN(row.sc,0)} sc</div>
-                                    </div>
-                                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                      <div style={{ fontSize: 12, fontWeight: 700, color: row.cor }}>{fmtN(row.pct,1)}%</div>
-                                      {row.sc > 0 && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{fmtR(row.sc * cs.precMed)}</div>}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    /* ── Barter origin rows ── */
+                    const barterRows = lancamentos.filter(l =>
+                      l.moeda === "barter" && l.status !== "baixado" &&
+                      (!pcFazFiltro || l.fazenda_id === pcFazFiltro)
+                    );
 
-                    {/* ── Tabela por ciclo ── */}
-                    <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                      <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Detalhamento por Ciclo</span>
-                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>clique no cabeçalho para ordenar</span>
-                      </div>
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ background: "var(--bg-tag)" }}>
-                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Fazenda</th>
-                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Ciclo</th>
-                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left" }}>Produto</th>
-                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "right", whiteSpace: "nowrap" }}>Área (ha)</th>
-                              {sortTh("volPrev",  "Previsto (sc)")}
-                              {sortTh("fatPrev",  "Fat. Previsto")}
-                              {sortTh("venda",    "Venda fixada")}
-                              {sortTh("disp",     "Disponível")}
-                              {sortTh("colhido",  "Colhido")}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedRows.map((r, i) => {
-                              const disp    = r.volPrev - r.venda;
-                              const dispPct = r.volPrev > 0 ? (disp / r.volPrev) * 100 : 0;
+                    return (<>
+                      {/* ── Row 1: Donut + KPI grid ── */}
+                      <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 14, marginBottom: 14 }}>
+                        {/* Donut */}
+                        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>Distribuição</div>
+                          <svg viewBox="0 0 100 100" width={110} height={110}>
+                            <circle cx={CX} cy={CY} r={R} fill="none" stroke="#F0F4F8" strokeWidth={17} />
+                            {donutSegs.map(seg => {
+                              const len = (seg.sc / donutTotal) * CIRC;
+                              const off = -cumOff;
+                              cumOff += len;
                               return (
-                                <tr key={r.cId} style={{ borderTop: i > 0 ? "0.5px solid var(--border-row)" : "none" }}>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{r.fazNome}</td>
-                                  <td style={{ padding: "9px 12px", color: "var(--text-1)", fontWeight: 600 }}>{r.descricao}</td>
-                                  <td style={{ padding: "9px 12px" }}>
-                                    <span style={{ background: COMM_BG(r.comm), color: COMM_COR(r.comm), borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{r.cultura}</span>
-                                  </td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--text-2)" }}>{fmtN(r.area,0)}</td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>{r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#14532D", fontSize: 11 }}>{r.fatPrev>0?fmtR(r.fatPrev):"—"}</td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                                    {r.venda > 0
-                                      ? <span style={{ color: "#1A4870", fontWeight: 600 }}>{fmtN(r.venda,0)} <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>({r.volPrev>0?fmtN((r.venda/r.volPrev)*100,0):0}%)</span></span>
-                                      : <span style={{ color: "var(--text-3)" }}>—</span>}
-                                  </td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                                    <span style={{ color: dispPct>30?"#16A34A":dispPct>10?"#C9921B":"#E24B4A", fontWeight: 600 }}>
-                                      {disp>0?fmtN(disp,0):"0"} <span style={{ fontSize: 10, fontWeight: 400 }}>({fmtN(dispPct,0)}%)</span>
-                                    </span>
-                                  </td>
-                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
-                                    {r.colhido>0
-                                      ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtN(r.colhido,0)} <span style={{ fontSize: 10, fontWeight: 400, color: "var(--text-3)" }}>({r.volPrev>0?fmtN((r.colhido/r.volPrev)*100,0):0}%)</span></span>
-                                      : <span style={{ color: "var(--text-3)", fontSize: 11 }}>Aguardando</span>}
-                                  </td>
-                                </tr>
+                                <circle key={seg.label} cx={CX} cy={CY} r={R} fill="none"
+                                  stroke={seg.cor} strokeWidth={17}
+                                  strokeDasharray={`${len} ${CIRC}`}
+                                  strokeDashoffset={off}
+                                  style={{ transform: "rotate(-90deg)", transformOrigin: "50px 50px" }}
+                                />
                               );
                             })}
-                            <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#D5E8F5" }}>
-                              <td colSpan={3} style={{ padding: "9px 12px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>TOTAL GERAL</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-1)" }}>{fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtN(kpiVolPrev,0)}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#14532D" }}>{fmtR(kpiFatPrev)}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtN(kpiVenda,0)}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#16A34A" }}>{fmtN(kpiDisp,0)}</td>
-                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: kpiColhido>0?"#16A34A":"var(--text-3)" }}>{kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
-                            </tr>
-                          </tbody>
-                        </table>
+                            <text x={CX} y={CY - 5} textAnchor="middle" fontSize={9} fill="var(--text-3)" fontWeight={600}>PREVISTO</text>
+                            <text x={CX} y={CY + 9} textAnchor="middle" fontSize={11} fill="var(--text-1)" fontWeight={700}>{fmtN(kpiVolPrev,0)}</text>
+                            <text x={CX} y={CY + 20} textAnchor="middle" fontSize={8} fill="var(--text-3)">sacas</text>
+                          </svg>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%", marginTop: 6 }}>
+                            {donutSegs.map(seg => (
+                              <div key={seg.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: 2, background: seg.cor, flexShrink: 0 }} />
+                                <span style={{ color: "var(--text-2)", flex: 1 }}>{seg.label}</span>
+                                <span style={{ fontWeight: 700, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{fmtN((seg.sc/donutTotal)*100,0)}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* KPI 2×3 grid */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
+                          {[
+                            { label: "Volume Previsto",     val: `${fmtN(kpiVolPrev,0)} sc`,  sub: `${fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha`, cor: "#1A4870", bg: "#EBF3FC" },
+                            { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),              sub: kpiVolPrev>0?`${fmtR2(kpiFatPrev/kpiVolPrev)}/sc`:"", cor: "#14532D", bg: "#ECFDF5" },
+                            { label: "Comprometido",        val: `${fmtN(kpiCompr,0)} sc`,     sub: `${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0" },
+                            { label: "Disponível p/ venda", val: `${fmtN(kpiDisp,0)} sc`,      sub: `${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,0)}% do previsto`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
+                            { label: "Valor a Faturar",     val: fmtR(kpiDisp * (kpiFatPrev / Math.max(kpiVolPrev,1))), sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4" },
+                            { label: "Colhido",             val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"var(--text-3)", bg: kpiColhido>0?"#F0FDFA":"var(--bg-card)" },
+                          ].map(k => (
+                            <div key={k.label} style={{ background: k.bg, borderRadius: 9, padding: "10px 13px", border: "0.5px solid var(--border)" }}>
+                              <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>{k.label}</div>
+                              <div style={{ fontSize: 15, fontWeight: 700, color: k.cor, fontVariantNumeric: "tabular-nums" }}>{k.val}</div>
+                              {k.sub && <div style={{ fontSize: 9, color: "var(--text-3)", marginTop: 2 }}>{k.sub}</div>}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </>)}
+
+                      {/* ── Row 2: Barras horizontais por produto (interativas) ── */}
+                      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 14, overflow: "hidden" }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Posição por Produto</span>
+                          <div style={{ display: "flex", gap: 10, fontSize: 9 }}>
+                            {[{ cor: "#C9921B", lbl: "Arrendamento" }, { cor: "#1A4870", lbl: "Venda" }, { cor: "#7C3AED", lbl: "Barter" }, { cor: "#86EFAC", lbl: "Disponível" }].map(x => (
+                              <span key={x.lbl} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: 2, background: x.cor }} />
+                                <span style={{ color: "var(--text-3)" }}>{x.lbl}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                          {commSummary.map(cs => {
+                            const tot = cs.volPrev || 1;
+                            const isActive = !pcCultFiltro || pcCultFiltro === cs.comm;
+                            return (
+                              <div key={cs.comm} onClick={() => setPcCultFiltro(pcCultFiltro === cs.comm ? "" : cs.comm)}
+                                style={{ cursor: "pointer", opacity: isActive ? 1 : 0.4, transition: "opacity .15s" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                                  <div style={{ width: 8, height: 8, borderRadius: 2, background: COMM_COR(cs.comm), flexShrink: 0 }} />
+                                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-1)", minWidth: 180 }}>{cs.comm}</span>
+                                  <span style={{ fontSize: 10, color: "var(--text-3)", marginLeft: "auto" }}>
+                                    {fmtN(cs.volPrev,0)} sc · {fmtR(cs.fatPrev)} · preço médio {fmtR2(cs.precMed)}/sc
+                                  </span>
+                                </div>
+                                <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", background: "#F0F4F8" }}>
+                                  {cs.arr      > 0 && <div style={{ width: `${(cs.arr/tot)*100}%`,       background: "#C9921B" }} title={`Arrendamento: ${fmtN(cs.arr,0)} sc`} />}
+                                  {cs.venda    > 0 && <div style={{ width: `${(cs.venda/tot)*100}%`,     background: "#1A4870" }} title={`Venda: ${fmtN(cs.venda,0)} sc`} />}
+                                  {cs.barter   > 0 && <div style={{ width: `${(cs.barter/tot)*100}%`,   background: "#7C3AED" }} title={`Barter: ${fmtN(cs.barter,0)} sc`} />}
+                                  {cs.disponivel>0 && <div style={{ width: `${(cs.disponivel/tot)*100}%`,background: "#86EFAC" }} title={`Disponível: ${fmtN(cs.disponivel,0)} sc`} />}
+                                </div>
+                                <div style={{ display: "flex", gap: 14, marginTop: 3, fontSize: 9, color: "var(--text-3)" }}>
+                                  {cs.arr     > 0 && <span style={{ color: "#C9921B" }}>Arr: {fmtN(cs.arr,0)} sc ({fmtN((cs.arr/tot)*100,0)}%)</span>}
+                                  {cs.venda   > 0 && <span style={{ color: "#1A4870" }}>Venda: {fmtN(cs.venda,0)} sc ({fmtN((cs.venda/tot)*100,0)}%)</span>}
+                                  {cs.barter  > 0 && <span style={{ color: "#7C3AED" }}>Barter: {fmtN(cs.barter,0)} sc ({fmtN((cs.barter/tot)*100,0)}%)</span>}
+                                  {cs.disponivel>0 && <span style={{ color: "#16A34A" }}>Disp: {fmtN(cs.disponivel,0)} sc ({fmtN((cs.disponivel/tot)*100,0)}%)</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* ── Row 3: Pivot Fazenda × Produto ── */}
+                      {fazIds.length > 0 && commKeys.length > 0 && (
+                        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 14, overflow: "hidden" }}>
+                          <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)" }}>
+                            <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Por Fazenda × Produto</span>
+                          </div>
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                              <thead>
+                                <tr style={{ background: "var(--bg-tag)" }}>
+                                  <th style={{ padding: "7px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", whiteSpace: "nowrap" }}>Fazenda</th>
+                                  {commKeys.map(c => (
+                                    <th key={c} colSpan={3} style={{ padding: "7px 10px", textAlign: "center", fontSize: 10, fontWeight: 700, color: COMM_COR(c), background: COMM_BG(c), borderLeft: "1px solid var(--border)", whiteSpace: "nowrap" }}>{c}</th>
+                                  ))}
+                                </tr>
+                                <tr style={{ background: "var(--bg-tag)" }}>
+                                  <th style={{ padding: "5px 12px" }} />
+                                  {commKeys.map(c => (
+                                    ["Previsto", "Venda", "Disponível"].map(sub => (
+                                      <th key={`${c}-${sub}`} style={{ padding: "5px 8px", textAlign: "right", fontSize: 9, fontWeight: 600, color: "var(--text-3)", borderLeft: sub === "Previsto" ? "1px solid var(--border)" : "none", whiteSpace: "nowrap" }}>{sub} (sc)</th>
+                                    ))
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {fazIds.map((fid, fi) => {
+                                  const fNome = fazendas.find(f => f.id === fid)?.nome ?? fid;
+                                  const rows  = pcRows.filter(r => r.fazId === fid);
+                                  return (
+                                    <tr key={fid} style={{ borderTop: fi > 0 ? "0.5px solid var(--border-row)" : "none" }}>
+                                      <td style={{ padding: "7px 12px", fontWeight: 600, color: "var(--text-1)", whiteSpace: "nowrap" }}>{fNome}</td>
+                                      {commKeys.map(c => {
+                                        const cRows = rows.filter(r => r.comm === c);
+                                        const vol  = cRows.reduce((s,r) => s + r.volPrev, 0);
+                                        const vnd  = cRows.reduce((s,r) => s + r.venda, 0);
+                                        const disp = Math.max(0, vol - vnd);
+                                        return vol === 0 ? (
+                                          <td key={c} colSpan={3} style={{ padding: "7px 8px", textAlign: "center", color: "var(--text-3)", fontSize: 10, borderLeft: "1px solid var(--border)" }}>—</td>
+                                        ) : (
+                                          <>
+                                            <td key={`${c}-v`} style={{ padding: "7px 8px", textAlign: "right", fontWeight: 600, color: "#1A4870", borderLeft: "1px solid var(--border)", fontVariantNumeric: "tabular-nums" }}>{fmtN(vol,0)}</td>
+                                            <td key={`${c}-s`} style={{ padding: "7px 8px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{vnd > 0 ? fmtN(vnd,0) : "—"}</td>
+                                            <td key={`${c}-d`} style={{ padding: "7px 8px", textAlign: "right", color: disp>0?"#16A34A":"var(--text-3)", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtN(disp,0)}</td>
+                                          </>
+                                        );
+                                      })}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Row 4: Originação de Barter ── */}
+                      {barterRows.length > 0 && (
+                        <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", marginBottom: 14, overflow: "hidden" }}>
+                          <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 2, background: "#7C3AED" }} />
+                            <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Originação de Barter</span>
+                            <span style={{ fontSize: 10, color: "var(--text-3)" }}>produto agrícola e safra de origem do compromisso</span>
+                          </div>
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                              <thead>
+                                <tr style={{ background: "var(--bg-tag)" }}>
+                                  {["Fazenda","Produto / Commodity","Ano Safra","Fornecedor","Sacas comprometidas","Valor"].map(h => (
+                                    <th key={h} style={{ padding: "7px 12px", textAlign: h==="Sacas comprometidas"||h==="Valor"?"right":"left", fontSize: 10, fontWeight: 700, color: "var(--text-3)" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {barterRows.map((l, i) => {
+                                  const fNome = fazendas.find(f => f.id === l.fazenda_id)?.nome ?? l.fazenda_id;
+                                  const comm  = culturaToCommodity(l.cultura_barter ?? "", cultMap);
+                                  const anoDesc = anosSafra.find(a => a.id === l.ano_safra_id)?.descricao ?? (l.ano_safra_id ? "Safra vinculada" : "Não vinculada");
+                                  const val   = l.valor ?? 0;
+                                  return (
+                                    <tr key={i} style={{ borderTop: i>0?"0.5px solid var(--border-row)":"none" }}>
+                                      <td style={{ padding: "7px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fNome}</td>
+                                      <td style={{ padding: "7px 12px" }}>
+                                        <span style={{ background: commColor(comm).bg, color: commColor(comm).cor, borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{comm}</span>
+                                      </td>
+                                      <td style={{ padding: "7px 12px", color: "var(--text-2)" }}>{anoDesc}</td>
+                                      <td style={{ padding: "7px 12px", color: "var(--text-2)" }}>{l.descricao || "—"}</td>
+                                      <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(l.sacas||0,0)} sc</td>
+                                      <td style={{ padding: "7px 12px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{val>0?fmtR(val):"—"}</td>
+                                    </tr>
+                                  );
+                                })}
+                                <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#F5F3FF" }}>
+                                  <td colSpan={4} style={{ padding: "7px 12px", fontWeight: 700, color: "#7C3AED", fontSize: 11 }}>Total Barter</td>
+                                  <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(barterRows.reduce((s,l)=>s+(l.sacas||0),0),0)} sc</td>
+                                  <td />
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Row 5: Tabela por ciclo ── */}
+                      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                        <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)" }}>Detalhe por Ciclo</span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)" }}>clique no cabeçalho para ordenar</span>
+                        </div>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+                            <thead>
+                              <tr style={{ background: "var(--bg-tag)" }}>
+                                <th style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Fazenda / Ciclo</th>
+                                <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left" }}>Produto</th>
+                                <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "right", whiteSpace: "nowrap" }}>Área</th>
+                                {sortTh("volPrev", "Previsto sc")}
+                                {sortTh("fatPrev", "Fat. Prev.")}
+                                <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "#C9921B", textAlign: "right", whiteSpace: "nowrap" }}>Arrendamento</th>
+                                {sortTh("venda",   "Venda")}
+                                <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "#7C3AED", textAlign: "right" }}>Barter</th>
+                                {sortTh("disp",    "Disponível")}
+                                {sortTh("colhido", "Colhido")}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sortedRows.map((r, i) => {
+                                const commCS  = commSummary.find(cs => cs.comm === r.comm);
+                                const baseVol = pcRows.filter(x => x.comm === r.comm && x.fazId === r.fazId).reduce((s,x)=>s+x.volPrev,0) || 1;
+                                const peso    = r.volPrev / baseVol;
+                                const rowArr  = commCS ? Math.round(commCS.arr    * peso) : 0;
+                                const rowBart = commCS ? Math.round(commCS.barter * peso) : 0;
+                                const disp    = Math.max(0, r.volPrev - r.venda - rowArr - rowBart);
+                                const dispPct = r.volPrev > 0 ? (disp / r.volPrev) * 100 : 0;
+                                return (
+                                  <tr key={r.cId} style={{ borderTop: i>0?"0.5px solid var(--border-row)":"none" }}>
+                                    <td style={{ padding: "7px 12px" }}>
+                                      <div style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 600 }}>{r.fazNome}</div>
+                                      <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{r.descricao}</div>
+                                    </td>
+                                    <td style={{ padding: "7px 10px" }}>
+                                      <span style={{ background: COMM_BG(r.comm), color: COMM_COR(r.comm), borderRadius: 4, padding: "2px 6px", fontSize: 9, fontWeight: 700 }}>{r.comm}</span>
+                                    </td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "var(--text-2)", whiteSpace: "nowrap" }}>{fmtN(r.area,0)} ha</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "#14532D", fontVariantNumeric: "tabular-nums" }}>{r.fatPrev>0?fmtR(r.fatPrev):"—"}</td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>
+                                      {rowArr > 0 ? <span>{fmtN(rowArr,0)} <span style={{ fontSize: 9, color: "var(--text-3)" }}>({fmtN(r.volPrev>0?(rowArr/r.volPrev)*100:0,0)}%)</span></span> : <span style={{ color: "var(--text-3)" }}>—</span>}
+                                    </td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                      {r.venda > 0
+                                        ? <span style={{ color: "#1A4870", fontWeight: 600 }}>{fmtN(r.venda,0)} <span style={{ fontSize: 9, color: "var(--text-3)", fontWeight: 400 }}>({r.volPrev>0?fmtN((r.venda/r.volPrev)*100,0):0}%)</span></span>
+                                        : <span style={{ color: "var(--text-3)" }}>—</span>}
+                                    </td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>
+                                      {rowBart > 0 ? <span>{fmtN(rowBart,0)} <span style={{ fontSize: 9, color: "var(--text-3)" }}>({fmtN(r.volPrev>0?(rowBart/r.volPrev)*100:0,0)}%)</span></span> : <span style={{ color: "var(--text-3)" }}>—</span>}
+                                    </td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                      <span style={{ color: dispPct>30?"#16A34A":dispPct>10?"#C9921B":"#E24B4A", fontWeight: 600 }}>
+                                        {fmtN(disp,0)} <span style={{ fontSize: 9, fontWeight: 400 }}>({fmtN(dispPct,0)}%)</span>
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: "7px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                                      {r.colhido>0
+                                        ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtN(r.colhido,0)} <span style={{ fontSize: 9, fontWeight: 400, color: "var(--text-3)" }}>({r.volPrev>0?fmtN((r.colhido/r.volPrev)*100,0):0}%)</span></span>
+                                        : <span style={{ color: "var(--text-3)", fontSize: 10 }}>Aguardando</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#D5E8F5" }}>
+                                <td colSpan={2} style={{ padding: "7px 12px", fontWeight: 700, fontSize: 11, color: "#1A4870" }}>TOTAL</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600, color: "var(--text-1)" }}>{fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVolPrev,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#14532D", fontVariantNumeric: "tabular-nums" }}>{fmtR(kpiFatPrev)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#C9921B", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiArr,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#1A4870", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiVenda,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiBarter,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#16A34A", fontVariantNumeric: "tabular-nums" }}>{fmtN(kpiDisp,0)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: kpiColhido>0?"#16A34A":"var(--text-3)", fontVariantNumeric: "tabular-nums" }}>{kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>);
+                  })()}
                 </div>
               )}
 
