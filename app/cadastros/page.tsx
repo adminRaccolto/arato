@@ -294,6 +294,7 @@ function CadastrosInner() {
 
   // ── Safras ──
   const [anosSafra, setAnosSafra]     = useState<AnoSafra[]>([]);
+  const [ciclosTodos, setCiclosTodos] = useState<Ciclo[]>([]); // todos os ciclos do ano (sem filtro de fazenda)
   const [ciclos, setCiclos]           = useState<Ciclo[]>([]);
   const [anoSel, setAnoSel]           = useState<string | null>(null);
   const [modalAno, setModalAno]       = useState(false);
@@ -752,19 +753,18 @@ function CadastrosInner() {
     }
   };
 
-  // Carrega ciclos ao selecionar Ano Safra — filtrado pela fazenda selecionada no seletor
-  const selecionarAno = async (id: string, fazOverride?: string) => {
+  // Carrega TODOS os ciclos do ano (sem filtro de fazenda); filtro de exibição é feito no cliente
+  const selecionarAno = async (id: string) => {
     setAnoSel(id);
-    const fid = fazOverride ?? fazTrabalho ?? fazIdEff;
-    listarCiclos(id, fid).then(setCiclos).catch(() => setCiclos([]));
+    const todos = await listarCiclos(id, null).catch(() => [] as Ciclo[]);
+    setCiclosTodos(todos);
+    setCiclos(fazTrabalho ? todos.filter(c => c.fazenda_id === fazTrabalho) : todos);
   };
 
-  // Re-carrega ciclos quando a fazenda do seletor muda (se um ano safra já estiver selecionado)
+  // Quando o filtro de fazenda muda, re-filtra a partir do cache (sem nova chamada ao banco)
   useEffect(() => {
     if (!anoSel) return;
-    const fid = fazTrabalho || fazIdEff;
-    if (!fid) return;
-    listarCiclos(anoSel, fid).then(setCiclos).catch(() => setCiclos([]));
+    setCiclos(fazTrabalho ? ciclosTodos.filter(c => c.fazenda_id === fazTrabalho) : ciclosTodos);
   }, [fazTrabalho]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers de save ──
@@ -1625,13 +1625,14 @@ function CadastrosInner() {
     let cicloId: string;
     if (editCiclo) {
       await atualizarCiclo(editCiclo.id, payload);
-      setCiclos(p => p.map(x => x.id === editCiclo.id ? { ...x, ...payload } : x));
+      const upd = (x: Ciclo) => x.id === editCiclo.id ? { ...x, ...payload } : x;
+      setCiclosTodos(p => p.map(upd));
+      setCiclos(p => p.map(upd));
       cicloId = editCiclo.id;
     } else {
       const n = await criarCiclo({ ...payload, ano_safra_id: anoSel, fazenda_id: fazCiclo });
-      // Só exibe o novo ciclo na lista se a fazenda do seletor ainda é a mesma em que ele foi criado
-      const fazAtual = fazTrabalho || fazIdEff;
-      setCiclos(p => n.fazenda_id === fazAtual ? [...p, n] : p);
+      setCiclosTodos(p => [...p, n]);
+      setCiclos(p => !fazTrabalho || n.fazenda_id === fazTrabalho ? [...p, n] : p);
       cicloId = n.id;
     }
     // salva talhões vinculados
@@ -1907,7 +1908,8 @@ function CadastrosInner() {
                 onChange={e => setFazTrabalho(e.target.value)}
                 style={{ padding: "6px 10px", border: "1.5px solid #1A5CB8", borderRadius: 7, fontSize: 13, fontWeight: 600, color: "#1A4870", background: "#EFF6FF", cursor: "pointer", outline: "none" }}
               >
-                <option value="">— selecionar —</option>
+                {aba === "safras" && <option value="">Todos</option>}
+                {aba !== "safras" && <option value="">— selecionar —</option>}
                 {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             </div>
@@ -2308,18 +2310,42 @@ function CadastrosInner() {
               {/* Ciclos */}
               <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                 <div style={{ padding: "13px 16px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div>
                     <span style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 13 }}>
                       Ciclos {anoSel && <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 400 }}>— {anosSafra.find(a => a.id === anoSel)?.descricao}</span>}
                     </span>
-                    {fazTrabalho && <span style={{ fontSize: 10, background: "#D5E8F5", color: "#0B2D50", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>
-                      {fazendas.find(f => f.id === fazTrabalho)?.nome ?? fazendas.find(f => f.id === fazIdEff)?.nome}
-                    </span>}
+                    {/* KPI chips por fazenda */}
+                    {anoSel && ciclosTodos.length > 0 && (() => {
+                      const contagem: Record<string, number> = {};
+                      ciclosTodos.forEach(c => { contagem[c.fazenda_id] = (contagem[c.fazenda_id] ?? 0) + 1; });
+                      return (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                          {fazendas.filter(f => contagem[f.id]).map(f => (
+                            <button key={f.id} onClick={() => setFazTrabalho(fazTrabalho === f.id ? "" : f.id)}
+                              style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 600, transition: "all .15s",
+                                background: fazTrabalho === f.id ? "#1A4870" : "#D5E8F5",
+                                color: fazTrabalho === f.id ? "#fff" : "#0B2D50" }}>
+                              {f.nome}
+                              <span style={{ background: fazTrabalho === f.id ? "#ffffff30" : "#1A487020", borderRadius: 4, padding: "0px 4px", fontSize: 10 }}>
+                                {contagem[f.id]}
+                              </span>
+                            </button>
+                          ))}
+                          {fazendas.filter(f => contagem[f.id]).length > 1 && (
+                            <button onClick={() => setFazTrabalho("")}
+                              style={{ padding: "2px 8px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 10, fontWeight: 600,
+                                background: !fazTrabalho ? "#1A4870" : "#EEF2F7", color: !fazTrabalho ? "#fff" : "#555" }}>
+                              Todos ({ciclosTodos.length})
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   {anoSel && <button style={{ ...btnV, padding: "6px 12px", fontSize: 12 }} onClick={() => abrirModalCiclo()}>+ Novo Ciclo</button>}
                 </div>
                 {!anoSel && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Selecione um Ano Safra para ver os ciclos</div>}
-                {anoSel && ciclos.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>Nenhum ciclo cadastrado para este ano safra</div>}
+                {anoSel && ciclos.length === 0 && <div style={{ padding: 24, textAlign: "center", color: "#444", fontSize: 12 }}>{ciclosTodos.length > 0 ? `Nenhum ciclo para esta fazenda — ${ciclosTodos.length} ciclo(s) em outras fazendas` : "Nenhum ciclo cadastrado para este ano safra"}</div>}
                 {ciclos.map((c, ci) => {
                   const prod = c.produtividade_esperada_sc_ha;
                   const preco = c.preco_esperado_sc;
@@ -2349,6 +2375,7 @@ function CadastrosInner() {
                           <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{c.data_inicio} → {c.data_fim}</div>
                           <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {badge(c.cultura, isAux ? "#FDE9BB" : "#D5E8F5", isAux ? "#7A5200" : "#0B2D50")}
+                            {!fazTrabalho && <span style={{ fontSize: 10, background: "#EEF2F7", color: "#334155", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{fazendas.find(f => f.id === c.fazenda_id)?.nome ?? "?"}</span>}
                             {area != null && <span style={{ fontSize: 10, background: "#F0FDF7", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{area.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha plantados</span>}
                             {!isAux && prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unidC}/ha</span>}
                             {!isAux && preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{unidC}</span>}
@@ -2363,7 +2390,7 @@ function CadastrosInner() {
                         </div>
                         <div style={{ display: "flex", gap: 5 }}>
                           <button style={btnE} onClick={() => abrirModalCiclo(c)}>Editar</button>
-                          <button style={btnX} onClick={() => { if (confirm("Excluir ciclo?")) excluirCiclo(c.id).then(() => setCiclos(x => x.filter(r => r.id !== c.id))); }}>✕</button>
+                          <button style={btnX} onClick={() => { if (confirm("Excluir ciclo?")) excluirCiclo(c.id).then(() => { setCiclosTodos(x => x.filter(r => r.id !== c.id)); setCiclos(x => x.filter(r => r.id !== c.id)); }); }}>✕</button>
                         </div>
                       </div>
                     </div>
