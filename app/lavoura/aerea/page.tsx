@@ -34,10 +34,9 @@ const fmtDate = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 
 // ─── Configs ─────────────────────────────────────────────────────────────────
 
-const TIPO_AERONAVE: Record<TipoAeronave, { label: string; icon: string; bg: string; cor: string }> = {
-  aviao:       { label: "Avião Agrícola",  icon: "✈️",  bg: "#E6F1FB", cor: "#0B2D50" },
-  drone:       { label: "Drone / RPAS",    icon: "🚁",  bg: "#F0FDF4", cor: "#14532D" },
-  helicoptero: { label: "Helicóptero",     icon: "🚁",  bg: "#FBF3E0", cor: "#7A5200" },
+const TIPO_AERONAVE: Partial<Record<TipoAeronave, { label: string; icon: string; bg: string; cor: string }>> = {
+  aviao: { label: "Avião Agrícola", icon: "✈️", bg: "#E6F1FB", cor: "#0B2D50" },
+  drone: { label: "Drone / RPAS",   icon: "🚁", bg: "#F0FDF4", cor: "#14532D" },
 };
 
 const TIPO_APLIC: Record<TipoAplicacaoAerea, { label: string; bg: string; cor: string }> = {
@@ -55,8 +54,8 @@ const ESTADIOS = ["VE","V1","V2","V3","V4","V5","V6","R1","R2","R3","R4","R5","R
 const UNIDADES = ["L/ha","mL/ha","kg/ha","g/ha","L","kg"];
 
 // Limites legais (ANAC / MAPA)
-const VENTO_MAX: Record<TipoAeronave, number> = { aviao: 3, drone: 5, helicoptero: 3 }; // m/s
-const VENTO_MAX_KMH: Record<TipoAeronave, number> = { aviao: 10.8, drone: 18, helicoptero: 10.8 };
+const VENTO_MAX: Record<string, number> = { aviao: 3, drone: 5 }; // m/s
+const VENTO_MAX_KMH: Record<string, number> = { aviao: 10.8, drone: 18 };
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -367,7 +366,7 @@ export default function AplicacaoAereaPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Aplicação Aérea</h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>Avião agrícola · Drone/RPAS · Helicóptero</p>
+            <p style={{ fontSize: 13, color: "var(--text-3)", margin: "4px 0 0" }}>Avião agrícola · Drone/RPAS</p>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <CascadeSelector contaId={contaId ?? null} fazendaIdFallback={fazendaId} values={cascade} onChange={setCascade} levels={["fazenda"]} />
@@ -433,7 +432,7 @@ export default function AplicacaoAereaPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {aplicacoesFiltradas.map(a => {
                   const tAplic = TIPO_APLIC[a.tipo] ?? TIPO_APLIC.outros;
-                  const tAero  = TIPO_AERONAVE[a.tipo_aeronave] ?? TIPO_AERONAVE.aviao;
+                  const tAero  = TIPO_AERONAVE[a.tipo_aeronave] ?? { label: "Avião Agrícola", icon: "✈️", bg: "#E6F1FB", cor: "#0B2D50" };
                   const empresa = a.empresa_aplicadora?.razao_social ?? a.empresa_nome ?? "—";
                   const isExp = expandido === a.id;
 
@@ -645,20 +644,20 @@ export default function AplicacaoAereaPage() {
       {/* ─── MODAL NOVA/EDITAR APLICAÇÃO ─────────────────────────────────── */}
       {modal && (
         <div style={{ position: "fixed", inset: 0, background: "#00000070", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "32px 16px" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: 880, boxShadow: "0 16px 64px #0005", marginBottom: 32 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 16, width: 1140, boxShadow: "0 16px 64px #0005", marginBottom: 32 }}>
 
             {/* Header modal */}
             <div style={{ padding: "20px 28px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>{editando ? "Editar Aplicação Aérea" : "Nova Aplicação Aérea"}</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Avião agrícola · Drone/RPAS · Helicóptero</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Avião agrícola · Drone/RPAS</div>
               </div>
               <button onClick={() => setModal(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
             </div>
 
             <div style={{ padding: "24px 28px" }}>
 
-              {/* Tipo de aeronave (destaque) */}
+              {/* Tipo de aeronave — full width */}
               <div style={{ marginBottom: 20 }}>
                 <label style={lbl}>Tipo de Aeronave</label>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -669,212 +668,222 @@ export default function AplicacaoAereaPage() {
                       fontWeight: form.tipo_aeronave === k ? 700 : 400, fontSize: 13, color: form.tipo_aeronave === k ? "#0B2D50" : "var(--text-2)",
                       transition: "all 0.12s",
                     }}>
-                      <span style={{ fontSize: 22, display: "block", marginBottom: 4 }}>{k === "aviao" ? "✈️" : k === "drone" ? "🚁" : "🚁"}</span>
-                      {v.label}
+                      <span style={{ fontSize: 22, display: "block", marginBottom: 4 }}>{k === "aviao" ? "✈️" : "🚁"}</span>
+                      {v!.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Identificação */}
-              <div style={secTit}>Identificação</div>
-              <div style={gridG("1fr 1fr 1fr")}>
-                <div>
-                  <label style={lbl}>Ciclo / Safra *</label>
-                  <select value={form.ciclo_id} onChange={e => sf("ciclo_id", e.target.value)} style={inp}>
-                    <option value="">— selecione —</option>
-                    {ciclos.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ?? ""}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={lbl}>Data da Aplicação *</label>
-                  <input type="date" value={form.data_aplicacao} onChange={e => sf("data_aplicacao", e.target.value)} style={inp} />
-                </div>
-                <div>
-                  <label style={lbl}>Tipo de Aplicação *</label>
-                  <select value={form.tipo} onChange={e => sf("tipo", e.target.value)} style={inp}>
-                    {Object.entries(TIPO_APLIC).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
-                </div>
-              </div>
+              {/* Duas colunas */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 28, alignItems: "start" }}>
 
-              <div style={{ ...gridG("1fr 1fr 1fr"), marginTop: 12 }}>
+                {/* ── COLUNA ESQUERDA: identificação + empresa + talhões ── */}
                 <div>
-                  <label style={lbl}>Empresa Aplicadora</label>
-                  <select value={form.empresa_aplicadora_id} onChange={e => { sf("empresa_aplicadora_id", e.target.value); if (e.target.value) sf("empresa_nome", ""); }} style={inp}>
-                    <option value="">— selecione ou informe abaixo —</option>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
-                  </select>
-                </div>
-                {!form.empresa_aplicadora_id && (
-                  <div>
-                    <label style={lbl}>Nome da Empresa (livre)</label>
-                    <input placeholder="Ex: AgroAves Aviação Agrícola" value={form.empresa_nome} onChange={e => sf("empresa_nome", e.target.value)} style={inp} />
+                  <div style={secTit}>Identificação</div>
+                  <div style={gridG("1fr 1fr")}>
+                    <div>
+                      <label style={lbl}>Ciclo / Safra *</label>
+                      <select value={form.ciclo_id} onChange={e => sf("ciclo_id", e.target.value)} style={inp}>
+                        <option value="">— selecione —</option>
+                        {ciclos.map(c => <option key={c.id} value={c.id}>{c.cultura} {c.descricao ?? ""}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Data da Aplicação *</label>
+                      <input type="date" value={form.data_aplicacao} onChange={e => sf("data_aplicacao", e.target.value)} style={inp} />
+                    </div>
                   </div>
-                )}
-                <div>
-                  <label style={lbl}>{form.tipo_aeronave === "drone" ? "Modelo do Drone" : "Prefixo/Matrícula"}</label>
-                  <input placeholder={form.tipo_aeronave === "drone" ? "Ex: DJI Agras T40" : "Ex: PT-MTG"} value={form.aeronave_prefixo} onChange={e => sf("aeronave_prefixo", e.target.value)} style={inp} />
-                </div>
-                <div>
-                  <label style={lbl}>{form.tipo_aeronave === "drone" ? "Operador" : "Piloto"}</label>
-                  <input placeholder="Nome do piloto/operador" value={form.piloto} onChange={e => sf("piloto", e.target.value)} style={inp} />
-                </div>
-              </div>
 
-              <div style={{ ...gridG("1fr 1fr"), marginTop: 12 }}>
-                <div>
-                  <label style={lbl}>Estádio Fenológico</label>
-                  <select value={form.estadio_fenologico} onChange={e => sf("estadio_fenologico", e.target.value)} style={inp}>
-                    <option value="">— selecione —</option>
-                    {ESTADIOS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              {/* Talhões */}
-              <div style={secTit}>Talhões Aplicados</div>
-              {talhoes.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--text-3)", fontStyle: "italic" }}>Nenhum talhão cadastrado para esta fazenda.</div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                    {talhoes.map(t => {
-                      const sel = talhoesSelec.some(x => x.talhao_id === t.id);
-                      return (
-                        <button key={t.id} onClick={() => toggleTalhao(t)} style={{
-                          padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`,
-                          background: sel ? "#D5E8F5" : "transparent", cursor: "pointer", fontSize: 12,
-                          fontWeight: sel ? 700 : 400, color: sel ? "#0B2D50" : "var(--text-2)", transition: "all 0.1s",
-                        }}>
-                          {t.nome} · {fmtN(t.area_ha, 1)} ha
-                        </button>
-                      );
-                    })}
+                  <div style={{ marginTop: 12 }}>
+                    <label style={lbl}>Tipo de Aplicação *</label>
+                    <select value={form.tipo} onChange={e => sf("tipo", e.target.value)} style={inp}>
+                      {Object.entries(TIPO_APLIC).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
                   </div>
-                  <div style={{ fontSize: 13, color: "#1A4870", fontWeight: 600 }}>
-                    {talhoesSelec.length > 0
-                      ? `${talhoesSelec.length} talhão(ões) selecionado(s) → Área total: ${fmtN(areaTotal, 2)} ha`
-                      : <span style={{ color: "#E24B4A" }}>Selecione ao menos 1 talhão *</span>}
+
+                  <div style={{ marginTop: 12 }}>
+                    <label style={lbl}>Empresa Aplicadora</label>
+                    <select value={form.empresa_aplicadora_id} onChange={e => { sf("empresa_aplicadora_id", e.target.value); if (e.target.value) sf("empresa_nome", ""); }} style={inp}>
+                      <option value="">— selecione ou informe abaixo —</option>
+                      {empresas.map(e => <option key={e.id} value={e.id}>{e.razao_social}</option>)}
+                    </select>
                   </div>
-                </>
-              )}
 
-              {/* Produtos */}
-              <div style={secTit}>Produtos Aplicados</div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 10 }}>
-                <thead>
-                  <tr style={{ color: "var(--text-3)", fontSize: 11 }}>
-                    {["Produto *", "Dose/ha *", "Unidade", "Valor unitário (R$)", ""].map(h => (
-                      <th key={h} style={{ textAlign: "left", padding: "4px 6px 8px", fontWeight: 600 }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {itens.map((item, idx) => (
-                    <tr key={idx}>
-                      <td style={{ padding: "4px 6px", width: "35%" }}>
-                        <select value={item.insumo_id} onChange={e => {
-                          const ins = insumos.find(i => i.id === e.target.value);
-                          setItens(prev => prev.map((it, i) => i === idx ? { ...it, insumo_id: e.target.value, nome_produto: ins?.nome ?? it.nome_produto, unidade: ins?.unidade ?? it.unidade, valor_unitario: ins?.custo_medio?.toString() ?? it.valor_unitario } : it));
-                        }} style={inp}>
-                          <option value="">— produto do cadastro —</option>
-                          {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
-                        </select>
-                        {!item.insumo_id && (
-                          <input placeholder="Nome do produto" value={item.nome_produto} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, nome_produto: e.target.value } : it))} style={{ ...inp, marginTop: 4 }} />
-                        )}
-                      </td>
-                      <td style={{ padding: "4px 6px", width: "15%" }}>
-                        <input type="number" placeholder="0,00" value={item.dose_ha} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, dose_ha: e.target.value } : it))} style={inp} min={0} step="0.01" />
-                      </td>
-                      <td style={{ padding: "4px 6px", width: "15%" }}>
-                        <select value={item.unidade} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, unidade: e.target.value } : it))} style={inp}>
-                          {UNIDADES.map(u => <option key={u}>{u}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: "4px 6px", width: "20%" }}>
-                        <input type="number" placeholder="R$/unid" value={item.valor_unitario} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: e.target.value } : it))} style={inp} min={0} step="0.01" />
-                      </td>
-                      <td style={{ padding: "4px 6px" }}>
-                        <button onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={btnX}>✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button onClick={() => setItens(prev => [...prev, itemVazio()])} style={{ ...btnR, fontSize: 12, padding: "5px 12px" }}>+ Produto</button>
+                  {!form.empresa_aplicadora_id && (
+                    <div style={{ marginTop: 8 }}>
+                      <label style={lbl}>Nome da Empresa (livre)</label>
+                      <input placeholder="Ex: AgroAves Aviação Agrícola" value={form.empresa_nome} onChange={e => sf("empresa_nome", e.target.value)} style={inp} />
+                    </div>
+                  )}
 
-              {/* Parâmetros técnicos */}
-              <div style={secTit}>Parâmetros Técnicos</div>
-              <div style={gridG("1fr 1fr 1fr 1fr")}>
-                <div>
-                  <label style={lbl}>Volume de Calda (L/ha)</label>
-                  <input type="number" placeholder={form.tipo_aeronave === "drone" ? "5–15" : "15–40"} value={form.volume_calda_l_ha} onChange={e => sf("volume_calda_l_ha", e.target.value)} style={inp} min={0} step="0.5" />
-                </div>
-                <div>
-                  <label style={lbl}>Altura de Voo (m)</label>
-                  <input type="number" placeholder={form.tipo_aeronave === "drone" ? "2–4" : "2–5"} value={form.altura_voo_m} onChange={e => sf("altura_voo_m", e.target.value)} style={inp} min={0} step="0.5" />
-                </div>
-                <div>
-                  <label style={lbl}>Custo por Hectare (R$/ha)</label>
-                  <input type="number" placeholder="Ex: 55,00" value={form.custo_ha} onChange={e => sf("custo_ha", e.target.value)} style={inp} min={0} step="0.5" />
-                </div>
-                <div>
-                  <label style={lbl}>Custo Total</label>
-                  <input value={fmtBRL(custoTotal)} readOnly style={{ ...inp, background: "#f4f4f4", fontWeight: 600, color: "#C9921B" }} />
-                </div>
-              </div>
+                  <div style={{ ...gridG("1fr 1fr"), marginTop: 12 }}>
+                    <div>
+                      <label style={lbl}>{form.tipo_aeronave === "drone" ? "Modelo do Drone" : "Prefixo/Matrícula"}</label>
+                      <input placeholder={form.tipo_aeronave === "drone" ? "Ex: DJI Agras T40" : "Ex: PT-MTG"} value={form.aeronave_prefixo} onChange={e => sf("aeronave_prefixo", e.target.value)} style={inp} />
+                    </div>
+                    <div>
+                      <label style={lbl}>{form.tipo_aeronave === "drone" ? "Operador" : "Piloto"}</label>
+                      <input placeholder="Nome do piloto/operador" value={form.piloto} onChange={e => sf("piloto", e.target.value)} style={inp} />
+                    </div>
+                  </div>
 
-              {/* Condições meteorológicas */}
-              <div style={secTit}>Condições Meteorológicas</div>
-              {ventoAlerta && (
-                <div style={{ background: "#FEF2F2", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, color: "#E24B4A", fontWeight: 600 }}>
-                  ⚠️ Vento acima do limite legal para {TIPO_AERONAVE[form.tipo_aeronave].label}: máx {VENTO_MAX_KMH[form.tipo_aeronave]} km/h ({VENTO_MAX[form.tipo_aeronave]} m/s).
-                </div>
-              )}
-              <div style={gridG("1fr 1fr 1fr 1fr 1fr")}>
-                <div>
-                  <label style={lbl}>Temperatura (°C)</label>
-                  <input type="number" placeholder="25" value={form.temperatura_c} onChange={e => sf("temperatura_c", e.target.value)} style={inp} step="0.5" />
-                </div>
-                <div>
-                  <label style={lbl}>Umidade Relativa (%)</label>
-                  <input type="number" placeholder="70" value={form.umidade_rel_pct} onChange={e => sf("umidade_rel_pct", e.target.value)} style={inp} min={0} max={100} step="1" />
-                </div>
-                <div>
-                  <label style={lbl}>Vel. Vento (km/h)</label>
-                  <input type="number" placeholder="8" value={form.velocidade_vento_kmh} onChange={e => sf("velocidade_vento_kmh", e.target.value)} style={{ ...inp, borderColor: ventoAlerta ? "#E24B4A" : undefined }} min={0} step="0.5" />
-                </div>
-                <div>
-                  <label style={lbl}>Direção do Vento</label>
-                  <select value={form.direcao_vento} onChange={e => sf("direcao_vento", e.target.value)} style={inp}>
-                    <option value="">—</option>
-                    {DIRECOES.map(d => <option key={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
+                  <div style={{ marginTop: 12 }}>
+                    <label style={lbl}>Estádio Fenológico</label>
+                    <select value={form.estadio_fenologico} onChange={e => sf("estadio_fenologico", e.target.value)} style={inp}>
+                      <option value="">— selecione —</option>
+                      {ESTADIOS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
 
-              {/* Documentação */}
-              <div style={secTit}>Documentação</div>
-              <div style={gridG("1fr 1fr")}>
-                <div>
-                  <label style={lbl}>ART nº (Engenheiro Agrônomo)</label>
-                  <input placeholder="Número da ART" value={form.art_numero} onChange={e => sf("art_numero", e.target.value)} style={inp} />
+                  <div style={secTit}>Talhões Aplicados</div>
+                  {talhoes.length === 0 ? (
+                    <div style={{ fontSize: 13, color: "var(--text-3)", fontStyle: "italic" }}>Nenhum talhão cadastrado para esta fazenda.</div>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                        {talhoes.map(t => {
+                          const sel = talhoesSelec.some(x => x.talhao_id === t.id);
+                          return (
+                            <button key={t.id} onClick={() => toggleTalhao(t)} style={{
+                              padding: "6px 14px", borderRadius: 20, border: `1.5px solid ${sel ? "#1A4870" : "var(--border-table)"}`,
+                              background: sel ? "#D5E8F5" : "transparent", cursor: "pointer", fontSize: 12,
+                              fontWeight: sel ? 700 : 400, color: sel ? "#0B2D50" : "var(--text-2)", transition: "all 0.1s",
+                            }}>
+                              {t.nome} · {fmtN(t.area_ha, 1)} ha
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#1A4870", fontWeight: 600 }}>
+                        {talhoesSelec.length > 0
+                          ? `${talhoesSelec.length} talhão(ões) selecionado(s) → Área total: ${fmtN(areaTotal, 2)} ha`
+                          : <span style={{ color: "#E24B4A" }}>Selecione ao menos 1 talhão *</span>}
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* ── COLUNA DIREITA: produtos + parâmetros + condições + docs ── */}
                 <div>
-                  <label style={lbl}>CLOA nº (Empresa de Aviação)</label>
-                  <input placeholder="Certificado da empresa" value={form.cloa_numero} onChange={e => sf("cloa_numero", e.target.value)} style={inp} />
+                  <div style={secTit}>Produtos Aplicados</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 10 }}>
+                    <thead>
+                      <tr style={{ color: "var(--text-3)", fontSize: 11 }}>
+                        {["Produto *", "Dose/ha *", "Unid.", "R$/unid", ""].map(h => (
+                          <th key={h} style={{ textAlign: "left", padding: "4px 6px 8px", fontWeight: 600 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itens.map((item, idx) => (
+                        <tr key={idx}>
+                          <td style={{ padding: "4px 6px", width: "38%" }}>
+                            <select value={item.insumo_id} onChange={e => {
+                              const ins = insumos.find(i => i.id === e.target.value);
+                              setItens(prev => prev.map((it, i) => i === idx ? { ...it, insumo_id: e.target.value, nome_produto: ins?.nome ?? it.nome_produto, unidade: ins?.unidade ?? it.unidade, valor_unitario: ins?.custo_medio?.toString() ?? it.valor_unitario } : it));
+                            }} style={inp}>
+                              <option value="">— cadastro —</option>
+                              {insumos.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+                            </select>
+                            {!item.insumo_id && (
+                              <input placeholder="Nome livre" value={item.nome_produto} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, nome_produto: e.target.value } : it))} style={{ ...inp, marginTop: 4 }} />
+                            )}
+                          </td>
+                          <td style={{ padding: "4px 6px", width: "16%" }}>
+                            <input type="number" placeholder="0,00" value={item.dose_ha} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, dose_ha: e.target.value } : it))} style={inp} min={0} step="0.01" />
+                          </td>
+                          <td style={{ padding: "4px 6px", width: "16%" }}>
+                            <select value={item.unidade} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, unidade: e.target.value } : it))} style={inp}>
+                              {UNIDADES.map(u => <option key={u}>{u}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: "4px 6px", width: "20%" }}>
+                            <input type="number" placeholder="R$" value={item.valor_unitario} onChange={e => setItens(prev => prev.map((it, i) => i === idx ? { ...it, valor_unitario: e.target.value } : it))} style={inp} min={0} step="0.01" />
+                          </td>
+                          <td style={{ padding: "4px 6px" }}>
+                            <button onClick={() => setItens(prev => prev.filter((_, i) => i !== idx))} style={btnX}>✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button onClick={() => setItens(prev => [...prev, itemVazio()])} style={{ ...btnR, fontSize: 12, padding: "5px 12px" }}>+ Produto</button>
+
+                  <div style={secTit}>Parâmetros Técnicos</div>
+                  <div style={gridG("1fr 1fr")}>
+                    <div>
+                      <label style={lbl}>Volume de Calda (L/ha)</label>
+                      <input type="number" placeholder={form.tipo_aeronave === "drone" ? "5–15" : "15–40"} value={form.volume_calda_l_ha} onChange={e => sf("volume_calda_l_ha", e.target.value)} style={inp} min={0} step="0.5" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Altura de Voo (m)</label>
+                      <input type="number" placeholder={form.tipo_aeronave === "drone" ? "2–4" : "2–5"} value={form.altura_voo_m} onChange={e => sf("altura_voo_m", e.target.value)} style={inp} min={0} step="0.5" />
+                    </div>
+                  </div>
+                  <div style={{ ...gridG("1fr 1fr"), marginTop: 12 }}>
+                    <div>
+                      <label style={lbl}>Custo por Hectare (R$/ha)</label>
+                      <input type="number" placeholder="Ex: 55,00" value={form.custo_ha} onChange={e => sf("custo_ha", e.target.value)} style={inp} min={0} step="0.5" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Custo Total</label>
+                      <input value={fmtBRL(custoTotal)} readOnly style={{ ...inp, background: "var(--bg-page)", fontWeight: 600, color: "#C9921B" }} />
+                    </div>
+                  </div>
+
+                  <div style={secTit}>Condições Meteorológicas</div>
+                  {ventoAlerta && (
+                    <div style={{ background: "#FEF2F2", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, color: "#E24B4A", fontWeight: 600 }}>
+                      ⚠️ Vento acima do limite legal para {TIPO_AERONAVE[form.tipo_aeronave]!.label}: máx {VENTO_MAX_KMH[form.tipo_aeronave]} km/h ({VENTO_MAX[form.tipo_aeronave]} m/s).
+                    </div>
+                  )}
+                  <div style={gridG("1fr 1fr")}>
+                    <div>
+                      <label style={lbl}>Temperatura (°C)</label>
+                      <input type="number" placeholder="25" value={form.temperatura_c} onChange={e => sf("temperatura_c", e.target.value)} style={inp} step="0.5" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Umidade Relativa (%)</label>
+                      <input type="number" placeholder="70" value={form.umidade_rel_pct} onChange={e => sf("umidade_rel_pct", e.target.value)} style={inp} min={0} max={100} step="1" />
+                    </div>
+                  </div>
+                  <div style={{ ...gridG("1fr 1fr"), marginTop: 12 }}>
+                    <div>
+                      <label style={lbl}>Vel. Vento (km/h)</label>
+                      <input type="number" placeholder="8" value={form.velocidade_vento_kmh} onChange={e => sf("velocidade_vento_kmh", e.target.value)} style={{ ...inp, borderColor: ventoAlerta ? "#E24B4A" : undefined }} min={0} step="0.5" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Direção do Vento</label>
+                      <select value={form.direcao_vento} onChange={e => sf("direcao_vento", e.target.value)} style={inp}>
+                        <option value="">—</option>
+                        {DIRECOES.map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={secTit}>Documentação</div>
+                  <div style={gridG("1fr 1fr")}>
+                    <div>
+                      <label style={lbl}>ART nº (Engenheiro Agrônomo)</label>
+                      <input placeholder="Número da ART" value={form.art_numero} onChange={e => sf("art_numero", e.target.value)} style={inp} />
+                    </div>
+                    <div>
+                      <label style={lbl}>CLOA nº (Empresa de Aviação)</label>
+                      <input placeholder="Certificado da empresa" value={form.cloa_numero} onChange={e => sf("cloa_numero", e.target.value)} style={inp} />
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <label style={lbl}>Observações</label>
+                    <textarea rows={3} placeholder="Observações gerais, condições especiais, etc." value={form.observacao} onChange={e => sf("observacao", e.target.value)} style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
+                  </div>
                 </div>
-              </div>
 
-              <div style={{ marginTop: 12 }}>
-                <label style={lbl}>Observações</label>
-                <textarea rows={2} placeholder="Observações gerais, condições especiais, etc." value={form.observacao} onChange={e => sf("observacao", e.target.value)} style={{ ...inp, resize: "vertical", fontFamily: "inherit" }} />
-              </div>
+              </div>{/* fim duas colunas */}
 
-              {/* Botões */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
+              {/* Botões — full width */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24, paddingTop: 20, borderTop: "0.5px solid var(--border-table)" }}>
                 <button onClick={() => setModal(false)} style={btnR}>Cancelar</button>
                 <button onClick={salvar} disabled={salvando} style={{ ...btnV, opacity: salvando ? 0.7 : 1 }}>
                   {salvando ? "Salvando…" : editando ? "Salvar Alterações" : "Registrar Aplicação"}
