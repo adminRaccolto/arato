@@ -29,6 +29,8 @@ interface BiAdubItem  { id: string; adubacao_id: string; produto_nome?: string; 
 interface BiCSoloOp   { id: string; ciclo_id: string; talhao_id?: string | null; area_ha: number }
 interface BiCSoloItem { id: string; correcao_id: string; produto_nome?: string; dose_ton_ha?: number; quantidade_ton?: number; valor_unitario?: number; custo_total?: number }
 interface BiPlantioFull { id: string; ciclo_id: string; talhao_id: string; variedade?: string; area_ha: number; dose_kg_ha?: number; quantidade_kg?: number; custo_sementes?: number }
+interface CicloTalhao  { ciclo_id: string; talhao_id: string; area_plantada_ha: number; talhao_nome: string }
+interface FazendaBI    { id: string; nome: string }
 
 interface ConsumoItemBi {
   produto: string;
@@ -323,6 +325,14 @@ export default function BI() {
   const [custoMask, setCustoMask] = useState("");
   const [areaStr,   setAreaStr]   = useState("");
 
+  // ── Posição Comercial (sub-aba de Produção) ───────────────────
+  const [fazendas,     setFazendas]     = useState<FazendaBI[]>([]);
+  const [cicloTals,    setCicloTals]    = useState<CicloTalhao[]>([]);
+  const [abaProducao,  setAbaProducao]  = useState<"posicao" | "ciclos" | "colheita">("posicao");
+  const [pcFazFiltro,  setPcFazFiltro]  = useState("");
+  const [pcCultFiltro, setPcCultFiltro] = useState("");
+  const [pcSort,       setPcSort]       = useState<{ col: string; dir: "asc" | "desc" }>({ col: "volPrev", dir: "desc" });
+
   // Guard
   useEffect(() => {
     if (userRole !== null && userRole !== "raccotlo") router.push("/");
@@ -333,7 +343,7 @@ export default function BI() {
     setLoading(true);
     // Usa fazendaIds para cobrir todas as fazendas da conta (multi-fazenda)
     const fids = fazendaIds.length > 0 ? fazendaIds : [fazendaId];
-    const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR] = await Promise.allSettled([
+    const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR, fazsR, talR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
       supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc").in("fazenda_id", fids),
@@ -344,6 +354,8 @@ export default function BI() {
       supabase.from("contratos").select("id,fazenda_id,produto,quantidade_sc,entregue_sc,status,is_arrendamento,preco,moeda,safra,comprador,numero,dado_em_cessao,cessao_fornecedor_nome,cessao_data,data_pagamento,data_entrega,ciclo_id,ano_safra_id,modalidade,tipo,produtor_nome").in("fazenda_id", fids),
       supabase.from("contrato_cessao_debitos").select("id,contrato_id,lancamento_id,valor_cessao").in("fazenda_id", fids),
       fetch("/api/precos").then(r => r.json()),
+      supabase.from("fazendas").select("id,nome").in("id", fids),
+      supabase.from("ciclo_talhoes").select("ciclo_id,talhao_id,area_plantada_ha,talhoes(nome)").in("fazenda_id", fids),
     ]);
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
     if (safR.status === "fulfilled") setAnosSafra((safR.value.data ?? []) as AnoSafra[]);
@@ -355,6 +367,12 @@ export default function BI() {
     if (conR.status === "fulfilled") setContratos((conR.value.data ?? []) as Contrato[]);
     if (cesR.status === "fulfilled") setCessaoDebitos((cesR.value.data ?? []) as CessaoDebito[]);
     if (precR.status === "fulfilled") setPrecos(precR.value as PrecosData);
+    if (fazsR.status === "fulfilled") setFazendas((fazsR.value.data ?? []) as FazendaBI[]);
+    if (talR.status === "fulfilled") setCicloTals(((talR.value.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      ciclo_id: r.ciclo_id as string, talhao_id: r.talhao_id as string,
+      area_plantada_ha: r.area_plantada_ha as number,
+      talhao_nome: ((r.talhoes as Record<string,string> | null)?.nome) ?? "?",
+    })));
     // Carrega culturas para lookup preciso de fator_conversao_kg
     supabase.from("culturas").select("id,nome,fator_conversao_kg")
       .eq("fazenda_id", fazendaId).eq("ativa", true)
@@ -1083,110 +1101,543 @@ export default function BI() {
         )}
 
         {/* ═══════════ PRODUÇÃO ═══════════ */}
-        {!loading && aba === "producao" && (
-          <div>
-            {/* Ciclo cards */}
-            {ciclosFiltrados.length === 0 ? (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-3)", border: "0.5px solid var(--border)" }}>
-                Selecione um ano safra para ver a análise de produção por ciclo.
+        {!loading && aba === "producao" && (() => {
+          // ── Dados base para todas as sub-abas ──────────────────────────
+          const COMM_COR: Record<string, string> = { Soja: "#C9921B", Milho: "#D97706", Algodão: "#7C3AED" };
+          const COMM_BG:  Record<string, string> = { Soja: "#FBF3E0", Milho: "#FEF9EE", Algodão: "#F5F3FF" };
+
+          // Per-ciclo metrics para Posição Comercial
+          const todasRows = ciclosFiltrados.map(c => {
+            const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? c.fazenda_id;
+            const comm    = culturaToCommodity(c.cultura, cultMap);
+            const pls     = plantios.filter(p => p.ciclo_id === c.id);
+            const area    = pls.reduce((s, p) => s + (p.area_ha || 0), 0);
+            const volPrev = pls.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
+            const preco   = ((c as Ciclo & { preco_esperado_sc?: number }).preco_esperado_sc ?? 0) > 0
+              ? (c as Ciclo & { preco_esperado_sc?: number }).preco_esperado_sc!
+              : comm === "Soja" ? (precos?.soja?.brl ?? 0) : comm === "Milho" ? (precos?.milho?.brl ?? 0) : (precos?.algodao?.brl ?? 0);
+            const fatPrev = volPrev * preco;
+            const ctrs    = contratos.filter(x => x.ciclo_id === c.id && !x.is_arrendamento && x.status !== "cancelado");
+            const venda   = ctrs.reduce((s, x) => s + (x.quantidade_sc || 0), 0);
+            const entregue= ctrs.reduce((s, x) => s + (x.entregue_sc  || 0), 0);
+            const colhido = colheitas.filter(x => x.ciclo_id === c.id).reduce((s, x) => s + (x.sacas_liquidas ?? (x.peso_liquido_kg ?? 0) / 60), 0);
+            return { cId: c.id, fazId: c.fazenda_id, fazNome, comm, descricao: c.descricao, cultura: c.cultura, area, volPrev, preco, fatPrev, venda, entregue, colhido };
+          });
+
+          // Filtros específicos da sub-aba Posição Comercial
+          const pcRows = todasRows.filter(r =>
+            (!pcFazFiltro  || r.fazId === pcFazFiltro) &&
+            (!pcCultFiltro || r.comm  === pcCultFiltro)
+          );
+
+          // Arrendamento e Barter por fazenda+commodity (não são por ciclo)
+          const getArr = (fazId: string, comm: string) =>
+            arrPags.filter(p => p.fazenda_id === fazId && p.commodity === comm && p.status !== "pago" && p.status !== "cancelado" && (!filtroAnoSafraId || p.ano_safra_id === filtroAnoSafraId))
+                   .reduce((s, p) => s + (p.sacas_previstas || 0), 0);
+          const getBarter = (fazId: string, comm: string) =>
+            lancamentos.filter(l => l.fazenda_id === fazId && l.moeda === "barter" && culturaToCommodity(l.cultura_barter ?? "", cultMap) === comm && l.status !== "baixado")
+                       .reduce((s, l) => s + (l.sacas || 0), 0);
+
+          // Resumo por commodity
+          const commsPresentes = [...new Set(pcRows.map(r => r.comm))];
+          const commSummary = commsPresentes.map(comm => {
+            const rows   = pcRows.filter(r => r.comm === comm);
+            const fazIds = [...new Set(rows.map(r => r.fazId))];
+            const volPrev = rows.reduce((s, r) => s + r.volPrev, 0);
+            const fatPrev = rows.reduce((s, r) => s + r.fatPrev, 0);
+            const venda   = rows.reduce((s, r) => s + r.venda,   0);
+            const colhido = rows.reduce((s, r) => s + r.colhido, 0);
+            const arr     = fazIds.reduce((s, fid) => s + getArr(fid, comm),    0);
+            const barter  = fazIds.reduce((s, fid) => s + getBarter(fid, comm), 0);
+            const comprTotal = arr + venda + barter;
+            const disponivel = Math.max(0, volPrev - comprTotal);
+            const precMed    = volPrev > 0 ? fatPrev / volPrev : 0;
+            return { comm, volPrev, fatPrev, arr, venda, barter, colhido, comprTotal, disponivel, precMed };
+          }).filter(c => c.volPrev > 0 || c.arr > 0 || c.venda > 0);
+
+          // KPIs totais
+          const kpiVolPrev = commSummary.reduce((s, c) => s + c.volPrev, 0);
+          const kpiFatPrev = commSummary.reduce((s, c) => s + c.fatPrev, 0);
+          const kpiArr     = commSummary.reduce((s, c) => s + c.arr,     0);
+          const kpiVenda   = commSummary.reduce((s, c) => s + c.venda,   0);
+          const kpiBarter  = commSummary.reduce((s, c) => s + c.barter,  0);
+          const kpiCompr   = kpiArr + kpiVenda + kpiBarter;
+          const kpiDisp    = Math.max(0, kpiVolPrev - kpiCompr);
+          const kpiColhido = pcRows.reduce((s, r) => s + r.colhido, 0);
+
+          // Opções de filtro
+          const fazOpts  = [...new Set(ciclosFiltrados.map(c => c.fazenda_id))].map(fid => ({ id: fid, nome: fazendas.find(f => f.id === fid)?.nome ?? fid }));
+          const cultOpts = [...new Set(ciclosFiltrados.map(c => culturaToCommodity(c.cultura, cultMap)))];
+
+          // Cabeçalho de coluna ordenável
+          const sortTh = (col: string, label: string) => (
+            <th onClick={() => setPcSort(prev => ({ col, dir: prev.col === col && prev.dir === "desc" ? "asc" : "desc" }))}
+              style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: pcSort.col === col ? "#1A4870" : "var(--text-3)", textAlign: "right", cursor: "pointer", userSelect: "none", background: pcSort.col === col ? "#D5E8F5" : "transparent", whiteSpace: "nowrap" }}>
+              {label} {pcSort.col === col ? (pcSort.dir === "desc" ? "▼" : "▲") : "↕"}
+            </th>
+          );
+
+          // Tabela ordenada
+          const sortedRows = [...pcRows].sort((a, b) => {
+            const v = (r: typeof a) =>
+              pcSort.col === "fatPrev"  ? r.fatPrev
+            : pcSort.col === "venda"   ? r.venda
+            : pcSort.col === "colhido" ? r.colhido
+            : pcSort.col === "disp"    ? (r.volPrev - r.venda)
+            : r.volPrev;
+            return pcSort.dir === "desc" ? v(b) - v(a) : v(a) - v(b);
+          });
+
+          // Per-fazenda para Colheita vs Planejado
+          const fazResume = fazOpts.map(f => {
+            const rows   = todasRows.filter(r => r.fazId === f.id);
+            const volPrev = rows.reduce((s, r) => s + r.volPrev, 0);
+            const colhido = rows.reduce((s, r) => s + r.colhido, 0);
+            return { ...f, volPrev, colhido };
+          }).filter(f => f.volPrev > 0 || f.colhido > 0);
+
+          // Per-produto para Colheita vs Planejado
+          const prodResume = cultOpts.map(comm => {
+            const rows   = todasRows.filter(r => r.comm === comm);
+            const volPrev = rows.reduce((s, r) => s + r.volPrev, 0);
+            const colhido = rows.reduce((s, r) => s + r.colhido, 0);
+            return { comm, volPrev, colhido };
+          }).filter(p => p.volPrev > 0 || p.colhido > 0);
+
+          const maxBar = Math.max(...todasRows.map(r => Math.max(r.volPrev, r.colhido)), 1);
+          const totalColhido = todasRows.reduce((s, r) => s + r.colhido, 0);
+
+          return (
+            <div>
+              {/* ── Sub-tab bar ── */}
+              <div style={{ display: "flex", gap: 2, marginBottom: 16, borderBottom: "1.5px solid var(--border-table)" }}>
+                {([["posicao", "Posição Comercial"], ["ciclos", "Análise por Ciclo"], ["colheita", "Colheita vs Planejado"]] as const).map(([k, l]) => (
+                  <button key={k} onClick={() => setAbaProducao(k)}
+                    style={{ padding: "9px 18px", border: "none", borderBottom: abaProducao === k ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontWeight: abaProducao === k ? 700 : 400, color: abaProducao === k ? "#1A4870" : "var(--text-2)", cursor: "pointer", fontSize: 13, marginBottom: -2 }}>
+                    {l}
+                    {k === "colheita" && totalColhido > 0 && <span style={{ marginLeft: 6, background: "#16A34A", color: "#fff", borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>✓</span>}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginBottom: 20 }}>
-                {ciclosFiltrados.map(ciclo => {
-                  const m    = calcCicloMetrics(ciclo.id);
-                  const comm = culturaToCommodity(ciclo.cultura);
-                  const bm   = BENCHMARK[comm];
-                  const devPct = bm && m.scHaEsperado > 0 ? ((m.scHaEsperado - bm.sc_ha) / bm.sc_ha) * 100 : null;
-                  const realPct = m.scHaEsperado > 0 && m.scHaReal > 0 ? (m.scHaReal / m.scHaEsperado) * 100 : null;
-                  const colhido = m.sacasReais > 0;
-                  return (
-                    <div key={ciclo.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                      <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-card)" }}>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{ciclo.descricao}</div>
-                          <div style={{ fontSize: 11, color: "#666" }}>{ciclo.cultura}</div>
+
+              {/* ════════ POSIÇÃO COMERCIAL ════════ */}
+              {abaProducao === "posicao" && (
+                <div>
+                  {/* Filtros */}
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 14, padding: "10px 14px", background: "var(--bg-card)", borderRadius: 10, border: "0.5px solid var(--border)" }}>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 700, marginRight: 4 }}>Filtrar:</span>
+                    {fazOpts.length > 1 && (
+                      <select value={pcFazFiltro} onChange={e => setPcFazFiltro(e.target.value)}
+                        style={{ padding: "5px 10px", border: `0.5px solid ${pcFazFiltro ? "#1A4870" : "var(--border-table)"}`, borderRadius: 7, fontSize: 12, background: pcFazFiltro ? "#D5E8F5" : "var(--bg-card)", color: pcFazFiltro ? "#0B2D50" : "var(--text-1)", fontWeight: pcFazFiltro ? 600 : 400 }}>
+                        <option value="">Todas as fazendas</option>
+                        {fazOpts.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                      </select>
+                    )}
+                    {cultOpts.length > 1 && (
+                      <select value={pcCultFiltro} onChange={e => setPcCultFiltro(e.target.value)}
+                        style={{ padding: "5px 10px", border: `0.5px solid ${pcCultFiltro ? "#1A4870" : "var(--border-table)"}`, borderRadius: 7, fontSize: 12, background: pcCultFiltro ? "#D5E8F5" : "var(--bg-card)", color: pcCultFiltro ? "#0B2D50" : "var(--text-1)", fontWeight: pcCultFiltro ? 600 : 400 }}>
+                        <option value="">Todos os produtos</option>
+                        {cultOpts.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                    {(pcFazFiltro || pcCultFiltro) && (
+                      <button onClick={() => { setPcFazFiltro(""); setPcCultFiltro(""); }}
+                        style={{ padding: "4px 10px", border: "none", borderRadius: 6, background: "#E24B4A18", color: "#E24B4A", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                        Limpar ✕
+                      </button>
+                    )}
+                    <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-3)" }}>
+                      {pcRows.length} ciclo{pcRows.length !== 1 ? "s" : ""} · {fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha
+                    </span>
+                  </div>
+
+                  {kpiVolPrev === 0 ? (
+                    <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-3)", border: "0.5px solid var(--border)" }}>
+                      {ciclosFiltrados.length === 0 ? "Selecione um ano safra para ver a posição comercial." : "Ciclos selecionados não têm plantios com produtividade registrada."}
+                    </div>
+                  ) : (<>
+                    {/* ── KPI Cards ── */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 10, marginBottom: 16 }}>
+                      {[
+                        { label: "Volume Previsto",     val: `${fmtN(kpiVolPrev,0)} sc`,   sub: `${fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)} ha plantados`, color: "#1A4870",  bg: "#EBF3FC" },
+                        { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),              sub: kpiVolPrev>0?`${fmtR2(kpiFatPrev/kpiVolPrev)}/sc`:"",        color: "#14532D",  bg: "#ECFDF5" },
+                        { label: "Comprometido total",  val: `${fmtN(kpiCompr,0)} sc`,     sub: `${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,1)}% do previsto`, color: "#7A5200", bg: "#FBF3E0" },
+                        { label: "Disponível p/ venda", val: `${fmtN(kpiDisp,0)} sc`,      sub: `${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,1)}% do previsto`, color: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
+                        { label: "Colhido",             val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando colheita", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,1)}% do previsto`:"", color: kpiColhido>0?"#16A34A":"var(--text-3)", bg: kpiColhido>0?"#ECFDF5":"var(--bg-card)" },
+                      ].map(k => (
+                        <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".04em" }}>{k.label}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.val}</div>
+                          {k.sub && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>{k.sub}</div>}
                         </div>
-                        <span style={{ background: colhido ? "#ECFDF5" : "#EBF3FC", color: colhido ? "#14532D" : "#0C447C", borderRadius: 6, padding: "3px 9px", fontSize: 10, fontWeight: 700 }}>
-                          {colhido ? "Colhido" : "Em andamento"}
+                      ))}
+                    </div>
+
+                    {/* ── Legenda de comprometimento ── */}
+                    <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 14, padding: "8px 14px", background: "var(--bg-card)", borderRadius: 8, border: "0.5px solid var(--border)", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700 }}>COMPROMETIDO:</span>
+                      {[
+                        { label: "Arrendamento", val: kpiArr,    cor: "#C9921B" },
+                        { label: "Venda fixada",  val: kpiVenda,  cor: "#1A4870" },
+                        { label: "Barter",        val: kpiBarter, cor: "#7C3AED" },
+                      ].map(item => item.val > 0 && (
+                        <span key={item.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: 2, background: item.cor, display: "inline-block" }} />
+                          <strong style={{ color: item.cor }}>{fmtN(item.val,0)} sc</strong>
+                          <span style={{ color: "var(--text-3)" }}>{item.label} ({fmtN(kpiVolPrev>0?(item.val/kpiVolPrev)*100:0,1)}%)</span>
+                        </span>
+                      ))}
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, marginLeft: "auto" }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 2, background: "#16A34A", display: "inline-block" }} />
+                        <strong style={{ color: "#16A34A" }}>{fmtN(kpiDisp,0)} sc</strong>
+                        <span style={{ color: "var(--text-3)" }}>Disponível</span>
+                      </span>
+                    </div>
+
+                    {/* ── Blocos por commodity ── */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                      {commSummary.map(cs => {
+                        const total   = cs.volPrev || 1;
+                        const arrPct  = (cs.arr      / total) * 100;
+                        const vendPct = (cs.venda    / total) * 100;
+                        const bartPct = (cs.barter   / total) * 100;
+                        const dispPct = (cs.disponivel / total) * 100;
+                        return (
+                          <div key={cs.comm} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                            <div style={{ padding: "13px 18px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center", background: COMM_BG[cs.comm] ?? "#F8F8F8" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <span style={{ width: 12, height: 12, borderRadius: 3, background: COMM_COR[cs.comm] ?? "#888", display: "inline-block" }} />
+                                <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{cs.comm}</span>
+                                {cs.colhido > 0 && <span style={{ fontSize: 10, background: "#16A34A", color: "#fff", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>
+                                  {fmtN((cs.colhido/cs.volPrev)*100,1)}% colhido
+                                </span>}
+                              </div>
+                              <div style={{ display: "flex", gap: 20, fontSize: 12 }}>
+                                <span><strong style={{ color: "#1A4870" }}>{fmtN(cs.volPrev,0)} sc</strong> <span style={{ color: "var(--text-3)", fontSize: 11 }}>previsto</span></span>
+                                <span><strong style={{ color: "#14532D" }}>{fmtR(cs.fatPrev)}</strong> <span style={{ color: "var(--text-3)", fontSize: 11 }}>faturamento prev.</span></span>
+                                <span style={{ color: "var(--text-3)", fontSize: 11 }}>preço médio {fmtR2(cs.precMed)}/sc</span>
+                              </div>
+                            </div>
+                            <div style={{ padding: "16px 18px" }}>
+                              {/* Barra empilhada */}
+                              <div style={{ display: "flex", height: 22, borderRadius: 6, overflow: "hidden", marginBottom: 12, background: "#F0F4F8" }}>
+                                {cs.arr    > 0 && <div style={{ width: `${arrPct}%`,  background: "#C9921B" }} title={`Arrendamento: ${fmtN(cs.arr,0)} sc`} />}
+                                {cs.venda  > 0 && <div style={{ width: `${vendPct}%`, background: "#1A4870" }} title={`Venda: ${fmtN(cs.venda,0)} sc`} />}
+                                {cs.barter > 0 && <div style={{ width: `${bartPct}%`, background: "#7C3AED" }} title={`Barter: ${fmtN(cs.barter,0)} sc`} />}
+                                {cs.disponivel > 0 && <div style={{ width: `${dispPct}%`, background: "#D1FAE5" }} />}
+                              </div>
+                              {/* Linha de colheita (overlay visual) */}
+                              {cs.colhido > 0 && (
+                                <div style={{ marginBottom: 10 }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>
+                                    <span>Colheita realizada</span>
+                                    <span>{fmtN(cs.colhido,0)} sc ({fmtN((cs.colhido/cs.volPrev)*100,1)}% do previsto)</span>
+                                  </div>
+                                  <div style={{ height: 8, borderRadius: 4, background: "#F0F4F8", overflow: "hidden" }}>
+                                    <div style={{ width: `${Math.min(100,(cs.colhido/cs.volPrev)*100)}%`, height: "100%", background: "#16A34A", borderRadius: 4 }} />
+                                  </div>
+                                </div>
+                              )}
+                              {/* Cards de breakdown */}
+                              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
+                                {[
+                                  { label: "Arrendamento", sc: cs.arr,       pct: arrPct,  cor: "#C9921B", bg: "#FBF3E0" },
+                                  { label: "Venda fixada",  sc: cs.venda,    pct: vendPct, cor: "#1A4870", bg: "#D5E8F5" },
+                                  { label: "Barter",        sc: cs.barter,   pct: bartPct, cor: "#7C3AED", bg: "#F5F3FF" },
+                                  { label: "Disponível",    sc: cs.disponivel,pct: dispPct, cor: "#16A34A", bg: "#ECFDF5" },
+                                  ...(cs.colhido > 0 ? [{ label: "Colhido", sc: cs.colhido, pct: (cs.colhido/total)*100, cor: "#0D9488", bg: "#D1FAE5" }] : []),
+                                ].map(row => (
+                                  <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 11px", background: row.bg, borderRadius: 8 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: 2, background: row.cor, flexShrink: 0 }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600 }}>{row.label}</div>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: row.cor }}>{fmtN(row.sc,0)} sc</div>
+                                    </div>
+                                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                      <div style={{ fontSize: 12, fontWeight: 700, color: row.cor }}>{fmtN(row.pct,1)}%</div>
+                                      {row.sc > 0 && <div style={{ fontSize: 9, color: "var(--text-3)" }}>{fmtR(row.sc * cs.precMed)}</div>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* ── Tabela por ciclo ── */}
+                    <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                      <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>Detalhamento por Ciclo</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>clique no cabeçalho para ordenar</span>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: "var(--bg-tag)" }}>
+                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Fazenda</th>
+                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Ciclo</th>
+                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left" }}>Produto</th>
+                              <th style={{ padding: "9px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "right", whiteSpace: "nowrap" }}>Área (ha)</th>
+                              {sortTh("volPrev",  "Previsto (sc)")}
+                              {sortTh("fatPrev",  "Fat. Previsto")}
+                              {sortTh("venda",    "Venda fixada")}
+                              {sortTh("disp",     "Disponível")}
+                              {sortTh("colhido",  "Colhido")}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sortedRows.map((r, i) => {
+                              const disp    = r.volPrev - r.venda;
+                              const dispPct = r.volPrev > 0 ? (disp / r.volPrev) * 100 : 0;
+                              return (
+                                <tr key={r.cId} style={{ borderTop: i > 0 ? "0.5px solid var(--border-row)" : "none" }}>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{r.fazNome}</td>
+                                  <td style={{ padding: "9px 12px", color: "var(--text-1)", fontWeight: 600 }}>{r.descricao}</td>
+                                  <td style={{ padding: "9px 12px" }}>
+                                    <span style={{ background: COMM_BG[r.comm] ?? "#EEE", color: COMM_COR[r.comm] ?? "#333", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{r.cultura}</span>
+                                  </td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--text-2)" }}>{fmtN(r.area,0)}</td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>{r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right", color: "#14532D", fontSize: 11 }}>{r.fatPrev>0?fmtR(r.fatPrev):"—"}</td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                                    {r.venda > 0
+                                      ? <span style={{ color: "#1A4870", fontWeight: 600 }}>{fmtN(r.venda,0)} <span style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 400 }}>({r.volPrev>0?fmtN((r.venda/r.volPrev)*100,0):0}%)</span></span>
+                                      : <span style={{ color: "var(--text-3)" }}>—</span>}
+                                  </td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                                    <span style={{ color: dispPct>30?"#16A34A":dispPct>10?"#C9921B":"#E24B4A", fontWeight: 600 }}>
+                                      {disp>0?fmtN(disp,0):"0"} <span style={{ fontSize: 10, fontWeight: 400 }}>({fmtN(dispPct,0)}%)</span>
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: "9px 12px", textAlign: "right" }}>
+                                    {r.colhido>0
+                                      ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtN(r.colhido,0)} <span style={{ fontSize: 10, fontWeight: 400, color: "var(--text-3)" }}>({r.volPrev>0?fmtN((r.colhido/r.volPrev)*100,0):0}%)</span></span>
+                                      : <span style={{ color: "var(--text-3)", fontSize: 11 }}>Aguardando</span>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#D5E8F5" }}>
+                              <td colSpan={3} style={{ padding: "9px 12px", fontWeight: 700, fontSize: 12, color: "#1A4870" }}>TOTAL GERAL</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-1)" }}>{fmtN(pcRows.reduce((s,r)=>s+r.area,0),0)}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtN(kpiVolPrev,0)}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#14532D" }}>{fmtR(kpiFatPrev)}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>{fmtN(kpiVenda,0)}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: "#16A34A" }}>{fmtN(kpiDisp,0)}</td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 700, color: kpiColhido>0?"#16A34A":"var(--text-3)" }}>{kpiColhido>0?fmtN(kpiColhido,0):"—"}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>)}
+                </div>
+              )}
+
+              {/* ════════ ANÁLISE POR CICLO (view original) ════════ */}
+              {abaProducao === "ciclos" && (
+                <div>
+                  {ciclosFiltrados.length === 0 ? (
+                    <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-3)", border: "0.5px solid var(--border)" }}>
+                      Selecione um ano safra para ver a análise de produção por ciclo.
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginBottom: 20 }}>
+                      {ciclosFiltrados.map(ciclo => {
+                        const m      = calcCicloMetrics(ciclo.id);
+                        const comm   = culturaToCommodity(ciclo.cultura, cultMap);
+                        const bm     = BENCHMARK[comm];
+                        const devPct = bm && m.scHaEsperado > 0 ? ((m.scHaEsperado - bm.sc_ha) / bm.sc_ha) * 100 : null;
+                        const realPct= m.scHaEsperado > 0 && m.scHaReal > 0 ? (m.scHaReal / m.scHaEsperado) * 100 : null;
+                        const colhido= m.sacasReais > 0;
+                        const fazNome= fazendas.find(f => f.id === ciclo.fazenda_id)?.nome;
+                        return (
+                          <div key={ciclo.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                            <div style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", background: "var(--bg-card)" }}>
+                              <div>
+                                {fazNome && <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>{fazNome}</div>}
+                                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)" }}>{ciclo.descricao}</div>
+                                <div style={{ fontSize: 11, color: "#666" }}>{ciclo.cultura}</div>
+                              </div>
+                              <span style={{ background: colhido ? "#ECFDF5" : "#EBF3FC", color: colhido ? "#14532D" : "#0C447C", borderRadius: 6, padding: "3px 9px", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                                {colhido ? "Colhido" : "Em andamento"}
+                              </span>
+                            </div>
+                            <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                              <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Área plantada</div><div style={{ fontSize: 17, fontWeight: 700, color: "#1A4870" }}>{fmtN(m.area,0)} ha</div></div>
+                              <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Produção esperada</div><div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{fmtN(m.prodEsperada,0)} sc</div></div>
+                              <div>
+                                <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>sc/ha esperado</div>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{m.scHaEsperado > 0 ? fmtN(m.scHaEsperado,1) : "—"}</div>
+                                {bm && m.scHaEsperado > 0 && <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>benchmark MT: {bm.sc_ha} {bm.unidade}</div>}
+                              </div>
+                              {colhido ? (
+                                <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>sc/ha realizado</div><div style={{ fontSize: 15, fontWeight: 700, color: m.scHaReal >= (bm?.sc_ha ?? 0) ? "#16A34A" : "#E24B4A" }}>{fmtN(m.scHaReal,1)}</div></div>
+                              ) : (
+                                <div><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>vs benchmark MT</div><div style={{ fontSize: 14, fontWeight: 700, color: devPct !== null ? (devPct >= 0 ? "#16A34A" : "#E24B4A") : "var(--text-3)" }}>{devPct !== null ? `${devPct >= 0 ? "+" : ""}${fmtN(devPct,1)}%` : "—"}</div></div>
+                              )}
+                            </div>
+                            {bm && m.scHaEsperado > 0 && (
+                              <div style={{ padding: "0 16px 14px" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-3)", marginBottom: 3 }}>
+                                  <span>0</span><span>benchmark: {bm.sc_ha} {bm.unidade}</span><span>{Math.round(bm.sc_ha * 1.2)}</span>
+                                </div>
+                                <div style={{ height: 6, borderRadius: 3, background: "var(--bg-tag)", position: "relative", overflow: "hidden" }}>
+                                  <div style={{ width: `${pct(m.scHaEsperado, bm.sc_ha * 1.2)}%`, height: "100%", background: "#378ADD", borderRadius: 3 }} />
+                                  <div style={{ position: "absolute", top: 0, left: `${pct(bm.sc_ha, bm.sc_ha * 1.2)}%`, width: 2, height: "100%", background: "#C9921B" }} />
+                                </div>
+                                {colhido && m.scHaReal > 0 && realPct !== null && <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-2)" }}>Realizado: {fmtN(m.scHaReal,1)} sc/ha — {fmtN(realPct,0)}% da meta</div>}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {(prodTotalEsperada > 0 || sacasTotaisReais > 0) && (
+                    <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)", marginBottom: 12 }}>Consolidado de Produção</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+                        {[
+                          { label: "Área Total",          v: `${fmtN(areaFiltrada,0)} ha`,         color: "#0C447C" },
+                          { label: "Produção Projetada",  v: `${fmtN(prodTotalEsperada,0)} sc`,     color: "var(--text-1)" },
+                          { label: "Produção Realizada",  v: sacasTotaisReais>0?`${fmtN(sacasTotaisReais,0)} sc`:"Aguardando colheita", color: sacasTotaisReais>0?"#16A34A":"var(--text-3)" },
+                          { label: "% Realizado",         v: prodTotalEsperada>0&&sacasTotaisReais>0?`${fmtN((sacasTotaisReais/prodTotalEsperada)*100,1)}%`:"—", color: "#1A4870" },
+                        ].map(k => <div key={k.label}><div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div><div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.v}</div></div>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ════════ COLHEITA VS PLANEJADO ════════ */}
+              {abaProducao === "colheita" && (() => {
+                const totalPrev = todasRows.reduce((s,r) => s + r.volPrev, 0);
+                const totalColh = todasRows.reduce((s,r) => s + r.colhido, 0);
+                const pctColh   = totalPrev > 0 ? (totalColh / totalPrev) * 100 : 0;
+                const ciclosComColh = todasRows.filter(r => r.colhido > 0).length;
+
+                return totalPrev === 0 ? (
+                  <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 48, textAlign: "center", color: "var(--text-3)", border: "0.5px solid var(--border)" }}>
+                    Selecione um ano safra com ciclos que tenham produtividade planejada registrada.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {/* KPI resumo */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+                      {[
+                        { label: "Previsto total",  val: `${fmtN(totalPrev,0)} sc`,  color: "#1A4870", bg: "#EBF3FC" },
+                        { label: "Colhido total",   val: totalColh>0?`${fmtN(totalColh,0)} sc`:"Ainda não iniciado", color: totalColh>0?"#16A34A":"var(--text-3)", bg: totalColh>0?"#ECFDF5":"var(--bg-card)" },
+                        { label: "% Realizado",     val: totalColh>0?`${fmtN(pctColh,1)}%`:"—", color: pctColh>=100?"#16A34A":pctColh>=70?"#C9921B":"var(--text-3)", bg: "var(--bg-card)" },
+                        { label: "Ciclos c/ colheita", val: `${ciclosComColh} / ${todasRows.length}`, color: "var(--text-1)", bg: "var(--bg-card)" },
+                      ].map(k => (
+                        <div key={k.label} style={{ background: k.bg, borderRadius: 10, padding: "14px 16px", border: "0.5px solid var(--border)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 700, marginBottom: 6, textTransform: "uppercase" }}>{k.label}</div>
+                          <div style={{ fontSize: 17, fontWeight: 700, color: k.color }}>{k.val}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Por Produto */}
+                    <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 18px" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 14 }}>Por Produto</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {prodResume.map(p => {
+                          const pctP = p.volPrev > 0 ? (p.colhido / p.volPrev) * 100 : 0;
+                          return (
+                            <div key={p.comm}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
+                                <span style={{ fontWeight: 600, color: COMM_COR[p.comm] ?? "var(--text-1)" }}>{p.comm}</span>
+                                <span style={{ color: "var(--text-2)" }}>{fmtN(p.colhido,0)} / {fmtN(p.volPrev,0)} sc ({fmtN(pctP,1)}%)</span>
+                              </div>
+                              <div style={{ position: "relative", height: 12, borderRadius: 6, background: "#F0F4F8", overflow: "hidden" }}>
+                                <div style={{ width: "100%", height: "100%", background: (COMM_BG[p.comm] ?? "#EEE") }} />
+                                <div style={{ position: "absolute", top: 0, left: 0, width: `${Math.min(100,pctP)}%`, height: "100%", background: "#16A34A", borderRadius: 6 }} />
+                                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: (COMM_COR[p.comm] ?? "#888") + "33", borderRadius: 6 }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Por Fazenda */}
+                    {fazResume.length > 1 && (
+                      <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 18px" }}>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)", marginBottom: 14 }}>Por Fazenda</div>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <thead>
+                              <tr style={{ background: "var(--bg-tag)" }}>
+                                {["Fazenda","Previsto (sc)","Colhido (sc)","% Realizado","Delta (sc)"].map(h => (
+                                  <th key={h} style={{ padding: "8px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: h==="Fazenda"?"left":"right" }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {fazResume.map((f,i) => {
+                                const p = f.volPrev > 0 ? (f.colhido / f.volPrev) * 100 : 0;
+                                const delta = f.colhido - f.volPrev;
+                                return (
+                                  <tr key={f.id} style={{ borderTop: i>0?"0.5px solid var(--border-row)":"none" }}>
+                                    <td style={{ padding: "9px 12px", fontWeight: 600, color: "var(--text-1)" }}>{f.nome}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: "#1A4870", fontWeight: 600 }}>{fmtN(f.volPrev,0)}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: f.colhido>0?"#16A34A":"var(--text-3)", fontWeight: 600 }}>{f.colhido>0?fmtN(f.colhido,0):"—"}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: p>=100?"#16A34A":p>=80?"#C9921B":"var(--text-3)", fontWeight: 600 }}>{f.colhido>0?`${fmtN(p,1)}%`:"—"}</td>
+                                    <td style={{ padding: "9px 12px", textAlign: "right", color: delta>=0?"#16A34A":"#E24B4A", fontWeight: 600 }}>{f.colhido>0?(delta>=0?"+":"")+fmtN(delta,0):"—"}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Gráfico de barras por ciclo */}
+                    <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
+                      <div style={{ padding: "11px 16px", borderBottom: "0.5px solid var(--bg-tag)", fontWeight: 700, fontSize: 13, color: "var(--text-1)", display: "flex", alignItems: "center", gap: 10 }}>
+                        Por Ciclo
+                        <span style={{ display: "flex", gap: 12, fontSize: 10, fontWeight: 400, color: "var(--text-3)" }}>
+                          <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#D5E8F5", marginRight: 4 }} />Planejado</span>
+                          <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#16A34A", marginRight: 4 }} />Colhido</span>
                         </span>
                       </div>
-                      <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <div>
-                          <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Área plantada</div>
-                          <div style={{ fontSize: 17, fontWeight: 700, color: "#1A4870" }}>{fmtN(m.area, 0)} ha</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>Produção esperada</div>
-                          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-1)" }}>{fmtN(m.prodEsperada, 0)} sc</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>sc/ha esperado</div>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{m.scHaEsperado > 0 ? fmtN(m.scHaEsperado, 1) : "—"}</div>
-                          {bm && m.scHaEsperado > 0 && (
-                            <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>benchmark MT: {bm.sc_ha} {bm.unidade}</div>
-                          )}
-                        </div>
-                        {colhido ? (
-                          <div>
-                            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>sc/ha realizado</div>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: m.scHaReal >= (bm?.sc_ha ?? 0) ? "#16A34A" : "#E24B4A" }}>{fmtN(m.scHaReal, 1)}</div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>vs benchmark MT</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: devPct !== null ? (devPct >= 0 ? "#16A34A" : "#E24B4A") : "var(--text-3)" }}>
-                              {devPct !== null ? `${devPct >= 0 ? "+" : ""}${fmtN(devPct, 1)}%` : "—"}
+                      <div style={{ padding: "12px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
+                        {todasRows.filter(r => r.volPrev > 0).sort((a,b) => b.volPrev - a.volPrev).map(r => {
+                          const pctC = r.volPrev > 0 ? Math.min(100,(r.colhido / r.volPrev) * 100) : 0;
+                          const fazN = r.fazNome;
+                          return (
+                            <div key={r.cId}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
+                                <span>
+                                  <span style={{ fontSize: 10, color: "var(--text-3)", marginRight: 6 }}>{fazN}</span>
+                                  <strong style={{ color: "var(--text-1)" }}>{r.descricao}</strong>
+                                  <span style={{ marginLeft: 6, fontSize: 10, background: COMM_BG[r.comm]??"#EEE", color: COMM_COR[r.comm]??"#333", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>{r.comm}</span>
+                                </span>
+                                <span style={{ color: "var(--text-2)", fontSize: 11 }}>
+                                  {r.colhido>0?<><strong style={{ color: "#16A34A" }}>{fmtN(r.colhido,0)}</strong> / {fmtN(r.volPrev,0)} sc ({fmtN(pctC,1)}%)</>:<span style={{ color: "var(--text-3)" }}>{fmtN(r.volPrev,0)} sc planejadas</span>}
+                                </span>
+                              </div>
+                              <div style={{ position: "relative", height: 14, borderRadius: 4, background: "#EBF3FC", overflow: "hidden" }}>
+                                {/* Barra planejado (largura proporcional ao maior valor) */}
+                                <div style={{ width: `${(r.volPrev / maxBar) * 100}%`, height: "100%", background: "#D5E8F5", position: "absolute", top: 0, left: 0, borderRadius: 4 }} />
+                                {/* Barra colhido */}
+                                {r.colhido > 0 && <div style={{ width: `${(r.colhido / maxBar) * 100}%`, height: "100%", background: "#16A34A", position: "absolute", top: 0, left: 0, borderRadius: 4, opacity: 0.85 }} />}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          );
+                        })}
                       </div>
-
-                      {/* Barra de progresso vs benchmark */}
-                      {bm && m.scHaEsperado > 0 && (
-                        <div style={{ padding: "0 16px 14px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-muted)", marginBottom: 3 }}>
-                            <span>0</span>
-                            <span>benchmark: {bm.sc_ha} {bm.unidade}</span>
-                            <span>{Math.round(bm.sc_ha * 1.2)}</span>
-                          </div>
-                          <div style={{ height: 6, borderRadius: 3, background: "var(--bg-tag)", position: "relative", overflow: "hidden" }}>
-                            <div style={{ width: `${pct(m.scHaEsperado, bm.sc_ha * 1.2)}%`, height: "100%", background: "#378ADD", borderRadius: 3 }} />
-                            <div style={{ position: "absolute", top: 0, left: `${pct(bm.sc_ha, bm.sc_ha * 1.2)}%`, width: 2, height: "100%", background: "#C9921B" }} />
-                          </div>
-                          {colhido && m.scHaReal > 0 && realPct !== null && (
-                            <div style={{ marginTop: 6, fontSize: 10, color: "var(--text-2)" }}>
-                              Realizado: {fmtN(m.scHaReal, 1)} sc/ha — {fmtN(realPct, 0)}% da meta esperada
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Resumo geral de produção */}
-            {(prodTotalEsperada > 0 || sacasTotaisReais > 0) && (
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", padding: "16px 20px" }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: "var(--text-1)", marginBottom: 12 }}>Consolidado de Produção</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
-                  {[
-                    { label: "Área Total",         v: `${fmtN(areaFiltrada, 0)} ha`,         color: "#0C447C" },
-                    { label: "Produção Projetada",  v: `${fmtN(prodTotalEsperada, 0)} sc`,     color: "var(--text-1)" },
-                    { label: "Produção Realizada",  v: sacasTotaisReais > 0 ? `${fmtN(sacasTotaisReais, 0)} sc` : "Aguardando colheita", color: sacasTotaisReais > 0 ? "#16A34A" : "var(--text-3)" },
-                    { label: "% Realizado",         v: prodTotalEsperada > 0 && sacasTotaisReais > 0 ? `${fmtN((sacasTotaisReais / prodTotalEsperada) * 100, 1)}%` : "—", color: "#1A4870" },
-                  ].map(k => (
-                    <div key={k.label}>
-                      <div style={{ fontSize: 10, color: "var(--text-3)", marginBottom: 3 }}>{k.label}</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: k.color }}>{k.v}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })()}
 
         {/* ═══════════ CUSTOS & INSUMOS ═══════════ */}
         {!loading && aba === "custos" && (() => {
