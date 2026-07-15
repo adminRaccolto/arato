@@ -11,7 +11,7 @@ import type { ControllerAlerta } from "../../lib/supabase";
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }
 interface AnoSafra   { id: string; descricao: string; fazenda_id: string }
-interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null }
+interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null; produtividade_esperada_sc_ha?: number | null; area_plantada_ha?: number | null }
 interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha: number; produtividade_esperada: number }
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
@@ -346,7 +346,7 @@ export default function BI() {
     const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR, fazsR, talR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
-      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc").in("fazenda_id", fids),
+      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha").in("fazenda_id", fids),
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
@@ -538,10 +538,15 @@ export default function BI() {
 
   // ── Métricas por ciclo ─────────────────────────────────────────
   function calcCicloMetrics(cicloId: string) {
+    const cicloBase = ciclos.find(c => c.id === cicloId);
     const pls = plantios.filter(p => p.ciclo_id === cicloId);
-    const area = pls.reduce((s, p) => s + (p.area_ha || 0), 0);
-    const prodEsperada = pls.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
-    const scHaEsperado = area > 0 ? prodEsperada / area : 0;
+    const area = pls.length > 0
+      ? pls.reduce((s, p) => s + (p.area_ha || 0), 0)
+      : (cicloBase?.area_plantada_ha ?? 0);
+    const prodEsperada = pls.length > 0
+      ? pls.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0)
+      : area * (cicloBase?.produtividade_esperada_sc_ha ?? 0);
+    const scHaEsperado = area > 0 ? prodEsperada / area : (cicloBase?.produtividade_esperada_sc_ha ?? 0);
 
     const cols = colheitas.filter(c => c.ciclo_id === cicloId);
     const sacasReais = cols.reduce((s, c) => s + (c.sacas_liquidas ?? (c.peso_liquido_kg ?? 0) / 60), 0);
@@ -554,7 +559,9 @@ export default function BI() {
   // ── Custos agregados ───────────────────────────────────────────
   const cpFiltrados = lancamentosFiltrados.filter(l => l.tipo === "pagar" && l.status !== "baixado");
   const totalCustos = cpFiltrados.reduce((s, l) => s + l.valor, 0);
-  const areaFiltrada = plantiosFiltrados.reduce((s, p) => s + (p.area_ha || 0), 0);
+  const areaFiltrada = plantiosFiltrados.length > 0
+    ? plantiosFiltrados.reduce((s, p) => s + (p.area_ha || 0), 0)
+    : ciclosFiltrados.reduce((s, c) => s + (c.area_plantada_ha ?? 0), 0);
   const custoHaEstimado = areaFiltrada > 0 ? totalCustos / areaFiltrada : 0;
 
   const custosPorGrupo: Record<string, number> = {};
@@ -1111,8 +1118,13 @@ export default function BI() {
             const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? c.fazenda_id;
             const comm    = culturaToCommodity(c.cultura, cultMap);
             const pls     = plantios.filter(p => p.ciclo_id === c.id);
-            const area    = pls.reduce((s, p) => s + (p.area_ha || 0), 0);
-            const volPrev = pls.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0);
+            // Usa plantios quando existem; caso contrário usa os campos do próprio ciclo
+            const area    = pls.length > 0
+              ? pls.reduce((s, p) => s + (p.area_ha || 0), 0)
+              : (c.area_plantada_ha ?? 0);
+            const volPrev = pls.length > 0
+              ? pls.reduce((s, p) => s + (p.area_ha || 0) * (p.produtividade_esperada || 0), 0)
+              : area * (c.produtividade_esperada_sc_ha ?? 0);
             const preco   = ((c as Ciclo & { preco_esperado_sc?: number }).preco_esperado_sc ?? 0) > 0
               ? (c as Ciclo & { preco_esperado_sc?: number }).preco_esperado_sc!
               : comm === "Soja" ? (precos?.soja?.brl ?? 0) : comm === "Milho" ? (precos?.milho?.brl ?? 0) : (precos?.algodao?.brl ?? 0);
