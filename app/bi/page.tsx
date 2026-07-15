@@ -11,7 +11,7 @@ import type { ControllerAlerta } from "../../lib/supabase";
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }
 interface AnoSafra   { id: string; descricao: string; fazenda_id: string }
-interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null; produtividade_esperada_sc_ha?: number | null; area_plantada_ha?: number | null }
+interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null; produtividade_esperada_sc_ha?: number | null; area_plantada_ha?: number | null; produto_agricola_nome?: string | null }
 interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha: number; produtividade_esperada: number }
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
@@ -134,6 +134,17 @@ function culturaToCommodity(cultura: string, cultMap?: CulturaMap): string {
   if (c.includes("milho"))                                   return "Milho";
   if (c.includes("algodao") || c.includes("algodão"))        return "Algodão";
   return cultura; // retorna próprio nome se não reconhecido
+}
+
+// Retorna a cor base de um produto agrícola ou cultura a partir de keywords
+function commColor(nome: string): { cor: string; bg: string } {
+  const n = nome.toLowerCase();
+  if (n.includes("soja"))    return { cor: "#C9921B", bg: "#FBF3E0" };
+  if (n.includes("milho"))   return { cor: "#D97706", bg: "#FEF9EE" };
+  if (n.includes("algodão") || n.includes("algodao")) return { cor: "#7C3AED", bg: "#F5F3FF" };
+  if (n.includes("sorgo"))   return { cor: "#B45309", bg: "#FEF3C7" };
+  if (n.includes("trigo"))   return { cor: "#78350F", bg: "#FEF9EE" };
+  return { cor: "#374151", bg: "#F3F4F6" };
 }
 
 function grupoCategoria(cat?: string): string {
@@ -346,7 +357,7 @@ export default function BI() {
     const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR, fazsR, talR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
-      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha").in("fazenda_id", fids),
+      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha,produto_agricola_nome").in("fazenda_id", fids),
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
@@ -1110,13 +1121,15 @@ export default function BI() {
         {/* ═══════════ PRODUÇÃO ═══════════ */}
         {!loading && aba === "producao" && (() => {
           // ── Dados base para todas as sub-abas ──────────────────────────
-          const COMM_COR: Record<string, string> = { Soja: "#C9921B", Milho: "#D97706", Algodão: "#7C3AED" };
-          const COMM_BG:  Record<string, string> = { Soja: "#FBF3E0", Milho: "#FEF9EE", Algodão: "#F5F3FF" };
+          // Cores dinâmicas por produto — qualquer nome de produto agrícola é suportado
+          const COMM_COR = (nome: string) => commColor(nome).cor;
+          const COMM_BG  = (nome: string) => commColor(nome).bg;
 
           // Per-ciclo metrics para Posição Comercial
           const todasRows = ciclosFiltrados.map(c => {
             const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? c.fazenda_id;
-            const comm    = culturaToCommodity(c.cultura, cultMap);
+            // Produto agrícola (ex: "Soja Convencional", "Soja Transgênica RR") tem precedência sobre cultura genérica
+            const comm    = c.produto_agricola_nome?.trim() || culturaToCommodity(c.cultura, cultMap);
             const pls     = plantios.filter(p => p.ciclo_id === c.id);
             // Usa plantios quando existem; caso contrário usa os campos do próprio ciclo
             const area    = pls.length > 0
@@ -1316,9 +1329,9 @@ export default function BI() {
                         const dispPct = (cs.disponivel / total) * 100;
                         return (
                           <div key={cs.comm} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                            <div style={{ padding: "13px 18px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center", background: COMM_BG[cs.comm] ?? "#F8F8F8" }}>
+                            <div style={{ padding: "13px 18px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center", background: COMM_BG(cs.comm) }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <span style={{ width: 12, height: 12, borderRadius: 3, background: COMM_COR[cs.comm] ?? "#888", display: "inline-block" }} />
+                                <span style={{ width: 12, height: 12, borderRadius: 3, background: COMM_COR(cs.comm), display: "inline-block" }} />
                                 <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)" }}>{cs.comm}</span>
                                 {cs.colhido > 0 && <span style={{ fontSize: 10, background: "#16A34A", color: "#fff", borderRadius: 5, padding: "2px 7px", fontWeight: 700 }}>
                                   {fmtN((cs.colhido/cs.volPrev)*100,1)}% colhido
@@ -1408,7 +1421,7 @@ export default function BI() {
                                   <td style={{ padding: "9px 12px", color: "var(--text-2)", fontSize: 11, whiteSpace: "nowrap" }}>{r.fazNome}</td>
                                   <td style={{ padding: "9px 12px", color: "var(--text-1)", fontWeight: 600 }}>{r.descricao}</td>
                                   <td style={{ padding: "9px 12px" }}>
-                                    <span style={{ background: COMM_BG[r.comm] ?? "#EEE", color: COMM_COR[r.comm] ?? "#333", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{r.cultura}</span>
+                                    <span style={{ background: COMM_BG(r.comm), color: COMM_COR(r.comm), borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{r.cultura}</span>
                                   </td>
                                   <td style={{ padding: "9px 12px", textAlign: "right", color: "var(--text-2)" }}>{fmtN(r.area,0)}</td>
                                   <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 600, color: "#1A4870" }}>{r.volPrev>0?fmtN(r.volPrev,0):"—"}</td>
@@ -1459,8 +1472,8 @@ export default function BI() {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 14, marginBottom: 20 }}>
                       {ciclosFiltrados.map(ciclo => {
                         const m      = calcCicloMetrics(ciclo.id);
-                        const comm   = culturaToCommodity(ciclo.cultura, cultMap);
-                        const bm     = BENCHMARK[comm];
+                        const comm   = ciclo.produto_agricola_nome?.trim() || culturaToCommodity(ciclo.cultura, cultMap);
+                        const bm     = BENCHMARK[comm] ?? BENCHMARK[culturaToCommodity(ciclo.cultura)];
                         const devPct = bm && m.scHaEsperado > 0 ? ((m.scHaEsperado - bm.sc_ha) / bm.sc_ha) * 100 : null;
                         const realPct= m.scHaEsperado > 0 && m.scHaReal > 0 ? (m.scHaReal / m.scHaEsperado) * 100 : null;
                         const colhido= m.sacasReais > 0;
@@ -1561,13 +1574,13 @@ export default function BI() {
                           return (
                             <div key={p.comm}>
                               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5 }}>
-                                <span style={{ fontWeight: 600, color: COMM_COR[p.comm] ?? "var(--text-1)" }}>{p.comm}</span>
+                                <span style={{ fontWeight: 600, color: COMM_COR(p.comm) }}>{p.comm}</span>
                                 <span style={{ color: "var(--text-2)" }}>{fmtN(p.colhido,0)} / {fmtN(p.volPrev,0)} sc ({fmtN(pctP,1)}%)</span>
                               </div>
                               <div style={{ position: "relative", height: 12, borderRadius: 6, background: "#F0F4F8", overflow: "hidden" }}>
-                                <div style={{ width: "100%", height: "100%", background: (COMM_BG[p.comm] ?? "#EEE") }} />
+                                <div style={{ width: "100%", height: "100%", background: (COMM_BG(p.comm)) }} />
                                 <div style={{ position: "absolute", top: 0, left: 0, width: `${Math.min(100,pctP)}%`, height: "100%", background: "#16A34A", borderRadius: 6 }} />
-                                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: (COMM_COR[p.comm] ?? "#888") + "33", borderRadius: 6 }} />
+                                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: (COMM_COR(p.comm)) + "33", borderRadius: 6 }} />
                               </div>
                             </div>
                           );
@@ -1627,7 +1640,7 @@ export default function BI() {
                                 <span>
                                   <span style={{ fontSize: 10, color: "var(--text-3)", marginRight: 6 }}>{fazN}</span>
                                   <strong style={{ color: "var(--text-1)" }}>{r.descricao}</strong>
-                                  <span style={{ marginLeft: 6, fontSize: 10, background: COMM_BG[r.comm]??"#EEE", color: COMM_COR[r.comm]??"#333", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>{r.comm}</span>
+                                  <span style={{ marginLeft: 6, fontSize: 10, background: COMM_BG(r.comm), color: COMM_COR(r.comm), borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>{r.comm}</span>
                                 </span>
                                 <span style={{ color: "var(--text-2)", fontSize: 11 }}>
                                   {r.colhido>0?<><strong style={{ color: "#16A34A" }}>{fmtN(r.colhido,0)}</strong> / {fmtN(r.volPrev,0)} sc ({fmtN(pctC,1)}%)</>:<span style={{ color: "var(--text-3)" }}>{fmtN(r.volPrev,0)} sc planejadas</span>}
