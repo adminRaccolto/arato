@@ -23,11 +23,14 @@ interface Arrendamento {
   sc_ha?: number | null;       // soja sc/ha (ou único para sc_soja/sc_milho)
   sc_milho_ha?: number | null; // milho sc/ha — só usado em sc_soja_milho
   valor_brl?: number | null;
+  produto_agricola_id?: string | null;       // produto agrícola da parte soja (BI)
+  produto_agricola_id_milho?: string | null; // produto agrícola da parte milho (sc_soja_milho)
   ano_safra_id?: string | null; inicio?: string | null; vencimento?: string | null;
   renovacao_auto?: boolean; observacao?: string | null;
   produtor_id?: string | null;   // IE explorador — agricultor que declara no LCDPR
   produtor_id_2?: string | null; // segundo IE explorador (contrato conjunto)
 }
+interface InsumoPA { id: string; nome: string; }
 interface Produtor { id: string; nome: string; inscricao_est?: string | null; municipio?: string | null; estado?: string | null; }
 interface Pagamento {
   id: string; arrendamento_id: string; fazenda_id: string;
@@ -123,6 +126,7 @@ const initFC = () => ({
   locatario_id: "", locatario_nome: "",
   area_ha: "", forma_pagamento: "sc_soja" as FormaPage,
   sc_soja_ha: "", sc_milho_ha: "", valor_brl: "",
+  produto_agricola_id: "", produto_agricola_id_milho: "",
   inicio: "", vencimento: "", renovacao_auto: false, observacao: "",
   produtor_id: "", produtor_id_2: "",
 });
@@ -137,6 +141,7 @@ export default function Arrendamentos() {
   const [pessoas,       setPessoas]       = useState<Pessoa[]>([]);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
   const [fazendas,      setFazendas]      = useState<Fazenda[]>([]);
+  const [insumosPA,     setInsumosPA]     = useState<InsumoPA[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [salvando,      setSalvando]      = useState(false);
 
@@ -182,13 +187,15 @@ export default function Arrendamentos() {
       supabase.from("pessoas").select("id,nome").in("fazenda_id", fids).order("nome").limit(5000),
       supabase.from("fazendas").select("id,nome,produtor_id").in("id", fids),
       contaId ? listarProdutoresDaConta(contaId, fazendaId) : listarProdutoresViaFazenda(fazendaId!),
-    ]).then(([arrR, pagR, anos, pesR, fazR, prods]) => {
+      supabase.from("insumos").select("id,nome").eq("fazenda_id", fazendaId!).eq("categoria","produto_agricola").order("nome"),
+    ]).then(([arrR, pagR, anos, pesR, fazR, prods, paR]) => {
       setArrendamentos((arrR.data ?? []) as Arrendamento[]);
       setPagamentos((pagR.data ?? []) as Pagamento[]);
       setAnosSafra(anos);
       setPessoas((pesR.data ?? []) as Pessoa[]);
       setFazendas((fazR.data ?? []) as Fazenda[]);
       setProdutores(prods as Produtor[]);
+      setInsumosPA((paR.data ?? []) as InsumoPA[]);
     }).finally(() => setLoading(false));
   }, [fazendaId, fazendaIds, contaId]);
 
@@ -244,6 +251,8 @@ export default function Arrendamentos() {
         observacao: fC.observacao || null,
         produtor_id:   fC.produtor_id   || null,
         produtor_id_2: fC.produtor_id_2 || null,
+        produto_agricola_id:       fC.produto_agricola_id       || null,
+        produto_agricola_id_milho: fC.produto_agricola_id_milho || null,
       };
       if (editContrato) {
         const { data, error } = await supabase.from("arrendamentos").update(payload).eq("id", editContrato.id).select().single();
@@ -984,6 +993,8 @@ export default function Arrendamentos() {
                               sc_soja_ha:  arr.sc_ha       != null ? String(arr.sc_ha)       : "",
                               sc_milho_ha: arr.sc_milho_ha != null ? String(arr.sc_milho_ha) : "",
                               valor_brl:   arr.valor_brl   != null ? String(arr.valor_brl)   : "",
+                              produto_agricola_id:       arr.produto_agricola_id       ?? "",
+                              produto_agricola_id_milho: arr.produto_agricola_id_milho ?? "",
                               inicio: arr.inicio ?? "",
                               vencimento: arr.vencimento ?? "",
                               renovacao_auto: arr.renovacao_auto ?? false,
@@ -1363,6 +1374,52 @@ export default function Arrendamentos() {
                 <option value="brl">R$ (Real)</option>
               </select>
             </div>
+
+            {/* Produto Agrícola — para alocação correta no BI */}
+            {(fC.forma_pagamento === "sc_soja" || fC.forma_pagamento === "sc_soja_milho" || fC.forma_pagamento === "brl") && (
+              <div>
+                <label style={lbl}>Produto Agrícola (Soja) *</label>
+                <select style={inp} value={fC.produto_agricola_id}
+                  onChange={e => setFC(f => ({ ...f, produto_agricola_id: e.target.value }))}>
+                  <option value="">— Selecione o produto —</option>
+                  {insumosPA.filter(i => i.nome.toLowerCase().includes("soja")).map(i => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                  {insumosPA.filter(i => !i.nome.toLowerCase().includes("soja") && !i.nome.toLowerCase().includes("milho")).map(i => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                </select>
+                {!fC.produto_agricola_id && (
+                  <div style={{ fontSize: 10, color: "#C9921B", marginTop: 3 }}>
+                    ⚠ Obrigatório para alocação correta no BI (ex: Soja Transgênica vs Convencional)
+                  </div>
+                )}
+              </div>
+            )}
+            {fC.forma_pagamento === "sc_milho" && (
+              <div>
+                <label style={lbl}>Produto Agrícola (Milho) *</label>
+                <select style={inp} value={fC.produto_agricola_id}
+                  onChange={e => setFC(f => ({ ...f, produto_agricola_id: e.target.value }))}>
+                  <option value="">— Selecione o produto —</option>
+                  {insumosPA.filter(i => i.nome.toLowerCase().includes("milho")).map(i => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {fC.forma_pagamento === "sc_soja_milho" && (
+              <div>
+                <label style={lbl}>Produto Agrícola (Milho)</label>
+                <select style={inp} value={fC.produto_agricola_id_milho}
+                  onChange={e => setFC(f => ({ ...f, produto_agricola_id_milho: e.target.value }))}>
+                  <option value="">— Selecione o produto —</option>
+                  {insumosPA.filter(i => i.nome.toLowerCase().includes("milho")).map(i => (
+                    <option key={i.id} value={i.id}>{i.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Valor conforme forma */}
             {fC.forma_pagamento === "sc_soja" && (

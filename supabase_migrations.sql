@@ -7464,4 +7464,41 @@ WHERE i.fazenda_id = ct.fazenda_id
 CREATE INDEX IF NOT EXISTS idx_insumos_cultura_id ON insumos(cultura_id) WHERE categoria = 'produto_agricola';
 CREATE INDEX IF NOT EXISTS idx_contratos_produto_agricola_id ON contratos(produto_agricola_id);
 
+-- ── Migration 71 — produto_agricola_id em arrendamentos ──────────────────────
+-- Vincula cada arrendamento ao produto agrícola específico para alocação precisa no BI
+-- (ex: Soja Transgênica vs Soja Convencional, sem alocação proporcional)
+ALTER TABLE arrendamentos
+  ADD COLUMN IF NOT EXISTS produto_agricola_id       uuid REFERENCES insumos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS produto_agricola_id_milho uuid REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- Backfill automático — vincula arrendamentos com forma sc_soja ao produto "Soja" cadastrado
+UPDATE arrendamentos a
+SET produto_agricola_id = i.id
+FROM insumos i
+WHERE i.fazenda_id = a.fazenda_id
+  AND i.categoria  = 'produto_agricola'
+  AND a.produto_agricola_id IS NULL
+  AND a.forma_pagamento IN ('sc_soja', 'sc_soja_milho', 'brl')
+  AND LOWER(i.nome) = 'soja';
+
+-- Backfill automático — vincula arrendamentos com forma sc_milho ao produto "Milho" cadastrado
+UPDATE arrendamentos a
+SET produto_agricola_id = i.id
+FROM insumos i
+WHERE i.fazenda_id = a.fazenda_id
+  AND i.categoria  = 'produto_agricola'
+  AND a.produto_agricola_id IS NULL
+  AND a.forma_pagamento = 'sc_milho'
+  AND LOWER(i.nome) = 'milho';
+
+-- Backfill milho na parte sc_soja_milho
+UPDATE arrendamentos a
+SET produto_agricola_id_milho = i.id
+FROM insumos i
+WHERE i.fazenda_id = a.fazenda_id
+  AND i.categoria  = 'produto_agricola'
+  AND a.produto_agricola_id_milho IS NULL
+  AND a.forma_pagamento = 'sc_soja_milho'
+  AND LOWER(i.nome) = 'milho';
+
 NOTIFY pgrst, 'reload schema';
