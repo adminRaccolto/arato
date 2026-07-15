@@ -11,7 +11,7 @@ import type { ControllerAlerta } from "../../lib/supabase";
 // ── Tipos ─────────────────────────────────────────────────────
 interface Fazenda    { id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number; raccolto_acesso?: boolean }
 interface AnoSafra   { id: string; descricao: string; fazenda_id: string }
-interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null; produtividade_esperada_sc_ha?: number | null; area_plantada_ha?: number | null; produto_agricola_nome?: string | null }
+interface Ciclo      { id: string; fazenda_id: string; ano_safra_id: string; cultura: string; descricao: string; preco_esperado_sc?: number | null; produtividade_esperada_sc_ha?: number | null; area_plantada_ha?: number | null; produto_agricola_id?: string | null; produto_agricola_nome?: string | null }
 interface Plantio    { id: string; fazenda_id: string; ciclo_id: string; area_ha: number; produtividade_esperada: number }
 interface Colheita   { id: string; fazenda_id: string; ciclo_id: string; area_ha?: number; sacas_liquidas?: number; peso_liquido_kg?: number }
 interface ArrPag     { id: string; fazenda_id: string; ano_safra_id: string; sacas_previstas: number; commodity: string; status: string }
@@ -385,7 +385,7 @@ export default function BI() {
     const [fazR, safR, cicR, plaR, colR, arrR, lanR, conR, cesR, precR, fazsR, talR] = await Promise.allSettled([
       supabase.from("fazendas").select("id,nome,municipio,estado,area_total_ha,raccolto_acesso").eq("id", fazendaId).single(),
       supabase.from("anos_safra").select("*").eq("fazenda_id", fazendaId).order("descricao"),
-      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha").in("fazenda_id", fids),
+      supabase.from("ciclos").select("id,fazenda_id,ano_safra_id,cultura,descricao,preco_esperado_sc,produtividade_esperada_sc_ha,area_plantada_ha,produto_agricola_id").in("fazenda_id", fids),
       supabase.from("plantios").select("id,fazenda_id,ciclo_id,area_ha,produtividade_esperada").in("fazenda_id", fids),
       supabase.from("colheitas").select("id,fazenda_id,ciclo_id,area_ha,sacas_liquidas,peso_liquido_kg").in("fazenda_id", fids),
       supabase.from("arrendamento_pagamentos").select("id,fazenda_id,ano_safra_id,sacas_previstas,commodity,status").in("fazenda_id", fids),
@@ -398,7 +398,20 @@ export default function BI() {
     ]);
     if (fazR.status === "fulfilled" && fazR.value.data) setFazenda(fazR.value.data as Fazenda);
     if (safR.status === "fulfilled") setAnosSafra((safR.value.data ?? []) as AnoSafra[]);
-    if (cicR.status === "fulfilled") setCiclos((cicR.value.data ?? []) as Ciclo[]);
+    if (cicR.status === "fulfilled") {
+      const cicData = (cicR.value.data ?? []) as (Ciclo & { produto_agricola_id?: string | null })[];
+      // Busca nomes dos produtos agrícolas via insumos (query secundária, não bloqueia os demais dados)
+      const prodIds = [...new Set(cicData.map(c => c.produto_agricola_id).filter(Boolean))] as string[];
+      let prodNomeMap: Record<string, string> = {};
+      if (prodIds.length > 0) {
+        const { data: prodData } = await supabase.from("insumos").select("id,nome").in("id", prodIds);
+        if (prodData) prodNomeMap = Object.fromEntries(prodData.map(p => [p.id, p.nome]));
+      }
+      setCiclos(cicData.map(c => ({
+        ...c,
+        produto_agricola_nome: c.produto_agricola_id ? (prodNomeMap[c.produto_agricola_id] ?? null) : null,
+      })));
+    }
     if (plaR.status === "fulfilled") setPlantios((plaR.value.data ?? []) as Plantio[]);
     if (colR.status === "fulfilled") setColheitas((colR.value.data ?? []) as Colheita[]);
     if (arrR.status === "fulfilled") setArrPags((arrR.value.data ?? []) as ArrPag[]);
@@ -1156,8 +1169,8 @@ export default function BI() {
           // Per-ciclo metrics para Posição Comercial
           const todasRows = ciclosFiltrados.map(c => {
             const fazNome = fazendas.find(f => f.id === c.fazenda_id)?.nome ?? c.fazenda_id;
-            // cultMap retorna o nome exato da cultura (ex: "Soja Convencional", "Soja Transgênica") se cadastrada
-            const comm    = culturaToCommodity(c.cultura, cultMap);
+            // produto_agricola_nome (ex: "Soja Convencional", "Soja Transgênica RR") tem precedência
+            const comm    = c.produto_agricola_nome?.trim() || culturaToCommodity(c.cultura, cultMap);
             const pls     = plantios.filter(p => p.ciclo_id === c.id);
             // Usa plantios quando existem; caso contrário usa os campos do próprio ciclo
             const area    = pls.length > 0
@@ -1183,30 +1196,59 @@ export default function BI() {
             (!pcCultFiltro || r.comm  === pcCultFiltro)
           );
 
-          // Arrendamento e Barter por fazenda+commodity (não são por ciclo)
-          const getArr = (fazId: string, comm: string) =>
-            arrPags.filter(p => p.fazenda_id === fazId && p.commodity === comm && p.status !== "pago" && p.status !== "cancelado" && (!filtroAnoSafraId || p.ano_safra_id === filtroAnoSafraId))
+          // Helper: "base commodity" de um produto (Soja Conv → "Soja", Milho Safrinha → "Milho")
+          const getBase = (comm: string) => {
+            const n = comm.toLowerCase();
+            if (n.includes("soja"))   return "Soja";
+            if (n.includes("milho"))  return "Milho";
+            if (n.includes("algodã") || n.includes("algodao")) return "Algodão";
+            return comm;
+          };
+
+          // Arrendamento bruto por fazenda+base commodity (sem variante)
+          const getArrBase = (fazId: string, base: string) =>
+            arrPags.filter(p => p.fazenda_id === fazId && p.commodity === base && p.status !== "pago" && p.status !== "cancelado" && (!filtroAnoSafraId || p.ano_safra_id === filtroAnoSafraId))
                    .reduce((s, p) => s + (p.sacas_previstas || 0), 0);
-          const getBarter = (fazId: string, comm: string) =>
-            lancamentos.filter(l => l.fazenda_id === fazId && l.moeda === "barter" && culturaToCommodity(l.cultura_barter ?? "", cultMap) === comm && l.status !== "baixado")
+          const getBarterBase = (fazId: string, base: string) =>
+            lancamentos.filter(l => l.fazenda_id === fazId && l.moeda === "barter" && getBase(culturaToCommodity(l.cultura_barter ?? "", cultMap)) === base && l.status !== "baixado")
                        .reduce((s, l) => s + (l.sacas || 0), 0);
 
-          // Resumo por commodity
+          // Resumo por commodity (produto agrícola)
           const commsPresentes = [...new Set(pcRows.map(r => r.comm))];
-          const commSummary = commsPresentes.map(comm => {
-            const rows   = pcRows.filter(r => r.comm === comm);
-            const fazIds = [...new Set(rows.map(r => r.fazId))];
+          const commSummaryRaw = commsPresentes.map(comm => {
+            const rows    = pcRows.filter(r => r.comm === comm);
             const volPrev = rows.reduce((s, r) => s + r.volPrev, 0);
             const fatPrev = rows.reduce((s, r) => s + r.fatPrev, 0);
             const venda   = rows.reduce((s, r) => s + r.venda,   0);
             const colhido = rows.reduce((s, r) => s + r.colhido, 0);
-            const arr     = fazIds.reduce((s, fid) => s + getArr(fid, comm),    0);
-            const barter  = fazIds.reduce((s, fid) => s + getBarter(fid, comm), 0);
-            const comprTotal = arr + venda + barter;
-            const disponivel = Math.max(0, volPrev - comprTotal);
-            const precMed    = volPrev > 0 ? fatPrev / volPrev : 0;
-            return { comm, volPrev, fatPrev, arr, venda, barter, colhido, comprTotal, disponivel, precMed };
-          }).filter(c => c.volPrev > 0 || c.arr > 0 || c.venda > 0);
+            const precMed = volPrev > 0 ? fatPrev / volPrev : 0;
+            return { comm, volPrev, fatPrev, venda, colhido, precMed, arr: 0, barter: 0, comprTotal: 0, disponivel: 0 };
+          });
+
+          // Alocação proporcional de arrendamento e barter por variante de produto
+          // Ex.: Soja Convencional + Soja Transgênica dividem o arrendamento "Soja" proporcionalmente ao volPrev
+          const baseGroups = new Map<string, string[]>();
+          commSummaryRaw.forEach(cs => {
+            const b = getBase(cs.comm);
+            if (!baseGroups.has(b)) baseGroups.set(b, []);
+            baseGroups.get(b)!.push(cs.comm);
+          });
+
+          const commSummary = commSummaryRaw.map(cs => {
+            const base    = getBase(cs.comm);
+            const variants = baseGroups.get(base) ?? [cs.comm];
+            const fazIds  = [...new Set(pcRows.filter(r => variants.includes(r.comm)).map(r => r.fazId))];
+            const totalArrBase    = fazIds.reduce((s, fid) => s + getArrBase(fid, base), 0);
+            const totalBarterBase = fazIds.reduce((s, fid) => s + getBarterBase(fid, base), 0);
+            // Peso proporcional deste produto dentro do grupo base
+            const totalVolBase = commSummaryRaw.filter(x => variants.includes(x.comm)).reduce((s, x) => s + x.volPrev, 0);
+            const peso = totalVolBase > 0 ? cs.volPrev / totalVolBase : 1 / variants.length;
+            const arr    = Math.round(totalArrBase    * peso);
+            const barter = Math.round(totalBarterBase * peso);
+            const comprTotal = arr + cs.venda + barter;
+            const disponivel = Math.max(0, cs.volPrev - comprTotal);
+            return { ...cs, arr, barter, comprTotal, disponivel };
+          }).filter(cs => cs.volPrev > 0 || cs.arr > 0 || cs.venda > 0);
 
           // KPIs totais
           const kpiVolPrev = commSummary.reduce((s, c) => s + c.volPrev, 0);
