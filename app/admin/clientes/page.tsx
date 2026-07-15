@@ -23,6 +23,7 @@ type ClienteAdmin  = ContaAdmin & {
   _sem_conta: boolean;
   _fazendas_prod: Array<{ id: string; nome: string; municipio?: string; estado?: string; area_total_ha?: number }>;
   _area_total: number;
+  _produtor_nome: string | null;
 };
 type StatusCliente = NonNullable<Conta["status"]>;
 type PacoteCliente = NonNullable<Conta["pacote"]>;
@@ -310,11 +311,12 @@ export default function ClientesPage() {
         const semConta = !fc.conta_id;
         const realContaId = fc.conta_id;
         const conta = fc.conta_data as Record<string, unknown> | null;
+        const produtorNome = (fc as Record<string, unknown>).produtor_nome as string | null ?? null;
 
         const g = (k: string) => conta?.[k] ?? null;
         return {
           id:                realContaId ?? `sem_${fc.fazendas[0]?.id ?? Math.random()}`,
-          nome:              (g("nome") as string) ?? fc.conta_nome,
+          nome:              (g("nome") as string) ?? (semConta && produtorNome ? produtorNome : fc.conta_nome),
           tipo:              (g("tipo") as string) ?? "pf",
           status:            g("status") as StatusCliente | null,
           pacote:            g("pacote") as PacoteCliente | null,
@@ -334,6 +336,7 @@ export default function ClientesPage() {
           _sem_conta:        semConta,
           _fazendas_prod:    fc.fazendas,
           _area_total:       fc.area_total,
+          _produtor_nome:    produtorNome,
         } as ClienteAdmin;
       });
 
@@ -360,8 +363,14 @@ export default function ClientesPage() {
     if (filtroPacote && c.pacote !== filtroPacote) return false;
     if (filtroStage && c.crm_stage !== filtroStage) return false;
     if (filtroOrigem && c.origem !== filtroOrigem) return false;
-    if (busca && !c.nome.toLowerCase().includes(busca.toLowerCase())
-      && !(c.email_contato ?? "").toLowerCase().includes(busca.toLowerCase())) return false;
+    if (busca) {
+      const q = busca.toLowerCase();
+      const matchNome      = c.nome.toLowerCase().includes(q);
+      const matchEmail     = (c.email_contato ?? "").toLowerCase().includes(q);
+      const matchProdutor  = (c._produtor_nome ?? "").toLowerCase().includes(q);
+      const matchFazendas  = c._fazendas_prod.some(f => f.nome.toLowerCase().includes(q));
+      if (!matchNome && !matchEmail && !matchProdutor && !matchFazendas) return false;
+    }
     return true;
   });
 
