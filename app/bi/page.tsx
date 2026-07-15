@@ -1726,7 +1726,7 @@ export default function BI() {
                         return (
                           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}
                             onClick={() => setModalComprHa(false)}>
-                            <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 620, maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" }}
+                            <div style={{ background: "var(--bg-card)", borderRadius: 14, padding: 28, width: 900, maxWidth: "95vw", maxHeight: "88vh", overflowY: "auto" }}
                               onClick={e => e.stopPropagation()}>
                               {/* Header */}
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
