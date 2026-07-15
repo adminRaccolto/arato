@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -4880,5 +4880,108 @@ export async function confirmarRomaneioEntrada(
     .from("romaneios_entrada")
     .update({ status: "confirmado", entrada_estoque: true })
     .eq("id", romaneio.id);
+  if (error) throw error;
+}
+
+// ─── Aplicação Aérea ─────────────────────────────────────────────────────────
+
+export async function listarEmpresasAplicadoras(conta_id: string): Promise<EmpresaAplicadora[]> {
+  const { data, error } = await supabase
+    .from("empresas_aplicadoras")
+    .select("*")
+    .eq("conta_id", conta_id)
+    .eq("ativo", true)
+    .order("razao_social");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarEmpresaAplicadora(e: Omit<EmpresaAplicadora, "id" | "created_at"> & { id?: string }): Promise<EmpresaAplicadora> {
+  if (e.id) {
+    const { id, ...rest } = e as EmpresaAplicadora;
+    const { data, error } = await supabase.from("empresas_aplicadoras").update(rest).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase.from("empresas_aplicadoras").insert(e).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function excluirEmpresaAplicadora(id: string): Promise<void> {
+  const { error } = await supabase.from("empresas_aplicadoras").update({ ativo: false }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarAplicacoesAereas(fazenda_id: string): Promise<AplicacaoAerea[]> {
+  const { data, error } = await supabase
+    .from("aplicacoes_aereas")
+    .select("*, empresa_aplicadora:empresa_aplicadora_id(razao_social), ciclo:ciclo_id(cultura, descricao)")
+    .eq("fazenda_id", fazenda_id)
+    .order("data_aplicacao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listarAplicacoesAereasDaConta(fazenda_id_fallback?: string | null): Promise<AplicacaoAerea[]> {
+  const { data: perfil } = await supabase.from("perfis").select("conta_id, fazenda_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "").maybeSingle();
+  const cid = perfil?.conta_id;
+  if (!cid) return fazenda_id_fallback ? listarAplicacoesAereas(fazenda_id_fallback) : [];
+  const { data: fazendas } = await supabase.from("fazendas").select("id").eq("conta_id", cid);
+  const ids = (fazendas ?? []).map(f => f.id);
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from("aplicacoes_aereas")
+    .select("*, empresa_aplicadora:empresa_aplicadora_id(razao_social), ciclo:ciclo_id(cultura, descricao)")
+    .in("fazenda_id", ids)
+    .order("data_aplicacao", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function criarAplicacaoAerea(a: Omit<AplicacaoAerea, "id" | "created_at" | "empresa_aplicadora" | "ciclo">): Promise<AplicacaoAerea> {
+  const { data, error } = await supabase.from("aplicacoes_aereas").insert(a).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function atualizarAplicacaoAerea(id: string, a: Partial<AplicacaoAerea>): Promise<void> {
+  const { error } = await supabase.from("aplicacoes_aereas").update(a).eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirAplicacaoAerea(id: string): Promise<void> {
+  const { error } = await supabase.from("aplicacoes_aereas").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function listarAplicacaoAereaTalhoes(aplicacao_id: string): Promise<AplicacaoAereaTalhao[]> {
+  const { data, error } = await supabase
+    .from("aplicacoes_aereas_talhoes")
+    .select("*, talhao:talhao_id(nome, area_ha)")
+    .eq("aplicacao_id", aplicacao_id);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarAplicacaoAereaTalhoes(aplicacao_id: string, talhoes: { talhao_id: string; area_ha: number }[]): Promise<void> {
+  await supabase.from("aplicacoes_aereas_talhoes").delete().eq("aplicacao_id", aplicacao_id);
+  if (!talhoes.length) return;
+  const rows = talhoes.map(t => ({ aplicacao_id, talhao_id: t.talhao_id, area_ha: t.area_ha }));
+  const { error } = await supabase.from("aplicacoes_aereas_talhoes").insert(rows);
+  if (error) throw error;
+}
+
+export async function listarAplicacaoAereaItens(aplicacao_id: string): Promise<AplicacaoAereaItem[]> {
+  const { data, error } = await supabase.from("aplicacoes_aereas_itens").select("*").eq("aplicacao_id", aplicacao_id).order("nome_produto");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function salvarAplicacaoAereaItens(aplicacao_id: string, fazenda_id: string, itens: Omit<AplicacaoAereaItem, "id" | "aplicacao_id" | "fazenda_id">[]): Promise<void> {
+  await supabase.from("aplicacoes_aereas_itens").delete().eq("aplicacao_id", aplicacao_id);
+  if (!itens.length) return;
+  const rows = itens.map(i => ({ ...i, aplicacao_id, fazenda_id }));
+  const { error } = await supabase.from("aplicacoes_aereas_itens").insert(rows);
   if (error) throw error;
 }

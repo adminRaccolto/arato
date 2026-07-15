@@ -2081,6 +2081,82 @@ export type GrupoEconomicoMembro = {
   produtor?: { nome: string; cpf_cnpj: string };
 };
 
+// ─── Aplicação Aérea ─────────────────────────────────────────────────────────
+
+export type TipoAeronave = "aviao" | "drone" | "helicoptero";
+export type TipoAplicacaoAerea = "fungicida" | "inseticida" | "herbicida" | "fertilizante_foliar" | "dessecacao" | "bactericida" | "outros";
+
+export type EmpresaAplicadora = {
+  id: string;
+  fazenda_id?: string | null;
+  conta_id?: string | null;
+  razao_social: string;
+  cnpj?: string | null;
+  cloa_numero?: string | null;
+  cloa_vencimento?: string | null;
+  responsavel_tecnico?: string | null;
+  crea?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  observacao?: string | null;
+  ativo?: boolean;
+  created_at?: string;
+};
+
+export type AplicacaoAerea = {
+  id: string;
+  fazenda_id: string;
+  ciclo_id: string;
+  empresa_aplicadora_id?: string | null;
+  empresa_nome?: string | null;
+  tipo_aeronave: TipoAeronave;
+  aeronave_prefixo?: string | null;
+  piloto?: string | null;
+  tipo: TipoAplicacaoAerea;
+  estadio_fenologico?: string | null;
+  data_aplicacao: string;
+  area_ha: number;
+  volume_calda_l_ha?: number | null;
+  altura_voo_m?: number | null;
+  velocidade_vento_kmh?: number | null;
+  temperatura_c?: number | null;
+  umidade_rel_pct?: number | null;
+  direcao_vento?: string | null;
+  art_numero?: string | null;
+  cloa_numero?: string | null;
+  custo_ha?: number | null;
+  custo_total?: number | null;
+  observacao?: string | null;
+  fiscal?: boolean;
+  created_at?: string;
+  // joins
+  empresa_aplicadora?: { razao_social: string } | null;
+  ciclo?: { cultura: string; descricao?: string } | null;
+};
+
+export type AplicacaoAereaTalhao = {
+  id: string;
+  aplicacao_id: string;
+  talhao_id: string;
+  area_ha?: number | null;
+  // join
+  talhao?: { nome: string; area_ha: number } | null;
+};
+
+export type AplicacaoAereaItem = {
+  id: string;
+  aplicacao_id: string;
+  fazenda_id: string;
+  insumo_id?: string | null;
+  nome_produto: string;
+  dose_ha: number;
+  unidade: string;
+  total_consumido?: number | null;
+  valor_unitario?: number | null;
+  custo_ha?: number | null;
+  custo_total?: number | null;
+};
+
 export type PendenciaOperacional = {
   id: string;
   fazenda_id: string;

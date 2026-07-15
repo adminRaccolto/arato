@@ -7307,3 +7307,109 @@ ALTER TABLE contratos
   ADD COLUMN IF NOT EXISTS ie_id uuid REFERENCES produtor_inscricoes_estaduais(id) ON DELETE SET NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 69 — Aplicação Aérea (avião agrícola, drone/RPAS, helicóptero)
+-- Executar no SQL Editor do Supabase
+
+-- Empresas de aviação agrícola
+CREATE TABLE IF NOT EXISTS empresas_aplicadoras (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id uuid REFERENCES fazendas(id) ON DELETE SET NULL,
+  conta_id uuid REFERENCES contas(id) ON DELETE CASCADE,
+  razao_social text NOT NULL,
+  cnpj text,
+  cloa_numero text,
+  cloa_vencimento date,
+  responsavel_tecnico text,
+  crea text,
+  telefone text,
+  email text,
+  observacao text,
+  ativo boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE empresas_aplicadoras ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "conta_aplicadoras" ON empresas_aplicadoras
+  USING (conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid())
+      OR conta_id IS NULL);
+
+-- Operações de aplicação aérea
+CREATE TABLE IF NOT EXISTS aplicacoes_aereas (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id uuid NOT NULL REFERENCES ciclos(id),
+  empresa_aplicadora_id uuid REFERENCES empresas_aplicadoras(id) ON DELETE SET NULL,
+  empresa_nome text,
+  tipo_aeronave text NOT NULL DEFAULT 'aviao',  -- aviao | drone | helicoptero
+  aeronave_prefixo text,
+  piloto text,
+  tipo text NOT NULL DEFAULT 'fungicida',       -- fungicida | inseticida | herbicida | ...
+  estadio_fenologico text,
+  data_aplicacao date NOT NULL,
+  area_ha numeric(10,4) NOT NULL DEFAULT 0,
+  volume_calda_l_ha numeric(8,2),
+  altura_voo_m numeric(6,1),
+  velocidade_vento_kmh numeric(5,1),
+  temperatura_c numeric(4,1),
+  umidade_rel_pct numeric(4,1),
+  direcao_vento text,
+  art_numero text,
+  cloa_numero text,
+  custo_ha numeric(10,2),
+  custo_total numeric(12,2),
+  observacao text,
+  fiscal boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE aplicacoes_aereas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "fazenda_aereas" ON aplicacoes_aereas
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+-- Talhões cobertos por cada aplicação aérea
+CREATE TABLE IF NOT EXISTS aplicacoes_aereas_talhoes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  aplicacao_id uuid NOT NULL REFERENCES aplicacoes_aereas(id) ON DELETE CASCADE,
+  talhao_id uuid NOT NULL REFERENCES talhoes(id) ON DELETE CASCADE,
+  area_ha numeric(10,4),
+  UNIQUE(aplicacao_id, talhao_id)
+);
+
+ALTER TABLE aplicacoes_aereas_talhoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "aereas_talhoes_policy" ON aplicacoes_aereas_talhoes
+  USING (aplicacao_id IN (
+    SELECT a.id FROM aplicacoes_aereas a
+    JOIN fazendas f ON f.id = a.fazenda_id
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+-- Produtos utilizados em cada aplicação aérea
+CREATE TABLE IF NOT EXISTS aplicacoes_aereas_itens (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  aplicacao_id uuid NOT NULL REFERENCES aplicacoes_aereas(id) ON DELETE CASCADE,
+  fazenda_id uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  insumo_id uuid REFERENCES insumos(id) ON DELETE SET NULL,
+  nome_produto text NOT NULL,
+  dose_ha numeric(10,4) NOT NULL DEFAULT 0,
+  unidade text NOT NULL DEFAULT 'L/ha',
+  total_consumido numeric(12,4),
+  valor_unitario numeric(10,4) DEFAULT 0,
+  custo_ha numeric(10,2) DEFAULT 0,
+  custo_total numeric(12,2) DEFAULT 0
+);
+
+ALTER TABLE aplicacoes_aereas_itens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "aereas_itens_policy" ON aplicacoes_aereas_itens
+  USING (fazenda_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  ));
+
+NOTIFY pgrst, 'reload schema';
