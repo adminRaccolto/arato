@@ -641,6 +641,7 @@ export default function Contratos() {
         grupo_vendedor: fC.grupo_vendedor || undefined,
         vendedor: fC.vendedor || undefined,
         produto: primeiroItem?.produto ?? fC.produto,
+        produto_agricola_id: prodAgricolas.find(p => p.nome === (primeiroItem?.produto ?? fC.produto))?.id ?? undefined,
         modalidade: fC.modalidade,
         moeda: fC.moeda,
         preco: primeiroItem?.valor_unitario ?? fC.preco,

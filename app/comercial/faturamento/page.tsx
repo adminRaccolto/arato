@@ -8,7 +8,7 @@ import {
 } from "../../../lib/db";
 import { useAuth } from "../../../components/AuthProvider";
 import { supabase } from "../../../lib/supabase";
-import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio } from "../../../lib/supabase";
+import type { NotaFiscal, Produtor, Pessoa, Contrato, Romaneio, Insumo } from "../../../lib/supabase";
 import ProdutorCombo from "../../../components/ProdutorCombo";
 
 // ── Naturezas de Operação ──────────────────────────────────────────────────────
@@ -34,9 +34,13 @@ const NATUREZAS_DEVOLUCAO = [
   { codigo: "2.202", descricao: "Devolução de mercadoria adquirida — interestadual (CFOP 2.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação interestadual." },
   { codigo: "1.202", descricao: "Devolução de mercadoria adquirida — intraestadual (CFOP 1.202)", obs: "Devolução de mercadoria adquirida para comercialização. Operação intraestadual." },
 ];
-const NCM_PRODUTO: Record<string, string> = {
+// Mapa legado — usado como fallback quando o produto não tem produto_agricola_id vinculado
+const NCM_PRODUTO_LEGADO: Record<string, string> = {
   "Soja": "1201.10.00", "Milho 1ª": "1005.10.90", "Milho 2ª (Safrinha)": "1005.10.90",
-  "Algodão": "5201.00.20", "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
+  "Algodão": "5201.00.20", "Algodão em Pluma": "5201.00.10", "Algodão em Caroço": "5201.00.20",
+  "Caroço de Algodão": "1207.21.00",
+  "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
+  "Milho": "1005.10.90", "Arroz": "1006.10.10",
 };
 // kg por saca de referência para conversão de preço R$/sc → R$/kg
 const KG_SACA: Record<string, number> = {
@@ -117,10 +121,11 @@ function FaturamentoInner() {
   const { fazendaId } = useAuth();
   const searchParams   = useSearchParams();
 
-  const [notas,     setNotas]     = useState<NotaFiscal[]>([]);
-  const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [produtores,setProdutores]= useState<Produtor[]>([]);
-  const [pessoas,   setPessoas]   = useState<Pessoa[]>([]);
+  const [notas,        setNotas]        = useState<NotaFiscal[]>([]);
+  const [contratos,    setContratos]    = useState<Contrato[]>([]);
+  const [produtores,   setProdutores]   = useState<Produtor[]>([]);
+  const [pessoas,      setPessoas]      = useState<Pessoa[]>([]);
+  const [prodAgricolas,setProdAgricolas]= useState<Insumo[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [filtroAba, setFiltroAba] = useState<"todas"|"processando"|"autorizadas"|"rejeitadas"|"canceladas">("todas");
   const [buscaNota, setBuscaNota] = useState("");
@@ -166,12 +171,14 @@ function FaturamentoInner() {
       listarPessoas(fazendaId),
       listarContratos(fazendaId),
       supabase.from("anos_safra").select("id, descricao").eq("fazenda_id", fazendaId).order("descricao", { ascending: false }),
-    ]).then(([n, p, pe, c, as_]) => {
+      supabase.from("insumos").select("id,nome,ncm,cultura_id,subgrupo,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome"),
+    ]).then(([n, p, pe, c, as_, pa]) => {
       setNotas(n);
       setProdutores(p);
       setPessoas(pe);
       setContratos(c.filter(c => c.tipo === "venda" || !c.tipo));
       setAnosSafra(as_.data ?? []);
+      setProdAgricolas((pa.data ?? []) as Insumo[]);
     }).catch(console.error).finally(() => setLoading(false));
   }, [fazendaId, searchParams]);
 
@@ -289,7 +296,9 @@ function FaturamentoInner() {
       id: crypto.randomUUID(),
       tipo_item: "Produto",
       item:      contrato.produto,
-      ncm:       NCM_PRODUTO[contrato.produto] ?? "1201.10.00",
+      ncm:       (prodAgricolas.find(p => p.id === contrato.produto_agricola_id)?.ncm)
+               ?? NCM_PRODUTO_LEGADO[contrato.produto]
+               ?? "1201.10.00",
       quantidade: String(pesoKg),
       unidade:   "kg",
       valor_unitario: precoKgFmt,

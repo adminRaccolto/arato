@@ -383,6 +383,7 @@ function CadastrosInner() {
     fabricante: "", estoque: "0", estoque_minimo: "0",
     valor_unitario: "0", lote: "", validade: "",
     deposito_id: "", bomba_id: "", principio_ativo_id: "",
+    cultura_id: "", ncm: "",
   });
 
   // ── Tabelas Auxiliares ──
@@ -673,7 +674,7 @@ function CadastrosInner() {
       supabase.from("unidades_medida").select("*").order("tipo").order("sigla")
         .then(({ data, error }) => { if (error) setErro(error.message); else setUnidades((data ?? []) as UnidadeMedida[]); });
     }
-    if (aba === "culturas" || aba === "safras") {
+    if (aba === "culturas" || aba === "safras" || aba === "produtos") {
       // Carrega insumos produto_agricola — auto-seed se vazio
       supabase.from("insumos").select("id,nome,unidade").eq("fazenda_id", fazendaId).eq("categoria","produto_agricola").order("nome")
         .then(async ({ data }) => {
@@ -3303,12 +3304,13 @@ function CadastrosInner() {
               setEditIns(ins ?? null);
               setFIns(ins ? {
                 nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
+                cultura_id: "", ncm: "",
                 unidade: ins.unidade, fabricante: ins.fabricante ?? "",
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "",
                 principio_ativo_id: ins.principio_ativo_id ?? "",
-              } : { nome: "", categoria: "defensivo", subgrupo: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              } : { nome: "", categoria: "defensivo", subgrupo: "", cultura_id: "", ncm: "", unidade: "L", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
               setModalIns(true);
             };
 
@@ -3700,7 +3702,12 @@ function CadastrosInner() {
             const prodBase = insumos.filter(i => i.categoria === "produto_agricola");
 
             const prodFiltr = prodBase.filter(i => {
-              const matchCult  = filtroCult === "todos" || i.subgrupo === filtroCult;
+              // filtroCult agora pode ser cultura_id (novo) ou subgrupo key (legado)
+              const cultNome  = culturasList.find(c => c.id === i.cultura_id)?.nome ?? i.subgrupo ?? "";
+              const matchCult = filtroCult === "todos"
+                || i.cultura_id === filtroCult
+                || cultNome.toLowerCase() === filtroCult.toLowerCase()
+                || i.subgrupo === filtroCult;
               const matchBusca = !buscaProd || i.nome.toLowerCase().includes(buscaProd.toLowerCase());
               return matchCult && matchBusca;
             });
@@ -3709,14 +3716,26 @@ function CadastrosInner() {
 
             const abrirModalProd = (ins?: Insumo) => {
               setEditIns(ins ?? null);
+              const primeiraCultura = culturasList.find(c => c.ativa);
               setFIns(ins ? {
                 nome: ins.nome, categoria: "produto_agricola",
-                subgrupo: ins.subgrupo ?? "", unidade: ins.unidade,
+                subgrupo: ins.subgrupo ?? "",
+                cultura_id: ins.cultura_id ?? "",
+                ncm: ins.ncm ?? "",
+                unidade: ins.unidade,
                 fabricante: ins.fabricante ?? "",
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: "", principio_ativo_id: "",
-              } : { nome: "", categoria: "produto_agricola" as Insumo["categoria"], subgrupo: "soja", unidade: "sc", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              } : {
+                nome: "", categoria: "produto_agricola" as Insumo["categoria"],
+                subgrupo: primeiraCultura?.nome ?? "Soja",
+                cultura_id: primeiraCultura?.id ?? "",
+                ncm: primeiraCultura?.ncm ?? "",
+                unidade: "sc" as Insumo["unidade"],
+                fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0",
+                lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "",
+              });
               setModalIns(true);
             };
 
@@ -3724,10 +3743,14 @@ function CadastrosInner() {
               if (!fIns.nome.trim()) { setErro("Informe o nome do produto."); return; }
               setSalvando(true); setErro("");
               try {
+                const cultSel = culturasList.find(c => c.id === fIns.cultura_id);
                 const payload: Omit<Insumo, "id" | "created_at"> = {
                   fazenda_id: (fazTrabalho || fazIdEff)!, nome: fIns.nome.trim(),
-                  categoria: "produto_agricola", subgrupo: fIns.subgrupo || undefined,
-                  unidade: fIns.unidade, fabricante: fIns.fabricante || undefined,
+                  categoria: "produto_agricola",
+                  subgrupo: (cultSel?.nome ?? fIns.subgrupo) || undefined,
+                  cultura_id: fIns.cultura_id || undefined,
+                  ncm: fIns.ncm.trim() || cultSel?.ncm || undefined,
+                  unidade: fIns.unidade,
                   estoque: parseFloat(fIns.estoque) || 0,
                   estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
                   valor_unitario: parseFloat(fIns.valor_unitario) || 0,
@@ -3752,7 +3775,7 @@ function CadastrosInner() {
                   {[
                     { label: "Culturas cadastradas", valor: prodBase.length.toString(),       cor: "var(--text-1)" },
                     { label: "Valor em estoque",     valor: totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), cor: "#1A4870" },
-                    { label: "Culturas distintas",   valor: [...new Set(prodBase.map(i => i.subgrupo ?? "outros"))].length.toString(), cor: "#16A34A" },
+                    { label: "Culturas distintas",   valor: [...new Set(prodBase.map(i => i.cultura_id ?? i.subgrupo ?? "outros"))].length.toString(), cor: "#16A34A" },
                     { label: "No filtro",            valor: prodFiltr.length.toString(),       cor: "#378ADD" },
                   ].map((s, i) => (
                     <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "12px 16px" }}>
@@ -3768,12 +3791,21 @@ function CadastrosInner() {
                     <button onClick={() => setFiltroCult("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroCult === "todos" ? "#1A4870" : "var(--border-table)", background: filtroCult === "todos" ? "#D5E8F5" : "transparent", color: filtroCult === "todos" ? "#0B2D50" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroCult === "todos" ? 600 : 400 }}>
                       Todos ({prodBase.length})
                     </button>
-                    {CULTURAS.map(c => {
-                      const qtd = prodBase.filter(i => (i.subgrupo ?? "outros") === c.key).length;
+                    {/* Filtros pelas culturas reais da fazenda */}
+                    {culturasList.filter(c => c.ativa).map(c => {
+                      const qtd = prodBase.filter(i =>
+                        i.cultura_id === c.id ||
+                        (i.subgrupo ?? "").toLowerCase() === c.nome.toLowerCase()
+                      ).length;
                       if (qtd === 0) return null;
                       return (
-                        <button key={c.key} onClick={() => setFiltroCult(c.key)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroCult === c.key ? c.cl : "var(--border-table)", background: filtroCult === c.key ? c.bg : "transparent", color: filtroCult === c.key ? c.cl : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroCult === c.key ? 600 : 400 }}>
-                          {c.label} ({qtd})
+                        <button key={c.id} onClick={() => setFiltroCult(c.id)}
+                          style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid",
+                            borderColor: filtroCult === c.id ? "#1A4870" : "var(--border-table)",
+                            background: filtroCult === c.id ? "#D5E8F5" : "transparent",
+                            color: filtroCult === c.id ? "#0B2D50" : "#666",
+                            fontSize: 12, cursor: "pointer", fontWeight: filtroCult === c.id ? 600 : 400 }}>
+                          {c.nome} ({qtd})
                         </button>
                       );
                     })}
@@ -3810,20 +3842,25 @@ function CadastrosInner() {
                     </div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <TH cols={["Variedade / Nome", "Cultura", "Unid.", "Estoque", "Valor Unit.", "Total em Estoque", ""]} />
+                      <TH cols={["Nome do Produto", "Cultura", "NCM", "Unid.", "Estoque", "Valor Unit.", "Total em Estoque", ""]} />
                       <tbody>
                         {prodFiltr.map((ins, i) => {
-                          const cult = cultMap[ins.subgrupo ?? "outros"] ?? cultMap["outros"];
+                          const cultVinc = culturasList.find(c => c.id === ins.cultura_id);
+                          const cultLeg  = cultMap[ins.subgrupo ?? "outros"] ?? cultMap["outros"];
+                          const cultLabel = cultVinc?.nome ?? cultLeg?.label ?? ins.subgrupo ?? "—";
+                          const cultBg    = cultVinc ? "#D5E8F5" : (cultLeg?.bg ?? "#F1EFE8");
+                          const cultCl    = cultVinc ? "#0B2D50" : (cultLeg?.cl ?? "var(--text-2)");
+                          const ncmFinal  = ins.ncm ?? cultVinc?.ncm ?? "—";
                           const total = ins.estoque * ins.valor_unitario;
                           return (
                             <tr key={ins.id} style={{ borderBottom: i < prodFiltr.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                               <td style={{ padding: "10px 14px" }}>
                                 <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-1)" }}>{ins.nome}</div>
-                                {ins.fabricante && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{ins.fabricante}</div>}
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                {cult && <span style={{ fontSize: 10, background: cult.bg, color: cult.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{cult.label}</span>}
+                                <span style={{ fontSize: 10, background: cultBg, color: cultCl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{cultLabel}</span>
                               </td>
+                              <td style={{ padding: "10px 10px", textAlign: "center", fontSize: 11, fontFamily: "monospace", color: ncmFinal === "—" ? "#aaa" : "var(--text-2)" }}>{ncmFinal}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{ins.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
@@ -3840,7 +3877,7 @@ function CadastrosInner() {
                       </tbody>
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)" }}>
-                          <td colSpan={5} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{prodFiltr.length} produtos</td>
+                          <td colSpan={6} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{prodFiltr.length} produtos</td>
                           <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
                             {totalValorProd.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
@@ -3852,14 +3889,31 @@ function CadastrosInner() {
                 </div>
 
                 {modalIns && editIns?.categoria === "produto_agricola" || (modalIns && fIns.categoria === "produto_agricola") ? (
-                  <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Produto Agrícola"} onClose={() => setModalIns(false)} width={680}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Produto Agrícola"} onClose={() => setModalIns(false)} width={720}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                      {/* Cultura — fonte do NCM padrão */}
                       <div>
                         <label style={lbl}>Cultura *</label>
-                        <select style={inp} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))}>
-                          {CULTURAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                        <select style={inp} value={fIns.cultura_id}
+                          onChange={e => {
+                            const cult = culturasList.find(c => c.id === e.target.value);
+                            setFIns(p => ({ ...p, cultura_id: e.target.value, ncm: cult?.ncm ?? p.ncm, subgrupo: cult?.nome ?? p.subgrupo, unidade: (cult?.unidade ?? p.unidade) as Insumo["unidade"] }));
+                          }}>
+                          <option value="">— Selecione —</option>
+                          {culturasList.filter(c => c.ativa).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                         </select>
                       </div>
+                      {/* NCM — auto-preenchido da cultura, editável para subprodutos (ex: Caroço de Algodão) */}
+                      <div>
+                        <label style={lbl}>NCM</label>
+                        <input style={inp} value={fIns.ncm}
+                          onChange={e => setFIns(p => ({ ...p, ncm: e.target.value }))}
+                          placeholder="Ex: 1201.10.00" maxLength={12} />
+                        {fIns.ncm && fIns.ncm !== (culturasList.find(c => c.id === fIns.cultura_id)?.ncm ?? "") && (
+                          <div style={{ fontSize: 10, color: "#C9921B", marginTop: 2 }}>NCM diferente do padrão da cultura — verifique se é intencional</div>
+                        )}
+                      </div>
+                      {/* Unidade */}
                       <div>
                         <label style={lbl}>Unidade *</label>
                         <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
@@ -3867,17 +3921,22 @@ function CadastrosInner() {
                           <option value="@">@ (arrobas 15kg)</option>
                           <option value="kg">kg</option>
                           <option value="t">t (tonelada)</option>
-                          <option value="m3">m³</option>
+                          <option value="fardo">fardo</option>
+                          <option value="cx">cx</option>
+                          <option value="outros">outros</option>
                         </select>
                       </div>
+                      {/* Nome do produto */}
                       <div style={{ gridColumn: "1/-1" }}>
-                        <label style={lbl}>Nome / Variedade *</label>
-                        <input style={inp} placeholder="Ex: Soja TMG 7067 IPRO, Milho 30F90, Algodão FM 985 GLTP" value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                        <label style={lbl}>Nome do Produto *</label>
+                        <input style={inp}
+                          placeholder="Ex: Soja em Grão, Soja Convencional, Milho em Grão, Algodão em Pluma, Caroço de Algodão"
+                          value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                        <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>
+                          Este nome aparecerá na descrição do item na NF-e. O NCM é definido pela Cultura acima.
+                        </div>
                       </div>
-                      <div>
-                        <label style={lbl}>Empresa / Sementes</label>
-                        <input style={inp} placeholder="Ex: TMG, Pioneer, Bayer" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
-                      </div>
+                      {/* Depósito e estoque */}
                       <div>
                         <label style={lbl}>Depósito / Armazém padrão</label>
                         <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
@@ -3900,7 +3959,8 @@ function CadastrosInner() {
                       )}
                       <div style={{ gridColumn: "1/-1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
                         <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarProd}>
+                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() || !fIns.cultura_id ? 0.5 : 1 }}
+                          disabled={salvando || !fIns.nome.trim() || !fIns.cultura_id} onClick={salvarProd}>
                           {salvando ? "Salvando…" : "Salvar"}
                         </button>
                       </div>
@@ -3939,11 +3999,12 @@ function CadastrosInner() {
               setEditIns(ins ?? null);
               setFIns(ins ? {
                 nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
+                cultura_id: "", ncm: "",
                 unidade: ins.unidade, fabricante: ins.fabricante ?? "",
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "", principio_ativo_id: "",
-              } : { nome: "", categoria: "material" as Insumo["categoria"], subgrupo: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              } : { nome: "", categoria: "material" as Insumo["categoria"], subgrupo: "", cultura_id: "", ncm: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
               setModalIns(true);
             };
 

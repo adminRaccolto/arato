@@ -7413,3 +7413,55 @@ CREATE POLICY "aereas_itens_policy" ON aplicacoes_aereas_itens
   ));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 70 — Produto Agrícola: cultura_id + ncm + produto_agricola_id em contratos
+-- ============================================================
+
+-- 70a: Adiciona cultura_id e ncm à tabela insumos (para categoria=produto_agricola)
+ALTER TABLE insumos ADD COLUMN IF NOT EXISTS cultura_id uuid REFERENCES culturas(id) ON DELETE SET NULL;
+ALTER TABLE insumos ADD COLUMN IF NOT EXISTS ncm text;
+
+-- 70b: Backfill — vincula produtos agrícolas existentes às suas culturas pelo nome (subgrupo)
+-- Estratégia: busca a cultura da mesma fazenda cujo nome bate com o subgrupo do insumo (case-insensitive)
+UPDATE insumos i
+SET
+  cultura_id = c.id,
+  ncm        = COALESCE(i.ncm, c.ncm)
+FROM culturas c
+WHERE i.fazenda_id = c.fazenda_id
+  AND i.categoria  = 'produto_agricola'
+  AND i.cultura_id IS NULL
+  AND LOWER(TRIM(i.subgrupo)) = LOWER(TRIM(c.nome));
+
+-- 70c: Backfill por nome do insumo — para registros onde subgrupo não bateu mas o nome bate
+UPDATE insumos i
+SET
+  cultura_id = c.id,
+  ncm        = COALESCE(i.ncm, c.ncm)
+FROM culturas c
+WHERE i.fazenda_id = c.fazenda_id
+  AND i.categoria  = 'produto_agricola'
+  AND i.cultura_id IS NULL
+  AND (
+    LOWER(TRIM(i.nome)) LIKE LOWER(TRIM(c.nome)) || '%'
+    OR LOWER(TRIM(c.nome)) LIKE LOWER(TRIM(i.nome)) || '%'
+  );
+
+-- 70d: Adiciona produto_agricola_id em contratos (FK para insumos — resolve NCM via cultura)
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS produto_agricola_id uuid REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- 70e: Backfill — vincula contratos existentes ao produto agrícola pelo campo produto (string)
+UPDATE contratos ct
+SET produto_agricola_id = i.id
+FROM insumos i
+WHERE i.fazenda_id = ct.fazenda_id
+  AND i.categoria  = 'produto_agricola'
+  AND ct.produto_agricola_id IS NULL
+  AND LOWER(TRIM(ct.produto)) = LOWER(TRIM(i.nome));
+
+-- Índices para performance
+CREATE INDEX IF NOT EXISTS idx_insumos_cultura_id ON insumos(cultura_id) WHERE categoria = 'produto_agricola';
+CREATE INDEX IF NOT EXISTS idx_contratos_produto_agricola_id ON contratos(produto_agricola_id);
+
+NOTIFY pgrst, 'reload schema';

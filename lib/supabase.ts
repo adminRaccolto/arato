@@ -153,6 +153,8 @@ export type Insumo = {
     | "outros";
   subgrupo?: string;
   grupo_id?: string;     // FK grupos_insumos
+  cultura_id?: string | null;  // FK culturas.id — só para categoria=produto_agricola
+  ncm?: string | null;         // NCM do produto — herdado de culturas.ncm, editável para subprodutos
   unidade: "kg" | "g" | "L" | "mL" | "sc" | "t" | "un" | "m" | "m2" | "cx" | "pc" | "par" | "outros";
   fabricante?: string;
   estoque: number;
@@ -319,6 +321,7 @@ export type Contrato = {
   vendedor?: string;
   // Produto principal (compatibilidade)
   produto: string;
+  produto_agricola_id?: string | null;  // FK insumos.id (categoria=produto_agricola) — fonte do NCM
   modalidade: "fixo" | "a_fixar" | "barter";
   moeda: "BRL" | "USD";
   preco: number;

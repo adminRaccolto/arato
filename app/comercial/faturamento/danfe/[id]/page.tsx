@@ -6,9 +6,15 @@ import type { NotaFiscal } from "../../../../../lib/supabase";
 
 // ── Tabelas fiscais ────────────────────────────────────────────────────
 const NCM_PRODUTO: Record<string, string> = {
-  "Soja": "1201.10.00", "Milho": "1005.10.90", "Milho 1ª": "1005.10.90",
-  "Milho 2ª (Safrinha)": "1005.10.90", "Algodão": "5201.00.20",
-  "Trigo": "1001.99.00", "Sorgo": "1007.90.10", "Feijão": "0713.39.90",
+  "Soja": "1201.10.00", "Soja em Grão": "1201.10.00", "Soja Convencional": "1201.10.00", "Soja Transgênica": "1201.10.00",
+  "Milho": "1005.10.90", "Milho 1ª": "1005.10.90", "Milho 2ª (Safrinha)": "1005.10.90", "Milho em Grão": "1005.10.90",
+  "Algodão": "5201.00.20", "Algodão em Caroço": "5201.00.20",
+  "Algodão em Pluma": "5201.00.10",
+  "Caroço de Algodão": "1207.21.00",
+  "Trigo": "1001.99.00", "Trigo em Grão": "1001.99.00",
+  "Sorgo": "1007.90.10", "Sorgo em Grão": "1007.90.10",
+  "Feijão": "0713.39.90",
+  "Arroz": "1006.10.10",
 };
 
 // ── Formatadores ───────────────────────────────────────────────────────
