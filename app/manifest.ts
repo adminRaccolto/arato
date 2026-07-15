@@ -2,15 +2,17 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Arato Campo",
-    short_name: "Arato Campo",
-    description: "Registre operações de campo — plantio, pulverização, colheita, abastecimento",
-    start_url: "/campo",
-    scope: "/campo",
+    name: "Arato — Gestão Agrícola",
+    short_name: "Arato",
+    description: "ERP agrícola — menos cliques, mais campo",
+    start_url: "/",
+    scope: "/",
     display: "standalone",
-    orientation: "portrait",
+    orientation: "any",
     background_color: "#1A4870",
     theme_color: "#1A4870",
+    categories: ["business", "productivity"],
+    lang: "pt-BR",
     icons: [
       {
         src: "/icon-192x192.png",
@@ -26,6 +28,13 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         src: "/apple-touch-icon.png",
         sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+    screenshots: [
+      {
+        src: "/icon-512x512.png",
+        sizes: "512x512",
         type: "image/png",
       },
     ],

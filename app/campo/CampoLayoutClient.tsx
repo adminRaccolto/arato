@@ -22,12 +22,7 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
   const [fazendas, setFazendas] = useState<FazendaOp[]>([]);
   const [showSwitch, setShowSwitch] = useState(false);
 
-  // Registra service worker para modo offline
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js", { scope: "/campo" }).catch(() => {});
-    }
-  }, []);
+  // SW registrado globalmente no layout raiz com scope "/" — não registrar aqui novamente
 
   const carregarFazendas = useCallback(async () => {
     if (!contaId) return;
