@@ -2361,6 +2361,9 @@ function CadastrosInner() {
                     <div key={c.id} style={{ padding: "11px 16px", borderBottom: ci < ciclos.length - 1 ? "0.5px solid var(--border-row)" : "none", background: isAux ? "#FFFBF3" : "transparent", borderLeft: isAux ? "3px solid #C9921B" : "3px solid transparent", paddingLeft: isAux ? 13 : 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <div>
+                          <div style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, marginBottom: 2, letterSpacing: ".02em", textTransform: "uppercase" }}>
+                            {fazendas.find(f => f.id === c.fazenda_id)?.nome ?? "—"}
+                          </div>
                           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                             {isAux && <span style={{ fontSize:9, fontWeight:700, background:"#C9921B", color:"#fff", borderRadius:4, padding:"2px 6px", textTransform:"uppercase", letterSpacing:".04em" }}>AUX</span>}
                             <div style={{ color: isAux ? "#7A5200" : "var(--text-1)", fontWeight: 600, fontSize: 13 }}>{c.descricao}</div>
@@ -2375,7 +2378,6 @@ function CadastrosInner() {
                           <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{c.data_inicio} → {c.data_fim}</div>
                           <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {badge(c.cultura, isAux ? "#FDE9BB" : "#D5E8F5", isAux ? "#7A5200" : "#0B2D50")}
-                            {!fazTrabalho && <span style={{ fontSize: 10, background: "#EEF2F7", color: "#334155", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{fazendas.find(f => f.id === c.fazenda_id)?.nome ?? "?"}</span>}
                             {area != null && <span style={{ fontSize: 10, background: "#F0FDF7", color: "#14532D", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>{area.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ha plantados</span>}
                             {!isAux && prod != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Prod. esp.: {prod.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {unidC}/ha</span>}
                             {!isAux && preco != null && <span style={{ fontSize: 10, background: "#FBF3E0", color: "#7A5A12", borderRadius: 5, padding: "2px 7px", fontWeight: 600 }}>Preço esp.: R${preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/{unidC}</span>}
