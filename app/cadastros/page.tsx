@@ -752,11 +752,20 @@ function CadastrosInner() {
     }
   };
 
-  // Carrega ciclos ao selecionar Ano Safra — filtrado pela fazenda ativa
-  const selecionarAno = async (id: string) => {
+  // Carrega ciclos ao selecionar Ano Safra — filtrado pela fazenda selecionada no seletor
+  const selecionarAno = async (id: string, fazOverride?: string) => {
     setAnoSel(id);
-    listarCiclos(id, fazIdEff).then(setCiclos).catch(() => setCiclos([]));
+    const fid = fazOverride ?? fazTrabalho ?? fazIdEff;
+    listarCiclos(id, fid).then(setCiclos).catch(() => setCiclos([]));
   };
+
+  // Re-carrega ciclos quando a fazenda do seletor muda (se um ano safra já estiver selecionado)
+  useEffect(() => {
+    if (!anoSel) return;
+    const fid = fazTrabalho || fazIdEff;
+    if (!fid) return;
+    listarCiclos(anoSel, fid).then(setCiclos).catch(() => setCiclos([]));
+  }, [fazTrabalho]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers de save ──
   async function salvar(fn: () => Promise<void>) {
@@ -1620,7 +1629,9 @@ function CadastrosInner() {
       cicloId = editCiclo.id;
     } else {
       const n = await criarCiclo({ ...payload, ano_safra_id: anoSel, fazenda_id: fazCiclo });
-      setCiclos(p => [...p, n]);
+      // Só exibe o novo ciclo na lista se a fazenda do seletor ainda é a mesma em que ele foi criado
+      const fazAtual = fazTrabalho || fazIdEff;
+      setCiclos(p => n.fazenda_id === fazAtual ? [...p, n] : p);
       cicloId = n.id;
     }
     // salva talhões vinculados
@@ -1890,7 +1901,7 @@ function CadastrosInner() {
           {/* Seletor de fazenda — obrigatório, usado em todos os modais desta página */}
           {fazendas.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda de trabalho:</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Fazenda:</span>
               <select
                 value={fazTrabalho}
                 onChange={e => setFazTrabalho(e.target.value)}
