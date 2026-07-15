@@ -880,12 +880,83 @@ Lança notas fiscais de serviços recebidos (NFS-e) com código LC 116/2003 e c�
 
 ---
 
-## MÓDULO 25 — NF-e / FISCAL (Notas Fiscais de Venda)
+## MÓDULO 25 — FATURAMENTO POR CONTRATO (NF-e de Venda de Grãos)
+
+**Caminho:** Menu superior → **Comercial** → **Faturamento por Contrato**
+
+### O que faz
+Emissão assistida de NF-e de venda de grãos vinculada a contratos e romaneios. O fluxo guia o usuário em 3 passos: (1) escolha do tipo de emissão, (2) seleção do contrato, (3) seleção do romaneio/carga, (4) preenchimento do formulário NF-e.
+
+> **Nota:** A tela "Triangulação de NF" foi desativada. As operações de **Venda a Ordem** e **Entrega Futura** agora são tratadas diretamente no Faturamento por Contrato, com fluxo de 2 NF-es e referenciamento automático.
+
+### Tipos de emissão disponíveis
+| Tipo | CFOP | Quando usar |
+|------|------|-------------|
+| Venda normal (produção própria) | 6.101 | Remessa física direta ao comprador |
+| Venda para exportação (VFE-PF) | 6.501 | Formação de lote para exportação |
+| Remessa simbólica — Entrega Futura | 6.117 | Contrato fixado, produto ainda no armazém |
+| Remessa por conta e ordem (Venda a Ordem) | 6.923 | Acompanha o caminhão em operação triangular |
+
+### Fluxo Venda a Ordem (2 NF-es obrigatórias — art. 129 RICMS/MT)
+A Venda a Ordem ocorre quando o produtor vende para Trading A, mas a mercadoria vai fisicamente para Trading B (destinatário final).
+
+**Passo 1 — NF 6.101 simbólica (emitida para Trading A):**
+1. Selecione o contrato marcado com **🔄 Venda a Ordem**
+2. Selecione o romaneio/carga
+3. No formulário, o CFOP 6.101 já estará selecionado; destinatário = Trading A
+4. Emita a NF-e → sistema confirma com a chave de acesso da NF 6.101
+
+**Passo 2 — NF 6.923 de remessa física (emitida para Trading B):**
+1. O sistema exibe o painel de conclusão com a chave da NF 6.101 já copiada
+2. Clique em **"Emitir NF 6.923 (remessa física) →"**
+3. O formulário abre pré-preenchido com CFOP 6.923 e a chave NFref na aba Fiscal
+4. Altere o destinatário para Trading B (destinatário físico)
+5. Emita a NF 6.923 — ela acompanha o transporte fisicamente
+
+**Verificação:** a aba Fiscal da NF 6.923 deve mostrar a seção azul com a chave de 44 dígitos da NF 6.101.
+
+### Fluxo Entrega Futura (2 NF-es obrigatórias)
+A Entrega Futura ocorre quando o preço é fixado hoje mas o produto só sairá fisicamente depois.
+
+**Passo 1 — NF 6.117 simbólica (emitida na contratação):**
+1. Selecione CFOP 6.117 no formulário
+2. Emita a NF simbólica → sistema registra a chave
+
+**Passo 2 — NF 6.101 de saída física (emitida no embarque):**
+1. O sistema exibe o painel amarelo com a chave da NF 6.117
+2. Clique em **"Emitir NF 6.101 (saída física) →"**
+3. O formulário abre com CFOP 6.101 e a chave NFref na aba Fiscal
+4. Emita — ela acompanha a saída física da mercadoria
+
+### Seção NFref (aba Fiscal)
+- Aparece automaticamente quando CFOP é 6.923 ou 6.117
+- Campo "Chave da NF referenciada": 44 dígitos numéricos — validado em tempo real
+- Campo "Número da NF referenciada": número legível (ex: 000123)
+- Os valores são inseridos na tag <NFref> do XML da NF-e
+
+### Formulário NF-e — 8 abas
+- **Produtor**: emitente (CPF/CNPJ, IE, endereço)
+- **Destinatário**: comprador (seleção do cadastro de Pessoas)
+- **Operações**: produto, CFOP, quantidade, preço, impostos
+- **Transportador**: frete, transportadora, placa, RNTRC
+- **Retirada**: local de retirada se diferente do emitente
+- **Fiscal**: NFref (quando 6.923/6.117), guia ICMS, NF do produtor, situação fiscal
+- **Observações**: texto legal automático + obs. manual
+- **Pontualidade**: desconto, referência de contrato
+
+### Erros comuns
+- **"NFref obrigatória"**: ao emitir NF 6.923 ou 6.101 de entrega futura, preencha a chave de 44 dígitos na aba Fiscal
+- **Chave com dígitos incorretos**: o campo NFref aceita apenas números e valida os 44 dígitos
+- **Destinatário errado em 6.923**: lembre que a NF 6.923 vai para Trading B (destinatário físico), não para Trading A
+
+---
+
+## MÓDULO 25B — NF-e / FISCAL (Notas Fiscais — visão geral)
 
 **Caminho:** Menu superior → **Fiscal** → **NF-e**
 
 ### O que faz
-Emissão, acompanhamento e gestão de Notas Fiscais Eletrônicas de saída (venda de grãos). Inclui DANFE, cancelamento, devolução e NF complementar.
+Listagem geral de NF-es emitidas, cancelamento, devolução, NF complementar, certificado A1 e contingência.
 
 ### Abas disponíveis
 1. **Venda** — NF-e de venda de produção

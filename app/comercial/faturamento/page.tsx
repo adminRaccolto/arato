@@ -26,6 +26,7 @@ const NATUREZAS_VENDA = [
   { codigo: "5.906",    descricao: "Retorno de Armazém Geral — Interna (CFOP 5.906)",                 obs: "Retorno de mercadoria depositada em armazém geral no mesmo estado." },
   { codigo: "6.117",    descricao: "Remessa Simbólica — Entrega Futura (CFOP 6.117)",                 obs: "Faturamento antecipado. NF simbólica sem movimentação física de mercadoria. ICMS diferido nos termos do Decreto MT nº 4.540/2004." },
   { codigo: "6.119",    descricao: "Remessa para Venda à Ordem (CFOP 6.119)",                         obs: "Venda à ordem — operação triangular. ICMS diferido conforme Decreto MT nº 4.540/2004." },
+  { codigo: "6.923",    descricao: "Remessa por Conta e Ordem de Terceiros — Venda a Ordem (CFOP 6.923)", obs: "Remessa de mercadoria por conta e ordem de terceiros em venda à ordem. Esta NF acompanha o transporte fisicamente e deve referenciar a chave da NF de venda simbólica (CFOP 6.101/6.501). ICMS diferido conforme Decreto MT nº 4.540/2004." },
 ];
 const NATUREZAS_DEVOLUCAO = [
   { codigo: "2.201", descricao: "Devolução de venda de produção — interestadual (CFOP 2.201)", obs: "Devolução de mercadoria originada em venda interestadual. ICMS diferido estornado conforme emissão original. Funrural não incide sobre devolução." },
@@ -51,7 +52,7 @@ type NFeItem = {
   valor_total: number; valor_financeiro: number; cclass_trib: string;
 };
 type TabNFe = "produtor" | "destinatario" | "operacoes" | "transportador" | "retirada" | "fiscal" | "obs" | "pontualidade";
-type Passo  = "origem" | "contrato" | "romaneio" | "form";
+type Passo  = "origem" | "contrato" | "romaneio" | "form" | "nf_vinculada";
 type TipoAvulsa = "venda" | "remessa" | "devolucao" | "retorno" | "";
 
 // ── Estado inicial do formulário ───────────────────────────────────────────────
@@ -78,6 +79,8 @@ const FVENDA_INICIAL = {
   contrato_numero: "", // referência ao contrato faturado
   romaneio_id:     "", // id do romaneio faturado
   romaneio_numero: "", // nº do romaneio para obs da NF
+  nf_ref_chave:    "", // chave da NF referenciada (<NFref>) — obrigatória em 6.923 e entrega futura
+  nf_ref_numero:   "", // número legível da NF referenciada
 };
 
 const FRETES = [
@@ -140,6 +143,7 @@ function FaturamentoInner() {
   const [nfeItens,    setNfeItens]    = useState<NFeItem[]>([]);
   const [emitindo,    setEmitindo]    = useState(false);
   const [erroForm,    setErroForm]    = useState<string|null>(null);
+  const [nfEmitida,   setNfEmitida]   = useState<{numero:string;chave?:string;cfop:string;venda_a_ordem:boolean;entrega_futura:boolean}|null>(null);
   const [anosSafra,   setAnosSafra]   = useState<{id:string;descricao:string}[]>([]);
   // IDs vindos via URL (?romaneio_id=&contrato_id=) para deep-link do botão "Faturar"
   const [deepLinkPendente, setDeepLinkPendente] = useState<{romaneio_id:string;contrato_id:string}|null>(null);
@@ -405,6 +409,8 @@ function FaturamentoInner() {
           romaneio_id:     fVenda.romaneio_id || undefined,
           data_saida:      fVenda.data_saida,
           hora_saida:      fVenda.hora_saida,
+          nf_ref_chave:    fVenda.nf_ref_chave || undefined,
+          nf_ref_numero:   fVenda.nf_ref_numero || undefined,
         },
       };
 
@@ -451,7 +457,14 @@ function FaturamentoInner() {
       }
 
       setNotas(p => [nova, ...p]);
-      setModalAberto(false);
+      const ehVendaOrdem    = contratoSelecionado?.venda_a_ordem === true;
+      const ehEntregaFutura = fVenda.cfop === "6.117";
+      setNfEmitida({ numero: nova.numero, chave: nova.chave_acesso ?? undefined, cfop: fVenda.cfop, venda_a_ordem: ehVendaOrdem, entrega_futura: ehEntregaFutura });
+      if (ehVendaOrdem || ehEntregaFutura) {
+        setPasso("nf_vinculada");
+      } else {
+        setModalAberto(false);
+      }
     } catch (e: unknown) {
       setErroForm((e as { message?: string })?.message ?? "Erro ao emitir nota.");
     } finally {
@@ -710,7 +723,40 @@ function FaturamentoInner() {
       );
 
       case "fiscal": return (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          {(fVenda.cfop === "6.923" || fVenda.cfop === "6.117") && (
+            <div style={{ background: fVenda.cfop === "6.923" ? "#EFF6FF" : "#FBF3E0", border:`0.5px solid ${fVenda.cfop === "6.923" ? "#93C5FD" : "#C9921B50"}`, borderRadius:10, padding:"14px 16px" }}>
+              <div style={{ fontSize:12, fontWeight:700, color: fVenda.cfop === "6.923" ? "#1E40AF" : "#7A5A12", marginBottom:10 }}>
+                {fVenda.cfop === "6.923"
+                  ? "🔄 Venda a Ordem — Referência de NF Obrigatória (NFref / art. 129 RICMS/MT)"
+                  : "📦 Entrega Futura — Referência de NF Simbólica Obrigatória (NFref)"}
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:12 }}>
+                <div>
+                  <label style={lbl}>
+                    {fVenda.cfop === "6.923"
+                      ? "Chave da NF 6.101 Simbólica (44 dígitos)"
+                      : "Chave da NF 6.117 Simbólica (44 dígitos)"}
+                  </label>
+                  <input style={inp} value={fVenda.nf_ref_chave} onChange={e => fv({ nf_ref_chave: e.target.value.replace(/\D/g,"").slice(0,44) })}
+                    placeholder="Chave de acesso da NF referenciada — 44 dígitos" maxLength={44} />
+                  {fVenda.nf_ref_chave && fVenda.nf_ref_chave.length !== 44 && (
+                    <div style={{ fontSize:10, color:"#E24B4A", marginTop:3 }}>Chave deve ter 44 dígitos ({fVenda.nf_ref_chave.length} digitados)</div>
+                  )}
+                </div>
+                <div>
+                  <label style={lbl}>Número da NF referenciada</label>
+                  <input style={inp} value={fVenda.nf_ref_numero} onChange={e => fv({ nf_ref_numero: e.target.value })} placeholder="Ex: 000123" />
+                </div>
+              </div>
+              <div style={{ fontSize:11, color: fVenda.cfop === "6.923" ? "#1E40AF" : "#7A5A12", marginTop:8 }}>
+                {fVenda.cfop === "6.923"
+                  ? "A chave informada será inserida na tag <NFref> do XML da NF-e 6.923, estabelecendo o vínculo fiscal obrigatório com a NF de venda simbólica 6.101."
+                  : "A chave informada será inserida na tag <NFref> do XML da NF-e 6.101 de remessa efetiva, referenciando a NF simbólica 6.117 emitida na contratação."}
+              </div>
+            </div>
+          )}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
           <div>
             <label style={lbl}>Nº Guia ICMS</label>
             <input style={inp} value={fVenda.nr_guia_icms} onChange={e => fv({ nr_guia_icms: e.target.value })} />
@@ -738,6 +784,7 @@ function FaturamentoInner() {
           <div>
             <label style={lbl}>Situação Fiscal</label>
             <input style={inp} value={fVenda.situacao} onChange={e => fv({ situacao: e.target.value })} placeholder="Normal / Devolução / Complementar…" />
+          </div>
           </div>
         </div>
       );
@@ -1007,9 +1054,14 @@ function FaturamentoInner() {
                       <div style={{ fontSize:13, fontWeight:700, color:"#1A4870", flex:"0 0 120px", textAlign:"right" }}>
                         {fmtR$(c.preco ?? 0)}/sc
                       </div>
-                      <span style={{ fontSize:11, background: c.confirmado ? "#D5F0E4" : "#FAEEDA", color: c.confirmado ? "#16703A" : "#633806", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>
-                        {c.confirmado ? "Confirmado" : "Em aberto"}
-                      </span>
+                      <div style={{ display:"flex", flexDirection:"column", gap:4, alignItems:"flex-end" }}>
+                        <span style={{ fontSize:11, background: c.confirmado ? "#D5F0E4" : "#FAEEDA", color: c.confirmado ? "#16703A" : "#633806", padding:"3px 8px", borderRadius:8, fontWeight:600 }}>
+                          {c.confirmado ? "Confirmado" : "Em aberto"}
+                        </span>
+                        {c.venda_a_ordem && (
+                          <span style={{ fontSize:10, background:"#D5E8F5", color:"#0B2D50", padding:"2px 6px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1026,12 +1078,22 @@ function FaturamentoInner() {
               <div style={{ padding:"18px 24px 14px", borderBottom:"0.5px solid var(--border-table)", display:"flex", alignItems:"center", gap:14 }}>
                 <button style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#666", padding:"0 4px" }} onClick={() => setPasso("contrato")}>←</button>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>Selecionar Carga (Romaneio)</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)", display:"flex", alignItems:"center", gap:10 }}>
+                    Selecionar Carga (Romaneio)
+                    {contratoSelecionado.venda_a_ordem && (
+                      <span style={{ fontSize:11, background:"#D5E8F5", color:"#0B2D50", padding:"3px 10px", borderRadius:6, fontWeight:700 }}>🔄 Venda a Ordem</span>
+                    )}
+                  </div>
                   <div style={{ fontSize:12, color:"#666", marginTop:2 }}>
                     Contrato <strong>{contratoSelecionado.numero}</strong> · {contratoSelecionado.comprador} · {contratoSelecionado.produto}
                     &nbsp;· R$ {(contratoSelecionado.preco ?? 0).toLocaleString("pt-BR", { minimumFractionDigits:2 })}/sc
                     &nbsp;= R$ {((contratoSelecionado.preco ?? 0) / kgSaca(contratoSelecionado.produto)).toLocaleString("pt-BR", { minimumFractionDigits:4 })}/kg
                   </div>
+                  {contratoSelecionado.venda_a_ordem && (
+                    <div style={{ marginTop:8, background:"#EFF6FF", border:"0.5px solid #93C5FD", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#1E40AF" }}>
+                      <strong>Atenção — Venda a Ordem (art. 129 RICMS/MT):</strong> Serão emitidas <strong>duas NF-es</strong>: (1) NF 6.101 simbólica para o comprador original (Trading A); (2) NF 6.923 física que acompanha o transporte para o destinatário final (Trading B). A NF 6.923 deverá referenciar a chave da NF 6.101 via &lt;NFref&gt;.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1236,6 +1298,79 @@ function FaturamentoInner() {
                     {emitindo ? "Emitindo…" : "Emitir NF-e"}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── PASSO 4: Conclusão — NF vinculada (Venda a Ordem / Entrega Futura) ── */}
+          {passo === "nf_vinculada" && nfEmitida && (
+            <div style={{ background:"var(--bg-card)", borderRadius:14, width:640, display:"flex", flexDirection:"column", boxShadow:"0 4px 20px rgba(11,45,80,0.10)", overflow:"hidden" }}>
+              <div style={{ padding:"24px 28px 18px", borderBottom:"0.5px solid var(--border-table)" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:6 }}>
+                  <div style={{ width:40, height:40, borderRadius:20, background:"#D5F0E4", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>✅</div>
+                  <div>
+                    <div style={{ fontSize:16, fontWeight:700, color:"var(--text-1)" }}>NF-e {nfEmitida.numero} emitida com sucesso</div>
+                    <div style={{ fontSize:12, color:"#666" }}>CFOP {nfEmitida.cfop}</div>
+                  </div>
+                </div>
+
+                {nfEmitida.venda_a_ordem && (
+                  <div style={{ background:"#EFF6FF", border:"0.5px solid #93C5FD", borderRadius:10, padding:"14px 16px", marginTop:12 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#1E40AF", marginBottom:8 }}>🔄 Próximo passo — Venda a Ordem</div>
+                    <p style={{ margin:"0 0 10px", fontSize:12, color:"#1E40AF", lineHeight:1.6 }}>
+                      A NF simbólica <strong>6.101</strong> foi emitida para o comprador original. Agora você precisa emitir a <strong>NF de remessa física 6.923</strong> que acompanhará o transporte para o destinatário final.
+                    </p>
+                    <div style={{ background:"white", border:"0.5px solid #BFDBFE", borderRadius:8, padding:"10px 14px", fontSize:11, fontFamily:"monospace", wordBreak:"break-all", color:"#1E3A8A" }}>
+                      <div style={{ fontSize:10, color:"#64748B", marginBottom:4, fontFamily:"sans-serif" }}>Chave da NF 6.101 — copie para a aba Fiscal da próxima NF:</div>
+                      {nfEmitida.chave ?? "— (chave disponível após autorização SEFAZ) —"}
+                    </div>
+                    <div style={{ fontSize:11, color:"#64748B", marginTop:8 }}>
+                      Na NF 6.923: selecione CFOP 6.923 · informe o destinatário final · cole a chave acima na aba Fiscal como NFref obrigatória.
+                    </div>
+                  </div>
+                )}
+
+                {nfEmitida.entrega_futura && (
+                  <div style={{ background:"#FBF3E0", border:"0.5px solid #C9921B50", borderRadius:10, padding:"14px 16px", marginTop:12 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#7A5A12", marginBottom:8 }}>📦 Próximo passo — Entrega Futura</div>
+                    <p style={{ margin:"0 0 10px", fontSize:12, color:"#7A5A12", lineHeight:1.6 }}>
+                      A NF simbólica <strong>6.117</strong> foi emitida na contratação. Quando ocorrer a remessa física dos grãos, emita a <strong>NF 6.101</strong> referenciando esta nota.
+                    </p>
+                    <div style={{ background:"white", border:"0.5px solid #FDE68A", borderRadius:8, padding:"10px 14px", fontSize:11, fontFamily:"monospace", wordBreak:"break-all", color:"#78350F" }}>
+                      <div style={{ fontSize:10, color:"#64748B", marginBottom:4, fontFamily:"sans-serif" }}>Chave da NF 6.117 — copie para a aba Fiscal da NF de saída física:</div>
+                      {nfEmitida.chave ?? "— (chave disponível após autorização SEFAZ) —"}
+                    </div>
+                    <div style={{ fontSize:11, color:"#64748B", marginTop:8 }}>
+                      Na NF 6.101 de saída física: selecione CFOP 6.101 · cole a chave acima na aba Fiscal como NFref obrigatória.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding:"14px 24px", display:"flex", gap:10, justifyContent:"flex-end" }}>
+                {nfEmitida.venda_a_ordem && (
+                  <button
+                    style={{ ...btnV, background:"#1A5CB8" }}
+                    onClick={() => {
+                      setFVenda({ ...FVENDA_INICIAL, cfop:"6.923", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
+                      setPasso("form");
+                      setNfEmitida(null);
+                    }}>
+                    Emitir NF 6.923 (remessa física) →
+                  </button>
+                )}
+                {nfEmitida.entrega_futura && (
+                  <button
+                    style={{ ...btnV, background:"#C9921B" }}
+                    onClick={() => {
+                      setFVenda({ ...FVENDA_INICIAL, cfop:"6.101", nf_ref_chave: nfEmitida.chave ?? "", nf_ref_numero: nfEmitida.numero });
+                      setPasso("form");
+                      setNfEmitida(null);
+                    }}>
+                    Emitir NF 6.101 (saída física) →
+                  </button>
+                )}
+                <button style={btnR} onClick={() => { setModalAberto(false); setNfEmitida(null); }}>Concluir</button>
               </div>
             </div>
           )}

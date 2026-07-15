@@ -561,6 +561,8 @@ export type NotaFiscal = {
     // referências
     contrato_numero?: string; romaneio_numero?: string; romaneio_id?: string;
     data_saida?: string; hora_saida?: string;
+    // NF referenciada (NFref — obrigatória em 6.923 e entrega futura 6.117)
+    nf_ref_chave?: string; nf_ref_numero?: string;
   };
   created_at?: string;
 };

@@ -9,7 +9,7 @@ import type { Fazenda } from "../lib/supabase";
 
 
 // ─── Tipos ───────────────────────────────────────────────────
-type NavLink     = { type?: "link";     id: string; label: string; path: string; moduleId?: string };
+type NavLink     = { type?: "link";     id: string; label: string; path: string; moduleId?: string; disabled?: boolean };
 type NavDivider  = { type: "divider";   label: string };
 type NavSubgroup = { type: "subgroup";  id: string; label: string; children: NavLink[]; moduleId?: string };
 type NavChild    = NavLink | NavDivider | NavSubgroup;
@@ -209,7 +209,7 @@ const NAV: NavItem[] = [
     type: "group", id: "fiscal", label: "Fiscal", minStep: 7,
     children: [
       { id: "fiscal-monitor",       label: "Monitor NF-e Emitidas",  path: "/fiscal",                     moduleId: "fiscal_nfe"  },
-      { id: "fiscal-triangulacao",  label: "Triangulação de NF",     path: "/fiscal/triangulacao",        moduleId: "fiscal_nfe"  },
+      { id: "fiscal-triangulacao",  label: "Triangulação de NF",     path: "/fiscal/triangulacao",        moduleId: "fiscal_nfe",  disabled: true },
       { id: "fiscal-pendencias",    label: "Pendências Fiscais",      path: "/fiscal/pendencias",          moduleId: "fiscal_nfe"  },
       { id: "fiscal-gnre",          label: "GNRE",                    path: "/fiscal/gnre",                moduleId: "fiscal_nfe"  },
       { id: "fiscal-esocial",    label: "eSocial Rural",         path: "/fiscal/esocial",    moduleId: "fiscal_sped" },
@@ -501,6 +501,18 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     // Link simples
     const link = child as NavLink;
     const ativoLink = isAtivo(link.path);
+    if (link.disabled) {
+      return (
+        <span key={link.id} style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "8px 14px", fontSize: 13, whiteSpace: "nowrap",
+          color: "#64748B", cursor: "not-allowed", userSelect: "none",
+        }}>
+          {link.label}
+          <span style={{ fontSize: 9, background: "#334155", color: "#94A3B8", padding: "1px 5px", borderRadius: 4, fontWeight: 600 }}>EM BREVE</span>
+        </span>
+      );
+    }
     return (
       <Link
         key={link.id}
