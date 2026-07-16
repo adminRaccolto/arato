@@ -667,17 +667,31 @@ const CAT_CAPTACAO_IMP: Record<string, string> = {
   egf: "Captação de EGF", outros: "Captação de Empréstimos",
 };
 
+function parseBRNum(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (!v) return 0;
+  const s = String(v).trim().replace(/\s/g, "");
+  // BR: ponto como milhar e vírgula como decimal (ex: "2.855.161,32")
+  if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", ".")) || 0;
+  // Apenas vírgula decimal (ex: "1655177,09")
+  if (/^\d+(,\d+)$/.test(s)) return parseFloat(s.replace(",", ".")) || 0;
+  return parseFloat(s) || 0;
+}
+
 function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   const row = r as unknown as ContratoFinRow;
+  // Ignora linhas completamente vazias (sem numero_contrato E sem credor)
+  if (!row.numero_contrato?.trim() && !row.credor?.trim()) return { ...row, _status: "erro", _msg: "_linha_vazia" };
   if (!row.numero_contrato?.trim()) return { ...row, _status: "erro", _msg: "numero_contrato obrigatório" };
   if (!row.descricao?.trim())       return { ...row, _status: "erro", _msg: "descricao obrigatória" };
   if (!row.credor?.trim())          return { ...row, _status: "erro", _msg: "credor obrigatório" };
   const tipo = (row.tipo || "").trim().toLowerCase();
-  if (!TIPOS_CONTRATO_FIN.includes(tipo))
-    return { ...row, _status: "erro", _msg: `tipo inválido — use: ${TIPOS_CONTRATO_FIN.join(", ")}` };
-  const valorField = (row.valor_financiado ?? (r as Record<string, string>).valor_total ?? "").toString();
-  const valor = parseFloat(String(valorField).replace(",", ".").replace(/\./g, (m, o, s) => s.indexOf(",") !== -1 && o !== s.lastIndexOf(".") ? "" : m));
-  if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: "valor_financiado inválido ou zero" };
+  const tipoMapped = tipo === "financiamento" ? "investimento" : tipo === "credito_rural" ? "custeio" : tipo;
+  if (!TIPOS_CONTRATO_FIN.includes(tipoMapped))
+    return { ...row, _status: "erro", _msg: `tipo inválido ("${tipo}") — use: ${TIPOS_CONTRATO_FIN.join(", ")}` };
+  const valorRaw = (row.valor_financiado ?? (r as Record<string, string>).valor_total ?? "");
+  const valor = parseBRNum(valorRaw);
+  if (isNaN(valor) || valor <= 0) return { ...row, _status: "erro", _msg: `valor inválido ("${valorRaw}") — use número sem R$ (ex: 155000.00)` };
   const moeda = (row.moeda || "BRL").trim().toUpperCase();
   if (moeda === "USD" && !row.cotacao_usd?.trim())
     return { ...row, _status: "erro", _msg: "cotacao_usd obrigatório quando moeda=USD" };
@@ -700,7 +714,7 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
   const periodicidade = (row.periodicidade_pagamento || "mensal").trim().toLowerCase();
   if (row.periodicidade_pagamento?.trim() && !PERIODICIDADES.includes(periodicidade))
     return { ...row, _status: "erro", _msg: `periodicidade_pagamento deve ser: ${PERIODICIDADES.join(", ")}` };
-  return { ...row, tipo, moeda, tipo_calculo: tipoCalc || "sac", periodicidade_pagamento: periodicidade, _status: "ok", _msg: "" };
+  return { ...row, tipo: tipoMapped, moeda, tipo_calculo: tipoCalc || "sac", periodicidade_pagamento: periodicidade, _status: "ok", _msg: "" };
 }
 
 function validarArrendamento(r: Record<string, string>): ArrendamentoRow {
@@ -1400,7 +1414,21 @@ function ImportacaoInner() {
 
   async function handleFileContratoFin(file: File) {
     const raw = await parseXlsx(file);
-    const rows = raw.map(r => validarContratoFin(r));
+    // Filtra linhas completamente vazias antes de validar
+    const rawFiltrado = raw.filter(r => Object.values(r).some(v => String(v).trim()));
+    if (rawFiltrado.length === 0) {
+      const colunas = raw.length > 0 ? Object.keys(raw[0]).join(", ") : "(nenhuma)";
+      throw new Error(
+        `Nenhuma linha de dados encontrada no arquivo.\n` +
+        `Colunas detectadas: ${colunas || "(nenhuma)"}\n\n` +
+        `Verifique se:\n` +
+        `• Os dados estão na primeira aba da planilha (chamada "Dados")\n` +
+        `• A linha 1 contém os cabeçalhos (não deixe linhas em branco no topo)\n` +
+        `• O arquivo foi salvo como .xlsx (Pasta de Trabalho do Excel)`
+      );
+    }
+    const rows = rawFiltrado.map(r => validarContratoFin(r))
+      .filter(r => r._msg !== "_linha_vazia");
     // Duplicados dentro do arquivo
     const nrsVisto = new Set<string>();
     rows.forEach(r => {
@@ -1479,7 +1507,7 @@ function ImportacaoInner() {
         const { data: prd } = await supabase.from("produtores").select("id").eq("fazenda_id", fazendaId).ilike("cpf_cnpj", `%${docNumP}%`).limit(1).maybeSingle();
         produtorIdFin = prd?.id ?? null;
       }
-      const valorFin  = parseFloat(String(r.valor_financiado || (r as unknown as Record<string,string>).valor_total || "0").replace(",", "."));
+      const valorFin  = parseBRNum(r.valor_financiado || (r as unknown as Record<string,string>).valor_total || "0");
       const cotacaoV  = r.cotacao_usd?.trim() ? parseFloat(r.cotacao_usd.replace(",", ".")) : null;
       const moedaUp   = (r.moeda || "BRL").toUpperCase();
       const valorBRL  = moedaUp === "USD" && cotacaoV ? valorFin * cotacaoV : valorFin;
@@ -2554,10 +2582,27 @@ function ImportacaoInner() {
                     </label>
                   </div>
                 )}
+                {/* Aviso quando não há nada a importar */}
+                {okRows === 0 && totalRows > 0 && (
+                  <div style={{ marginTop: 16, padding: "12px 16px", background: "#FFF8EC", border: "0.5px solid #C9921B", borderRadius: 8, fontSize: 13, color: "#7A5C00" }}>
+                    {dupRows === totalRows && (
+                      <><strong>Todos os registros já existem no banco.</strong>
+                      {aba === "contratos_fin" && <> Marque "Atualizar datas nos contratos existentes" acima para reprocessar, ou exclua os contratos existentes e importe novamente.</>}
+                      {aba !== "contratos_fin" && <> Nenhum novo registro para importar.</>}</>
+                    )}
+                    {erroRows > 0 && dupRows === 0 && (
+                      <><strong>{erroRows} linha{erroRows !== 1 ? "s" : ""} com erro.</strong> Corrija os campos destacados em vermelho abaixo e faça o upload novamente.</>
+                    )}
+                    {erroRows > 0 && dupRows > 0 && (
+                      <><strong>{erroRows} com erro</strong> e <strong>{dupRows} duplicada{dupRows !== 1 ? "s" : ""}.</strong> Corrija os erros e marque "Atualizar" para os duplicados se quiser reprocessá-los.</>
+                    )}
+                  </div>
+                )}
                 <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 13, color: "var(--text-2)" }}>
                     <strong>{totalRows}</strong> linha{totalRows !== 1 ? "s" : ""} lida{totalRows !== 1 ? "s" : ""}
                     {erroRows > 0 && <span style={{ marginLeft: 10, color: "#E24B4A", fontWeight: 600 }}>{erroRows} com erro</span>}
+                    {dupRows > 0 && <span style={{ marginLeft: 10, color: "#C9921B", fontWeight: 600 }}>{dupRows} duplicada{dupRows !== 1 ? "s" : ""}</span>}
                     {okRows   > 0 && <span style={{ marginLeft: 10, color: "#16A34A", fontWeight: 600 }}>{okRows} prontas para importar</span>}
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
