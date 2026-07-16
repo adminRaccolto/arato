@@ -1427,7 +1427,30 @@ function ImportacaoInner() {
         `• O arquivo foi salvo como .xlsx (Pasta de Trabalho do Excel)`
       );
     }
-    const rows = rawFiltrado.map(r => validarContratoFin(r))
+    // Busca cotação do dia para contratos USD sem cotacao_usd informada
+    const temUsdSemCotacao = rawFiltrado.some(r => {
+      const m = String(r.moeda ?? r.MOEDA ?? "").toUpperCase();
+      return m === "USD" && !String(r.cotacao_usd ?? r.COTACAO_USD ?? "").trim();
+    });
+    let cotacaoHoje: number | null = null;
+    if (temUsdSemCotacao) {
+      try {
+        const resp = await fetch("/api/precos");
+        if (resp.ok) {
+          const data = await resp.json() as { usdBrl?: number };
+          cotacaoHoje = data.usdBrl ?? null;
+        }
+      } catch { /* mantém null — validação pedirá cotacao */ }
+    }
+    const rawComCotacao = rawFiltrado.map(r => {
+      const m = String(r.moeda ?? r.MOEDA ?? "").toUpperCase();
+      const semCotacao = !String(r.cotacao_usd ?? r.COTACAO_USD ?? "").trim();
+      if (m === "USD" && semCotacao && cotacaoHoje) {
+        return { ...r, cotacao_usd: String(cotacaoHoje) };
+      }
+      return r;
+    });
+    const rows = rawComCotacao.map(r => validarContratoFin(r))
       .filter(r => r._msg !== "_linha_vazia");
     // Duplicados dentro do arquivo
     const nrsVisto = new Set<string>();
