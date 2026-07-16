@@ -166,12 +166,12 @@ const TEMPLATE_MAQUINAS = [
 ];
 
 const TEMPLATE_CONTRATOS_FIN = [
-  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "valor_liberado", "cotacao_usd", "data_contrato*", "data_liberacao", "data_entrega_produto", "data_vencimento", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
-  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "1649927.09", "", "2025-06-01", "2025-06-01", "", "", "12", "0", "mensal", "11.16", "0.89", "", "6250.00", "", "sim", "012.345.678-90", "TAC R$6.250 retida na liberação"],
-  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "477600.00", "", "2024-03-15", "2024-03-15", "", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "TAC R$1.200 + IOF retidos"],
-  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "184261.25", "5.85", "2025-12-28", "2025-12-28", "", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
+  ["numero_contrato*", "descricao*", "credor*", "credor_cpf_cnpj", "tipo*", "linha_credito", "tipo_calculo", "moeda", "valor_financiado*", "valor_liberado", "cotacao_usd", "data_contrato*", "data_liberacao", "data_vencimento", "data_entrega_produto", "prazo_meses", "carencia_meses", "periodicidade_pagamento", "taxa_juros_aa", "taxa_juros_am", "iof_pct", "tac_valor", "outros_custos", "auto_parcelas", "produtor_cpf_cnpj", "observacao"],
+  ["959144", "Custeio Safra 2025/26", "SICOOB PRIMAVERA", "07.945.853/0001-14", "custeio", "PRONAMP", "sac", "BRL", "1656177.09", "1649927.09", "", "2025-06-01", "2025-06-01", "2026-06-01", "", "12", "0", "mensal", "11.16", "0.89", "", "6250.00", "", "sim", "012.345.678-90", "TAC R$6.250 retida na liberação"],
+  ["131910484", "Moderfrota Trator BB", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "Moderfrota", "price", "BRL", "480000.00", "477600.00", "", "2024-03-15", "2024-03-15", "2028-03-15", "", "48", "0", "mensal", "9.00", "0.75", "0.38", "1200.00", "", "sim", "012.345.678-90", "TAC R$1.200 + IOF retidos"],
+  ["20251215000000410", "ORPAG-CREDITO EXPORTAÇÃO", "BANCO DO BRASIL SA", "00.000.000/0001-91", "outros", "", "sac", "USD", "185000.00", "184261.25", "5.85", "2025-12-28", "2025-12-28", "2026-12-28", "", "12", "0", "mensal", "", "", "", "", "", "sim", "012.345.678-90", "Produtor: CARINA CEOLIN - MT"],
   ["50107386300", "CPR Soja Itaú", "ITAU UNIBANCO S.A.", "60.701.190/0001-04", "cpr", "", "bullet", "USD", "28144.00", "", "5.98", "2025-01-10", "2025-01-10", "2026-01-10", "2026-01-10", "12", "0", "bullet", "", "", "", "", "", "nao", "", ""],
-  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "1992400.00", "", "2024-05-01", "2024-05-01", "", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
+  ["CR-2024-001", "FCO Rural 5 anos", "BANCO DO BRASIL SA", "00.000.000/0001-91", "investimento", "FCO Rural", "sac", "BRL", "2000000.00", "1992400.00", "", "2024-05-01", "2024-05-01", "2029-05-01", "", "60", "6", "semestral", "8.64", "0.72", "0.38", "", "", "sim", "012.345.678-90", "Juros semestrais - carência 6 meses"],
 ];
 
 const TEMPLATE_ARRENDAMENTOS = [
@@ -347,12 +347,14 @@ const INSTRUCOES_CONTRATOS_FIN = [
   [""],
   ["DATAS E PRAZO"],
   ["• data_contrato*: data de assinatura no formato AAAA-MM-DD"],
-  ["• data_liberacao: data em que o recurso foi liberado (padrão: data_contrato)"],
+  ["• data_liberacao: data em que o recurso foi creditado na conta (padrão: data_contrato)"],
+  ["  Ex: contrato assinado em 01/06/2025, dinheiro chegou em 03/06/2025 → data_liberacao=2025-06-03"],
+  ["• data_vencimento: data do ÚLTIMO pagamento financeiro — quando a dívida é quitada em dinheiro."],
+  ["  ⚠ Não confundir com data_liberacao (entrada) nem com data_entrega_produto (entrega de grãos)!"],
+  ["  Ex: contrato de 12 meses liberado em 01/06/2025 → data_vencimento=2026-06-01"],
   ["• data_entrega_produto: data limite para entrega física do produto (grão)"],
-  ["  Usado em CPR e barter — quando o produtor deve entregar os grãos ao credor."],
-  ["  Diferente de data_vencimento: uma é logística (entrega física), a outra é financeira."],
-  ["• data_vencimento: data de vencimento FINANCEIRO — último pagamento em dinheiro."],
-  ["  Para CPR puro (pago 100% em grão): deixe em branco ou igual a data_entrega_produto."],
+  ["  Usado APENAS em CPR e barter — quando o produtor deve entregar os grãos ao credor."],
+  ["  Para custeio e investimento comuns: deixe em branco."],
   ["• prazo_meses: duração total em meses (ex: 12, 60) — necessário para gerar parcelas"],
   ["• carencia_meses: meses de carência antes de iniciar pagamentos (ex: 6) — padrão: 0"],
   [""],
@@ -687,6 +689,9 @@ function validarContratoFin(r: Record<string, string>): ContratoFinRow {
     return { ...row, _status: "erro", _msg: "data_entrega_produto deve ser AAAA-MM-DD" };
   if (row.data_vencimento?.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.data_vencimento.trim()))
     return { ...row, _status: "erro", _msg: "data_vencimento deve ser AAAA-MM-DD" };
+  // Avisa se data_liberacao posterior a data_vencimento (datas trocadas)
+  if (row.data_liberacao?.trim() && row.data_vencimento?.trim() && row.data_liberacao.trim() > row.data_vencimento.trim())
+    return { ...row, _status: "erro", _msg: `data_liberacao (${row.data_liberacao.trim()}) posterior a data_vencimento (${row.data_vencimento.trim()}) — verifique se as datas estão nas colunas certas` };
   if (row.prazo_meses?.trim() && (isNaN(parseInt(row.prazo_meses)) || parseInt(row.prazo_meses) < 1))
     return { ...row, _status: "erro", _msg: "prazo_meses deve ser número inteiro positivo" };
   const tipoCalc = (row.tipo_calculo || "sac").trim().toLowerCase();
@@ -2309,7 +2314,7 @@ function ImportacaoInner() {
     contratos_fin: {
       label: "Contratos Financeiros", icon: "🏦",
       desc: "Importe contratos bancários (custeio, investimento, CPR, EGF). Suporta periodicidade mensal, semestral, anual e estrutura de juros semestrais + amortização anual.",
-      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "data_entrega_produto", "data_vencimento", "prazo_meses", "periodicidade_pagamento", "tipo_amortizacao", "produtor_cpf_cnpj"],
+      cols: ["numero_contrato", "descricao", "credor", "tipo", "valor_total", "data_contrato", "data_liberacao", "data_vencimento", "prazo_meses", "periodicidade_pagamento", "tipo_amortizacao", "produtor_cpf_cnpj"],
       rows: contratoFinRows as Record<string, unknown>[],
       loading: loadingContratoFin,
       result: resultContratoFin,
