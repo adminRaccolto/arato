@@ -837,6 +837,68 @@ export default function ContratosFinanceiros() {
   const totalFinanciado = contratosFiltrados.filter(c => c.status === "ativo").reduce((s, c) => s + (c.moeda === "USD" ? c.valor_financiado * (ptax ?? 1) : c.valor_financiado), 0);
   const nomeConta = (id?: string) => id ? (contas.find(c => c.id === id)?.nome ?? "—") : "—";
 
+  // ── Template XLSX para download ──
+  const baixarModeloXLSX = async () => {
+    const XLSX = await import("xlsx");
+    const headers = [
+      "NUMERO_CONTRATO", "DESCRICAO", "CREDOR", "TIPO", "LINHA_CREDITO",
+      "TIPO_CALCULO", "MOEDA", "VALOR_FINANCIADO", "COTACAO_USD",
+      "DATA_CONTRATO", "DATA_LIBERACAO", "DATA_VENCIMENTO",
+      "PRAZO_MESES", "CARENCIA_MESES", "PERIODICIDADE_PAGAMENTO",
+      "TAXA_JUROS_AA", "TAXA_JUROS_AM", "IOF_PCT", "TAC_VALOR", "OUTROS_CUSTOS", "OBSERVACAO",
+    ];
+    const exemplos = [
+      ["2025001", "CUSTEIO SOJA 25/26", "BANCO DO BRASIL SA", "Custeio", "Custeio Livre (Recursos Próprios)",
+       "SAC", "BRL", 500000, "", "2025-03-01", "2025-03-15", "",
+       12, 0, "mensal", 12, "", "", "", "", "Contrato custeio soja"],
+      ["2025002", "FINANCIAMENTO TRATOR", "BANCO JOHN DEERE S.A.", "Investimento", "BNDES Finame",
+       "PRICE", "BRL", 350000, "", "2025-01-10", "2025-01-10", "",
+       60, 3, "mensal", "", 0.49, "", 2500, "", "Carência 3 meses"],
+      ["2025003", "ORPAG EXPORTAÇÃO", "BANCO DO BRASIL SA", "Custeio", "CPR Financeira",
+       "SAC", "USD", 185000, 5.90, "2025-04-01", "2025-04-01", "",
+       2, 0, "semestral", "", 0.50, "", "", "", "Pagamento em dólar"],
+      ["2025004", "PRONAF INVESTIMENTO", "BANCO DA AMAZÔNIA", "Investimento", "PRONAF",
+       "SAC", "BRL", 80000, "", "2025-06-15", "2025-06-15", "2026-06-15",
+       0, 0, "bullet", "", 0.25, "", "", "", "Parcela única no vencimento"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...exemplos]);
+    // Larguras das colunas
+    ws["!cols"] = headers.map(() => ({ wch: 22 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Contratos");
+
+    // Aba de instruções
+    const inst = [
+      ["CAMPO", "OBRIGATÓRIO?", "VALORES ACEITOS / EXEMPLO", "OBSERVAÇÃO"],
+      ["NUMERO_CONTRATO", "Sim", "Número único (ex: 2025001)", "Chave de identificação do contrato"],
+      ["DESCRICAO", "Sim", "CUSTEIO SOJA 25/26", "Nome do contrato"],
+      ["CREDOR", "Sim", "BANCO DO BRASIL SA", "Nome do credor/banco"],
+      ["TIPO", "Sim", "Custeio / Investimento / CPR / EGF / Outros", "Tipo do contrato"],
+      ["LINHA_CREDITO", "Não", "PRONAF, BNDES Finame, Custeio Livre...", "Linha de crédito específica"],
+      ["TIPO_CALCULO", "Não", "SAC · PRICE · bullet", "Default: SAC. Bullet = parcela única no vencimento"],
+      ["MOEDA", "Não", "BRL · USD", "Default: BRL"],
+      ["VALOR_FINANCIADO", "Sim", "500000", "Valor principal em números (sem R$ ou pontos)"],
+      ["COTACAO_USD", "Só USD", "5.90", "Cotação BRL/USD na contratação (somente se MOEDA=USD)"],
+      ["DATA_CONTRATO", "Sim", "2025-03-01", "Formato AAAA-MM-DD"],
+      ["DATA_LIBERACAO", "Não", "2025-03-15", "Data em que o dinheiro entrou na conta. Default = DATA_CONTRATO"],
+      ["DATA_VENCIMENTO", "Só bullet", "2026-06-01", "APENAS para bullet (sem PRAZO_MESES). Último vencimento."],
+      ["PRAZO_MESES", "Não*", "12 · 60", "*Necessário para gerar parcelas automaticamente (SAC/PRICE). 0 = bullet."],
+      ["CARENCIA_MESES", "Não", "3", "Carência em número de períodos (parcelas). 0 = sem carência."],
+      ["PERIODICIDADE_PAGAMENTO", "Não", "mensal · semestral · anual · bullet", "Default: mensal"],
+      ["TAXA_JUROS_AA", "Não*", "12", "Taxa anual em % (ex: 12 = 12% a.a.). *Uma das duas é obrigatória."],
+      ["TAXA_JUROS_AM", "Não*", "0.95", "Taxa mensal em % (ex: 0.95 = 0,95% a.m.). *Uma das duas."],
+      ["IOF_PCT", "Não", "0.38", "IOF em % sobre o valor financiado"],
+      ["TAC_VALOR", "Não", "500", "Tarifa de abertura de crédito em R$"],
+      ["OUTROS_CUSTOS", "Não", "200", "Outros custos em R$"],
+      ["OBSERVACAO", "Não", "Qualquer texto livre", "Observação interna"],
+    ];
+    const wsInst = XLSX.utils.aoa_to_sheet(inst);
+    wsInst["!cols"] = [{ wch: 26 }, { wch: 14 }, { wch: 45 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, wsInst, "Instruções");
+
+    XLSX.writeFile(wb, "modelo_contratos_financeiros.xlsx");
+  };
+
   // ── Importar XLSX ──
   const CAT_AMORT: Record<ContratoFinanceiro["tipo"], string> = {
     custeio: "Pagamento de Custeio", investimento: "Pagamento de Financiamento",
@@ -1209,11 +1271,12 @@ export default function ContratosFinanceiros() {
                     <div style={{ borderTop: "0.5px solid #1A487030", paddingTop: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#1A4870", marginBottom: 3 }}>Formato Livre — 1 linha por contrato (manual ou de qualquer sistema):</div>
                       <div style={{ fontFamily: "monospace", fontSize: 10, lineHeight: 1.8, color: "#0B2D50" }}>
-                        NUMERO_CONTRATO · DESCRICAO · CREDOR · TIPO · LINHA_CREDITO · TIPO_CALCULO · MOEDA · VALOR_FINANCIADO · VALOR_LIBERADO · COTACAO_USD · DATA_CONTRATO · DATA_LIBERACAO · DATA_VENCIMENTO · PRAZO_MESES · CARENCIA_MESES · TAXA_JUROS_AA · TAXA_JUROS_AM · IOF_PCT · TAC_VALOR · OUTROS_CUSTOS
+                        NUMERO_CONTRATO · DESCRICAO · CREDOR · TIPO · LINHA_CREDITO · TIPO_CALCULO · MOEDA · VALOR_FINANCIADO · COTACAO_USD · DATA_CONTRATO · DATA_LIBERACAO · DATA_VENCIMENTO · <strong>PRAZO_MESES</strong> · CARENCIA_MESES · <strong>PERIODICIDADE_PAGAMENTO</strong> · TAXA_JUROS_AA · TAXA_JUROS_AM · IOF_PCT · TAC_VALOR · OUTROS_CUSTOS · OBSERVACAO
                       </div>
                       <div style={{ marginTop: 4, fontSize: 10, color: "var(--text-2)" }}>
-                        TIPO: Custeio, Investimento, CPR, Outros &nbsp;|&nbsp; TIPO_CALCULO: SAC ou PRICE &nbsp;|&nbsp; MOEDA: BRL ou USD
-                        <br/>Se PRAZO_MESES &gt; 0: parcelas geradas pelo sistema (SAC/PRICE). Senão: parcela única em DATA_VENCIMENTO.
+                        TIPO: Custeio, Investimento, CPR, EGF, Outros &nbsp;|&nbsp; TIPO_CALCULO: SAC, PRICE ou bullet &nbsp;|&nbsp; MOEDA: BRL ou USD
+                        <br/>PERIODICIDADE_PAGAMENTO: mensal, semestral, anual, bullet &nbsp;|&nbsp; PRAZO_MESES: nº de parcelas (ex: 12 mensal = 1 ano)
+                        <br/>Se PRAZO_MESES &gt; 0: parcelas geradas automaticamente. Senão: parcela única em DATA_VENCIMENTO.
                       </div>
                     </div>
                   </div>
@@ -1278,6 +1341,16 @@ export default function ContratosFinanceiros() {
                       </button>
                     </div>
                   )}
+
+                  {/* Botão de download do modelo */}
+                  <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={baixarModeloXLSX}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "#FBF3E0", border: "0.5px solid #C9921B", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#7A5C00" }}
+                    >
+                      ⬇ Baixar Modelo XLSX
+                    </button>
+                  </div>
 
                   <label style={{ display: "block", border: "2px dashed var(--border-table)", borderRadius: 12, padding: "40px 0", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = "#1A4870")}
