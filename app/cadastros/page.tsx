@@ -1592,7 +1592,13 @@ function CadastrosInner() {
     setModalCiclo(true);
   };
   const salvarCiclo = () => salvar(async () => {
-    if (!anoSel || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim) return;
+    const faltando = [
+      !anoSel                   && "Ano Safra não selecionado",
+      !fCiclo.descricao.trim()  && "Descrição obrigatória",
+      !fCiclo.data_inicio       && "Data de Início obrigatória",
+      !fCiclo.data_fim          && "Data de Fim obrigatória",
+    ].filter(Boolean) as string[];
+    if (faltando.length > 0) { alert("Campos obrigatórios:\n• " + faltando.join("\n• ")); return; }
     // Validar travas de área
     const todosTalhoes = Object.values(talhoes).flat();
     const errosArea: string[] = [];
@@ -1630,7 +1636,7 @@ function CadastrosInner() {
       setCiclos(p => p.map(upd));
       cicloId = editCiclo.id;
     } else {
-      const n = await criarCiclo({ ...payload, ano_safra_id: anoSel, fazenda_id: fazCiclo });
+      const n = await criarCiclo({ ...payload, ano_safra_id: anoSel!, fazenda_id: fazCiclo });
       setCiclosTodos(p => [...p, n]);
       setCiclos(p => !fazTrabalho || n.fazenda_id === fazTrabalho ? [...p, n] : p);
       cicloId = n.id;
@@ -7188,8 +7194,18 @@ function CadastrosInner() {
                 )}
               </div>
             )}
-            <div><label style={lbl}>Início *</label><input style={inp} type="date" value={fCiclo.data_inicio} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId); }} /></div>
-            <div><label style={lbl}>Fim *</label><input style={inp} type="date" value={fCiclo.data_fim} onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId); }} /></div>
+            <div>
+              <label style={lbl}>Início *</label>
+              <input style={{ ...inp, borderColor: !fCiclo.data_inicio ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_inicio}
+                onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_inicio: v })); if (v && fCiclo.data_fim) calcularOcupacao(v, fCiclo.data_fim, editCiclo?.id, cicloFazendaId); }} />
+              {!fCiclo.data_inicio && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>Data obrigatória</div>}
+            </div>
+            <div>
+              <label style={lbl}>Fim *</label>
+              <input style={{ ...inp, borderColor: !fCiclo.data_fim ? "#E24B4A" : "var(--border-table)" }} type="date" value={fCiclo.data_fim}
+                onChange={e => { const v = e.target.value; setFCiclo(p => ({ ...p, data_fim: v })); if (fCiclo.data_inicio && v) calcularOcupacao(fCiclo.data_inicio, v, editCiclo?.id, cicloFazendaId); }} />
+              {!fCiclo.data_fim && <div style={{ fontSize: 10, color: "#E24B4A", marginTop: 3 }}>Data obrigatória</div>}
+            </div>
             {!fCiclo.is_auxiliar && (() => {
               const cult = (fCiclo.cultura ?? "").toLowerCase();
               const unid = cult.includes("algod") ? "@" : cult.includes("cana") ? "t" : cult.includes("café") || cult.includes("cafe") ? "sc (60kg)" : "sc";
@@ -7344,6 +7360,18 @@ function CadastrosInner() {
             })()}
           </div>
 
+          {/* Mensagem inline sobre o que falta para salvar */}
+          {(!cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim) && (
+            <div style={{ background: "#FFF5F5", border: "0.5px solid #E24B4A", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 11, color: "#E24B4A" }}>
+              ⚠ Preencha os campos obrigatórios antes de salvar:{" "}
+              {[
+                !cicloFazendaId       && "Fazenda",
+                !fCiclo.descricao.trim() && "Descrição",
+                !fCiclo.data_inicio   && "Data de Início",
+                !fCiclo.data_fim      && "Data de Fim",
+              ].filter(Boolean).join(", ")}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button style={btnR} onClick={() => setModalCiclo(false)}>Cancelar</button>
             <button style={{ ...btnV, opacity: salvando || !cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim ? 0.5 : 1 }} disabled={salvando || !cicloFazendaId || !fCiclo.descricao.trim() || !fCiclo.data_inicio || !fCiclo.data_fim} onClick={salvarCiclo}>{salvando ? "Salvando…" : "Salvar"}</button>
