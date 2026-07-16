@@ -225,11 +225,18 @@ function parseNumBR(v: unknown): number {
 }
 
 function mapTipoContrato(st: string): ContratoFinanceiro["tipo"] {
-  const s = String(st ?? "").trim();
+  const s = String(st ?? "").trim().toUpperCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "");
   const m: Record<string, ContratoFinanceiro["tipo"]> = {
-    "I": "investimento", "C": "custeio", "P": "cpr", "O": "outros",
-    "Investimento": "investimento", "Custeio": "custeio", "CPR": "cpr",
-    "Outras": "outros", "Outros": "outros", "Securitização": "securitizacao",
+    "I": "investimento", "C": "custeio", "P": "cpr", "O": "outros", "E": "egf",
+    "INVESTIMENTO": "investimento",
+    "CUSTEIO": "custeio",
+    "CPR": "cpr", "CPR FISICA": "cpr", "CPR FINANCEIRA": "cpr",
+    "EGF": "egf",
+    "OUTRAS": "outros", "OUTROS": "outros",
+    "SECURITIZACAO": "securitizacao",
+    "FINAME": "investimento", "BNDES": "investimento", "PRONAF": "custeio",
+    "PRONAMP": "custeio", "FCO": "investimento", "FNO": "investimento", "FNE": "investimento",
   };
   return m[s] ?? "outros";
 }
@@ -459,32 +466,47 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
       const taxaAm      = num(row, "TAXA_JUROS_AM");
       const prazoMeses  = Math.round(Math.abs(num(row, "PRAZO_MESES")));
       const carenciaMeses = Math.round(Math.abs(num(row, "CARENCIA_MESES")));
-      const tipoCalc    = str(row, "TIPO_CALCULO").toUpperCase();
+      const tipoCalcRaw = str(row, "TIPO_CALCULO").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
       const dataVenc    = dat(row, "DATA_VENCIMENTO", "DATA_ENTREGA_PRODUTO");
       const dataBase    = dat(row, "DATA_LIBERACAO", "DATA_CONTRATO");
       const dataContrato = dat(row, "DATA_CONTRATO", "DATA_LIBERACAO");
-      const moedaRaw    = str(row, "MOEDA").toUpperCase();
-      const moeda: "BRL" | "USD" = moedaRaw === "USD" ? "USD" : "BRL";
+      const moedaRaw    = str(row, "MOEDA").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const moeda: "BRL" | "USD" = moedaRaw === "USD" || moedaRaw === "DOLAR" || moedaRaw === "US$" || moedaRaw === "$" ? "USD" : "BRL";
       const cotacao     = moeda === "USD" ? (num(row, "COTACAO_USD") || undefined) : undefined;
       const taxaAmDecimal = taxaAm > 0 ? taxaAm / 100 : taxaAa > 0 ? aaParaAm(taxaAa) / 100 : 0;
+
+      // Periodicidade dos pagamentos → meses entre parcelas
+      const periodicidadeRaw = str(row, "PERIODICIDADE_PAGAMENTO", "PERIODICIDADE").toUpperCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const mesesPorParcela: number =
+        (periodicidadeRaw.includes("ANUAL") && !periodicidadeRaw.includes("SEM")) || periodicidadeRaw === "12" ? 12 :
+        periodicidadeRaw.includes("SEM") || periodicidadeRaw === "6" ? 6 :
+        periodicidadeRaw === "3" || periodicidadeRaw.includes("TRIM") ? 3 :
+        1;
+      // Taxa por período (capitalização composta da taxa mensal)
+      const taxaPerPeriodo = mesesPorParcela === 1 ? taxaAmDecimal
+        : Math.pow(1 + taxaAmDecimal, mesesPorParcela) - 1;
 
       let parcelas: ContratoImportado["parcelas"];
 
       if (prazoMeses > 0 && valorFin > 0) {
         // Gera cronograma completo de amortização
         let raw: { num_parcela: number; data_vencimento: string; amortizacao: number; juros: number; despesas_acessorios: number; valor_parcela: number; saldo_devedor: number }[];
-        if (tipoCalc.includes("PRICE") || tipoCalc.includes("FRANCES") || tipoCalc.includes("FRANCÊS")) {
-          raw = calcularPRICE(valorFin, taxaAmDecimal, prazoMeses, carenciaMeses, "so_juros");
+        if (tipoCalcRaw.includes("PRICE") || tipoCalcRaw.includes("FRANCES")) {
+          raw = calcularPRICE(valorFin, taxaPerPeriodo, prazoMeses, carenciaMeses, "so_juros");
         } else {
-          raw = calcularSAC(valorFin, taxaAmDecimal, prazoMeses, carenciaMeses, "so_juros");
-          if (tipoCalc && !tipoCalc.includes("SAC") && !tipoCalc.includes("AMORT")) {
-            avisos.push(`Contrato ${nrContrato}: tipo de cálculo "${tipoCalc}" não reconhecido — usando SAC`);
+          raw = calcularSAC(valorFin, taxaPerPeriodo, prazoMeses, carenciaMeses, "so_juros");
+          if (tipoCalcRaw && !tipoCalcRaw.includes("SAC") && !tipoCalcRaw.includes("AMORT")) {
+            avisos.push(`Contrato ${nrContrato}: tipo de cálculo "${tipoCalcRaw}" não reconhecido — usando SAC`);
           }
         }
-        parcelas = raw.map(p => ({
-          ...p,
-          data_vencimento: dataBase ? addMonths(dataBase, p.num_parcela) : dataVenc,
-        }));
+        // Datas: primeira parcela = dataBase + mesesPorParcela, depois espaçadas por mesesPorParcela
+        if (dataBase) {
+          const dataPrimeira = addMonths(dataBase, mesesPorParcela);
+          parcelas = aplicarDatas(raw, dataPrimeira, mesesPorParcela);
+        } else {
+          parcelas = raw.map(p => ({ ...p, data_vencimento: dataVenc }));
+        }
       } else {
         // Parcela única com vencimento final
         const iofPct   = num(row, "IOF_PCT");
@@ -503,7 +525,7 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
         if (!dataVenc) avisos.push(`Contrato ${nrContrato}: sem DATA_VENCIMENTO e PRAZO_MESES = 0`);
       }
 
-      const tipoRaw  = str(row, "TIPO", "LINHA_CREDITO");
+      const tipoRaw  = str(row, "TIPO", "LINHA_CREDITO", "LINHA_DE_CREDITO");
       const descricao = str(row, "DESCRICAO", "LINHA_CREDITO") || `Contrato ${nrContrato}`;
 
       contratos.push({
