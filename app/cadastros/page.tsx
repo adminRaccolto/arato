@@ -359,7 +359,7 @@ function CadastrosInner() {
   const [depositos, setDepositos]     = useState<Deposito[]>([]);
   const [modalDep, setModalDep]       = useState(false);
   const [editDep, setEditDep]         = useState<Deposito | null>(null);
-  const [fDep, setFDep]               = useState({ nome: "", tipo: "insumo_fazenda" as Deposito["tipo"], capacidade_sc: "", pessoa_id: "" });
+  const [fDep, setFDep]               = useState({ fazenda_id: "", nome: "", tipo: "insumo_fazenda" as Deposito["tipo"], capacidade_sc: "", pessoa_id: "" });
 
   // ── Contas Bancárias ──
   const [contas, setContas]           = useState<ContaBancaria[]>([]);
@@ -632,7 +632,11 @@ function CadastrosInner() {
       listarPrincipiosAtivos().then(setPrincipios).catch(() => {});
     }
     if (aba === "depositos") {
-      listarDepositos(fazendaId).then(setDepositos).catch(e => setErro(e.message));
+      // Carrega depósitos de TODAS as fazendas da conta
+      const fzIds = fazendas.length > 0 ? fazendas : [{ id: fazendaId! }];
+      Promise.all(fzIds.map(f => listarDepositos(f.id!)))
+        .then(resultados => setDepositos(resultados.flat()))
+        .catch(e => setErro(String(e)));
       listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
     }
     if (aba === "imoveis_urbanos") listarImoveisUrbanos(fazendaId).then(setImoveisUrbanos).catch(e => setErro(e.message));
@@ -1719,14 +1723,18 @@ function CadastrosInner() {
   // ─────────────── DEPÓSITOS ───────────────
   const abrirModalDep = (d?: Deposito) => {
     setEditDep(d ?? null);
-    setFDep(d ? { nome: d.nome, tipo: d.tipo, capacidade_sc: String(d.capacidade_sc ?? ""), pessoa_id: d.pessoa_id ?? "" } : { nome: "", tipo: "insumo_fazenda", capacidade_sc: "", pessoa_id: "" });
+    setFDep(d
+      ? { fazenda_id: d.fazenda_id, nome: d.nome, tipo: d.tipo, capacidade_sc: String(d.capacidade_sc ?? ""), pessoa_id: d.pessoa_id ?? "" }
+      : { fazenda_id: fazTrabalho || fazIdEff || "", nome: "", tipo: "insumo_fazenda", capacidade_sc: "", pessoa_id: "" });
     setModalDep(true);
   };
   const salvarDep = () => salvar(async () => {
     if (!fDep.nome.trim()) return;
+    const fazDepId = fDep.fazenda_id || fazTrabalho || fazIdEff;
+    if (!fazDepId) return;
     const isTerceiro = fDep.tipo === "armazem_terceiro" || fDep.tipo === "terceiro";
     const payload = {
-      fazenda_id: (fazTrabalho || fazIdEff)!, nome: fDep.nome.trim(), tipo: fDep.tipo,
+      fazenda_id: fazDepId, nome: fDep.nome.trim(), tipo: fDep.tipo,
       capacidade_sc: fDep.capacidade_sc ? Number(fDep.capacidade_sc) : undefined,
       ativo: true,
       pessoa_id: isTerceiro && fDep.pessoa_id ? fDep.pessoa_id : undefined,
@@ -4278,9 +4286,9 @@ function CadastrosInner() {
                 <button style={btnV} onClick={() => abrirModalDep()}>+ Novo Depósito</button>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome", "Tipo", "Pessoa/Armazém", "Capacidade (sc)", "Status", ""]} />
+                <TH cols={["Fazenda", "Nome", "Tipo", "Pessoa/Armazém", "Capacidade (sc)", "Status", ""]} />
                 <tbody>
-                  {depositos.length === 0 && <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado</td></tr>}
+                  {depositos.length === 0 && <tr><td colSpan={7} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum depósito cadastrado</td></tr>}
                   {depositos.map((d, i) => {
                     const corTipo: Record<string, [string,string]> = {
                       insumo_fazenda:   ["#D5E8F5","#0B2D50"],
@@ -4300,8 +4308,10 @@ function CadastrosInner() {
                     };
                     const [bg, cl] = corTipo[d.tipo] ?? ["#F1EFE8","var(--text-2)"];
                     const pessoaVinc = d.pessoa_id ? pessoas.find(p => p.id === d.pessoa_id)?.nome : null;
+                    const fazendaNomeDep = fazendas.find(f => f.id === d.fazenda_id)?.nome ?? "—";
                     return (
                       <tr key={d.id} style={{ borderBottom: i < depositos.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                        <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fazendaNomeDep}</td>
                         <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{d.nome}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(labelTipoDep[d.tipo] ?? d.tipo, bg, cl)}</td>
                         <td style={{ padding: "10px 14px", fontSize: 12, color: pessoaVinc ? "#7C3AED" : "var(--text-3)" }}>{pessoaVinc ?? "—"}</td>
@@ -8346,6 +8356,13 @@ function CadastrosInner() {
       {modalDep && (
         <Modal titulo={editDep ? "Editar Depósito" : "Novo Depósito"} onClose={() => setModalDep(false)}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={lbl}>Fazenda *</label>
+              <select style={inp} value={fDep.fazenda_id} onChange={e => setFDep(p => ({ ...p, fazenda_id: e.target.value }))}>
+                <option value="">— Selecione a fazenda —</option>
+                {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+              </select>
+            </div>
             <div style={{ gridColumn: "1/-1" }}><label style={lbl}>Nome *</label><input style={inp} placeholder="Ex: Armazém 1 — Sede" value={fDep.nome} onChange={e => setFDep(p => ({ ...p, nome: e.target.value }))} /></div>
             <div>
               <label style={lbl}>Tipo *</label>
@@ -8372,7 +8389,7 @@ function CadastrosInner() {
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalDep(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fDep.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fDep.nome.trim()} onClick={salvarDep}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button style={{ ...btnV, opacity: salvando || !fDep.nome.trim() || !fDep.fazenda_id ? 0.5 : 1 }} disabled={salvando || !fDep.nome.trim() || !fDep.fazenda_id} onClick={salvarDep}>{salvando ? "Salvando…" : "Salvar"}</button>
           </div>
         </Modal>
       )}
