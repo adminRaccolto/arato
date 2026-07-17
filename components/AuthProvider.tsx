@@ -220,7 +220,18 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           if (savedLogoUrl)       setLogoCliente(savedLogoUrl);
           // Ignora IDs sintéticos "sem_conta_<fazenda_id>" — deixa contaId=null nesses casos
           const cidReal = savedClienteContaId && !savedClienteContaId.startsWith("sem_conta_") ? savedClienteContaId : null;
-          if (cidReal) setContaId(cidReal);
+          if (cidReal) {
+            setContaId(cidReal);
+            // Carrega add-ons do cliente para impersonação fiel (respeita overrides de conta_modulos)
+            supabase.from("conta_modulos").select("modulo, habilitado").eq("conta_id", cidReal)
+              .then(({ data }) => {
+                if (data) {
+                  const overrides: ContaModulosOverrides = {};
+                  data.forEach((r: { modulo: string; habilitado: boolean }) => { overrides[r.modulo] = r.habilitado; });
+                  setContaModulosOverrides(overrides);
+                }
+              }).catch(() => {});
+          }
           // Resolve todas as fazendas da conta para queries multi-fazenda (fire-and-forget)
           fetch("/api/fazenda/da-conta", {
             method: "POST",
@@ -441,9 +452,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   // raccotlo tem acesso irrestrito a tudo; clientes verificam add-on ou plano
   const podeAcessarPlano = useCallback((modulo: string) => {
-    if (userRole === "raccotlo") return true;
-    // Override explícito via conta_modulos tem precedência sobre o plano
+    // Override explícito via conta_modulos tem precedência — inclusive durante impersonação raccotlo
     if (modulo in contaModulosOverrides) return contaModulosOverrides[modulo];
+    // Sem override: raccotlo tem acesso irrestrito
+    if (userRole === "raccotlo") return true;
     if (!planoAtual) return true; // sem plano carregado ainda → não bloqueia
     return planoInclui(planoAtual, modulo);
   }, [planoAtual, userRole, contaModulosOverrides]);
