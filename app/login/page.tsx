@@ -43,7 +43,7 @@ export default function Login() {
     setCarregando(true);
     setErro(null);
     setSucesso(null);
-    const redirectTo = `${window.location.origin}/auth/nova-senha`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=/auth/nova-senha`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     setCarregando(false);
     if (error) { setErro("Não foi possível enviar o e-mail. Verifique o endereço."); return; }

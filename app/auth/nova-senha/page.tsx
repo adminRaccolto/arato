@@ -13,13 +13,15 @@ export default function NovaSenha() {
   const router = useRouter();
 
   useEffect(() => {
-    // Supabase processa o token do hash automaticamente ao carregar a página
+    // Sessão já estabelecida pelo /auth/callback (PKCE) ou pelo hash (implicit)
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setSessaoOk(true);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setSessaoOk(true);
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
+        setSessaoOk(true);
+      }
     });
 
     return () => listener.subscription.unsubscribe();
