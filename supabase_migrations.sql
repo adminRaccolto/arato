@@ -7595,25 +7595,48 @@ CREATE TABLE IF NOT EXISTS transferencias_estoque_itens (
 ALTER TABLE transferencias_estoque       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transferencias_estoque_itens ENABLE ROW LEVEL SECURITY;
 
+-- RLS usa conta_id para cobrir TODAS as fazendas da conta (não só a ativa)
 CREATE POLICY "transf_estoque_all" ON transferencias_estoque FOR ALL USING (
-  fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
-  OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  fazenda_origem_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  )
+  OR fazenda_destino_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  )
 ) WITH CHECK (
-  fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
-  OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  fazenda_origem_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  )
+  OR fazenda_destino_id IN (
+    SELECT f.id FROM fazendas f
+    JOIN perfis p ON p.conta_id = f.conta_id
+    WHERE p.user_id = auth.uid()
+  )
 );
 
 CREATE POLICY "transf_estoque_itens_all" ON transferencias_estoque_itens FOR ALL USING (
   transferencia_id IN (
-    SELECT id FROM transferencias_estoque WHERE
-      fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
-      OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    SELECT t.id FROM transferencias_estoque t
+    WHERE t.fazenda_origem_id IN (
+      SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+    ) OR t.fazenda_destino_id IN (
+      SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+    )
   )
 ) WITH CHECK (
   transferencia_id IN (
-    SELECT id FROM transferencias_estoque WHERE
-      fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
-      OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    SELECT t.id FROM transferencias_estoque t
+    WHERE t.fazenda_origem_id IN (
+      SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+    ) OR t.fazenda_destino_id IN (
+      SELECT f.id FROM fazendas f JOIN perfis p ON p.conta_id = f.conta_id WHERE p.user_id = auth.uid()
+    )
   )
 );
 

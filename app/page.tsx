@@ -134,7 +134,7 @@ function useCountUp(target: number, duration = 900): number {
 
 // ─── Dashboard ────────────────────────────────────────────────
 export default function Dashboard() {
-  const { fazendaId, onboardingAtivo, nomeUsuario } = useAuth();
+  const { fazendaId, fazendaIds, onboardingAtivo, nomeUsuario } = useAuth();
 
   const [alertas,    setAlertas]    = useState<Alerta[]>([]);
   const [loadAl,     setLoadAl]     = useState(true);
@@ -398,11 +398,15 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .lt("estoque", 0),
 
-      // Solicitações de transferência via app campo pendentes
-      supabase.from("transferencias_estoque")
-        .select("id, numero, solicitante_nome, urgencia, data_transferencia", { count: "exact" })
-        .or(`fazenda_origem_id.eq.${fazendaId},fazenda_destino_id.eq.${fazendaId}`)
-        .eq("status", "solicitada"),
+      // Solicitações de transferência via app campo pendentes (todas as fazendas da conta)
+      (() => {
+        const ids = fazendaIds && fazendaIds.length > 1 ? fazendaIds : [fazendaId!];
+        const orFilter = ids.map(id => `fazenda_origem_id.eq.${id},fazenda_destino_id.eq.${id}`).join(",");
+        return supabase.from("transferencias_estoque")
+          .select("id, numero, solicitante_nome, urgencia, data_transferencia", { count: "exact" })
+          .or(orFilter)
+          .eq("status", "solicitada");
+      })(),
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
