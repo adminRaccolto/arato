@@ -155,37 +155,39 @@ export default function CampoTransferenciasPage() {
       const ieDiferentes = fazOrigem?.estado !== fazDestino?.estado;
       const cfop = ieDiferentes ? "6409" : "5409";
 
-      const { data: transf, error: tErr } = await supabase
-        .from("transferencias_estoque")
-        .insert({
-          numero,
-          fazenda_origem_id:   fazendaOrigemId,
-          deposito_origem_id:  depositoOrigemId,
-          fazenda_destino_id:  fazendaDestinoId,
-          deposito_destino_id: depositoDestinoId,
-          cfop,
-          ie_diferentes:       ieDiferentes,
-          entrada_automatica:  true,
-          status:              "solicitada",
-          data_transferencia:  dataTransferencia,
-          observacao:          observacao || null,
-          solicitante_nome:    nomeUsuario ?? "App Campo",
-          via_app:             true,
-          urgencia,
-        })
-        .select()
-        .single();
-
-      if (tErr) throw new Error(tErr.message);
-
       const itensParsed = itens.map(it => ({
-        transferencia_id: transf.id,
-        insumo_id:        it.insumo_id,
-        quantidade:       parseFloat(it.quantidade.replace(",", ".")),
-        unidade_medida:   it.unidade_medida,
+        insumo_id:      it.insumo_id,
+        quantidade:     parseFloat(it.quantidade.replace(",", ".")),
+        unidade_medida: it.unidade_medida,
       }));
-      const { error: itErr } = await supabase.from("transferencias_estoque_itens").insert(itensParsed);
-      if (itErr) throw new Error(itErr.message);
+
+      // Usa API route com service_role_key para contornar RLS
+      const res = await fetch("/api/campo/transferencia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transferencia: {
+            numero,
+            fazenda_origem_id:   fazendaOrigemId,
+            deposito_origem_id:  depositoOrigemId,
+            fazenda_destino_id:  fazendaDestinoId,
+            deposito_destino_id: depositoDestinoId,
+            cfop,
+            ie_diferentes:       ieDiferentes,
+            entrada_automatica:  true,
+            status:              "solicitada",
+            data_transferencia:  dataTransferencia,
+            observacao:          observacao || null,
+            solicitante_nome:    nomeUsuario ?? "App Campo",
+            via_app:             true,
+            urgencia,
+          },
+          itens: itensParsed,
+        }),
+      });
+
+      const json = await res.json() as { ok: boolean; error?: string };
+      if (!json.ok) throw new Error(json.error ?? "Erro ao salvar solicitação");
 
       setSucesso(true);
     } catch (e) {
