@@ -18,6 +18,7 @@ const ACOES = [
   { href: "/campo/aerea",         label: "Aplicação Aérea",        sub: "Avião agrícola · Drone · Helicóptero", icon: "✈️", cor: "#0B2D50", bg: "#D5E8F5" },
   { href: "/campo/colheita",       label: "Colheita",       sub: "Romaneio e produtividade", icon: "🌾", cor: "#7D4A00", bg: "#FFFBEB" },
   { href: "/campo/abastecimento",  label: "Abastecimento",  sub: "Combustível para máquinas", icon: "⛽", cor: "#4B3B0F", bg: "#FEFCE8" },
+  { href: "/campo/transferencias", label: "Transferência",  sub: "Insumos entre fazendas/depósitos", icon: "🔄", cor: "#1A4870", bg: "#EFF6FF" },
   { href: "/lavoura/pluviometria", label: "Pluviometria",   sub: "Leituras do pluviômetro", icon: "🌧", cor: "#1E3A5F", bg: "#EFF6FF" },
   { href: "/lavoura/recomendacoes", label: "Recomendações", sub: "Laudos agronômicos", icon: "📋", cor: "#166534", bg: "#F0FDF4" },
 ];

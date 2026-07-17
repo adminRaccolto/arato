@@ -185,7 +185,6 @@ const NAV: NavItem[] = [
       { type: "divider", label: "Monitoramento" },
       { id: "lav-recomendacoes",  label: "Recomendações Agronômicas", path: "/lavoura/recomendacoes"   },
       { id: "lav-execucao",         label: "📱 App de Campo (Mobile)",         path: "/campo"                        },
-      { id: "lav-campo-transf",    label: "📱 Solicitar Transferência (Campo)", path: "/campo/transferencias"         },
       { id: "lav-pragas",         label: "Pragas & Doenças",          path: "/lavoura/pragas"          },
       { id: "lav-pluviometria",   label: "Pluviometria",              path: "/lavoura/pluviometria"    },
       { type: "divider", label: "Relatórios" },
@@ -358,7 +357,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   useEffect(() => {
     if (!showQr || qrDataUrl) return;
     import("qrcode").then(QRCode => {
-      QRCode.toDataURL("https://arato.agr.br/campo", {
+      QRCode.toDataURL("https://web.arato.agr.br/campo", {
         width: 240, margin: 2,
         color: { dark: "#1A4870", light: "#ffffff" },
       }).then(setQrDataUrl);
@@ -910,9 +909,9 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
           }
 
           <div style={{ marginTop: 16, background: "var(--bg-page)", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>arato.agr.br/campo</span>
+            <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "monospace" }}>web.arato.agr.br/campo</span>
             <button
-              onClick={() => { navigator.clipboard.writeText("https://arato.agr.br/campo"); }}
+              onClick={() => { navigator.clipboard.writeText("https://web.arato.agr.br/campo"); }}
               style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", background: "#D5E8F5", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
             >
               Copiar
