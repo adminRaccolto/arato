@@ -123,9 +123,10 @@ const NAV: NavItem[] = [
   {
     type: "group", id: "estoque", label: "Estoque", minStep: 5,
     children: [
-      { id: "est-posicao",          label: "Posição de Estoque",        path: "/estoque"                          },
-      { id: "est-kardex",           label: "Kardex (Ficha de Estoque)", path: "/estoque/kardex"                   },
-      { id: "est-abastecimento",    label: "Abastecimento de Máquinas", path: "/estoque/abastecimento"            },
+      { id: "est-posicao",          label: "Posição de Estoque",           path: "/estoque"                          },
+      { id: "est-kardex",           label: "Kardex (Ficha de Estoque)",  path: "/estoque/kardex"                   },
+      { id: "est-transferencias",   label: "Transferência entre Fazendas", path: "/estoque/transferencias"          },
+      { id: "est-abastecimento",    label: "Abastecimento de Máquinas",  path: "/estoque/abastecimento"            },
     ],
   },
 
@@ -183,7 +184,8 @@ const NAV: NavItem[] = [
       { id: "lav-planejamento", label: "Planejamento de Safra", path: "/lavoura/planejamento"        },
       { type: "divider", label: "Monitoramento" },
       { id: "lav-recomendacoes",  label: "Recomendações Agronômicas", path: "/lavoura/recomendacoes"   },
-      { id: "lav-execucao",       label: "📱 App de Campo (Mobile)",  path: "/campo"                   },
+      { id: "lav-execucao",         label: "📱 App de Campo (Mobile)",         path: "/campo"                        },
+      { id: "lav-campo-transf",    label: "📱 Solicitar Transferência (Campo)", path: "/campo/transferencias"         },
       { id: "lav-pragas",         label: "Pragas & Doenças",          path: "/lavoura/pragas"          },
       { id: "lav-pluviometria",   label: "Pluviometria",              path: "/lavoura/pluviometria"    },
       { type: "divider", label: "Relatórios" },

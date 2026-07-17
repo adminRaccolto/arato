@@ -911,6 +911,43 @@ export type ContaBancaria = {
   created_at?: string;
 };
 
+export type TransferenciaEstoque = {
+  id: string;
+  numero?: string;
+  fazenda_origem_id: string;
+  deposito_origem_id?: string | null;
+  fazenda_destino_id: string;
+  deposito_destino_id?: string | null;
+  cfop: string;
+  ie_origem?: string | null;
+  ie_destino?: string | null;
+  ie_diferentes: boolean;
+  entrada_automatica: boolean;
+  status: "solicitada" | "rascunho" | "emitida" | "entrada_confirmada" | "cancelada";
+  data_transferencia: string;
+  data_emissao?: string | null;
+  nf_numero?: string | null;
+  nf_chave?: string | null;
+  nf_destino_numero?: string | null;
+  nf_destino_chave?: string | null;
+  observacao?: string | null;
+  solicitante_nome?: string | null;
+  via_app: boolean;
+  urgencia: "programado" | "urgente";
+  created_at?: string;
+};
+
+export type TransferenciaEstoqueItem = {
+  id: string;
+  transferencia_id: string;
+  insumo_id: string;
+  quantidade: number;
+  unidade_medida: string;
+  custo_unitario?: number | null;
+  valor_total?: number;
+  created_at?: string;
+};
+
 export type Deposito = {
   id: string;
   fazenda_id: string;

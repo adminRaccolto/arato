@@ -397,11 +397,17 @@ export default function Dashboard() {
         .select("id, nome, estoque, unidade")
         .eq("fazenda_id", fazendaId)
         .lt("estoque", 0),
+
+      // Solicitações de transferência via app campo pendentes
+      supabase.from("transferencias_estoque")
+        .select("id, numero, solicitante_nome, urgencia, data_transferencia", { count: "exact" })
+        .or(`fazenda_origem_id.eq.${fazendaId},fazenda_destino_id.eq.${fazendaId}`)
+        .eq("status", "solicitada"),
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
       ciclosRes, contratosRes, cpVencRes, segurosRes,
-      pendFiscalRes, insNegRes,
+      pendFiscalRes, insNegRes, transfSolRes,
     ]) => {
       const novosAlertas: Alerta[] = [];
 
@@ -557,6 +563,20 @@ export default function Dashboard() {
           urgencia: "alto",
           link: "/cadastros?tab=insumos",
           linkLabel: "Ver Insumos",
+        });
+      }
+
+      // ── Solicitações de transferência via app campo ──
+      const qtdTransf = transfSolRes.count ?? 0;
+      if (qtdTransf > 0) {
+        const urgentes = (transfSolRes.data ?? []).filter((t: { urgencia: string }) => t.urgencia === "urgente").length;
+        novosAlertas.push({
+          id: "transferencias-pendentes",
+          tipo: "estoque",
+          desc: `${qtdTransf} solicitação${qtdTransf > 1 ? "s" : ""} de transferência pendente${qtdTransf > 1 ? "s" : ""} do app campo${urgentes > 0 ? ` (${urgentes} urgente${urgentes > 1 ? "s" : ""})` : ""}`,
+          urgencia: urgentes > 0 ? "alto" : "medio",
+          link: "/estoque/transferencias",
+          linkLabel: "Emitir NF",
         });
       }
 

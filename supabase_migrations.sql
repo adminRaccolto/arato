@@ -7550,3 +7550,74 @@ CREATE POLICY "apoio_lancamentos_all" ON apoio_lancamentos FOR ALL USING (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 72 — Transferência de Insumos/Estoque entre Fazendas
+CREATE TABLE IF NOT EXISTS transferencias_estoque (
+  id                   uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  numero               text,                          -- numeração interna gerada pelo sistema
+  fazenda_origem_id    uuid NOT NULL REFERENCES fazendas(id),
+  deposito_origem_id   uuid REFERENCES depositos(id),
+  fazenda_destino_id   uuid NOT NULL REFERENCES fazendas(id),
+  deposito_destino_id  uuid REFERENCES depositos(id),
+  cfop                 text NOT NULL DEFAULT '5409',
+  ie_origem            text,                          -- IE do estabelecimento origem
+  ie_destino           text,                          -- IE do estabelecimento destino (pode diferir)
+  ie_diferentes        boolean NOT NULL DEFAULT false, -- alerta: IEs distintas, NF destino necessária
+  entrada_automatica   boolean NOT NULL DEFAULT true,  -- debita origem e credita destino automaticamente
+  status               text NOT NULL DEFAULT 'solicitada'
+                         CHECK (status IN ('solicitada','rascunho','emitida','entrada_confirmada','cancelada')),
+  data_transferencia   date NOT NULL DEFAULT CURRENT_DATE,
+  data_emissao         timestamptz,
+  nf_numero            text,                          -- número da NF emitida origem
+  nf_chave             text,                          -- chave da NF emitida origem
+  nf_destino_numero    text,                          -- NF destino (quando IE diferente)
+  nf_destino_chave     text,
+  observacao           text,
+  solicitante_nome     text,                          -- quem solicitou (app campo)
+  via_app              boolean NOT NULL DEFAULT false,
+  urgencia             text NOT NULL DEFAULT 'programado'
+                         CHECK (urgencia IN ('programado','urgente')),
+  created_by           uuid REFERENCES auth.users(id),
+  created_at           timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS transferencias_estoque_itens (
+  id                uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  transferencia_id  uuid NOT NULL REFERENCES transferencias_estoque(id) ON DELETE CASCADE,
+  insumo_id         uuid NOT NULL REFERENCES insumos(id),
+  quantidade        numeric(14,4) NOT NULL,
+  unidade_medida    text NOT NULL DEFAULT 'kg',
+  custo_unitario    numeric(14,4),
+  valor_total       numeric(14,2) GENERATED ALWAYS AS (quantidade * COALESCE(custo_unitario, 0)) STORED,
+  created_at        timestamptz DEFAULT now()
+);
+
+ALTER TABLE transferencias_estoque       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transferencias_estoque_itens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "transf_estoque_all" ON transferencias_estoque FOR ALL USING (
+  fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+) WITH CHECK (
+  fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+);
+
+CREATE POLICY "transf_estoque_itens_all" ON transferencias_estoque_itens FOR ALL USING (
+  transferencia_id IN (
+    SELECT id FROM transferencias_estoque WHERE
+      fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  )
+) WITH CHECK (
+  transferencia_id IN (
+    SELECT id FROM transferencias_estoque WHERE
+      fazenda_origem_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR fazenda_destino_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+  )
+);
+
+-- Sequência para numeração automática de transferências
+CREATE SEQUENCE IF NOT EXISTS seq_transferencia_numero START 1;
+
+NOTIFY pgrst, 'reload schema';
