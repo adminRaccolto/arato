@@ -111,6 +111,21 @@ export default function TransferenciasEstoquePage() {
   const [detalhe, setDetalhe] = useState<TransferenciaComItens | null>(null);
   const [acaoId, setAcaoId] = useState<string | null>(null);
 
+  // ── Helper API route (service_role_key) ─────────────────────────────────
+  async function acao(
+    tipo: string,
+    id?: string,
+    transferencia?: Record<string, unknown>,
+    itensList?: Array<Record<string, unknown>>,
+  ): Promise<{ ok: boolean; error?: string; [k: string]: unknown }> {
+    const res = await fetch("/api/campo/transferencia-acao", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ acao: tipo, transferencia_id: id, transferencia, itens: itensList }),
+    });
+    return res.json();
+  }
+
   // ── Carregar dados ────────────────────────────────────────────────────────
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
@@ -220,71 +235,28 @@ export default function TransferenciasEstoquePage() {
     setSalvando(true); setErro(null);
     try {
       const numero = `TRF-${Date.now().toString().slice(-6)}`;
-      const ieDiferentes = estadosDiferentes;
-
-      const { data: transf, error: tErr } = await supabase
-        .from("transferencias_estoque")
-        .insert({
-          numero,
-          fazenda_origem_id:    form.fazendaOrigemId,
-          deposito_origem_id:   form.depositoOrigemId || null,
-          fazenda_destino_id:   form.fazendaDestinoId,
-          deposito_destino_id:  form.depositoDestinoId || null,
-          cfop:                 cfopCalculado,
-          ie_diferentes:        ieDiferentes,
-          entrada_automatica:   form.entradaAutomatica,
-          status,
-          data_transferencia:   form.dataTransferencia,
-          data_emissao:         status === "emitida" ? new Date().toISOString() : null,
-          observacao:           form.observacao || null,
-          via_app:              false,
-        })
-        .select()
-        .single();
-      if (tErr) throw new Error(tErr.message);
-
-      // Inserir itens
       const itensParsed = itens.map(it => ({
-        transferencia_id: transf.id,
-        insumo_id:        it.insumo_id,
-        quantidade:       parseFloat(it.quantidade.replace(",", ".")),
-        unidade_medida:   it.unidade_medida,
-        custo_unitario:   it.custo_unitario ? parseFloat(it.custo_unitario.replace(",", ".")) : null,
+        insumo_id:      it.insumo_id,
+        quantidade:     parseFloat(it.quantidade.replace(",", ".")),
+        unidade_medida: it.unidade_medida,
+        custo_unitario: it.custo_unitario ? parseFloat(it.custo_unitario.replace(",", ".")) : null,
       }));
-      await supabase.from("transferencias_estoque_itens").insert(itensParsed);
-
-      // Se emitida: movimentar estoque
-      if (status === "emitida") {
-        for (const it of itensParsed) {
-          // Saída da origem
-          await supabase.from("movimentacoes_estoque").insert({
-            fazenda_id:  form.fazendaOrigemId,
-            insumo_id:   it.insumo_id,
-            tipo:        "saida",
-            motivo:      `Transferência ${numero} → ${fazendaDestino?.nome}`,
-            quantidade:  it.quantidade,
-            data:        form.dataTransferencia,
-            deposito_id: form.depositoOrigemId || null,
-            observacao:  `Transferência entre fazendas — CFOP ${cfopCalculado}`,
-            auto:        true,
-          });
-          // Entrada no destino (se entrada automática)
-          if (form.entradaAutomatica) {
-            await supabase.from("movimentacoes_estoque").insert({
-              fazenda_id:  form.fazendaDestinoId,
-              insumo_id:   it.insumo_id,
-              tipo:        "entrada",
-              motivo:      `Transferência ${numero} ← ${fazendaOrigem?.nome}`,
-              quantidade:  it.quantidade,
-              data:        form.dataTransferencia,
-              deposito_id: form.depositoDestinoId || null,
-              observacao:  `Transferência entre fazendas — CFOP ${cfopCalculado}`,
-              auto:        true,
-            });
-          }
-        }
-      }
-
+      const res = await acao("salvar", undefined, {
+        numero,
+        fazenda_origem_id:    form.fazendaOrigemId,
+        deposito_origem_id:   form.depositoOrigemId || null,
+        fazenda_destino_id:   form.fazendaDestinoId,
+        deposito_destino_id:  form.depositoDestinoId || null,
+        cfop:                 cfopCalculado,
+        ie_diferentes:        estadosDiferentes,
+        entrada_automatica:   form.entradaAutomatica,
+        status,
+        data_transferencia:   form.dataTransferencia,
+        data_emissao:         status === "emitida" ? new Date().toISOString() : null,
+        observacao:           form.observacao || null,
+        via_app:              false,
+      }, itensParsed);
+      if (!res.ok) throw new Error(res.error ?? "Erro ao salvar");
       setModal(false);
       resetForm();
       await carregar();
@@ -295,78 +267,32 @@ export default function TransferenciasEstoquePage() {
     }
   }
 
-  // Confirmar entrada (quando entrada_automatica = false ou status = emitida sem entrada)
   async function confirmarEntrada(t: TransferenciaComItens) {
     setAcaoId(t.id);
     try {
-      for (const it of t.itens ?? []) {
-        await supabase.from("movimentacoes_estoque").insert({
-          fazenda_id:  t.fazenda_destino_id,
-          insumo_id:   it.insumo_id,
-          tipo:        "entrada",
-          motivo:      `Transferência ${t.numero} ← ${t.fazenda_origem_nome}`,
-          quantidade:  it.quantidade,
-          data:        t.data_transferencia,
-          deposito_id: t.deposito_destino_id || null,
-          observacao:  `Entrada confirmada manualmente — CFOP ${t.cfop}`,
-          auto:        true,
-        });
-      }
-      await supabase.from("transferencias_estoque").update({ status: "entrada_confirmada" }).eq("id", t.id);
-      await carregar();
-    } finally {
-      setAcaoId(null);
-    }
+      const res = await acao("confirmar_entrada", t.id);
+      if (!res.ok) alert(res.error ?? "Erro ao confirmar entrada");
+      else await carregar();
+    } finally { setAcaoId(null); }
   }
 
-  // Emitir NF para solicitação do app campo
   async function emitirSolicitacao(t: TransferenciaComItens) {
     setAcaoId(t.id);
     try {
-      const dataEmissao = new Date().toISOString();
-      await supabase.from("transferencias_estoque").update({
-        status:       "emitida",
-        data_emissao: dataEmissao,
-      }).eq("id", t.id);
-
-      for (const it of t.itens ?? []) {
-        await supabase.from("movimentacoes_estoque").insert({
-          fazenda_id:  t.fazenda_origem_id,
-          insumo_id:   it.insumo_id,
-          tipo:        "saida",
-          motivo:      `Transferência ${t.numero} → ${t.fazenda_destino_nome}`,
-          quantidade:  it.quantidade,
-          data:        t.data_transferencia,
-          deposito_id: t.deposito_origem_id || null,
-          observacao:  `NF de Transferência — CFOP ${t.cfop}`,
-          auto:        true,
-        });
-        if (t.entrada_automatica) {
-          await supabase.from("movimentacoes_estoque").insert({
-            fazenda_id:  t.fazenda_destino_id,
-            insumo_id:   it.insumo_id,
-            tipo:        "entrada",
-            motivo:      `Transferência ${t.numero} ← ${t.fazenda_origem_nome}`,
-            quantidade:  it.quantidade,
-            data:        t.data_transferencia,
-            deposito_id: t.deposito_destino_id || null,
-            observacao:  `NF de Transferência — CFOP ${t.cfop}`,
-            auto:        true,
-          });
-        }
-      }
-      await carregar();
-    } finally {
-      setAcaoId(null);
-    }
+      const res = await acao("emitir", t.id);
+      if (!res.ok) alert(res.error ?? "Erro ao emitir NF");
+      else await carregar();
+    } finally { setAcaoId(null); }
   }
 
   async function cancelar(id: string) {
     if (!confirm("Cancelar esta transferência?")) return;
     setAcaoId(id);
-    await supabase.from("transferencias_estoque").update({ status: "cancelada" }).eq("id", id);
-    await carregar();
-    setAcaoId(null);
+    try {
+      const res = await acao("cancelar", id);
+      if (!res.ok) alert(res.error ?? "Erro ao cancelar");
+      else await carregar();
+    } finally { setAcaoId(null); }
   }
 
   function resetForm() {
