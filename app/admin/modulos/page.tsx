@@ -1,15 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { PLANOS_DEFAULT } from "../../../lib/planos";
 import type { PlanoId } from "../../../lib/planos";
-
-// ─── Supabase client ─────────────────────────────────────────────────────────
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -18,12 +10,6 @@ interface ContaSimples {
   nome: string;
   pacote?: string;
   status?: string;
-}
-
-interface ContaModulo {
-  conta_id: string;
-  modulo: string;
-  habilitado: boolean;
 }
 
 // ─── Definição dos módulos por grupo ─────────────────────────────────────────
@@ -124,26 +110,26 @@ export default function ModulosPage() {
   const [salvando, setSalvando] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
 
-  // Carrega lista de contas
+  // Carrega lista de contas via API route (service_role — ignora RLS)
   useEffect(() => {
-    supabase.from("contas").select("id, nome, pacote, status").order("nome").then(({ data }) => {
-      if (data) setContas(data as ContaSimples[]);
-    });
+    fetch("/api/admin/listar-contas")
+      .then(r => r.json())
+      .then((data: ContaSimples[] | { error: string }) => {
+        if (Array.isArray(data)) setContas(data);
+      });
   }, []);
 
-  // Quando troca de conta, carrega overrides do banco
+  // Quando troca de conta, carrega overrides do banco via API route
   async function selecionarConta(id: string) {
     setContaId(id);
     const sel = contas.find(c => c.id === id) ?? null;
     setContaSel(sel);
     if (!id) { setOverrides({}); return; }
     setCarregando(true);
-    const { data } = await supabase
-      .from("conta_modulos")
-      .select("modulo, habilitado")
-      .eq("conta_id", id);
+    const res = await fetch(`/api/admin/conta-modulos?conta_id=${id}`);
+    const data = await res.json() as { modulo: string; habilitado: boolean }[];
     const mapa: Record<string, boolean> = {};
-    (data ?? [] as { modulo: string; habilitado: boolean }[]).forEach((r) => { mapa[r.modulo] = r.habilitado; });
+    if (Array.isArray(data)) data.forEach((r) => { mapa[r.modulo] = r.habilitado; });
     setOverrides(mapa);
     setCarregando(false);
   }
@@ -172,17 +158,21 @@ export default function ModulosPage() {
     if (!contaId) return;
     setSalvando(true); setMsg(null);
     try {
-      // Módulos que diferem do plano padrão
       const todos = Object.keys(MODULOS_LABEL);
-      const upserts: ContaModulo[] = todos
+      const modulos = todos
         .filter(m => estaHabilitado(m) !== noPlano(m) || m in overrides)
-        .map(m => ({ conta_id: contaId, modulo: m, habilitado: estaHabilitado(m) }));
+        .map(m => ({ modulo: m, habilitado: estaHabilitado(m) }));
 
-      if (upserts.length > 0) {
-        const { error } = await supabase
-          .from("conta_modulos")
-          .upsert(upserts, { onConflict: "conta_id,modulo" });
-        if (error) throw new Error(error.message);
+      if (modulos.length > 0) {
+        const res = await fetch("/api/admin/conta-modulos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conta_id: contaId, modulos }),
+        });
+        if (!res.ok) {
+          const err = await res.json() as { error?: string };
+          throw new Error(err.error ?? "Erro ao salvar");
+        }
       }
       setMsg({ tipo: "ok", texto: "Módulos salvos com sucesso." });
     } catch (e) {
