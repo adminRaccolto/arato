@@ -398,15 +398,12 @@ export default function Dashboard() {
         .eq("fazenda_id", fazendaId)
         .lt("estoque", 0),
 
-      // Solicitações de transferência via app campo pendentes (todas as fazendas da conta)
-      (() => {
-        const ids = fazendaIds && fazendaIds.length > 1 ? fazendaIds : [fazendaId!];
-        const orFilter = ids.map(id => `fazenda_origem_id.eq.${id},fazenda_destino_id.eq.${id}`).join(",");
-        return supabase.from("transferencias_estoque")
-          .select("id, numero, solicitante_nome, urgencia, data_transferencia", { count: "exact" })
-          .or(orFilter)
-          .eq("status", "solicitada");
-      })(),
+      // Solicitações de transferência — via API route (service_role_key, sem RLS)
+      fetch("/api/campo/transferencias-pendentes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_ids: fazendaIds && fazendaIds.length > 0 ? fazendaIds : [fazendaId] }),
+      }).then(r => r.json()).catch(() => ({ ok: false, data: [], count: 0 })),
     ]).then(([
       cpRes, crRes, arrRes, certRes,
       cpTotalRes, crTotalRes, cpSemRes, crSemRes,
