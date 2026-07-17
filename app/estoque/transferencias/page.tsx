@@ -467,8 +467,18 @@ export default function TransferenciasEstoquePage() {
                         {t.nf_numero ?? "—"}
                       </td>
                       <td style={td}>
-                        <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button onClick={() => abrirDetalhe(t)} style={btn("#F4F6FA", "#555")}>Ver</button>
+                          {t.nf_chave && (
+                            <a
+                              href={`/api/fiscal/danfe?chave=${t.nf_chave}&fazenda_id=${t.fazenda_origem_id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ ...btn("#1A4870"), textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                            >
+                              DANFE
+                            </a>
+                          )}
                           {t.status === "emitida" && !t.entrada_automatica && (
                             <button onClick={() => confirmarEntrada(t)} disabled={acaoId === t.id} style={btn("#16A34A")}>
                               {acaoId === t.id ? "…" : "Confirmar Entrada"}
