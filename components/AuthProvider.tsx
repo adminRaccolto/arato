@@ -223,14 +223,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           if (cidReal) {
             setContaId(cidReal);
             // Carrega add-ons do cliente para impersonação fiel (respeita overrides de conta_modulos)
-            supabase.from("conta_modulos").select("modulo, habilitado").eq("conta_id", cidReal)
-              .then(({ data }) => {
-                if (data) {
-                  const overrides: ContaModulosOverrides = {};
-                  data.forEach((r: { modulo: string; habilitado: boolean }) => { overrides[r.modulo] = r.habilitado; });
-                  setContaModulosOverrides(overrides);
-                }
-              }).catch(() => {});
+            Promise.resolve(
+              supabase.from("conta_modulos").select("modulo, habilitado").eq("conta_id", cidReal)
+            ).then(({ data }) => {
+              if (data) {
+                const overrides: ContaModulosOverrides = {};
+                data.forEach((r: { modulo: string; habilitado: boolean }) => { overrides[r.modulo] = r.habilitado; });
+                setContaModulosOverrides(overrides);
+              }
+            }).catch(() => {});
           }
           // Resolve todas as fazendas da conta para queries multi-fazenda (fire-and-forget)
           fetch("/api/fazenda/da-conta", {
