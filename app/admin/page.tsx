@@ -288,6 +288,21 @@ export default function AdminOverview() {
     setLiberandoOnb(null);
   }, [carregar]);
 
+  const ativarImplantacao = useCallback(async (contaId: string, contaNome: string) => {
+    if (!confirm(`Ativar modo de implantação para "${contaNome}"?\n\nO checklist de cadastros iniciais será exibido para o cliente e a navegação ficará restrita até a conclusão.`)) return;
+    setLiberandoOnb(contaId);
+    try {
+      const res = await fetch("/api/admin/atualizar-conta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: contaId, campos: { onboarding_ativo: true } }),
+      });
+      if (!res.ok) { const j = await res.json(); alert("Erro: " + j.error); return; }
+      await carregar();
+    } catch { alert("Erro de conexão."); }
+    setLiberandoOnb(null);
+  }, [carregar]);
+
   const clientesFiltrados = clientes.filter(c => {
     if (filtroStatus && c.status !== filtroStatus) return false;
     if (filtroPacote && c.pacote !== filtroPacote) return false;
@@ -596,7 +611,7 @@ export default function AdminOverview() {
                         </td>
                         <td style={{ padding: "11px 14px", textAlign: "center" }}>
                           <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center" }}>
-                            {c.onboarding_ativo && (
+                            {c.onboarding_ativo ? (
                               <button
                                 onClick={() => liberarOnboarding(c.id, c.nome)}
                                 disabled={liberandoOnb === c.id}
@@ -604,6 +619,15 @@ export default function AdminOverview() {
                                 style={{ padding: "5px 10px", border: "0.5px solid #16A34A80", borderRadius: 6, background: "#F0FDF4", cursor: liberandoOnb === c.id ? "not-allowed" : "pointer", fontSize: 11, color: "#16A34A", fontWeight: 600, whiteSpace: "nowrap" }}
                               >
                                 {liberandoOnb === c.id ? "…" : "🔓 Liberar"}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => ativarImplantacao(c.id, c.nome)}
+                                disabled={liberandoOnb === c.id}
+                                title="Ativar modo de implantação"
+                                style={{ padding: "5px 10px", border: "0.5px solid #C9921B80", borderRadius: 6, background: "#FBF3E0", cursor: liberandoOnb === c.id ? "not-allowed" : "pointer", fontSize: 11, color: "#C9921B", fontWeight: 600, whiteSpace: "nowrap" }}
+                              >
+                                {liberandoOnb === c.id ? "…" : "🔧 Implantar"}
                               </button>
                             )}
                             <button

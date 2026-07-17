@@ -333,6 +333,7 @@ export default function ClientesPage() {
           origem:            g("origem") as string | undefined,
           cidade:            g("cidade") as string | undefined,
           estado:            g("estado") as string | undefined,
+          onboarding_ativo:  (g("onboarding_ativo") as boolean) ?? false,
           _sem_conta:        semConta,
           _fazendas_prod:    fc.fazendas,
           _area_total:       fc.area_total,
@@ -544,6 +545,25 @@ export default function ClientesPage() {
       const json = await res.json();
       if (!json.ok) { alert("Erro: " + (json.error ?? "desconhecido")); return; }
       setClientes(cs => cs.map(x => x.id === c.id ? { ...x, onboarding_ativo: false } : x));
+    } catch (e) {
+      alert("Erro de conexão: " + String(e));
+    } finally {
+      setAcaoLoading(null);
+    }
+  }
+
+  async function ativarImplantacao(c: ClienteAdmin) {
+    if (!window.confirm(`Ativar modo de implantação para "${c.nome}"?\n\nIsso vai:\n• Ativar o painel de checklist para o cliente\n• Restringir navegação até os cadastros iniciais serem feitos`)) return;
+    setAcaoLoading(c.id);
+    try {
+      const res = await fetch("/api/admin/atualizar-conta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c.id, campos: { onboarding_ativo: true } }),
+      });
+      const json = await res.json();
+      if (!res.ok) { alert("Erro: " + (json.error ?? "desconhecido")); return; }
+      setClientes(cs => cs.map(x => x.id === c.id ? { ...x, onboarding_ativo: true } : x));
     } catch (e) {
       alert("Erro de conexão: " + String(e));
     } finally {
@@ -895,16 +915,27 @@ export default function ClientesPage() {
                               ✕ PB
                             </button>
                           )}
-                          {/* Liberar acesso — sempre visível; desbloqueia usuários banidos e remove onboarding */}
+                          {/* Toggle de implantação — mostra estado atual e permite inverter */}
                           {!c._sem_conta && (
-                            <button
-                              style={{ ...btnSmall, color: "#16A34A", borderColor: "#16A34A60", background: "#F0FDF4" }}
-                              onClick={() => liberarOnboarding(c)}
-                              title="Liberar acesso — desbloqueia usuários e remove restrições"
-                              disabled={acaoLoading === c.id}
-                            >
-                              🔓
-                            </button>
+                            c.onboarding_ativo ? (
+                              <button
+                                style={{ ...btnSmall, color: "#16A34A", borderColor: "#16A34A60", background: "#F0FDF4" }}
+                                onClick={() => liberarOnboarding(c)}
+                                title="Liberar acesso — desativar onboarding e desbloquear usuários"
+                                disabled={acaoLoading === c.id}
+                              >
+                                {acaoLoading === c.id ? "…" : "🔓 Liberar"}
+                              </button>
+                            ) : (
+                              <button
+                                style={{ ...btnSmall, color: "#C9921B", borderColor: "#C9921B60", background: "#FBF3E0" }}
+                                onClick={() => ativarImplantacao(c)}
+                                title="Ativar modo de implantação — habilita checklist e restrições de navegação"
+                                disabled={acaoLoading === c.id}
+                              >
+                                {acaoLoading === c.id ? "…" : "🔧 Implantar"}
+                              </button>
+                            )
                           )}
                           {/* Editar */}
                           <button style={btnSmall} onClick={() => setModalEdit(c)} title="Editar dados">
@@ -943,7 +974,7 @@ export default function ClientesPage() {
 
       {/* Nota */}
       <div style={{ marginTop: 16, padding: "10px 14px", background: "#EFF6FF", borderRadius: 8, border: "0.5px solid #378ADD40", fontSize: 11, color: "#1A4870", lineHeight: 1.7 }}>
-        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>🔓</strong> liberar onboarding · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
+        <strong>Dica:</strong> <strong>💳</strong> faturamento · <strong>⬡</strong> módulos · <strong>↑↓</strong> alterar plano · <strong>⭐ PB</strong> pro bono · <strong>🔧 Implantar</strong> ativa checklist de implantação · <strong>🔓 Liberar</strong> desativa onboarding e desbloqueia acesso · <strong>✎</strong> editar · <strong>🚫</strong> cancelar acesso (revoga login imediatamente) · <strong>🗑</strong> excluir permanentemente (só trial/cancelado/pro bono).
       </div>
     </div>
   );

@@ -47,19 +47,16 @@ export async function criarClienteCompleto(payload: CriarClientePayload): Promis
   const supabase = adminClient();
 
   // ── 0. Criar conta (tenant raiz) ──
+  const insertConta: Record<string, unknown> = { nome, tipo: tipo === "pj" ? "pj" : "pf" };
+  try { insertConta.onboarding_ativo = onboarding_ativo; } catch { /* coluna pode não existir */ }
+
   const { data: conta, error: contaErr } = await supabase
     .from("contas")
-    .insert({ nome, tipo: tipo === "pj" ? "pj" : "pf" })
+    .insert(insertConta)
     .select("id")
     .single();
   if (contaErr) throw new Error("Conta: " + contaErr.message);
   const contaId = conta.id;
-
-  if (!onboarding_ativo) {
-    try {
-      await supabase.from("contas").update({ onboarding_ativo: false }).eq("id", contaId);
-    } catch { /* coluna pode não existir ainda */ }
-  }
 
   // ── 1. Criar fazenda vinculada à conta ──
   const { data: fazenda, error: fazErr } = await supabase
