@@ -1296,6 +1296,11 @@ export default function BI() {
           const kpiDisp    = Math.max(0, kpiVolPrev - kpiCompr);
           const kpiColhido = pcRows.reduce((s, r) => s + r.colhido, 0);
 
+          // Unidade do produto filtrado ("@" para algodão, "sc" para grãos)
+          const { label: unitLabel } = pcCultFiltro ? unidProd(pcCultFiltro, cultMap) : { label: "sc" };
+          const unitHa = `${unitLabel}/ha`;
+          const fmtVol = (v: number) => `${fmtN(v, 0)} ${unitLabel}`;
+
           // Opções de filtro
           const fazOpts  = [...new Set(ciclosFiltrados.map(c => c.fazenda_id))].map(fid => ({ id: fid, nome: fazendas.find(f => f.id === fid)?.nome ?? fid }));
           const cultOpts = [...new Set(todasRows.map(r => r.comm))];
@@ -1355,12 +1360,12 @@ export default function BI() {
             ].filter(Boolean).join(" · ") || "Todos os produtos e fazendas";
 
             const kpis = [
-              { label: "Volume Previsto",      val: `${fmtN(kpiVolPrev,0)} sc`,  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC" },
-              { label: "Faturamento Previsto", val: fmtR(kpiFatPrev),             sub: kpiVolPrev > 0 ? `${fmtR2(scHaPrec)}/sc` : "", cor: "#14532D", bg: "#ECFDF5" },
-              { label: "Comprometido / ha",    val: `${fmtN(scHaCompr,1)} sc/ha`, sub: `${fmtN(kpiCompr,0)} sc · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0" },
-              { label: "Disponível p/ venda",  val: `${fmtN(kpiDisp,0)} sc`,      sub: `${fmtN(kpiDisp/totalArea,1)} sc/ha`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
-              { label: "Valor a Faturar",      val: fmtR(kpiDisp * scHaPrec),     sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4" },
-              { label: "Colhido",              val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"#888", bg: kpiColhido>0?"#F0FDFA":"#f4f6fa" },
+              { label: "Volume Previsto",      val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC" },
+              { label: "Faturamento Previsto", val: fmtR(kpiFatPrev),    sub: kpiVolPrev > 0 ? `${fmtR2(scHaPrec)}/${unitLabel}` : "", cor: "#14532D", bg: "#ECFDF5" },
+              { label: "Comprometido / ha",    val: `${fmtN(scHaCompr,1)} ${unitHa}`, sub: `${fmtVol(kpiCompr)} · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0" },
+              { label: "Disponível p/ venda",  val: fmtVol(kpiDisp),     sub: `${fmtN(kpiDisp/totalArea,1)} ${unitHa}`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB" },
+              { label: "Valor a Faturar",      val: fmtR(kpiDisp * scHaPrec), sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4" },
+              { label: "Colhido",              val: kpiColhido>0?fmtVol(kpiColhido):"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"#888", bg: kpiColhido>0?"#F0FDFA":"#f4f6fa" },
             ];
             const kpiHtml = kpis.map(k => `
               <div style="background:${k.bg};border-radius:7px;padding:9px 12px;border:0.5px solid #dde2ee;">
@@ -1681,7 +1686,7 @@ export default function BI() {
                             })}
                             <text x={CX} y={CY - 5} textAnchor="middle" fontSize={9} fill="var(--text-3)" fontWeight={600}>PREVISTO</text>
                             <text x={CX} y={CY + 9} textAnchor="middle" fontSize={11} fill="var(--text-1)" fontWeight={700}>{fmtN(kpiVolPrev,0)}</text>
-                            <text x={CX} y={CY + 20} textAnchor="middle" fontSize={8} fill="var(--text-3)">sacas</text>
+                            <text x={CX} y={CY + 20} textAnchor="middle" fontSize={8} fill="var(--text-3)">{unitLabel === "sc" ? "sacas" : unitLabel}</text>
                           </svg>
                           <div style={{ display: "flex", flexDirection: "column", gap: 4, width: "100%", marginTop: 6 }}>
                             {donutSegs.map(seg => (
@@ -1702,12 +1707,12 @@ export default function BI() {
                           return (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gridTemplateRows: "1fr 1fr", gap: 8 }}>
                               {[
-                                { label: "Volume Previsto",     val: `${fmtN(kpiVolPrev,0)} sc`,  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC", click: undefined as (() => void) | undefined },
-                                { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),              sub: kpiVolPrev>0?`${fmtR2(scHaPrec)}/sc`:"", cor: "#14532D", bg: "#ECFDF5", click: undefined },
-                                { label: "Comprometido / ha",   val: `${fmtN(scHaCompr,1)} sc/ha`, sub: `${fmtN(kpiCompr,0)} sc · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0", click: () => setModalComprHa(true) },
-                                { label: "Disponível p/ venda", val: `${fmtN(kpiDisp,0)} sc`,      sub: `${totalArea>0?fmtN(kpiDisp/totalArea,1):0} sc/ha · ${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,0)}%`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB", click: undefined },
-                                { label: "Valor a Faturar",     val: fmtR(kpiDisp * scHaPrec),      sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4", click: undefined },
-                                { label: "Colhido",             val: kpiColhido>0?`${fmtN(kpiColhido,0)} sc`:"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"var(--text-3)", bg: kpiColhido>0?"#F0FDFA":"var(--bg-card)", click: undefined },
+                                { label: "Volume Previsto",     val: fmtVol(kpiVolPrev),  sub: `${fmtN(totalArea,0)} ha plantados`, cor: "#1A4870", bg: "#EBF3FC", click: undefined as (() => void) | undefined },
+                                { label: "Faturamento Previsto",val: fmtR(kpiFatPrev),    sub: kpiVolPrev>0?`${fmtR2(scHaPrec)}/${unitLabel}`:"", cor: "#14532D", bg: "#ECFDF5", click: undefined },
+                                { label: "Comprometido / ha",   val: `${fmtN(scHaCompr,1)} ${unitHa}`, sub: `${fmtVol(kpiCompr)} · ${fmtN(kpiVolPrev>0?(kpiCompr/kpiVolPrev)*100:0,0)}% do previsto`, cor: "#7A5200", bg: "#FBF3E0", click: () => setModalComprHa(true) },
+                                { label: "Disponível p/ venda", val: fmtVol(kpiDisp),     sub: `${totalArea>0?fmtN(kpiDisp/totalArea,1):0} ${unitHa} · ${fmtN(kpiVolPrev>0?(kpiDisp/kpiVolPrev)*100:0,0)}%`, cor: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#16A34A":"#E24B4A", bg: kpiDisp/Math.max(kpiVolPrev,1)>0.3?"#ECFDF5":"#FCEBEB", click: undefined },
+                                { label: "Valor a Faturar",     val: fmtR(kpiDisp * scHaPrec), sub: "baseado no preço médio", cor: "#14532D", bg: "#F0FFF4", click: undefined },
+                                { label: "Colhido",             val: kpiColhido>0?fmtVol(kpiColhido):"Aguardando", sub: kpiColhido>0?`${fmtN(kpiVolPrev>0?(kpiColhido/kpiVolPrev)*100:0,0)}% do previsto`:"", cor: kpiColhido>0?"#0D9488":"var(--text-3)", bg: kpiColhido>0?"#F0FDFA":"var(--bg-card)", click: undefined },
                               ].map(k => (
                                 <div key={k.label} onClick={k.click}
                                   style={{ background: k.bg, borderRadius: 9, padding: "10px 13px", border: k.click ? "1.5px solid #C9921B" : "0.5px solid var(--border)", cursor: k.click ? "pointer" : "default", position: "relative" }}>
@@ -1746,20 +1751,20 @@ export default function BI() {
                                   <div style={{ width: 8, height: 8, borderRadius: 2, background: COMM_COR(cs.comm), flexShrink: 0 }} />
                                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-1)", minWidth: 180 }}>{cs.comm}</span>
                                   <span style={{ fontSize: 10, color: "var(--text-3)", marginLeft: "auto" }}>
-                                    {fmtN(cs.volPrev,0)} sc · {fmtR(cs.fatPrev)} · preço médio {fmtR2(cs.precMed)}/sc
+                                    {fmtVol(cs.volPrev)} · {fmtR(cs.fatPrev)} · preço médio {fmtR2(cs.precMed)}/{unitLabel}
                                   </span>
                                 </div>
                                 <div style={{ display: "flex", height: 16, borderRadius: 4, overflow: "hidden", background: "#F0F4F8" }}>
-                                  {cs.arr      > 0 && <div style={{ width: `${(cs.arr/tot)*100}%`,       background: "#C9921B" }} title={`Arrendamento: ${fmtN(cs.arr,0)} sc`} />}
-                                  {cs.venda    > 0 && <div style={{ width: `${(cs.venda/tot)*100}%`,     background: "#1A4870" }} title={`Venda: ${fmtN(cs.venda,0)} sc`} />}
-                                  {cs.barter   > 0 && <div style={{ width: `${(cs.barter/tot)*100}%`,   background: "#7C3AED" }} title={`Barter: ${fmtN(cs.barter,0)} sc`} />}
-                                  {cs.disponivel>0 && <div style={{ width: `${(cs.disponivel/tot)*100}%`,background: "#86EFAC" }} title={`Disponível: ${fmtN(cs.disponivel,0)} sc`} />}
+                                  {cs.arr      > 0 && <div style={{ width: `${(cs.arr/tot)*100}%`,       background: "#C9921B" }} title={`Arrendamento: ${fmtVol(cs.arr)}`} />}
+                                  {cs.venda    > 0 && <div style={{ width: `${(cs.venda/tot)*100}%`,     background: "#1A4870" }} title={`Venda: ${fmtVol(cs.venda)}`} />}
+                                  {cs.barter   > 0 && <div style={{ width: `${(cs.barter/tot)*100}%`,   background: "#7C3AED" }} title={`Barter: ${fmtVol(cs.barter)}`} />}
+                                  {cs.disponivel>0 && <div style={{ width: `${(cs.disponivel/tot)*100}%`,background: "#86EFAC" }} title={`Disponível: ${fmtVol(cs.disponivel)}`} />}
                                 </div>
                                 <div style={{ display: "flex", gap: 14, marginTop: 3, fontSize: 9, color: "var(--text-3)" }}>
-                                  {cs.arr     > 0 && <span style={{ color: "#C9921B" }}>Arr: {fmtN(cs.arr,0)} sc ({fmtN((cs.arr/tot)*100,0)}%)</span>}
-                                  {cs.venda   > 0 && <span style={{ color: "#1A4870" }}>Venda: {fmtN(cs.venda,0)} sc ({fmtN((cs.venda/tot)*100,0)}%)</span>}
-                                  {cs.barter  > 0 && <span style={{ color: "#7C3AED" }}>Barter: {fmtN(cs.barter,0)} sc ({fmtN((cs.barter/tot)*100,0)}%)</span>}
-                                  {cs.disponivel>0 && <span style={{ color: "#16A34A" }}>Disp: {fmtN(cs.disponivel,0)} sc ({fmtN((cs.disponivel/tot)*100,0)}%)</span>}
+                                  {cs.arr     > 0 && <span style={{ color: "#C9921B" }}>Arr: {fmtVol(cs.arr)} ({fmtN((cs.arr/tot)*100,0)}%)</span>}
+                                  {cs.venda   > 0 && <span style={{ color: "#1A4870" }}>Venda: {fmtVol(cs.venda)} ({fmtN((cs.venda/tot)*100,0)}%)</span>}
+                                  {cs.barter  > 0 && <span style={{ color: "#7C3AED" }}>Barter: {fmtVol(cs.barter)} ({fmtN((cs.barter/tot)*100,0)}%)</span>}
+                                  {cs.disponivel>0 && <span style={{ color: "#16A34A" }}>Disp: {fmtVol(cs.disponivel)} ({fmtN((cs.disponivel/tot)*100,0)}%)</span>}
                                 </div>
                               </div>
                             );
@@ -1786,7 +1791,7 @@ export default function BI() {
                                   <th style={{ padding: "5px 12px" }} />
                                   {commKeys.map(c => (
                                     ["Previsto", "Venda", "Disponível"].map(sub => (
-                                      <th key={`${c}-${sub}`} style={{ padding: "5px 8px", textAlign: "right", fontSize: 9, fontWeight: 600, color: "var(--text-3)", borderLeft: sub === "Previsto" ? "1px solid var(--border)" : "none", whiteSpace: "nowrap" }}>{sub} (sc)</th>
+                                      <th key={`${c}-${sub}`} style={{ padding: "5px 8px", textAlign: "right", fontSize: 9, fontWeight: 600, color: "var(--text-3)", borderLeft: sub === "Previsto" ? "1px solid var(--border)" : "none", whiteSpace: "nowrap" }}>{sub} ({unidProd(c, cultMap).label})</th>
                                     ))
                                   ))}
                                 </tr>
@@ -1853,14 +1858,14 @@ export default function BI() {
                                       </td>
                                       <td style={{ padding: "7px 12px", color: "var(--text-2)" }}>{anoDesc}</td>
                                       <td style={{ padding: "7px 12px", color: "var(--text-2)" }}>{l.descricao || "—"}</td>
-                                      <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(l.sacas||0,0)} sc</td>
+                                      <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(l.sacas||0,0)} {unidProd(culturaToCommodity(l.cultura_barter ?? "", cultMap), cultMap).label}</td>
                                       <td style={{ padding: "7px 12px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{val>0?fmtR(val):"—"}</td>
                                     </tr>
                                   );
                                 })}
                                 <tr style={{ borderTop: "1.5px solid var(--border-table)", background: "#F5F3FF" }}>
                                   <td colSpan={4} style={{ padding: "7px 12px", fontWeight: 700, color: "#7C3AED", fontSize: 11 }}>Total Barter</td>
-                                  <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtN(barterRows.reduce((s,l)=>s+(l.sacas||0),0),0)} sc</td>
+                                  <td style={{ padding: "7px 12px", textAlign: "right", fontWeight: 700, color: "#7C3AED", fontVariantNumeric: "tabular-nums" }}>{fmtVol(barterRows.reduce((s,l)=>s+(l.sacas||0),0))}</td>
                                   <td />
                                 </tr>
                               </tbody>
@@ -1882,7 +1887,7 @@ export default function BI() {
                                 <th style={{ padding: "7px 12px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left", whiteSpace: "nowrap" }}>Fazenda / Ciclo</th>
                                 <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "left" }}>Produto</th>
                                 <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textAlign: "right", whiteSpace: "nowrap" }}>Área</th>
-                                {sortTh("volPrev", "Previsto sc")}
+                                {sortTh("volPrev", `Previsto ${unitLabel}`)}
                                 {sortTh("fatPrev", "Fat. Prev.")}
                                 <th style={{ padding: "7px 10px", fontSize: 10, fontWeight: 700, color: "#C9921B", textAlign: "right", whiteSpace: "nowrap" }}>Arrendamento</th>
                                 {sortTh("venda",   "Venda")}
@@ -1930,7 +1935,7 @@ export default function BI() {
                                     </td>
                                     <td style={{ padding: "7px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                                       {r.colhido>0
-                                        ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtN(r.colhido,0)} <span style={{ fontSize: 9, fontWeight: 400, color: "var(--text-3)" }}>({r.volPrev>0?fmtN((r.colhido/r.volPrev)*100,0):0}%)</span></span>
+                                        ? <span style={{ color: "#16A34A", fontWeight: 600 }}>{fmtN(r.colhido,0)} {unitLabel} <span style={{ fontSize: 9, fontWeight: 400, color: "var(--text-3)" }}>({r.volPrev>0?fmtN((r.colhido/r.volPrev)*100,0):0}%)</span></span>
                                         : <span style={{ color: "var(--text-3)", fontSize: 10 }}>Aguardando</span>}
                                     </td>
                                   </tr>
