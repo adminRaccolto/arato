@@ -4989,3 +4989,110 @@ export async function salvarAplicacaoAereaItens(aplicacao_id: string, fazenda_id
   const { error } = await supabase.from("aplicacoes_aereas_itens").insert(rows);
   if (error) throw error;
 }
+
+// ─── Tratamento de Sementes ───────────────────────────────────────────────────
+
+import type {
+  TratamentoSemente,
+  TratamentoSementeItem,
+  TratamentoReceita,
+  TratamentoReceitaItem,
+} from "./supabase";
+
+export async function listarTratamentos(fazenda_id: string): Promise<TratamentoSemente[]> {
+  const { data, error } = await supabase
+    .from("tratamento_sementes")
+    .select("*, tratamento_sementes_itens(*)")
+    .eq("fazenda_id", fazenda_id)
+    .order("numero", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as TratamentoSemente[];
+}
+
+export async function criarTratamento(
+  fazenda_id: string,
+  dados: Omit<TratamentoSemente, "id" | "fazenda_id" | "created_at" | "tratamento_sementes_itens">,
+): Promise<TratamentoSemente> {
+  const { data, error } = await supabase
+    .from("tratamento_sementes")
+    .insert({ ...dados, fazenda_id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as TratamentoSemente;
+}
+
+export async function atualizarTratamento(
+  id: string,
+  dados: Partial<Omit<TratamentoSemente, "id" | "fazenda_id" | "created_at" | "tratamento_sementes_itens">>,
+): Promise<void> {
+  const { error } = await supabase
+    .from("tratamento_sementes")
+    .update({ ...dados, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function excluirTratamento(id: string): Promise<void> {
+  const { error } = await supabase.from("tratamento_sementes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function salvarItensTratamento(
+  tratamento_id: string,
+  itens: Omit<TratamentoSementeItem, "id" | "tratamento_id" | "created_at">[],
+): Promise<void> {
+  await supabase.from("tratamento_sementes_itens").delete().eq("tratamento_id", tratamento_id);
+  if (!itens.length) return;
+  const rows = itens.map((it, i) => ({ ...it, tratamento_id, ordem: i }));
+  const { error } = await supabase.from("tratamento_sementes_itens").insert(rows);
+  if (error) throw error;
+}
+
+export async function listarReceitas(fazenda_id: string): Promise<TratamentoReceita[]> {
+  const { data, error } = await supabase
+    .from("tratamento_receitas")
+    .select("*, tratamento_receitas_itens(*)")
+    .eq("fazenda_id", fazenda_id)
+    .order("nome");
+  if (error) throw error;
+  return (data ?? []) as TratamentoReceita[];
+}
+
+export async function salvarReceita(
+  fazenda_id: string,
+  dados: Omit<TratamentoReceita, "id" | "fazenda_id" | "created_at" | "tratamento_receitas_itens">,
+  itens: Omit<TratamentoReceitaItem, "id" | "receita_id" | "created_at">[],
+): Promise<TratamentoReceita> {
+  const { data, error } = await supabase
+    .from("tratamento_receitas")
+    .insert({ ...dados, fazenda_id })
+    .select()
+    .single();
+  if (error) throw error;
+  const receita = data as TratamentoReceita;
+  if (itens.length > 0) {
+    const rows = itens.map((it, i) => ({ ...it, receita_id: receita.id, ordem: i }));
+    await supabase.from("tratamento_receitas_itens").insert(rows);
+  }
+  return receita;
+}
+
+export async function atualizarReceita(
+  id: string,
+  dados: Partial<Omit<TratamentoReceita, "id" | "fazenda_id" | "created_at" | "tratamento_receitas_itens">>,
+  itens: Omit<TratamentoReceitaItem, "id" | "receita_id" | "created_at">[],
+): Promise<void> {
+  const { error } = await supabase.from("tratamento_receitas").update(dados).eq("id", id);
+  if (error) throw error;
+  await supabase.from("tratamento_receitas_itens").delete().eq("receita_id", id);
+  if (itens.length > 0) {
+    const rows = itens.map((it, i) => ({ ...it, receita_id: id, ordem: i }));
+    await supabase.from("tratamento_receitas_itens").insert(rows);
+  }
+}
+
+export async function excluirReceita(id: string): Promise<void> {
+  const { error } = await supabase.from("tratamento_receitas").delete().eq("id", id);
+  if (error) throw error;
+}

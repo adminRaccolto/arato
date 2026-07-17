@@ -2217,3 +2217,72 @@ export type PendenciaOperacional = {
   criado_em?: string;
   resolvido_em?: string;
 };
+
+// ─── Tratamento de Sementes ───────────────────────────────────────────────────
+
+export type TratamentoSementeStatus = "planejada" | "em_tratamento" | "concluida" | "cancelada";
+
+export type TratamentoSemente = {
+  id: string;
+  fazenda_id: string;
+  ciclo_id?: string | null;
+  numero?: number | null;
+  status: TratamentoSementeStatus;
+  cultura?: string | null;
+  cultivar?: string | null;
+  lote_semente?: string | null;
+  insumo_id?: string | null;          // semente crua do estoque
+  deposito_origem_id?: string | null;
+  deposito_destino_id?: string | null;
+  quantidade_sc?: number | null;
+  quantidade_kg?: number | null;       // quantidade_sc × 60
+  volume_calda_ml_100kg?: number | null;
+  data_planejada?: string | null;
+  data_inicio?: string | null;
+  data_conclusao?: string | null;
+  operador?: string | null;
+  equipamento?: string | null;
+  observacao?: string | null;
+  germinacao_pct?: number | null;
+  vigor_pct?: number | null;
+  umidade_pct?: number | null;
+  created_at?: string;
+  // joins
+  tratamento_sementes_itens?: TratamentoSementeItem[];
+};
+
+export type TratamentoSementeItem = {
+  id: string;
+  tratamento_id: string;
+  insumo_id?: string | null;
+  produto_nome?: string | null;
+  categoria?: string | null;           // fungicida | inseticida | inoculante | micronutriente | polimero | outro
+  dose_100kg?: number | null;
+  unidade?: string | null;             // mL | g | L | kg
+  dose_total?: number | null;          // calculado
+  consumo_real?: number | null;
+  ordem?: number | null;
+  created_at?: string;
+};
+
+export type TratamentoReceita = {
+  id: string;
+  fazenda_id: string;
+  nome: string;
+  cultura?: string | null;
+  descricao?: string | null;
+  created_at?: string;
+  tratamento_receitas_itens?: TratamentoReceitaItem[];
+};
+
+export type TratamentoReceitaItem = {
+  id: string;
+  receita_id: string;
+  insumo_id?: string | null;
+  produto_nome?: string | null;
+  categoria?: string | null;
+  dose_100kg?: number | null;
+  unidade?: string | null;
+  ordem?: number | null;
+  created_at?: string;
+};

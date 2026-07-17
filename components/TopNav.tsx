@@ -179,6 +179,7 @@ const NAV: NavItem[] = [
       { id: "lav-pulverizacao", label: "Pulverização Terrestre", path: "/lavoura/pulverizacao"       },
       { id: "lav-aerea",        label: "Aplicação Aérea",       path: "/lavoura/aerea"              },
       { id: "lav-colheita",     label: "Colheita Própria",       path: "/lavoura/colheita"           },
+      { id: "lav-trat-semente", label: "Tratamento de Sementes", path: "/lavoura/tratamento-sementes" },
       { id: "lav-rom-entrada",  label: "Romaneio de Entrada", path: "/estoque/romaneio-entrada"      },
       { type: "divider", label: "Planejamento" },
       { id: "lav-planejamento", label: "Planejamento de Safra", path: "/lavoura/planejamento"        },

@@ -7561,3 +7561,159 @@ ALTER TABLE transferencias_estoque
   ADD COLUMN IF NOT EXISTS nf_destino_chave  text;
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 72 — Tratamento de Sementes
+-- Ordens de Tratamento
+CREATE TABLE IF NOT EXISTS tratamento_sementes (
+  id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id            uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id              uuid REFERENCES ciclos(id),
+  numero                integer,
+  status                text NOT NULL DEFAULT 'planejada',
+  cultura               text,
+  cultivar              text,
+  lote_semente          text,
+  insumo_id             uuid REFERENCES insumos(id),
+  deposito_origem_id    uuid REFERENCES depositos(id),
+  deposito_destino_id   uuid REFERENCES depositos(id),
+  quantidade_sc         numeric(12,3),
+  quantidade_kg         numeric(12,3),
+  volume_calda_ml_100kg numeric(10,2) DEFAULT 500,
+  data_planejada        date,
+  data_inicio           timestamptz,
+  data_conclusao        timestamptz,
+  operador              text,
+  equipamento           text,
+  observacao            text,
+  germinacao_pct        numeric(5,2),
+  vigor_pct             numeric(5,2),
+  umidade_pct           numeric(5,2),
+  created_at            timestamptz DEFAULT now(),
+  updated_at            timestamptz DEFAULT now()
+);
+
+-- Auto-incremento de número por fazenda
+CREATE SEQUENCE IF NOT EXISTS seq_tratamento_sementes_numero;
+
+CREATE OR REPLACE FUNCTION trg_tratamento_sementes_numero()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.numero IS NULL THEN
+    SELECT COALESCE(MAX(numero), 0) + 1
+      INTO NEW.numero
+      FROM tratamento_sementes
+     WHERE fazenda_id = NEW.fazenda_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_tratamento_sementes_numero ON tratamento_sementes;
+CREATE TRIGGER set_tratamento_sementes_numero
+  BEFORE INSERT ON tratamento_sementes
+  FOR EACH ROW EXECUTE FUNCTION trg_tratamento_sementes_numero();
+
+-- Itens do Tratamento
+CREATE TABLE IF NOT EXISTS tratamento_sementes_itens (
+  id             uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  tratamento_id  uuid NOT NULL REFERENCES tratamento_sementes(id) ON DELETE CASCADE,
+  insumo_id      uuid REFERENCES insumos(id),
+  produto_nome   text,
+  categoria      text,
+  dose_100kg     numeric(10,4),
+  unidade        text DEFAULT 'mL',
+  dose_total     numeric(12,4),
+  consumo_real   numeric(12,4),
+  ordem          integer DEFAULT 0,
+  created_at     timestamptz DEFAULT now()
+);
+
+-- Receitas Salvas
+CREATE TABLE IF NOT EXISTS tratamento_receitas (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id  uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome        text NOT NULL,
+  cultura     text,
+  descricao   text,
+  created_at  timestamptz DEFAULT now()
+);
+
+-- Itens das Receitas
+CREATE TABLE IF NOT EXISTS tratamento_receitas_itens (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  receita_id  uuid NOT NULL REFERENCES tratamento_receitas(id) ON DELETE CASCADE,
+  insumo_id   uuid REFERENCES insumos(id),
+  produto_nome text,
+  categoria   text,
+  dose_100kg  numeric(10,4),
+  unidade     text DEFAULT 'mL',
+  ordem       integer DEFAULT 0,
+  created_at  timestamptz DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE tratamento_sementes        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tratamento_sementes_itens  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tratamento_receitas        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tratamento_receitas_itens  ENABLE ROW LEVEL SECURITY;
+
+-- Políticas tratamento_sementes
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_sementes' AND policyname='ts_select') THEN
+    CREATE POLICY ts_select ON tratamento_sementes FOR SELECT USING (
+      fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_sementes' AND policyname='ts_insert') THEN
+    CREATE POLICY ts_insert ON tratamento_sementes FOR INSERT WITH CHECK (
+      fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    );
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_sementes' AND policyname='ts_update') THEN
+    CREATE POLICY ts_update ON tratamento_sementes FOR UPDATE USING (
+      fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    );
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_sementes' AND policyname='ts_delete') THEN
+    CREATE POLICY ts_delete ON tratamento_sementes FOR DELETE USING (
+      fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+    );
+  END IF;
+END $$;
+
+-- Políticas itens (vinculado via JOIN à fazenda)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_sementes_itens' AND policyname='tsi_select') THEN
+    CREATE POLICY tsi_select ON tratamento_sementes_itens FOR SELECT USING (
+      tratamento_id IN (SELECT id FROM tratamento_sementes WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()))
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_sementes_itens' AND policyname='tsi_all') THEN
+    CREATE POLICY tsi_all ON tratamento_sementes_itens FOR ALL USING (
+      tratamento_id IN (SELECT id FROM tratamento_sementes WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()))
+    );
+  END IF;
+END $$;
+
+-- Políticas receitas
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_receitas' AND policyname='tr_all') THEN
+    CREATE POLICY tr_all ON tratamento_receitas FOR ALL USING (
+      fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tratamento_receitas_itens' AND policyname='tri_all') THEN
+    CREATE POLICY tri_all ON tratamento_receitas_itens FOR ALL USING (
+      receita_id IN (SELECT id FROM tratamento_receitas WHERE fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid()))
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
