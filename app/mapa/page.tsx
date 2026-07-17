@@ -51,7 +51,12 @@ export interface TalhaoComPlantio extends Talhao {
 }
 
 export default function MapaPage() {
-  const { fazendaId } = useAuth();
+  const { fazendaId, fazendaIds } = useAuth();
+
+  // ── Fazendas da conta ──
+  const [fazendas,     setFazendas]     = useState<{ id: string; nome: string }[]>([]);
+  const [fazSel,       setFazSel]       = useState<string>("");
+
   const [talhoes, setTalhoes]       = useState<TalhaoComPlantio[]>([]);
   const [loading, setLoading]       = useState(true);
   const [selecionado, setSelecionado] = useState<TalhaoComPlantio | null>(null);
@@ -61,15 +66,30 @@ export default function MapaPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = sb();
 
+  // Carrega lista de fazendas da conta
+  useEffect(() => {
+    const ids = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
+    if (ids.length === 0) return;
+    supabase.from("fazendas").select("id,nome").in("id", ids).order("nome")
+      .then(({ data }) => {
+        const fzs = (data ?? []) as { id: string; nome: string }[];
+        setFazendas(fzs);
+        // Seleciona a fazenda ativa por padrão
+        setFazSel(prev => prev || fazendaId || (fzs[0]?.id ?? ""));
+      });
+  }, [fazendaId, fazendaIds]);
+
+  const fIdEfetivo = fazSel || fazendaId || "";
+
   const carregar = useCallback(async () => {
-    if (!fazendaId) return;
+    if (!fIdEfetivo) return;
     setLoading(true);
 
     const [{ data: ts }, { data: ps }] = await Promise.all([
-      supabase.from("talhoes").select("id,nome,area_ha,tipo_solo,lat,lng,kml_url").eq("fazenda_id", fazendaId).order("nome"),
+      supabase.from("talhoes").select("id,nome,area_ha,tipo_solo,lat,lng,kml_url").eq("fazenda_id", fIdEfetivo).order("nome"),
       supabase.from("plantios")
         .select("id,talhao_id,cultura,variedade,data_plantio,data_colheita_prevista,area_ha,ciclo_id")
-        .eq("fazenda_id", fazendaId)
+        .eq("fazenda_id", fIdEfetivo)
         .eq("status", "em_andamento")
         .order("data_plantio", { ascending: false }),
     ]);
@@ -81,8 +101,9 @@ export default function MapaPage() {
     }
 
     setTalhoes((ts ?? []).map(t => ({ ...t, plantio: plantioMap[t.id] })));
+    setSelecionado(null);
     setLoading(false);
-  }, [fazendaId]);
+  }, [fIdEfetivo]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -90,7 +111,7 @@ export default function MapaPage() {
     setUploading(true);
     setMsg(null);
     try {
-      const path = `kml/${fazendaId}/${talhaoId}.kml`;
+      const path = `kml/${fIdEfetivo}/${talhaoId}.kml`;
       const { error: upErr } = await supabase.storage.from("arquivos").upload(path, file, { upsert: true, contentType: "application/vnd.google-earth.kml+xml" });
       if (upErr) throw upErr;
 
@@ -153,6 +174,28 @@ export default function MapaPage() {
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
             {talhoes.length} talhão(ões) · {comPlantio.length} com plantio ativo · {comKml.length} com KML
           </div>
+          {/* Seletor de fazenda — visível quando conta tem >1 fazenda */}
+          {fazendas.length > 1 && (
+            <select
+              value={fazSel}
+              onChange={e => setFazSel(e.target.value)}
+              style={{
+                marginTop: 10, width: "100%",
+                padding: "5px 8px", borderRadius: 6,
+                border: "0.5px solid var(--border)", background: "var(--bg-input)",
+                color: "var(--text-1)", fontSize: 12, cursor: "pointer",
+              }}
+            >
+              {fazendas.map(f => (
+                <option key={f.id} value={f.id}>{f.nome}</option>
+              ))}
+            </select>
+          )}
+          {fazendas.length === 1 && (
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>
+              {fazendas[0].nome}
+            </div>
+          )}
         </div>
 
         {/* Mensagem de feedback */}

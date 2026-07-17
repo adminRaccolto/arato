@@ -563,10 +563,10 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {fazenda && !(userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada)) && (
+          {(nomeIdentidade || fazenda) && !(userRole === "raccotlo" && fazendaId && (nomeProdutor || nomeFazendaSelecionada)) && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 8px" }}>
               {logoCliente ? (
-                <img src={logoCliente} alt="Logo fazenda" style={{ width: 30, height: 30, borderRadius: 7, objectFit: "contain", border: "0.5px solid rgba(255,255,255,0.15)" }} />
+                <img src={logoCliente} alt="Logo cliente" style={{ width: 30, height: 30, borderRadius: 7, objectFit: "contain", border: "0.5px solid rgba(255,255,255,0.15)" }} />
               ) : (
                 <div style={{ width: 30, height: 30, borderRadius: 7, background: "var(--border)", border: "0.5px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#60A5FA" }}>
                   {iniciaisFazenda}
@@ -574,13 +574,14 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               )}
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-1)", lineHeight: 1.25 }}>
-                  {produtorNome ?? fazenda.nome}
+                  {produtorNome ?? fazenda?.nome ?? "—"}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                  {produtorNome ? `${fazenda.nome} · ` : ""}
-                  {fazenda.municipio} · {fazenda.estado}
-                  {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
-                </div>
+                {fazenda && (
+                  <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                    {fazenda.municipio} · {fazenda.estado}
+                    {fazenda.area_total_ha ? ` · ${fazenda.area_total_ha.toLocaleString("pt-BR")} ha` : ""}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -603,7 +604,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
                 </div>
                 {fazenda && (
                   <div style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {nomeProdutor ? `${fazenda.nome} · ` : ""}{fazenda.municipio} · {fazenda.estado}
+                    {fazenda.municipio} · {fazenda.estado}
                   </div>
                 )}
               </div>
