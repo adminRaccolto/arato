@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "../../../components/AuthProvider";
+import TopNav from "../../../components/TopNav";
 import type { Fazenda, Deposito, Insumo, TransferenciaEstoque, TransferenciaEstoqueItem } from "../../../lib/supabase";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
@@ -143,16 +144,18 @@ export default function TransferenciasEstoquePage() {
       }));
       setInsumosPorFazenda(insMap);
 
-      // Transferências (ambos os lados)
+      // Transferências via API route (service_role_key, sem RLS)
       const fazIds = fazendas.map(f => f.id);
-      const { data: transfs } = await supabase
-        .from("transferencias_estoque")
-        .select("*, transferencias_estoque_itens(*)")
-        .or(`fazenda_origem_id.in.(${fazIds.join(",")}),fazenda_destino_id.in.(${fazIds.join(",")})`)
-        .order("created_at", { ascending: false });
+      const trRes = await fetch("/api/campo/transferencias-lista", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fazenda_ids: fazIds }),
+      });
+      const trJson = await trRes.json() as { ok: boolean; data?: Record<string, unknown>[] };
+      const transfs = trJson.data ?? [];
 
       const fazMap = Object.fromEntries(fazendas.map(f => [f.id, f.nome]));
-      const enriched: TransferenciaComItens[] = (transfs ?? []).map((t: Record<string, unknown>) => ({
+      const enriched: TransferenciaComItens[] = transfs.map((t: Record<string, unknown>) => ({
         ...t as unknown as TransferenciaEstoque,
         itens: (t.transferencias_estoque_itens as TransferenciaEstoqueItem[]) ?? [],
         fazenda_origem_nome:  fazMap[t.fazenda_origem_id as string] ?? "—",
@@ -376,7 +379,9 @@ export default function TransferenciasEstoquePage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 1300, fontFamily: "system-ui, sans-serif" }}>
+    <>
+    <TopNav />
+    <div style={{ padding: "24px 28px", width: "100%", boxSizing: "border-box", fontFamily: "system-ui, sans-serif" }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -384,9 +389,14 @@ export default function TransferenciasEstoquePage() {
           <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", margin: 0 }}>Transferência entre Fazendas</h1>
           <p style={{ fontSize: 13, color: "#888", margin: "3px 0 0" }}>NF de transferência de insumos · CFOP 5409 / 6409</p>
         </div>
-        <button onClick={() => { resetForm(); setModal(true); }} style={btn("#1A4870")}>
-          + Nova Transferência
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => carregar()} style={btn("#F4F6FA", "#555")} title="Atualizar lista">
+            🔄 Atualizar
+          </button>
+          <button onClick={() => { resetForm(); setModal(true); }} style={btn("#1A4870")}>
+            + Nova Transferência
+          </button>
+        </div>
       </div>
 
       {/* KPI */}
@@ -828,5 +838,6 @@ export default function TransferenciasEstoquePage() {
         </div>
       )}
     </div>
+    </>
   );
 }
