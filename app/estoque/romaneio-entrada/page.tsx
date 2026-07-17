@@ -90,7 +90,7 @@ function Modal({ titulo, onClose, children, width = 800 }: { titulo: string; onC
 
 // ── Componente principal ─────────────────────────────────────────────────────
 export default function RomaneioEntradaPage() {
-  const { fazendaId, contaId } = useAuth();
+  const { fazendaId, fazendaIds, contaId } = useAuth();
 
   const [fazendas,      setFazendas]      = useState<{ id: string; nome: string }[]>([]);
   const [fazendaFiltro, setFazendaFiltro] = useState("");
@@ -133,7 +133,7 @@ export default function RomaneioEntradaPage() {
       listarAnosSafra(fid),
       listarTodosCiclos(fid),
       listarInsumos(fid),
-      listarContratosDaConta(contaId ?? "", fid),
+      listarContratosDaConta(contaId ?? "", fid, fazendaIds?.length ? fazendaIds : undefined),
       listarTalhoes(fid),
     ]).then(([r, d, p, a, c, i, ct, t]) => {
       setRomaneios(r);

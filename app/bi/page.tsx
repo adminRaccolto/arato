@@ -463,7 +463,8 @@ export default function BI() {
     if (!fazendaId) return;
     setCfLoading(true);
     try {
-      const cs = await listarContratosFinanceirosDaConta(contaId, fazendaId);
+      const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
+      const cs = await listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds);
       const ids = cs.map(c => c.id);
       const { data: ps } = ids.length > 0
         ? await supabase

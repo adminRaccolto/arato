@@ -1998,12 +1998,19 @@ export async function listarContratosFinanceiros(fazenda_id: string): Promise<Co
 }
 
 // Versão multi-fazenda: busca via /api/fazenda/da-conta, igual ao padrão de listarLancamentosContaPeriodo
-export async function listarContratosFinanceirosDaConta(
+async function resolverFazendaIds(
   conta_id: string | null,
-  fazenda_id_fallback?: string | null,
-): Promise<ContratoFinanceiro[]> {
+  fazenda_id_fallback: string | null | undefined,
+  fazenda_ids_hint: string[] | undefined,
+): Promise<string[]> {
+  // Preferência: IDs fornecidos diretamente pelo caller (já estão no AuthProvider)
+  if (fazenda_ids_hint && fazenda_ids_hint.length > 0) {
+    const ids = [...fazenda_ids_hint];
+    if (fazenda_id_fallback && !ids.includes(fazenda_id_fallback)) ids.push(fazenda_id_fallback);
+    return ids;
+  }
   const cidReal = (conta_id && !conta_id.startsWith("sem_conta_")) ? conta_id : null;
-  let fazendaIds: string[] = [];
+  let ids: string[] = [];
   try {
     const res = await fetch("/api/fazenda/da-conta", {
       method: "POST",
@@ -2012,10 +2019,19 @@ export async function listarContratosFinanceirosDaConta(
     });
     if (res.ok) {
       const json = await res.json() as { ok: boolean; fazendas?: { id: string }[] };
-      if (json.ok && json.fazendas?.length) fazendaIds = json.fazendas.map((f: { id: string }) => f.id);
+      if (json.ok && json.fazendas?.length) ids = json.fazendas.map((f: { id: string }) => f.id);
     }
   } catch { /* ignora */ }
-  if (fazenda_id_fallback && !fazendaIds.includes(fazenda_id_fallback)) fazendaIds.push(fazenda_id_fallback);
+  if (fazenda_id_fallback && !ids.includes(fazenda_id_fallback)) ids.push(fazenda_id_fallback);
+  return ids;
+}
+
+export async function listarContratosFinanceirosDaConta(
+  conta_id: string | null,
+  fazenda_id_fallback?: string | null,
+  fazenda_ids_hint?: string[],
+): Promise<ContratoFinanceiro[]> {
+  const fazendaIds = await resolverFazendaIds(conta_id, fazenda_id_fallback, fazenda_ids_hint);
   if (!fazendaIds.length) return [];
   const { data, error } = await supabase.from("contratos_financeiros").select("*").in("fazenda_id", fazendaIds).order("data_contrato", { ascending: false });
   if (error) throw error;
@@ -2026,21 +2042,9 @@ export async function listarContratosFinanceirosDaConta(
 export async function listarContratosDaConta(
   conta_id: string | null,
   fazenda_id_fallback?: string | null,
+  fazenda_ids_hint?: string[],
 ): Promise<Contrato[]> {
-  const cidReal = (conta_id && !conta_id.startsWith("sem_conta_")) ? conta_id : null;
-  let fazendaIds: string[] = [];
-  try {
-    const res = await fetch("/api/fazenda/da-conta", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conta_id: cidReal, fazenda_id: fazenda_id_fallback }),
-    });
-    if (res.ok) {
-      const json = await res.json() as { ok: boolean; fazendas?: { id: string }[] };
-      if (json.ok && json.fazendas?.length) fazendaIds = json.fazendas.map((f: { id: string }) => f.id);
-    }
-  } catch { /* ignora */ }
-  if (fazenda_id_fallback && !fazendaIds.includes(fazenda_id_fallback)) fazendaIds.push(fazenda_id_fallback);
+  const fazendaIds = await resolverFazendaIds(conta_id, fazenda_id_fallback, fazenda_ids_hint);
   if (!fazendaIds.length) return [];
   const { data, error } = await supabase.from("contratos").select("*").in("fazenda_id", fazendaIds).order("data_contrato", { ascending: false });
   if (error) throw error;

@@ -555,7 +555,7 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
 // PÁGINA
 // ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
-  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
   const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
   const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
@@ -598,7 +598,8 @@ export default function ContratosFinanceiros() {
   useEffect(() => {
     if (!fazendaId) return;
     setErroCarregamento(null);
-    listarContratosFinanceirosDaConta(contaId, fazendaId)
+    const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
+    listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds)
       .then(setContratos)
       .catch(err => {
         console.error("[CF] Erro ao carregar contratos financeiros:", err);

@@ -52,7 +52,7 @@ interface ContratoEnriquecido extends ContratoFinanceiro {
 }
 
 export default function RelatorioEndividamento() {
-  const { fazendaId, contaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
+  const { fazendaId, fazendaIds, contaId, logoCliente, nomeFazendaSelecionada: fazendaNome } = useAuth();
 
   const [contratos,  setContratos]  = useState<ContratoEnriquecido[]>([]);
   const [produtores, setProdutores] = useState<Produtor[]>([]);
@@ -82,8 +82,9 @@ export default function RelatorioEndividamento() {
     setLoading(true);
     setErro(null);
     try {
+      const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
       const [ctsRaw, { data: prods }] = await Promise.all([
-        listarContratosFinanceirosDaConta(contaId, fazendaId),
+        listarContratosFinanceirosDaConta(contaId, fazendaId, hintIds),
         supabase.from("produtores").select("id,nome_razao_social,cpf_cnpj").eq("fazenda_id", fazendaId).order("nome_razao_social"),
       ]);
 

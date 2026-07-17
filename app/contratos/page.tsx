@@ -196,7 +196,7 @@ type AbaLista = "contratos" | "expedicao" | "posicao";
 
 // ═══════════════════════════════════════════════════════════════════
 export default function Contratos() {
-  const { fazendaId, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
 
   // ── dados ────────────────────────────────────────────────────
   const [contratos, setContratos]     = useState<ContratoVM[]>([]);
@@ -420,14 +420,18 @@ export default function Contratos() {
   async function carregarTudo() {
     try {
       setLoading(true); setErro(null);
-      const [cList, rList, pList, prodList, aList, dList, fList] = await Promise.all([
-        listarContratosDaConta(contaId, fazendaId),
+      const hintIds = fazendaIds && fazendaIds.length > 0 ? fazendaIds : (fazendaId ? [fazendaId] : []);
+      const [cList, rList, pList, prodList, aList, dList, fList, cultRes, prodAgriRes, adiantRes] = await Promise.all([
+        listarContratosDaConta(contaId, fazendaId, hintIds),
         listarRomaneios(fazendaId!),
         listarPessoas(fazendaId!),
         listarProdutores(fazendaId!),
         listarAnosSafra(fazendaId!),
         listarDepositos(fazendaId!),
         listarFazendas(fazendaId ?? undefined),
+        supabase.from("culturas").select("*").eq("fazenda_id", fazendaId!).eq("ativa", true).order("ordem").order("nome"),
+        supabase.from("insumos").select("*").eq("fazenda_id", fazendaId!).eq("categoria", "produto_agricola").order("nome"),
+        supabase.from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data"),
       ]);
       const rMap: Record<string,Romaneio[]> = {};
       for (const r of rList) rMap[r.contrato_id] = [...(rMap[r.contrato_id]??[]), r];
@@ -438,19 +442,10 @@ export default function Contratos() {
       setAnosSafra(aList);
       setDepositos(dList);
       setFazendas(fList);
-      // culturas
-      const { data: cultList } = await supabase.from("culturas").select("*")
-        .eq("fazenda_id", fazendaId!).eq("ativa", true).order("ordem").order("nome");
-      if (cultList && cultList.length > 0) setCulturasCont(cultList as CulturaContrato[]);
-      // produtos agrícolas (insumos com categoria=produto_agricola)
-      const { data: prodList2 } = await supabase.from("insumos").select("*")
-        .eq("fazenda_id", fazendaId!).eq("categoria", "produto_agricola").order("nome");
-      if (prodList2 && prodList2.length > 0) setProdAgricolas(prodList2 as Insumo[]);
-      // adiantamentos
-      const { data: adiantList } = await supabase
-        .from("adiantamentos_cliente").select("*").eq("fazenda_id", fazendaId!).order("data");
+      if (cultRes.data && cultRes.data.length > 0) setCulturasCont(cultRes.data as CulturaContrato[]);
+      if (prodAgriRes.data && prodAgriRes.data.length > 0) setProdAgricolas(prodAgriRes.data as Insumo[]);
       const adiantMap: Record<string, AdiantamentoCliente[]> = {};
-      for (const a of (adiantList ?? [])) {
+      for (const a of (adiantRes.data ?? [])) {
         adiantMap[a.contrato_id] = [...(adiantMap[a.contrato_id] ?? []), a as AdiantamentoCliente];
       }
       setAdiantamentos(adiantMap);
