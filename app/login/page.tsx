@@ -1,13 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 const BG_FALLBACK = "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80";
 
 type Modo = "login" | "recuperar";
 
-export default function Login() {
+function LoginInner() {
   const [modo,         setModo]         = useState<Modo>("login");
   const [email,        setEmail]        = useState("");
   const [senha,        setSenha]        = useState("");
@@ -17,6 +17,8 @@ export default function Login() {
   const [bgUrl,    setBgUrl]    = useState(BG_FALLBACK);
   const [senhaVis, setSenhaVis] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/";
 
   useEffect(() => {
     // Fundo customizado via Supabase Storage (opcional)
@@ -34,7 +36,7 @@ export default function Login() {
     setErro(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     if (error) { setErro("E-mail ou senha incorretos."); setCarregando(false); return; }
-    router.push("/");
+    router.push(nextPath);
     router.refresh();
   }
 
@@ -297,5 +299,13 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense>
+      <LoginInner />
+    </Suspense>
   );
 }

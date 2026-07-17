@@ -163,7 +163,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        const path = typeof window !== "undefined" ? window.location.pathname : "";
+        const isPublic = ["/login", "/planos", "/auth/", "/api/"].some(p => path.startsWith(p));
+        if (!isPublic && path) router.push("/login?next=" + encodeURIComponent(path));
+        return;
+      }
 
       if (user.user_metadata?.must_change_password) {
         if (typeof window !== "undefined" && window.location.pathname !== "/alterar-senha") {
@@ -354,7 +359,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         setEmailUsuario(null);
         setUserRole(null);
         setNomeFazendaSelecionada(null);
-        router.push("/login");
+        const path = typeof window !== "undefined" ? window.location.pathname : "";
+        const isPublic = ["/login", "/planos", "/auth/", "/api/"].some(p => path.startsWith(p));
+        router.push(isPublic || !path ? "/login" : "/login?next=" + encodeURIComponent(path));
       }
       if (event === "SIGNED_IN") init();
     });
