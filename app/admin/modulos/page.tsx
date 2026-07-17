@@ -56,10 +56,11 @@ const MODULOS_LABEL: Record<string, string> = {
   configuracoes:   "Configurações",
   bi:              "BI — Raccotlo Intelligence",
   // ── Add-ons opcionais (vendidos separadamente) ──
-  algodao:         "🌱 Módulo Algodão (Add-on)",
-  cerealista:      "🌾 Módulo Cerealista (Add-on)",
-  sementes:        "🫘 Módulo Sementes (Add-on)",
-  pecuaria:        "🐄 Módulo Pecuário (Add-on)",
+  algodao:          "🌱 Módulo Algodão (Add-on)",
+  cerealista:       "🌾 Módulo Cerealista (Add-on)",
+  sementes:         "🫘 Módulo Sementes (Add-on)",
+  pecuaria:         "🐄 Módulo Pecuário (Add-on)",
+  apoio_financeiro: "💼 Apoio Financeiro (Add-on)",
 };
 
 const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
@@ -85,7 +86,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Add-ons Opcionais",
-    modulos: ["algodao", "cerealista", "sementes", "pecuaria"],
+    modulos: ["algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro"],
   },
 ];
 

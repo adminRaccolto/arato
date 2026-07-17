@@ -7502,3 +7502,51 @@ WHERE i.fazenda_id = a.fazenda_id
   AND LOWER(i.nome) = 'milho';
 
 NOTIFY pgrst, 'reload schema';
+
+-- Seção 71 — Módulo Apoio Financeiro (add-on por conta)
+-- Tabela 1: baixas de lançamentos oficiais no contexto do Apoio (não afeta o sistema oficial)
+CREATE TABLE IF NOT EXISTS apoio_baixas (
+  id           uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id   uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  lancamento_id uuid NOT NULL REFERENCES lancamentos(id) ON DELETE CASCADE,
+  data_baixa   date NOT NULL DEFAULT CURRENT_DATE,
+  observacao   text,
+  created_at   timestamptz DEFAULT now(),
+  UNIQUE(lancamento_id)
+);
+
+ALTER TABLE apoio_baixas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "apoio_baixas_select" ON apoio_baixas FOR SELECT USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+);
+CREATE POLICY "apoio_baixas_insert" ON apoio_baixas FOR INSERT WITH CHECK (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+);
+CREATE POLICY "apoio_baixas_delete" ON apoio_baixas FOR DELETE USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+);
+
+-- Tabela 2: lançamentos exclusivos do Apoio Financeiro (não existem no sistema oficial)
+CREATE TABLE IF NOT EXISTS apoio_lancamentos (
+  id             uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id     uuid NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo           text NOT NULL CHECK (tipo IN ('pagar','receber')),
+  descricao      text NOT NULL,
+  valor          numeric(14,2) NOT NULL DEFAULT 0,
+  data_vencimento date NOT NULL,
+  data_baixa     date,
+  baixado        boolean NOT NULL DEFAULT false,
+  pessoa_nome    text,
+  categoria      text,
+  observacao     text,
+  created_at     timestamptz DEFAULT now()
+);
+
+ALTER TABLE apoio_lancamentos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "apoio_lancamentos_all" ON apoio_lancamentos FOR ALL USING (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+) WITH CHECK (
+  fazenda_id IN (SELECT fazenda_id FROM perfis WHERE user_id = auth.uid())
+);
+
+NOTIFY pgrst, 'reload schema';
