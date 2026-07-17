@@ -17,47 +17,64 @@ const hoje    = () => new Date().toISOString().split("T")[0];
 type TipoMutuo   = "concessao" | "captacao";
 type StatusMutuo = "ativo" | "quitado" | "em_atraso";
 
+interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; }
+
 interface Mutuo {
   id: string; fazenda_id: string; tipo: TipoMutuo; contraparte: string;
   valor_principal: number; taxa_juros_mensal: number;
   data_inicio: string; data_vencimento: string;
-  saldo_devedor: number; status: StatusMutuo; observacao?: string;
+  saldo_devedor: number; status: StatusMutuo;
+  conta_minha?: string; observacao?: string;
 }
 interface PagamentoMutuo {
   id: string; mutuo_id: string; data_pagamento: string;
-  valor_principal: number; valor_juros: number; valor_total: number; observacao?: string;
+  valor_principal: number; valor_juros: number; valor_total: number;
+  conta_pagamento?: string; observacao?: string;
 }
 
 const STATUS_META: Record<StatusMutuo, { label: string; bg: string; cl: string }> = {
-  ativo:     { label: "Ativo",     bg: "#D5E8F5", cl: "#0B2D50" },
-  quitado:   { label: "Quitado",  bg: "#DCFCE7", cl: "#166534" },
-  em_atraso: { label: "Em Atraso",bg: "#FCEBEB", cl: "#791F1F" },
+  ativo:     { label: "Ativo",      bg: "#D5E8F5", cl: "#0B2D50" },
+  quitado:   { label: "Quitado",   bg: "#DCFCE7", cl: "#166534" },
+  em_atraso: { label: "Em Atraso", bg: "#FCEBEB", cl: "#791F1F" },
 };
 
 export default function MutuoPage() {
   const { fazendaId } = useAuth();
 
-  const [mutuos, setMutuos]       = useState<Mutuo[]>([]);
+  const [mutuos, setMutuos]         = useState<Mutuo[]>([]);
   const [pagamentos, setPagamentos] = useState<PagamentoMutuo[]>([]);
-  const [expand, setExpand]        = useState<string | null>(null);
+  const [contas, setContas]         = useState<ContaBancariaMin[]>([]);
+  const [expand, setExpand]         = useState<string | null>(null);
 
   // Modal Mútuo
   const [modalMutuo, setModalMutuo] = useState(false);
   const [mutuoEdit, setMutuoEdit]   = useState<Mutuo | null>(null);
-  const [mForm, setMForm] = useState({ tipo: "concessao" as TipoMutuo, contraparte: "", valor_principal: "", taxa_juros_mensal: "", data_inicio: hoje(), data_vencimento: "", observacao: "" });
+  const [mForm, setMForm] = useState({
+    tipo: "concessao" as TipoMutuo,
+    contraparte: "", conta_minha: "",
+    valor_principal: "", taxa_juros_mensal: "",
+    data_inicio: hoje(), data_vencimento: "", observacao: "",
+  });
   const [mSaving, setMSaving] = useState(false);
   const [mErr, setMErr]       = useState("");
 
   // Modal Pagamento
   const [modalPag, setModalPag]   = useState<Mutuo | null>(null);
-  const [pagForm, setPagForm]     = useState({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", observacao: "" });
+  const [pagForm, setPagForm]     = useState({
+    data_pagamento: hoje(), valor_principal: "", valor_juros: "",
+    conta_pagamento: "", observacao: "",
+  });
   const [pagSaving, setPagSaving] = useState(false);
   const [pagErr, setPagErr]       = useState("");
 
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
-    const { data: md } = await supabase.from("mutuos").select("*").eq("fazenda_id", fazendaId).order("data_inicio", { ascending: false });
+    const [{ data: md }, { data: cb }] = await Promise.all([
+      supabase.from("mutuos").select("*").eq("fazenda_id", fazendaId).order("data_inicio", { ascending: false }),
+      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao").eq("fazenda_id", fazendaId),
+    ]);
     setMutuos(md ?? []);
+    setContas(cb ?? []);
     if (md && md.length > 0) {
       const { data: pd } = await supabase.from("pagamentos_mutuo").select("*").in("mutuo_id", md.map((m: Mutuo) => m.id)).order("data_pagamento", { ascending: false });
       setPagamentos(pd ?? []);
@@ -66,18 +83,26 @@ export default function MutuoPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const ativos      = mutuos.filter(m => m.status === "ativo");
-  const concedido   = ativos.filter(m => m.tipo === "concessao").reduce((s, m) => s + m.saldo_devedor, 0);
-  const captado     = ativos.filter(m => m.tipo === "captacao" ).reduce((s, m) => s + m.saldo_devedor, 0);
-  const emAtraso    = mutuos.filter(m => m.status === "em_atraso").length;
+  const contaLabel = (c: ContaBancariaMin) =>
+    `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.descricao || c.id;
+
+  const contaOpts = contas.length > 0
+    ? contas.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)
+    : [<option key="_vazio" value="" disabled>Nenhuma conta cadastrada</option>];
+
+  // KPIs
+  const ativos    = mutuos.filter(m => m.status === "ativo");
+  const concedido = ativos.filter(m => m.tipo === "concessao").reduce((s, m) => s + m.saldo_devedor, 0);
+  const captado   = ativos.filter(m => m.tipo === "captacao" ).reduce((s, m) => s + m.saldo_devedor, 0);
+  const emAtraso  = mutuos.filter(m => m.status === "em_atraso").length;
 
   function abrirMutuo(m?: Mutuo) {
     if (m) {
       setMutuoEdit(m);
-      setMForm({ tipo: m.tipo, contraparte: m.contraparte, valor_principal: String(m.valor_principal), taxa_juros_mensal: String(m.taxa_juros_mensal), data_inicio: m.data_inicio, data_vencimento: m.data_vencimento, observacao: m.observacao ?? "" });
+      setMForm({ tipo: m.tipo, contraparte: m.contraparte, conta_minha: m.conta_minha ?? "", valor_principal: String(m.valor_principal), taxa_juros_mensal: String(m.taxa_juros_mensal), data_inicio: m.data_inicio, data_vencimento: m.data_vencimento, observacao: m.observacao ?? "" });
     } else {
       setMutuoEdit(null);
-      setMForm({ tipo: "concessao", contraparte: "", valor_principal: "", taxa_juros_mensal: "", data_inicio: hoje(), data_vencimento: "", observacao: "" });
+      setMForm({ tipo: "concessao", contraparte: "", conta_minha: "", valor_principal: "", taxa_juros_mensal: "", data_inicio: hoje(), data_vencimento: "", observacao: "" });
     }
     setMErr(""); setModalMutuo(true);
   }
@@ -90,9 +115,40 @@ export default function MutuoPage() {
     setMSaving(true); setMErr("");
     try {
       const vp = parseFloat(mForm.valor_principal);
-      const payload = { fazenda_id: fazendaId, tipo: mForm.tipo, contraparte: mForm.contraparte.trim(), valor_principal: vp, taxa_juros_mensal: parseFloat(mForm.taxa_juros_mensal) || 0, data_inicio: mForm.data_inicio, data_vencimento: mForm.data_vencimento, saldo_devedor: mutuoEdit ? mutuoEdit.saldo_devedor : vp, status: (mutuoEdit ? mutuoEdit.status : "ativo") as StatusMutuo, observacao: mForm.observacao || null };
-      if (mutuoEdit) { await supabase.from("mutuos").update(payload).eq("id", mutuoEdit.id); }
-      else { await supabase.from("mutuos").insert(payload); }
+      const isConcessao = mForm.tipo === "concessao";
+      const payload = {
+        fazenda_id: fazendaId, tipo: mForm.tipo,
+        contraparte: mForm.contraparte.trim(),
+        conta_minha: mForm.conta_minha || null,
+        valor_principal: vp,
+        taxa_juros_mensal: parseFloat(mForm.taxa_juros_mensal) || 0,
+        data_inicio: mForm.data_inicio,
+        data_vencimento: mForm.data_vencimento,
+        saldo_devedor: mutuoEdit ? mutuoEdit.saldo_devedor : vp,
+        status: (mutuoEdit ? mutuoEdit.status : "ativo") as StatusMutuo,
+        observacao: mForm.observacao || null,
+      };
+
+      if (mutuoEdit) {
+        await supabase.from("mutuos").update(payload).eq("id", mutuoEdit.id);
+      } else {
+        await supabase.from("mutuos").insert(payload);
+        // Gera lançamento financeiro do desembolso/recebimento inicial
+        await supabase.from("lancamentos").insert({
+          fazenda_id: fazendaId,
+          tipo: isConcessao ? "pagar" : "receber",
+          moeda: "BRL",
+          descricao: `${isConcessao ? "Mútuo concedido a" : "Mútuo recebido de"} ${mForm.contraparte.trim()}`,
+          categoria: isConcessao ? "Mútuo Concedido" : "Mútuo Captado",
+          valor: vp,
+          data_lancamento: mForm.data_inicio,
+          data_vencimento: mForm.data_vencimento,
+          status: "baixado",
+          auto: false,
+          conta_bancaria: mForm.conta_minha || null,
+          origem_lancamento: "mutuo",
+        });
+      }
       await carregar(); setModalMutuo(false);
     } catch (e: unknown) { setMErr(e instanceof Error ? e.message : "Erro ao salvar."); }
     finally { setMSaving(false); }
@@ -105,15 +161,45 @@ export default function MutuoPage() {
   }
 
   async function registrarPagamento() {
-    if (!modalPag) return;
+    if (!modalPag || !fazendaId) return;
     const vp = parseFloat(pagForm.valor_principal) || 0;
     const vj = parseFloat(pagForm.valor_juros) || 0;
     if (vp + vj <= 0) { setPagErr("Informe ao menos um valor."); return; }
     setPagSaving(true); setPagErr("");
     try {
-      await supabase.from("pagamentos_mutuo").insert({ mutuo_id: modalPag.id, data_pagamento: pagForm.data_pagamento, valor_principal: vp, valor_juros: vj, valor_total: vp + vj, observacao: pagForm.observacao || null });
+      const isConcessao = modalPag.tipo === "concessao";
+      // Registro do pagamento
+      await supabase.from("pagamentos_mutuo").insert({
+        mutuo_id: modalPag.id,
+        data_pagamento: pagForm.data_pagamento,
+        valor_principal: vp, valor_juros: vj, valor_total: vp + vj,
+        conta_pagamento: pagForm.conta_pagamento || null,
+        observacao: pagForm.observacao || null,
+      });
+      // Atualiza saldo devedor
       const novoSaldo = Math.max(0, modalPag.saldo_devedor - vp);
-      await supabase.from("mutuos").update({ saldo_devedor: novoSaldo, status: novoSaldo <= 0 ? "quitado" : modalPag.status }).eq("id", modalPag.id);
+      await supabase.from("mutuos").update({
+        saldo_devedor: novoSaldo,
+        status: novoSaldo <= 0 ? "quitado" : modalPag.status,
+      }).eq("id", modalPag.id);
+
+      // Lançamentos financeiros
+      const tipoLanc = isConcessao ? "receber" : "pagar";
+      const catPrinc = isConcessao ? "Amortização Mútuo Recebida" : "Amortização Mútuo Paga";
+      const catJuros = isConcessao ? "Juros Mútuo Recebidos" : "Juros Mútuo Pagos";
+      const lancBase = {
+        fazenda_id: fazendaId, moeda: "BRL",
+        data_lancamento: pagForm.data_pagamento,
+        data_vencimento: pagForm.data_pagamento,
+        status: "baixado" as const, auto: false,
+        conta_bancaria: pagForm.conta_pagamento || null,
+        origem_lancamento: "mutuo",
+      };
+      const inserts = [];
+      if (vp > 0) inserts.push({ ...lancBase, tipo: tipoLanc as "pagar" | "receber", descricao: `${catPrinc} — ${modalPag.contraparte}`, categoria: catPrinc, valor: vp });
+      if (vj > 0) inserts.push({ ...lancBase, tipo: tipoLanc as "pagar" | "receber", descricao: `${catJuros} — ${modalPag.contraparte}`, categoria: catJuros, valor: vj });
+      if (inserts.length > 0) await supabase.from("lancamentos").insert(inserts);
+
       await carregar(); setModalPag(null);
     } catch (e: unknown) { setPagErr(e instanceof Error ? e.message : "Erro."); }
     finally { setPagSaving(false); }
@@ -127,7 +213,7 @@ export default function MutuoPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 22 }}>
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", margin: 0 }}>Mútuo entre Empresas</h1>
-            <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Contratos de empréstimo entre empresas do grupo</p>
+            <p style={{ fontSize: 13, color: "#666", marginTop: 4, marginBottom: 0 }}>Contratos de empréstimo entre empresas do grupo ou partes relacionadas</p>
           </div>
           <button onClick={() => abrirMutuo()} style={btnV}>+ Novo Mútuo</button>
         </div>
@@ -135,10 +221,10 @@ export default function MutuoPage() {
         {/* KPIs */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 22 }}>
           {[
-            { label: "Saldo Concedido",    value: fmtBRL(concedido), sub: "a receber", color: "#1A4870" },
-            { label: "Saldo Captado",      value: fmtBRL(captado),   sub: "a pagar",   color: "#E24B4A" },
-            { label: "Contratos Ativos",   value: String(ativos.length), sub: "contratos", color: "#0B2D50" },
-            { label: "Em Atraso",          value: String(emAtraso),   sub: "contratos",  color: emAtraso > 0 ? "#E24B4A" : "#666" },
+            { label: "Saldo Concedido",  value: fmtBRL(concedido), sub: "a receber", color: "#1A4870" },
+            { label: "Saldo Captado",    value: fmtBRL(captado),   sub: "a pagar",   color: "#E24B4A" },
+            { label: "Contratos Ativos", value: String(ativos.length), sub: "contratos", color: "#0B2D50" },
+            { label: "Em Atraso",        value: String(emAtraso),  sub: "contratos", color: emAtraso > 0 ? "#E24B4A" : "#666" },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: "16px 18px" }}>
               <div style={{ fontSize: 11, color: "#666", marginBottom: 6 }}>{k.label}</div>
@@ -148,6 +234,7 @@ export default function MutuoPage() {
           ))}
         </div>
 
+        {/* Lista */}
         {mutuos.length === 0 ? (
           <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             Nenhum contrato de mútuo cadastrado.
@@ -162,10 +249,13 @@ export default function MutuoPage() {
               const exp = expand === m.id;
               return (
                 <div key={m.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border-table)", overflow: "hidden" }}>
-                  <div onClick={() => setExpand(exp ? null : m.id)} style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px 120px 130px 180px", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer" }}>
+                  <div onClick={() => setExpand(exp ? null : m.id)} style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px 100px 140px 200px", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer" }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>{m.contraparte}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{m.tipo === "concessao" ? "Concedido" : "Captado"} · {fmtData(m.data_inicio)} → {fmtData(m.data_vencimento)}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                        {m.tipo === "concessao" ? "Concedido" : "Captado"} · {fmtData(m.data_inicio)} → {fmtData(m.data_vencimento)}
+                        {m.conta_minha && <span style={{ marginLeft: 6, color: "#1A4870" }}>· {m.conta_minha}</span>}
+                      </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 11, color: "#666" }}>Principal</div>
@@ -187,7 +277,7 @@ export default function MutuoPage() {
                     <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                       <span style={{ fontSize: 10, background: sm.bg, color: sm.cl, padding: "2px 7px", borderRadius: 8, fontWeight: 600 }}>{sm.label}</span>
                       {m.status === "ativo" && <>
-                        <button onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>Pagar</button>
+                        <button onClick={e => { e.stopPropagation(); setModalPag(m); setPagForm({ data_pagamento: hoje(), valor_principal: "", valor_juros: "", conta_pagamento: m.conta_minha ?? "", observacao: "" }); setPagErr(""); }} style={{ padding: "4px 10px", border: "0.5px solid #1A487050", borderRadius: 6, background: "#D5E8F5", cursor: "pointer", fontSize: 11, color: "#0B2D50", fontWeight: 600 }}>Pagar</button>
                         <button onClick={e => { e.stopPropagation(); quitarMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid #16A34A50", borderRadius: 6, background: "#E8F5E9", cursor: "pointer", fontSize: 11, color: "#1A6B3C", fontWeight: 600 }}>Quitar</button>
                       </>}
                       <button onClick={e => { e.stopPropagation(); abrirMutuo(m); }} style={{ padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "var(--text-2)" }}>Editar</button>
@@ -199,7 +289,7 @@ export default function MutuoPage() {
                       {pagsMutuo.length === 0 ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nenhum pagamento registrado.</div> : (
                         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                           <thead><tr style={{ background: "var(--bg-tag)" }}>
-                            {["Data", "Principal", "Juros", "Total", "Obs."].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}
+                            {["Data", "Principal", "Juros", "Total", "Conta", "Obs."].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: h === "Obs." || h === "Conta" ? "left" : "right", color: "var(--text-2)", fontWeight: 600 }}>{h}</th>)}
                           </tr></thead>
                           <tbody>{pagsMutuo.map(p => (
                             <tr key={p.id} style={{ borderBottom: "0.5px solid var(--bg-tag)" }}>
@@ -207,6 +297,7 @@ export default function MutuoPage() {
                               <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmtBRL(p.valor_principal)}</td>
                               <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmtBRL(p.valor_juros)}</td>
                               <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor_total)}</td>
+                              <td style={{ padding: "6px 10px", color: "#1A4870" }}>{p.conta_pagamento ?? "—"}</td>
                               <td style={{ padding: "6px 10px", color: "#666" }}>{p.observacao ?? "—"}</td>
                             </tr>
                           ))}</tbody>
@@ -221,20 +312,25 @@ export default function MutuoPage() {
         )}
       </main>
 
-      {/* Modal Mútuo */}
+      {/* ═══════════ MODAL MÚTUO ═══════════ */}
       {modalMutuo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, overflowY: "auto", padding: "24px 0" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 600, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>{mutuoEdit ? "Editar Mútuo" : "Novo Contrato de Mútuo"}</div>
               <button onClick={() => setModalMutuo(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
             </div>
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
               {mErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{mErr}</div>}
+
+              {/* Tipo */}
               <div>
                 <label style={lbl}>Tipo</label>
                 <div style={{ display: "flex", gap: 10 }}>
-                  {([{ v: "concessao", label: "Concessão (a receber)", desc: "Sua empresa emprestou" }, { v: "captacao", label: "Captação (a pagar)", desc: "Outra empresa emprestou" }] as { v: TipoMutuo; label: string; desc: string }[]).map(opt => (
+                  {([
+                    { v: "concessao", label: "Concessão (a receber)", desc: "Sua empresa emprestou", contaLabel: "Conta Saída (dinheiro sai)" },
+                    { v: "captacao",  label: "Captação (a pagar)",    desc: "Outra empresa emprestou", contaLabel: "Conta Entrada (dinheiro entra)" },
+                  ] as { v: TipoMutuo; label: string; desc: string; contaLabel: string }[]).map(opt => (
                     <button key={opt.v} onClick={() => setMForm(f => ({ ...f, tipo: opt.v }))} style={{ flex: 1, padding: "12px 14px", border: `2px solid ${mForm.tipo === opt.v ? "#1A4870" : "var(--border-table)"}`, borderRadius: 10, background: mForm.tipo === opt.v ? "#D5E8F5" : "var(--bg-card)", cursor: "pointer", textAlign: "left" }}>
                       <div style={{ fontSize: 12, fontWeight: 600 }}>{opt.label}</div>
                       <div style={{ fontSize: 11, color: "#666", marginTop: 3 }}>{opt.desc}</div>
@@ -242,10 +338,19 @@ export default function MutuoPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Contraparte + Conta */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={lbl}>Contraparte (empresa)</label>
-                  <input value={mForm.contraparte} onChange={e => setMForm(f => ({ ...f, contraparte: e.target.value }))} style={inp} placeholder="Nome da empresa" />
+                  <label style={lbl}>Contraparte (empresa ou pessoa)</label>
+                  <input value={mForm.contraparte} onChange={e => setMForm(f => ({ ...f, contraparte: e.target.value }))} style={inp} placeholder="Nome da empresa ou pessoa" />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <label style={lbl}>{mForm.tipo === "concessao" ? "Conta Saída — dinheiro sai desta conta ao emprestar" : "Conta Entrada — dinheiro entra nesta conta ao receber"}</label>
+                  <select value={mForm.conta_minha} onChange={e => setMForm(f => ({ ...f, conta_minha: e.target.value }))} style={inp}>
+                    <option value="">— não informado —</option>
+                    {contaOpts}
+                  </select>
                 </div>
                 <div>
                   <label style={lbl}>Valor Principal (R$)</label>
@@ -268,6 +373,12 @@ export default function MutuoPage() {
                   <textarea value={mForm.observacao} onChange={e => setMForm(f => ({ ...f, observacao: e.target.value }))} rows={2} style={{ ...inp, resize: "vertical" }} />
                 </div>
               </div>
+
+              {!mutuoEdit && (
+                <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                  Ao salvar, será gerado automaticamente um lançamento financeiro referente ao {mForm.tipo === "concessao" ? "desembolso (saída)" : "recebimento (entrada)"} inicial.
+                </div>
+              )}
             </div>
             <div style={{ padding: "14px 22px 18px", borderTop: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button style={btnR} onClick={() => setModalMutuo(false)}>Cancelar</button>
@@ -277,13 +388,13 @@ export default function MutuoPage() {
         </div>
       )}
 
-      {/* Modal Pagamento */}
+      {/* ═══════════ MODAL PAGAMENTO ═══════════ */}
       {modalPag && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000 }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 440, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 480, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
             <div style={{ padding: "18px 22px 14px", borderBottom: "0.5px solid var(--bg-tag)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar Pagamento</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-1)" }}>Registrar {modalPag.tipo === "concessao" ? "Recebimento" : "Pagamento"}</div>
                 <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{modalPag.contraparte} · saldo {fmtBRL(modalPag.saldo_devedor)}</div>
               </div>
               <button onClick={() => setModalPag(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-3)" }}>×</button>
@@ -291,8 +402,15 @@ export default function MutuoPage() {
             <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
               {pagErr && <div style={{ background: "#FCEBEB", border: "0.5px solid #F5C6C6", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#791F1F" }}>{pagErr}</div>}
               <div>
-                <label style={lbl}>Data do Pagamento</label>
+                <label style={lbl}>Data</label>
                 <input type="date" value={pagForm.data_pagamento} onChange={e => setPagForm(f => ({ ...f, data_pagamento: e.target.value }))} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>{modalPag.tipo === "concessao" ? "Conta Entrada — onde o dinheiro retorna" : "Conta Saída — de onde o dinheiro sai"}</label>
+                <select value={pagForm.conta_pagamento} onChange={e => setPagForm(f => ({ ...f, conta_pagamento: e.target.value }))} style={inp}>
+                  <option value="">— não informado —</option>
+                  {contaOpts}
+                </select>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
@@ -300,13 +418,14 @@ export default function MutuoPage() {
                   <InputMonetario value={pagForm.valor_principal} onChange={v => setPagForm(f => ({ ...f, valor_principal: String(v) }))} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Juros Pagos (R$)</label>
+                  <label style={lbl}>Juros (R$)</label>
                   <InputMonetario value={pagForm.valor_juros} onChange={v => setPagForm(f => ({ ...f, valor_juros: String(v) }))} style={inp} />
                 </div>
               </div>
               {(parseFloat(pagForm.valor_principal) > 0 || parseFloat(pagForm.valor_juros) > 0) && (
                 <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", fontSize: 13 }}>
                   Total: <strong style={{ color: "#1A4870" }}>{fmtBRL((parseFloat(pagForm.valor_principal) || 0) + (parseFloat(pagForm.valor_juros) || 0))}</strong>
+                  {parseFloat(pagForm.valor_juros) > 0 && <span style={{ fontSize: 11, color: "#666", marginLeft: 8 }}>({parseFloat(pagForm.valor_juros) > 0 ? "juros lançados como " + (modalPag.tipo === "concessao" ? "Receita" : "Despesa") + " Financeira" : ""})</span>}
                 </div>
               )}
               <div>

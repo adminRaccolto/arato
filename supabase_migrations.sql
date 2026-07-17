@@ -7717,3 +7717,72 @@ DO $$ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════
+-- Seção 73: Aplicações Financeiras + correção Mútuo
+-- ═══════════════════════════════════════════════════════════════
+
+-- Adiciona conta_minha em mutuos e conta_pagamento em pagamentos_mutuo
+ALTER TABLE mutuos ADD COLUMN IF NOT EXISTS conta_minha TEXT;
+ALTER TABLE pagamentos_mutuo ADD COLUMN IF NOT EXISTS conta_pagamento TEXT;
+
+-- Tabela de aplicações financeiras
+CREATE TABLE IF NOT EXISTS aplicacoes_financeiras (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id         UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome               TEXT NOT NULL,
+  tipo               TEXT NOT NULL CHECK (tipo IN ('cdb','lci','lca','cri','cra','fundos','tesouro','poupanca','outro')),
+  instituicao        TEXT,
+  conta_corrente     TEXT,
+  conta_aplicacao    TEXT,
+  valor_aportado     NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_atual        NUMERIC(14,2) NOT NULL DEFAULT 0,
+  rendimentos_brutos NUMERIC(14,2) NOT NULL DEFAULT 0,
+  taxa_contratada    NUMERIC(8,4),
+  indexador          TEXT CHECK (indexador IN ('cdi','ipca','prefixado','cdi_mais','livre')),
+  data_inicio        DATE NOT NULL,
+  data_vencimento    DATE,
+  status             TEXT NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa','resgatada')),
+  observacao         TEXT,
+  created_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Movimentações de cada aplicação
+CREATE TABLE IF NOT EXISTS aplicacao_movimentos (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  aplicacao_id   UUID NOT NULL REFERENCES aplicacoes_financeiras(id) ON DELETE CASCADE,
+  fazenda_id     UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo           TEXT NOT NULL CHECK (tipo IN ('aporte','rendimento','resgate_parcial','resgate_total')),
+  data           DATE NOT NULL,
+  valor_bruto    NUMERIC(14,2) NOT NULL,
+  iof            NUMERIC(14,2) NOT NULL DEFAULT 0,
+  ir             NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_liquido  NUMERIC(14,2),
+  conta_origem   TEXT,
+  conta_destino  TEXT,
+  observacao     TEXT,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE aplicacoes_financeiras ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='aplicacoes_financeiras' AND policyname='af_all') THEN
+    CREATE POLICY af_all ON aplicacoes_financeiras FOR ALL USING (
+      fazenda_id IN (SELECT id FROM fazendas WHERE conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()))
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+END $$;
+
+ALTER TABLE aplicacao_movimentos ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='aplicacao_movimentos' AND policyname='am_all') THEN
+    CREATE POLICY am_all ON aplicacao_movimentos FOR ALL USING (
+      fazenda_id IN (SELECT id FROM fazendas WHERE conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()))
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';
