@@ -7786,3 +7786,43 @@ DO $$ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ============================================================
+-- Seção 74 — Faturas de Fornecedor (faturamento mensal)
+-- ============================================================
+
+-- Tabela principal de faturas
+CREATE TABLE IF NOT EXISTS faturas_fornecedor (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id     UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  pessoa_id      UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  fornecedor_nome TEXT,          -- cache do nome para exibição rápida
+  competencia    TEXT NOT NULL,  -- YYYY-MM ex.: "2026-07"
+  numero_fatura  TEXT,           -- nº do documento de cobrança enviado pelo fornecedor
+  valor_total    NUMERIC(14,2) NOT NULL DEFAULT 0,
+  valor_cp       NUMERIC(14,2) NOT NULL DEFAULT 0, -- soma dos CPs vinculados
+  status         TEXT NOT NULL DEFAULT 'aberta'
+                   CHECK (status IN ('aberta','aguardando_pagamento','paga','cancelada')),
+  vencimento     DATE,
+  data_pagamento DATE,
+  conta_pagamento TEXT,
+  observacao     TEXT,
+  created_at     TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Vincular CP à fatura
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS fatura_id UUID REFERENCES faturas_fornecedor(id) ON DELETE SET NULL;
+
+-- RLS
+ALTER TABLE faturas_fornecedor ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='faturas_fornecedor' AND policyname='ff_all') THEN
+    CREATE POLICY ff_all ON faturas_fornecedor FOR ALL USING (
+      fazenda_id IN (SELECT id FROM fazendas WHERE conta_id IN (SELECT conta_id FROM perfis WHERE user_id = auth.uid()))
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role IN ('raccotlo','raccotlo_gestor','raccotlo_seletor'))
+    );
+  END IF;
+END $$;
+
+NOTIFY pgrst, 'reload schema';

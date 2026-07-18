@@ -1098,7 +1098,12 @@ function ContasPagarInner() {
                             {col("produtor") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{l.produtor_id ? prod : "—"}</td>}
                             {/* Origem */}
                             {col("origem") && <td style={{ padding: "8px 8px", textAlign: "center" }}>
-                              <span style={{ fontSize: 9, background: "var(--bg-input)", color: "var(--text-2)", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{om.label}</span>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                                <span style={{ fontSize: 9, background: "var(--bg-input)", color: "var(--text-2)", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{om.label}</span>
+                                {(l as Lancamento & { fatura_id?: string }).fatura_id && (
+                                  <span style={{ fontSize: 9, background: "#FBF3E0", color: "#7A4300", padding: "2px 6px", borderRadius: 5, fontWeight: 600, border: "0.5px solid #C9921B", whiteSpace: "nowrap" }}>Fatura</span>
+                                )}
+                              </div>
                             </td>}
                             {/* Observação */}
                             {col("obs") && <td style={{ padding: "8px 8px", fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap", overflow: "hidden", maxWidth: 160 }}>{obsExibir}</td>}
