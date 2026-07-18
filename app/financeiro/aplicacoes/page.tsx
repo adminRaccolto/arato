@@ -21,7 +21,7 @@ type TipoIndexador   = "cdi" | "ipca" | "prefixado" | "cdi_mais" | "livre";
 type StatusAplicacao = "ativa" | "resgatada";
 type TipoMovimento   = "aporte" | "rendimento" | "resgate_parcial" | "resgate_total";
 
-interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; }
+interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; tipo?: string; }
 
 interface AplicacaoFinanceira {
   id: string; fazenda_id: string;
@@ -104,7 +104,7 @@ export default function AplicacoesFinanceirasPage() {
     const [{ data: ap }, { data: mv }, { data: cb }] = await Promise.all([
       supabase.from("aplicacoes_financeiras").select("*").eq("fazenda_id", fazendaId).order("data_inicio", { ascending: false }),
       supabase.from("aplicacao_movimentos").select("*").eq("fazenda_id", fazendaId).order("data", { ascending: false }),
-      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao").eq("fazenda_id", fazendaId),
+      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").eq("fazenda_id", fazendaId),
     ]);
     setAplicacoes(ap ?? []);
     setMovimentos(mv ?? []);
@@ -116,6 +116,15 @@ export default function AplicacoesFinanceirasPage() {
   const contaLabel = (c: ContaBancariaMin) =>
     `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.descricao || c.id;
   const contaOpts = contas.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>);
+  // Agrupa investimento em cima para facilitar seleção de conta aplicação
+  const contaOptsGrupo = (() => {
+    const inv  = contas.filter(c => c.tipo === "investimento");
+    const rest = contas.filter(c => c.tipo !== "investimento");
+    return [
+      inv.length  > 0 && <optgroup key="inv"  label="● Conta Investimento">{inv.map(c =>  <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)}</optgroup>,
+      rest.length > 0 && <optgroup key="rest" label="Outras Contas">{rest.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)}</optgroup>,
+    ].filter(Boolean);
+  })();
 
   // ─── KPIs ─────────────────────────────────────────────────
   const ativas = aplicacoes.filter(a => a.status === "ativa");
@@ -188,14 +197,12 @@ export default function AplicacoesFinanceirasPage() {
             conta_origem: nForm.conta_corrente || null,
             conta_destino: nForm.conta_aplicacao || null,
           });
-          // Lançamento financeiro: dinheiro sai da conta corrente
-          if (nForm.conta_corrente) {
-            await criarLancamento({
-              tipo: "pagar", categoria: "Aporte em Aplicação Financeira",
-              descricao: `Aporte em ${nForm.nome.trim()} — ${TIPO_LABEL[nForm.tipo]}`,
-              valor: nForm.valor_inicial, data: nForm.data_inicio, conta: nForm.conta_corrente,
-            });
-          }
+          // Double-entry: saída da corrente + entrada na investimento
+          const descApl = `Aporte em ${nForm.nome.trim()} — ${TIPO_LABEL[nForm.tipo]}`;
+          const inserts = [];
+          if (nForm.conta_corrente)  inserts.push({ fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", valor: nForm.valor_inicial, data_lancamento: nForm.data_inicio, data_vencimento: nForm.data_inicio, status: "baixado" as const, auto: false, conta_bancaria: nForm.conta_corrente, origem_lancamento: "aplicacao_financeira" });
+          if (nForm.conta_aplicacao) inserts.push({ fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descApl} → entrada`, categoria: "Aporte em Aplicação Financeira", valor: nForm.valor_inicial, data_lancamento: nForm.data_inicio, data_vencimento: nForm.data_inicio, status: "baixado" as const, auto: false, conta_bancaria: nForm.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
+          if (inserts.length > 0) await supabase.from("lancamentos").insert(inserts);
         }
       }
       await carregar(); setModalNova(false);
@@ -229,14 +236,12 @@ export default function AplicacoesFinanceirasPage() {
         valor_aportado: modalAporte.valor_aportado + aForm.valor,
         valor_atual: modalAporte.valor_atual + aForm.valor,
       }).eq("id", modalAporte.id);
-      // Lançamento financeiro
-      if (aForm.conta_corrente) {
-        await criarLancamento({
-          tipo: "pagar", categoria: "Aporte em Aplicação Financeira",
-          descricao: `Aporte em ${modalAporte.nome} — ${TIPO_LABEL[modalAporte.tipo]}`,
-          valor: aForm.valor, data: aForm.data, conta: aForm.conta_corrente,
-        });
-      }
+      // Double-entry: saída corrente + entrada investimento
+      const descAp = `Aporte em ${modalAporte.nome} — ${TIPO_LABEL[modalAporte.tipo]}`;
+      const insAp = [];
+      if (aForm.conta_corrente)          insAp.push({ fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descAp} ← saída`, categoria: "Aporte em Aplicação Financeira", valor: aForm.valor, data_lancamento: aForm.data, data_vencimento: aForm.data, status: "baixado" as const, auto: false, conta_bancaria: aForm.conta_corrente, origem_lancamento: "aplicacao_financeira" });
+      if (modalAporte.conta_aplicacao)   insAp.push({ fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descAp} → entrada`, categoria: "Aporte em Aplicação Financeira", valor: aForm.valor, data_lancamento: aForm.data, data_vencimento: aForm.data, status: "baixado" as const, auto: false, conta_bancaria: modalAporte.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
+      if (insAp.length > 0) await supabase.from("lancamentos").insert(insAp);
       await carregar(); setModalAporte(null);
     } catch (e: unknown) { setAErr(e instanceof Error ? e.message : "Erro."); }
     finally { setASaving(false); }
@@ -313,30 +318,14 @@ export default function AplicacoesFinanceirasPage() {
         status: isTotal ? "resgatada" : "ativa",
       }).eq("id", modalResgate.id);
 
-      // Lançamentos financeiros
-      const lancamentos = [];
-      if (rgForm.conta_destino) {
-        lancamentos.push({
-          tipo: "receber" as const, categoria: "Resgate de Aplicação Financeira",
-          descricao: `Resgate de ${modalResgate.nome} — ${TIPO_LABEL[modalResgate.tipo]}`,
-          valor: valorLiquido, data: rgForm.data, conta: rgForm.conta_destino,
-        });
-      }
-      if (rgForm.iof > 0 && rgForm.conta_destino) {
-        lancamentos.push({
-          tipo: "pagar" as const, categoria: "IOF — Aplicação Financeira",
-          descricao: `IOF s/ resgate de ${modalResgate.nome}`,
-          valor: rgForm.iof, data: rgForm.data, conta: rgForm.conta_destino,
-        });
-      }
-      if (rgForm.ir > 0 && rgForm.conta_destino) {
-        lancamentos.push({
-          tipo: "pagar" as const, categoria: "IR — Rendimentos Financeiros",
-          descricao: `IR s/ rendimentos de ${modalResgate.nome}`,
-          valor: rgForm.ir, data: rgForm.data, conta: rgForm.conta_destino,
-        });
-      }
-      for (const l of lancamentos) await criarLancamento(l);
+      // Double-entry: saída investimento + entrada corrente + IOF/IR
+      const descRsg = `Resgate de ${modalResgate.nome} — ${TIPO_LABEL[modalResgate.tipo]}`;
+      const insRsg: object[] = [];
+      if (modalResgate.conta_aplicacao) insRsg.push({ fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: rgForm.valor_bruto, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: modalResgate.conta_aplicacao, origem_lancamento: "aplicacao_financeira" });
+      if (rgForm.conta_destino)          insRsg.push({ fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", valor: valorLiquido, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
+      if (rgForm.iof > 0 && rgForm.conta_destino) insRsg.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ ${descRsg}`, categoria: "IOF — Aplicação Financeira", valor: rgForm.iof, data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
+      if (rgForm.ir  > 0 && rgForm.conta_destino) insRsg.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ ${descRsg}`, categoria: "IR — Rendimentos Financeiros", valor: rgForm.ir,  data_lancamento: rgForm.data, data_vencimento: rgForm.data, status: "baixado" as const, auto: false, conta_bancaria: rgForm.conta_destino, origem_lancamento: "aplicacao_financeira" });
+      if (insRsg.length > 0) await supabase.from("lancamentos").insert(insRsg);
 
       await carregar(); setModalResgate(null);
     } catch (e: unknown) { setRgErr(e instanceof Error ? e.message : "Erro."); }
@@ -432,17 +421,19 @@ export default function AplicacoesFinanceirasPage() {
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Contas envolvidas</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
-                      <label style={lbl}>Conta Corrente (saída de caixa)</label>
+                      <label style={lbl}>Conta Corrente — dinheiro SAI daqui ao aportar</label>
                       <select value={nForm.conta_corrente} onChange={e => setNForm(f => ({ ...f, conta_corrente: e.target.value }))} style={inp}>
                         <option value="">— não informado —</option>
                         {contaOpts}
                       </select>
-                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>De onde o dinheiro sai ao aportar</div>
                     </div>
                     <div>
-                      <label style={lbl}>Conta da Aplicação (livre)</label>
-                      <input value={nForm.conta_aplicacao} onChange={e => setNForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp} placeholder="Ex.: CDB Bradesco ag. 0001" />
-                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Nome/código da conta no banco ou corretora</div>
+                      <label style={lbl}>Conta Investimento — dinheiro ENTRA aqui ao aportar</label>
+                      <select value={nForm.conta_aplicacao} onChange={e => setNForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp}>
+                        <option value="">— não informado —</option>
+                        {contaOptsGrupo}
+                      </select>
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Cadastre em Cadastros → Contas Bancárias como tipo "Conta Investimento"</div>
                     </div>
                   </div>
                 </div>

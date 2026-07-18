@@ -33,7 +33,7 @@ interface OpTesoura {
   tipo: "entrada" | "saida" | "ambos" | "transferencia" | "ajuste";
   categoria?: string; observacao?: string; ativo: boolean;
 }
-interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; }
+interface ContaBancariaMin { id: string; banco?: string; agencia?: string; conta?: string; descricao?: string; tipo?: string; }
 
 const TIPOS_OP_PADRAO = [
   { id: "__mutuo__",         nome: "Mútuo entre Empresas",      tipo: "ambos"        },
@@ -78,7 +78,7 @@ export default function TesourariaPage() {
 
     const [{ data: lb }, { data: cb }, { data: ob }] = await Promise.all([
       supabase.from("lancamentos").select("*").eq("fazenda_id", fazendaId).eq("origem_lancamento", "tesouraria").order("data_lancamento", { ascending: false }),
-      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao").eq("fazenda_id", fazendaId),
+      supabase.from("contas_bancarias").select("id, banco, agencia, conta, descricao, tipo").eq("fazenda_id", fazendaId),
       supabase.from("operacoes_tesouraria").select("*").eq("fazenda_id", fazendaId).order("nome"),
     ]);
 
@@ -107,25 +107,26 @@ export default function TesourariaPage() {
 
       if (isAplicacao) {
         if (!lForm.valor) throw new Error("Informe o valor do aporte.");
-        await supabase.from("lancamentos").insert({
-          fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL",
-          descricao: lForm.descricao.trim() || `Aporte em aplicação${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`,
-          categoria: "Aporte em Aplicação Financeira",
-          valor: lForm.valor,
-          data_lancamento: lForm.data, data_vencimento: lForm.data,
-          status: "baixado" as const, auto: false,
-          conta_bancaria: lForm.conta_origem || null,
-          observacao: (lForm.conta_aplicacao ? `Conta aplicação: ${lForm.conta_aplicacao}. ` : "") + (lForm.observacao || ""),
-          origem_lancamento: "tesouraria",
-        });
+        if (!lForm.conta_origem) throw new Error("Selecione a conta corrente de origem.");
+        if (!lForm.conta_destino) throw new Error("Selecione a conta investimento de destino.");
+        const descApl = lForm.descricao.trim() || "Aporte em aplicação financeira";
+        const baseApl = { fazenda_id: fazendaId, moeda: "BRL", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        await supabase.from("lancamentos").insert([
+          { ...baseApl, tipo: "pagar"   as const, descricao: `${descApl} ← saída`, categoria: "Aporte em Aplicação Financeira", conta_bancaria: lForm.conta_origem },
+          { ...baseApl, tipo: "receber" as const, descricao: `${descApl} → entrada`, categoria: "Aporte em Aplicação Financeira", conta_bancaria: lForm.conta_destino },
+        ]);
       } else if (isResgate) {
         if (!lForm.valor) throw new Error("Informe o valor bruto do resgate.");
+        if (!lForm.conta_origem) throw new Error("Selecione a conta investimento de origem.");
+        if (!lForm.conta_destino) throw new Error("Selecione a conta corrente de destino.");
         const valorLiq = lForm.valor - (lForm.iof || 0) - (lForm.ir || 0);
-        const lancamentos = [];
-        const base = { fazenda_id: fazendaId, moeda: "BRL", data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino || null, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
-        lancamentos.push({ ...base, tipo: "receber" as const, descricao: `Resgate de aplicação${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`, categoria: "Resgate de Aplicação Financeira", valor: valorLiq });
-        if ((lForm.iof || 0) > 0) lancamentos.push({ ...base, tipo: "pagar" as const, descricao: `IOF s/ resgate${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`, categoria: "IOF — Aplicação Financeira", valor: lForm.iof });
-        if ((lForm.ir || 0) > 0)  lancamentos.push({ ...base, tipo: "pagar" as const, descricao: `IR s/ rendimentos${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir });
+        const descRsg = lForm.descricao.trim() || "Resgate de aplicação financeira";
+        const lancamentos: object[] = [
+          { fazenda_id: fazendaId, tipo: "pagar"   as const, moeda: "BRL", descricao: `${descRsg} ← saída aplicação`, categoria: "Resgate de Aplicação Financeira", valor: lForm.valor, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_origem, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
+          { fazenda_id: fazendaId, tipo: "receber" as const, moeda: "BRL", descricao: `${descRsg} → entrada líquida`, categoria: "Resgate de Aplicação Financeira", valor: valorLiq, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria", observacao: lForm.observacao || null },
+        ];
+        if ((lForm.iof || 0) > 0) lancamentos.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IOF s/ resgate`, categoria: "IOF — Aplicação Financeira", valor: lForm.iof, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
+        if ((lForm.ir  || 0) > 0) lancamentos.push({ fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL", descricao: `IR s/ rendimentos`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir, data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino, origem_lancamento: "tesouraria" });
         await supabase.from("lancamentos").insert(lancamentos);
       } else if (isAjuste) {
         const atual = lForm.saldo_atual || 0;
@@ -167,7 +168,7 @@ export default function TesourariaPage() {
       }
       await carregar();
       setModalLanc(false);
-      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0 });
+      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0  });
     } catch (e: unknown) {
       setLErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -268,6 +269,17 @@ export default function TesourariaPage() {
         const contaOpts = contas.length > 0
           ? contas.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)
           : [<option key="_vazio" value="" disabled>Nenhuma conta cadastrada — acesse Cadastros &gt; Contas Bancárias</option>];
+        // Selects agrupados — Conta Investimento destacada para aplicações/resgates
+        const contaOptsGrupo = contas.length === 0
+          ? [<option key="_vazio" value="" disabled>Nenhuma conta cadastrada</option>]
+          : (() => {
+              const inv  = contas.filter(c => c.tipo === "investimento");
+              const rest = contas.filter(c => c.tipo !== "investimento");
+              return [
+                inv.length  > 0 && <optgroup key="inv"  label="● Conta Investimento">{inv.map(c =>  <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)}</optgroup>,
+                rest.length > 0 && <optgroup key="rest" label="Outras Contas">{rest.map(c => <option key={c.id} value={contaLabel(c)}>{contaLabel(c)}</option>)}</optgroup>,
+              ].filter(Boolean);
+            })();
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex:2000, overflowY: "auto", padding: "24px 0" }}>
             <div style={{ background: "var(--bg-card)", borderRadius: 14, width: "100%", maxWidth: 560, margin: "0 20px", boxShadow: "0 4px 20px rgba(11,45,80,0.10)" }}>
@@ -365,16 +377,18 @@ export default function TesourariaPage() {
                 {isAplicacao && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Conta de Origem — de onde o dinheiro sai</label>
+                      <label style={lbl}>Conta Corrente de Origem — dinheiro SAI daqui</label>
                       <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
                       </select>
                     </div>
                     <div>
-                      <label style={lbl}>Conta da Aplicação de Destino</label>
-                      <input value={lForm.conta_aplicacao} onChange={e => setLForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp} placeholder="Ex.: CDB Bradesco ag. 0001 / Tesouro Selic 2027" />
-                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Nome/código do produto ou conta no banco/corretora</div>
+                      <label style={lbl}>Conta Investimento de Destino — dinheiro ENTRA aqui</label>
+                      <select value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+                        <option value="">— selecione —</option>
+                        {contaOptsGrupo}
+                      </select>
                     </div>
                     <div>
                       <label style={lbl}>Descrição (opcional)</label>
@@ -391,7 +405,7 @@ export default function TesourariaPage() {
                       </div>
                     </div>
                     <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
-                      Será criado 1 lançamento de saída na conta de origem. Para controle completo de rendimentos e resgates, acesse <strong>Financeiro → Aplicações Financeiras</strong>.
+                      Dois lançamentos criados: <strong>saída</strong> da conta corrente + <strong>entrada</strong> na conta investimento — ambos Baixados. Saldo de cada conta atualizado nos relatórios.
                     </div>
                   </div>
                 )}
@@ -400,15 +414,22 @@ export default function TesourariaPage() {
                 {isResgate && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <label style={lbl}>Conta da Aplicação de Origem</label>
-                      <input value={lForm.conta_aplicacao} onChange={e => setLForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp} placeholder="Ex.: CDB Bradesco ag. 0001 / Tesouro Selic 2027" />
+                      <label style={lbl}>Conta Investimento de Origem — dinheiro SAI daqui</label>
+                      <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
+                        <option value="">— selecione —</option>
+                        {contaOptsGrupo}
+                      </select>
                     </div>
                     <div>
-                      <label style={lbl}>Conta de Destino — onde o dinheiro entra</label>
+                      <label style={lbl}>Conta Corrente de Destino — dinheiro ENTRA aqui</label>
                       <select value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
                         <option value="">— selecione —</option>
                         {contaOpts}
                       </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Descrição (opcional)</label>
+                      <input value={lForm.descricao} onChange={e => setLForm(f => ({ ...f, descricao: e.target.value }))} style={inp} placeholder="Ex.: Resgate CDB vencimento" />
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                       <div style={{ gridColumn: "1 / -1" }}>
@@ -435,7 +456,7 @@ export default function TesourariaPage() {
                       <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
                     </div>
                     <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
-                      Serão criados: 1 lançamento de entrada (valor líquido){(lForm.iof || 0) > 0 ? " + IOF" : ""}{(lForm.ir || 0) > 0 ? " + IR" : ""} — todos baixados.
+                      Lançamentos criados: saída bruta da conta investimento · entrada líquida na conta corrente{(lForm.iof || 0) > 0 ? " · saída IOF" : ""}{(lForm.ir || 0) > 0 ? " · saída IR" : ""} — todos Baixados.
                     </div>
                   </div>
                 )}
