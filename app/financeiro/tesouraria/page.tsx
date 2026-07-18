@@ -61,7 +61,8 @@ export default function TesourariaPage() {
   const [modalLanc, setModalLanc] = useState(false);
   const [lForm, setLForm] = useState({
     tipo_op: "__outros__",
-    conta_origem: "", conta_destino: "", valor: 0, valor_destino: 0,
+    conta_origem: "", conta_destino: "", conta_aplicacao: "",
+    valor: 0, valor_destino: 0, iof: 0, ir: 0,
     tipo: "pagar" as "pagar" | "receber",
     descricao: "", categoria: "Tesouraria",
     data: hoje(), data_vencimento: "",
@@ -99,10 +100,34 @@ export default function TesourariaPage() {
     setLSaving(true); setLErr("");
     try {
       const op = lForm.tipo_op;
-      const isAjuste = op === "__ajuste__";
-      const isTransf  = op === "__transferencia__";
+      const isAjuste    = op === "__ajuste__";
+      const isTransf    = op === "__transferencia__";
+      const isAplicacao = op === "__aplicacao__";
+      const isResgate   = op === "__resgate__";
 
-      if (isAjuste) {
+      if (isAplicacao) {
+        if (!lForm.valor) throw new Error("Informe o valor do aporte.");
+        await supabase.from("lancamentos").insert({
+          fazenda_id: fazendaId, tipo: "pagar" as const, moeda: "BRL",
+          descricao: lForm.descricao.trim() || `Aporte em aplicação${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`,
+          categoria: "Aporte em Aplicação Financeira",
+          valor: lForm.valor,
+          data_lancamento: lForm.data, data_vencimento: lForm.data,
+          status: "baixado" as const, auto: false,
+          conta_bancaria: lForm.conta_origem || null,
+          observacao: (lForm.conta_aplicacao ? `Conta aplicação: ${lForm.conta_aplicacao}. ` : "") + (lForm.observacao || ""),
+          origem_lancamento: "tesouraria",
+        });
+      } else if (isResgate) {
+        if (!lForm.valor) throw new Error("Informe o valor bruto do resgate.");
+        const valorLiq = lForm.valor - (lForm.iof || 0) - (lForm.ir || 0);
+        const lancamentos = [];
+        const base = { fazenda_id: fazendaId, moeda: "BRL", data_lancamento: lForm.data, data_vencimento: lForm.data, status: "baixado" as const, auto: false, conta_bancaria: lForm.conta_destino || null, origem_lancamento: "tesouraria", observacao: lForm.observacao || null };
+        lancamentos.push({ ...base, tipo: "receber" as const, descricao: `Resgate de aplicação${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`, categoria: "Resgate de Aplicação Financeira", valor: valorLiq });
+        if ((lForm.iof || 0) > 0) lancamentos.push({ ...base, tipo: "pagar" as const, descricao: `IOF s/ resgate${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`, categoria: "IOF — Aplicação Financeira", valor: lForm.iof });
+        if ((lForm.ir || 0) > 0)  lancamentos.push({ ...base, tipo: "pagar" as const, descricao: `IR s/ rendimentos${lForm.conta_aplicacao ? ` — ${lForm.conta_aplicacao}` : ""}`, categoria: "IR — Rendimentos Financeiros", valor: lForm.ir });
+        await supabase.from("lancamentos").insert(lancamentos);
+      } else if (isAjuste) {
         const atual = lForm.saldo_atual || 0;
         const correto = lForm.saldo_correto || 0;
         const dif = correto - atual;
@@ -142,7 +167,7 @@ export default function TesourariaPage() {
       }
       await carregar();
       setModalLanc(false);
-      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", valor: 0, valor_destino: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0 });
+      setLForm({ tipo_op: "__outros__", conta_origem: "", conta_destino: "", conta_aplicacao: "", valor: 0, valor_destino: 0, iof: 0, ir: 0, tipo: "pagar", descricao: "", categoria: "Tesouraria", data: hoje(), data_vencimento: "", observacao: "", conta_ajuste: "", saldo_atual: 0, saldo_correto: 0 });
     } catch (e: unknown) {
       setLErr(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -233,8 +258,10 @@ export default function TesourariaPage() {
           MODAL NOVO LANÇAMENTO
       ══════════════════════════════════════════════════════ */}
       {modalLanc && (() => {
-        const isAjuste = lForm.tipo_op === "__ajuste__";
-        const isTransf  = lForm.tipo_op === "__transferencia__";
+        const isAjuste    = lForm.tipo_op === "__ajuste__";
+        const isTransf    = lForm.tipo_op === "__transferencia__";
+        const isAplicacao = lForm.tipo_op === "__aplicacao__";
+        const isResgate   = lForm.tipo_op === "__resgate__";
         const isAmbos  = lForm.tipo_op === "__mutuo__" || lForm.tipo_op === "__outros__"
           || (!TIPOS_OP_PADRAO.find(o => o.id === lForm.tipo_op) && opsTesouraria.find(o => o.id === lForm.tipo_op)?.tipo === "ambos");
         const contaLabel = (c: ContaBancariaMin) => `${c.banco ?? ""} ${c.agencia ? `Ag. ${c.agencia}` : ""} ${c.conta ? `C/C ${c.conta}` : ""}`.trim() || c.descricao || c.id;
@@ -334,8 +361,87 @@ export default function TesourariaPage() {
                   </div>
                 )}
 
+                {/* APLICAÇÃO FINANCEIRA */}
+                {isAplicacao && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Conta de Origem — de onde o dinheiro sai</label>
+                      <select value={lForm.conta_origem} onChange={e => setLForm(f => ({ ...f, conta_origem: e.target.value }))} style={inp}>
+                        <option value="">— selecione —</option>
+                        {contaOpts}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={lbl}>Conta da Aplicação de Destino</label>
+                      <input value={lForm.conta_aplicacao} onChange={e => setLForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp} placeholder="Ex.: CDB Bradesco ag. 0001 / Tesouro Selic 2027" />
+                      <div style={{ fontSize: 10, color: "var(--text-3)", marginTop: 3 }}>Nome/código do produto ou conta no banco/corretora</div>
+                    </div>
+                    <div>
+                      <label style={lbl}>Descrição (opcional)</label>
+                      <input value={lForm.descricao} onChange={e => setLForm(f => ({ ...f, descricao: e.target.value }))} style={inp} placeholder="Ex.: Aporte mensal CDB" />
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div>
+                        <label style={lbl}>Valor (R$)</label>
+                        <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Data</label>
+                        <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                      </div>
+                    </div>
+                    <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                      Será criado 1 lançamento de saída na conta de origem. Para controle completo de rendimentos e resgates, acesse <strong>Financeiro → Aplicações Financeiras</strong>.
+                    </div>
+                  </div>
+                )}
+
+                {/* RESGATE DE APLICAÇÃO */}
+                {isResgate && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={lbl}>Conta da Aplicação de Origem</label>
+                      <input value={lForm.conta_aplicacao} onChange={e => setLForm(f => ({ ...f, conta_aplicacao: e.target.value }))} style={inp} placeholder="Ex.: CDB Bradesco ag. 0001 / Tesouro Selic 2027" />
+                    </div>
+                    <div>
+                      <label style={lbl}>Conta de Destino — onde o dinheiro entra</label>
+                      <select value={lForm.conta_destino} onChange={e => setLForm(f => ({ ...f, conta_destino: e.target.value }))} style={inp}>
+                        <option value="">— selecione —</option>
+                        {contaOpts}
+                      </select>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                      <div style={{ gridColumn: "1 / -1" }}>
+                        <label style={lbl}>Valor Bruto do Resgate (R$)</label>
+                        <InputMonetario style={inp} value={lForm.valor} onChange={v => setLForm(f => ({ ...f, valor: v }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>IOF (R$)</label>
+                        <InputMonetario style={inp} placeholder="0,00" value={lForm.iof} onChange={v => setLForm(f => ({ ...f, iof: v }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>IR s/ Rendimentos (R$)</label>
+                        <InputMonetario style={inp} placeholder="0,00" value={lForm.ir} onChange={v => setLForm(f => ({ ...f, ir: v }))} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Valor Líquido</label>
+                        <div style={{ ...inp, background: "var(--bg-page)", fontWeight: 700, color: "#16A34A", display: "flex", alignItems: "center" }}>
+                          {fmtBRL(lForm.valor - (lForm.iof || 0) - (lForm.ir || 0))}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={lbl}>Data</label>
+                      <input type="date" value={lForm.data} onChange={e => setLForm(f => ({ ...f, data: e.target.value }))} style={inp} />
+                    </div>
+                    <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#0B2D50" }}>
+                      Serão criados: 1 lançamento de entrada (valor líquido){(lForm.iof || 0) > 0 ? " + IOF" : ""}{(lForm.ir || 0) > 0 ? " + IR" : ""} — todos baixados.
+                    </div>
+                  </div>
+                )}
+
                 {/* OPERAÇÃO NORMAL */}
-                {!isAjuste && !isTransf && (
+                {!isAjuste && !isTransf && !isAplicacao && !isResgate && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {isAmbos && (
                       <div>
