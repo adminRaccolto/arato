@@ -555,7 +555,7 @@ async function lerXLSX(file: File): Promise<LerXLSXResult> {
 // PÁGINA
 // ────────────────────────────────────────────────────────
 export default function ContratosFinanceiros() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
   const [fazendas, setFazendas]         = useState<{ id: string; nome: string }[]>([]);
   const [fazendaFiltro, setFazendaFiltro] = useState("");
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
@@ -1597,12 +1597,12 @@ export default function ContratosFinanceiros() {
               {abaModal === "principal" && (
                 <div>
                   {/* ── Banner IA — upload de cédula PDF (Add-on ia_cedula) ── */}
-                  {!contratoModal && podeAcessarPlano("ia_cedula") && (
+                  {!contratoModal && contaModulosOverrides["ia_cedula"] === true && (
                     <div style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#7A4300", marginBottom: 3 }}>
-                            📄 Tem o PDF da cédula? Deixe o Claude preencher automaticamente.
+                            📄 Deixe que o Arato lança pra você. Anexe o PDF da Cédula aqui.
                           </div>
                           <div style={{ fontSize: 11, color: "#7A4300" }}>
                             Envie o PDF — o sistema extrai credor, valor, taxa, amortização e datas. Você só revisa e salva.
