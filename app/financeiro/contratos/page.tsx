@@ -577,6 +577,13 @@ export default function ContratosFinanceiros() {
   const [abaModal, setAbaModal]             = useState<AbaModal>("principal");
   const [fC, setFC]                         = useState({ ...FC_VAZIO });
 
+  // PDF / IA
+  const [pdfFile,       setPdfFile]       = useState<File | null>(null);
+  const [pdfUrl,        setPdfUrl]        = useState<string | null>(null);
+  const [pdfNome,       setPdfNome]       = useState<string | null>(null);
+  const [iaExtraindo,   setIaExtraindo]   = useState(false);
+  const [iaConfianca,   setIaConfianca]   = useState<"alta"|"media"|"baixa"|null>(null);
+
   // dados das abas
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
   const [parcelasPagamento, setParcelasPagamento] = useState<ParcelaPagamento[]>([]);
@@ -675,7 +682,49 @@ export default function ContratosFinanceiros() {
     setModalAberto(true);
   };
 
-  const fecharModal = () => { setModalAberto(false); setContratoModal(null); };
+  const fecharModal = () => {
+    setModalAberto(false); setContratoModal(null);
+    setPdfFile(null); setPdfUrl(null); setPdfNome(null); setIaConfianca(null);
+  };
+
+  // ── Extrair dados do PDF via Claude Haiku ──────────────────────────────
+  async function handlePdfUpload(file: File) {
+    setPdfFile(file);
+    setPdfNome(file.name);
+    setIaExtraindo(true);
+    setIaConfianca(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/ai/extrair-cedula", { method: "POST", body: form });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Erro ao extrair"); }
+      const d = await res.json();
+      // Preenche o form com os dados extraídos
+      setFC(prev => ({
+        ...prev,
+        descricao:           d.descricao     ?? prev.descricao,
+        credor:              d.credor        ?? prev.credor,
+        tipo:                d.tipo          ?? prev.tipo,
+        linha_credito:       d.linha_credito ?? prev.linha_credito,
+        numero_documento:    d.numero_documento ?? prev.numero_documento,
+        data_contrato:       d.data_contrato    ?? prev.data_contrato,
+        moeda:               d.moeda            ?? prev.moeda,
+        valor_financiado:    d.valor_financiado ? String(d.valor_financiado) : prev.valor_financiado,
+        taxa_juros_aa:       d.taxa_juros_aa    ? String(d.taxa_juros_aa)    : prev.taxa_juros_aa,
+        taxa_juros_am:       d.taxa_juros_am    ? String(d.taxa_juros_am)    : prev.taxa_juros_am,
+        tipo_calculo:        d.tipo_calculo  ?? prev.tipo_calculo,
+        carencia_meses:      d.carencia_meses != null ? String(d.carencia_meses) : prev.carencia_meses,
+        iof_pct:             d.iof_pct       ? String(d.iof_pct)       : prev.iof_pct,
+        tac_valor:           d.tac_valor     ? String(d.tac_valor)     : prev.tac_valor,
+        observacao:          d.observacao    ?? prev.observacao,
+      }));
+      setIaConfianca(d.confianca ?? "media");
+    } catch (e: unknown) {
+      alert("Erro ao processar PDF: " + ((e as Error).message ?? "tente novamente."));
+    } finally {
+      setIaExtraindo(false);
+    }
+  }
 
   // ── Salvar contrato (Principal) ──
   const salvarContrato = () => salvar(async () => {
@@ -713,8 +762,25 @@ export default function ContratosFinanceiros() {
       setFCalc(prev => ({ ...prev, taxaMensal: payload.taxa_juros_am != null ? String(payload.taxa_juros_am) : prev.taxaMensal, periodicidade: String(payload.periodicidade_meses ?? 1) }));
     } else {
       const novo = await criarContratoFinanceiro(payload);
+      // Upload do PDF da cédula se houver
+      if (pdfFile) {
+        try {
+          const ext   = pdfFile.name.split(".").pop() ?? "pdf";
+          const path  = `contratos-financeiros/${fazendaId}/${novo.id}.${ext}`;
+          const { error: upErr } = await supabase.storage.from("documentos").upload(path, pdfFile, { upsert: true });
+          if (!upErr) {
+            const { data: urlData } = supabase.storage.from("documentos").getPublicUrl(path);
+            await atualizarContratoFinanceiro(novo.id, { pdf_url: urlData.publicUrl, pdf_nome: pdfFile.name });
+            novo.pdf_url  = urlData.publicUrl;
+            novo.pdf_nome = pdfFile.name;
+          }
+        } catch { /* PDF é opcional — não bloqueia o save */ }
+        setPdfFile(null);
+      }
       setContratos(p => [novo, ...p]);
       setContratoModal(novo);
+      setPdfUrl(novo.pdf_url ?? null);
+      setPdfNome(novo.pdf_nome ?? null);
       setFCalc({ nParcelas: "12", taxaMensal: novo.taxa_juros_am != null ? String(novo.taxa_juros_am) : "1.5", dataPrimeiro: "", periodicidade: String(novo.periodicidade_meses ?? 1), acessorios: "0" });
       setAbaModal("liberacao");
     }
@@ -1208,7 +1274,11 @@ export default function ContratosFinanceiros() {
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{fmtData(c.data_contrato)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(sm.label, sm.bg, sm.cl)}</td>
                         <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
+                            {c.pdf_url && (
+                              <a href={c.pdf_url} target="_blank" rel="noreferrer" title="Abrir PDF da cédula"
+                                style={{ fontSize: 12, padding: "3px 8px", background: "#FBF3E0", color: "#7A4300", border: "0.5px solid #C9921B", borderRadius: 6, textDecoration: "none", fontWeight: 600 }}>📄</a>
+                            )}
                             <button style={{ ...btnE, background: "#EBF2FA", color: "#1A4870", fontWeight: 600 }} onClick={() => abrirModal(c)}>Abrir</button>
                             <button style={btnX} onClick={() => { if (confirm("Excluir contrato e todas as parcelas?")) excluirContratoFinanceiro(c.id).then(() => setContratos(p => p.filter(x => x.id !== c.id))); }}>✕</button>
                           </div>
@@ -1526,6 +1596,51 @@ export default function ContratosFinanceiros() {
               {/* ── Principal ── */}
               {abaModal === "principal" && (
                 <div>
+                  {/* ── Banner IA — upload de cédula PDF (Add-on ia_cedula) ── */}
+                  {!contratoModal && podeAcessarPlano("ia_cedula") && (
+                    <div style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#7A4300", marginBottom: 3 }}>
+                            📄 Tem o PDF da cédula? Deixe o Claude preencher automaticamente.
+                          </div>
+                          <div style={{ fontSize: 11, color: "#7A4300" }}>
+                            Envie o PDF — o sistema extrai credor, valor, taxa, amortização e datas. Você só revisa e salva.
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                          {iaExtraindo && (
+                            <span style={{ fontSize: 11, color: "#7A4300" }}>Lendo cédula…</span>
+                          )}
+                          {iaConfianca && !iaExtraindo && (
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 5,
+                              background: iaConfianca === "alta" ? "#DCFCE7" : iaConfianca === "media" ? "#FBF3E0" : "#FCEBEB",
+                              color: iaConfianca === "alta" ? "#166534" : iaConfianca === "media" ? "#7A4300" : "#791F1F",
+                              border: `0.5px solid ${iaConfianca === "alta" ? "#16A34A" : iaConfianca === "media" ? "#C9921B" : "#E24B4A"}`,
+                            }}>
+                              {iaConfianca === "alta" ? "✓ Alta confiança" : iaConfianca === "media" ? "⚠ Revisar" : "⚠ Baixa — confira tudo"}
+                            </span>
+                          )}
+                          {pdfNome && !iaExtraindo && (
+                            <span style={{ fontSize: 11, color: "#7A4300", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {pdfNome}</span>
+                          )}
+                          <label style={{ padding: "6px 14px", background: iaExtraindo ? "#ddd" : "#C9921B", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: iaExtraindo ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                            {iaExtraindo ? "Processando…" : pdfNome ? "Trocar PDF" : "Selecionar PDF"}
+                            <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaExtraindo}
+                              onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); e.target.value = ""; }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* PDF existente no contrato já salvo */}
+                  {contratoModal?.pdf_url && (
+                    <div style={{ marginBottom: 14, background: "#E8F3FB", border: "0.5px solid #1A487040", borderRadius: 8, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12, color: "#0B2D50" }}>📎 Cédula anexada: <strong>{contratoModal.pdf_nome ?? "arquivo.pdf"}</strong></span>
+                      <a href={contratoModal.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Abrir PDF ↗</a>
+                    </div>
+                  )}
                   <SecTitle>Identificação</SecTitle>
                   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
                     <div style={{ gridColumn: "1/-1" }}>

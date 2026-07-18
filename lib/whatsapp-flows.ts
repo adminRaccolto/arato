@@ -7,7 +7,7 @@ export type FluxoNome =
   | "saida_estoque" | "lancar_cp" | "baixar_cp"
   | "lancar_cr" | "baixar_cr" | "romaneio" | "registrar_romaneio" | "vincular_nf"
   | "nf_compra_foto" | "cadastrar_fornecedor" | "cadastrar_insumo"
-  | "contrato_graos" | "recomendacao_agronomica";
+  | "contrato_graos" | "recomendacao_agronomica" | "contrato_financeiro";
 
 export type Sessao = {
   id: string;
@@ -197,6 +197,11 @@ const FLUXOS: Record<FluxoNome, { etapas: EtapaConfig[]; resumo: (d: Record<stri
   registrar_romaneio: {
     etapas: [],
     resumo: (d) => `Romaneio: ${d.commodity ?? "—"} · Placa ${d.placa ?? "—"} · Safra ${d.safra ?? "—"}`,
+  },
+  // Contrato financeiro: sem etapas interativas — iniciado via PDF (Add-on ia_cedula)
+  contrato_financeiro: {
+    etapas: [],
+    resumo: (d) => `Contrato: ${d.credor ?? "—"} · ${d.tipo ?? "—"} · R$ ${d.valor_financiado ?? "—"}`,
   },
 };
 

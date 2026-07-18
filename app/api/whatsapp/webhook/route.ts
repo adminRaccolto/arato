@@ -6,6 +6,7 @@ import { enviarTexto, baixarMidiaBase64 } from "../../../../lib/whatsapp-evoluti
 import { buscarSessao, salvarSessao, limparSessao } from "../../../../lib/whatsapp-flows";
 import { processarMensagemIA, type Mensagem, type IAResult } from "../../../../lib/whatsapp-claude";
 import { executarInsercao } from "../../../../lib/whatsapp-inserir";
+import { extrairCedula, formatarConfirmacaoWhatsApp } from "../../../../lib/extrair-cedula";
 
 function sb() {
   return createClient(
@@ -207,7 +208,7 @@ export async function POST(req: NextRequest) {
   const auth = await autenticarNumero(telefone);
   if (!auth) return NextResponse.json({ ok: true });
   let { fazendaId, fazendaNome } = auth;
-  const { usuarioId, usuarioNome, usuarioWhatsapp, authUserId, todasFazendas } = auth;
+  const { usuarioId, usuarioNome, usuarioWhatsapp, authUserId, todasFazendas, contaId } = auth;
 
   // ── Sessão e histórico ─────────────────────────────────────────────────────
   console.log("[WH] telefone:", telefone, "usuario:", usuarioId, "fazenda:", fazendaId);
@@ -302,9 +303,6 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Atalho: confirmação de contrato de grãos pendente ───────────────────────
-  // Quando Claude retorna preview de contrato (confirmado=false), os dados ficam
-  // salvos em sessao.dados.pending_contrato. Ao receber "sim", executamos a inserção
-  // diretamente sem chamar Claude novamente — evita que Claude perca os dados.
   const pendingContrato = sessao?.dados?.pending_contrato as Record<string, unknown> | undefined;
   const ehConfirmacaoSimples = /^(sim|confirmo|confirmar|pode|ok|isso|correto|certo|pode salvar|salva)[\s!.]*$/i.test(textoMensagem.trim());
   if (pendingContrato && ehConfirmacaoSimples) {
@@ -335,6 +333,81 @@ export async function POST(req: NextRequest) {
       dados: { historico: novoHist, fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined, pending_contrato: null },
     });
     await enviarTexto(telefone, respostaContrato);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Atalho: confirmação de contrato financeiro (cédula) pendente ─────────────
+  const pendingCF = sessao?.dados?.pending_contrato_financeiro as Record<string, unknown> | undefined;
+  if (pendingCF && ehConfirmacaoSimples) {
+    console.log("[WH] confirmação de cédula pendente detectada — inserindo direto");
+    let respostaCF: string;
+    try {
+      const res = await executarInsercao("contrato_financeiro", pendingCF, fazendaId, usuarioId, usuarioNome, usuarioWhatsapp);
+      respostaCF = res.mensagem;
+    } catch (err) {
+      console.error("[WH] ERRO inserção cédula:", err);
+      respostaCF = "❌ Erro ao salvar contrato financeiro. Tente novamente.";
+    }
+    await salvarSessao(telefone, {
+      fazenda_id: fazendaId,
+      fazenda_nome: fazendaNome,
+      dados: { historico: historico, fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined, pending_contrato_financeiro: null },
+    });
+    await enviarTexto(telefone, respostaCF);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Cancelamento de cédula pendente ──────────────────────────────────────────
+  const ehCorrecao = /^(corrigir|nao|não|errado|cancelar|sair)[\s!.]*$/i.test(textoMensagem.trim());
+  if (pendingCF && ehCorrecao) {
+    await salvarSessao(telefone, {
+      fazenda_id: fazendaId,
+      fazenda_nome: fazendaNome,
+      dados: { historico: historico, fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined, pending_contrato_financeiro: null },
+    });
+    await enviarTexto(telefone, "Ok, cancelado. Acesse o sistema em *Financeiro → Contratos Financeiros* para lançar manualmente com os dados corretos.");
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── PDF recebido → tenta extrair como cédula financeira (Add-on ia_cedula) ──
+  if (imagemMime === "application/pdf" && imagemBase64 && !textoMensagem) {
+    // Verificar se conta tem o add-on ia_cedula habilitado
+    let iaCedulaAtivo = false;
+    if (contaId) {
+      const { data: mod } = await sb().from("conta_modulos")
+        .select("habilitado").eq("conta_id", contaId).eq("modulo", "ia_cedula").maybeSingle();
+      iaCedulaAtivo = mod?.habilitado === true;
+    }
+    if (!iaCedulaAtivo) {
+      await enviarTexto(telefone, "📄 PDF recebido, mas a extração automática de cédulas (Add-on IA) não está habilitada nesta conta. Acesse o sistema para lançar o contrato manualmente.");
+      return NextResponse.json({ ok: true });
+    }
+    console.log("[WH] PDF recebido — tentando extrair como cédula financeira");
+    await enviarTexto(telefone, "📄 Recebi o PDF. Lendo a cédula... aguarde um instante.");
+    try {
+      const extraido = await extrairCedula(imagemBase64);
+      if (extraido && extraido.credor && extraido.valor_financiado) {
+        const confirmacao = formatarConfirmacaoWhatsApp(extraido);
+        await salvarSessao(telefone, {
+          fazenda_id: fazendaId,
+          fazenda_nome: fazendaNome,
+          dados: {
+            historico: historico,
+            fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined,
+            pending_contrato_financeiro: {
+              ...extraido,
+              descricao: extraido.descricao ?? extraido.credor,
+            },
+          },
+        });
+        await enviarTexto(telefone, confirmacao);
+        return NextResponse.json({ ok: true });
+      }
+      await enviarTexto(telefone, "⚠️ Não consegui identificar os dados da cédula neste PDF. Tente enviar o arquivo novamente ou acesse o sistema para lançar manualmente.");
+    } catch (err) {
+      console.error("[WH] ERRO extrair cédula:", err);
+      await enviarTexto(telefone, "❌ Erro ao processar o PDF. Tente novamente ou acesse o sistema.");
+    }
     return NextResponse.json({ ok: true });
   }
 

@@ -1196,6 +1196,8 @@ export type ContratoFinanceiro = {
   observacao?: string;
   produtor_id?: string | null;   // FK produtores — agricultor responsável pelo contrato (LCDPR)
   status: "ativo" | "quitado" | "cancelado";
+  pdf_url?: string | null;       // URL do PDF da cédula no Supabase Storage
+  pdf_nome?: string | null;      // Nome original do arquivo
   created_at?: string;
 };
 

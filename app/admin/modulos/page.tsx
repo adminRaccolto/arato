@@ -47,6 +47,7 @@ const MODULOS_LABEL: Record<string, string> = {
   sementes:         "🫘 Módulo Sementes (Add-on)",
   pecuaria:         "🐄 Módulo Pecuário (Add-on)",
   apoio_financeiro: "💼 Apoio Financeiro (Add-on)",
+  ia_cedula:        "🤖 IA — Extração de Cédula (Add-on)",
 };
 
 const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
@@ -72,7 +73,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Add-ons Opcionais",
-    modulos: ["algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro"],
+    modulos: ["algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula"],
   },
 ];
 

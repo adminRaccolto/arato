@@ -754,6 +754,70 @@ async function inserirRecomendacaoAgronomica(dados: Record<string, unknown>, faz
   };
 }
 
+// ── Contrato Financeiro (cédula) ─────────────────────────────────────────────
+async function inserirContratoFinanceiro(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
+  const credor   = String(dados.credor ?? "").trim();
+  const valor    = Number(dados.valor_financiado ?? 0);
+  const dataContrato = dados.data_contrato ? parseData(String(dados.data_contrato)) : new Date().toISOString().split("T")[0];
+
+  if (!credor) return { ok: false, mensagem: "❓ Qual o nome do banco/credor?" };
+  if (valor <= 0) return { ok: false, mensagem: "❓ Qual o valor financiado?" };
+
+  const tipo      = (["custeio","investimento","cpr","egf","securitizacao","outros"].includes(String(dados.tipo ?? "")) ? dados.tipo : "outros") as "custeio"|"investimento"|"cpr"|"egf"|"securitizacao"|"outros";
+  const tipoCalc  = (["sac","price","outros"].includes(String(dados.tipo_calculo ?? "")) ? dados.tipo_calculo : "outros") as "sac"|"price"|"outros";
+  const taxaAa    = Number(dados.taxa_juros_aa ?? 0) || null;
+  const taxaAm    = Number(dados.taxa_juros_am ?? 0) || null;
+
+  const registro = {
+    fazenda_id:          fazendaId,
+    descricao:           String(dados.descricao ?? credor).trim() || credor,
+    credor,
+    tipo,
+    tipo_calculo:        tipoCalc,
+    moeda:               (String(dados.moeda ?? "BRL").toUpperCase() === "USD" ? "USD" : "BRL") as "BRL"|"USD",
+    valor_financiado:    valor,
+    data_contrato:       dataContrato,
+    numero_documento:    dados.numero_documento ? String(dados.numero_documento).trim() : null,
+    linha_credito:       dados.linha_credito    ? String(dados.linha_credito).trim()    : null,
+    taxa_juros_aa:       taxaAa,
+    taxa_juros_am:       taxaAm,
+    carencia_meses:      Number(dados.carencia_meses ?? 0) || 0,
+    periodicidade_meses: Number(dados.periodicidade_meses ?? 1) || 1,
+    iof_pct:             Number(dados.iof_pct ?? 0) || null,
+    tac_valor:           Number(dados.tac_valor ?? 0) || null,
+    observacao:          dados.observacao ? String(dados.observacao).trim() : null,
+    rateio_por_vencimento: false,
+    fiscal:              true,
+    status:              "ativo" as const,
+  };
+
+  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const { data: cf, error } = await sb.from("contratos_financeiros").insert(registro).select().single();
+  if (error) return { ok: false, mensagem: `❌ Erro ao salvar contrato: ${error.message}` };
+
+  const fmtBRL = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
+  const fmtData = (s: string) => s.split("-").reverse().join("/");
+  const TIPO_LABEL: Record<string, string> = { custeio: "Custeio", investimento: "Investimento", cpr: "CPR", egf: "EGF", securitizacao: "Securitização", outros: "Outros" };
+
+  return {
+    ok: true,
+    mensagem: [
+      `✅ *Contrato financeiro lançado!*`,
+      ``,
+      `• Credor: *${credor}*`,
+      `• Tipo: *${TIPO_LABEL[tipo]}*`,
+      registro.linha_credito ? `• Linha: *${registro.linha_credito}*` : null,
+      registro.numero_documento ? `• Nº: *${registro.numero_documento}*` : null,
+      `• Valor: *${fmtBRL(valor)}*`,
+      `• Data: *${fmtData(dataContrato)}*`,
+      taxaAa ? `• Taxa: *${taxaAa.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}% a.a.*` : null,
+      ``,
+      `📎 Acesse o sistema para adicionar parcelas, garantias e o PDF da cédula.`,
+      `_ID: ${(cf as { id: string }).id.slice(-8)}_`,
+    ].filter(Boolean).join("\n"),
+  };
+}
+
 // ── Roteador principal ──────────────────────────────────────────────────────
 export async function executarInsercao(
   fluxo: FluxoNome,
@@ -780,6 +844,7 @@ export async function executarInsercao(
     case "cadastrar_insumo":     return inserirNovoInsumo(dados, fazendaId);
     case "contrato_graos":            return inserirContratoGraos(dados, fazendaId);
     case "recomendacao_agronomica":   return inserirRecomendacaoAgronomica(dados, fazendaId);
+    case "contrato_financeiro":       return inserirContratoFinanceiro(dados, fazendaId);
     default:                   return { ok: false, mensagem: "Fluxo desconhecido." };
   }
 }

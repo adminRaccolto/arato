@@ -7826,3 +7826,14 @@ DO $$ BEGIN
 END $$;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 75 — Add-on IA Cédula: pdf_url e pdf_nome em contratos_financeiros
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Executar no Supabase SQL Editor
+
+ALTER TABLE contratos_financeiros
+  ADD COLUMN IF NOT EXISTS pdf_url  TEXT,
+  ADD COLUMN IF NOT EXISTS pdf_nome TEXT;
+
+NOTIFY pgrst, 'reload schema';
