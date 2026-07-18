@@ -333,14 +333,19 @@ export default function DrePage() {
       // ── Despesas Operacionais ──
       const arrendamento         = grp["arrendamento"]        ?? 0;
       const mao_obra             = (grp["cpv_rh_faz"]         ?? 0) + (grp["desp_rh_adm"] ?? 0);
-      const administrativo       = (grp["desp_adm"]           ?? 0) + (grp["desp_impostos"] ?? 0) + (grp["desp_frota"] ?? 0);
+      // depreciacao é despesa operacional (reduz EBITDA → EBIT); incorporada em administrativo
+      const depreciacao          = grp["depreciacao"]         ?? 0;
+      // investimentos = CAPEX — ativação de ativo imobilizado, não entra no resultado operacional
+      // (grupo "investimentos" ignorado no DRE de resultado, aparece apenas no fluxo de caixa)
+      const administrativo       = (grp["desp_adm"]           ?? 0) + (grp["desp_impostos"] ?? 0) + (grp["desp_frota"] ?? 0) + depreciacao;
       const seguro_lavoura       = grp["seguro_lavoura"]      ?? 0;
       const assistencia_tecnica  = grp["assistencia_tecnica"] ?? 0;
       const desp_operacionais_total = arrendamento + mao_obra + administrativo + seguro_lavoura + assistencia_tecnica;
 
       // ── Despesas Financeiras ──
+      // "patrimonial" removido: investimentos são CAPEX (fora do P&L) e depreciação foi para operacional
       const juros_custeio        = grp["juros_custeio"]       ?? 0;
-      const juros_outros         = (grp["desp_financeira"]    ?? 0) + (grp["patrimonial"] ?? 0);
+      const juros_outros         = grp["desp_financeira"]     ?? 0;
       const desp_financeiras_total = juros_custeio + juros_outros;
 
       // ── Resultados ──
@@ -473,7 +478,7 @@ export default function DrePage() {
       { codigo: "4",   label: "DESPESAS OPERACIONAIS",             valor: -d.desp_operacionais_total,percentual: pct(d.desp_operacionais_total, rl), bold: true, tipo: "header" },
       { codigo: "4.1", label: "Arrendamento",                      valor: -d.arrendamento,           percentual: pct(d.arrendamento, rl),            indent: 1,  tipo: "custo" },
       { codigo: "4.2", label: "Mão de Obra / Funcionários",        valor: -d.mao_obra,               percentual: pct(d.mao_obra, rl),                indent: 1,  tipo: "custo" },
-      { codigo: "4.3", label: "Administrativo / Escritório",       valor: -d.administrativo,         percentual: pct(d.administrativo, rl),          indent: 1,  tipo: "custo" },
+      { codigo: "4.3", label: "DGA — Adm. / RH / Serv. Terceiros",  valor: -d.administrativo,         percentual: pct(d.administrativo, rl),          indent: 1,  tipo: "custo" },
       { codigo: "4.4", label: "Seguro de Lavoura",                 valor: -d.seguro_lavoura,         percentual: pct(d.seguro_lavoura, rl),          indent: 1,  tipo: "custo" },
       { codigo: "4.5", label: "Assistência Técnica",               valor: -d.assistencia_tecnica,    percentual: pct(d.assistencia_tecnica, rl),     indent: 1,  tipo: "custo" },
       { codigo: "EB",  label: "EBITDA",                            valor: d.ebitda,                  percentual: pct(d.ebitda, rl),                  bold: true, tipo: "subtotal" },

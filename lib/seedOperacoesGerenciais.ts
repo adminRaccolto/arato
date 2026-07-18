@@ -753,9 +753,11 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     historico_tesouraria_id: undefined, historico_tesouraria_nome: undefined,
   }),
 
-  // 2.02 — Despesas Não Operacionais / Administrativas
-  grp("2.02",         "DESPESAS NÃO OPERACIONAIS",       "despesa"),
-  grp("2.02.01",      "DESPESAS ADMINISTRATIVAS",        "despesa"),
+  // 2.02 — Despesas Gerais e Administrativas (DGA)
+  // Estas são DESPESAS OPERACIONAIS — necessárias para manter a operação.
+  // Renomeado de "DESPESAS NÃO OPERACIONAIS" (incorreto) para o padrão CPC/IFRS.
+  grp("2.02",         "DESPESAS GERAIS E ADMINISTRATIVAS",  "despesa"),
+  grp("2.02.01",      "DESPESAS ADMINISTRATIVAS",           "despesa"),
 
   // 2.02.01.01 — Outras Despesas
   grp("2.02.01.01",   "OUTRAS DESPESAS",                 "despesa"),
@@ -1337,9 +1339,13 @@ export const DRE_GRUPOS: Record<string, { label: string; grupo: string; ordem: n
   "2.02.01.05": { label: "Frota de Veículos",          grupo: "desp_frota",            ordem: 44 },
   "2.03.01.02": { label: "Financiamentos / Custeio",   grupo: "juros_custeio",         ordem: 50 },
   "2.03.01.03": { label: "Juros e Encargos",           grupo: "desp_financeira",       ordem: 51 },
-  "2.03.02.01": { label: "Investimentos",              grupo: "patrimonial",           ordem: 60 },
-  "2.03.02.02": { label: "Depreciações e Perdas",      grupo: "patrimonial",           ordem: 61 },
+  // Investimentos = CAPEX (ativação de ativo) — não entra no resultado do DRE
+  "2.03.02.01": { label: "Investimentos (CAPEX)",      grupo: "investimentos",         ordem: 60 },
+  // Depreciação = despesa operacional — reduz EBITDA → EBIT
+  "2.03.02.02": { label: "Depreciações e Perdas",      grupo: "depreciacao",           ordem: 61 },
   "2.03.02.03": { label: "Seguros",                    grupo: "desp_adm",              ordem: 45 },
+  // Juros sobre patrimônio = custo de oportunidade do capital imobilizado — despesa financeira
+  "2.03.02.04": { label: "Juros sobre Patrimônio",     grupo: "desp_financeira",       ordem: 52 },
   // ── Classificações específicas com grupo próprio no DRE (mais específico que a entrada pai) ──
   "2.01.01.04.001": { label: "Arrendamento Agrícola",   grupo: "arrendamento",          ordem: 35 },
   "2.01.01.05.004": { label: "Arrendamento Pecuário",   grupo: "arrendamento",          ordem: 36 },
