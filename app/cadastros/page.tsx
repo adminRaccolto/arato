@@ -265,6 +265,7 @@ function CadastrosInner() {
     nome: "", municipio: "", estado: "MT", area: "", cnpj: "",
     produtor_id: "", empresa_id: "",
     cep: "", logradouro: "", numero_end: "", complemento: "", bairro: "",
+    entidade_contabil: "pf" as "pf" | "pj", cpf_cnpj_fiscal: "",
   });
   const [modalTalhao, setModalTalhao] = useState<string | null>(null); // fazenda_id
   const [editTalhao, setEditTalhao]   = useState<Talhao | null>(null);
@@ -963,6 +964,7 @@ function CadastrosInner() {
     nome: "", municipio: "", estado: "MT", area: "", cnpj: "",
     produtor_id: "", empresa_id: "",
     cep: "", logradouro: "", numero_end: "", complemento: "", bairro: "",
+    entidade_contabil: "pf" as "pf" | "pj", cpf_cnpj_fiscal: "",
   });
 
   const abrirModalFaz = async (f?: FazendaDB) => {
@@ -976,6 +978,8 @@ function CadastrosInner() {
       cep: f.cep ?? "", logradouro: f.logradouro ?? "",
       numero_end: f.numero_end ?? "", complemento: f.complemento ?? "",
       bairro: f.bairro ?? "",
+      entidade_contabil: (f.entidade_contabil as "pf" | "pj") ?? "pf",
+      cpf_cnpj_fiscal: f.cpf_cnpj_fiscal ?? "",
     } : _fFazVazio());
     // Carrega matrículas da fazenda para edição inline
     if (f) {
@@ -1079,6 +1083,8 @@ function CadastrosInner() {
       cep: fFaz.cep || undefined, logradouro: fFaz.logradouro || undefined,
       numero_end: fFaz.numero_end || undefined, complemento: fFaz.complemento || undefined,
       bairro: fFaz.bairro || undefined,
+      entidade_contabil: fFaz.entidade_contabil,
+      cpf_cnpj_fiscal: fFaz.cpf_cnpj_fiscal || undefined,
     };
 
     let fazId: string;
@@ -6053,6 +6059,24 @@ function CadastrosInner() {
                     <input style={inp} value={fFaz.cnpj} onChange={e => setFFaz(p => ({ ...p, cnpj: e.target.value }))} placeholder="Preenchido automaticamente ao selecionar produtor/empresa" />
                   </div>
                   <div />
+                </div>
+
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Escrituração Fiscal (LCDPR / SPED)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
+                  <div>
+                    <label style={lbl}>Entidade contábil *</label>
+                    <select style={inp} value={fFaz.entidade_contabil} onChange={e => setFFaz(p => ({ ...p, entidade_contabil: e.target.value as "pf" | "pj" }))}>
+                      <option value="pf">PF — Produtor Rural (CPF)</option>
+                      <option value="pj">PJ — Empresa / SRL (CNPJ)</option>
+                    </select>
+                  </div>
+                  <div style={{ gridColumn: "2/-1" }}>
+                    <label style={lbl}>{fFaz.entidade_contabil === "pf" ? "CPF do titular fiscal" : "CNPJ da entidade fiscal"}</label>
+                    <input style={inp} value={fFaz.cpf_cnpj_fiscal} onChange={e => setFFaz(p => ({ ...p, cpf_cnpj_fiscal: e.target.value }))} placeholder={fFaz.entidade_contabil === "pf" ? "000.000.000-00" : "00.000.000/0000-00"} />
+                  </div>
+                  <div style={{ gridColumn: "1/-1", background: "#EBF3FE", border: "0.5px solid #1A487040", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#0B2D50" }}>
+                    ℹ️ Este campo é propagado automaticamente para todos os lançamentos desta fazenda. O LCDPR consolida entradas com entidade <strong>PF</strong>; o SPED ECD consolida as entradas com entidade <strong>PJ</strong>.
+                  </div>
                 </div>
 
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, paddingTop: 4, borderTop: "0.5px solid var(--border-table)" }}>Endereço</div>

@@ -63,6 +63,9 @@ export type Fazenda = {
   arrendamento_inicio?: string;
   arrendamento_vencimento?: string;
   arrendamento_renovacao_auto?: boolean;
+  // Entidade fiscal — define o CPF/CNPJ que escritura esta fazenda no LCDPR e SPED
+  entidade_contabil?: "pf" | "pj"; // pf = produtor rural PF; pj = empresa/SRL
+  cpf_cnpj_fiscal?: string;        // CPF ou CNPJ do titular fiscal (propagado para lancamentos)
   owner_user_id?: string;
   created_at?: string;
 };

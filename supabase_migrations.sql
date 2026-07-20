@@ -7837,3 +7837,58 @@ ALTER TABLE contratos_financeiros
   ADD COLUMN IF NOT EXISTS pdf_nome TEXT;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 76 — Entidade Contábil por Fazenda + propagação automática a lançamentos
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Objetivo: vincular cada fazenda à sua entidade fiscal (PF/PJ) e
+-- propagar automaticamente esse vínculo a todos os lançamentos gerados
+-- por aquela fazenda, para correto enquadramento no LCDPR e SPED ECD.
+
+-- 1. Novos campos na tabela fazendas
+ALTER TABLE fazendas
+  ADD COLUMN IF NOT EXISTS entidade_contabil TEXT CHECK (entidade_contabil IN ('pf','pj')),
+  ADD COLUMN IF NOT EXISTS cpf_cnpj_fiscal   TEXT;
+
+-- 2. Trigger: propaga entidade_contabil ao inserir em lancamentos
+--    Só preenche se o campo ainda não foi informado manualmente
+CREATE OR REPLACE FUNCTION fn_propagar_entidade_contabil()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.entidade_contabil IS NULL AND NEW.fazenda_id IS NOT NULL THEN
+    SELECT entidade_contabil
+      INTO NEW.entidade_contabil
+      FROM fazendas
+     WHERE id = NEW.fazenda_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_lancamentos_entidade ON lancamentos;
+CREATE TRIGGER trg_lancamentos_entidade
+  BEFORE INSERT ON lancamentos
+  FOR EACH ROW EXECUTE FUNCTION fn_propagar_entidade_contabil();
+
+DROP TRIGGER IF EXISTS trg_nf_entradas_entidade ON nf_entradas;
+CREATE TRIGGER trg_nf_entradas_entidade
+  BEFORE INSERT ON nf_entradas
+  FOR EACH ROW EXECUTE FUNCTION fn_propagar_entidade_contabil();
+
+-- 3. Backfill: preenche entidade_contabil nos lançamentos já existentes
+--    usando a entidade_contabil atual da fazenda
+UPDATE lancamentos l
+   SET entidade_contabil = f.entidade_contabil
+  FROM fazendas f
+ WHERE l.fazenda_id = f.id
+   AND l.entidade_contabil IS NULL
+   AND f.entidade_contabil IS NOT NULL;
+
+UPDATE nf_entradas n
+   SET entidade_contabil = f.entidade_contabil
+  FROM fazendas f
+ WHERE n.fazenda_id = f.id
+   AND n.entidade_contabil IS NULL
+   AND f.entidade_contabil IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';
