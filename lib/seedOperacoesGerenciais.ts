@@ -941,6 +941,9 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.02.01.04.012", "ITCD", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 929,
   }),
+  desp("2.02.01.04.013", "IRPJ", {
+    permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false,
+  }),
 
   // 2.02.01.05 — Frota de Veículos
   grp("2.02.01.05",   "FROTA DE VEÍCULOS",               "despesa"),
@@ -958,6 +961,21 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   }),
   desp("2.02.01.05.005", "MULTAS DE TRÂNSITO", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 865,
+  }),
+  desp("2.02.01.05.006", "RASTREAMENTO E MONITORAMENTO DE FROTA", {
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false,
+  }),
+
+  // 2.02.01.06 — Tecnologia da Informação
+  grp("2.02.01.06",   "TECNOLOGIA DA INFORMAÇÃO",        "despesa"),
+  desp("2.02.01.06.001", "SOFTWARE / LICENÇAS / SaaS", {
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false,
+  }),
+  desp("2.02.01.06.002", "SUPORTE E SERVIÇOS DE TI", {
+    permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false,
+  }),
+  desp("2.02.01.06.003", "DOMÍNIO / HOSPEDAGEM / CLOUD", {
+    permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false,
   }),
 
   // 2.03 — Despesas Financeiras
@@ -1050,8 +1068,9 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
     ref_id: 898,
   }),
 
-  // 2.03.02 — Despesas Patrimoniais
-  grp("2.03.02",      "DESPESAS PATRIMONIAIS",           "despesa"),
+  // 2.03.02 — Patrimônio: CAPEX, Depreciação, Seguros, Juros s/ Patrimônio
+  // Despesas operacionais (depreciação, seguros) mapeadas corretamente em DRE_GRUPOS
+  grp("2.03.02",      "PATRIMÔNIO / DEPRECIAÇÕES / SEGUROS",  "despesa"),
   grp("2.03.02.01",   "INVESTIMENTOS",                   "despesa"),
   desp("2.03.02.01.001", "COMPRA DE IMÓVEIS", {
     permite_cp_cr: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 630,
@@ -1119,7 +1138,7 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   desp("2.03.02.03.003", "SEGUROS VEÍCULOS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 692,
   }),
-  desp("2.03.02.03.004", "SEGURO AGRÍCOLA (LAVOURA)", {
+  desp("2.03.02.03.004", "SEGURO AGRÍCOLA / PROAGRO", {
     permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true,
     conta_debito: "6.7.1", conta_credito: "2.1.1.1",
   }),
@@ -1328,21 +1347,23 @@ export const DRE_GRUPOS: Record<string, { label: string; grupo: string; ordem: n
   "2.01.01.03": { label: "Manutenção e Reparos",       grupo: "cpv_manutencao",        ordem: 22 },
   "2.01.01.04": { label: "Despesas Agricultura",       grupo: "cpv_agricultura",       ordem: 23 },
   "2.01.01.05": { label: "Despesas Pecuárias",         grupo: "cpv_pecuaria",          ordem: 24 },
-  "2.01.01.07": { label: "Fretes",                     grupo: "cpv_fretes",            ordem: 25 },
-  "2.01.01.08": { label: "Máq. Terceirizadas",         grupo: "cpv_mecanizacao",       ordem: 26 },
-  "2.01.01.09": { label: "Adiantamentos",              grupo: "cpv_outros",            ordem: 27 },
-  "2.01.01.10": { label: "RH Fazenda",                 grupo: "cpv_rh_faz",            ordem: 28 },
+  "2.01.01.06": { label: "Produção de Sementes",       grupo: "cpv_outros",            ordem: 25 },
+  "2.01.01.07": { label: "Fretes",                     grupo: "cpv_fretes",            ordem: 26 },
+  "2.01.01.08": { label: "Máq. Terceirizadas",         grupo: "cpv_mecanizacao",       ordem: 27 },
+  "2.01.01.09": { label: "Adiantamentos",              grupo: "cpv_outros",            ordem: 28 },
+  "2.01.01.10": { label: "RH Fazenda",                 grupo: "cpv_rh_faz",            ordem: 29 },
   "2.02.01.01": { label: "Despesas Adm.",              grupo: "desp_adm",              ordem: 40 },
   "2.02.01.02": { label: "Serviços Terceiros",         grupo: "desp_adm",              ordem: 41 },
   "2.02.01.03": { label: "RH Administrativo",          grupo: "desp_rh_adm",           ordem: 42 },
   "2.02.01.04": { label: "Impostos e Taxas",           grupo: "desp_impostos",         ordem: 43 },
   "2.02.01.05": { label: "Frota de Veículos",          grupo: "desp_frota",            ordem: 44 },
+  "2.02.01.06": { label: "Tecnologia da Informação",   grupo: "desp_adm",              ordem: 45 },
   "2.03.01.02": { label: "Financiamentos / Custeio",   grupo: "juros_custeio",         ordem: 50 },
   "2.03.01.03": { label: "Juros e Encargos",           grupo: "desp_financeira",       ordem: 51 },
   // Investimentos = CAPEX (ativação de ativo) — não entra no resultado do DRE
-  "2.03.02.01": { label: "Investimentos (CAPEX)",      grupo: "investimentos",         ordem: 60 },
+  "2.03.02.01": { label: "Investimentos (CAPEX)",      grupo: "investimentos",         ordem: 60 },  // excluído do DRE (ativo imobilizado)
   // Depreciação = despesa operacional — reduz EBITDA → EBIT
-  "2.03.02.02": { label: "Depreciações e Perdas",      grupo: "depreciacao",           ordem: 61 },
+  "2.03.02.02": { label: "Depreciações e Perdas",      grupo: "depreciacao",           ordem: 48 },  // despesa operacional — antes das financeiras
   "2.03.02.03": { label: "Seguros",                    grupo: "desp_adm",              ordem: 45 },
   // Juros sobre patrimônio = custo de oportunidade do capital imobilizado — despesa financeira
   "2.03.02.04": { label: "Juros sobre Patrimônio",     grupo: "desp_financeira",       ordem: 52 },
