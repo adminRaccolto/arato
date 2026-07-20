@@ -22,7 +22,7 @@ import PlanoGate from "../../../components/PlanoGate";
 import type {
   ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento,
   GarantiaContrato, CentroCustoContrato, MatriculaImovel,
-  ContaBancaria, Pessoa, Maquina, AditivoContrato, ImovelUrbano,
+  ContaBancaria, Pessoa, Maquina, AditivoContrato, ImovelUrbano, Produtor,
 } from "../../../lib/supabase";
 
 // ── estilos base ──────────────────────────────────────────
@@ -155,7 +155,7 @@ const STATUS_META: Record<ContratoFinanceiro["status"], { label: string; bg: str
 
 const FC_VAZIO = {
   fazenda_id: "",
-  descricao: "", pessoa_id: "", credor: "",
+  descricao: "", pessoa_id: "", credor: "", produtor_id: "",
   tipo: "custeio" as ContratoFinanceiro["tipo"],
   tipo_calculo: "sac" as ContratoFinanceiro["tipo_calculo"],
   linha_credito: "", moeda: "BRL" as "BRL" | "USD",
@@ -561,6 +561,7 @@ export default function ContratosFinanceiros() {
   const [contratos, setContratos] = useState<ContratoFinanceiro[]>([]);
   const [contas, setContas]       = useState<ContaBancaria[]>([]);
   const [pessoas, setPessoas]     = useState<Pessoa[]>([]);
+  const [produtores, setProdutores] = useState<Produtor[]>([]);
   const [salvando, setSalvando]   = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   const [ptax, setPtax]           = useState<number | null>(null);
@@ -583,6 +584,7 @@ export default function ContratosFinanceiros() {
   const [pdfNome,       setPdfNome]       = useState<string | null>(null);
   const [iaExtraindo,   setIaExtraindo]   = useState(false);
   const [iaConfianca,   setIaConfianca]   = useState<"alta"|"media"|"baixa"|null>(null);
+  const [parcelasIAPdf, setParcelasIAPdf] = useState<{ data_vencimento: string; valor: number }[] | null>(null);
 
   // dados das abas
   const [parcelasLiberacao, setParcelasLiberacao] = useState<ParcelaLiberacao[]>([]);
@@ -615,6 +617,7 @@ export default function ContratosFinanceiros() {
     listarFazendas(fazendaId).then(f => setFazendas(f as { id: string; nome: string }[])).catch(() => {});
     listarContas(fazendaId).then(c => setContas(c.filter(x => x.ativa))).catch(() => {});
     supabase.from("pessoas").select("*").eq("fazenda_id", fazendaId).eq("fornecedor", true).order("nome").then(({ data }) => setPessoas(data ?? []));
+    supabase.from("produtores").select("*").eq("conta_id", contaId).order("nome").then(({ data }) => setProdutores(data ?? []));
     const buscarPtax = () => fetch("/api/precos").then(r => r.json()).then(d => { const t = d.usdPtax ?? d.usdBrl; if (t && t > 1) setPtax(t); }).catch(() => {});
     buscarPtax();
     const timer = setInterval(buscarPtax, 5 * 60 * 1000);
@@ -658,7 +661,7 @@ export default function ContratosFinanceiros() {
     setAbaModal("principal");
     setFC(c ? {
       fazenda_id: c.fazenda_id ?? fazendaId ?? "",
-      descricao: c.descricao, pessoa_id: c.pessoa_id ?? "", credor: c.credor,
+      descricao: c.descricao, pessoa_id: c.pessoa_id ?? "", credor: c.credor, produtor_id: c.produtor_id ?? "",
       tipo: c.tipo, tipo_calculo: c.tipo_calculo, linha_credito: c.linha_credito ?? "",
       moeda: c.moeda, valor_financiado: String(c.valor_financiado), valor_cotacao: String(c.valor_cotacao ?? ""),
       data_contrato: c.data_contrato, numero_documento: c.numero_documento ?? "",
@@ -684,7 +687,7 @@ export default function ContratosFinanceiros() {
 
   const fecharModal = () => {
     setModalAberto(false); setContratoModal(null);
-    setPdfFile(null); setPdfUrl(null); setPdfNome(null); setIaConfianca(null);
+    setPdfFile(null); setPdfUrl(null); setPdfNome(null); setIaConfianca(null); setParcelasIAPdf(null);
   };
 
   // ── Extrair dados do PDF via Claude Haiku ──────────────────────────────
@@ -699,25 +702,62 @@ export default function ContratosFinanceiros() {
       const res = await fetch("/api/ai/extrair-cedula", { method: "POST", body: form });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error ?? "Erro ao extrair"); }
       const d = await res.json();
+
+      // Normalização de CPF/CNPJ: remove formatação para comparação
+      const normDoc = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
+
+      // Matching automático: credor CNPJ → pessoas cadastradas
+      const pessoaMatch = d.credor_cnpj
+        ? pessoas.find(p => normDoc(p.cpf_cnpj) === normDoc(d.credor_cnpj) && normDoc(d.credor_cnpj).length > 0)
+        : null;
+
+      // Matching automático: produtor CPF → produtores cadastrados
+      const produtorMatch = d.produtor_cpf
+        ? produtores.find(p => normDoc(p.cpf_cnpj) === normDoc(d.produtor_cpf) && normDoc(d.produtor_cpf).length > 0)
+        : null;
+
       // Preenche o form com os dados extraídos
+      const credorNomeIA = d.credor_nome ?? d.credor ?? null;
       setFC(prev => ({
         ...prev,
-        descricao:           d.descricao     ?? prev.descricao,
-        credor:              d.credor        ?? prev.credor,
-        tipo:                d.tipo          ?? prev.tipo,
-        linha_credito:       d.linha_credito ?? prev.linha_credito,
-        numero_documento:    d.numero_documento ?? prev.numero_documento,
-        data_contrato:       d.data_contrato    ?? prev.data_contrato,
-        moeda:               d.moeda            ?? prev.moeda,
-        valor_financiado:    d.valor_financiado ? String(d.valor_financiado) : prev.valor_financiado,
-        taxa_juros_aa:       d.taxa_juros_aa    ? String(d.taxa_juros_aa)    : prev.taxa_juros_aa,
-        taxa_juros_am:       d.taxa_juros_am    ? String(d.taxa_juros_am)    : prev.taxa_juros_am,
-        tipo_calculo:        d.tipo_calculo  ?? prev.tipo_calculo,
-        carencia_meses:      d.carencia_meses != null ? String(d.carencia_meses) : prev.carencia_meses,
-        iof_pct:             d.iof_pct       ? String(d.iof_pct)       : prev.iof_pct,
-        tac_valor:           d.tac_valor     ? String(d.tac_valor)     : prev.tac_valor,
-        observacao:          d.observacao    ?? prev.observacao,
+        descricao:        d.descricao        ?? prev.descricao,
+        credor:           credorNomeIA        ?? prev.credor,
+        pessoa_id:        pessoaMatch?.id     ?? prev.pessoa_id,
+        produtor_id:      produtorMatch?.id   ?? prev.produtor_id,
+        tipo:             d.tipo              ?? prev.tipo,
+        linha_credito:    d.linha_credito     ?? prev.linha_credito,
+        numero_documento: d.numero_documento  ?? prev.numero_documento,
+        data_contrato:    d.data_contrato     ?? prev.data_contrato,
+        moeda:            d.moeda             ?? prev.moeda,
+        valor_financiado: d.valor_financiado  ? String(d.valor_financiado)  : prev.valor_financiado,
+        taxa_juros_aa:    d.taxa_juros_aa     ? String(d.taxa_juros_aa)     : prev.taxa_juros_aa,
+        taxa_juros_am:    d.taxa_juros_am     ? String(d.taxa_juros_am)     : prev.taxa_juros_am,
+        tipo_calculo:     d.tipo_calculo      ?? prev.tipo_calculo,
+        carencia_meses:   d.carencia_meses != null ? String(d.carencia_meses) : prev.carencia_meses,
+        periodicidade_meses: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade_meses,
+        iof_pct:          d.iof_pct           ? String(d.iof_pct)          : prev.iof_pct,
+        tac_valor:        d.tac_valor         ? String(d.tac_valor)         : prev.tac_valor,
+        observacao:       d.observacao        ?? prev.observacao,
       }));
+
+      // Auto-preencher fCalc com dados do cronograma extraído
+      const cronograma: { data_vencimento: string; valor: number }[] = Array.isArray(d.parcelas_cronograma) ? d.parcelas_cronograma : [];
+      if (cronograma.length > 0) {
+        setParcelasIAPdf(cronograma);
+        setFCalc(prev => ({
+          ...prev,
+          nParcelas:    String(d.num_parcelas ?? cronograma.length),
+          dataPrimeiro: cronograma[0].data_vencimento,
+          periodicidade: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade,
+        }));
+      } else if (d.num_parcelas) {
+        setFCalc(prev => ({
+          ...prev,
+          nParcelas:    String(d.num_parcelas),
+          periodicidade: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade,
+        }));
+      }
+
       setIaConfianca(d.confianca ?? "media");
     } catch (e: unknown) {
       alert("Erro ao processar PDF: " + ((e as Error).message ?? "tente novamente."));
@@ -738,6 +778,7 @@ export default function ContratosFinanceiros() {
     const payload: Omit<ContratoFinanceiro, "id" | "created_at"> = {
       fazenda_id: fidCf, descricao: fC.descricao.trim(),
       pessoa_id: fC.pessoa_id || undefined, credor: credorNome,
+      produtor_id: fC.produtor_id || undefined,
       tipo: fC.tipo, tipo_calculo: fC.tipo_calculo, linha_credito: fC.linha_credito || undefined,
       moeda: fC.moeda, valor_financiado: vf, valor_cotacao: vc,
       valor_financiado_brl: fC.moeda === "USD" && vc ? vf * vc : vf,
@@ -843,6 +884,44 @@ export default function ContratosFinanceiros() {
     }
     if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
     setParcelasPagamento(salvas);
+  });
+
+  // ── Aplicar cronograma extraído do PDF pela IA ──
+  const aplicarCronogramaIAPdf = () => salvar(async () => {
+    if (!contratoModal || !parcelasIAPdf || parcelasIAPdf.length === 0) return;
+    // Remove CP automáticos não baixados antes de recriar
+    if (contratoModal.numero_documento) {
+      await supabase.from("lancamentos").delete()
+        .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
+        .eq("numero_documento", contratoModal.numero_documento).neq("status", "baixado");
+    }
+    const hoje = new Date().toISOString().slice(0, 10);
+    const parcelasParaSalvar = parcelasIAPdf.map((p, idx) => ({
+      num_parcela: idx + 1,
+      data_vencimento: p.data_vencimento,
+      amortizacao: p.valor,
+      juros: 0,
+      despesas_acessorios: 0,
+      valor_parcela: p.valor,
+      saldo_devedor: 0,
+      status: "em_aberto" as const,
+    }));
+    const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
+    const lancsParcelas: Record<string, unknown>[] = [];
+    for (const p of salvas) {
+      const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
+      lancsParcelas.push({
+        fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda,
+        descricao: `${contratoModal.descricao} — Parcela ${p.num_parcela}`,
+        categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento,
+        data_vencimento: p.data_vencimento, valor: p.valor_parcela, status: statusLanc,
+        auto: true, numero_documento: contratoModal.numero_documento || undefined,
+        origem_lancamento: "contrato_financeiro",
+      });
+    }
+    if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
+    setParcelasPagamento(salvas);
+    setParcelasIAPdf(null);
   });
 
   // ── Garantia ──
@@ -1660,10 +1739,10 @@ export default function ContratosFinanceiros() {
                     </div>
                     <div>
                       <label style={lbl}>Linha de Crédito</label>
-                      <select style={inp} value={fC.linha_credito} onChange={e => setFC(p => ({ ...p, linha_credito: e.target.value }))}>
-                        <option value="">Selecione…</option>
-                        {LINHAS_CREDITO.map(l => <option key={l} value={l}>{l}</option>)}
-                      </select>
+                      <input style={inp} list="linhas-credito-list" placeholder="Ex: Obrigatórios - MCR 6.2, PRONAF…" value={fC.linha_credito} onChange={e => setFC(p => ({ ...p, linha_credito: e.target.value }))} />
+                      <datalist id="linhas-credito-list">
+                        {LINHAS_CREDITO.map(l => <option key={l} value={l} />)}
+                      </datalist>
                     </div>
                     <div>
                       <label style={lbl}>Nº Documento / Contrato <span style={{ color: "#E24B4A" }}>*</span></label>
@@ -1676,6 +1755,20 @@ export default function ContratosFinanceiros() {
                         <option value="price">PRICE — Parcela Constante</option>
                         <option value="outros">Outros / Manual</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <SecTitle>Produtor / Tomador do Crédito</SecTitle>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+                    <div>
+                      <label style={lbl}>Produtor responsável (LCDPR)</label>
+                      <select style={inp} value={fC.produtor_id} onChange={e => setFC(p => ({ ...p, produtor_id: e.target.value }))}>
+                        <option value="">— Selecionar produtor —</option>
+                        {produtores.map(p => <option key={p.id} value={p.id}>{p.nome}{p.cpf_cnpj ? ` — ${p.cpf_cnpj}` : ""}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ alignSelf: "end", fontSize: 11, color: "#888", paddingBottom: 8 }}>
+                      Vincula o contrato ao CPF do produtor para o Livro Caixa e SPED. Extraído automaticamente do PDF.
                     </div>
                   </div>
 
@@ -1878,13 +1971,23 @@ export default function ContratosFinanceiros() {
                       <div><label style={lbl}>Periodicidade</label><select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
                       <div><label style={lbl}>Acessórios/parc. (R$)</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
                     </div>
-                    <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                    <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                      {parcelasIAPdf && parcelasIAPdf.length > 0 && (
+                        <button style={{ ...btnV, background: "#16A34A" }} onClick={aplicarCronogramaIAPdf} disabled={salvando}>
+                          📄 Usar cronograma do PDF ({parcelasIAPdf.length} parcelas)
+                        </button>
+                      )}
                       <button style={{ ...btnV, background: "#C9921B" }} onClick={calcularParcelas} disabled={salvando || !fCalc.dataPrimeiro}>{salvando ? "Calculando…" : "⟳ Calcular e Salvar Parcelas"}</button>
                     </div>
                   </div>
-                  {parcelasPagamento.length === 0 ? (
+                  {parcelasIAPdf && parcelasIAPdf.length > 0 && parcelasPagamento.length === 0 && (
+                    <div style={{ background: "#DCFCE7", border: "0.5px solid #16A34A", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#166534" }}>
+                      ✅ Cronograma extraído do PDF: <strong>{parcelasIAPdf.length} parcelas</strong> — clique em &quot;Usar cronograma do PDF&quot; para salvar ou &quot;Calcular&quot; para recalcular pelo método {(contratoModal.tipo_calculo ?? "sac").toUpperCase()}.
+                    </div>
+                  )}
+                  {parcelasPagamento.length === 0 && !(parcelasIAPdf && parcelasIAPdf.length > 0) ? (
                     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-3)", fontSize: 12 }}>Preencha a calculadora acima para gerar a tabela de parcelas</div>
-                  ) : (
+                  ) : parcelasPagamento.length === 0 ? null : (
                     <>
                       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                         <thead><tr style={{ background: "var(--bg-page)" }}>{["Nº", "Vencimento", "Amortização", "Juros", "Encargos", "Valor Parcela", "Saldo Devedor", "Status"].map((h, i) => <th key={i} style={{ padding: "7px 10px", textAlign: i === 0 ? "center" : "right", fontSize: 11, fontWeight: 600, color: "var(--text-2)", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>

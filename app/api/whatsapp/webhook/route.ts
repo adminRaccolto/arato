@@ -386,7 +386,7 @@ export async function POST(req: NextRequest) {
     await enviarTexto(telefone, "📄 Recebi o PDF. Lendo a cédula... aguarde um instante.");
     try {
       const extraido = await extrairCedula(imagemBase64);
-      if (extraido && extraido.credor && extraido.valor_financiado) {
+      if (extraido && extraido.credor_nome && extraido.valor_financiado) {
         const confirmacao = formatarConfirmacaoWhatsApp(extraido);
         await salvarSessao(telefone, {
           fazenda_id: fazendaId,
@@ -396,7 +396,7 @@ export async function POST(req: NextRequest) {
             fazenda_confirmada_id: sessao?.dados?.fazenda_confirmada_id as string | undefined,
             pending_contrato_financeiro: {
               ...extraido,
-              descricao: extraido.descricao ?? extraido.credor,
+              descricao: extraido.descricao ?? extraido.credor_nome,
             },
           },
         });

@@ -1035,6 +1035,52 @@ Executar no Supabase SQL Editor (adiciona entidade_contabil em fazendas + trigge
 
 ---
 
+### Sessão julho/2026 — Melhorias IA Cédula (Add-on)
+
+#### `lib/extrair-cedula.ts` — Reescrita completa
+- Interface `CedulaExtraida` expandida com novos campos:
+  - `data_liberacao` (quando banco liberou o dinheiro; "imediata" → usa data_contrato)
+  - `credor_nome` e `credor_cnpj` (separados — antes só tinha `credor` como string única)
+  - `produtor_nome` e `produtor_cpf` (emitente/tomador do crédito — CPF de quem toma o financiamento)
+  - `valor_liberado` (apenas o que o banco libera — sem recursos próprios/contrapartida)
+  - `num_parcelas` (conta linhas do cronograma de reembolso)
+  - `parcelas_cronograma: [{data_vencimento, valor}]` (todos os vencimentos somados por data)
+- Prompt completamente reescrito com instruções explícitas por campo (seção do documento onde procurar)
+- `max_tokens` aumentado de 1024 → 4096 (suporte ao cronograma completo)
+- Retrocompatibilidade: se a IA ainda retornar campo antigo `credor`, ele é mapeado para `credor_nome`
+- Campo `aditivos` **removido** — nunca extrair aditivos (não existem na maioria das cédulas)
+
+#### `app/financeiro/contratos/page.tsx` — Melhorias no modal
+- **Produtor / Tomador do Crédito**: nova seção no formulário Principal com select de `produtores`
+  - Vincula o CPF do emitente ao contrato para LCDPR
+  - Auto-preenchido pela IA quando `produtor_cpf` bate com um produtor cadastrado (normaliza CPF)
+- **Credor automático**: quando IA extrai `credor_cnpj`, o sistema busca em `pessoas` cadastradas e auto-preenche `pessoa_id`
+- **Linha de Crédito**: campo mudado de `<select>` fixo para `<input list="datalist">` — aceita qualquer texto (ex: "Obrigatórios - MCR 6.2") mantendo sugestões pré-definidas
+- **Cronograma do PDF** → aba Pagamento:
+  - `parcelasIAPdf` state armazena o cronograma extraído
+  - `fCalc` auto-preenchido com `nParcelas`, `dataPrimeiro` e `periodicidade`
+  - Banner verde: "✅ Cronograma extraído do PDF: X parcelas — Usar cronograma ou Calcular"
+  - Botão "📄 Usar cronograma do PDF" (verde) → salva parcelas diretamente sem recalcular
+  - Função `aplicarCronogramaIAPdf()`: insere parcelas com valor total (amort=valor, juros=0) + CP lançamentos
+- **`produtor_id`** incluído no payload de `salvarContrato`
+- **`produtores`** carregados da conta no useEffect (`conta_id`)
+
+#### `lib/whatsapp-inserir.ts`
+- `inserirContratoFinanceiro`: aceita `credor_nome` (novo) ou `credor` (legado) para retrocompatibilidade
+
+#### `app/api/whatsapp/webhook/route.ts`
+- Verifica `extraido.credor_nome` (não mais `extraido.credor`) para detectar extração válida
+- `descricao` usa `extraido.credor_nome` como fallback
+
+#### Arquitetura — IA Cédula (Add-on ia_cedula)
+- Fluxo: PDF enviado → IA extrai → cliente faz matching (CNPJ vs pessoas, CPF vs produtores) sem API route adicional
+- `data_liberacao`: se o campo na cédula diz "imediata/imediato" → usar data_contrato
+- `valor_liberado` ≠ `valor_financiado` quando há recursos próprios: a IA extrai só o que o banco financia
+- Para múltiplos empreendimentos (ex: 2 em uma cédula CAIXA): valor e parcelas são somados por data
+- Cronograma do PDF tem precedência sobre cálculo SAC/PRICE — mais preciso que a estimativa
+
+---
+
 ## 13. INSTRUÇÃO FINAL
 
 Você é o único desenvolvedor. O dono não programa.

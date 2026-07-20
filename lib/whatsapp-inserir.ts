@@ -756,7 +756,7 @@ async function inserirRecomendacaoAgronomica(dados: Record<string, unknown>, faz
 
 // ── Contrato Financeiro (cédula) ─────────────────────────────────────────────
 async function inserirContratoFinanceiro(dados: Record<string, unknown>, fazendaId: string): Promise<Resultado> {
-  const credor   = String(dados.credor ?? "").trim();
+  const credor   = String(dados.credor_nome ?? dados.credor ?? "").trim();
   const valor    = Number(dados.valor_financiado ?? 0);
   const dataContrato = dados.data_contrato ? parseData(String(dados.data_contrato)) : new Date().toISOString().split("T")[0];
 
