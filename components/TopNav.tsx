@@ -316,6 +316,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
   const [showQr,           setShowQr]           = useState(false);
   const [qrDataUrl,        setQrDataUrl]        = useState("");
+  const lastPendenciasMs   = useRef<number>(0);
 
   const pathname = usePathname();
   const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
@@ -324,23 +325,26 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
 
   useEffect(() => {
     if (!fazendaId) return;
-    supabase.from("fazendas").select("*").eq("id", fazendaId).single()
+    // JOIN com produtores para evitar waterfall de 2 queries sequenciais
+    supabase.from("fazendas")
+      .select("*, produtores(nome)")
+      .eq("id", fazendaId)
+      .single()
       .then(({ data }) => {
         if (data) {
           setFazenda(data);
-          // Busca nome do produtor principal para exibir no topo
-          if (data.produtor_id) {
-            supabase.from("produtores").select("nome").eq("id", data.produtor_id).single()
-              .then(({ data: p }) => { if (p) setProdutorNome(p.nome); });
-          } else {
-            setProdutorNome(null);
-          }
+          const pNome = (data.produtores as { nome?: string } | null)?.nome ?? null;
+          setProdutorNome(pNome);
         }
       });
   }, [fazendaId]);
 
   useEffect(() => {
     if (!fazendaId) return;
+    // Throttle: no máximo 1 consulta a cada 60s — evita roundtrip em cada navegação
+    const now = Date.now();
+    if (now - lastPendenciasMs.current < 60_000) return;
+    lastPendenciasMs.current = now;
     supabase
       .from("pendencias_operacionais")
       .select("id", { count: "exact", head: true })

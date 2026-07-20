@@ -173,11 +173,13 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
 export const TOTAL_STEPS = ONBOARDING_STEPS.length;
 
 export async function calcularStepsCompletos(fazendaId: string): Promise<number> {
+  // Dispara todas as verificações em paralelo — o "break no primeiro incompleto"
+  // é aplicado depois, sobre os resultados já prontos
+  const results = await Promise.all(ONBOARDING_STEPS.map(s => s.check(fazendaId)));
   let completos = 0;
-  for (const step of ONBOARDING_STEPS) {
-    const done = await step.check(fazendaId);
+  for (const done of results) {
     if (done) completos++;
-    else break; // passos são sequenciais — para no primeiro incompleto
+    else break;
   }
   return completos;
 }
