@@ -596,6 +596,19 @@ Gerencia empréstimos, financiamentos e linhas de crédito rural (PRONAF, PRONAM
 ### Linhas de crédito disponíveis
 PRONAF, PRONAMP, FCO Rural, FNO Rural, FNE Rural, BNDES/ABC, BNDES Finame, PCA (Armazéns), Custeio Livre, Custeio SNCR, CPR Física, CPR Financeira, EGF, Crédito Rural Outros, Financiamento Livre, Outros
 
+### IA — Extração automática de Cédula por PDF (Add-on ia_cedula)
+
+Quando o add-on **IA — Extração de Cédula** está habilitado para a conta, aparece um banner laranja no topo do formulário "Novo Contrato Financeiro":
+> "📄 Deixe que o Arato lança pra você. Anexe o PDF da Cédula aqui."
+
+Clique em **Selecionar PDF**, escolha o PDF da cédula de crédito rural (CPR, CCB, contrato bancário, etc.). O sistema lê o documento e preenche automaticamente: credor, tipo, valor financiado, taxa de juros, sistema de amortização, data de início e data de vencimento. O usuário revisa e salva.
+
+- Badge de **confiança** (alta/média/baixa) indica a qualidade da extração
+- Campos preenchidos pela IA podem ser editados manualmente antes de salvar
+- Se o contrato já foi salvo com PDF, aparece link "📎 Cédula anexada" na linha da lista
+
+**Ativação:** Admin → Módulos → Add-ons Opcionais → "IA — Extração de Cédula". Sem o add-on ativo, o banner não aparece.
+
 ### Como criar um contrato financeiro
 
 **Aba Principal:**
@@ -1312,6 +1325,7 @@ Centraliza todos os cadastros mestres do sistema. Qualquer entidade que precisa 
 - **Produtores** — donos da produção (PF ou PJ). Campos: nome (*), CPF/CNPJ (*), IE, e-mail, telefone, endereço. Busca automática de CEP via ViaCEP. Sub-aba: Inscrições Estaduais (por UF).
 - **Fazendas** — propriedades rurais. Modal com 7 sub-abas:
   - Geral: nome (*), município (*), estado (*), área total (ha), CAR, NIRF, CCIR; endereço com CEP → ViaCEP
+    - Seção **Escrituração Fiscal**: Entidade Contábil (PF = Produtor Rural CPF / PJ = Empresa CNPJ) e CPF/CNPJ fiscal. **Campo obrigatório para LCDPR e SPED ECD.** Todos os lançamentos gerados por esta fazenda herdam automaticamente a entidade definida aqui — sem necessidade de classificar cada lançamento individualmente.
   - Matrículas: lista de matrículas do imóvel, comparativo de área (matriculado vs total)
   - CARs: Cadastro Ambiental Rural com vencimentos
   - NIRFs: Número do Imóvel na Receita Federal
@@ -1653,6 +1667,7 @@ Salva em \`monitoramento_pragas\`. Nível 4 (Crítico) gera alerta no Dashboard 
 | Emitir NF-e de venda | Fiscal → NF-e |
 | Gerar LCDPR | Fiscal → LCDPR |
 | Gerar SPED ECD | Fiscal → SPED Contábil |
+| Configurar entidade fiscal da fazenda | Cadastros → Fazendas → editar → Dados Gerais → Escrituração Fiscal |
 | Emitir CT-e | Transporte → CT-e |
 | Emitir MDF-e | Transporte → MDF-e |
 | Análise estratégica | BI |

@@ -992,6 +992,47 @@ algodao_laudos_hvi        por beneficiamento — 11 parâmetros USDA/HVI
 - 1 fardo pluma ≈ 220 kg · 14,67 @ · preco_arroba via `/api/precos` (CT=F Yahoo Finance)
 - Threshold bicudo configurável como constante `THRESHOLD_BICUDO = 8`
 
+### Sessão julho/2026 — Add-on IA Cédula, correções contábeis e performance
+
+#### Add-on IA — Extração de Cédula (ia_cedula)
+- `lib/extrair-cedula.ts` — usa `claude-haiku-4-5-20251001` com `type: "document"` para extrair campos de PDFs de cédulas de crédito rural
+- `app/api/ai/extrair-cedula/route.ts` — API route que aceita multipart PDF e retorna JSON com campos extraídos
+- Banner em `app/financeiro/contratos/page.tsx` — aparece **somente** quando `contaModulosOverrides["ia_cedula"] === true` (sem bypass raccotlo); texto usa "Arato", nunca "Claude"
+- `app/admin/modulos/page.tsx` — add-on listado em "Add-ons Opcionais"
+- `supabase_migrations.sql` Seção 75 — `pdf_url` e `pdf_nome` em `contratos_financeiros`
+
+#### Correção contábil — DGA e grupos DRE (padrão CPC/IFRS)
+- `lib/seedOperacoesGerenciais.ts` — grupo `2.02` renomeado de "DESPESAS NÃO OPERACIONAIS" para "DESPESAS GERAIS E ADMINISTRATIVAS" (DGA)
+- DGA inclui: RH Administrativo, Serviços de Terceiros, Despesas Administrativas — são **despesas operacionais**, não financeiras
+- `DRE_GRUPOS`: `2.03.02.01` → grupo `investimentos` (CAPEX, não impacta DRE); `2.03.02.02` → grupo `depreciacao` (operacional, reduz EBITDA→EBIT); `2.03.02.04` novo → grupo `desp_financeira` (Juros sobre Patrimônio)
+- `app/relatorios/dre/page.tsx` — depreciação incluída no bloco operacional (DGA); CAPEX excluído do DRE; linha DGA renomeada para "DGA — Adm. / RH / Serv. Terceiros"
+
+#### Performance — eliminação de waterfalls
+- `lib/onboarding.ts` — `calcularStepsCompletos`: 7 queries sequenciais → `Promise.all` paralelo (7× mais rápido)
+- `components/TopNav.tsx` — fazenda+produtor colapsados em 1 query com JOIN (era waterfall); `pendencias_operacionais` throttled a 60s (era disparado em cada navegação)
+
+#### Entidade Contábil por Fazenda (Opção A — LCDPR/SPED)
+- `supabase_migrations.sql` Seção 76:
+  - `fazendas.entidade_contabil` (`pf`/`pj`) e `fazendas.cpf_cnpj_fiscal`
+  - Trigger `trg_lancamentos_entidade` e `trg_nf_entradas_entidade`: todo `INSERT` herda `entidade_contabil` da fazenda automaticamente
+  - Backfill para lançamentos existentes
+- `lib/supabase.ts` — tipo `Fazenda` atualizado
+- `app/cadastros/page.tsx` — seção "Escrituração Fiscal" no modal Fazenda → Dados Gerais
+
+#### Arquitetura — Entidade Contábil
+- Estoque continua por `fazenda_id` — não muda
+- A entidade fiscal fica na `fazendas` e propaga via trigger para `lancamentos` e `nf_entradas`
+- LCDPR filtra `entidade_contabil = 'pf'`; SPED ECD filtra `entidade_contabil = 'pj'`
+- Um produtor com fazendas em CPF e CNPJ distintos tem os livros separados automaticamente
+- Campos manuais `entidade_contabil` em `lancamentos` têm precedência (trigger só preenche se NULL)
+
+#### Navegação — ajustes TopNav
+- "App de Campo (Mobile)" movido de Monitoramento para abaixo de Relatórios no menu Lavoura
+- `moduleId: "conf_raccotlo"` → invisível para usuários cliente
+
+#### Migration pendente — Seção 76
+Executar no Supabase SQL Editor (adiciona entidade_contabil em fazendas + triggers de propagação).
+
 ---
 
 ## 13. INSTRUÇÃO FINAL
