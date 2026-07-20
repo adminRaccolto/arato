@@ -49,13 +49,13 @@ function derivarCategoriaDespesa(classificacao: string): string {
   if (c.startsWith("2.01.01.07"))    return "Fretes e Transportes";
   if (c.startsWith("2.01.01.08"))    return "Serviços Agrícolas";
   if (c.startsWith("2.01.01.10"))    return "Mão de Obra";
-  if (c.startsWith("2.02.01.04"))    return "Impostos";
-  if (c.startsWith("2.02.01"))       return "Despesas Administrativas";
-  if (c.startsWith("2.03.01.02"))    return "Pagamento de Custeio";
-  if (c.startsWith("2.03.01.01"))    return "Pagamento de Financiamento";
-  if (c.startsWith("2.03.01.03"))    return "Juros e IOF";
-  if (c.startsWith("2.03.02.03"))    return "Prêmio de Seguro";
-  if (c.startsWith("2.03.02"))       return "Despesas Administrativas";
+  if (c.startsWith("2.01.02.01.04")) return "Impostos";
+  if (c.startsWith("2.01.02"))       return "Despesas Administrativas";
+  if (c.startsWith("2.02.01.02"))    return "Pagamento de Custeio";
+  if (c.startsWith("2.02.01.01"))    return "Tarifas Bancárias";
+  if (c.startsWith("2.02.01.03"))    return "Juros e IOF";
+  if (c.startsWith("2.03.03"))       return "Prêmio de Seguro";
+  if (c.startsWith("2.03."))         return "Patrimônio / Imobilizado";
   if (c.startsWith("1.01.01.05"))    return "Impostos";
   return "Outros";
 }

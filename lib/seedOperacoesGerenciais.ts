@@ -347,6 +347,12 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   rec("1.03.01.01.002", "RECEBIMENTO EMPRÉSTIMO", {
     permite_cp_cr: true, tipo_lcdpr: "3", ref_id: 66,
   }),
+  rec("1.03.01.01.003", "RECEBIMENTO DE FINANCIAMENTOS", {
+    permite_cp_cr: true, tipo_lcdpr: "3", ref_id: 930,
+  }),
+  rec("1.03.01.01.004", "RECEBIMENTO DE TERCEIROS (PF)", {
+    permite_cp_cr: true, ref_id: 931,
+  }),
   grp("1.03.01.02",   "RESSARCIMENTOS",                  "receita"),
   rec("1.03.01.02.001", "CRÉDITO REF. REEMBOLSO DE FORNECEDOR", {
     permite_tesouraria: true, ref_id: 332,
@@ -756,313 +762,327 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   // 2.02 — Despesas Gerais e Administrativas (DGA)
   // Estas são DESPESAS OPERACIONAIS — necessárias para manter a operação.
   // Renomeado de "DESPESAS NÃO OPERACIONAIS" (incorreto) para o padrão CPC/IFRS.
-  grp("2.02",         "DESPESAS GERAIS E ADMINISTRATIVAS",  "despesa"),
-  grp("2.02.01",      "DESPESAS ADMINISTRATIVAS",           "despesa"),
+  grp("2.01.02",         "DESPESAS GERAIS E ADMINISTRATIVAS",  "despesa"),
+  grp("2.01.02.01",      "DESPESAS ADMINISTRATIVAS",           "despesa"),
 
   // 2.02.01.01 — Outras Despesas
-  grp("2.02.01.01",   "OUTRAS DESPESAS",                 "despesa"),
-  desp("2.02.01.01.001", "ÁGUA", {
+  grp("2.01.02.01.01",   "OUTRAS DESPESAS",                 "despesa"),
+  desp("2.01.02.01.01.001", "ÁGUA", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 433,
   }),
-  desp("2.02.01.01.002", "ENERGIA ELÉTRICA", {
+  desp("2.01.02.01.01.002", "ENERGIA ELÉTRICA", {
     permite_cp_cr: true, permite_energia_eletrica: true,
     tipo_lcdpr: "1", custo_absorcao: false,
     conta_debito: "6.4", conta_credito: "2.1.1.1",
     ref_id: 103,
   }),
-  desp("2.02.01.01.003", "TELEFONE", {
+  desp("2.01.02.01.01.003", "TELEFONE", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 99,
   }),
-  desp("2.02.01.01.004", "CORREIOS", {
+  desp("2.01.02.01.01.004", "CORREIOS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 640,
   }),
-  desp("2.02.01.01.005", "CARTÓRIOS", {
+  desp("2.01.02.01.01.005", "CARTÓRIOS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 642,
   }),
-  desp("2.02.01.01.006", "ALUGUÉIS E CONDOMÍNIOS", {
+  desp("2.01.02.01.01.006", "ALUGUÉIS E CONDOMÍNIOS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 755,
   }),
-  desp("2.02.01.01.007", "ASSINATURAS E MENSALIDADES", {
+  desp("2.01.02.01.01.007", "ASSINATURAS E MENSALIDADES", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 618,
   }),
-  desp("2.02.01.01.008", "SEGURANÇA E VIGILÂNCIA", {
+  desp("2.01.02.01.01.008", "SEGURANÇA E VIGILÂNCIA", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 756,
   }),
-  desp("2.02.01.01.009", "MATERIAL EXPEDIENTE", {
+  desp("2.01.02.01.01.009", "MATERIAL EXPEDIENTE", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 96,
   }),
-  desp("2.02.01.01.010", "PROVEDOR DE INTERNET", {
+  desp("2.01.02.01.01.010", "PROVEDOR DE INTERNET", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 920,
   }),
-  desp("2.02.01.01.011", "DOAÇÃO", {
+  desp("2.01.02.01.01.011", "DOAÇÃO", {
     permite_tesouraria: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 863,
   }),
-  desp("2.02.01.01.012", "DÉBITO NO CAIXA REF. TROCO", {
+  desp("2.01.02.01.01.012", "DÉBITO NO CAIXA REF. TROCO", {
     permite_tesouraria: true, custo_absorcao: false, ref_id: 508,
   }),
-  desp("2.02.01.01.013", "OUTROS DESCONTOS CONCEDIDOS", {
+  desp("2.01.02.01.01.013", "OUTROS DESCONTOS CONCEDIDOS", {
     permite_notas_fiscais: true, custo_absorcao: false, ref_id: 364,
   }),
 
   // 2.02.01.02 — Serviços de Terceiros
-  grp("2.02.01.02",   "SERVIÇOS DE TERCEIROS",           "despesa"),
-  desp("2.02.01.02.001", "ASSESSORIA JURÍDICA", {
+  grp("2.01.02.01.02",   "SERVIÇOS DE TERCEIROS",           "despesa"),
+  desp("2.01.02.01.02.001", "ASSESSORIA JURÍDICA", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 405,
   }),
-  desp("2.02.01.02.002", "ASSESSORIA CONTÁBIL", {
+  desp("2.01.02.01.02.002", "ASSESSORIA CONTÁBIL", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 159,
   }),
-  desp("2.02.01.02.003", "ASSESSORIA SISTEMA", {
+  desp("2.01.02.01.02.003", "ASSESSORIA SISTEMA", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 162,
   }),
-  desp("2.02.01.02.004", "ASSISTÊNCIA TÉCNICA", {
+  desp("2.01.02.01.02.004", "ASSISTÊNCIA TÉCNICA", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 407,
   }),
-  desp("2.02.01.02.005", "CONSULTORIA FINANCEIRA", {
+  desp("2.01.02.01.02.005", "CONSULTORIA FINANCEIRA", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 872,
   }),
-  desp("2.02.01.02.006", "CONSULTORIAS", {
+  desp("2.01.02.01.02.006", "CONSULTORIAS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 878,
   }),
 
   // 2.02.01.03 — Recursos Humanos ADM
-  grp("2.02.01.03",   "RECURSOS HUMANOS - ADM",          "despesa"),
-  desp("2.02.01.03.001", "SALÁRIOS - ADM", {
+  grp("2.01.02.01.03",   "RECURSOS HUMANOS - ADM",          "despesa"),
+  desp("2.01.02.01.03.001", "SALÁRIOS - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
     conta_debito: "6.4.1", conta_credito: "2.1.1.2",
     ref_id: 129,
   }),
-  desp("2.02.01.03.002", "FÉRIAS - ADM", {
+  desp("2.01.02.01.03.002", "FÉRIAS - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 131,
   }),
-  desp("2.02.01.03.003", "13º SALÁRIO - ADM", {
+  desp("2.01.02.01.03.003", "13º SALÁRIO - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 134,
   }),
-  desp("2.02.01.03.004", "PRÊMIO FUNCIONÁRIOS - ADM", {
+  desp("2.01.02.01.03.004", "PRÊMIO FUNCIONÁRIOS - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 409,
   }),
-  desp("2.02.01.03.005", "DIARISTAS - ADM", {
+  desp("2.01.02.01.03.005", "DIARISTAS - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 431,
   }),
-  desp("2.02.01.03.006", "COMPLEMENTO SALARIAL - ADM", {
+  desp("2.01.02.01.03.006", "COMPLEMENTO SALARIAL - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 382,
   }),
-  desp("2.02.01.03.007", "PLANO DE SAÚDE - ADM", {
+  desp("2.01.02.01.03.007", "PLANO DE SAÚDE - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 429,
   }),
-  desp("2.02.01.03.008", "RESCISÃO - ADM", {
+  desp("2.01.02.01.03.008", "RESCISÃO - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 136,
   }),
-  desp("2.02.01.03.009", "UNIFORMES E EPIs - ADM", {
+  desp("2.01.02.01.03.009", "UNIFORMES E EPIs - ADM", {
     permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 427,
   }),
-  desp("2.02.01.03.010", "MEDICINA E SEG. DO TRABALHO - ADM", {
+  desp("2.01.02.01.03.010", "MEDICINA E SEG. DO TRABALHO - ADM", {
     permite_notas_fiscais: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 141,
   }),
-  desp("2.02.01.03.011", "CONTRIBUIÇÃO SINDICAL - ADM", {
+  desp("2.01.02.01.03.011", "CONTRIBUIÇÃO SINDICAL - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 421,
   }),
-  desp("2.02.01.03.012", "IRRF - ADM", {
+  desp("2.01.02.01.03.012", "IRRF - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 680,
   }),
-  desp("2.02.01.03.013", "FGTS - ADM", {
+  desp("2.01.02.01.03.013", "FGTS - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 449,
   }),
-  desp("2.02.01.03.014", "INSS EMPREGADOR - ADM", {
+  desp("2.01.02.01.03.014", "INSS EMPREGADOR - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 451,
   }),
-  desp("2.02.01.03.015", "SAT/RAT - ADM", {
+  desp("2.01.02.01.03.015", "SAT/RAT - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
   }),
-  desp("2.02.01.03.016", "SISTEMA S - ADM", {
+  desp("2.01.02.01.03.016", "SISTEMA S - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
   }),
-  desp("2.02.01.03.017", "PRÓ-LABORE", {
+  desp("2.01.02.01.03.017", "PRÓ-LABORE", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 456,
   }),
-  desp("2.02.01.03.018", "PROVISÃO 13º SALÁRIO - ADM", {
+  desp("2.01.02.01.03.018", "PROVISÃO 13º SALÁRIO - ADM", {
     permite_cp_cr: true, gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: false, inativo: true,
   }),
-  desp("2.02.01.03.019", "PROVISÃO FÉRIAS - ADM", {
+  desp("2.01.02.01.03.019", "PROVISÃO FÉRIAS - ADM", {
     permite_cp_cr: true, gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: false, inativo: true,
   }),
-  desp("2.02.01.03.020", "FUNRURAL EMPREGADOR - ADM", {
+  desp("2.01.02.01.03.020", "FUNRURAL EMPREGADOR - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false,
   }),
-  desp("2.02.01.03.021", "SEGURO DE VIDA - ADM", {
+  desp("2.01.02.01.03.021", "SEGURO DE VIDA - ADM", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 860,
   }),
 
   // 2.02.01.04 — Impostos e Taxas
-  grp("2.02.01.04",   "IMPOSTOS E TAXAS",                "despesa"),
-  desp("2.02.01.04.001", "ITR / CCIR", {
+  grp("2.01.02.01.04",   "IMPOSTOS E TAXAS",                "despesa"),
+  desp("2.01.02.01.04.001", "ITR / CCIR", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false,
     conta_debito: "6.6.1", conta_credito: "2.1.3.4",
     ref_id: 350,
   }),
-  desp("2.02.01.04.002", "IPTU", {
+  desp("2.01.02.01.04.002", "IPTU", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 584,
   }),
-  desp("2.02.01.04.003", "PIS", {
+  desp("2.01.02.01.04.003", "PIS", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 586,
   }),
-  desp("2.02.01.04.004", "COFINS", {
+  desp("2.01.02.01.04.004", "COFINS", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 573,
   }),
-  desp("2.02.01.04.005", "CSLL", {
+  desp("2.01.02.01.04.005", "CSLL", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 576,
   }),
-  desp("2.02.01.04.006", "DIFAL", {
+  desp("2.01.02.01.04.006", "DIFAL", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 820,
   }),
-  desp("2.02.01.04.007", "FUNRURAL (GUIA)", {
+  desp("2.01.02.01.04.007", "FUNRURAL (GUIA)", {
     permite_cp_cr: true, tipo_lcdpr: "4",
     custo_absorcao: false,
     conta_debito: "4.2.1", conta_credito: "2.1.3.1",
     ref_id: 121,
   }),
-  desp("2.02.01.04.008", "TAXAS DIVERSAS", {
+  desp("2.01.02.01.04.008", "TAXAS DIVERSAS", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 816,
   }),
-  desp("2.02.01.04.009", "TARIFA BANCÁRIA", {
+  desp("2.01.02.01.04.009", "TARIFA BANCÁRIA", {
     permite_tesouraria: true,
     gerar_financeiro: true, custo_absorcao: false,
     conta_debito: "6.5.2", conta_credito: "1.1.1.2",
     ref_id: 876,
   }),
-  desp("2.02.01.04.010", "ICMS", {
+  desp("2.01.02.01.04.010", "ICMS", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 882,
   }),
-  desp("2.02.01.04.011", "ALVARÁ", {
+  desp("2.01.02.01.04.011", "ALVARÁ", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 861,
   }),
-  desp("2.02.01.04.012", "ITCD", {
+  desp("2.01.02.01.04.012", "ITCD", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false, ref_id: 929,
   }),
-  desp("2.02.01.04.013", "IRPJ", {
+  desp("2.01.02.01.04.013", "IRPJ", {
     permite_cp_cr: true, tipo_lcdpr: "4", custo_absorcao: false,
   }),
 
   // 2.02.01.05 — Frota de Veículos
-  grp("2.02.01.05",   "FROTA DE VEÍCULOS",               "despesa"),
-  desp("2.02.01.05.001", "ABASTECIMENTO POSTO", {
+  grp("2.01.02.01.05",   "FROTA DE VEÍCULOS",               "despesa"),
+  desp("2.01.02.01.05.001", "ABASTECIMENTO POSTO", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 730,
   }),
-  desp("2.02.01.05.002", "IPVA / SEGURO OBRIG. / TAXAS", {
+  desp("2.01.02.01.05.002", "IPVA / SEGURO OBRIG. / TAXAS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 403,
   }),
-  desp("2.02.01.05.003", "DESLOCAMENTO / VIAGEM", {
+  desp("2.01.02.01.05.003", "DESLOCAMENTO / VIAGEM", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 105,
   }),
-  desp("2.02.01.05.004", "PEDÁGIO", {
+  desp("2.01.02.01.05.004", "PEDÁGIO", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 868,
   }),
-  desp("2.02.01.05.005", "MULTAS DE TRÂNSITO", {
+  desp("2.01.02.01.05.005", "MULTAS DE TRÂNSITO", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 865,
   }),
-  desp("2.02.01.05.006", "RASTREAMENTO E MONITORAMENTO DE FROTA", {
+  desp("2.01.02.01.05.006", "RASTREAMENTO E MONITORAMENTO DE FROTA", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false,
   }),
 
   // 2.02.01.06 — Tecnologia da Informação
-  grp("2.02.01.06",   "TECNOLOGIA DA INFORMAÇÃO",        "despesa"),
-  desp("2.02.01.06.001", "SOFTWARE / LICENÇAS / SaaS", {
+  grp("2.01.02.01.06",   "TECNOLOGIA DA INFORMAÇÃO",        "despesa"),
+  desp("2.01.02.01.06.001", "SOFTWARE / LICENÇAS / SaaS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false,
   }),
-  desp("2.02.01.06.002", "SUPORTE E SERVIÇOS DE TI", {
+  desp("2.01.02.01.06.002", "SUPORTE E SERVIÇOS DE TI", {
     permite_notas_fiscais: true, tipo_lcdpr: "5", custo_absorcao: false,
   }),
-  desp("2.02.01.06.003", "DOMÍNIO / HOSPEDAGEM / CLOUD", {
+  desp("2.01.02.01.06.003", "DOMÍNIO / HOSPEDAGEM / CLOUD", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false,
   }),
 
   // 2.03 — Despesas Financeiras
-  grp("2.03",         "DESPESAS FINANCEIRAS",            "despesa"),
-  grp("2.03.01",      "DESPESAS BANCÁRIAS",              "despesa"),
-  grp("2.03.01.01",   "MOVIMENTOS",                      "despesa"),
-  desp("2.03.01.01.001", "IOF", {
+  grp("2.02",         "DESPESAS FINANCEIRAS",            "despesa"),
+  grp("2.02.01",      "DESPESAS BANCÁRIAS",              "despesa"),
+  grp("2.02.01.01",   "MOVIMENTOS",                      "despesa"),
+  desp("2.02.01.01.001", "IOF", {
     permite_tesouraria: true, custo_absorcao: false, ref_id: 757,
   }),
-  desp("2.03.01.01.002", "TARIFAS BANCÁRIAS", {
+  desp("2.02.01.01.002", "TARIFAS BANCÁRIAS", {
     permite_tesouraria: true,
     gerar_financeiro: true, custo_absorcao: false,
     conta_debito: "6.5.2", conta_credito: "1.1.1.2",
     ref_id: 147,
   }),
-  desp("2.03.01.01.003", "TARIFA DE ESTUDO", {
+  desp("2.02.01.01.003", "TARIFA DE ESTUDO", {
     permite_tesouraria: true, custo_absorcao: false, ref_id: 504,
   }),
-  desp("2.03.01.01.004", "COMPENSAÇÃO DE CHEQUE", {
+  desp("2.02.01.01.004", "COMPENSAÇÃO DE CHEQUE", {
     permite_tesouraria: true,
     historico_tesouraria_id: 2, historico_tesouraria_nome: "COMPENSAÇÃO CHEQUE PRÓPRIO",
     custo_absorcao: false, ref_id: 524,
   }),
-  desp("2.03.01.01.005", "DÉBITO REF. TRANSF. DE VALORES", {
+  desp("2.02.01.01.005", "DÉBITO REF. TRANSF. DE VALORES", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
     custo_absorcao: false, ref_id: 607,
   }),
-  desp("2.03.01.01.006", "DÉBITO REF. APLICAÇÃO", {
+  desp("2.02.01.01.006", "DÉBITO REF. APLICAÇÃO", {
     permite_tesouraria: true,
     historico_tesouraria_id: 345, historico_tesouraria_nome: "TRANSF. VALORES",
     custo_absorcao: false, ref_id: 791,
   }),
 
   // 2.03.01.02 — Financiamentos e Empréstimos
-  grp("2.03.01.02",   "FINANCIAMENTOS E EMPRÉSTIMOS",    "despesa"),
-  desp("2.03.01.02.001", "PAGAMENTO EGF", {
+  grp("2.02.01.02",   "FINANCIAMENTOS E EMPRÉSTIMOS",    "despesa"),
+  desp("2.02.01.02.001", "PAGAMENTO EGF", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 615,
     conta_debito: "2.1.4", conta_credito: "1.1.1.2", tipo_formula: "baixas",
   }),
-  desp("2.03.01.02.002", "PAGAMENTO CUSTEIOS", {
+  desp("2.02.01.02.002", "PAGAMENTO CUSTEIOS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 250,
     conta_debito: "2.1.4", conta_credito: "1.1.1.2", tipo_formula: "baixas",
   }),
-  desp("2.03.01.02.003", "PAGAMENTO CPR", {
+  desp("2.02.01.02.003", "PAGAMENTO CPR", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 613,
     tipo_formula: "baixas",
   }),
-  desp("2.03.01.02.004", "PAGAMENTO FINAME", {
+  desp("2.02.01.02.004", "PAGAMENTO FINAME", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 460,
     tipo_formula: "baixas",
   }),
-  desp("2.03.01.02.005", "PAGAMENTO EMPRÉSTIMOS", {
+  desp("2.02.01.02.005", "PAGAMENTO EMPRÉSTIMOS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 252,
     tipo_formula: "baixas",
   }),
-  desp("2.03.01.02.006", "TÍTULOS DE CAPITALIZAÇÃO", {
+  desp("2.02.01.02.006", "TÍTULOS DE CAPITALIZAÇÃO", {
     permite_cp_cr: true, custo_absorcao: false, ref_id: 632,
+  }),
+  desp("2.02.01.02.007", "PAGAMENTO DE FINANCIAMENTOS", {
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 932,
+  }),
+  desp("2.02.01.02.008", "PAGAMENTO A TERCEIROS (PF)", {
+    permite_cp_cr: true, custo_absorcao: false, ref_id: 933,
   }),
 
   // 2.03.01.03 — Juros e Encargos
-  grp("2.03.01.03",   "JUROS E ENCARGOS",                "despesa"),
-  desp("2.03.01.03.001", "JUROS EGF", {
+  grp("2.02.01.03",   "JUROS E ENCARGOS",                "despesa"),
+  desp("2.02.01.03.001", "JUROS EGF", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 548,
     conta_debito: "6.5.1", conta_credito: "2.1.4",
   }),
-  desp("2.03.01.03.002", "JUROS CUSTEIOS", {
+  desp("2.02.01.03.002", "JUROS CUSTEIOS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 156,
     conta_debito: "6.5.1", conta_credito: "2.1.4",
   }),
-  desp("2.03.01.03.003", "JUROS CPR", {
+  desp("2.02.01.03.003", "JUROS CPR", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 546,
   }),
-  desp("2.03.01.03.004", "JUROS FINAME", {
+  desp("2.02.01.03.004", "JUROS FINAME", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 676,
   }),
-  desp("2.03.01.03.005", "JUROS EMPRÉSTIMO", {
+  desp("2.02.01.03.005", "JUROS EMPRÉSTIMO", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 256,
   }),
-  desp("2.03.01.03.006", "OUTROS ACRÉSCIMOS PAGOS", {
+  desp("2.02.01.03.006", "OUTROS ACRÉSCIMOS PAGOS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false,
     informa_complemento: true, ref_id: 166,
   }),
+  desp("2.02.01.03.007", "JUROS DE FINANCIAMENTOS", {
+    permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 934,
+    conta_debito: "6.5.1", conta_credito: "2.1.4",
+  }),
+  desp("2.02.01.03.008", "JUROS A TERCEIROS (PF)", {
+    permite_cp_cr: true, custo_absorcao: false, ref_id: 935,
+    conta_debito: "6.5.1", conta_credito: "2.1.5",
+  }),
 
   // 2.03.01.05 — Despesas Particulares
-  grp("2.03.01.05",   "DESPESAS PARTICULARES",           "despesa"),
-  desp("2.03.01.05.001", "DESPESAS PARTICULARES", {
+  grp("2.02.01.05",   "DESPESAS PARTICULARES",           "despesa"),
+  desp("2.02.01.05.001", "DESPESAS PARTICULARES", {
     permite_cp_cr: true, tipo_lcdpr: "5",
     custo_absorcao: false, informa_complemento: true,
     ref_id: 898,
@@ -1070,55 +1090,55 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
 
   // 2.03.02 — Patrimônio: CAPEX, Depreciação, Seguros, Juros s/ Patrimônio
   // Despesas operacionais (depreciação, seguros) mapeadas corretamente em DRE_GRUPOS
-  grp("2.03.02",      "PATRIMÔNIO / DEPRECIAÇÕES / SEGUROS",  "despesa"),
-  grp("2.03.02.01",   "INVESTIMENTOS",                   "despesa"),
-  desp("2.03.02.01.001", "COMPRA DE IMÓVEIS", {
+  grp("2.03",      "PATRIMÔNIO / DEPRECIAÇÕES / SEGUROS",  "despesa"),
+  grp("2.03.01",   "INVESTIMENTOS",                   "despesa"),
+  desp("2.03.01.001", "COMPRA DE IMÓVEIS", {
     permite_cp_cr: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 630,
     conta_debito: "6.3.2", conta_credito: "2.1.1.2",
   }),
-  desp("2.03.02.01.002", "CONSTRUÇÃO E REFORMA", {
+  desp("2.03.01.002", "CONSTRUÇÃO E REFORMA", {
     permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 445,
   }),
-  desp("2.03.02.01.003", "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM.", {
+  desp("2.03.01.003", "AQUISIÇÃO DE MAQ. / EQUIP. / IMPLEM.", {
     permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 246,
     conta_debito: "6.3.1", conta_credito: "2.1.1.1", informa_complemento: true,
   }),
-  desp("2.03.02.01.004", "AQUISIÇÃO DE VEÍCULOS", {
+  desp("2.03.01.004", "AQUISIÇÃO DE VEÍCULOS", {
     permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 248,
   }),
-  desp("2.03.02.01.005", "AQUISIÇÃO DE MÓVEIS E UTENSÍLIOS", {
+  desp("2.03.01.005", "AQUISIÇÃO DE MÓVEIS E UTENSÍLIOS", {
     permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 735,
   }),
-  desp("2.03.02.01.006", "CONSÓRCIOS NÃO CONTEMPLADOS", {
+  desp("2.03.01.006", "CONSÓRCIOS NÃO CONTEMPLADOS", {
     permite_cp_cr: true, custo_absorcao: false, ref_id: 473,
   }),
-  desp("2.03.02.01.007", "CONSÓRCIOS CONTEMPLADOS", {
+  desp("2.03.01.007", "CONSÓRCIOS CONTEMPLADOS", {
     permite_cp_cr: true, custo_absorcao: false, ref_id: 866,
   }),
-  desp("2.03.02.01.008", "TARIFAS CONSÓRCIOS", {
+  desp("2.03.01.008", "TARIFAS CONSÓRCIOS", {
     permite_cp_cr: true, custo_absorcao: false, ref_id: 885,
   }),
-  desp("2.03.02.01.009", "REFLORESTAMENTO", {
+  desp("2.03.01.009", "REFLORESTAMENTO", {
     permite_notas_fiscais: true, tipo_lcdpr: "2", custo_absorcao: false, ref_id: 793,
   }),
 
   // 2.03.02.02 — Depreciações e Perdas
-  grp("2.03.02.02",   "DEPRECIAÇÕES E PERDAS",           "despesa"),
-  desp("2.03.02.02.001", "DEPRECIAÇÃO BENFEITORIAS", {
+  grp("2.03.02",   "DEPRECIAÇÕES E PERDAS",           "despesa"),
+  desp("2.03.02.001", "DEPRECIAÇÃO BENFEITORIAS", {
     permite_cp_cr: false, permite_tesouraria: false,
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: false, gerar_depreciacao: true, inativo: true,
     conta_debito: "6.2.1", conta_credito: "1.2.2.1",
     ref_id: 342,
   }),
-  desp("2.03.02.02.002", "DEPRECIAÇÃO MÁQUINAS", {
+  desp("2.03.02.002", "DEPRECIAÇÃO MÁQUINAS", {
     permite_cp_cr: false, permite_tesouraria: false,
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
     custo_absorcao: false, gerar_depreciacao: true, inativo: true,
     conta_debito: "6.2.1", conta_credito: "1.2.2.1",
     ref_id: 294,
   }),
-  desp("2.03.02.02.003", "SAÍDA REF. AJUSTE DE ESTOQUE", {
+  desp("2.03.02.003", "SAÍDA REF. AJUSTE DE ESTOQUE", {
     permite_estoque: true,
     operacao_estoque: "saida", tipo_custo_estoque: "ajuste",
     gerar_financeiro: false, gerar_financeiro_gerencial: true,
@@ -1126,32 +1146,32 @@ export const OPERACOES_GERENCIAIS_PADRAO: SeedOp[] = [
   }),
 
   // 2.03.02.03 — Seguros
-  grp("2.03.02.03",   "SEGUROS",                         "despesa"),
-  desp("2.03.02.03.001", "SEGUROS MÁQUINAS", {
+  grp("2.03.03",   "SEGUROS",                         "despesa"),
+  desp("2.03.03.001", "SEGUROS MÁQUINAS", {
     permite_cp_cr: true, tipo_lcdpr: "1",
     custo_absorcao: true, conta_debito: "6.7.1", conta_credito: "2.1.1.1",
     ref_id: 380,
   }),
-  desp("2.03.02.03.002", "SEGUROS BENFEITORIAS", {
+  desp("2.03.03.002", "SEGUROS BENFEITORIAS", {
     permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true, ref_id: 378,
   }),
-  desp("2.03.02.03.003", "SEGUROS VEÍCULOS", {
+  desp("2.03.03.003", "SEGUROS VEÍCULOS", {
     permite_cp_cr: true, tipo_lcdpr: "5", custo_absorcao: false, ref_id: 692,
   }),
-  desp("2.03.02.03.004", "SEGURO AGRÍCOLA / PROAGRO", {
+  desp("2.03.03.004", "SEGURO AGRÍCOLA / PROAGRO", {
     permite_cp_cr: true, tipo_lcdpr: "1", custo_absorcao: true,
     conta_debito: "6.7.1", conta_credito: "2.1.1.1",
   }),
 
   // 2.03.02.04 — Juros sobre Patrimônio
-  grp("2.03.02.04",   "JUROS SOBRE PATRIMÔNIO",          "despesa"),
-  desp("2.03.02.04.001", "JUROS SOBRE BENFEITORIAS", {
+  grp("2.03.04",   "JUROS SOBRE PATRIMÔNIO",          "despesa"),
+  desp("2.03.04.001", "JUROS SOBRE BENFEITORIAS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 356,
   }),
-  desp("2.03.02.04.002", "JUROS SOBRE MÁQUINAS", {
+  desp("2.03.04.002", "JUROS SOBRE MÁQUINAS", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 358,
   }),
-  desp("2.03.02.04.003", "JUROS SOBRE PROPRIEDADE", {
+  desp("2.03.04.003", "JUROS SOBRE PROPRIEDADE", {
     permite_cp_cr: true, tipo_lcdpr: "3", custo_absorcao: false, ref_id: 360,
   }),
 
@@ -1352,26 +1372,26 @@ export const DRE_GRUPOS: Record<string, { label: string; grupo: string; ordem: n
   "2.01.01.08": { label: "Máq. Terceirizadas",         grupo: "cpv_mecanizacao",       ordem: 27 },
   "2.01.01.09": { label: "Adiantamentos",              grupo: "cpv_outros",            ordem: 28 },
   "2.01.01.10": { label: "RH Fazenda",                 grupo: "cpv_rh_faz",            ordem: 29 },
-  "2.02.01.01": { label: "Despesas Adm.",              grupo: "desp_adm",              ordem: 40 },
-  "2.02.01.02": { label: "Serviços Terceiros",         grupo: "desp_adm",              ordem: 41 },
-  "2.02.01.03": { label: "RH Administrativo",          grupo: "desp_rh_adm",           ordem: 42 },
-  "2.02.01.04": { label: "Impostos e Taxas",           grupo: "desp_impostos",         ordem: 43 },
-  "2.02.01.05": { label: "Frota de Veículos",          grupo: "desp_frota",            ordem: 44 },
-  "2.02.01.06": { label: "Tecnologia da Informação",   grupo: "desp_adm",              ordem: 45 },
-  "2.03.01.02": { label: "Financiamentos / Custeio",   grupo: "juros_custeio",         ordem: 50 },
-  "2.03.01.03": { label: "Juros e Encargos",           grupo: "desp_financeira",       ordem: 51 },
+  "2.01.02.01.01": { label: "Despesas Adm.",              grupo: "desp_adm",              ordem: 40 },
+  "2.01.02.01.02": { label: "Serviços Terceiros",         grupo: "desp_adm",              ordem: 41 },
+  "2.01.02.01.03": { label: "RH Administrativo",          grupo: "desp_rh_adm",           ordem: 42 },
+  "2.01.02.01.04": { label: "Impostos e Taxas",           grupo: "desp_impostos",         ordem: 43 },
+  "2.01.02.01.05": { label: "Frota de Veículos",          grupo: "desp_frota",            ordem: 44 },
+  "2.01.02.01.06": { label: "Tecnologia da Informação",   grupo: "desp_adm",              ordem: 45 },
+  "2.02.01.02": { label: "Financiamentos / Custeio",   grupo: "juros_custeio",         ordem: 50 },
+  "2.02.01.03": { label: "Juros e Encargos",           grupo: "desp_financeira",       ordem: 51 },
   // Investimentos = CAPEX (ativação de ativo) — não entra no resultado do DRE
-  "2.03.02.01": { label: "Investimentos (CAPEX)",      grupo: "investimentos",         ordem: 60 },  // excluído do DRE (ativo imobilizado)
+  "2.03.01": { label: "Investimentos (CAPEX)",      grupo: "investimentos",         ordem: 60 },  // excluído do DRE (ativo imobilizado)
   // Depreciação = despesa operacional — reduz EBITDA → EBIT
-  "2.03.02.02": { label: "Depreciações e Perdas",      grupo: "depreciacao",           ordem: 48 },  // despesa operacional — antes das financeiras
-  "2.03.02.03": { label: "Seguros",                    grupo: "desp_adm",              ordem: 45 },
+  "2.03.02": { label: "Depreciações e Perdas",      grupo: "depreciacao",           ordem: 48 },  // despesa operacional — antes das financeiras
+  "2.03.03": { label: "Seguros",                    grupo: "desp_adm",              ordem: 45 },
   // Juros sobre patrimônio = custo de oportunidade do capital imobilizado — despesa financeira
-  "2.03.02.04": { label: "Juros sobre Patrimônio",     grupo: "desp_financeira",       ordem: 52 },
+  "2.03.04": { label: "Juros sobre Patrimônio",     grupo: "desp_financeira",       ordem: 52 },
   // ── Classificações específicas com grupo próprio no DRE (mais específico que a entrada pai) ──
   "2.01.01.04.001": { label: "Arrendamento Agrícola",   grupo: "arrendamento",          ordem: 35 },
   "2.01.01.05.004": { label: "Arrendamento Pecuário",   grupo: "arrendamento",          ordem: 36 },
-  "2.03.02.03.004": { label: "Seguro Agrícola (Lavoura)", grupo: "seguro_lavoura",      ordem: 46 },
-  "2.02.01.02.004": { label: "Assistência Técnica",     grupo: "assistencia_tecnica",   ordem: 47 },
+  "2.03.03.004": { label: "Seguro Agrícola (Lavoura)", grupo: "seguro_lavoura",      ordem: 46 },
+  "2.01.02.01.02.004": { label: "Assistência Técnica",     grupo: "assistencia_tecnica",   ordem: 47 },
 };
 
 // Retorna o grupo DRE de uma classificação (match por prefixo)

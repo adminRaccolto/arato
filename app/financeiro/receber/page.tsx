@@ -38,8 +38,9 @@ function derivarCategoriaReceita(classificacao: string): string {
   if (c.startsWith("1.02.01.02")) return "Venda de imóveis";
   if (c.startsWith("1.02.01"))    return "Outros recebimentos";
   if (c.startsWith("1.03"))       return "Outros recebimentos";
-  if (c.startsWith("2.03.01.02")) return "Captação de Custeio";
-  if (c.startsWith("2.03.01.01")) return "Captação de Financiamento";
+  if (c.startsWith("2.02.01.02")) return "Captação de Custeio";
+  if (c.startsWith("2.02.01.01")) return "Captação de Financiamento";
+  if (c.startsWith("1.03.01.01")) return "Recebimento de Financiamento";
   return "Outros recebimentos";
 }
 

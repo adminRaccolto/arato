@@ -811,7 +811,7 @@ export default function ComprasPage() {
                         // Pedido de Compra: apenas compras reais de insumos/serviços (2.01.* e 2.02.*)
                         // Exclui: baixas automáticas de estoque, deduções tributárias, financiamentos
                         return !o.inativo && o.gerar_financeiro !== false &&
-                          (cls.startsWith("2.01.") || cls.startsWith("2.02."));
+                          cls.startsWith("2.01.");
                       }).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
                       placeholder="— Selecionar —"
                       emptyMessage="Configure em Cadastros → Operações Gerenciais"
@@ -982,7 +982,7 @@ export default function ComprasPage() {
                           const cls = o.classificacao ?? "";
                           // Operação NF em Pedido de Compra: mesma restrição + exige NF
                           return !o.inativo && o.permite_notas_fiscais && o.gerar_financeiro !== false &&
-                            (cls.startsWith("2.01.") || cls.startsWith("2.02."));
+                            cls.startsWith("2.01.");
                         }).map(o => ({ id: o.id, label: `${o.classificacao} — ${o.descricao}` }))}
                         placeholder="— Selecionar —"
                         emptyMessage="Configure em Cadastros → Operações Gerenciais"
