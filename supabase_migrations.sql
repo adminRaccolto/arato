@@ -7892,3 +7892,31 @@ UPDATE nf_entradas n
    AND f.entidade_contabil IS NOT NULL;
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 77 — Benfeitorias (Patrimônio) ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS benfeitorias (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  fazenda_id        UUID        NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  nome              TEXT        NOT NULL,
+  tipo              TEXT        NOT NULL CHECK (tipo IN ('casa','barracao','cerca','silo_secador','escritorio','alojamento','outro')),
+  area_m2           NUMERIC(10,2),
+  ano_construcao    SMALLINT,
+  valor_aquisicao   NUMERIC(14,2),
+  valor_atual       NUMERIC(14,2),
+  vida_util_anos    SMALLINT    DEFAULT 25,
+  descricao         TEXT,
+  localizacao       TEXT,
+  ativa             BOOLEAN     NOT NULL DEFAULT true,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE benfeitorias ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "benfeitorias_owner" ON benfeitorias
+  USING (fazenda_id IN (
+    SELECT id FROM fazendas WHERE conta_id IN (
+      SELECT conta_id FROM perfis WHERE user_id = auth.uid()
+    )
+  ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
+
+NOTIFY pgrst, 'reload schema';

@@ -951,6 +951,22 @@ export type TransferenciaEstoqueItem = {
   created_at?: string;
 };
 
+export type Benfeitoria = {
+  id: string;
+  fazenda_id: string;
+  nome: string;
+  tipo: "casa" | "barracao" | "cerca" | "silo_secador" | "escritorio" | "alojamento" | "outro";
+  area_m2?: number;
+  ano_construcao?: number;
+  valor_aquisicao?: number;
+  valor_atual?: number;
+  vida_util_anos?: number;
+  descricao?: string;
+  localizacao?: string;
+  ativa: boolean;
+  created_at?: string;
+};
+
 export type Deposito = {
   id: string;
   fazenda_id: string;

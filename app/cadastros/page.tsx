@@ -22,6 +22,7 @@ import {
   listarGrupos, criarGrupo, atualizarGrupo, excluirGrupo,
   listarUsuarios, criarUsuario, atualizarUsuario, excluirUsuario,
   listarDepositos, criarDeposito, atualizarDeposito, excluirDeposito,
+  listarBenfeitorias, criarBenfeitoria, atualizarBenfeitoria, excluirBenfeitoria,
   listarGruposInsumo, listarGruposInsumoDaConta, criarGrupoInsumo, atualizarGrupoInsumo, excluirGrupoInsumo,
   listarSubgruposInsumo, listarSubgruposInsumoDaConta, criarSubgrupoInsumo, atualizarSubgrupoInsumo, excluirSubgrupoInsumo,
   seederGruposInsumo,
@@ -56,7 +57,7 @@ import type {
   GrupoInsumo, SubgrupoInsumo, TipoPessoa, CentroCusto, CategoriaLancamento,
   Insumo, OperacaoGerencial, FormaPagamento, PadraoClassificacao, ContaBancaria, Banco,
   PrincipioAtivo, NomeComercial, ContratoFinanceiro, UnidadeMedida, Cultura as CulturaItem,
-  ImovelUrbano,
+  ImovelUrbano, Benfeitoria,
 } from "../../lib/supabase";
 
 // ── Local types for inline editing ──────────────────────────
@@ -94,7 +95,7 @@ type FazMatLocal = {
   garantia_vencimento: string;
 };
 
-type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos";
+type TabCad = "produtores" | "empresas" | "fazendas" | "funcionarios" | "pessoas" | "safras" | "insumos" | "produtos" | "itens" | "depositos" | "maquinas" | "benfeitorias" | "combustivel" | "grupos_insumo" | "centros_custo" | "formas_pagamento" | "operacoes_gerenciais" | "padroes_classificacao" | "contas_bancarias" | "historico_fiscal" | "principios_ativos" | "unidades_medida" | "culturas" | "imoveis_urbanos";
 
 type TabGroup = { group: string; tabs: { key: TabCad; label: string }[] };
 
@@ -113,13 +114,16 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "produtos",                label: "Produtos Agrícolas"        },
     { key: "itens",                   label: "Itens Gerais"              },
     { key: "depositos",               label: "Depósitos & Armazéns"      },
-    { key: "maquinas",                label: "Máquinas e Veículos"       },
     { key: "combustivel",             label: "Combustíveis & Bombas"     },
     { key: "grupos_insumo",           label: "Grupos de Insumos"         },
     { key: "culturas",                 label: "Culturas"                  },
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
     { key: "principios_ativos",       label: "Princípios Ativos (BOT)"   },
     { key: "unidades_medida",         label: "Unidades de Medida"        },
+  ]},
+  { group: "Patrimônio", tabs: [
+    { key: "maquinas",     label: "Máquinas e Veículos" },
+    { key: "benfeitorias", label: "Benfeitorias"        },
   ]},
   { group: "Financeiro", tabs: [
     { key: "centros_custo",        label: "Centros de Custo"     },
@@ -318,6 +322,12 @@ function CadastrosInner() {
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
   const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
   const [tabMaq, setTabMaq]           = useState<"geral" | "aquisicao" | "seguro">("geral");
+
+  // ── Benfeitorias ──
+  const [benfeitorias, setBenfeitorias] = useState<Benfeitoria[]>([]);
+  const [modalBenf, setModalBenf]       = useState(false);
+  const [editBenf, setEditBenf]         = useState<Benfeitoria | null>(null);
+  const [fBenf, setFBenf]               = useState({ fazenda_id: "", nome: "", tipo: "barracao" as Benfeitoria["tipo"], area_m2: "", ano_construcao: "", valor_aquisicao: "", valor_atual: "", vida_util_anos: "25", descricao: "", localizacao: "", ativa: true });
 
   // ── Bombas ──
   const [bombas, setBombas]           = useState<BombaCombustivel[]>([]);
@@ -614,6 +624,7 @@ function CadastrosInner() {
       listarPessoasDaConta(fazendaId).then(setPessoas).catch(() => {});
       listarContratosFinanceiros(fazendaId).then(setContratsFinanc).catch(() => {});
     }
+    if (aba === "benfeitorias") listarBenfeitorias(fazendaId).then(setBenfeitorias).catch(e => setErro(e.message));
     if (aba === "combustivel") listarBombas(fazendaId).then(setBombas).catch(e => setErro(e.message));
     if (aba === "insumos" || aba === "produtos" || aba === "itens") {
       listarInsumos(fazendaId).then(async lista => {
@@ -2518,6 +2529,215 @@ function CadastrosInner() {
                   })}
                 </tbody>
               </table>
+            </div>
+            );
+          })()}
+
+          {/* ══ BENFEITORIAS ══ */}
+          {aba === "benfeitorias" && (() => {
+            const TIPO_BENF: Record<Benfeitoria["tipo"], string> = {
+              casa:          "Casa / Residência",
+              barracao:      "Barracão / Galpão",
+              cerca:         "Cerca / Divisa",
+              silo_secador:  "Silo / Secador",
+              escritorio:    "Escritório / Sede",
+              alojamento:    "Alojamento",
+              outro:         "Outro",
+            };
+            const COR_TIPO: Record<string, [string,string]> = {
+              casa:         ["#FBF3E0","#C9921B"],
+              barracao:     ["#D5E8F5","#0B2D50"],
+              cerca:        ["#F1EFE8","#555"],
+              silo_secador: ["#E6F1FB","#0C447C"],
+              escritorio:   ["#EBF5FF","#1A4870"],
+              alojamento:   ["#F5F3FF","#7C3AED"],
+              outro:        ["#F5F5F5","#666"],
+            };
+            const abrirBenf = (b?: Benfeitoria) => {
+              setEditBenf(b ?? null);
+              setFBenf(b ? {
+                fazenda_id: b.fazenda_id, nome: b.nome, tipo: b.tipo,
+                area_m2: b.area_m2 != null ? String(b.area_m2) : "",
+                ano_construcao: b.ano_construcao != null ? String(b.ano_construcao) : "",
+                valor_aquisicao: b.valor_aquisicao != null ? String(b.valor_aquisicao) : "",
+                valor_atual: b.valor_atual != null ? String(b.valor_atual) : "",
+                vida_util_anos: b.vida_util_anos != null ? String(b.vida_util_anos) : "25",
+                descricao: b.descricao ?? "", localizacao: b.localizacao ?? "", ativa: b.ativa,
+              } : { fazenda_id: fazendaId ?? "", nome: "", tipo: "barracao", area_m2: "", ano_construcao: "", valor_aquisicao: "", valor_atual: "", vida_util_anos: "25", descricao: "", localizacao: "", ativa: true });
+              setModalBenf(true);
+            };
+            const salvarBenf = async () => {
+              if (!fBenf.nome.trim()) return alert("Nome obrigatório");
+              const payload: Omit<Benfeitoria, "id" | "created_at"> = {
+                fazenda_id: fBenf.fazenda_id || fazendaId || "",
+                nome: fBenf.nome.trim(),
+                tipo: fBenf.tipo,
+                area_m2: fBenf.area_m2 ? parseFloat(fBenf.area_m2.replace(",",".")) : undefined,
+                ano_construcao: fBenf.ano_construcao ? parseInt(fBenf.ano_construcao) : undefined,
+                valor_aquisicao: fBenf.valor_aquisicao ? parseFloat(fBenf.valor_aquisicao.replace(/[^0-9,.]/g,"").replace(",",".")) : undefined,
+                valor_atual: fBenf.valor_atual ? parseFloat(fBenf.valor_atual.replace(/[^0-9,.]/g,"").replace(",",".")) : undefined,
+                vida_util_anos: fBenf.vida_util_anos ? parseInt(fBenf.vida_util_anos) : 25,
+                descricao: fBenf.descricao || undefined,
+                localizacao: fBenf.localizacao || undefined,
+                ativa: fBenf.ativa,
+              };
+              if (editBenf) {
+                await atualizarBenfeitoria(editBenf.id, payload);
+                setBenfeitorias(x => x.map(r => r.id === editBenf.id ? { ...r, ...payload } : r));
+              } else {
+                const novo = await criarBenfeitoria(payload);
+                setBenfeitorias(x => [...x, novo]);
+              }
+              setModalBenf(false);
+            };
+            const ativas = benfeitorias.filter(b => b.ativa);
+            const fmtBRL = (v?: number) => v != null ? v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—";
+            return (
+            <div>
+              {/* KPI row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 14 }}>
+                {[
+                  { label: "Total cadastrado", value: benfeitorias.length, unit: "itens" },
+                  { label: "Área total",        value: benfeitorias.reduce((s,b) => s + (b.area_m2 ?? 0), 0).toLocaleString("pt-BR", { maximumFractionDigits: 0 }), unit: "m²" },
+                  { label: "Valor de aquisição", value: fmtBRL(benfeitorias.reduce((s,b) => s + (b.valor_aquisicao ?? 0), 0)), unit: "" },
+                  { label: "Valor atual",        value: fmtBRL(benfeitorias.reduce((s,b) => s + (b.valor_atual ?? 0), 0)), unit: "" },
+                ].map((k, i) => (
+                  <div key={i} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "14px 18px" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 4 }}>{k.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-1)", fontVariantNumeric: "tabular-nums" }}>{k.value} <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-2)" }}>{k.unit}</span></div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Benfeitorias <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({ativas.length} ativas)</span></div>
+                    <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>Casas, barracões, cercas, silos, escritórios e alojamentos</div>
+                  </div>
+                  <button style={btnV} onClick={() => abrirBenf()}>+ Nova Benfeitoria</button>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <TH cols={["Fazenda", "Nome", "Tipo", "Localização", "Área (m²)", "Ano", "Valor Atual", "Vida Útil", "Status", ""]} />
+                  <tbody>
+                    {benfeitorias.length === 0 && (
+                      <tr><td colSpan={10} style={{ padding: 32, textAlign: "center", color: "#888" }}>
+                        Nenhuma benfeitoria cadastrada.<br/>
+                        <span style={{ fontSize: 11, color: "#aaa" }}>Cadastre casas, barracões, silos, cercas e outras estruturas fixas da propriedade.</span>
+                      </td></tr>
+                    )}
+                    {benfeitorias.map((b, i) => {
+                      const [bg, cl] = COR_TIPO[b.tipo] ?? ["#F5F5F5","#666"];
+                      const fazNome = fazendas.find(f => f.id === b.fazenda_id)?.nome ?? "—";
+                      return (
+                        <tr key={b.id} style={{ borderBottom: i < benfeitorias.length - 1 ? "0.5px solid var(--border-row)" : "none", opacity: b.ativa ? 1 : 0.55 }}>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{fazNome}</td>
+                          <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{b.nome}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(TIPO_BENF[b.tipo], bg, cl)}</td>
+                          <td style={{ padding: "10px 14px", fontSize: 12, color: "var(--text-2)" }}>{b.localizacao ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13 }}>{b.area_m2 != null ? b.area_m2.toLocaleString("pt-BR") : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{b.ano_construcao ?? "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right", fontVariantNumeric: "tabular-nums", fontSize: 13 }}>{fmtBRL(b.valor_atual)}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12, color: "var(--text-2)" }}>{b.vida_util_anos != null ? `${b.vida_util_anos} anos` : "—"}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#D5E8F5" : "#F1EFE8", b.ativa ? "#0B2D50" : "var(--text-2)")}</td>
+                          <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              <button style={btnE} onClick={() => abrirBenf(b)}>Editar</button>
+                              <button style={btnX} onClick={() => { if (confirm(`Excluir "${b.nome}"?`)) excluirBenfeitoria(b.id).then(() => setBenfeitorias(x => x.filter(r => r.id !== b.id))); }}>✕</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── Modal Benfeitoria ── */}
+              {modalBenf && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                  <div style={{ background: "var(--bg-card)", borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 40px rgba(0,0,0,.22)" }}>
+                    <div style={{ padding: "20px 24px", borderBottom: "0.5px solid var(--border-table)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1)" }}>{editBenf ? "Editar Benfeitoria" : "Nova Benfeitoria"}</div>
+                      <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-2)" }} onClick={() => setModalBenf(false)}>✕</button>
+                    </div>
+                    <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+                      {/* Fazenda */}
+                      <div>
+                        <label style={lbl}>Fazenda *</label>
+                        <select style={inp} value={fBenf.fazenda_id} onChange={e => setFBenf(x => ({ ...x, fazenda_id: e.target.value }))}>
+                          <option value="">— Selecionar —</option>
+                          {fazendas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                        </select>
+                      </div>
+                      {/* Nome e Tipo */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Nome / Identificação *</label>
+                          <input style={inp} placeholder="Ex: Casa Sede, Barracão Norte, Silo 1" value={fBenf.nome} onChange={e => setFBenf(x => ({ ...x, nome: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Tipo *</label>
+                          <select style={inp} value={fBenf.tipo} onChange={e => setFBenf(x => ({ ...x, tipo: e.target.value as Benfeitoria["tipo"] }))}>
+                            <option value="casa">Casa / Residência</option>
+                            <option value="barracao">Barracão / Galpão</option>
+                            <option value="cerca">Cerca / Divisa</option>
+                            <option value="silo_secador">Silo / Secador</option>
+                            <option value="escritorio">Escritório / Sede Administrativa</option>
+                            <option value="alojamento">Alojamento de Funcionários</option>
+                            <option value="outro">Outro</option>
+                          </select>
+                        </div>
+                      </div>
+                      {/* Localização */}
+                      <div>
+                        <label style={lbl}>Localização na Fazenda</label>
+                        <input style={inp} placeholder="Ex: Porteira principal, Talhão 3, Sede" value={fBenf.localizacao} onChange={e => setFBenf(x => ({ ...x, localizacao: e.target.value }))} />
+                      </div>
+                      {/* Medidas */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Área (m²)</label>
+                          <input style={inp} type="number" min="0" placeholder="0" value={fBenf.area_m2} onChange={e => setFBenf(x => ({ ...x, area_m2: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Ano de Construção</label>
+                          <input style={inp} type="number" min="1900" max={new Date().getFullYear()} placeholder={String(new Date().getFullYear())} value={fBenf.ano_construcao} onChange={e => setFBenf(x => ({ ...x, ano_construcao: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Vida Útil (anos)</label>
+                          <input style={inp} type="number" min="1" placeholder="25" value={fBenf.vida_util_anos} onChange={e => setFBenf(x => ({ ...x, vida_util_anos: e.target.value }))} />
+                        </div>
+                      </div>
+                      {/* Valores */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label style={lbl}>Valor de Aquisição / Construção (R$)</label>
+                          <input style={inp} type="text" inputMode="decimal" placeholder="R$ 0,00" value={fBenf.valor_aquisicao} onChange={e => setFBenf(x => ({ ...x, valor_aquisicao: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Valor Atual (R$)</label>
+                          <input style={inp} type="text" inputMode="decimal" placeholder="R$ 0,00" value={fBenf.valor_atual} onChange={e => setFBenf(x => ({ ...x, valor_atual: e.target.value }))} />
+                        </div>
+                      </div>
+                      {/* Descrição */}
+                      <div>
+                        <label style={lbl}>Descrição / Observações</label>
+                        <textarea style={{ ...inp, minHeight: 70, resize: "vertical" }} placeholder="Características, estado de conservação, observações..." value={fBenf.descricao} onChange={e => setFBenf(x => ({ ...x, descricao: e.target.value }))} />
+                      </div>
+                      {/* Status */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <input type="checkbox" id="benf-ativa" checked={fBenf.ativa} onChange={e => setFBenf(x => ({ ...x, ativa: e.target.checked }))} style={{ width: 16, height: 16 }} />
+                        <label htmlFor="benf-ativa" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer" }}>Benfeitoria ativa</label>
+                      </div>
+                    </div>
+                    <div style={{ padding: "16px 24px", borderTop: "0.5px solid var(--border-table)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                      <button style={btnR} onClick={() => setModalBenf(false)}>Cancelar</button>
+                      <button style={btnV} onClick={salvarBenf}>{editBenf ? "Salvar" : "Cadastrar"}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             );
           })()}

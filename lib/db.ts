@@ -5,7 +5,7 @@
  */
 
 import { supabase } from "./supabase";
-import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
+import type { Conta, Fazenda, Talhao, Safra, Operacao, Insumo, MovimentacaoEstoque, Lancamento, Contrato, ContratoItem, ContratoCessaoDebito, Romaneio, RomaneioEntrada, NotaFiscal, Simulacao, Empresa, ContaBancaria, Produtor, ProdutorIE, MatriculaImovel, Pessoa, AnoSafra, Ciclo, Maquina, BombaCombustivel, Funcionario, FuncionarioPremiacao, FuncionarioFerias, GrupoUsuario, Usuario, Deposito, Benfeitoria, HistoricoManutencao, NfEntrada, NfEntradaItem, EstoqueTerceiro, ContratoFinanceiro, ParcelaLiberacao, ParcelaPagamento, GarantiaContrato, CentroCustoContrato, Arrendamento, ArrendamentoMatricula, LogSistema, PrincipioAtivo, NomeComercial, PASaldo, MovimentacaoPA, NfImportadaSieg, NfImportadaItemSieg, RegraClassificacaoNf, ConfiguracaoAutomacao, EmpresaAplicadora, AplicacaoAerea, AplicacaoAereaTalhao, AplicacaoAereaItem } from "./supabase";
 
 // ————————————————————————————————————————
 // LOGS DE AUDITORIA
@@ -1393,6 +1393,26 @@ export async function excluirConta(id: string): Promise<void> {
 // ————————————————————————————————————————
 // DEPÓSITOS
 // ————————————————————————————————————————
+
+// ── Benfeitorias ─────────────────────────────────────────────
+export async function listarBenfeitorias(fazenda_id: string): Promise<Benfeitoria[]> {
+  const { data, error } = await supabase.from("benfeitorias").select("*").eq("fazenda_id", fazenda_id).order("tipo").order("nome");
+  if (error) throw error;
+  return data ?? [];
+}
+export async function criarBenfeitoria(b: Omit<Benfeitoria, "id" | "created_at">): Promise<Benfeitoria> {
+  const { data, error } = await supabase.from("benfeitorias").insert(b).select().single();
+  if (error) throw error;
+  return data;
+}
+export async function atualizarBenfeitoria(id: string, b: Partial<Benfeitoria>): Promise<void> {
+  const { error } = await supabase.from("benfeitorias").update(b).eq("id", id);
+  if (error) throw error;
+}
+export async function excluirBenfeitoria(id: string): Promise<void> {
+  const { error } = await supabase.from("benfeitorias").delete().eq("id", id);
+  if (error) throw error;
+}
 
 export async function listarDepositos(fazenda_id: string): Promise<Deposito[]> {
   const { data, error } = await supabase.from("depositos").select("*").eq("fazenda_id", fazenda_id).order("nome");
