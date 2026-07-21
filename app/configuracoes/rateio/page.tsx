@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarRegrasRateio, criarRateioRegra, atualizarRateioRegra, excluirRateioRegra,
   listarRegrasRateioGlobal, criarRateioGlobal, atualizarRateioGlobal, excluirRateioGlobal,
-  listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta, listarFazendas,
+  listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta, listarFazendasDaConta,
 } from "../../../lib/db";
 import type { RateioRegra, RateioRegraLinha, RateioGlobal, Ciclo, AnoSafra, CentroCusto, Fazenda } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
@@ -70,7 +70,7 @@ export default function RateioPage() {
 
     // Dados base — independentes, cada um com catch próprio
     const [faz, a, cc] = await Promise.all([
-      listarFazendas().catch(() => [] as Fazenda[]),
+      listarFazendasDaConta(contaId, fazendaId).catch(() => [] as Fazenda[]),
       listarAnosSafra(fazendaId).catch(() => [] as AnoSafra[]),
       listarCentrosCustoGeralDaConta(fazendaId).catch(() => [] as CentroCusto[]),
     ]);

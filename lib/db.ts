@@ -112,6 +112,25 @@ export async function listarFazendas(id?: string): Promise<Fazenda[]> {
   return data ?? [];
 }
 
+// Variante que aceita conta_id/fazenda_id já conhecidos — evita lookup auth interno
+export async function listarFazendasDaConta(conta_id?: string | null, fazenda_id_fallback?: string | null): Promise<Fazenda[]> {
+  if (conta_id) {
+    const { data, error } = await supabase.from("fazendas").select("*").eq("conta_id", conta_id).order("nome");
+    if (!error && data?.length) return data;
+  }
+  if (fazenda_id_fallback) {
+    const ids = await resolverFazendaIdsDaConta(fazenda_id_fallback);
+    if (ids.length) {
+      const { data } = await supabase.from("fazendas").select("*").in("id", ids).order("nome");
+      if (data?.length) return data ?? [];
+    }
+    // último fallback: só a fazenda ativa
+    const { data } = await supabase.from("fazendas").select("*").eq("id", fazenda_id_fallback);
+    return data ?? [];
+  }
+  return listarFazendas();
+}
+
 export async function criarFazenda(f: Omit<Fazenda, "id" | "created_at">): Promise<Fazenda> {
   const res = await fetch("/api/fazenda/salvar", {
     method: "POST",
