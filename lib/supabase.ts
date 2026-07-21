@@ -734,6 +734,7 @@ export type Maquina = {
   modelo?: string;
   ano?: number;
   patrimonio?: string;
+  consome_combustivel?: boolean;
   chassi?: string;
   horimetro_atual?: number;
   // Aquisição
@@ -764,6 +765,7 @@ export type BombaCombustivel = {
   capacidade_l?: number;
   estoque_atual_l: number;
   consume_estoque: boolean;
+  insumo_id?: string;
   ativa: boolean;
   created_at?: string;
 };

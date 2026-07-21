@@ -317,9 +317,11 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   const [logoArato,        setLogoArato]        = useState<string | null>(null);
   const [nomeArato,        setNomeArato]        = useState("Arato");
   const [qtdPendencias,    setQtdPendencias]    = useState(0);
+  const [qtdTransferencias,setQtdTransferencias]= useState(0);
   const [showQr,           setShowQr]           = useState(false);
   const [qrDataUrl,        setQrDataUrl]        = useState("");
   const lastPendenciasMs   = useRef<number>(0);
+  const lastTransfMs       = useRef<number>(0);
 
   const pathname = usePathname();
   const { fazendaId, contaId, nomeUsuario, signOut, userRole, raccotloGestor, nomeFazendaSelecionada, nomeProdutor, clearFazenda, onboardingAtivo, stepsCompletos, podeAcessar, podeAcessarPlano, logoCliente } = useAuth();
@@ -356,6 +358,17 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
       .then(({ count }) => setQtdPendencias(count ?? 0));
   }, [fazendaId, pathname]);
 
+
+  useEffect(() => {
+    if (!fazendaId) return;
+    const now = Date.now();
+    if (now - lastTransfMs.current < 60_000) return;
+    lastTransfMs.current = now;
+    Promise.all([
+      supabase.from("solicitacoes_transferencia").select("id", { count: "exact", head: true }).eq("fazenda_destino_id", fazendaId).eq("status", "pendente"),
+      supabase.from("solicitacoes_transferencia_maquinas").select("id", { count: "exact", head: true }).eq("fazenda_destino_id", fazendaId).eq("status", "pendente"),
+    ]).then(([r1, r2]) => setQtdTransferencias((r1.count ?? 0) + (r2.count ?? 0)));
+  }, [fazendaId, pathname]);
 
   useEffect(() => {
     // Logo do sistema: lida do Supabase Storage (bucket "logos", arquivo "arato.png")
@@ -640,6 +653,18 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
             >
               📱
             </button>
+            <a
+              href="/campo/transferencias"
+              title={qtdTransferencias > 0 ? `${qtdTransferencias} solicitação(ões) de transferência pendente(s)` : "Transferências"}
+              style={{ position: "relative", background: qtdTransferencias > 0 ? "rgba(220,38,38,0.15)" : "var(--bg-input)", border: `0.5px solid ${qtdTransferencias > 0 ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, textDecoration: "none" }}
+            >
+              🔔
+              {qtdTransferencias > 0 && (
+                <span style={{ position: "absolute", top: -4, right: -4, background: "#DC2626", color: "#fff", fontSize: 9, fontWeight: 800, borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
+                  {qtdTransferencias > 9 ? "9+" : qtdTransferencias}
+                </span>
+              )}
+            </a>
             <button
               onClick={toggleTheme}
               title={isDark ? "Tema claro" : "Tema escuro"}

@@ -375,7 +375,7 @@ function CadastrosInner() {
   const [contratsFinanc, setContratsFinanc] = useState<ContratoFinanceiro[]>([]);
   const [modalMaq, setModalMaq]       = useState(false);
   const [editMaq, setEditMaq]         = useState<Maquina | null>(null);
-  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
+  const [fMaq, setFMaq]               = useState({ nome: "", tipo: "trator" as Maquina["tipo"], marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as NonNullable<Maquina["status_financiamento"]>, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
   const [tabMaq, setTabMaq]           = useState<"geral" | "aquisicao" | "seguro">("geral");
 
   // ── Benfeitorias ──
@@ -385,10 +385,11 @@ function CadastrosInner() {
   const [fBenf, setFBenf]               = useState({ fazenda_id: "", nome: "", tipo: "barracao" as Benfeitoria["tipo"], area_m2: "", ano_construcao: "", valor_aquisicao: "", valor_atual: "", vida_util_anos: "25", descricao: "", localizacao: "", ativa: true });
 
   // ── Bombas ──
-  const [bombas, setBombas]           = useState<BombaCombustivel[]>([]);
-  const [modalBomba, setModalBomba]   = useState(false);
-  const [editBomba, setEditBomba]     = useState<BombaCombustivel | null>(null);
-  const [fBomba, setFBomba]           = useState({ nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true });
+  const [bombas, setBombas]             = useState<BombaCombustivel[]>([]);
+  const [modalBomba, setModalBomba]     = useState(false);
+  const [editBomba, setEditBomba]       = useState<BombaCombustivel | null>(null);
+  const [fBomba, setFBomba]             = useState({ nome: "", combustivel: "diesel_s10" as BombaCombustivel["combustivel"], capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
+  const [insumosComb, setInsumosComb]   = useState<{ id: string; nome: string }[]>([]);
 
   // ── Funcionários ──
   const [funcs, setFuncs]                   = useState<Funcionario[]>([]);
@@ -1747,7 +1748,8 @@ function CadastrosInner() {
       seguro_data_contratacao: m.seguro_data_contratacao ?? "",
       seguro_vencimento_apolice: m.seguro_vencimento_apolice ?? "",
       seguro_premio: String(m.seguro_premio ?? ""),
-    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
+      consome_combustivel: m.consome_combustivel !== false,
+    } : { nome: "", tipo: "trator", marca: "", modelo: "", ano: "", patrimonio: "", chassi: "", horimetro_atual: "", consome_combustivel: true, proprietario_id: "", nr_nf_aquisicao: "", data_aquisicao: "", valor_aquisicao: "", contrato_financiamento_id: "", status_financiamento: "proprio" as const, data_quitacao: "", seguro_seguradora: "", seguro_corretora: "", seguro_numero_apolice: "", seguro_data_contratacao: "", seguro_vencimento_apolice: "", seguro_premio: "" });
     setModalMaq(true);
   };
   const salvarMaq = () => salvar(async () => {
@@ -1772,6 +1774,7 @@ function CadastrosInner() {
       seguro_data_contratacao: fMaq.seguro_data_contratacao || undefined,
       seguro_vencimento_apolice: fMaq.seguro_vencimento_apolice || undefined,
       seguro_premio: fMaq.seguro_premio ? Number(fMaq.seguro_premio) : undefined,
+      consome_combustivel: fMaq.consome_combustivel,
       ativa: true,
     };
     if (editMaq) { await atualizarMaquina(editMaq.id, payload); setMaquinas(p => p.map(x => x.id === editMaq.id ? { ...x, ...payload } : x)); }
@@ -1780,14 +1783,19 @@ function CadastrosInner() {
   });
 
   // ─────────────── BOMBAS ───────────────
-  const abrirModalBomba = (b?: BombaCombustivel) => {
+  const abrirModalBomba = async (b?: BombaCombustivel) => {
     setEditBomba(b ?? null);
-    setFBomba(b ? { nome: b.nome, combustivel: b.combustivel, capacidade_l: String(b.capacidade_l ?? ""), estoque_atual_l: String(b.estoque_atual_l), consume_estoque: b.consume_estoque !== false } : { nome: "", combustivel: "diesel_s10", capacidade_l: "", estoque_atual_l: "0", consume_estoque: true });
+    setFBomba(b ? { nome: b.nome, combustivel: b.combustivel, capacidade_l: String(b.capacidade_l ?? ""), estoque_atual_l: String(b.estoque_atual_l), consume_estoque: b.consume_estoque !== false, insumo_id: b.insumo_id ?? "" } : { nome: "", combustivel: "diesel_s10", capacidade_l: "", estoque_atual_l: "0", consume_estoque: true, insumo_id: "" });
+    const fazId = fazTrabalho || fazIdEff;
+    if (fazId) {
+      const { data } = await supabase.from("insumos").select("id, nome").eq("fazenda_id", fazId).eq("categoria", "combustivel").order("nome");
+      setInsumosComb((data ?? []) as { id: string; nome: string }[]);
+    }
     setModalBomba(true);
   };
   const salvarBomba = () => salvar(async () => {
     if (!fBomba.nome.trim()) return;
-    const payload = { fazenda_id: (fazTrabalho || fazIdEff)!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, ativa: true };
+    const payload = { fazenda_id: (fazTrabalho || fazIdEff)!, nome: fBomba.nome.trim(), combustivel: fBomba.combustivel, capacidade_l: fBomba.capacidade_l ? Number(fBomba.capacidade_l) : undefined, estoque_atual_l: Number(fBomba.estoque_atual_l) || 0, consume_estoque: fBomba.consume_estoque, insumo_id: fBomba.insumo_id || undefined, ativa: true };
     if (editBomba) { await atualizarBomba(editBomba.id, payload); setBombas(p => p.map(x => x.id === editBomba.id ? { ...x, ...payload } : x)); }
     else { const n = await criarBomba(payload); setBombas(p => [...p, n]); }
     setModalBomba(false);
@@ -7775,6 +7783,13 @@ function CadastrosInner() {
                 <label style={lbl}>{isVeiculo(fMaq.tipo) ? "Odômetro atual (km)" : "Horímetro atual (h)"}</label>
                 <InputNumerico style={inp} min="0" placeholder={isVeiculo(fMaq.tipo) ? "Ex: 125000" : "Ex: 4320"} value={fMaq.horimetro_atual} onChange={v => setFMaq(p => ({ ...p, horimetro_atual: v }))} />
               </div>
+              <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: fMaq.consome_combustivel ? "#F0FFF4" : "var(--bg-page)", border: `0.5px solid ${fMaq.consome_combustivel ? "#BBF7D0" : "var(--border)"}`, borderRadius: 8 }}>
+                <input type="checkbox" id="consome_combustivel" checked={fMaq.consome_combustivel} onChange={e => setFMaq(p => ({ ...p, consome_combustivel: e.target.checked }))} style={{ width: 18, height: 18, cursor: "pointer" }} />
+                <div>
+                  <label htmlFor="consome_combustivel" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", fontWeight: 700, display: "block" }}>⛽ Consome combustível</label>
+                  <span style={{ fontSize: 11, color: "#666" }}>Máquinas e veículos que consomem combustível aparecem na tela de Abastecimento. Implementos não consomem — desmarque para escondê-los.</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -7893,6 +7908,16 @@ function CadastrosInner() {
               <input type="checkbox" id="consume_estoque" checked={fBomba.consume_estoque} onChange={e => setFBomba(p => ({ ...p, consume_estoque: e.target.checked }))} style={{ width: 16, height: 16, cursor: "pointer" }} />
               <label htmlFor="consume_estoque" style={{ fontSize: 13, color: "var(--text-1)", cursor: "pointer", fontWeight: 600 }}>Controla estoque interno</label>
               <span style={{ fontSize: 12, color: "#666" }}>— Marque para bombas físicas da fazenda (tanques próprios). Desmarque para postos externos ou despesas diretas sem controle de estoque.</span>
+            </div>
+            <div style={{ gridColumn: "1/-1" }}>
+              <label style={lbl}>Insumo vinculado (almoxarifado)</label>
+              <select style={inp} value={fBomba.insumo_id} onChange={e => setFBomba(p => ({ ...p, insumo_id: e.target.value }))}>
+                <option value="">— Sem vínculo —</option>
+                {insumosComb.map(i => <option key={i.id} value={i.id}>{i.nome}</option>)}
+              </select>
+              <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                Ao abastecer com esta bomba, o sistema debitará automaticamente o estoque do insumo selecionado. Cadastre o combustível em Insumos → categoria Combustível antes de vincular.
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>

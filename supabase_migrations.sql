@@ -7943,3 +7943,58 @@ UPDATE bombas_combustivel
   WHERE combustivel = 'diesel_s10' AND tipo IS NOT NULL AND tipo <> 'diesel';
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 79 — Abastecimento + Máquinas: melhorias operacionais ──────────────
+
+-- 1. Bombas vinculadas a insumo de estoque
+ALTER TABLE bombas_combustivel
+  ADD COLUMN IF NOT EXISTS insumo_id UUID REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- 2. Máquinas: flag consome combustível (exclui implementos do abastecimento)
+ALTER TABLE maquinas
+  ADD COLUMN IF NOT EXISTS consome_combustivel BOOLEAN NOT NULL DEFAULT true;
+UPDATE maquinas SET consome_combustivel = false WHERE tipo = 'implemento';
+
+-- 3. Abastecimentos: patrimônio da máquina (snapshot) + insumo movimentado
+ALTER TABLE abastecimentos
+  ADD COLUMN IF NOT EXISTS patrimonio           TEXT,
+  ADD COLUMN IF NOT EXISTS insumo_movimentado_id UUID REFERENCES insumos(id) ON DELETE SET NULL;
+
+-- 4. Solicitações de transferência de máquinas
+CREATE TABLE IF NOT EXISTS solicitacoes_transferencia_maquinas (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  numero              TEXT NOT NULL,
+  fazenda_origem_id   UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  fazenda_destino_id  UUID NOT NULL REFERENCES fazendas(id) ON DELETE CASCADE,
+  maquina_id          UUID NOT NULL REFERENCES maquinas(id) ON DELETE CASCADE,
+  status              TEXT NOT NULL DEFAULT 'pendente'
+    CHECK (status IN ('pendente','aprovada','recusada','concluida')),
+  motivo              TEXT,
+  data_solicitacao    DATE NOT NULL DEFAULT CURRENT_DATE,
+  data_necessidade    DATE,
+  solicitante_nome    TEXT,
+  urgencia            TEXT NOT NULL DEFAULT 'programado'
+    CHECK (urgencia IN ('programado','urgente')),
+  observacao          TEXT,
+  respondido_por      TEXT,
+  data_resposta       TIMESTAMPTZ,
+  via_app             BOOLEAN DEFAULT true,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE solicitacoes_transferencia_maquinas ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY "stm_owner" ON solicitacoes_transferencia_maquinas
+    USING (
+      fazenda_origem_id IN (SELECT id FROM fazendas WHERE conta_id IN (
+        SELECT conta_id FROM perfis WHERE user_id = auth.uid()
+      ))
+      OR fazenda_destino_id IN (SELECT id FROM fazendas WHERE conta_id IN (
+        SELECT conta_id FROM perfis WHERE user_id = auth.uid()
+      ))
+      OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+NOTIFY pgrst, 'reload schema';
