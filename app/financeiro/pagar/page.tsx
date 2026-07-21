@@ -10,7 +10,7 @@ import ContextMenuColunas from "../../../components/ContextMenuColunas";
 import { useColunasGrid } from "../../../hooks/useColunasGrid";
 import { useColumnResize, ResizeHandle } from "../../../hooks/useColumnResize";
 import SelectBusca from "../../../components/SelectBusca";
-import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
+import { listarLancamentosContaPeriodo, criarLancamento, criarParcelamento, baixarLancamento, reabrirLancamento, reabrirLancamentos, criarPagamentoLote, listarAnosSafra, listarPessoasDaConta, listarProdutoresDaConta, listarProdutoresViaFazenda, listarOperacoesGerenciaisAtivasDaConta, excluirLancamento, listarCentrosCustoGeral, listarCentrosCustoGeralDaConta, listarTalhoes, listarFuncionarios, listarContasBancariasDaConta } from "../../../lib/db";
 import type { Lancamento, AnoSafra, Produtor, Pessoa, Ciclo, OperacaoGerencial, CentroCusto, Talhao, Funcionario, NfEntrada } from "../../../lib/supabase";
 import { supabase } from "../../../lib/supabase";
 
@@ -395,7 +395,7 @@ function ContasPagarInner() {
     else if (fazendaId) listarProdutoresViaFazenda(fazendaId).then(setProdutores).catch(() => {});
     if (fazendaId) {
       listarAnosSafra(fazendaId).then(setAnosSafra).catch(() => {});
-      listarCentrosCustoGeral(fazendaId).then(setCentrosCusto).catch(() => {});
+      listarCentrosCustoGeralDaConta(fazendaId).then(setCentrosCusto).catch(() => {});
     }
   }, [contaId, fazendaId]);
 
@@ -2035,9 +2035,15 @@ function ContasPagarInner() {
                       <label style={lbl}>Centro de Custo</label>
                       <select style={inp} value={form.centro_custo} onChange={e => setForm(p => ({ ...p, centro_custo: e.target.value }))}>
                         <option value="">— Sem vínculo —</option>
-                        {centrosCusto.filter(c => !centrosCusto.some(x => x.parent_id === c.id)).map(c => (
-                          <option key={c.id} value={c.nome}>{c.codigo ? `${c.codigo} — ` : ""}{c.nome}</option>
-                        ))}
+                        {centrosCusto.map(c => {
+                          const isLeaf = !centrosCusto.some(x => x.parent_id === c.id);
+                          const prefix = c.parent_id ? "   " : "";
+                          return (
+                            <option key={c.id} value={c.nome} disabled={!isLeaf} style={{ color: isLeaf ? undefined : "#888" }}>
+                              {prefix}{c.codigo ? `${c.codigo} — ` : ""}{c.nome}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>
