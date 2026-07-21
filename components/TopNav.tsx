@@ -268,6 +268,7 @@ const NAV: NavItem[] = [
 
       { type: "divider", label: "Raccolto" },
       { id: "conf-integracoes", label: "Integrações",          path: "/configuracoes/integracoes", moduleId: "conf_raccotlo" },
+      { id: "conf-bot",         label: "Bot IA — WhatsApp",    path: "/configuracoes/bot",         moduleId: "conf_raccotlo" },
       { id: "conf-automacoes",  label: "Automações",           path: "/configuracoes/automacoes",  moduleId: "conf_raccotlo" },
       { id: "conf-backup",      label: "Backup & Restauração", path: "/configuracoes/backup",      moduleId: "conf_raccotlo" },
       { id: "conf-importacao",  label: "Importações",          path: "/configuracoes/importacao",  moduleId: "conf_raccotlo" },
