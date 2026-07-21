@@ -137,7 +137,62 @@ const TAB_GROUPS: TabGroup[] = [
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const SOLOS   = ["LVdf","LAd","LVd","NVef","CXbd","PVAd","RQo"];
 const CULTURAS = ["Soja","Milho","Algodão","Trigo","Sorgo","Feijão","Arroz"];
-const MODULOS  = ["dashboard","propriedades","lavoura","financeiro","estoque","fiscal","relatorios","cadastros","automacoes","configuracoes"];
+const MODULOS_GRUPOS = [
+  { grupo: "Geral",          modulos: [
+    { id: "dashboard",            label: "Dashboard"                        },
+    { id: "mapa",                 label: "Mapa de Propriedades"             },
+  ]},
+  { grupo: "Lavoura",        modulos: [
+    { id: "lavoura",              label: "Operações de Lavoura"             },
+    { id: "lavoura_planejamento", label: "Planejamento de Safra"            },
+    { id: "lavoura_relatorios",   label: "Relatórios de Lavoura"           },
+  ]},
+  { grupo: "Comercial",      modulos: [
+    { id: "contratos",            label: "Contratos de Grãos"              },
+    { id: "expedicao",            label: "Expedição de Grãos"              },
+    { id: "arrendamento",         label: "Contratos de Arrendamento"       },
+  ]},
+  { grupo: "Compras",        modulos: [
+    { id: "compras",              label: "Pedidos de Compra"               },
+    { id: "nf_entrada",           label: "NF de Produtos (Entrada)"        },
+    { id: "nf_servico",           label: "NF de Serviços (Entrada)"        },
+  ]},
+  { grupo: "Estoque",        modulos: [
+    { id: "estoque",              label: "Posição & Movimentações"         },
+    { id: "romaneio_entrada",     label: "Romaneio de Entrada"             },
+  ]},
+  { grupo: "Financeiro",     modulos: [
+    { id: "fin_pagar",            label: "Contas a Pagar"                  },
+    { id: "fin_receber",          label: "Contas a Receber"                },
+    { id: "fin_contratos",        label: "Contratos Financeiros"           },
+    { id: "apoio_financeiro",     label: "Apoio Financeiro"                },
+    { id: "fin_seguros",          label: "Seguros & Consórcios"            },
+    { id: "fin_tesouraria",       label: "Tesouraria"                      },
+    { id: "fin_relatorios",       label: "Relatórios Financeiros"          },
+  ]},
+  { grupo: "Transporte",     modulos: [
+    { id: "transporte",           label: "CT-e & MDF-e"                    },
+  ]},
+  { grupo: "Fiscal",         modulos: [
+    { id: "fiscal_nfe",           label: "Monitor NF-e"                    },
+    { id: "fiscal_sped",          label: "LCDPR / SPED Contábil"           },
+  ]},
+  { grupo: "Custos & BI",   modulos: [
+    { id: "custos",               label: "DRE & Custo / ha"                },
+    { id: "bi",                   label: "BI & Indicadores"                },
+  ]},
+  { grupo: "Algodão",        modulos: [
+    { id: "algodao",              label: "Módulo Algodão (add-on)"         },
+  ]},
+  { grupo: "Configurações",  modulos: [
+    { id: "cadastros",            label: "Cadastros"                       },
+    { id: "conf_fiscal",          label: "Parâmetros Fiscais / NF-e"       },
+    { id: "conf_financeiro",      label: "Plano de Contas / Operações"     },
+    { id: "conf_contabilidade",   label: "Contabilidade"                   },
+    { id: "usuarios",             label: "Usuários & Permissões"           },
+  ]},
+];
+const MODULOS = MODULOS_GRUPOS.flatMap(g => g.modulos.map(m => m.id));
 
 const inp: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, color: "var(--text-1)", background: "var(--bg-card)", boxSizing: "border-box", outline: "none" };
 const lbl: React.CSSProperties = { fontSize: 11, color: "var(--text-2)", marginBottom: 4, display: "block" };
@@ -4957,8 +5012,13 @@ function CadastrosInner() {
                         <div style={{ color: "var(--text-1)", fontWeight: 600 }}>{g.nome}</div>
                         {g.descricao && <div style={{ fontSize: 11, color: "var(--text-2)", marginTop: 2 }}>{g.descricao}</div>}
                         <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-                          {MODULOS.slice(0, 5).map(m => <span key={m} style={{ fontSize: 9, background: g.permissoes[m] === "nenhum" ? "#F1EFE8" : "#D5E8F5", color: g.permissoes[m] === "nenhum" ? "var(--text-2)" : "#0B2D50", padding: "1px 6px", borderRadius: 5 }}>{m}</span>)}
-                          {MODULOS.length > 5 && <span style={{ fontSize: 9, color: "#444" }}>+{MODULOS.length - 5} módulos</span>}
+                          {MODULOS_GRUPOS.map(gr => {
+                            const total  = gr.modulos.length;
+                            const ativos = gr.modulos.filter(m => (g.permissoes[m.id] ?? "leitura") !== "nenhum").length;
+                            const bg = ativos === 0 ? "#F1EFE8" : ativos === total ? "#D5E8F5" : "#FBF3E0";
+                            const cor = ativos === 0 ? "var(--text-2)" : ativos === total ? "#0B2D50" : "#7A5A12";
+                            return <span key={gr.grupo} style={{ fontSize: 9, background: bg, color: cor, padding: "1px 6px", borderRadius: 5 }}>{gr.grupo} {ativos}/{total}</span>;
+                          })}
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
@@ -8980,25 +9040,81 @@ function CadastrosInner() {
 
       {/* Modal Grupo */}
       {modalGrupo && (
-        <Modal titulo={editGrupo ? "Editar Grupo" : "Novo Grupo de Usuários"} onClose={() => setModalGrupo(false)} width={700}>
+        <Modal titulo={editGrupo ? "Editar Grupo de Usuários" : "Novo Grupo de Usuários"} onClose={() => setModalGrupo(false)} width={860}>
           <div style={{ display: "grid", gap: 14 }}>
-            <div><label style={lbl}>Nome do grupo *</label><input style={inp} value={fGrupo.nome} onChange={e => setFGrupo(p => ({ ...p, nome: e.target.value }))} /></div>
-            <div><label style={lbl}>Descrição</label><input style={inp} value={fGrupo.descricao} onChange={e => setFGrupo(p => ({ ...p, descricao: e.target.value }))} /></div>
-            <div>
-              <label style={lbl}>Permissões por módulo</label>
-              <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden" }}>
-                {MODULOS.map((m, mi) => (
-                  <div key={m} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: mi < MODULOS.length - 1 ? "0.5px solid var(--border-row)" : "none", background: mi % 2 === 0 ? "#fff" : "var(--bg-card)" }}>
-                    <span style={{ fontSize: 12, color: "var(--text-1)", textTransform: "capitalize" }}>{m}</span>
-                    <select style={{ ...inp, width: "auto", padding: "4px 8px", fontSize: 12 }} value={fGrupo.permissoes[m] ?? "leitura"} onChange={e => setFGrupo(p => ({ ...p, permissoes: { ...p.permissoes, [m]: e.target.value } }))}>
-                      <option value="nenhum">Sem acesso</option>
-                      <option value="leitura">Somente leitura</option>
-                      <option value="escrita">Leitura e escrita</option>
-                      <option value="admin">Administrador</option>
-                    </select>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div><label style={lbl}>Nome do grupo *</label><input style={inp} value={fGrupo.nome} onChange={e => setFGrupo(p => ({ ...p, nome: e.target.value }))} /></div>
+              <div><label style={lbl}>Descrição</label><input style={inp} value={fGrupo.descricao} onChange={e => setFGrupo(p => ({ ...p, descricao: e.target.value }))} /></div>
+            </div>
+
+            {/* Ações rápidas globais */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600 }}>Ação rápida:</span>
+              {(["nenhum","leitura","escrita"] as const).map(v => (
+                <button key={v} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid var(--border-table)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-1)" }}
+                  onClick={() => {
+                    const all: Record<string, string> = {};
+                    MODULOS.forEach(m => { all[m] = v; });
+                    setFGrupo(p => ({ ...p, permissoes: all }));
+                  }}>
+                  {v === "nenhum" ? "Bloquear tudo" : v === "leitura" ? "Somente leitura" : "Liberar tudo (escrita)"}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ border: "0.5px solid var(--border-table)", borderRadius: 8, overflow: "hidden", maxHeight: 420, overflowY: "auto" }}>
+              {MODULOS_GRUPOS.map((gr, gi) => (
+                <div key={gr.grupo}>
+                  {/* Cabeçalho do grupo */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", background: "#F0F4FA", borderTop: gi > 0 ? "0.5px solid var(--border-table)" : "none" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.05em" }}>{gr.grupo}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {(["nenhum","leitura","escrita"] as const).map(v => (
+                        <button key={v} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, border: "0.5px solid #c0cfe0", background: "#fff", cursor: "pointer", color: "#555" }}
+                          onClick={() => {
+                            const next = { ...fGrupo.permissoes };
+                            gr.modulos.forEach(m => { next[m.id] = v; });
+                            setFGrupo(p => ({ ...p, permissoes: next }));
+                          }}>
+                          {v === "nenhum" ? "✕" : v === "leitura" ? "👁" : "✏️"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                  {/* Módulos do grupo */}
+                  {gr.modulos.map((m, mi) => {
+                    const val = fGrupo.permissoes[m.id] ?? "leitura";
+                    const cor = val === "nenhum" ? "#F1EFE8" : val === "leitura" ? "#EEF6FF" : "#EDFBF3";
+                    const bordCor = val === "nenhum" ? "#DDD" : val === "leitura" ? "#B0CEF0" : "#86CFAC";
+                    return (
+                      <div key={m.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", padding: "8px 12px", borderTop: "0.5px solid var(--border-row)", background: mi % 2 === 0 ? "#fff" : "var(--bg-page)" }}>
+                        <span style={{ fontSize: 13, color: "var(--text-1)" }}>{m.label}</span>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {([
+                            { v: "nenhum", label: "Sem acesso"  },
+                            { v: "leitura", label: "Visualizar" },
+                            { v: "escrita", label: "Editar"     },
+                            { v: "admin",   label: "Admin"      },
+                          ] as const).map(op => (
+                            <button key={op.v} onClick={() => setFGrupo(p => ({ ...p, permissoes: { ...p.permissoes, [m.id]: op.v } }))}
+                              style={{
+                                fontSize: 11, padding: "4px 10px", borderRadius: 6, cursor: "pointer",
+                                border: val === op.v ? `0.5px solid ${bordCor}` : "0.5px solid #DDE2EE",
+                                background: val === op.v ? cor : "#fff",
+                                fontWeight: val === op.v ? 700 : 400,
+                                color: val === op.v
+                                  ? (op.v === "nenhum" ? "#888" : op.v === "leitura" ? "#1A4870" : op.v === "escrita" ? "#16A34A" : "#C9921B")
+                                  : "var(--text-3)",
+                              }}>
+                              {op.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
