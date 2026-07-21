@@ -408,11 +408,15 @@ export default function Contratos() {
   const [iaVendaPdfNome,   setIaVendaPdfNome]   = useState<string|null>(null);
   const [iaVendaConf,      setIaVendaConf]      = useState<"alta"|"media"|"baixa"|null>(null);
   const [iaVendaErro,      setIaVendaErro]      = useState<string|null>(null);
+  const [iaVendaResultado, setIaVendaResultado] = useState<Record<string,unknown>|null>(null);
+  const [iaVendaMostrarDebug, setIaVendaMostrarDebug] = useState(false);
 
   async function handlePdfContratoVenda(file: File) {
     setIaVendaExtraindo(true);
     setIaVendaConf(null);
     setIaVendaErro(null);
+    setIaVendaResultado(null);
+    setIaVendaMostrarDebug(false);
     setIaVendaPdfNome(file.name);
     try {
       const form = new FormData();
@@ -421,6 +425,8 @@ export default function Contratos() {
       const json = await res.json() as { extraido?: Record<string, unknown>; error?: string };
       if (!res.ok || json.error) { setIaVendaErro(json.error ?? "Erro ao processar PDF."); return; }
       const e = json.extraido as Record<string, unknown>;
+      setIaVendaResultado(e);
+      console.log("[IA Contrato Venda] extraído:", e);
 
       // ── calcular confiança ─────────────────────────────────────
       const temComprador = !!(e.comprador_cnpj || e.comprador_nome);
@@ -1682,6 +1688,7 @@ export default function Contratos() {
                   {/* ── Banner IA — upload de contrato PDF (Add-on ia_contrato_venda) ── */}
                   {!editContrato && contaModulosOverrides["ia_contrato_venda"] === true && (
                     <div style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
+                      {/* Linha principal */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#7A4300", marginBottom: 3 }}>
@@ -1709,6 +1716,12 @@ export default function Contratos() {
                               {iaVendaConf === "alta" ? "✓ Alta confiança — revise e salve" : iaVendaConf === "media" ? "⚠ Confira os campos" : "⚠ Baixa — verifique tudo"}
                             </span>
                           )}
+                          {iaVendaResultado && !iaVendaExtraindo && (
+                            <button onClick={() => setIaVendaMostrarDebug(v => !v)}
+                              style={{ padding: "4px 10px", background: "transparent", border: "0.5px solid #C9921B", borderRadius: 6, fontSize: 11, color: "#7A4300", cursor: "pointer" }}>
+                              {iaVendaMostrarDebug ? "Ocultar" : "Ver extraído"}
+                            </button>
+                          )}
                           {iaVendaPdfNome && !iaVendaExtraindo && (
                             <span style={{ fontSize: 11, color: "#7A4300", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {iaVendaPdfNome}</span>
                           )}
@@ -1720,6 +1733,62 @@ export default function Contratos() {
                           </label>
                         </div>
                       </div>
+
+                      {/* Painel de debug — o que foi extraído */}
+                      {iaVendaMostrarDebug && iaVendaResultado && (
+                        <div style={{ marginTop: 12, borderTop: "0.5px solid #C9921B40", paddingTop: 12 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#7A4300", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                            Campos extraídos do PDF
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px 16px" }}>
+                            {[
+                              ["Nº Contrato",      iaVendaResultado.numero_contrato],
+                              ["Data Contrato",    iaVendaResultado.data_contrato],
+                              ["Comprador",        iaVendaResultado.comprador_nome],
+                              ["CNPJ Comprador",   iaVendaResultado.comprador_cnpj],
+                              ["IE Comprador",     iaVendaResultado.comprador_ie],
+                              ["Vendedor",         iaVendaResultado.vendedor_nome],
+                              ["CPF/CNPJ Vendedor",iaVendaResultado.vendedor_cpf_cnpj],
+                              ["IE Vendedor",      iaVendaResultado.vendedor_ie],
+                              ["Produto",          iaVendaResultado.produto],
+                              ["Safra",            iaVendaResultado.safra],
+                              ["Moeda",            iaVendaResultado.moeda],
+                              ["Preço/sc",         iaVendaResultado.preco_por_saca ? `${iaVendaResultado.moeda} ${iaVendaResultado.preco_por_saca}` : undefined],
+                              ["Volume original",  iaVendaResultado.volume_original],
+                              ["Volume (sc)",      iaVendaResultado.volume_sacas],
+                              ["Volume (ton)",     iaVendaResultado.volume_toneladas],
+                              ["Data Entrega",     iaVendaResultado.data_entrega_fim ?? iaVendaResultado.data_entrega_inicio],
+                              ["Data Pagamento",   iaVendaResultado.data_pagamento],
+                              ["Destino",          iaVendaResultado.destino],
+                              ["Frete",            iaVendaResultado.frete],
+                              ["Modalidade",       iaVendaResultado.modalidade],
+                              ["Local Entrega",    iaVendaResultado.local_entrega],
+                            ].map(([label, val]) => (
+                              <div key={String(label)} style={{ fontSize: 11 }}>
+                                <span style={{ color: "#9a6b20", display: "block", fontSize: 10 }}>{String(label)}</span>
+                                <span style={{ color: val ? "#3a2000" : "#c9921b80", fontWeight: val ? 600 : 400 }}>
+                                  {val !== undefined && val !== null && val !== "" ? String(val) : "—"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {Array.isArray(iaVendaResultado.retencoes) && (iaVendaResultado.retencoes as unknown[]).length > 0 && (
+                            <div style={{ marginTop: 8 }}>
+                              <div style={{ fontSize: 10, color: "#9a6b20", marginBottom: 4 }}>RETENÇÕES</div>
+                              {(iaVendaResultado.retencoes as Array<{descricao:string;percentual?:number;valor_fixo?:number}>).map((r, i) => (
+                                <span key={i} style={{ fontSize: 11, background: "#f5e6c8", color: "#3a2000", padding: "2px 7px", borderRadius: 5, marginRight: 6, display: "inline-block", marginBottom: 3 }}>
+                                  {r.descricao}{r.percentual ? ` ${r.percentual}%` : ""}{r.valor_fixo ? ` R$${r.valor_fixo}` : ""}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {typeof iaVendaResultado.observacoes === "string" && iaVendaResultado.observacoes !== "" && (
+                            <div style={{ marginTop: 8, fontSize: 11, color: "#3a2000", background: "#f5e6c840", padding: "6px 10px", borderRadius: 6 }}>
+                              <strong>Obs.:</strong> {iaVendaResultado.observacoes as string}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
