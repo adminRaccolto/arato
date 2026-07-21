@@ -195,8 +195,30 @@ type AbaForm = "principal" | "adicionais";
 type AbaLista = "contratos" | "expedicao" | "posicao";
 
 // ═══════════════════════════════════════════════════════════════════
+// ── normaliza produto da IA para os nomes do sistema ─────────────────────────
+function normalizarProdutoIA(prod?: string): string {
+  if (!prod) return "Soja";
+  const p = prod.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (p.includes("soja")) return "Soja";
+  if (p.includes("milho") && (p.includes("2") || p.includes("safrinha"))) return "Milho 2ª (Safrinha)";
+  if (p.includes("milho")) return "Milho 1ª";
+  if (p.includes("algodao") || p.includes("algodão")) return "Algodão";
+  if (p.includes("trigo")) return "Trigo";
+  if (p.includes("sorgo")) return "Sorgo";
+  if (p.includes("feijao") || p.includes("feijão")) return "Feijão";
+  return "Soja";
+}
+// ── normaliza frete da IA → opções do formulário ──────────────────────────────
+function normalizarFreteIA(frete?: string): string {
+  if (!frete) return "destinatario";
+  const f = frete.toUpperCase();
+  if (f === "FOB") return "fob";
+  if (f === "CIF") return "cif";
+  return "destinatario";
+}
+
 export default function Contratos() {
-  const { fazendaId, fazendaIds, contaId, podeAcessarPlano } = useAuth();
+  const { fazendaId, fazendaIds, contaId, podeAcessarPlano, contaModulosOverrides } = useAuth();
 
   // ── dados ────────────────────────────────────────────────────
   const [contratos, setContratos]     = useState<ContratoVM[]>([]);
@@ -380,6 +402,119 @@ export default function Contratos() {
   const [modalCessao,      setModalCessao]      = useState(false);
   const [cessaoLancs,      setCessaoLancs]      = useState<LancItem[]>([]);
   const [cessaoSelecionados, setCessaoSelecionados] = useState<Record<string, number>>({}); // lancamento_id → valor_cessao
+
+  // ── IA — Extração de Contrato de Venda (Add-on ia_contrato_venda) ──────────
+  const [iaVendaExtraindo, setIaVendaExtraindo] = useState(false);
+  const [iaVendaPdfNome,   setIaVendaPdfNome]   = useState<string|null>(null);
+  const [iaVendaConf,      setIaVendaConf]      = useState<"alta"|"media"|"baixa"|null>(null);
+  const [iaVendaErro,      setIaVendaErro]      = useState<string|null>(null);
+
+  async function handlePdfContratoVenda(file: File) {
+    setIaVendaExtraindo(true);
+    setIaVendaConf(null);
+    setIaVendaErro(null);
+    setIaVendaPdfNome(file.name);
+    try {
+      const form = new FormData();
+      form.append("pdf", file);
+      const res = await fetch("/api/ai/extrair-contrato-venda", { method: "POST", body: form });
+      const json = await res.json() as { extraido?: Record<string, unknown>; error?: string };
+      if (!res.ok || json.error) { setIaVendaErro(json.error ?? "Erro ao processar PDF."); return; }
+      const e = json.extraido as Record<string, unknown>;
+
+      // ── calcular confiança ─────────────────────────────────────
+      const temComprador = !!(e.comprador_cnpj || e.comprador_nome);
+      const temVendedor  = !!(e.vendedor_cpf_cnpj || e.vendedor_nome);
+      const temPreco     = !!(e.preco_por_saca);
+      const temVolume    = !!(e.volume_sacas);
+      const score = [temComprador, temVendedor, temPreco, temVolume].filter(Boolean).length;
+      setIaVendaConf(score === 4 ? "alta" : score >= 2 ? "media" : "baixa");
+
+      // ── pré-preencher campos ────────────────────────────────────
+      // Comprador
+      let pessoaId = "";
+      const cnpjComprador = String(e.comprador_cnpj ?? "").replace(/\D/g, "");
+      if (cnpjComprador.length >= 14) {
+        const match = pessoas.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === cnpjComprador);
+        if (match) pessoaId = match.id;
+      }
+      if (!pessoaId && e.comprador_nome) {
+        const nomeLc = String(e.comprador_nome).toLowerCase();
+        const match = pessoas.find(p => p.nome.toLowerCase().includes(nomeLc.slice(0, 10)));
+        if (match) pessoaId = match.id;
+      }
+
+      // Produtor / Vendedor
+      let produtorId = "";
+      const cpfCnpjVend = String(e.vendedor_cpf_cnpj ?? "").replace(/\D/g, "");
+      if (cpfCnpjVend.length >= 11) {
+        const match = produtores.find(p => (p.cpf_cnpj ?? "").replace(/\D/g, "") === cpfCnpjVend);
+        if (match) produtorId = match.id;
+      }
+
+      // Produto e Safra
+      const produtoNorm = normalizarProdutoIA(e.produto as string | undefined);
+      let anoSafraId = "";
+      if (e.safra) {
+        const safraStr = String(e.safra);
+        const match = anosSafra.find(a => a.descricao?.includes(safraStr.slice(0, 4)) || a.descricao === safraStr);
+        if (match) anoSafraId = match.id;
+      }
+
+      // Preço, volume, datas
+      const precoPorSaca = Number(e.preco_por_saca ?? 0);
+      const volumeSacas  = Number(e.volume_sacas ?? 0);
+      const moedaIA      = (e.moeda === "USD" ? "USD" : "BRL") as "BRL" | "USD";
+      const dataEntrega  = String(e.data_entrega_fim ?? e.data_entrega_inicio ?? "");
+      const dataPagamento = String(e.data_pagamento ?? "");
+      const freteNorm    = normalizarFreteIA(e.frete as string | undefined);
+      const nrContrato   = String(e.numero_contrato ?? "");
+
+      // Destino → natureza de operação
+      const produtorMtch  = produtores.find(p => p.id === produtorId);
+      const tipoPessoa    = tipoProdutorDeCpfCnpj(produtorMtch?.cpf_cnpj);
+      const destino       = e.destino as string | undefined;
+      let naturezaCod = "";
+      let naturezaDesc = "";
+      let cfopIA = "";
+      if (destino === "exportacao") {
+        naturezaCod  = tipoPessoa === "pf" ? "VFE-PF" : "VFE-PJ";
+        const natObj = NATUREZAS_OPERACAO.find(n => n.codigo === naturezaCod);
+        naturezaDesc = natObj?.descricao ?? "";
+        cfopIA       = natObj?.cfop_inter ?? "6501";
+      }
+
+      // Aplica tudo no formulário
+      setFC(prev => ({
+        ...prev,
+        ...(pessoaId                && { pessoa_id: pessoaId }),
+        ...(produtorId              && { produtor_id: produtorId }),
+        ...(anoSafraId              && { ano_safra_id: anoSafraId, safra: anosSafra.find(a=>a.id===anoSafraId)?.descricao ?? prev.safra }),
+        ...(moedaIA                 && { moeda: moedaIA }),
+        ...(precoPorSaca > 0        && { preco: precoPorSaca }),
+        ...(volumeSacas > 0         && { quantidade_sc: volumeSacas }),
+        ...(dataEntrega             && { data_entrega: dataEntrega }),
+        ...(dataPagamento           && { data_pagamento: dataPagamento }),
+        ...(nrContrato              && { nr_contrato_cliente: nrContrato }),
+        ...(freteNorm               && { frete: freteNorm as Contrato["frete"] }),
+        ...(naturezaCod             && { natureza_codigo: naturezaCod, natureza_operacao: naturezaDesc, cfop: cfopIA }),
+      }));
+      // Atualiza item principal
+      setItens(prev => prev.map((it, idx) => idx === 0
+        ? { ...it,
+            produto: produtoNorm,
+            moeda: moedaIA,
+            ...(precoPorSaca > 0 && { valor_unitario: precoPorSaca }),
+            ...(volumeSacas > 0  && { quantidade: volumeSacas * 60 }),
+          }
+        : it
+      ));
+    } catch (err) {
+      setIaVendaErro(err instanceof Error ? err.message : "Erro desconhecido.");
+    } finally {
+      setIaVendaExtraindo(false);
+    }
+  }
 
   // ── modal romaneio ───────────────────────────────────────────
   const [modalRomaneio, setModalRomaneio] = useState(false);
@@ -1544,6 +1679,50 @@ export default function Contratos() {
 
               {abaForm === "principal" && (
                 <>
+                  {/* ── Banner IA — upload de contrato PDF (Add-on ia_contrato_venda) ── */}
+                  {!editContrato && contaModulosOverrides["ia_contrato_venda"] === true && (
+                    <div style={{ marginBottom: 18, border: "0.5px solid #C9921B", borderRadius: 10, background: "#FBF3E0", padding: "12px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#7A4300", marginBottom: 3 }}>
+                            📄 Deixe que o Arato lança pra você. Anexe o PDF do contrato aqui.
+                          </div>
+                          <div style={{ fontSize: 11, color: "#7A4300" }}>
+                            Envie o PDF — o sistema extrai comprador, vendedor, produto, volume, preço e retenções. Você só revisa e salva.
+                          </div>
+                          {iaVendaErro && (
+                            <div style={{ marginTop: 6, fontSize: 11, color: "#791F1F", background: "#FCEBEB", border: "0.5px solid #E24B4A50", borderRadius: 6, padding: "4px 8px" }}>
+                              ✕ {iaVendaErro}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                          {iaVendaExtraindo && (
+                            <span style={{ fontSize: 11, color: "#7A4300" }}>Lendo contrato…</span>
+                          )}
+                          {iaVendaConf && !iaVendaExtraindo && (
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 5,
+                              background: iaVendaConf === "alta" ? "#DCFCE7" : iaVendaConf === "media" ? "#FBF3E0" : "#FCEBEB",
+                              color:      iaVendaConf === "alta" ? "#166534" : iaVendaConf === "media" ? "#7A4300" : "#791F1F",
+                              border: `0.5px solid ${iaVendaConf === "alta" ? "#16A34A" : iaVendaConf === "media" ? "#C9921B" : "#E24B4A"}`,
+                            }}>
+                              {iaVendaConf === "alta" ? "✓ Alta confiança — revise e salve" : iaVendaConf === "media" ? "⚠ Confira os campos" : "⚠ Baixa — verifique tudo"}
+                            </span>
+                          )}
+                          {iaVendaPdfNome && !iaVendaExtraindo && (
+                            <span style={{ fontSize: 11, color: "#7A4300", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {iaVendaPdfNome}</span>
+                          )}
+                          <label style={{ padding: "6px 14px", background: iaVendaExtraindo ? "#ddd" : "#C9921B", color: "#fff", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: iaVendaExtraindo ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                            {iaVendaExtraindo ? "Processando…" : iaVendaPdfNome ? "Trocar PDF" : "Selecionar PDF"}
+                            <input type="file" accept="application/pdf" style={{ display: "none" }} disabled={iaVendaExtraindo}
+                              onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfContratoVenda(f); e.target.value = ""; }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Linha 1: Nº Lançamento | Nº Contrato | Safra | Tipo Contrato */}
                   <div style={{ display:"grid", gridTemplateColumns:"120px 1fr 1fr 1fr 1fr", gap:12, marginBottom:12 }}>
                     <div>
