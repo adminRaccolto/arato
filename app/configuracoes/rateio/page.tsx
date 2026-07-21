@@ -5,7 +5,7 @@ import { useAuth } from "../../../components/AuthProvider";
 import {
   listarRegrasRateio, criarRateioRegra, atualizarRateioRegra, excluirRateioRegra,
   listarRegrasRateioGlobal, criarRateioGlobal, atualizarRateioGlobal, excluirRateioGlobal,
-  listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeral, listarFazendas,
+  listarTodosCiclos, listarAnosSafra, listarCentrosCustoGeralDaConta, listarFazendas,
 } from "../../../lib/db";
 import type { RateioRegra, RateioRegraLinha, RateioGlobal, Ciclo, AnoSafra, CentroCusto, Fazenda } from "../../../lib/supabase";
 import InputNumerico from "../../../components/InputNumerico";
@@ -67,30 +67,31 @@ export default function RateioPage() {
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
-    try {
-      const [faz, r, a, cc] = await Promise.all([
-        listarFazendas(),
-        listarRegrasRateio(fazendaId),
-        listarAnosSafra(fazendaId),
-        listarCentrosCustoGeral(fazendaId),
-      ]);
-      const rg = contaId ? await listarRegrasRateioGlobal(contaId) : [];
-      setTodasFazendas(faz);
-      setRegras(r);
-      setRegrasGlobal(rg);
-      setAnos(a);
-      setCcs(cc);
 
-      // Carregar ciclos de todas as fazendas
-      const map: Record<string, Ciclo[]> = {};
-      await Promise.all(faz.map(async f => {
-        const ciclos = await listarTodosCiclos(f.id);
-        map[f.id] = ciclos;
-      }));
-      setCiclosPorFazenda(map);
-    } finally {
-      setLoading(false);
-    }
+    // Dados base — independentes, cada um com catch próprio
+    const [faz, a, cc] = await Promise.all([
+      listarFazendas().catch(() => [] as Fazenda[]),
+      listarAnosSafra(fazendaId).catch(() => [] as AnoSafra[]),
+      listarCentrosCustoGeralDaConta(fazendaId).catch(() => [] as CentroCusto[]),
+    ]);
+    setTodasFazendas(faz);
+    setAnos(a);
+    setCcs(cc);
+
+    // Ciclos de todas as fazendas
+    const map: Record<string, Ciclo[]> = {};
+    await Promise.all(faz.map(async fazItem => {
+      map[fazItem.id] = await listarTodosCiclos(fazItem.id).catch(() => []);
+    }));
+    setCiclosPorFazenda(map);
+
+    // Regras — tabelas opcionais (podem não existir no banco)
+    const r  = await listarRegrasRateio(fazendaId).catch(() => [] as RateioRegra[]);
+    const rg = contaId ? await listarRegrasRateioGlobal(contaId).catch(() => [] as RateioGlobal[]) : [];
+    setRegras(r);
+    setRegrasGlobal(rg);
+
+    setLoading(false);
   }, [fazendaId, contaId]);
 
   useEffect(() => { carregar(); }, [carregar]);
