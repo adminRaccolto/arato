@@ -346,6 +346,43 @@ Soja, Milho 1ª, Milho 2ª (Safrinha), Algodão, Sorgo, Trigo, Feijão
 - Seguradora, Corretora
 - Depósito de Carregamento, Depósito Fiscal
 - Observações públicas e internas
+- **Documento / Anexo** — upload do PDF físico do contrato (armazenado em Storage → contratos-venda/)
+
+### Add-on IA — Extração automática de Contrato de Venda por PDF (ia_contrato_venda)
+
+**Disponível quando:** conta tem o add-on ia_contrato_venda ativo (habilitado em /admin/modulos).
+
+**Como usar:**
+1. Clique em **Novo Contrato**
+2. No topo da aba Principal, clique em **Selecionar PDF**
+3. Envie o PDF do contrato assinado pela trading
+4. O sistema (Arato IA) extrai automaticamente:
+   - Comprador (com CNPJ e Inscrição Estadual)
+   - Vendedor/Produtor (com CPF/CNPJ e IE)
+   - Produto (com match automático no cadastro de insumos)
+   - Volume em sacas e toneladas
+   - Preço por saca (BRL ou USD)
+   - Datas de entrega e pagamento
+   - Destino (exportação → preenche CFOP 6501; mercado interno → 6101)
+   - Frete (FOB/CIF)
+   - Retenções (Funrural, SENAR, etc.)
+5. Confira o indicador de confiança:
+   - **✓ Alta confiança** — todos os campos principais extraídos → revise e salve
+   - **⚠ Confira os campos** — alguns campos faltando → verifique antes de salvar
+   - **⚠ Baixa** — poucos campos extraídos → preencha manualmente o restante
+6. Clique em **Ver extraído** para ver campo a campo o que foi encontrado
+7. O PDF é salvo automaticamente no Storage (contratos-venda/)
+8. Revise os campos e clique em **Salvar Contrato**
+
+**O que NÃO é preenchido automaticamente:**
+- Grupo Vendedor, Vendedor (campos comerciais internos)
+- Ciclo/Empreendimento (vínculo com safra)
+- Cessão de recebível
+
+**Resolução de problemas:**
+- "Baixa confiança": o PDF pode ser uma imagem escaneada de baixa qualidade ou formato proprietário
+- Use o painel "Ver extraído → Resposta bruta da IA" para ver o que o modelo leu do documento
+- Comprador ou Produtor não preenchidos: verifique se o CNPJ/CPF está cadastrado em Pessoas/Produtores
 
 ### Romaneio de entrega
 1. No contrato, clique em **+ Romaneio**

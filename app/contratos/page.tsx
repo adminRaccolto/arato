@@ -475,8 +475,17 @@ export default function Contratos() {
         if (match) produtorId = match.id;
       }
 
-      // Produto e Safra
+      // Produto e Safra — faz match contra os produtos cadastrados (ex: "Algodão" → "Algodão em Caroço")
       const produtoNorm = normalizarProdutoIA(e.produto as string | undefined);
+      const normStr = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const listaProd = prodAgricolas.length > 0 ? prodAgricolas.map(p => p.nome)
+                      : culturasCont.length  > 0 ? culturasCont.map(c => c.nome)
+                      : PRODUTOS;
+      const prodNormLC = normStr(produtoNorm);
+      const produtoFinal = listaProd.find(p => {
+        const pLC = normStr(p);
+        return pLC.includes(prodNormLC) || prodNormLC.includes(pLC.split(" ")[0]);
+      }) ?? produtoNorm;
       let anoSafraId = "";
       if (e.safra) {
         const safraStr = String(e.safra);
@@ -525,7 +534,7 @@ export default function Contratos() {
       // Atualiza item principal
       setItens(prev => prev.map((it, idx) => idx === 0
         ? { ...it,
-            produto: produtoNorm,
+            produto: produtoFinal,
             moeda: moedaIA,
             ...(precoPorSaca > 0 && { valor_unitario: precoPorSaca }),
             ...(volumeSacas > 0  && { quantidade: volumeSacas * 60 }),
