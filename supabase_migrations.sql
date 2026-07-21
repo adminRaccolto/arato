@@ -7931,16 +7931,7 @@ ALTER TABLE bombas_combustivel
   ADD COLUMN IF NOT EXISTS estoque_atual_l NUMERIC(12,2) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS consume_estoque BOOLEAN NOT NULL DEFAULT true;
 
--- Copia tipo → combustivel para registros existentes que ainda tenham o campo tipo preenchido
-UPDATE bombas_combustivel
-  SET combustivel = CASE tipo
-    WHEN 'diesel'    THEN 'diesel_s10'
-    WHEN 'gasolina'  THEN 'gasolina'
-    WHEN 'etanol'    THEN 'etanol'
-    WHEN 'arla'      THEN 'arla'
-    ELSE tipo
-  END
-  WHERE combustivel = 'diesel_s10' AND tipo IS NOT NULL AND tipo <> 'diesel';
+-- (sem backfill necessário — tabela criada diretamente com a nova estrutura)
 
 NOTIFY pgrst, 'reload schema';
 
@@ -7996,5 +7987,26 @@ DO $$ BEGIN
       OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo')
     );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 77 — PDF anexo em contratos de venda + Storage organizado por tipo
+-- Execute: Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- Adiciona colunas de PDF na tabela contratos
+ALTER TABLE contratos
+  ADD COLUMN IF NOT EXISTS pdf_url   TEXT,
+  ADD COLUMN IF NOT EXISTS pdf_nome  TEXT;
+
+-- Nota: Os buckets no Supabase Storage devem ser criados via Dashboard:
+-- Storage → New Bucket, criando:
+--   arquivos     (já existe, público)
+-- Subpastas usadas (criadas automaticamente no upload):
+--   arquivos/contratos-venda/      → PDFs de contratos de venda de grãos
+--   arquivos/nfs/                  → NF-e de entrada e saída
+--   arquivos/pedidos-compra/       → PDFs de pedidos de compra
+--   arquivos/documentos-financeiros/ → Cédulas, contratos financeiros
 
 NOTIFY pgrst, 'reload schema';

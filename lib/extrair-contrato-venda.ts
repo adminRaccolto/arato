@@ -67,7 +67,7 @@ export interface ContratoVendaExtraido {
 
 const client = new Anthropic();
 
-export async function extrairContratoVenda(pdfBase64: string): Promise<ContratoVendaExtraido> {
+export async function extrairContratoVenda(pdfBase64: string): Promise<{ extraido: ContratoVendaExtraido; rawText: string }> {
   const prompt = `Você é um especialista em contratos de compra e venda de grãos agrícolas brasileiros.
 Analise o contrato em anexo e extraia TODOS os campos abaixo com máxima precisão.
 Responda APENAS com JSON válido, sem texto adicional.
@@ -160,18 +160,25 @@ Se um campo não for encontrado, omita-o do JSON (não inclua null).`;
     ],
   });
 
-  const text = response.content.find(b => b.type === "text")?.text ?? "{}";
-  const json = text.match(/\{[\s\S]*\}/)?.[0] ?? "{}";
+  const rawText = response.content.find(b => b.type === "text")?.text ?? "";
+
+  // Extrai JSON do texto — tenta o bloco entre ``` primeiro, depois busca { }
+  let jsonStr = "{}";
+  const fenced = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) {
+    jsonStr = fenced[1].trim();
+  } else {
+    const braced = rawText.match(/\{[\s\S]*\}/);
+    if (braced) jsonStr = braced[0];
+  }
 
   try {
-    const extraido = JSON.parse(json) as ContratoVendaExtraido;
-    // Garante que retencoes é sempre array
+    const extraido = JSON.parse(jsonStr) as ContratoVendaExtraido;
     if (!Array.isArray(extraido.retencoes)) extraido.retencoes = [];
-    // Normaliza CPF/CNPJ: remove tudo que não é dígito
     if (extraido.comprador_cnpj) extraido.comprador_cnpj = extraido.comprador_cnpj.replace(/\D/g, "");
     if (extraido.vendedor_cpf_cnpj) extraido.vendedor_cpf_cnpj = extraido.vendedor_cpf_cnpj.replace(/\D/g, "");
-    return extraido;
+    return { extraido, rawText };
   } catch {
-    return { retencoes: [] };
+    return { extraido: { retencoes: [] } as ContratoVendaExtraido, rawText };
   }
 }

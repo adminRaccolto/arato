@@ -350,6 +350,8 @@ export default function Contratos() {
     seguradora: "",
     corretora: "",
     cte_numero: "",
+    pdf_url: undefined as string | undefined,
+    pdf_nome: undefined as string | undefined,
     terceiro: "",
     deposito_carregamento: "",
     deposito_fiscal: false,
@@ -409,6 +411,7 @@ export default function Contratos() {
   const [iaVendaConf,      setIaVendaConf]      = useState<"alta"|"media"|"baixa"|null>(null);
   const [iaVendaErro,      setIaVendaErro]      = useState<string|null>(null);
   const [iaVendaResultado, setIaVendaResultado] = useState<Record<string,unknown>|null>(null);
+  const [iaVendaRawText,   setIaVendaRawText]   = useState<string|null>(null);
   const [iaVendaMostrarDebug, setIaVendaMostrarDebug] = useState(false);
 
   async function handlePdfContratoVenda(file: File) {
@@ -416,17 +419,31 @@ export default function Contratos() {
     setIaVendaConf(null);
     setIaVendaErro(null);
     setIaVendaResultado(null);
+    setIaVendaRawText(null);
     setIaVendaMostrarDebug(false);
     setIaVendaPdfNome(file.name);
     try {
       const form = new FormData();
       form.append("pdf", file);
       const res = await fetch("/api/ai/extrair-contrato-venda", { method: "POST", body: form });
-      const json = await res.json() as { extraido?: Record<string, unknown>; error?: string };
+      const json = await res.json() as { extraido?: Record<string, unknown>; rawText?: string; error?: string };
       if (!res.ok || json.error) { setIaVendaErro(json.error ?? "Erro ao processar PDF."); return; }
       const e = json.extraido as Record<string, unknown>;
       setIaVendaResultado(e);
+      setIaVendaRawText(json.rawText ?? null);
       console.log("[IA Contrato Venda] extraído:", e);
+      console.log("[IA Contrato Venda] raw:", json.rawText?.slice(0, 500));
+      // Salva o PDF no Storage ao mesmo tempo (bucket arquivos / contratos-venda)
+      if (fazendaId) {
+        const path = `contratos-venda/${fazendaId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        supabase.storage.from("arquivos").upload(path, file, { upsert: true, contentType: "application/pdf" })
+          .then(({ data, error }) => {
+            if (!error && data) {
+              const { data: pub } = supabase.storage.from("arquivos").getPublicUrl(data.path);
+              setFC(prev => ({ ...prev, pdf_url: pub.publicUrl, pdf_nome: file.name }));
+            }
+          }).catch(() => {/* falha silenciosa — o usuário pode anexar em Adicionais */});
+      }
 
       // ── calcular confiança ─────────────────────────────────────
       const temComprador = !!(e.comprador_cnpj || e.comprador_nome);
@@ -519,6 +536,26 @@ export default function Contratos() {
       setIaVendaErro(err instanceof Error ? err.message : "Erro desconhecido.");
     } finally {
       setIaVendaExtraindo(false);
+    }
+  }
+
+  // ── upload de PDF do contrato (Adicionais) ──────────────────────────────────
+  const [anexandoPdf, setAnexandoPdf] = useState(false);
+
+  async function handleAnexarPdf(file: File) {
+    if (!file) return;
+    setAnexandoPdf(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "pdf";
+      const path = `contratos-venda/${fazendaId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { data, error } = await supabase.storage.from("arquivos").upload(path, file, { upsert: true, contentType: "application/pdf" });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("arquivos").getPublicUrl(data.path);
+      setFC(prev => ({ ...prev, pdf_url: pub.publicUrl, pdf_nome: file.name }));
+    } catch (e) {
+      alert("Erro ao fazer upload: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setAnexandoPdf(false);
     }
   }
 
@@ -658,6 +695,8 @@ export default function Contratos() {
       cessao_fornecedor_nome: c.cessao_fornecedor_nome ?? "",
       cessao_data: c.cessao_data ?? "",
       cessao_obs: c.cessao_obs ?? "",
+      pdf_url: c.pdf_url ?? undefined,
+      pdf_nome: c.pdf_nome ?? undefined,
     });
     try {
       const its = await listarItensContrato(c.id);
@@ -799,6 +838,8 @@ export default function Contratos() {
         observacao_interna: fC.observacao_interna || undefined,
         observacao: fC.observacao || undefined,
         status: editContrato?.status ?? "aberto",
+        // PDF do contrato físico
+        ...(fC.pdf_url ? { pdf_url: fC.pdf_url, pdf_nome: fC.pdf_nome } : {}),
         // cessão — só inclui no payload se o usuário marcou o checkbox
         // (evita erro de coluna inexistente antes da migration 78 ser executada)
         ...(fC.dado_em_cessao ? {
@@ -1787,6 +1828,17 @@ export default function Contratos() {
                               <strong>Obs.:</strong> {iaVendaResultado.observacoes as string}
                             </div>
                           )}
+                          {/* Texto bruto retornado pela IA */}
+                          {iaVendaRawText && (
+                            <div style={{ marginTop: 10, borderTop: "0.5px solid #C9921B30", paddingTop: 8 }}>
+                              <div style={{ fontSize: 10, color: "#9a6b20", fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                Resposta bruta da IA (debug)
+                              </div>
+                              <pre style={{ fontSize: 10, color: "#3a2000", background: "#fff8ee", border: "0.5px solid #C9921B30", borderRadius: 6, padding: "8px 10px", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 180, overflowY: "auto", margin: 0 }}>
+                                {iaVendaRawText.slice(0, 2000)}{iaVendaRawText.length > 2000 ? "\n[truncado...]" : ""}
+                              </pre>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2162,6 +2214,31 @@ export default function Contratos() {
                       <label style={lbl}>Obs. Contrato <span style={{ color:"var(--text-3)" }}>(não constam nas notas fiscais)</span></label>
                       <textarea style={{ ...inp, height:56, resize:"vertical" }} value={fC.observacao_interna} onChange={e => setFC(p=>({...p,observacao_interna:e.target.value}))} />
                     </div>
+                  </div>
+
+                  {/* ── Documento / Anexo ─────────────────────────── */}
+                  <div style={{ borderTop:"0.5px solid var(--border-table)", paddingTop:14, marginTop:4, marginBottom:14 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"var(--text-2)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:10 }}>Documento / Anexo</div>
+                    {fC.pdf_url ? (
+                      <div style={{ display:"flex", alignItems:"center", gap:10, background:"#E8F3FB", border:"0.5px solid #1A487040", borderRadius:8, padding:"8px 14px" }}>
+                        <span style={{ fontSize:12, color:"#0B2D50" }}>📎 <strong>{fC.pdf_nome ?? "contrato.pdf"}</strong></span>
+                        <a href={fC.pdf_url} target="_blank" rel="noreferrer" style={{ fontSize:12, color:"#1A4870", fontWeight:600, textDecoration:"none" }}>Abrir ↗</a>
+                        <label style={{ marginLeft:"auto", padding:"4px 12px", background:"#1A4870", color:"#fff", borderRadius:6, fontSize:11, fontWeight:600, cursor: anexandoPdf ? "default" : "pointer" }}>
+                          {anexandoPdf ? "Enviando…" : "Trocar PDF"}
+                          <input type="file" accept="application/pdf" style={{ display:"none" }} disabled={anexandoPdf}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleAnexarPdf(f); e.target.value=""; }} />
+                        </label>
+                      </div>
+                    ) : (
+                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <label style={{ padding:"7px 16px", background: anexandoPdf ? "#ddd" : "transparent", border:"0.5px solid var(--border-table)", borderRadius:7, fontSize:12, fontWeight:600, cursor: anexandoPdf ? "default" : "pointer", color:"var(--text-1)" }}>
+                          {anexandoPdf ? "Enviando…" : "📎 Anexar PDF do contrato"}
+                          <input type="file" accept="application/pdf" style={{ display:"none" }} disabled={anexandoPdf}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleAnexarPdf(f); e.target.value=""; }} />
+                        </label>
+                        <span style={{ fontSize:11, color:"var(--text-3)" }}>PDF assinado, digitalização ou arquivo original da trading</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* ── Cessão ─────────────────────────────────────── */}

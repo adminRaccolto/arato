@@ -369,6 +369,9 @@ export type Contrato = {
   cessao_fornecedor_nome?: string; // nome do fornecedor (desnormalizado)
   cessao_data?: string;            // data em que a cessão foi formalizada
   cessao_obs?: string;
+  // Documento físico — PDF do contrato no Supabase Storage
+  pdf_url?: string | null;
+  pdf_nome?: string | null;
   created_at?: string;
 };
 
