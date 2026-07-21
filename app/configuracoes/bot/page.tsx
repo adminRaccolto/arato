@@ -16,6 +16,9 @@ interface DiagResult {
   };
   evolution_status: unknown;
   evolution_webhook: unknown;
+  webhook_events:      string[];
+  webhook_enabled:     boolean;
+  webhook_has_upsert:  boolean;
   usuarios_com_whatsapp: { id: string; nome: string; whatsapp: string; ativo: boolean }[] | string;
 }
 
@@ -94,6 +97,11 @@ export default function BotDiagPage() {
   const [testeResult, setTesteResult] = useState<TestResult | null>(null);
   const [testeLoading, setTesteLoading] = useState(false);
 
+  const [simNum, setSimNum]       = useState("");
+  const [simMens, setSimMens]     = useState("quanto tenho a pagar essa semana?");
+  const [simLoading, setSimLoading] = useState(false);
+  const [simResult, setSimResult] = useState<{ ok: boolean; status?: number; response?: unknown; error?: string } | null>(null);
+
   const carregar = useCallback(async () => {
     setCarr(true);
     setDiag(null);
@@ -171,11 +179,31 @@ export default function BotDiagPage() {
     setTesteLoading(false);
   }
 
+  async function simularEvento() {
+    if (!simNum.trim()) return;
+    setSimLoading(true);
+    setSimResult(null);
+    try {
+      const r = await fetch("/api/whatsapp/simular-evento", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefone: simNum.trim().replace(/\D/g, ""), mensagem: simMens.trim() }),
+      });
+      const json = await r.json() as { ok: boolean; status?: number; response?: unknown; error?: string };
+      setSimResult(json);
+    } catch (e) {
+      setSimResult({ ok: false, error: String(e) });
+    }
+    setSimLoading(false);
+  }
+
   // ── Interpretação dos resultados ──────────────────────────────────────────
   const conn   = diag ? parseConnectionState(diag.evolution_status) : null;
   const wh     = diag ? parseWebhookState(diag.evolution_webhook)   : null;
   const varOk  = (k: keyof DiagResult["vars"]) => diag?.vars[k]?.startsWith("❌") === false;
   const usuarios = Array.isArray(diag?.usuarios_com_whatsapp) ? diag!.usuarios_com_whatsapp : [];
+  const temUpsert = diag?.webhook_has_upsert ?? false;
+  const eventos   = diag?.webhook_events ?? [];
 
   const cardStyle: React.CSSProperties = { background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "20px 24px", marginBottom: 16 };
   const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4, display: "block" };
@@ -198,19 +226,20 @@ export default function BotDiagPage() {
 
         {/* ── 1. Resumo visual ── */}
         {diag && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
             {[
-              { label: "WhatsApp",     st: conn!.status,                          detalhe: conn!.state },
-              { label: "Webhook",      st: wh!.status,                            detalhe: wh!.url.length > 40 ? wh!.url.slice(-40) : wh!.url },
-              { label: "IA (Claude)",  st: varOk("ANTHROPIC_API_KEY") ? "ok" as const : "erro" as const, detalhe: diag.vars.ANTHROPIC_API_KEY },
-              { label: "Usuários bot", st: usuarios.length > 0 ? "ok" as const : "warn" as const, detalhe: `${usuarios.length} com WhatsApp` },
+              { label: "WhatsApp",        st: conn!.status,                                                          detalhe: conn!.state },
+              { label: "Webhook URL",     st: wh!.status,                                                            detalhe: wh!.url.length > 36 ? "…" + wh!.url.slice(-36) : wh!.url },
+              { label: "Eventos (evo)",   st: temUpsert ? "ok" as const : "erro" as const,                           detalhe: temUpsert ? "MESSAGES_UPSERT ✓" : "MESSAGES_UPSERT não marcado!" },
+              { label: "IA (Claude)",     st: varOk("ANTHROPIC_API_KEY") ? "ok" as const : "erro" as const,          detalhe: diag.vars.ANTHROPIC_API_KEY },
+              { label: "Usuários bot",    st: usuarios.length > 0 ? "ok" as const : "warn" as const,                 detalhe: `${usuarios.length} com WhatsApp` },
             ].map(c => (
-              <div key={c.label} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 16px" }}>
+              <div key={c.label} style={{ background: "var(--bg-card)", border: `0.5px solid ${c.st === "erro" ? "#FECACA" : "var(--border-table)"}`, borderRadius: 10, padding: "14px 16px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                   {statusIcon(c.st)}
                   <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-1)" }}>{c.label}</span>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--text-3)", wordBreak: "break-all" }}>{c.detalhe}</div>
+                <div style={{ fontSize: 11, color: c.st === "erro" ? "#991B1B" : "var(--text-3)", wordBreak: "break-all" }}>{c.detalhe}</div>
               </div>
             ))}
           </div>
@@ -316,9 +345,34 @@ export default function BotDiagPage() {
             </div>
           )}
 
+          {/* Eventos configurados */}
+          {diag && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Eventos configurados na Evolution API</div>
+              {!temUpsert ? (
+                <div style={{ background: "#FEE2E2", border: "0.5px solid #FECACA", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "#991B1B" }}>
+                  <strong>⚠️ MESSAGES_UPSERT não está na lista de eventos!</strong><br />
+                  <span style={{ display: "block", marginTop: 4, lineHeight: 1.6 }}>
+                    Esse é o evento que avisa o Arato quando chega uma mensagem. Sem ele, o bot nunca recebe nada.
+                    <br />Clique em <strong>"Corrigir Webhook"</strong> acima, ou acesse o painel da Evolution API manualmente em{" "}
+                    <code style={{ background: "rgba(0,0,0,0.06)", padding: "1px 4px", borderRadius: 3 }}>http://178.105.50.101:8080</code>{" "}
+                    e marque o evento <strong>MESSAGES_UPSERT</strong> no webhook da instância.
+                  </span>
+                  <div style={{ marginTop: 8, fontSize: 11, color: "#7F1D1D" }}>
+                    Eventos detectados: {eventos.length === 0 ? <em>nenhum</em> : eventos.join(", ")}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background: "#F0FFF4", border: "0.5px solid #BBF7D0", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#166534" }}>
+                  ✅ Eventos configurados: {eventos.join(", ")}
+                </div>
+              )}
+            </div>
+          )}
+
           {diag && (
             <details style={{ marginTop: 14 }}>
-              <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Ver configuração atual do webhook</summary>
+              <summary style={{ fontSize: 11, color: "var(--text-3)", cursor: "pointer" }}>Ver configuração bruta do webhook</summary>
               <pre style={{ fontSize: 10, background: "#F4F6FA", padding: 10, borderRadius: 6, marginTop: 6, overflow: "auto", maxHeight: 150 }}>{str(diag.evolution_webhook)}</pre>
             </details>
           )}
@@ -455,6 +509,54 @@ export default function BotDiagPage() {
                     <span style={{ color: "#1A4870" }}>{testeResult.resposta.slice(0, 300)}{testeResult.resposta.length > 300 ? "…" : ""}</span>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── 5c. Simulação direta — bypass Evolution ── */}
+        <div style={cardStyle}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", marginBottom: 4 }}>🔬 Simulação Direta (sem Evolution API)</div>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+            Envia um payload falso <em>diretamente</em> ao webhook, como se fosse a Evolution API. Se funcionar aqui mas o bot não responder no WhatsApp, o problema é definitivamente nos <strong>eventos da Evolution API</strong> (MESSAGES_UPSERT desmarcado). Se não funcionar aqui, há um bug no código do webhook.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 10, alignItems: "flex-end" }}>
+            <div>
+              <label style={{ ...lbl }}>Número (DDI+DDD+número)</label>
+              <input
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
+                placeholder="5565999990000"
+                value={simNum}
+                onChange={e => setSimNum(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            <div>
+              <label style={{ ...lbl }}>Mensagem simulada</label>
+              <input
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
+                value={simMens}
+                onChange={e => setSimMens(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={simularEvento}
+              disabled={simLoading || !simNum.trim()}
+              style={{ ...btn("#C9921B"), opacity: simLoading || !simNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
+            >
+              {simLoading ? "Simulando…" : "⚡ Simular"}
+            </button>
+          </div>
+
+          {simResult && (
+            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 8, background: simResult.ok ? "#F0FFF4" : "#FEF2F2", border: `0.5px solid ${simResult.ok ? "#BBF7D0" : "#FECACA"}` }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: simResult.ok ? "#166534" : "#991B1B", marginBottom: 6 }}>
+                {simResult.ok
+                  ? "✅ Webhook processou com sucesso — o problema é na Evolution API (eventos não configurados)"
+                  : "❌ Webhook retornou erro — verifique os logs na Vercel"}
+              </div>
+              <div style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-3)" }}>
+                Status HTTP: {simResult.status ?? "—"} | Resposta: {str(simResult.response).slice(0, 200)}
+                {simResult.error && <> | Erro: {simResult.error}</>}
               </div>
             </div>
           )}

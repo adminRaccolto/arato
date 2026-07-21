@@ -34,8 +34,21 @@ export async function GET() {
     });
     const json = await r.json() as Record<string, unknown>;
     result.evolution_webhook = json;
+
+    // Extrair eventos e enabled para diagnóstico rápido
+    const wh = (json.webhook as Record<string, unknown>) ?? json;
+    const inner = (wh.webhook as Record<string, unknown>) ?? wh;
+    const events: string[] = (inner.events as string[] | undefined) ?? (wh.events as string[] | undefined) ?? [];
+    const enabled = !!(inner.enabled ?? wh.enabled);
+    result.webhook_events   = events;
+    result.webhook_enabled  = enabled;
+    result.webhook_has_upsert = events.some(e =>
+      String(e).toLowerCase().replace(/_/g, ".") === "messages.upsert"
+    );
   } catch (e) {
     result.evolution_webhook = `ERRO: ${String(e)}`;
+    result.webhook_events    = [];
+    result.webhook_has_upsert = false;
   }
 
   // 3. Usuários com WhatsApp cadastrado

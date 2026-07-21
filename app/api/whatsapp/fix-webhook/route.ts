@@ -16,11 +16,19 @@ export async function POST() {
     apiVersion = tv.slice(0, 200);
   } catch { /* ignora */ }
 
+  // Eventos — tenta uppercase e lowercase para compatibilidade com v1 e v2
+  const eventsUpper  = ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "SEND_MESSAGE", "CONNECTION_UPDATE"];
+  const eventsLower  = ["messages.upsert", "messages.update", "send.message", "connection.update"];
+  const eventsMinimo = ["MESSAGES_UPSERT"];
+
   // Testa formatos diferentes para o body
   const bodies = [
-    { label: "wrapper_webhook", body: JSON.stringify({ webhook: { url: novaUrl, enabled: true, events: ["MESSAGES_UPSERT"], webhookByEvents: false, webhookBase64: false } }) },
-    { label: "flat",            body: JSON.stringify({ url: novaUrl, enabled: true, events: ["MESSAGES_UPSERT"], webhookByEvents: false, webhookBase64: false }) },
-    { label: "with_instance",   body: JSON.stringify({ instanceName: EVO_INSTANCE, webhook: { url: novaUrl, enabled: true, events: ["MESSAGES_UPSERT"] } }) },
+    { label: "v2_wrapper_upper",  body: JSON.stringify({ webhook: { url: novaUrl, enabled: true, events: eventsUpper, webhookByEvents: false, webhookBase64: false } }) },
+    { label: "v2_flat_upper",     body: JSON.stringify({ url: novaUrl, enabled: true, events: eventsUpper, webhookByEvents: false, webhookBase64: false }) },
+    { label: "v2_wrapper_lower",  body: JSON.stringify({ webhook: { url: novaUrl, enabled: true, events: eventsLower, webhookByEvents: false, webhookBase64: false } }) },
+    { label: "v2_flat_lower",     body: JSON.stringify({ url: novaUrl, enabled: true, events: eventsLower, webhookByEvents: false, webhookBase64: false }) },
+    { label: "v1_minimo_upper",   body: JSON.stringify({ instanceName: EVO_INSTANCE, webhook: { url: novaUrl, enabled: true, events: eventsMinimo } }) },
+    { label: "v1_minimo_lower",   body: JSON.stringify({ instanceName: EVO_INSTANCE, webhook: { url: novaUrl, enabled: true, events: ["messages.upsert"] } }) },
   ];
 
   const paths = [
