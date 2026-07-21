@@ -3717,7 +3717,6 @@ function CadastrosInner() {
                   lote:                isComb ? undefined : (fIns.lote || undefined),
                   validade:            isComb ? undefined : (fIns.validade || undefined),
                   deposito_id:         isComb ? undefined : (fIns.deposito_id || undefined),
-                  bomba_id:            isComb ? (fIns.bomba_id || undefined) : undefined,
                   principio_ativo_id:  (!isComb && fIns.principio_ativo_id) ? fIns.principio_ativo_id : undefined,
                   tipo:                (["produto_agricola","peca","material","uso_consumo","escritorio","combustivel"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
                 };
@@ -3980,18 +3979,8 @@ function CadastrosInner() {
                           </select>
                         )}
                       </div>
-                      {/* Bomba (combustível) ou Depósito (outros) */}
-                      {isComb ? (
-                        <div>
-                          <label style={lbl}>Bomba associada</label>
-                          <select style={inp} value={fIns.bomba_id} onChange={e => setFIns(p => ({ ...p, bomba_id: e.target.value }))}>
-                            <option value="">— Selecione a bomba —</option>
-                            {bombas.map(b => (
-                              <option key={b.id} value={b.id}>{b.nome} {b.consume_estoque ? "🏠 Fazenda" : "⛽ Posto"}</option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
+                      {/* Depósito padrão */}
+                      {!isComb && (
                         <div>
                           <label style={lbl}>Depósito padrão</label>
                           <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
@@ -4401,7 +4390,6 @@ function CadastrosInner() {
                   valor_unitario: parseFloat(fIns.valor_unitario) || 0,
                   lote: fIns.lote || undefined, validade: fIns.validade || undefined,
                   deposito_id: fIns.deposito_id || undefined,
-                  bomba_id: isComb ? (fIns.bomba_id || undefined) : undefined,
                   tipo: "produto",
                 };
                 if (editIns) {
@@ -4572,15 +4560,6 @@ function CadastrosInner() {
                           {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
                         </select>
                       </div>
-                      {fIns.categoria === "combustivel" && (
-                        <div>
-                          <label style={lbl}>Bomba associada</label>
-                          <select style={inp} value={fIns.bomba_id} onChange={e => setFIns(p => ({ ...p, bomba_id: e.target.value }))}>
-                            <option value="">— Selecione —</option>
-                            {bombas.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
-                          </select>
-                        </div>
-                      )}
                       {parseFloat(fIns.estoque) > 0 && parseFloat(fIns.valor_unitario) > 0 && (
                         <div style={{ gridColumn: "1/-1", background: "#D5E8F5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#0B2D50" }}>
                           Valor em estoque: <strong>{(parseFloat(fIns.estoque) * parseFloat(fIns.valor_unitario)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
