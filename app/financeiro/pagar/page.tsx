@@ -138,39 +138,6 @@ function ContasPagarInner() {
   const fid = cascade.fazendaId ?? fazendaId ?? "";
 
   // ── Aba principal: Lançamentos ou Faturas ──
-  const [abaMain, setAbaMain] = useState<"lancamentos" | "faturas">(() => searchParams.get("aba") === "faturas" ? "faturas" : "lancamentos");
-
-  // ── Estados Faturas ──────────────────────────────────────────
-  type StatusFatura = "aberta" | "aguardando_pagamento" | "paga" | "cancelada";
-  interface Fatura { id: string; fazenda_id: string; pessoa_id?: string | null; fornecedor_nome?: string | null; competencia: string; numero_fatura?: string | null; valor_total: number; valor_cp: number; status: StatusFatura; vencimento?: string | null; data_pagamento?: string | null; conta_pagamento?: string | null; observacao?: string | null; created_at?: string; }
-  const getCompetenciaAtual = () => new Date().toISOString().slice(0, 7);
-  const fmtCompetencia = (ym: string) => { const [y, m] = ym.split("-"); const ms = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]; return `${ms[Number(m) - 1]}/${y}`; };
-  const diasAteVencer  = (iso?: string | null) => { if (!iso) return null; return Math.ceil((new Date(iso + "T12:00:00").getTime() - Date.now()) / 86400000); };
-  const STATUS_FAT: Record<StatusFatura, { label: string; bg: string; cl: string; border: string }> = {
-    aberta:               { label: "Em aberto",           bg: "#E8F3FB", cl: "#0B2D50", border: "#378ADD" },
-    aguardando_pagamento: { label: "Aguardando pagamento", bg: "#FBF3E0", cl: "#7A4300", border: "#C9921B" },
-    paga:                 { label: "Paga",                 bg: "#DCFCE7", cl: "#166534", border: "#16A34A" },
-    cancelada:            { label: "Cancelada",            bg: "#F5E8E8", cl: "#7A1F1F", border: "#E24B4A" },
-  };
-  const [faturas,       setFaturas]       = useState<Fatura[]>([]);
-  const [fatLoading,    setFatLoading]    = useState(false);
-  const [filtroFatSt,   setFiltroFatSt]  = useState<"todos" | StatusFatura>("todos");
-  const [filtroFatComp, setFiltroFatComp]= useState("");
-  const [filtroFatPes,  setFiltroFatPes] = useState("");
-  const [modalFatNova,  setModalFatNova] = useState(false);
-  const [nFat, setNFat] = useState({ pessoa_id: "", competencia: getCompetenciaAtual(), numero_fatura: "", valor_total: 0, vencimento: "", observacao: "" });
-  const [cpsPendentes,    setCpsPendentes]    = useState<Lancamento[]>([]);
-  const [cpsSelecionados, setCpsSelecionados] = useState<Set<string>>(new Set());
-  const [fatSaving,     setFatSaving]    = useState(false);
-  const [fatErr,        setFatErr]       = useState("");
-  const [modalFatDet,   setModalFatDet]  = useState<Fatura | null>(null);
-  const [cpsDet,        setCpsDet]       = useState<Lancamento[]>([]);
-  const [fatDetLoad,    setFatDetLoad]   = useState(false);
-  const [modalFatPgt,   setModalFatPgt]  = useState<Fatura | null>(null);
-  const [pgFat, setPgFat] = useState({ data: TODAY, conta: "", obs: "" });
-  const [pgFatSaving,   setPgFatSaving]  = useState(false);
-  const [pgFatErr,      setPgFatErr]     = useState("");
-
   const [lancamentos,   setLancamentos]   = useState<Lancamento[]>([]);
   const [anosSafra,     setAnosSafra]     = useState<AnoSafra[]>([]);
   const [produtores,    setProdutores]    = useState<Produtor[]>([]);
@@ -452,86 +419,6 @@ function ContasPagarInner() {
       setLoading(false);
     }
   }
-
-  // ── Faturas de Fornecedor ──────────────────────────────────
-  async function carregarFaturas() {
-    if (!fid) return;
-    setFatLoading(true);
-    const { data } = await supabase
-      .from("faturas_fornecedor")
-      .select("*")
-      .eq("fazenda_id", fid)
-      .order("created_at", { ascending: false });
-    setFaturas((data ?? []) as Fatura[]);
-    setFatLoading(false);
-  }
-
-  async function salvarNovaFatura() {
-    if (!fid) return;
-    setFatSaving(true); setFatErr("");
-    try {
-      const payload: Record<string, unknown> = {
-        fazenda_id: fid, pessoa_id: nFat.pessoa_id || null,
-        competencia: nFat.competencia, numero_fatura: nFat.numero_fatura || null,
-        valor_total: Number(nFat.valor_total), vencimento: nFat.vencimento || null,
-        observacao: nFat.observacao || null, status: "aberta",
-        valor_cp: cpsSelecionados.size > 0
-          ? lancamentos.filter(l => cpsSelecionados.has(l.id)).reduce((a, l) => a + paraBRL(l), 0)
-          : 0,
-      };
-      const { data: fat, error } = await supabase.from("faturas_fornecedor").insert(payload).select().single();
-      if (error) throw error;
-      if (cpsSelecionados.size > 0 && fat) {
-        await supabase.from("lancamentos")
-          .update({ fatura_id: fat.id })
-          .in("id", Array.from(cpsSelecionados));
-      }
-      setModalFatNova(false);
-      setNFat({ pessoa_id: "", competencia: getCompetenciaAtual(), numero_fatura: "", valor_total: 0, vencimento: "", observacao: "" });
-      setCpsSelecionados(new Set()); setCpsPendentes([]);
-      await carregarFaturas();
-    } catch (e) { setFatErr(e instanceof Error ? e.message : "Erro ao salvar"); }
-    finally { setFatSaving(false); }
-  }
-
-  async function abrirDetalhe(fat: Fatura) {
-    setModalFatDet(fat); setFatDetLoad(true);
-    const { data } = await supabase.from("lancamentos").select("*").eq("fatura_id", fat.id);
-    setCpsDet((data ?? []) as Lancamento[]); setFatDetLoad(false);
-  }
-
-  async function registrarPagamentoFatura() {
-    if (!modalFatPgt) return;
-    setPgFatSaving(true); setPgFatErr("");
-    try {
-      const { error } = await supabase.from("faturas_fornecedor").update({
-        status: "paga", data_pagamento: pgFat.data,
-        conta_pagamento: pgFat.conta || null, observacao: pgFat.obs || null,
-      }).eq("id", modalFatPgt.id);
-      if (error) throw error;
-      setModalFatPgt(null);
-      await carregarFaturas();
-    } catch (e) { setPgFatErr(e instanceof Error ? e.message : "Erro ao registrar"); }
-    finally { setPgFatSaving(false); }
-  }
-
-  async function cancelarFatura(fat: Fatura) {
-    if (!confirm(`Cancelar fatura ${fat.numero_fatura ?? fat.id.slice(0, 8)}?`)) return;
-    await supabase.from("lancamentos").update({ fatura_id: null }).eq("fatura_id", fat.id);
-    await supabase.from("faturas_fornecedor").update({ status: "cancelada" }).eq("id", fat.id);
-    await carregarFaturas();
-  }
-
-  useEffect(() => { carregarFaturas(); }, [fid]);
-
-  // Quando abre modal nova fatura, carrega CPs sem fatura vinculada
-  useEffect(() => {
-    if (!modalFatNova || !fid) return;
-    supabase.from("lancamentos")
-      .select("*").eq("fazenda_id", fid).eq("tipo", "pagar")
-      .is("fatura_id", null).eq("status", "em_aberto")
-      .then(({ data }) => setCpsPendentes((data ?? []) as Lancamento[]));
-  }, [modalFatNova, fid]);
 
   // ── Confirmar previsão → real ──────────────────────────────
   async function confirmarPrevisao(l: Lancamento) {
@@ -984,19 +871,11 @@ function ContasPagarInner() {
                 style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", border: "0.5px solid rgba(96,165,250,0.3)", borderRadius: 8, background: "rgba(96,165,250,0.1)", color: "#60A5FA", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                 📄 NFs Importadas
               </a>
-              {abaMain === "faturas" ? (
-                <button className="cp-btn"
-                  onClick={() => setModalFatNova(true)}
-                  style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  🧾 Nova Fatura
-                </button>
-              ) : (
-                <button className="cp-btn"
-                  onClick={() => { setCascade({}); setModalTab("principal"); setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "" }); setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true); }}
-                  style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  + Nova CP
-                </button>
-              )}
+              <button className="cp-btn"
+                onClick={() => { setCascade({}); setModalTab("principal"); setForm({ moeda: "BRL", pessoa_id: "", descricao: "", categoria: CATS_CP[0], vencimento: "", valorMask: "", cotacaoMask: "5,12", sacasMask: "", culturaBarter: "soja", precoSacaMask: "120,00", obs: "", condicao: "avista", qtdParcelas: "2", frequencia: "1", tipo_documento_lcdpr: "RECIBO", juros_pct: 0, multa_pct: 0, desconto_pct: 0, meses_diferido: "0", chave_xml: "", centro_custo: "", ano_safra_id: "", produtor_id: "", ciclo_id: "", talhao_id: "", operacao_gerencial_id: "", natureza: "real", forma_pagamento: "PIX", conta_pagamento: "", data_emissao: TODAY, numero_documento: "", serie: "", funcionario_id: "", tipo_mao_obra: "", unidade_mao_obra: "Dia", quantidade_mao_obra: "" }); setParcelas([]); setOpGerBusca(""); setArquivoNF(null); setErrosForm([]); carregarOps(); setModalNovo(true); }}
+                style={{ background: "#C9921B", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                + Nova CP
+              </button>
             </div>
           </div>
 
@@ -1017,28 +896,18 @@ function ContasPagarInner() {
           </div>
         </header>
 
-        {/* ── Toggle Lançamentos / Faturas ── */}
-        <div style={{ borderBottom: "0.5px solid var(--border)", background: "var(--bg-header)", padding: "0 24px", display: "flex", gap: 0 }}>
-          {(["lancamentos", "faturas"] as const).map(aba => (
-            <button key={aba} onClick={() => setAbaMain(aba)}
-              style={{ padding: "10px 20px", fontSize: 13, fontWeight: 600, border: "none", borderBottom: abaMain === aba ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", color: abaMain === aba ? "#1A4870" : "var(--text-3)", cursor: "pointer" }}>
-              {aba === "lancamentos" ? "📋 Lançamentos" : "🧾 Faturas de Fornecedor"}
-            </button>
-          ))}
-        </div>
-
         <div style={{ padding: "16px 24px", flex: 1, overflowY: "auto" }}>
 
-          {abaMain === "lancamentos" && erro && (
+          {erro && (
             <div style={{ background: "rgba(239,68,68,0.1)", border: "0.5px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 12, color: "#EF4444", display: "flex", gap: 8 }}>
               <span>✕</span><span>{erro}</span>
               <button onClick={carregar} style={{ marginLeft: "auto", fontSize: 11, color: "#EF4444", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Tentar novamente</button>
             </div>
           )}
 
-          {abaMain === "lancamentos" && loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando…</div>}
+          {loading && <div style={{ textAlign: "center", padding: 40, color: "var(--text-3)" }}>Carregando…</div>}
 
-          {abaMain === "lancamentos" && !loading && (
+          {!loading && (
             <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
 
               {/* Tabs de status */}
@@ -1306,310 +1175,8 @@ function ContasPagarInner() {
               </div>
             </div>
           )}
-          {/* ══════════════════ ABA FATURAS ══════════════════ */}
-          {abaMain === "faturas" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Filtros */}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <select value={filtroFatSt} onChange={e => setFiltroFatSt(e.target.value as typeof filtroFatSt)}
-                  style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-2)" }}>
-                  <option value="todos">Todos os status</option>
-                  {(Object.keys(STATUS_FAT) as StatusFatura[]).map(s => <option key={s} value={s}>{STATUS_FAT[s].label}</option>)}
-                </select>
-                <input type="month" value={filtroFatComp} onChange={e => setFiltroFatComp(e.target.value)}
-                  placeholder="Competência"
-                  style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-2)" }} />
-                <select value={filtroFatPes} onChange={e => setFiltroFatPes(e.target.value)}
-                  style={{ fontSize: 12, padding: "6px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-2)" }}>
-                  <option value="">Todos os fornecedores</option>
-                  {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
-              </div>
-
-              {/* Tabela */}
-              <div style={{ background: "var(--bg-card)", borderRadius: 12, border: "0.5px solid var(--border)", overflow: "hidden" }}>
-                {fatLoading ? (
-                  <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>Carregando faturas…</div>
-                ) : (() => {
-                  const fatsFilt = faturas.filter(f => {
-                    if (filtroFatSt !== "todos" && f.status !== filtroFatSt) return false;
-                    if (filtroFatComp && f.competencia !== filtroFatComp) return false;
-                    if (filtroFatPes && f.pessoa_id !== filtroFatPes) return false;
-                    return true;
-                  });
-                  if (fatsFilt.length === 0) return (
-                    <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-                      Nenhuma fatura encontrada.
-                    </div>
-                  );
-                  return (
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                      <thead>
-                        <tr style={{ background: "var(--bg-nav)" }}>
-                          {["Competência", "Nº Fatura", "Fornecedor", "CPs vinculadas", "Valor Total", "Vencimento", "Status", ""].map(h => (
-                            <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--border-table)", whiteSpace: "nowrap" }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {fatsFilt.map((fat, i) => {
-                          const st = STATUS_FAT[fat.status];
-                          const dias = diasAteVencer(fat.vencimento);
-                          const pess = pessoas.find(p => p.id === fat.pessoa_id);
-                          return (
-                            <tr key={fat.id} style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                              <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text-1)" }}>{fmtCompetencia(fat.competencia)}</td>
-                              <td style={{ padding: "10px 12px", color: "var(--text-2)" }}>{fat.numero_fatura ?? "—"}</td>
-                              <td style={{ padding: "10px 12px" }}>
-                                <div style={{ fontWeight: 600, color: "var(--text-1)" }}>{pess?.nome ?? fat.fornecedor_nome ?? "—"}</div>
-                              </td>
-                              <td style={{ padding: "10px 12px", textAlign: "center", color: "var(--text-2)" }}>
-                                {fat.valor_cp > 0 ? <span style={{ background: "rgba(59,130,246,0.1)", color: "#378ADD", padding: "2px 8px", borderRadius: 8, fontWeight: 700, fontSize: 11 }}>R$ {fat.valor_cp.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span> : "—"}
-                              </td>
-                              <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 700, color: "var(--text-1)" }}>
-                                {fat.valor_total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                              </td>
-                              <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                                {fat.vencimento ? (
-                                  <span style={{ color: dias !== null && dias < 0 ? "#E24B4A" : dias !== null && dias <= 3 ? "#EF9F27" : "var(--text-2)", fontWeight: dias !== null && dias <= 3 ? 700 : 400 }}>
-                                    {new Date(fat.vencimento + "T12:00").toLocaleDateString("pt-BR")}
-                                    {dias !== null && fat.status !== "paga" && fat.status !== "cancelada" && (
-                                      <span style={{ marginLeft: 4, fontSize: 10, color: dias < 0 ? "#E24B4A" : dias <= 3 ? "#EF9F27" : "var(--text-3)" }}>
-                                        {dias < 0 ? `${Math.abs(dias)}d atraso` : dias === 0 ? "hoje" : `${dias}d`}
-                                      </span>
-                                    )}
-                                  </span>
-                                ) : "—"}
-                              </td>
-                              <td style={{ padding: "10px 12px" }}>
-                                <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 8, fontWeight: 700, background: st.bg, color: st.cl, border: `0.5px solid ${st.border}` }}>{st.label}</span>
-                              </td>
-                              <td style={{ padding: "10px 12px" }}>
-                                <div style={{ display: "flex", gap: 6 }}>
-                                  <button onClick={() => abrirDetalhe(fat)}
-                                    style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "0.5px solid var(--border)", background: "var(--bg-page)", cursor: "pointer", color: "var(--text-2)" }}>
-                                    Ver
-                                  </button>
-                                  {fat.status === "aberta" || fat.status === "aguardando_pagamento" ? (
-                                    <button onClick={() => { setModalFatPgt(fat); setPgFat({ data: TODAY, conta: "", obs: "" }); }}
-                                      style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "none", background: "#1A4870", cursor: "pointer", color: "#fff" }}>
-                                      Pagar
-                                    </button>
-                                  ) : null}
-                                  {fat.status !== "cancelada" && fat.status !== "paga" && (
-                                    <button onClick={() => cancelarFatura(fat)}
-                                      style={{ fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "0.5px solid rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.05)", cursor: "pointer", color: "#E24B4A" }}>
-                                      Cancelar
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
         </div>
       </main>
-
-      {/* ══ Modal Nova Fatura ════════════════════════════════════ */}
-      {modalFatNova && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 680, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.5)", border: "0.5px solid var(--border)" }}>
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>🧾 Nova Fatura de Fornecedor</h2>
-              <button onClick={() => setModalFatNova(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Fornecedor</label>
-                  <select value={nFat.pessoa_id} onChange={e => setNFat(p => ({ ...p, pessoa_id: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)" }}>
-                    <option value="">— Selecionar —</option>
-                    {pessoas.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Competência *</label>
-                  <input type="month" value={nFat.competencia} onChange={e => setNFat(p => ({ ...p, competencia: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Nº Fatura</label>
-                  <input value={nFat.numero_fatura} onChange={e => setNFat(p => ({ ...p, numero_fatura: e.target.value }))}
-                    placeholder="000123"
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Valor Total (R$) *</label>
-                  <input type="number" step="0.01" min={0} value={nFat.valor_total || ""} onChange={e => setNFat(p => ({ ...p, valor_total: parseFloat(e.target.value) || 0 }))}
-                    placeholder="0,00"
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Vencimento</label>
-                  <input type="date" value={nFat.vencimento} onChange={e => setNFat(p => ({ ...p, vencimento: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Observação</label>
-                  <input value={nFat.observacao} onChange={e => setNFat(p => ({ ...p, observacao: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-              </div>
-
-              {/* CPs para vincular */}
-              {cpsPendentes.length > 0 && (
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 8 }}>CPs em aberto para vincular a esta fatura (opcional):</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto", background: "var(--bg-page)", borderRadius: 8, padding: 8, border: "0.5px solid var(--border)" }}>
-                    {cpsPendentes.map(cp => (
-                      <label key={cp.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 6, background: cpsSelecionados.has(cp.id) ? "rgba(26,72,112,0.08)" : "transparent", cursor: "pointer", fontSize: 12 }}>
-                        <input type="checkbox" checked={cpsSelecionados.has(cp.id)}
-                          onChange={e => { const ns = new Set(cpsSelecionados); e.target.checked ? ns.add(cp.id) : ns.delete(cp.id); setCpsSelecionados(ns); }} />
-                        <span style={{ flex: 1, color: "var(--text-1)" }}>{cp.descricao}</span>
-                        <span style={{ color: "#E24B4A", fontWeight: 700 }}>{paraBRL(cp).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-                        <span style={{ fontSize: 10, color: "var(--text-3)" }}>{cp.data_vencimento ? new Date(cp.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : ""}</span>
-                      </label>
-                    ))}
-                  </div>
-                  {cpsSelecionados.size > 0 && (
-                    <div style={{ marginTop: 6, fontSize: 12, color: "#1A4870", fontWeight: 600 }}>
-                      {cpsSelecionados.size} CP{cpsSelecionados.size > 1 ? "s" : ""} selecionada{cpsSelecionados.size > 1 ? "s" : ""} — Total: {lancamentos.filter(l => cpsSelecionados.has(l.id)).reduce((a, l) => a + paraBRL(l), 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {fatErr && <div style={{ fontSize: 12, color: "#E24B4A", background: "rgba(220,38,38,0.08)", borderRadius: 7, padding: "8px 12px" }}>{fatErr}</div>}
-            </div>
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={() => setModalFatNova(false)} style={{ padding: "9px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-page)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button onClick={salvarNovaFatura} disabled={fatSaving || !nFat.competencia || !nFat.valor_total}
-                style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: fatSaving || !nFat.competencia || !nFat.valor_total ? "#CCC" : "#C9921B", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                {fatSaving ? "Salvando…" : "Salvar Fatura"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══ Modal Detalhe Fatura ══════════════════════════════════ */}
-      {modalFatDet && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 640, maxWidth: "95vw", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.5)", border: "0.5px solid var(--border)" }}>
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Fatura {modalFatDet.numero_fatura ?? "s/n"}</h2>
-                <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{fmtCompetencia(modalFatDet.competencia)} · {pessoas.find(p => p.id === modalFatDet.pessoa_id)?.nome ?? modalFatDet.fornecedor_nome ?? "—"}</div>
-              </div>
-              <button onClick={() => setModalFatDet(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "18px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                {[
-                  { label: "Status", value: <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 8, fontWeight: 700, background: STATUS_FAT[modalFatDet.status].bg, color: STATUS_FAT[modalFatDet.status].cl }}>{STATUS_FAT[modalFatDet.status].label}</span> },
-                  { label: "Valor Total", value: <strong style={{ color: "var(--text-1)" }}>{modalFatDet.valor_total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong> },
-                  { label: "Vencimento", value: modalFatDet.vencimento ? new Date(modalFatDet.vencimento + "T12:00").toLocaleDateString("pt-BR") : "—" },
-                  ...(modalFatDet.data_pagamento ? [{ label: "Data Pgto", value: new Date(modalFatDet.data_pagamento + "T12:00").toLocaleDateString("pt-BR") }] : []),
-                  ...(modalFatDet.observacao ? [{ label: "Observação", value: modalFatDet.observacao }] : []),
-                ].map(r => (
-                  <div key={r.label} style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 12px", border: "0.5px solid var(--border)" }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em" }}>{r.label}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-2)" }}>{r.value}</div>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 8 }}>CPs vinculadas</div>
-                {fatDetLoad ? <div style={{ fontSize: 12, color: "var(--text-3)" }}>Carregando…</div> : cpsDet.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "var(--text-3)" }}>Nenhuma CP vinculada.</div>
-                ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead><tr style={{ background: "var(--bg-nav)" }}>
-                      {["Descrição","Vencimento","Valor","Status"].map(h => <th key={h} style={{ padding: "6px 10px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", borderBottom: "0.5px solid var(--border-table)" }}>{h}</th>)}
-                    </tr></thead>
-                    <tbody>
-                      {cpsDet.map((cp, i) => (
-                        <tr key={cp.id} style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-page)", borderBottom: "0.5px solid var(--border-table)" }}>
-                          <td style={{ padding: "8px 10px", color: "var(--text-1)" }}>{cp.descricao}</td>
-                          <td style={{ padding: "8px 10px", color: "var(--text-2)" }}>{cp.data_vencimento ? new Date(cp.data_vencimento + "T12:00").toLocaleDateString("pt-BR") : "—"}</td>
-                          <td style={{ padding: "8px 10px", fontWeight: 700, color: "#E24B4A" }}>{paraBRL(cp).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                          <td style={{ padding: "8px 10px" }}>
-                            <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, fontWeight: 700, background: cp.status === "baixado" ? "#DCFCE7" : "#FBF3E0", color: cp.status === "baixado" ? "#166534" : "#7A4300" }}>
-                              {cp.status === "baixado" ? "Pago" : "Em aberto"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              {(modalFatDet.status === "aberta" || modalFatDet.status === "aguardando_pagamento") && (
-                <button onClick={() => { setModalFatPgt(modalFatDet); setModalFatDet(null); setPgFat({ data: TODAY, conta: "", obs: "" }); }}
-                  style={{ padding: "9px 18px", borderRadius: 8, border: "none", background: "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                  Registrar Pagamento
-                </button>
-              )}
-              <button onClick={() => setModalFatDet(null)} style={{ padding: "9px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-page)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Fechar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══ Modal Registrar Pagamento Fatura ══════════════════════ */}
-      {modalFatPgt && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "var(--bg-card)", borderRadius: 14, width: 480, maxWidth: "95vw", boxShadow: "0 8px 40px rgba(0,0,0,0.5)", border: "0.5px solid var(--border)" }}>
-            <div style={{ padding: "18px 24px", borderBottom: "0.5px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-1)" }}>Registrar Pagamento</h2>
-              <button onClick={() => setModalFatPgt(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--text-3)" }}>✕</button>
-            </div>
-            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "10px 14px", border: "0.5px solid var(--border)", fontSize: 12, color: "var(--text-2)" }}>
-                Fatura <strong style={{ color: "var(--text-1)" }}>{modalFatPgt.numero_fatura ?? "s/n"}</strong> · Competência {fmtCompetencia(modalFatPgt.competencia)} · Valor <strong style={{ color: "var(--text-1)" }}>{modalFatPgt.valor_total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</strong>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Data do Pagamento *</label>
-                  <input type="date" value={pgFat.data} onChange={e => setPgFat(p => ({ ...p, data: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Conta de Pagamento</label>
-                  <select value={pgFat.conta} onChange={e => setPgFat(p => ({ ...p, conta: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-2)" }}>
-                    <option value="">— Selecionar —</option>
-                    {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
-                </div>
-                <div style={{ gridColumn: "1/-1" }}>
-                  <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 4 }}>Observação</label>
-                  <input value={pgFat.obs} onChange={e => setPgFat(p => ({ ...p, obs: e.target.value }))}
-                    style={{ width: "100%", fontSize: 13, padding: "8px 10px", border: "0.5px solid var(--border)", borderRadius: 7, background: "var(--bg-card)", color: "var(--text-1)", boxSizing: "border-box" }} />
-                </div>
-              </div>
-              {pgFatErr && <div style={{ fontSize: 12, color: "#E24B4A", background: "rgba(220,38,38,0.08)", borderRadius: 7, padding: "8px 12px" }}>{pgFatErr}</div>}
-            </div>
-            <div style={{ padding: "14px 24px", borderTop: "0.5px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button onClick={() => setModalFatPgt(null)} style={{ padding: "9px 18px", borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-page)", cursor: "pointer", fontSize: 13, color: "var(--text-2)" }}>Cancelar</button>
-              <button onClick={registrarPagamentoFatura} disabled={pgFatSaving || !pgFat.data}
-                style={{ padding: "9px 20px", borderRadius: 8, border: "none", background: pgFatSaving || !pgFat.data ? "#CCC" : "#1A4870", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                {pgFatSaving ? "Salvando…" : "Confirmar Pagamento"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Vínculo de NF na baixa ──────────────────────────────── */}
       {alertaNF && (
@@ -2211,11 +1778,18 @@ function ContasPagarInner() {
                       <input style={inp} placeholder="1" value={form.serie} onChange={e => setForm(p => ({ ...p, serie: e.target.value }))} />
                     </div>
                     <div>
-                      <label style={lbl}>Tipo Doc LCDPR</label>
+                      <label style={lbl}>Tipo de Documento</label>
                       <select style={inp} value={form.tipo_documento_lcdpr} onChange={e => setForm(p => ({ ...p, tipo_documento_lcdpr: e.target.value as typeof form.tipo_documento_lcdpr }))}>
-                        <option value="RECIBO">Recibo</option><option value="NF">Nota Fiscal</option>
-                        <option value="DUPLICATA">Duplicata</option><option value="CHEQUE">Cheque</option>
-                        <option value="PIX">PIX</option><option value="TED">TED</option><option value="OUTROS">Outros</option>
+                        <option value="NF">Nota Fiscal (NF-e)</option>
+                        <option value="FATURA">Fatura</option>
+                        <option value="BOLETO">Boleto</option>
+                        <option value="RECIBO">Recibo</option>
+                        <option value="DUPLICATA">Duplicata</option>
+                        <option value="CHEQUE">Cheque</option>
+                        <option value="PIX">PIX</option>
+                        <option value="TED">TED</option>
+                        <option value="CONTRATO">Contrato</option>
+                        <option value="OUTROS">Outros</option>
                       </select>
                     </div>
                   </div>
