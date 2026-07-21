@@ -1291,7 +1291,16 @@ export async function excluirGrupo(id: string): Promise<void> {
 export async function listarUsuarios(): Promise<Usuario[]> {
   const { data, error } = await supabase.from("usuarios").select("*").order("nome");
   if (error) throw error;
-  return data ?? [];
+  const rows = (data ?? []) as Usuario[];
+  // Enriquecer com role do perfis para exibição no cadastro
+  const authIds = rows.map(r => r.auth_user_id).filter(Boolean) as string[];
+  if (authIds.length > 0) {
+    const { data: perfis } = await supabase.from("perfis").select("user_id, role").in("user_id", authIds);
+    const roleMap: Record<string, string> = {};
+    (perfis ?? []).forEach((p: { user_id: string; role: string }) => { roleMap[p.user_id] = p.role; });
+    return rows.map(r => ({ ...r, role: r.auth_user_id ? roleMap[r.auth_user_id] : undefined }));
+  }
+  return rows;
 }
 export async function criarUsuario(u: Omit<Usuario, "id" | "created_at">): Promise<Usuario> {
   // Select-then-insert/update para não depender de constraint específico no banco

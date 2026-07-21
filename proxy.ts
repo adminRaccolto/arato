@@ -46,6 +46,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Usuários de campo (role "campo") só acessam /campo/*
+  const role = (user.user_metadata as { role?: string } | undefined)?.role;
+  if (role === "campo" && !pathname.startsWith("/campo")) {
+    return NextResponse.redirect(new URL("/campo", request.url));
+  }
+
   return response;
 }
 

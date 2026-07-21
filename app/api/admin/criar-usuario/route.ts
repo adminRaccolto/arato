@@ -32,6 +32,11 @@ export async function POST(req: Request) {
 
     const supabase = adminClient();
 
+    // Determinar role antes da criação para incluir no user_metadata
+    const emailLower = (user_email ?? "").toLowerCase();
+    const isGino = emailLower === "gino@raccolto.com.br";
+    const roleMeta = isGino ? "raccotlo" : (hub_acesso ?? "client");
+
     // ── 1. Criar ou recuperar usuário no Supabase Auth ──
     let authUserId: string;
     let senhaRedefinida = false;
@@ -40,7 +45,7 @@ export async function POST(req: Request) {
       email:         user_email,
       password:      user_senha,
       email_confirm: true,
-      user_metadata: { must_change_password: true, nome: user_nome },
+      user_metadata: { must_change_password: true, nome: user_nome, role: roleMeta },
     });
 
     if (authErr) {
@@ -56,7 +61,7 @@ export async function POST(req: Request) {
       // Atualiza a senha para a nova senha informada
       await supabase.auth.admin.updateUserById(authUserId, {
         password:      user_senha,
-        user_metadata: { must_change_password: true, nome: user_nome },
+        user_metadata: { must_change_password: true, nome: user_nome, role: roleMeta },
       });
       senhaRedefinida = true;
     } else {
@@ -64,11 +69,7 @@ export async function POST(req: Request) {
     }
 
     // ── 2. Criar perfil (upsert) ──
-    // Regra: apenas gino@raccolto.com.br recebe raccotlo automaticamente.
-    // Para outros usuários Raccotlo, o role é definido explicitamente via hub_acesso.
     const { data: perfilExistente } = await supabase.from("perfis").select("role").eq("user_id", authUserId).maybeSingle();
-    const emailLower = (user_email ?? "").toLowerCase();
-    const isGino = emailLower === "gino@raccolto.com.br";
     const roleFinal = isGino
       ? "raccotlo"
       : perfilExistente?.role === "raccotlo"

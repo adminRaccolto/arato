@@ -855,6 +855,7 @@ export type Usuario = {
   whatsapp?: string;
   ativo: boolean;
   created_at?: string;
+  role?: string; // preenchido por join com perfis (não existe na tabela)
 };
 
 export type Empresa = {

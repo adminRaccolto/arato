@@ -491,8 +491,9 @@ function CadastrosInner() {
   const [editGrupo, setEditGrupo]     = useState<GrupoUsuario | null>(null);
   const [fGrupo, setFGrupo]           = useState({ nome: "", descricao: "", permissoes: {} as Record<string, string> });
   const [modalUser, setModalUser]     = useState(false);
+  const [campoResult, setCampoResult] = useState<{ nome: string; email: string; senha: string } | null>(null);
   const [editUser, setEditUser]       = useState<Usuario | null>(null);
-  const [fUser, setFUser]             = useState({ nome: "", email: "", grupo_id: "", whatsapp: "" });
+  const [fUser, setFUser]             = useState({ nome: "", email: "", grupo_id: "", whatsapp: "", tipo_acesso: "completo" as "completo" | "campo", senha_campo: "" });
 
   // ── Princípios Ativos ──
   const [principios, setPrincipios]         = useState<PrincipioAtivo[]>([]);
@@ -1896,7 +1897,10 @@ function CadastrosInner() {
   // ─────────────── USUÁRIOS ───────────────
   const abrirModalUser = (u?: Usuario) => {
     setEditUser(u ?? null);
-    setFUser(u ? { nome: u.nome, email: u.email, grupo_id: u.grupo_id ?? "", whatsapp: u.whatsapp ?? "" } : { nome: "", email: "", grupo_id: "", whatsapp: "" });
+    setFUser(u
+      ? { nome: u.nome, email: u.email, grupo_id: u.grupo_id ?? "", whatsapp: u.whatsapp ?? "", tipo_acesso: u.role === "campo" ? "campo" : "completo", senha_campo: "" }
+      : { nome: "", email: "", grupo_id: "", whatsapp: "", tipo_acesso: "completo", senha_campo: "" }
+    );
     setModalUser(true);
   };
   const salvarUser = () => salvar(async () => {
@@ -1904,6 +1908,37 @@ function CadastrosInner() {
     const fazId = fazTrabalho || fazIdEff;
     if (!fazId) throw new Error("Selecione uma fazenda antes de cadastrar usuários.");
     const whatsapp = fUser.whatsapp.trim() || undefined;
+
+    if (!editUser && fUser.tipo_acesso === "campo") {
+      // Usuário de campo: cria Auth + perfis via API route
+      if (!fUser.senha_campo.trim()) throw new Error("Informe uma senha provisória para o usuário de campo.");
+      const fazInfo = fazendas.find(f => f.id === fazId);
+      const res = await fetch("/api/admin/criar-usuario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fazenda_id: fazId,
+          conta_id: contaId,
+          user_nome: fUser.nome.trim(),
+          user_email: fUser.email.trim(),
+          user_senha: fUser.senha_campo.trim(),
+          grupo_id: fUser.grupo_id || null,
+          whatsapp: whatsapp ?? null,
+          fazenda_nome: fazInfo?.nome,
+          hub_acesso: "campo",
+          enviar_email: true,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "Erro ao criar usuário de campo");
+      // Recarregar lista e exibir credenciais
+      const lista = await import("../../lib/db").then(m => m.listarUsuarios());
+      setUsuarios(lista);
+      setModalUser(false);
+      setCampoResult({ nome: fUser.nome.trim(), email: fUser.email.trim(), senha: fUser.senha_campo.trim() });
+      return;
+    }
+
     const payload = { fazenda_id: fazId, nome: fUser.nome.trim(), email: fUser.email.trim(), grupo_id: fUser.grupo_id || undefined, whatsapp, ativo: true };
     if (editUser) {
       await atualizarUsuario(editUser.id, payload);
@@ -4942,15 +4977,21 @@ function CadastrosInner() {
                     <button style={btnV} onClick={() => abrirModalUser()}>+ Novo Usuário</button>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <TH cols={["Nome", "E-mail", "Grupo", "Status", ""]} />
+                    <TH cols={["Nome", "E-mail", "Acesso", "Grupo", "Status", ""]} />
                     <tbody>
-                      {usuarios.length === 0 && <tr><td colSpan={5} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum usuário cadastrado</td></tr>}
+                      {usuarios.length === 0 && <tr><td colSpan={6} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhum usuário cadastrado</td></tr>}
                       {usuarios.map((u, i) => {
                         const gr = grupos.find(g => g.id === u.grupo_id);
+                        const isCampo = u.role === "campo";
                         return (
                           <tr key={u.id} style={{ borderBottom: i < usuarios.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
                             <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{u.nome}</td>
                             <td style={{ padding: "10px 14px", color: "var(--text-1)" }}>{u.email}</td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                              {isCampo
+                                ? badge("App Campo", "#D5E8F5", "#0B2D50")
+                                : badge("ERP", "#F1EFE8", "var(--text-2)")}
+                            </td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{gr ? badge(gr.nome, "#FBF0D8", "#7A5A12") : <span style={{ color: "#444" }}>—</span>}</td>
                             <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(u.ativo ? "Ativo" : "Inativo", u.ativo ? "#D5E8F5" : "#F1EFE8", u.ativo ? "#0B2D50" : "var(--text-2)")}</td>
                             <td style={{ padding: "10px 14px", textAlign: "right" }}>
@@ -8973,6 +9014,27 @@ function CadastrosInner() {
           <div style={{ display: "grid", gap: 14 }}>
             <div><label style={lbl}>Nome *</label><input style={inp} value={fUser.nome} onChange={e => setFUser(p => ({ ...p, nome: e.target.value }))} /></div>
             <div><label style={lbl}>E-mail *</label><input style={inp} type="email" value={fUser.email} onChange={e => setFUser(p => ({ ...p, email: e.target.value }))} /></div>
+            {!editUser && (
+              <div>
+                <label style={lbl}>Tipo de Acesso</label>
+                <select style={inp} value={fUser.tipo_acesso} onChange={e => setFUser(p => ({ ...p, tipo_acesso: e.target.value as "completo" | "campo" }))}>
+                  <option value="completo">ERP Completo (web)</option>
+                  <option value="campo">App de Campo (mobile)</option>
+                </select>
+                {fUser.tipo_acesso === "campo" && (
+                  <span style={{ fontSize: 11, color: "#1A4870", marginTop: 4, display: "block" }}>
+                    Acesso restrito ao app mobile — não pode entrar no ERP web.
+                  </span>
+                )}
+              </div>
+            )}
+            {!editUser && fUser.tipo_acesso === "campo" && (
+              <div>
+                <label style={lbl}>Senha provisória *</label>
+                <input style={inp} type="text" value={fUser.senha_campo} onChange={e => setFUser(p => ({ ...p, senha_campo: e.target.value }))} placeholder="Mínimo 6 caracteres" />
+                <span style={{ fontSize: 11, color: "var(--text-3)", marginTop: 3, display: "block" }}>O operador deverá trocar no primeiro acesso.</span>
+              </div>
+            )}
             <div>
               <label style={lbl}>Grupo de acesso</label>
               <select style={inp} value={fUser.grupo_id} onChange={e => setFUser(p => ({ ...p, grupo_id: e.target.value }))}>
@@ -8997,7 +9059,32 @@ function CadastrosInner() {
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
             <button style={btnR} onClick={() => setModalUser(false)}>Cancelar</button>
-            <button style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() ? 0.5 : 1 }} disabled={salvando || !fUser.nome.trim() || !fUser.email.trim()} onClick={salvarUser}>{salvando ? "Salvando…" : "Salvar"}</button>
+            <button
+              style={{ ...btnV, opacity: salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && fUser.tipo_acesso === "campo" && !fUser.senha_campo.trim()) ? 0.5 : 1 }}
+              disabled={salvando || !fUser.nome.trim() || !fUser.email.trim() || (!editUser && fUser.tipo_acesso === "campo" && !fUser.senha_campo.trim())}
+              onClick={salvarUser}
+            >{salvando ? "Salvando…" : "Salvar"}</button>
+          </div>
+        </Modal>
+      )}
+      {/* Modal credenciais — App de Campo criado com sucesso */}
+      {campoResult && (
+        <Modal titulo="Usuário de Campo Criado" onClose={() => setCampoResult(null)}>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ background: "#D5E8F5", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#0B2D50" }}>
+              ✅ Conta criada com sucesso. Compartilhe as credenciais abaixo com o operador.
+            </div>
+            <div style={{ background: "var(--bg-page)", borderRadius: 8, padding: "14px 16px", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>Nome</span><span style={{ fontWeight: 600 }}>{campoResult.nome}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>E-mail</span><span style={{ fontWeight: 600 }}>{campoResult.email}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-3)", fontSize: 12 }}>Senha provisória</span><span style={{ fontWeight: 700, fontFamily: "monospace", color: "#1A4870", fontSize: 15 }}>{campoResult.senha}</span></div>
+            </div>
+            <div style={{ background: "#FBF3E0", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#7A5A12", border: "0.5px solid #C9921B" }}>
+              O operador acessa pelo app em <strong>web.arato.agr.br</strong> e será solicitado a trocar a senha no primeiro login.
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+            <button style={btnV} onClick={() => setCampoResult(null)}>Fechar</button>
           </div>
         </Modal>
       )}

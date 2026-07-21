@@ -18,7 +18,7 @@ const NAV_ITEMS = [
 
 export default function CampoLayoutClient({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { fazendaId, nomeFazendaSelecionada, setFazendaAtiva, contaId } = useAuth();
+  const { fazendaId, nomeFazendaSelecionada, setFazendaAtiva, contaId, userRole } = useAuth();
   const [fazendas, setFazendas] = useState<FazendaOp[]>([]);
   const [showSwitch, setShowSwitch] = useState(false);
 
@@ -64,9 +64,11 @@ export default function CampoLayoutClient({ children }: { children: React.ReactN
             </button>
           </div>
         </div>
-        <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "rgba(255,255,255,0.1)", padding: "5px 10px", borderRadius: 6 }}>
-          ← Desktop
-        </Link>
+        {userRole !== "campo" && (
+          <Link href="/" style={{ fontSize: 11, color: "#B0C8E0", textDecoration: "none", background: "rgba(255,255,255,0.1)", padding: "5px 10px", borderRadius: 6 }}>
+            ← Desktop
+          </Link>
+        )}
       </div>
 
       {/* Modal seletor de fazenda */}
