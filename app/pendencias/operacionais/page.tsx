@@ -7,6 +7,21 @@ import { supabase } from "../../../lib/supabase";
 
 type Insumo = { id: string; nome: string; unidade: string; estoque: number; custo_medio: number };
 
+type SolTransf = {
+  id: string; numero: string; status: string; urgencia: string;
+  data_transferencia?: string; data_solicitacao?: string;
+  solicitante_nome?: string; observacao?: string;
+  fazenda_origem?: { nome: string }; fazenda_destino?: { nome: string };
+  itens?: { quantidade: number; unidade_medida: string; insumo?: { nome: string } }[];
+};
+type SolMaq = {
+  id: string; numero: string; status: string; urgencia: string;
+  data_solicitacao?: string; data_necessidade?: string;
+  solicitante_nome?: string; motivo?: string; observacao?: string;
+  fazenda_origem?: { nome: string }; fazenda_destino?: { nome: string };
+  maquina?: { nome: string; patrimonio?: string };
+};
+
 const subtipoLabel: Record<string, string> = {
   pulverizacao:  "Pulverização",
   adubacao:      "Adubação",
@@ -57,16 +72,29 @@ export default function PendenciasOperacionais() {
   const [cancelId,      setCancelId]      = useState<string | null>(null);
   const [canceling,     setCanceling]     = useState(false);
 
+  const [solTransf,     setSolTransf]     = useState<SolTransf[]>([]);
+  const [solMaq,        setSolMaq]        = useState<SolMaq[]>([]);
+
   const carregar = useCallback(async () => {
     if (!fazendaId) return;
     setLoading(true);
     try {
-      const rows = await listarPendenciasOperacionais(fazendaId);
+      const [rows, { data: st }, { data: sm }] = await Promise.all([
+        listarPendenciasOperacionais(fazendaId),
+        supabase.from("solicitacoes_transferencia")
+          .select("id, numero, status, urgencia, data_transferencia, solicitante_nome, observacao, fazenda_origem:fazendas!fazenda_origem_id(nome), fazenda_destino:fazendas!fazenda_destino_id(nome), itens:solicitacoes_transferencia_itens(quantidade, unidade_medida, insumo:insumos(nome))")
+          .eq("fazenda_destino_id", fazendaId).eq("status", "solicitada").order("created_at", { ascending: false }),
+        supabase.from("solicitacoes_transferencia_maquinas")
+          .select("id, numero, status, urgencia, data_solicitacao, data_necessidade, solicitante_nome, motivo, observacao, fazenda_origem:fazendas!fazenda_origem_id(nome), fazenda_destino:fazendas!fazenda_destino_id(nome), maquina:maquinas(nome, patrimonio)")
+          .eq("fazenda_destino_id", fazendaId).eq("status", "pendente").order("created_at", { ascending: false }),
+      ]);
       setPendencias(rows);
+      setSolTransf((st ?? []) as unknown as SolTransf[]);
+      setSolMaq((sm ?? []) as unknown as SolMaq[]);
     } finally {
       setLoading(false);
     }
-  }, [fazendaId]);
+  }, [fazendaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -149,17 +177,96 @@ export default function PendenciasOperacionais() {
         {/* Cabeçalho */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>Pendências Operacionais</h1>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "var(--text-1)" }}>🔔 Central de Pendências</h1>
             <p style={{ margin: "4px 0 0", fontSize: 13, color: "#666" }}>
-              Operações registradas pelo WhatsApp que precisam de vinculação de insumo
+              Transferências aguardando aprovação + operações do WhatsApp sem insumo vinculado
             </p>
           </div>
-          <button
-            onClick={carregar}
-            style={{ background: "#1A5C38", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}
-          >
+          <button onClick={carregar} style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
             Atualizar
           </button>
+        </div>
+
+        {/* ── Seção: Transferências de Insumos pendentes ── */}
+        {solTransf.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>
+                📦 Transferências de Insumos
+                <span style={{ marginLeft: 8, background: "#FEF3C7", color: "#92400E", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{solTransf.length} pendente{solTransf.length > 1 ? "s" : ""}</span>
+              </div>
+              <a href="/estoque/transferencias" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Ver todas →</a>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {solTransf.map(s => (
+                <div key={s.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 18px", borderLeft: `4px solid ${s.urgencia === "urgente" ? "#E24B4A" : "#F59E0B"}`, display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ fontSize: 22, flexShrink: 0 }}>{s.urgencia === "urgente" ? "🔴" : "📦"}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>{s.numero}</span>
+                      {s.urgencia === "urgente" && <span style={{ background: "#FEE2E2", color: "#DC2626", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>URGENTE</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 3 }}>
+                      <strong>{(s.fazenda_origem as { nome: string } | null)?.nome ?? "—"}</strong> → <strong>{(s.fazenda_destino as { nome: string } | null)?.nome ?? "—"}</strong>
+                    </div>
+                    {s.itens && s.itens.length > 0 && (
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                        {s.itens.map((it, i) => <span key={i}>{i > 0 ? " · " : ""}{(it.insumo as { nome: string } | null)?.nome ?? "?"} ({it.quantidade} {it.unidade_medida})</span>)}
+                      </div>
+                    )}
+                    {s.solicitante_nome && <div style={{ fontSize: 11, color: "#1D4ED8", marginTop: 3 }}>📲 {s.solicitante_nome}</div>}
+                  </div>
+                  <a href="/estoque/transferencias" style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+                    Aprovar →
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Seção: Transferências de Máquinas pendentes ── */}
+        {solMaq.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>
+                🚜 Transferências de Máquinas
+                <span style={{ marginLeft: 8, background: "#FEF3C7", color: "#92400E", borderRadius: 20, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>{solMaq.length} pendente{solMaq.length > 1 ? "s" : ""}</span>
+              </div>
+              <a href="/estoque/transferencias" style={{ fontSize: 12, color: "#1A4870", fontWeight: 600, textDecoration: "none" }}>Ver todas →</a>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {solMaq.map(s => (
+                <div key={s.id} style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: "14px 18px", borderLeft: `4px solid ${s.urgencia === "urgente" ? "#E24B4A" : "#F59E0B"}`, display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ fontSize: 22, flexShrink: 0 }}>{s.urgencia === "urgente" ? "🔴" : "🚜"}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-1)" }}>{s.numero}</span>
+                      {s.urgencia === "urgente" && <span style={{ background: "#FEE2E2", color: "#DC2626", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>URGENTE</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 3 }}>
+                      {(s.maquina as { nome: string; patrimonio?: string } | null)?.patrimonio && <span style={{ fontFamily: "monospace" }}>[{(s.maquina as { nome: string; patrimonio?: string }).patrimonio}] </span>}
+                      <strong>{(s.maquina as { nome: string } | null)?.nome ?? "?"}</strong>
+                      {" · "}<span style={{ color: "var(--text-3)" }}>{(s.fazenda_origem as { nome: string } | null)?.nome ?? "—"} → {(s.fazenda_destino as { nome: string } | null)?.nome ?? "—"}</span>
+                    </div>
+                    {s.motivo && <div style={{ fontSize: 11, color: "var(--text-2)", marginBottom: 2 }}>Motivo: {s.motivo}</div>}
+                    {s.data_necessidade && <div style={{ fontSize: 11, color: "#92400E" }}>Necessário até: {s.data_necessidade.split("-").reverse().join("/")}</div>}
+                    {s.solicitante_nome && <div style={{ fontSize: 11, color: "#1D4ED8", marginTop: 3 }}>📲 {s.solicitante_nome}</div>}
+                  </div>
+                  <a href="/estoque/transferencias" style={{ background: "#1A4870", color: "#fff", border: "none", borderRadius: 7, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "flex", alignItems: "center" }}>
+                    Aprovar →
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Divisor para pendências WhatsApp */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{ flex: 1, height: 1, background: "var(--border-table)" }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", whiteSpace: "nowrap" }}>📲 Operações WhatsApp sem insumo vinculado</span>
+          <div style={{ flex: 1, height: 1, background: "var(--border-table)" }} />
         </div>
 
         {/* KPIs */}

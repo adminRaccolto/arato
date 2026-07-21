@@ -654,7 +654,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               📱
             </button>
             <a
-              href="/estoque/transferencias"
+              href="/pendencias/operacionais"
               title={qtdTransferencias > 0 ? `${qtdTransferencias} solicitação(ões) de transferência pendente(s)` : "Transferências"}
               style={{ position: "relative", background: qtdTransferencias > 0 ? "rgba(220,38,38,0.15)" : "var(--bg-input)", border: `0.5px solid ${qtdTransferencias > 0 ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.12)"}`, cursor: "pointer", color: "var(--text-2)", fontSize: 15, padding: "4px 8px", borderRadius: 6, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, textDecoration: "none" }}
             >
