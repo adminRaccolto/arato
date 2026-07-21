@@ -7920,3 +7920,26 @@ CREATE POLICY "benfeitorias_owner" ON benfeitorias
   ) OR EXISTS (SELECT 1 FROM perfis WHERE user_id = auth.uid() AND role = 'raccotlo'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 78 — Bombas de Combustível: colunas combustivel, capacidade_l, estoque_atual_l ──
+-- A tabela foi criada com coluna `tipo`, mas o sistema usa `combustivel`.
+-- Adicionamos `combustivel` e tornamos `tipo` opcional (default garante compatibilidade).
+
+ALTER TABLE bombas_combustivel
+  ADD COLUMN IF NOT EXISTS combustivel     TEXT NOT NULL DEFAULT 'diesel_s10',
+  ADD COLUMN IF NOT EXISTS capacidade_l    NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS estoque_atual_l NUMERIC(12,2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS consume_estoque BOOLEAN NOT NULL DEFAULT true;
+
+-- Copia tipo → combustivel para registros existentes que ainda tenham o campo tipo preenchido
+UPDATE bombas_combustivel
+  SET combustivel = CASE tipo
+    WHEN 'diesel'    THEN 'diesel_s10'
+    WHEN 'gasolina'  THEN 'gasolina'
+    WHEN 'etanol'    THEN 'etanol'
+    WHEN 'arla'      THEN 'arla'
+    ELSE tipo
+  END
+  WHERE combustivel = 'diesel_s10' AND tipo IS NOT NULL AND tipo <> 'diesel';
+
+NOTIFY pgrst, 'reload schema';
