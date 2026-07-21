@@ -1785,10 +1785,6 @@ function ContasPagarInner() {
                         <option value="BOLETO">Boleto</option>
                         <option value="RECIBO">Recibo</option>
                         <option value="DUPLICATA">Duplicata</option>
-                        <option value="CHEQUE">Cheque</option>
-                        <option value="PIX">PIX</option>
-                        <option value="TED">TED</option>
-                        <option value="CONTRATO">Contrato</option>
                         <option value="OUTROS">Outros</option>
                       </select>
                     </div>
