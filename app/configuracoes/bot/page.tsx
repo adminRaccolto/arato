@@ -36,6 +36,12 @@ interface QrResult {
   error?: string;
 }
 
+interface TestResult {
+  ok: boolean;
+  log: string[];
+  resposta?: string | null;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function statusIcon(s: StatusCheck) {
@@ -81,8 +87,12 @@ export default function BotDiagPage() {
   const [qrLoading, setQrL]     = useState(false);
   const [qrBase64, setQr]       = useState<string | null>(null);
   const [qrMsg, setQrMsg]       = useState<string | null>(null);
-  const [testLoading, setTestL] = useState(false);
-  const [testMsg, setTestMsg]   = useState<string | null>(null);
+  const [testLoading, setTestL]       = useState(false);
+  const [testMsg, setTestMsg]         = useState<string | null>(null);
+  const [testeNum, setTesteNum]       = useState("");
+  const [testeMens, setTesteMens]     = useState("olá, quanto tenho a pagar essa semana?");
+  const [testeResult, setTesteResult] = useState<TestResult | null>(null);
+  const [testeLoading, setTesteLoading] = useState(false);
 
   const carregar = useCallback(async () => {
     setCarr(true);
@@ -141,6 +151,24 @@ export default function BotDiagPage() {
       setTestMsg("Webhook ativo: " + (json.status ?? JSON.stringify(json)));
     } catch (e) { setTestMsg("Erro: " + String(e)); }
     setTestL(false);
+  }
+
+  async function testarFluxo() {
+    if (!testeNum.trim()) return;
+    setTesteLoading(true);
+    setTesteResult(null);
+    try {
+      const r = await fetch("/api/whatsapp/test-webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefone: testeNum.trim().replace(/\D/g, ""), mensagem: testeMens.trim() }),
+      });
+      const json = await r.json() as TestResult;
+      setTesteResult(json);
+    } catch (e) {
+      setTesteResult({ ok: false, log: ["❌ Erro ao chamar API: " + String(e)] });
+    }
+    setTesteLoading(false);
   }
 
   // ── Interpretação dos resultados ──────────────────────────────────────────
@@ -372,6 +400,63 @@ export default function BotDiagPage() {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+
+        {/* ── 5b. Teste de fluxo completo ── */}
+        <div style={cardStyle}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-1)", marginBottom: 6 }}>🧪 Testar Fluxo Completo</div>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "var(--text-3)" }}>
+            Simula uma mensagem chegando e testa cada etapa: busca do usuário → Claude → Evolution API (enviará uma mensagem de teste real no WhatsApp).
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 10, alignItems: "flex-end" }}>
+            <div>
+              <label style={{ ...lbl }}>Número (DDI+DDD+número)</label>
+              <input
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
+                placeholder="5565999990000"
+                value={testeNum}
+                onChange={e => setTesteNum(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            <div>
+              <label style={{ ...lbl }}>Mensagem de teste</label>
+              <input
+                style={{ width: "100%", padding: "8px 10px", border: "0.5px solid var(--border-table)", borderRadius: 8, fontSize: 13, boxSizing: "border-box" as const }}
+                value={testeMens}
+                onChange={e => setTesteMens(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={testarFluxo}
+              disabled={testeLoading || !testeNum.trim()}
+              style={{ ...btn("#1A4870"), opacity: testeLoading || !testeNum.trim() ? 0.5 : 1, whiteSpace: "nowrap" as const }}
+            >
+              {testeLoading ? "Testando…" : "▶ Executar teste"}
+            </button>
+          </div>
+
+          {testeResult && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ background: testeResult.ok ? "#F0FFF4" : "#FEF2F2", border: `0.5px solid ${testeResult.ok ? "#BBF7D0" : "#FECACA"}`, borderRadius: 8, padding: "12px 14px" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: testeResult.ok ? "#166534" : "#991B1B", marginBottom: 10 }}>
+                  {testeResult.ok ? "✅ Fluxo completo OK — bot funcionando" : "❌ Problema encontrado — veja o log abaixo"}
+                </div>
+                <div style={{ display: "grid", gap: 4 }}>
+                  {testeResult.log.map((linha, i) => (
+                    <div key={i} style={{ fontSize: 12, fontFamily: "monospace", color: linha.startsWith("❌") ? "#991B1B" : linha.startsWith("✅") ? "#166534" : "#555", padding: "2px 0", borderBottom: i < testeResult.log.length - 1 ? "0.5px solid rgba(0,0,0,0.06)" : "none" }}>
+                      {linha}
+                    </div>
+                  ))}
+                </div>
+                {testeResult.resposta && (
+                  <div style={{ marginTop: 10, background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px", fontSize: 12 }}>
+                    <strong>Resposta do Claude:</strong><br />
+                    <span style={{ color: "#1A4870" }}>{testeResult.resposta.slice(0, 300)}{testeResult.resposta.length > 300 ? "…" : ""}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
