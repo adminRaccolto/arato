@@ -78,10 +78,11 @@ export default function RateioPage() {
     setAnos(a);
     setCcs(cc);
 
-    // Ciclos de todas as fazendas
+    // Ciclos — garante fazenda ativa + todas as da conta
     const map: Record<string, Ciclo[]> = {};
-    await Promise.all(faz.map(async fazItem => {
-      map[fazItem.id] = await listarTodosCiclos(fazItem.id).catch(() => []);
+    const idsFaz = [...new Set([fazendaId, ...faz.map(f => f.id)])];
+    await Promise.all(idsFaz.map(async id => {
+      map[id] = await listarTodosCiclos(id).catch(() => []);
     }));
     setCiclosPorFazenda(map);
 
