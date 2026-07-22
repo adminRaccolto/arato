@@ -34,8 +34,8 @@ const btnX: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid #E
 const btnE: React.CSSProperties = { padding: "4px 10px", border: "0.5px solid var(--border-table)", borderRadius: 6, background: "transparent", cursor: "pointer", fontSize: 11, color: "#666" };
 const secTit: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#1A4870", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, marginTop: 18, paddingBottom: 4, borderBottom: "0.5px solid var(--border-table)" };
 
-const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtNum = (v: number, dec = 2) => v.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const fmtBRL = (v: number | null | undefined) => (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtNum = (v: number | null | undefined, dec = 2) => (v ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtData = (s?: string) => s ? s.split("-").reverse().join("/") : "—";
 
 function aaParaAm(aa: number) { return (Math.pow(1 + aa / 100, 1 / 12) - 1) * 100; }
@@ -916,42 +916,63 @@ export default function ContratosFinanceiros() {
   });
 
   // ── Aplicar cronograma extraído do PDF pela IA ──
-  const aplicarCronogramaIAPdf = () => salvar(async () => {
+  const aplicarCronogramaIAPdf = async () => {
     if (!contratoModal || !parcelasIAPdf || parcelasIAPdf.length === 0) return;
-    // Remove CP automáticos não baixados antes de recriar
-    if (contratoModal.numero_documento) {
-      await supabase.from("lancamentos").delete()
-        .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
-        .eq("numero_documento", contratoModal.numero_documento).neq("status", "baixado");
+    setErroModal(null);
+    setSalvando(true);
+    try {
+      // 1. Remove CP automáticos não baixados antes de recriar
+      if (contratoModal.numero_documento) {
+        await supabase.from("lancamentos").delete()
+          .eq("fazenda_id", fazendaId).eq("auto", true).eq("tipo", "pagar")
+          .eq("numero_documento", contratoModal.numero_documento).neq("status", "baixado");
+      }
+
+      // 2. Monta parcelas — garante que valor nunca seja null
+      const hoje = new Date().toISOString().slice(0, 10);
+      const parcelasParaSalvar = parcelasIAPdf.map((p, idx) => ({
+        num_parcela: idx + 1,
+        data_vencimento: p.data_vencimento,
+        amortizacao: p.valor ?? 0,
+        juros: 0,
+        despesas_acessorios: 0,
+        valor_parcela: p.valor ?? 0,
+        saldo_devedor: 0,
+        status: "em_aberto" as const,
+      }));
+
+      // 3. Persiste parcelas
+      const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
+
+      // 4. Cria CP lançamentos (falha silenciosa — não bloqueia o cronograma)
+      const lancsParcelas: Record<string, unknown>[] = [];
+      for (const p of salvas) {
+        const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
+        lancsParcelas.push({
+          fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda,
+          descricao: `${contratoModal.descricao} — Parcela ${p.num_parcela}`,
+          categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento,
+          data_vencimento: p.data_vencimento, valor: p.valor_parcela ?? 0, status: statusLanc,
+          auto: true, numero_documento: contratoModal.numero_documento || undefined,
+          origem_lancamento: "contrato_financeiro",
+        });
+      }
+      if (lancsParcelas.length > 0) {
+        const { error: errLanc } = await supabase.from("lancamentos").insert(lancsParcelas);
+        if (errLanc) console.error("[aplicarCronogramaIAPdf] lancamentos insert:", errLanc);
+      }
+
+      // 5. Atualiza estado (sucesso)
+      setParcelasPagamento(salvas);
+      setParcelasIAPdf(null);
+    } catch (e) {
+      const msg = (e as { message?: string })?.message ?? "Erro ao salvar cronograma.";
+      console.error("[aplicarCronogramaIAPdf]", e);
+      setErroModal(msg);
+    } finally {
+      setSalvando(false);
     }
-    const hoje = new Date().toISOString().slice(0, 10);
-    const parcelasParaSalvar = parcelasIAPdf.map((p, idx) => ({
-      num_parcela: idx + 1,
-      data_vencimento: p.data_vencimento,
-      amortizacao: p.valor,
-      juros: 0,
-      despesas_acessorios: 0,
-      valor_parcela: p.valor,
-      saldo_devedor: 0,
-      status: "em_aberto" as const,
-    }));
-    const salvas = await salvarParcelasPagamento(contratoModal.id, fazendaId!, parcelasParaSalvar);
-    const lancsParcelas: Record<string, unknown>[] = [];
-    for (const p of salvas) {
-      const statusLanc = p.data_vencimento < hoje ? "baixado" : "em_aberto";
-      lancsParcelas.push({
-        fazenda_id: fazendaId, tipo: "pagar", moeda: contratoModal.moeda,
-        descricao: `${contratoModal.descricao} — Parcela ${p.num_parcela}`,
-        categoria: CAT_AMORT[contratoModal.tipo], data_lancamento: p.data_vencimento,
-        data_vencimento: p.data_vencimento, valor: p.valor_parcela, status: statusLanc,
-        auto: true, numero_documento: contratoModal.numero_documento || undefined,
-        origem_lancamento: "contrato_financeiro",
-      });
-    }
-    if (lancsParcelas.length > 0) await supabase.from("lancamentos").insert(lancsParcelas);
-    setParcelasPagamento(salvas);
-    setParcelasIAPdf(null);
-  });
+  };
 
   // ── Garantia ──
   const salvarGarantia = () => salvar(async () => {
