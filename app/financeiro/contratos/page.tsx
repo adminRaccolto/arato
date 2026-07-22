@@ -1373,7 +1373,7 @@ export default function ContratosFinanceiros() {
                         </td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
                         <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo] ?? c.tipo_calculo.toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo ?? "sac"] ?? (c.tipo_calculo ?? "SAC").toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ fontWeight: 600 }}>{c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}</div>
@@ -2004,7 +2004,7 @@ export default function ContratosFinanceiros() {
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo] ?? contratoModal.tipo_calculo.toUpperCase()}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo ?? "sac"] ?? "SAC Decrescente"}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
                       <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
                       <div>
