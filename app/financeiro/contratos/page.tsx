@@ -576,6 +576,7 @@ export default function ContratosFinanceiros() {
   const [modalAberto, setModalAberto]       = useState(false);
   const [contratoModal, setContratoModal]   = useState<ContratoFinanceiro | null>(null);
   const [abaModal, setAbaModal]             = useState<AbaModal>("principal");
+  const [erroModal, setErroModal]           = useState<string | null>(null);
   const [fC, setFC]                         = useState({ ...FC_VAZIO });
 
   // PDF / IA
@@ -648,7 +649,11 @@ export default function ContratosFinanceiros() {
   }, [contratoModal, abaModal, fazendaId]);
 
   async function salvar(fn: () => Promise<void>) {
-    try { setSalvando(true); await fn(); } catch (e) { alert((e as { message?: string })?.message || JSON.stringify(e)); } finally { setSalvando(false); }
+    setErroModal(null);
+    try { setSalvando(true); await fn(); } catch (e) {
+      const msg = (e as { message?: string })?.message ?? "";
+      setErroModal(msg || "Erro ao salvar. Tente novamente.");
+    } finally { setSalvando(false); }
   }
 
   const onChangeAa = (v: string) => { const aa = parseFloat(v.replace(",", ".")); setFC(p => ({ ...p, taxa_juros_aa: v, taxa_juros_am: isNaN(aa) ? "" : String(parseFloat(aaParaAm(aa).toFixed(6))) })); };
@@ -686,7 +691,7 @@ export default function ContratosFinanceiros() {
   };
 
   const fecharModal = () => {
-    setModalAberto(false); setContratoModal(null);
+    setModalAberto(false); setContratoModal(null); setErroModal(null);
     setPdfFile(null); setPdfUrl(null); setPdfNome(null); setIaConfianca(null); setParcelasIAPdf(null);
   };
 
@@ -1678,6 +1683,15 @@ export default function ContratosFinanceiros() {
                 })}
               </div>
             </div>
+
+            {/* Banner de erro (substitui alert() — seguro em todos os browsers) */}
+            {erroModal && (
+              <div style={{ background: "#FEECEC", border: "0.5px solid #E24B4A", borderRadius: 0, padding: "10px 26px", fontSize: 13, color: "#7A1010", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                <span style={{ fontWeight: 700 }}>⚠ Erro:</span>
+                <span style={{ flex: 1 }}>{erroModal}</span>
+                <button onClick={() => setErroModal(null)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#7A1010", fontSize: 16, lineHeight: 1 }}>✕</button>
+              </div>
+            )}
 
             {/* Conteúdo */}
             <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
