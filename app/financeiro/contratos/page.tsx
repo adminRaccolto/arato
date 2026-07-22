@@ -742,19 +742,38 @@ export default function ContratosFinanceiros() {
 
       // Auto-preencher fCalc com dados do cronograma extraído
       const cronograma: { data_vencimento: string; valor: number }[] = Array.isArray(d.parcelas_cronograma) ? d.parcelas_cronograma : [];
+      // Inferência de periodicidade pelas datas do cronograma quando a IA não extraiu
+      const inferirPeriodicidade = (cron: { data_vencimento: string }[]): number | null => {
+        if (cron.length < 2) return null;
+        const dts = cron.map(p => new Date(p.data_vencimento + "T12:00:00"));
+        const diffs: number[] = [];
+        for (let i = 1; i < dts.length; i++) {
+          const m = (dts[i].getFullYear() - dts[i-1].getFullYear()) * 12 + dts[i].getMonth() - dts[i-1].getMonth();
+          if (m > 0) diffs.push(m);
+        }
+        if (diffs.length === 0) return null;
+        const avg = diffs.reduce((s, x) => s + x, 0) / diffs.length;
+        if (avg >= 10) return 12;
+        if (avg >= 4.5) return 6;
+        if (avg >= 2) return 3;
+        return 1;
+      };
       if (cronograma.length > 0) {
         setParcelasIAPdf(cronograma);
+        const periodoInferido = d.periodicidade_meses ?? inferirPeriodicidade(cronograma);
         setFCalc(prev => ({
           ...prev,
           nParcelas:    String(d.num_parcelas ?? cronograma.length),
           dataPrimeiro: cronograma[0].data_vencimento,
-          periodicidade: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade,
+          periodicidade: periodoInferido != null ? String(periodoInferido) : prev.periodicidade,
+          taxaMensal:   d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal,
         }));
-      } else if (d.num_parcelas) {
+      } else if (d.num_parcelas || d.periodicidade_meses) {
         setFCalc(prev => ({
           ...prev,
-          nParcelas:    String(d.num_parcelas),
+          nParcelas:    d.num_parcelas ? String(d.num_parcelas) : prev.nParcelas,
           periodicidade: d.periodicidade_meses != null ? String(d.periodicidade_meses) : prev.periodicidade,
+          taxaMensal:   d.taxa_juros_am ? String(d.taxa_juros_am) : prev.taxaMensal,
         }));
       }
 
@@ -851,16 +870,21 @@ export default function ContratosFinanceiros() {
   const calcularParcelas = () => salvar(async () => {
     if (!contratoModal || !fCalc.dataPrimeiro) return;
     const n = Math.max(1, Number(fCalc.nParcelas) || 12);
-    const i = (Number(fCalc.taxaMensal) || 0) / 100;
-    const car = Number(contratoModal.carencia_meses ?? 0);
+    const i_mensal = (Number(fCalc.taxaMensal) || 0) / 100;
+    const period = Number(fCalc.periodicidade) || (contratoModal.periodicidade_meses ?? 1);
+    // Taxa efetiva para o período: capitalização composta da taxa mensal
+    // Ex: 0.7138% a.m. × 12 meses → taxa anual efetiva = (1.007138)^12 - 1 ≈ 8.92% a.a.
+    const i_periodo = period <= 1 ? i_mensal : Math.pow(1 + i_mensal, period) - 1;
+    // Carência em meses → converter para unidades do período
+    const carMeses = Number(contratoModal.carencia_meses ?? 0);
+    const car = period > 1 ? Math.round(carMeses / period) : carMeses;
     const carTipo = (contratoModal.carencia_tipo ?? "so_juros") as CarenciaTipo;
     const crescPct = contratoModal.crescimento_pct ?? 0;
-    const period = Number(fCalc.periodicidade) || (contratoModal.periodicidade_meses ?? 1);
     const acessMensal = parseFloat(fCalc.acessorios.replace(",", ".")) || 0;
     let base: ParcelaBase[];
-    if (crescPct > 0) base = calcularCrescentes(contratoModal.valor_financiado, i, n, crescPct, car, carTipo);
-    else if (contratoModal.tipo_calculo === "sac") base = calcularSAC(contratoModal.valor_financiado, i, n, car, carTipo);
-    else base = calcularPRICE(contratoModal.valor_financiado, i, n, car, carTipo);
+    if (crescPct > 0) base = calcularCrescentes(contratoModal.valor_financiado, i_periodo, n, crescPct, car, carTipo);
+    else if (contratoModal.tipo_calculo === "sac") base = calcularSAC(contratoModal.valor_financiado, i_periodo, n, car, carTipo);
+    else base = calcularPRICE(contratoModal.valor_financiado, i_periodo, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
     const comDatas = aplicarDatas(base, fCalc.dataPrimeiro, period);
     // Remove CP automáticos não baixados antes de recriar (evita duplicatas ao recalcular)
@@ -1966,10 +1990,16 @@ export default function ContratosFinanceiros() {
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
                       <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
-                      <div><label style={lbl}>Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}</label><InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} /></div>
+                      <div>
+                        <label style={lbl}>
+                          Taxa a.m. (%) {contratoModal.taxa_juros_am && <span style={{ color: "#1A4870" }}>· contr: {fmtNum(contratoModal.taxa_juros_am, 4)}%</span>}
+                          {(() => { const im = (parseFloat(fCalc.taxaMensal) || 0) / 100; const per = Number(fCalc.periodicidade) || 1; if (per > 1 && im > 0) { const ef = (Math.pow(1 + im, per) - 1) * 100; return <span style={{ color: "#C9921B", marginLeft: 4 }}>→ {fmtNum(ef, 2)}% a.{per===12?"a":per===6?"s":"t"}</span>; } return null; })()}
+                        </label>
+                        <InputNumerico style={inp} decimais={4} value={fCalc.taxaMensal} onChange={v => setFCalc(p => ({ ...p, taxaMensal: v }))} />
+                      </div>
                       <div><label style={lbl}>Data 1º Pagto.</label><input style={inp} type="date" value={fCalc.dataPrimeiro} onChange={e => setFCalc(p => ({ ...p, dataPrimeiro: e.target.value }))} /></div>
                       <div><label style={lbl}>Periodicidade</label><select style={inp} value={fCalc.periodicidade} onChange={e => setFCalc(p => ({ ...p, periodicidade: e.target.value }))}><option value="1">Mensal</option><option value="3">Trimestral</option><option value="6">Semestral</option><option value="12">Anual</option></select></div>
-                      <div><label style={lbl}>Acessórios/parc. (R$)</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
+                      <div><label style={lbl}>Acessórios/parc. ({contratoModal.moeda === "USD" ? "US$" : "R$"})</label><InputMonetario style={inp} value={fCalc.acessorios} onChange={v => setFCalc(p => ({ ...p, acessorios: String(v) }))} /></div>
                     </div>
                     <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end", gap: 8 }}>
                       {parcelasIAPdf && parcelasIAPdf.length > 0 && (
@@ -1994,15 +2024,16 @@ export default function ContratosFinanceiros() {
                         <tbody>
                           {parcelasPagamento.map((p, i) => {
                             const corSt = p.status === "pago" ? "#1A4870" : p.status === "vencido" ? "#E24B4A" : "var(--text-2)";
+                            const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v);
                             return (
                               <tr key={p.id} style={{ borderBottom: i < parcelasPagamento.length - 1 ? "0.5px solid var(--border-row)" : "none", background: p.status === "pago" ? "#E4F0F9" : "transparent" }}>
                                 <td style={{ padding: "7px 10px", textAlign: "center" }}>{p.num_parcela}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtData(p.data_vencimento)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.amortizacao)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(p.juros)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.despesas_acessorios)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtBRL(p.valor_parcela)}</td>
-                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(p.saldo_devedor)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(p.amortizacao)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(p.juros)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(p.despesas_acessorios)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right", fontWeight: 600 }}>{fmtV(p.valor_parcela)}</td>
+                                <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(p.saldo_devedor)}</td>
                                 <td style={{ padding: "7px 10px", textAlign: "center" }}>
                                   <span style={{ fontSize: 10, fontWeight: 600, color: corSt }}>{p.status === "pago" ? "✓ Pago" : p.status === "vencido" ? "Vencido" : "Em aberto"}</span>
                                 </td>
@@ -2012,19 +2043,23 @@ export default function ContratosFinanceiros() {
                         </tbody>
                         <tfoot>
                           <tr style={{ background: "var(--bg-page)", fontWeight: 600 }}>
-                            <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.valor_parcela, 0))}</td>
-                            <td colSpan={2} />
+                            {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); return (<>
+                              <td colSpan={2} style={{ padding: "7px 10px", textAlign: "right", fontSize: 11, color: "var(--text-2)" }}>TOTAIS</td>
+                              <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0))}</td>
+                              <td style={{ padding: "7px 10px", textAlign: "right", color: "#E24B4A" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.juros, 0))}</td>
+                              <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.despesas_acessorios, 0))}</td>
+                              <td style={{ padding: "7px 10px", textAlign: "right" }}>{fmtV(parcelasPagamento.reduce((s, p) => s + p.valor_parcela, 0))}</td>
+                              <td colSpan={2} />
+                            </>); })()}
                           </tr>
                         </tfoot>
                       </table>
                       <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-2)", display: "flex", gap: 16 }}>
-                        <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtBRL(parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0))}</strong></span>
-                        <span>CET estimado: <strong>{fmtNum((parcelasPagamento.reduce((s, p) => s + p.juros, 0) / contratoModal.valor_financiado) * 100, 2)}% a.p.</strong></span>
-                        <span>Pagas: <strong style={{ color: "#1A4870" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
+                        {(() => { const fmtV = (v: number) => contratoModal.moeda === "USD" ? `US$ ${fmtNum(v, 2)}` : fmtBRL(v); const totalJuros = parcelasPagamento.reduce((s, p) => s + p.juros + p.despesas_acessorios, 0); const totalAmort = parcelasPagamento.reduce((s, p) => s + p.amortizacao, 0); return (<>
+                          <span>Custo total de juros: <strong style={{ color: "#E24B4A" }}>{fmtV(totalJuros)}</strong></span>
+                          <span>CET estimado: <strong>{fmtNum(totalAmort > 0 ? (totalJuros / totalAmort) * 100 : 0, 2)}% a.p.</strong></span>
+                          <span>Pagas: <strong style={{ color: "#1A4870" }}>{parcelasPagamento.filter(p => p.status === "pago").length}/{parcelasPagamento.length}</strong></span>
+                        </>); })()}
                       </div>
                     </>
                   )}

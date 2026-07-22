@@ -89,11 +89,27 @@ CAMPOS A EXTRAIR:
 16. tipo_calculo: "sac" (amortização constante/decrescente), "price" (prestação fixa), "outros"
 
 17. carencia_meses: Meses de carência antes do início dos pagamentos. 0 se não houver.
+    ATENÇÃO: Carência ≠ periodicidade. Carência = período sem amortização (só juros ou totalizado).
+    Se o contrato tem liberação em 2025 e primeira parcela em 2027, carencia = diferença em meses.
 
 18. periodicidade_meses: Intervalo entre parcelas em meses. 1=mensal | 3=trimestral | 6=semestral | 12=anual
+    COMO DETERMINAR:
+    a) Se o cronograma tem múltiplas linhas: calcule a diferença em meses entre datas consecutivas.
+       Exemplo: 31/08/2027, 31/08/2028, 31/08/2029 → diferença = 12 → periodicidade_meses = 12
+    b) Se o contrato menciona "pagamento anual", "vencimento anual", "prestações anuais" → 12
+    c) Se menciona "parcelas semestrais" → 6, "trimestrais" → 3, "mensais" → 1
+    d) Se há apenas 1 linha no cronograma (pagamento único final): periodicidade_meses = diferença
+       entre data_contrato e data_vencimento em meses
+    e) Se não conseguir determinar → null
 
-19. num_parcelas: Número total de parcelas. CONTE as linhas do "Cronograma de Reembolso" ou "Cronograma de Pagamento".
-    Se houver múltiplos empreendimentos com cronogramas, use o número de datas ÚNICAS de vencimento.
+19. num_parcelas: Número total de parcelas NO CRONOGRAMA DE REEMBOLSO (apenas amortização, não juros durante carência).
+    COMO DETERMINAR:
+    a) CONTE as linhas com amortização (não zero) no cronograma de reembolso
+    b) Se o cronograma não estiver detalhado mas o contrato diz "X prestações anuais" → use X
+    c) Se há apenas uma data de vencimento final: num_parcelas = 1
+    d) Se o prazo total é mencionado em meses/anos e há periodicidade: calcule
+       Exemplo: "prazo 5 anos, pagamento anual" → num_parcelas = 5
+    e) NÃO confunda número de parcelas com prazo total em meses
 
 20. iof_pct: % de IOF, se mencionado. null se não houver.
 
@@ -140,7 +156,7 @@ Retorne APENAS o JSON válido, sem texto adicional, sem markdown:
 export async function extrairCedula(pdfBase64: string): Promise<CedulaExtraida | null> {
   try {
     const response = await claude.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       messages: [
         {
