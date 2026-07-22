@@ -8046,3 +8046,16 @@ ALTER TABLE lancamentos
 CREATE INDEX IF NOT EXISTS idx_lancamentos_centro_custo_id ON lancamentos(centro_custo_id);
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 82 — tipo_calculo: adiciona 'sac_crescente' ao CHECK constraint
+-- Execute: Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════════════════════
+ALTER TABLE contratos_financeiros
+  DROP CONSTRAINT IF EXISTS contratos_financeiros_tipo_calculo_check;
+
+ALTER TABLE contratos_financeiros
+  ADD CONSTRAINT contratos_financeiros_tipo_calculo_check
+  CHECK (tipo_calculo IN ('sac', 'sac_crescente', 'price', 'outros'));
+
+NOTIFY pgrst, 'reload schema';

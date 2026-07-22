@@ -94,19 +94,19 @@ function calcularPRICE(principal: number, taxaMensal: number, nParcelas: number,
   return parcelas;
 }
 
-function calcularCrescentes(principal: number, taxaMensal: number, nParcelas: number, crescPct: number, carencia: number, carenciaTipo: CarenciaTipo): ParcelaBase[] {
-  const { saldoFinal, parcelas } = aplicarCarencia(principal, taxaMensal, carencia, carenciaTipo);
+// SACRE: amortizações crescem geometricamente a taxa g por período
+// AM_k = AM_1 × (1+g)^(k-1), com sum(AM_k) = saldoFinal
+// Prestações = AM_k + juros_k (decrescentes quando queda de juros domina)
+function calcularSACRE(principal: number, taxaPeriodo: number, nParcelas: number, crescPct: number, carencia: number, carenciaTipo: CarenciaTipo): ParcelaBase[] {
+  const { saldoFinal, parcelas } = aplicarCarencia(principal, taxaPeriodo, carencia, carenciaTipo);
   let saldo = saldoFinal;
-  const g = crescPct / 100;
-  const pmt1 = taxaMensal === g
-    ? saldo * taxaMensal / nParcelas
-    : saldo * (taxaMensal - g) / (1 - Math.pow((1 + g) / (1 + taxaMensal), nParcelas));
+  const g = (crescPct || 0) / 100;
+  const am1 = g === 0 ? saldo / nParcelas : saldo * g / (Math.pow(1 + g, nParcelas) - 1);
   for (let i = 1; i <= nParcelas; i++) {
-    const juros = saldo * taxaMensal;
-    const pmt = pmt1 * Math.pow(1 + g, i - 1);
-    const amort = pmt - juros;
-    saldo -= amort;
-    parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: Math.max(0, amort), juros, despesas_acessorios: 0, valor_parcela: pmt, saldo_devedor: Math.max(0, saldo) });
+    const juros = saldo * taxaPeriodo;
+    const amort = am1 * Math.pow(1 + g, i - 1);
+    saldo = Math.max(0, saldo - amort);
+    parcelas.push({ num_parcela: carencia + i, data_vencimento: "", amortizacao: amort, juros, despesas_acessorios: 0, valor_parcela: amort + juros, saldo_devedor: saldo });
   }
   return parcelas;
 }
@@ -882,7 +882,7 @@ export default function ContratosFinanceiros() {
     const crescPct = contratoModal.crescimento_pct ?? 0;
     const acessMensal = parseFloat(fCalc.acessorios.replace(",", ".")) || 0;
     let base: ParcelaBase[];
-    if (crescPct > 0) base = calcularCrescentes(contratoModal.valor_financiado, i_periodo, n, crescPct, car, carTipo);
+    if (contratoModal.tipo_calculo === "sac_crescente") base = calcularSACRE(contratoModal.valor_financiado, i_periodo, n, crescPct, car, carTipo);
     else if (contratoModal.tipo_calculo === "sac") base = calcularSAC(contratoModal.valor_financiado, i_periodo, n, car, carTipo);
     else base = calcularPRICE(contratoModal.valor_financiado, i_periodo, n, car, carTipo);
     base = base.map(p => ({ ...p, despesas_acessorios: p.valor_parcela > 0 ? acessMensal : 0, valor_parcela: p.valor_parcela > 0 ? p.valor_parcela + acessMensal : 0 }));
@@ -1368,7 +1368,7 @@ export default function ContratosFinanceiros() {
                         </td>
                         <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#1A4870", whiteSpace: "nowrap" }}>{c.numero_documento || "—"}</td>
                         <td style={{ padding: "10px 14px" }}>{badge(tm.label, tm.bg, tm.cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(c.tipo_calculo.toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
+                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge({ sac: "SAC", sac_crescente: "SACRE", price: "PRICE", outros: "Outros" }[c.tipo_calculo] ?? c.tipo_calculo.toUpperCase(), "#F1EFE8", "var(--text-2)")}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{c.taxa_juros_aa ? `${fmtNum(c.taxa_juros_aa, 2)}% a.a.` : "—"}</td>
                         <td style={{ padding: "10px 14px", textAlign: "center" }}>
                           <div style={{ fontWeight: 600 }}>{c.moeda === "USD" ? `US$ ${fmtNum(c.valor_financiado)}` : fmtBRL(c.valor_financiado)}</div>
@@ -1775,8 +1775,9 @@ export default function ContratosFinanceiros() {
                     <div>
                       <label style={lbl}>Tipo de Cálculo *</label>
                       <select style={inp} value={fC.tipo_calculo} onChange={e => setFC(p => ({ ...p, tipo_calculo: e.target.value as ContratoFinanceiro["tipo_calculo"] }))}>
-                        <option value="sac">SAC — Amortização Constante</option>
-                        <option value="price">PRICE — Parcela Constante</option>
+                        <option value="sac">SAC Decrescente — Amortização Constante</option>
+                        <option value="sac_crescente">SAC Crescente (SACRE) — Amortização Crescente</option>
+                        <option value="price">PRICE (Tabela Francesa) — Parcela Constante</option>
                         <option value="outros">Outros / Manual</option>
                       </select>
                     </div>
@@ -1855,10 +1856,12 @@ export default function ContratosFinanceiros() {
                         </select>
                       </div>
                     )}
-                    <div>
-                      <label style={lbl}>Crescimento por Período (%)</label>
-                      <InputMonetario style={inp} placeholder="0 = fixo" value={fC.crescimento_pct} onChange={v => setFC(p => ({ ...p, crescimento_pct: String(v) }))} />
-                    </div>
+                    {fC.tipo_calculo === "sac_crescente" && (
+                      <div>
+                        <label style={lbl}>Crescimento da Amortização por Período (%)</label>
+                        <InputMonetario style={inp} placeholder="Ex: 2 (IPCA, TR, fixo)" value={fC.crescimento_pct} onChange={v => setFC(p => ({ ...p, crescimento_pct: String(v) }))} />
+                      </div>
+                    )}
                   </div>
 
                   <SecTitle>Taxas e Custos da Operação</SecTitle>
@@ -1987,7 +1990,7 @@ export default function ContratosFinanceiros() {
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {contratoModal.tipo_calculo.toUpperCase()}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo] ?? contratoModal.tipo_calculo.toUpperCase()}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
                       <div><label style={lbl}>Nº Parcelas</label><InputNumerico style={inp} decimais={0} min="1" value={fCalc.nParcelas} onChange={v => setFCalc(p => ({ ...p, nParcelas: v }))} /></div>
                       <div>
@@ -2012,7 +2015,7 @@ export default function ContratosFinanceiros() {
                   </div>
                   {parcelasIAPdf && parcelasIAPdf.length > 0 && parcelasPagamento.length === 0 && (
                     <div style={{ background: "#DCFCE7", border: "0.5px solid #16A34A", borderRadius: 8, padding: "10px 14px", marginBottom: 12, fontSize: 12, color: "#166534" }}>
-                      ✅ Cronograma extraído do PDF: <strong>{parcelasIAPdf.length} parcelas</strong> — clique em &quot;Usar cronograma do PDF&quot; para salvar ou &quot;Calcular&quot; para recalcular pelo método {(contratoModal.tipo_calculo ?? "sac").toUpperCase()}.
+                      ✅ Cronograma extraído do PDF: <strong>{parcelasIAPdf.length} parcelas</strong> — clique em &quot;Usar cronograma do PDF&quot; para salvar ou &quot;Calcular&quot; para recalcular pelo método {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo ?? "sac"] ?? "SAC"}.
                     </div>
                   )}
                   {parcelasPagamento.length === 0 && !(parcelasIAPdf && parcelasIAPdf.length > 0) ? (

@@ -1199,7 +1199,7 @@ export type ContratoFinanceiro = {
   descricao: string;
   credor: string;                // nome livre (fallback quando pessoa_id não definido)
   tipo: "custeio" | "investimento" | "securitizacao" | "cpr" | "egf" | "outros";
-  tipo_calculo: "sac" | "price" | "outros";
+  tipo_calculo: "sac" | "sac_crescente" | "price" | "outros";
   linha_credito?: string;        // PRONAF, PRONAMP, FCO, BNDES, Livre…
   moeda: "BRL" | "USD";
   valor_financiado: number;

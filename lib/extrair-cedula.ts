@@ -24,7 +24,7 @@ export interface CedulaExtraida {
   valor_liberado: number | null;       // Valor efetivamente liberado (sem recursos próprios)
   taxa_juros_aa: number | null;
   taxa_juros_am: number | null;
-  tipo_calculo: "sac" | "price" | "outros" | null;
+  tipo_calculo: "sac" | "sac_crescente" | "price" | "outros" | null;
   carencia_meses: number | null;
   periodicidade_meses: number | null;  // 1=mensal, 3=trim, 6=sem, 12=anual
   num_parcelas: number | null;         // Contagem das linhas do cronograma de reembolso
@@ -213,7 +213,7 @@ export function formatarConfirmacaoWhatsApp(d: CedulaExtraida): string {
     custeio: "Custeio Agrícola", investimento: "Investimento",
     cpr: "CPR", egf: "EGF", securitizacao: "Securitização", outros: "Outros",
   };
-  const CALC_LABEL: Record<string, string> = { sac: "SAC (decrescente)", price: "Price (constante)", outros: "Outro" };
+  const CALC_LABEL: Record<string, string> = { sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE (Parcela Constante)", outros: "Outro" };
 
   const nParc = d.num_parcelas;
   const periLabel = d.periodicidade_meses === 12 ? "anuais" : d.periodicidade_meses === 6 ? "semestrais" : d.periodicidade_meses === 1 ? "mensais" : `a cada ${d.periodicidade_meses}m`;
