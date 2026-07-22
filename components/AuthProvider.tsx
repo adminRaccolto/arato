@@ -101,6 +101,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const inactivityTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
   const realtimeChannelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const realtimeModulosRef  = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const selectFazenda = useCallback((id: string, fazendaNome: string, produtorNome?: string | null) => {
     localStorage.setItem("raccotlo_fazenda_id",       id);
@@ -358,6 +359,33 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           } catch { /* silent */ }
         })
         .subscribe();
+
+      // Realtime para add-ons: qualquer mudança em conta_modulos propagada imediatamente
+      // sem precisar recarregar a página ou fazer novo login
+      if (cid) {
+        if (realtimeModulosRef.current) supabase.removeChannel(realtimeModulosRef.current);
+        realtimeModulosRef.current = supabase
+          .channel(`modulos-${cid}`)
+          .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "conta_modulos",
+            filter: `conta_id=eq.${cid}`,
+          }, async () => {
+            try {
+              const { data: rows } = await supabase
+                .from("conta_modulos")
+                .select("modulo, habilitado")
+                .eq("conta_id", cid);
+              const overrides: ContaModulosOverrides = {};
+              (rows ?? []).forEach((r: { modulo: string; habilitado: boolean }) => {
+                overrides[r.modulo] = r.habilitado;
+              });
+              setContaModulosOverrides(overrides);
+            } catch { /* silent */ }
+          })
+          .subscribe();
+      }
     }
 
     init();
@@ -383,6 +411,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       if (realtimeChannelRef.current) {
         supabase.removeChannel(realtimeChannelRef.current);
         realtimeChannelRef.current = null;
+      }
+      if (realtimeModulosRef.current) {
+        supabase.removeChannel(realtimeModulosRef.current);
+        realtimeModulosRef.current = null;
       }
     };
   }, []);
