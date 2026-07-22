@@ -8035,3 +8035,14 @@ CREATE INDEX IF NOT EXISTS idx_lancamentos_romaneio_id ON lancamentos(romaneio_i
 --   CHECK (status IN ('previsto','em_aberto','vencido','vencendo','parcial','baixado','cancelado','liquidado'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 81 — centro_custo_id em lancamentos (FK para centros_custo)
+-- Execute: Supabase SQL Editor — URGENTE (NF de compras quebrando)
+-- ═══════════════════════════════════════════════════════════════════════════════
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS centro_custo_id UUID REFERENCES centros_custo(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_lancamentos_centro_custo_id ON lancamentos(centro_custo_id);
+
+NOTIFY pgrst, 'reload schema';

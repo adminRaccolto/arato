@@ -253,6 +253,7 @@ export type Lancamento = {
   operacao_id?: string;
   talhao?: string;
   centro_custo?: string;
+  centro_custo_id?: string;    // FK centros_custo.id — centro de custo (UUID)
   observacao?: string;
   moeda_pagamento?: "BRL" | "USD";
   lote_id?: string;           // FK pagamento_lotes.id — quando baixado em lote
