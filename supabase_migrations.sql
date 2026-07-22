@@ -8010,3 +8010,28 @@ ALTER TABLE contratos
 --   arquivos/documentos-financeiros/ → Cédulas, contratos financeiros
 
 NOTIFY pgrst, 'reload schema';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Seção 80 — Fluxo CR por Contrato de Venda de Grãos (Pedido de Venda)
+-- Execute: Supabase SQL Editor
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Adiciona colunas de rastreio em lancamentos para contratos de venda de grãos
+ALTER TABLE lancamentos
+  ADD COLUMN IF NOT EXISTS contrato_id  UUID REFERENCES contratos(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS romaneio_id  UUID REFERENCES romaneios(id) ON DELETE SET NULL;
+
+-- Índices para consultas por contrato e romaneio
+CREATE INDEX IF NOT EXISTS idx_lancamentos_contrato_id ON lancamentos(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_lancamentos_romaneio_id ON lancamentos(romaneio_id);
+
+-- Nota sobre status do campo:
+-- status = 'previsto'  → CR "Pedido de Venda" criado ao confirmar contrato; entra no fluxo como previsão
+-- status = 'cancelado' → CR previsto zerado quando todas as entregas forem faturadas
+-- status = 'em_aberto' → CR real por romaneio faturado; reduz o previsto proporcionalmente
+-- A constraint CHECK existente em lancamentos.status deve incluir 'previsto' e 'cancelado'.
+-- Se houver CHECK constraint, executar:
+-- ALTER TABLE lancamentos DROP CONSTRAINT IF EXISTS lancamentos_status_check;
+-- ALTER TABLE lancamentos ADD CONSTRAINT lancamentos_status_check
+--   CHECK (status IN ('previsto','em_aberto','vencido','vencendo','parcial','baixado','cancelado','liquidado'));
+
+NOTIFY pgrst, 'reload schema';

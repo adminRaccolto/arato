@@ -876,23 +876,27 @@ export default function Contratos() {
       if (fC.dado_em_cessao && Object.keys(cessaoSelecionados).length > 0) {
         await salvarCessaoDebitos(salvo.id, fidContrato, Object.entries(cessaoSelecionados).map(([lancamento_id, valor_cessao]) => ({ lancamento_id, valor_cessao })));
       }
-      // cria CR automático quando contrato confirmado + data de pagamento + sem CR existente
+      // cria CR de "Pedido de Venda" (previsão) quando contrato confirmado + sem CR existente
+      // Status "previsto" = entra no fluxo de caixa como previsão, é reduzido a cada entrega faturada
       const valorTotal = itensCalc.reduce((s, i) => s + i.valor_total, 0);
-      if (fC.confirmado && fC.data_pagamento && valorTotal > 0 && !salvo.lancamento_cr_id) {
+      if (fC.confirmado && valorTotal > 0 && !salvo.lancamento_cr_id) {
         const compradorNome = pessoas.find(p=>p.id===fC.pessoa_id)?.nome ?? payload.comprador ?? "";
+        const dataRef = fC.data_pagamento || fC.data_entrega || new Date().toISOString().split("T")[0];
         const { data: crRow } = await supabase.from("lancamentos").insert({
           fazenda_id: fazendaId,
           tipo: "receber",
-          descricao: `Venda de grãos — ${compradorNome} (Contrato ${salvo.numero ?? salvo.id.slice(-6)})`,
-          categoria: "Receita Grãos",
+          descricao: `Pedido de Venda — ${compradorNome} (Contrato ${salvo.numero ?? salvo.id.slice(-6)})`,
+          categoria: "Pedido de Venda — Grãos",
           data_lancamento: new Date().toISOString().split("T")[0],
-          data_vencimento: fC.data_pagamento,
+          data_vencimento: dataRef,
           valor: valorTotal,
           moeda: fC.moeda,
-          status: "em_aberto",
+          status: "previsto",
           safra_id: fC.ciclo_id || null,
           ano_safra_id: fC.ano_safra_id || null,
-          observacao: `CR gerado automaticamente ao confirmar contrato`,
+          contrato_id: salvo.id,
+          pessoa_id: fC.pessoa_id || null,
+          observacao: `Pedido de Venda gerado ao confirmar contrato. Será reduzido conforme faturamento dos romaneios.`,
           auto: true,
         }).select("id").maybeSingle();
         if (crRow?.id) {
@@ -1009,7 +1013,7 @@ export default function Contratos() {
       // Busca saldo real do banco após o trigger atualizar entregue_sc e status
       const { data: cAtual } = await supabase
         .from("contratos")
-        .select("entregue_sc, status")
+        .select("entregue_sc, status, lancamento_cr_id, quantidade_sc, preco, moeda, pessoa_id, numero, ciclo_id, ano_safra_id")
         .eq("id", contratoSel.id)
         .single();
       setContratos(prev => prev.map(c => {
@@ -1018,6 +1022,52 @@ export default function Contratos() {
         const novoSt  = cAtual?.status ?? (novoEnt >= (c.quantidade_sc ?? 0) ? "encerrado" : "parcial");
         return { ...c, entregue_sc: novoEnt, status: novoSt, romaneios: [...c.romaneios, criado] };
       }));
+      // ── CR de entrega (romaneio faturado) ────────────────────
+      // Cria CR "em_aberto" pelo valor desta entrega e reduz o CR "previsto" do contrato
+      if (!fRom.aplicarAdiant) {
+        const precoSel  = contratoSel.preco ?? cAtual?.preco ?? 0;
+        const moedaSel  = contratoSel.moeda ?? cAtual?.moeda ?? "BRL";
+        const scsFat    = sacasFat > 0 ? sacasFat : sacasCalc;
+        const valorEnt  = +(scsFat * precoSel).toFixed(2);
+        if (valorEnt > 0 && fazendaId) {
+          const compradorNome = pessoas.find(p=>p.id===(contratoSel.pessoa_id ?? cAtual?.pessoa_id))?.nome
+            ?? contratoSel.comprador.split(" ").slice(0,3).join(" ");
+          // 1. CR real para esta entrega
+          await supabase.from("lancamentos").insert({
+            fazenda_id: fazendaId,
+            tipo: "receber",
+            descricao: `Receita Grãos — ${compradorNome} (${criado.numero})`,
+            categoria: "Receita Grãos",
+            data_lancamento: TODAY,
+            data_vencimento: contratoSel.data_pagamento ?? TODAY,
+            valor: valorEnt,
+            moeda: moedaSel,
+            status: "em_aberto",
+            safra_id: cAtual?.ciclo_id ?? contratoSel.ciclo_id ?? null,
+            ano_safra_id: cAtual?.ano_safra_id ?? contratoSel.ano_safra_id ?? null,
+            contrato_id: contratoSel.id,
+            romaneio_id: criado.id,
+            pessoa_id: contratoSel.pessoa_id ?? null,
+            observacao: `Faturamento de romaneio ${criado.numero} · ${scsFat.toFixed(3)} sc`,
+            auto: true,
+          });
+          // 2. Reduz o CR "previsto" do contrato pelo mesmo valor
+          const crPrevId = contratoSel.lancamento_cr_id ?? cAtual?.lancamento_cr_id;
+          if (crPrevId) {
+            const { data: crPrev } = await supabase
+              .from("lancamentos")
+              .select("valor, status")
+              .eq("id", crPrevId)
+              .maybeSingle();
+            if (crPrev && crPrev.status === "previsto") {
+              const novoValor = Math.max(0, +(crPrev.valor - valorEnt).toFixed(2));
+              await supabase.from("lancamentos")
+                .update({ valor: novoValor, status: novoValor <= 0 ? "cancelado" : "previsto" })
+                .eq("id", crPrevId);
+            }
+          }
+        }
+      }
       // ── aplicar adiantamento se selecionado ──────────────────
       if (fRom.aplicarAdiant && fRom.adiantValor) {
         const valorEntrega  = sacasCalc * (contratoSel.preco ?? 0);

@@ -16,7 +16,7 @@ interface ContaBancariaMin { id: string; nome: string; banco?: string; agencia?:
 
 // ── Tipos ────────────────────────────────────────────────────
 type Moeda  = "BRL" | "USD" | "barter";
-type Filtro = "aberto" | "vencido" | "baixado" | "barter" | "previsao" | "todos";
+type Filtro = "aberto" | "vencido" | "baixado" | "barter" | "previsao" | "pedidos" | "todos";
 
 // ── Constantes ────────────────────────────────────────────────
 const TODAY       = new Date().toISOString().split("T")[0];
@@ -103,11 +103,13 @@ const desmascarar = (s: string) => Number(s.replace(/\./g, "").replace(",", ".")
 const numParaMascara = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const dotStatus = (s: string) => ({
+  previsto:  { cor: "#8B80D1", title: "Pedido de Venda (previsão)" },
   em_aberto: { cor: "#378ADD", title: "Em aberto"  },
   vencido:   { cor: "#E24B4A", title: "Vencido"    },
   vencendo:  { cor: "#EF9F27", title: "Vencendo"   },
   parcial:   { cor: "#C9921B", title: "Parcial"    },
   baixado:   { cor: "#16A34A", title: "Recebido"   },
+  cancelado: { cor: "#AAAAAA", title: "Cancelado"  },
 }[s] ?? { cor: "var(--text-3)", title: s });
 
 // ── Estilos ───────────────────────────────────────────────────
@@ -321,6 +323,7 @@ export default function ContasReceber() {
   // ── Status efetivo: corrige em_aberto com data passada ──
   const statusEfetivo = (l: Lancamento): string => {
     if (l.status === "baixado" || l.status === "parcial") return l.status;
+    if (l.status === "previsto" || l.status === "cancelado") return l.status;
     if (l.natureza === "previsao") return l.status;
     const venc = l.data_vencimento ?? "";
     if (venc && venc < TODAY) return "vencido";
@@ -329,14 +332,15 @@ export default function ContasReceber() {
   };
 
   const lancOper     = lancamentos.filter(l => l.moeda !== "barter" && (l.natureza ?? "real") === "real");
-  const totalAberto  = lancOper.filter(l => statusEfetivo(l) !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
-  const qAberto      = lancOper.filter(l => statusEfetivo(l) !== "baixado").length;
+  const lancOpReal   = lancOper.filter(l => statusEfetivo(l) !== "previsto" && statusEfetivo(l) !== "cancelado");
+  const totalAberto  = lancOpReal.filter(l => statusEfetivo(l) !== "baixado").reduce((a, l) => a + paraBRL(l), 0);
+  const qAberto      = lancOpReal.filter(l => statusEfetivo(l) !== "baixado").length;
   const qVencido     = lancamentos.filter(l => statusEfetivo(l) === "vencido").length;
   const qVencendo    = lancamentos.filter(l => statusEfetivo(l) === "vencendo").length;
 
   const d30 = new Date(TODAY); d30.setDate(d30.getDate() + 30);
   const d30Key = d30.toISOString().split("T")[0];
-  const aVencer30 = lancOper.filter(l => statusEfetivo(l) !== "baixado" && (l.data_vencimento ?? "") <= d30Key)
+  const aVencer30 = lancOpReal.filter(l => statusEfetivo(l) !== "baixado" && (l.data_vencimento ?? "") <= d30Key)
                       .reduce((a, l) => a + paraBRL(l), 0);
 
   const mesAtual       = TODAY.slice(0, 7);
@@ -355,10 +359,11 @@ export default function ContasReceber() {
     let arr = lancamentos.filter(l => {
       const isReal = (l.natureza ?? "real") === "real";
       const sEfet  = statusEfetivo(l);
-      if (filtro === "aberto")   return isReal && sEfet !== "baixado" && l.moeda !== "barter";
+      if (filtro === "aberto")   return isReal && sEfet !== "baixado" && sEfet !== "cancelado" && sEfet !== "previsto" && l.moeda !== "barter";
       if (filtro === "vencido")  return isReal && (sEfet === "vencido" || sEfet === "vencendo");
       if (filtro === "baixado")  return isReal && sEfet === "baixado";
       if (filtro === "barter")   return isReal && l.moeda === "barter";
+      if (filtro === "pedidos")  return isReal && sEfet === "previsto";
       if (filtro === "previsao") return l.natureza === "previsao";
       return true;
     });
@@ -723,12 +728,13 @@ export default function ContasReceber() {
               {/* Tabs de status */}
               <div style={{ padding: "10px 16px", borderBottom: "0.5px solid var(--border-table)", display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", background: "var(--bg-nav)" }}>
                 {([
-                  { key: "aberto",   label: "Em aberto",  count: lancOper.filter(l => statusEfetivo(l) !== "baixado").length,                                     cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",   activeBorder: "rgba(34,197,94,0.35)"  },
-                  { key: "vencido",  label: "Vencidos",   count: qVencido + qVencendo,                                                                              cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",    activeBorder: "rgba(239,68,68,0.4)"   },
-                  { key: "baixado",  label: "Recebidos",  count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length,         cor: "#60A5FA", activeBg: "rgba(59,130,246,0.12)",  activeBorder: "rgba(59,130,246,0.35)" },
-                  { key: "barter",   label: "Barter",     count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,           cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)", activeBorder: "rgba(251,191,36,0.35)" },
-                  { key: "previsao", label: "Previsões",  count: lancamentos.filter(l => l.natureza === "previsao").length,                                          cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)", activeBorder: "rgba(129,140,248,0.35)" },
-                  { key: "todos",    label: "Todos",      count: lancamentos.length,                                                                                 cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
+                  { key: "aberto",   label: "Em aberto",       count: lancOpReal.filter(l => statusEfetivo(l) !== "baixado").length,                             cor: "#22C55E", activeBg: "rgba(34,197,94,0.12)",    activeBorder: "rgba(34,197,94,0.35)"   },
+                  { key: "pedidos",  label: "Pedidos de Venda", count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "previsto").length, cor: "#8B80D1", activeBg: "rgba(139,128,209,0.12)", activeBorder: "rgba(139,128,209,0.35)" },
+                  { key: "vencido",  label: "Vencidos",         count: qVencido + qVencendo,                                                                          cor: "#EF4444", activeBg: "rgba(239,68,68,0.15)",    activeBorder: "rgba(239,68,68,0.4)"    },
+                  { key: "baixado",  label: "Recebidos",        count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.status === "baixado").length,   cor: "#60A5FA", activeBg: "rgba(59,130,246,0.12)",   activeBorder: "rgba(59,130,246,0.35)"  },
+                  { key: "barter",   label: "Barter",           count: lancamentos.filter(l => (l.natureza ?? "real") === "real" && l.moeda === "barter").length,     cor: "#FBBF24", activeBg: "rgba(251,191,36,0.12)",   activeBorder: "rgba(251,191,36,0.35)"  },
+                  { key: "previsao", label: "Previsões",        count: lancamentos.filter(l => l.natureza === "previsao").length,                                    cor: "#818CF8", activeBg: "rgba(129,140,248,0.12)",  activeBorder: "rgba(129,140,248,0.35)" },
+                  { key: "todos",    label: "Todos",            count: lancamentos.length,                                                                           cor: "var(--text-2)", activeBg: "var(--border)", activeBorder: "var(--border)"  },
                 ] as { key: Filtro; label: string; count: number; cor: string; activeBg: string; activeBorder: string }[]).map(f => (
                   <button key={f.key} className="cr-tab" onClick={() => setFiltro(f.key)}
                     style={{ padding: "5px 12px", borderRadius: 20, border: `0.5px solid ${filtro === f.key ? f.activeBorder : "var(--border)"}`, background: filtro === f.key ? f.activeBg : "transparent", color: filtro === f.key ? f.cor : "var(--text-3)", fontWeight: filtro === f.key ? 700 : 400, fontSize: 12, cursor: "pointer" }}>

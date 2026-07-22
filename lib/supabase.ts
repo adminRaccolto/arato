@@ -223,7 +223,7 @@ export type Lancamento = {
   data_prorrogacao?: string;
   valor: number;
   valor_pago?: number;
-  status: "em_aberto" | "vencido" | "vencendo" | "parcial" | "baixado";
+  status: "previsto" | "em_aberto" | "vencido" | "vencendo" | "parcial" | "baixado" | "cancelado";
   auto: boolean;
   // Parcelamento
   num_parcela?: number;
@@ -274,6 +274,9 @@ export type Lancamento = {
   tipo_mao_obra?: string;             // CLT | Temporário | Empreitada | Terceirizado
   unidade_mao_obra?: string;          // Hora | Dia | Ha | Sc | Tarefa
   quantidade_mao_obra?: number;       // qtd na unidade escolhida
+  // Venda de grãos — rastreio do CR por contrato/romaneio
+  contrato_id?: string;               // FK contratos.id — CR de pedido de venda ou entrega
+  romaneio_id?: string;               // FK romaneios.id — CR gerado por romaneio/faturamento
   created_at?: string;
 };
 
