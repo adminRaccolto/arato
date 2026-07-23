@@ -630,7 +630,17 @@ export default function ContratosFinanceiros() {
     if (!contratoModal?.id) return;
     const id = contratoModal.id;
     if (abaModal === "liberacao")  listarParcelasLiberacao(id).then(setParcelasLiberacao).catch(() => {});
-    if (abaModal === "pagamento")  listarParcelasPagamento(id).then(setParcelasPagamento).catch(() => {});
+    if (abaModal === "pagamento") listarParcelasPagamento(id).then(p => {
+      setParcelasPagamento(p);
+      // Auto-preenche calculadora a partir das parcelas existentes
+      if (p.length > 0 && p[0].data_vencimento) {
+        setFCalc(prev => ({
+          ...prev,
+          nParcelas: String(p.length),
+          dataPrimeiro: prev.dataPrimeiro || p[0].data_vencimento,
+        }));
+      }
+    }).catch(() => {});
     if (abaModal === "garantias") {
       listarGarantias(id).then(setGarantias).catch(() => {});
       listarMatriculas(fazendaId!).then(setMatriculas).catch(() => {});
@@ -2024,6 +2034,26 @@ export default function ContratosFinanceiros() {
               {/* ── Pagamento ── */}
               {abaModal === "pagamento" && (!contratoModal ? <AbaDisabled nome="Pagamento" /> : (
                 <div>
+                  {/* Banner: principal utilizado no cálculo */}
+                  <div style={{ background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ color: "#1D4ED8", fontWeight: 600 }}>Principal da captação:</span>
+                    <span style={{ fontWeight: 700, color: "var(--text-1)", fontSize: 13 }}>
+                      {contratoModal.moeda === "USD"
+                        ? `US$ ${fmtNum(contratoModal.valor_financiado)}${ptax ? ` ≈ ${fmtBRL(contratoModal.valor_financiado * ptax)}` : ""}`
+                        : fmtBRL(contratoModal.valor_financiado)}
+                    </span>
+                    <span style={{ color: "var(--text-3)", fontSize: 11 }}>
+                      · {contratoModal.taxa_juros_aa ? `${fmtNum(contratoModal.taxa_juros_aa, 4)}% a.a.` : ""}
+                      {contratoModal.periodicidade_meses ? ` · Periodicidade: ${{ 1: "mensal", 3: "trimestral", 6: "semestral", 12: "anual" }[contratoModal.periodicidade_meses] ?? `${contratoModal.periodicidade_meses}m`}` : ""}
+                      {(contratoModal.carencia_meses ?? 0) > 0 ? ` · Carência: ${contratoModal.carencia_meses}m` : ""}
+                    </span>
+                  </div>
+                  {/* Aviso quando parcelas estão zeradas */}
+                  {parcelasPagamento.length > 0 && parcelasPagamento.every(p => !p.valor_parcela || p.valor_parcela === 0) && !(parcelasIAPdf?.length) && (
+                    <div style={{ background: "#FEF9C3", border: "0.5px solid #EAB308", borderRadius: 8, padding: "8px 14px", marginBottom: 12, fontSize: 12, color: "#854D0E" }}>
+                      ⚠ As parcelas estão zeradas (salvas sem valor). Clique em <strong>Calcular e Salvar Parcelas</strong> para recalcular com base no principal acima.
+                    </div>
+                  )}
                   <div style={{ background: "var(--bg-page)", border: "0.5px solid var(--border-table)", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)", marginBottom: 10 }}>Calcular tabela — {{ sac: "SAC Decrescente", sac_crescente: "SAC Crescente (SACRE)", price: "PRICE", outros: "Outros" }[contratoModal.tipo_calculo ?? "sac"] ?? "SAC Decrescente"}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, alignItems: "end" }}>
