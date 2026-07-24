@@ -8043,3 +8043,19 @@ ALTER TABLE perfis ADD CONSTRAINT perfis_role_check
   CHECK (role IN ('client', 'raccotlo', 'raccotlo_gestor', 'raccotlo_seletor', 'raccotlo_operacional', 'admin'));
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 84: Controle de acesso por cliente para usuários Raccoltо ───────────
+-- Mapeamento opcional de usuários Raccoltо para contas específicas.
+-- Sem linhas = sem restrição (vê todos os clientes).
+-- Com linhas = vê apenas as contas listadas.
+CREATE TABLE IF NOT EXISTS raccotlo_usuario_contas (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  conta_id   uuid NOT NULL REFERENCES contas(id) ON DELETE CASCADE,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, conta_id)
+);
+
+-- Sem RLS: acessado exclusivamente via service_role_key nas API routes de admin.
+
+NOTIFY pgrst, 'reload schema';

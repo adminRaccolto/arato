@@ -17,17 +17,39 @@ export async function GET(req: Request) {
   if (authErr || !user) return NextResponse.json({ error: "Token inválido" }, { status: 401 });
 
   const isRaccoltoEmail = (user.email ?? "").toLowerCase().endsWith("@raccolto.com.br");
+  let isSuperadmin = isRaccoltoEmail;
+  let permittedContaIds: string[] | null = null; // null = sem restrição
+
   if (!isRaccoltoEmail) {
     const { data: perfil } = await sb.from("perfis").select("role").eq("user_id", user.id).single();
-    if (perfil?.role !== "raccotlo") return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    const raccotloRoles = ["raccotlo", "raccotlo_gestor", "raccotlo_seletor", "raccotlo_operacional"];
+    if (!raccotloRoles.includes(perfil?.role ?? "")) return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    isSuperadmin = perfil?.role === "raccotlo";
+  }
+
+  // Verifica restrição por conta para usuários não-superadmin
+  if (!isSuperadmin) {
+    const { data: permRows } = await sb
+      .from("raccotlo_usuario_contas")
+      .select("conta_id")
+      .eq("user_id", user.id);
+    if (permRows && permRows.length > 0) {
+      permittedContaIds = permRows.map((r: { conta_id: string }) => r.conta_id);
+    }
   }
 
   // Busca fazendas com raccolto_acesso=true, já com conta e produtor
-  const { data: faz, error } = await sb
+  let fazQuery = sb
     .from("fazendas")
     .select("id, nome, municipio, estado, area_total_ha, conta_id, produtor_id")
     .eq("raccolto_acesso", true)
     .order("nome");
+
+  if (permittedContaIds !== null) {
+    fazQuery = fazQuery.in("conta_id", permittedContaIds);
+  }
+
+  const { data: faz, error } = await fazQuery;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

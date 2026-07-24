@@ -477,6 +477,42 @@ export default function AdminUsuarios() {
     setUsuarios(prev => prev.filter(u => u.id !== id));
   };
 
+  // ── Clientes por usuário Raccoltо ──────────────────────────────────────────
+  const [modalClientes, setModalClientes] = useState<Usuario | null>(null);
+  const [contasDisponiveis, setContasDisponiveis] = useState<{id: string; nome: string}[]>([]);
+  const [contasSelecionadas, setContasSelecionadas] = useState<Set<string>>(new Set());
+  const [salvandoClientes, setSalvandoClientes] = useState(false);
+
+  const abrirModalClientes = async (u: Usuario) => {
+    setModalClientes(u);
+    setContasDisponiveis([]);
+    setContasSelecionadas(new Set());
+    setSalvandoClientes(false);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
+    const [listaRes, permRes] = await Promise.all([
+      fetch("/api/fazenda/listar-clientes", { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+      fetch(`/api/admin/raccotlo-clientes?user_id=${u.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+    ]);
+    const contas = (listaRes.clientes ?? []).map((c: any) => ({ id: c.conta_id, nome: c.produtor_nome ?? c.conta_nome }));
+    setContasDisponiveis(contas);
+    setContasSelecionadas(new Set(permRes.conta_ids ?? []));
+  };
+
+  const salvarClientes = async () => {
+    if (!modalClientes) return;
+    setSalvandoClientes(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? "";
+    await fetch("/api/admin/raccotlo-clientes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ user_id: modalClientes.id, conta_ids: Array.from(contasSelecionadas) }),
+    });
+    setSalvandoClientes(false);
+    setModalClientes(null);
+  };
+
   // ── Resumo de permissões para card ──
   const resumoPerms = (g: GrupoUsuario) => {
     const perms = permFromGrupo(g);
@@ -604,6 +640,12 @@ export default function AdminUsuarios() {
                           </td>
                           <td style={{ padding: "11px 16px", textAlign: "right" }}>
                             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                              {hub !== "raccotlo" && hub !== null && (
+                                <button onClick={() => abrirModalClientes(u)}
+                                  style={{ padding: "4px 12px", background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 6, fontSize: 11, color: "#378ADD", cursor: "pointer", fontWeight: 600 }}>
+                                  Clientes
+                                </button>
+                              )}
                               <button onClick={() => abrirModalUser(u)}
                                 style={{ padding: "4px 12px", background: "var(--bg-tag)", border: "0.5px solid var(--border-table)", borderRadius: 6, fontSize: 11, color: "#1A4870", cursor: "pointer", fontWeight: 600 }}>
                                 Editar
@@ -626,6 +668,61 @@ export default function AdminUsuarios() {
           </div>
         </div>
       </main>
+
+      {/* ── Modal Clientes ── */}
+      {modalClientes && (
+        <Modal titulo={`Acesso a Clientes — ${modalClientes.nome}`} onClose={() => setModalClientes(null)} width={540}>
+          <div>
+            <div style={{ marginBottom: 14, padding: "10px 14px", background: "#EFF6FF", border: "0.5px solid #93C5FD", borderRadius: 8, fontSize: 12, color: "#1A4870" }}>
+              <strong>Sem seleção:</strong> o usuário vê todos os clientes disponíveis no seletor.
+              Marque contas específicas para restringir o acesso.
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+                {contasSelecionadas.size === 0
+                  ? "Acesso a todos os clientes"
+                  : `${contasSelecionadas.size} de ${contasDisponiveis.length} cliente${contasDisponiveis.length !== 1 ? "s" : ""} selecionado${contasSelecionadas.size !== 1 ? "s" : ""}`}
+              </span>
+              {contasSelecionadas.size > 0 && (
+                <button
+                  onClick={() => setContasSelecionadas(new Set())}
+                  style={{ background: "none", border: "none", fontSize: 11, color: "#E24B4A", cursor: "pointer", fontWeight: 600 }}>
+                  Limpar seleção
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, maxHeight: 300, overflowY: "auto", marginBottom: 16, padding: "2px 0" }}>
+              {contasDisponiveis.length === 0 && (
+                <div style={{ textAlign: "center", padding: 24, color: "var(--text-3)", fontSize: 12 }}>Carregando clientes…</div>
+              )}
+              {contasDisponiveis.map(c => {
+                const sel = contasSelecionadas.has(c.id);
+                return (
+                  <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, background: sel ? "#EFF6FF" : "var(--bg-page)", border: `0.5px solid ${sel ? "#93C5FD" : "var(--border-table)"}`, cursor: "pointer" }}>
+                    <input type="checkbox" checked={sel} onChange={() => {
+                      setContasSelecionadas(prev => {
+                        const next = new Set(prev);
+                        if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                        return next;
+                      });
+                    }} style={{ accentColor: "#378ADD", width: 14, height: 14 }} />
+                    <span style={{ fontSize: 13, color: "var(--text-1)", fontWeight: sel ? 600 : 400 }}>{c.nome}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button style={btnR} onClick={() => setModalClientes(null)}>Cancelar</button>
+              <button style={{ ...btnV, opacity: salvandoClientes ? 0.6 : 1 }} disabled={salvandoClientes} onClick={salvarClientes}>
+                {salvandoClientes ? "Salvando…" : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* ── Modal Usuário ── */}
       {modalUser && (

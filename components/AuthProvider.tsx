@@ -247,7 +247,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           const pathname = typeof window !== "undefined" ? window.location.pathname : "";
           const rotasLivres = ["/raccotlo", "/seletor-cliente", "/admin"];
           if (!rotasLivres.some(r => pathname.startsWith(r))) {
-            router.push("/raccotlo");
+            router.push(role === "raccotlo_seletor" ? "/seletor-cliente" : "/raccotlo");
           }
         }
         // raccotlo não tem restrições de módulo

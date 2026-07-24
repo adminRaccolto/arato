@@ -28,7 +28,7 @@ function initiais(s: string) {
 }
 
 export default function SeletorCliente() {
-  const { userRole, selectFazenda } = useAuth();
+  const { userRole, selectFazenda, raccotloGestor } = useAuth();
   const router = useRouter();
   const [clientes,  setClientes]  = useState<ClienteItem[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -54,7 +54,8 @@ export default function SeletorCliente() {
 
   useEffect(() => {
     if (userRole === null) return;
-    if (userRole !== "raccotlo") { router.push("/"); return; }
+    const isRaccotloAny = ["raccotlo","raccotlo_gestor","raccotlo_seletor","raccotlo_operacional"].includes(userRole ?? "");
+    if (!isRaccotloAny) { router.push("/"); return; }
     carregarClientes();
   }, [userRole, router]);
 
@@ -97,12 +98,14 @@ export default function SeletorCliente() {
           <span style={{ fontSize: 13, color: "var(--text-3)" }}>Acesso interno Raccolto</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => router.push("/admin/clientes")}
-            style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600 }}
-          >
-            Gestão Arato →
-          </button>
+          {raccotloGestor && (
+            <button
+              onClick={() => router.push("/admin/clientes")}
+              style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "#1A4870", fontWeight: 600 }}
+            >
+              Gestão Arato →
+            </button>
+          )}
           <button
             onClick={() => supabase.auth.signOut()}
             style={{ background: "none", border: "0.5px solid var(--border-table)", borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: "var(--text-2)" }}
