@@ -8011,51 +8011,35 @@ ALTER TABLE contratos
 
 NOTIFY pgrst, 'reload schema';
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- Seção 80 — Fluxo CR por Contrato de Venda de Grãos (Pedido de Venda)
--- Execute: Supabase SQL Editor
--- ═══════════════════════════════════════════════════════════════════════════════
--- Adiciona colunas de rastreio em lancamentos para contratos de venda de grãos
-ALTER TABLE lancamentos
-  ADD COLUMN IF NOT EXISTS contrato_id  UUID REFERENCES contratos(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS romaneio_id  UUID REFERENCES romaneios(id) ON DELETE SET NULL;
+  -- ═══════════════════════════════════════════════════════════════════════════════
+  -- Seção 80 — Fluxo CR por Contrato de Venda de Grãos (Pedido de Venda)
+  -- Execute: Supabase SQL Editor
+  -- ═══════════════════════════════════════════════════════════════════════════════
+  -- Adiciona colunas de rastreio em lancamentos para contratos de venda de grãos
+  ALTER TABLE lancamentos
+    ADD COLUMN IF NOT EXISTS contrato_id  UUID REFERENCES contratos(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS romaneio_id  UUID REFERENCES romaneios(id) ON DELETE SET NULL;
 
--- Índices para consultas por contrato e romaneio
-CREATE INDEX IF NOT EXISTS idx_lancamentos_contrato_id ON lancamentos(contrato_id);
-CREATE INDEX IF NOT EXISTS idx_lancamentos_romaneio_id ON lancamentos(romaneio_id);
+  -- Índices para consultas por contrato e romaneio
+  CREATE INDEX IF NOT EXISTS idx_lancamentos_contrato_id ON lancamentos(contrato_id);
+  CREATE INDEX IF NOT EXISTS idx_lancamentos_romaneio_id ON lancamentos(romaneio_id);
 
--- Nota sobre status do campo:
--- status = 'previsto'  → CR "Pedido de Venda" criado ao confirmar contrato; entra no fluxo como previsão
--- status = 'cancelado' → CR previsto zerado quando todas as entregas forem faturadas
--- status = 'em_aberto' → CR real por romaneio faturado; reduz o previsto proporcionalmente
--- A constraint CHECK existente em lancamentos.status deve incluir 'previsto' e 'cancelado'.
--- Se houver CHECK constraint, executar:
--- ALTER TABLE lancamentos DROP CONSTRAINT IF EXISTS lancamentos_status_check;
--- ALTER TABLE lancamentos ADD CONSTRAINT lancamentos_status_check
---   CHECK (status IN ('previsto','em_aberto','vencido','vencendo','parcial','baixado','cancelado','liquidado'));
+  -- Nota sobre status do campo:
+  -- status = 'previsto'  → CR "Pedido de Venda" criado ao confirmar contrato; entra no fluxo como previsão
+  -- status = 'cancelado' → CR previsto zerado quando todas as entregas forem faturadas
+  -- status = 'em_aberto' → CR real por romaneio faturado; reduz o previsto proporcionalmente
+  -- A constraint CHECK existente em lancamentos.status deve incluir 'previsto' e 'cancelado'.
+  -- Se houver CHECK constraint, executar:
+  -- ALTER TABLE lancamentos DROP CONSTRAINT IF EXISTS lancamentos_status_check;
+  -- ALTER TABLE lancamentos ADD CONSTRAINT lancamentos_status_check
+  --   CHECK (status IN ('previsto','em_aberto','vencido','vencendo','parcial','baixado','cancelado','liquidado'));
 
-NOTIFY pgrst, 'reload schema';
+  NOTIFY pgrst, 'reload schema';
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- Seção 81 — centro_custo_id em lancamentos (FK para centros_custo)
--- Execute: Supabase SQL Editor — URGENTE (NF de compras quebrando)
--- ═══════════════════════════════════════════════════════════════════════════════
-ALTER TABLE lancamentos
-  ADD COLUMN IF NOT EXISTS centro_custo_id UUID REFERENCES centros_custo(id) ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS idx_lancamentos_centro_custo_id ON lancamentos(centro_custo_id);
-
-NOTIFY pgrst, 'reload schema';
-
--- ═══════════════════════════════════════════════════════════════════════════════
--- Seção 82 — tipo_calculo: adiciona 'sac_crescente' ao CHECK constraint
--- Execute: Supabase SQL Editor
--- ═══════════════════════════════════════════════════════════════════════════════
-ALTER TABLE contratos_financeiros
-  DROP CONSTRAINT IF EXISTS contratos_financeiros_tipo_calculo_check;
-
-ALTER TABLE contratos_financeiros
-  ADD CONSTRAINT contratos_financeiros_tipo_calculo_check
-  CHECK (tipo_calculo IN ('sac', 'sac_crescente', 'price', 'outros'));
+-- ── Seção 83: Adiciona raccotlo_seletor à constraint de role em perfis ────────
+-- O role raccotlo_seletor já é usado nas RLS policies mas não estava na constraint CHECK.
+ALTER TABLE perfis DROP CONSTRAINT IF EXISTS perfis_role_check;
+ALTER TABLE perfis ADD CONSTRAINT perfis_role_check
+  CHECK (role IN ('client', 'raccotlo', 'raccotlo_gestor', 'raccotlo_seletor', 'raccotlo_operacional', 'admin'));
 
 NOTIFY pgrst, 'reload schema';
