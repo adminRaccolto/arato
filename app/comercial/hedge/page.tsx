@@ -153,7 +153,7 @@ export default function HedgePage() {
     if (!id || !fazId) return;
     setCarregando(true);
     const [{ data: curvasData }, { data: fixData }, { data: metasData }] = await Promise.all([
-      sb.from("curva_mercado").select("*").eq("fazenda_id", fazId).order("data_referencia", { ascending: false }).limit(500),
+      sb.from("curva_mercado").select("*").or(`fazenda_id.eq.${fazId},fazenda_id.is.null`).order("data_referencia", { ascending: false }).limit(500),
       sb.from("fixacoes_hedge").select("*").eq("fazenda_id", fazId).eq("ciclo_id", id),
       sb.from("comercializacao_metas").select("milestone,meta_pct,data_referencia").eq("ciclo_id", id),
     ]);
