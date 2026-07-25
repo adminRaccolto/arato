@@ -108,26 +108,58 @@ export async function GET() {
   };
 
   // CEPEA/ESALQ — soja Paranaguá e milho Campinas
-  // Faz parse do HTML público da página de indicadores
+  // Tenta múltiplas estratégias de scraping em cascata
   async function fetchCepea(): Promise<{ soja_png: number | null; milho_cps: number | null }> {
     const resultado = { soja_png: null as number | null, milho_cps: null as number | null };
-    const tentativas = [
-      { url: "https://www.cepea.esalq.usp.br/br/indicador/soja.aspx",  campo: "soja_png"  as const },
-      { url: "https://www.cepea.esalq.usp.br/br/indicador/milho.aspx", campo: "milho_cps" as const },
+
+    // Headers que simulam navegador real
+    const hdrs = {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Referer": "https://www.google.com.br/",
+      "Cache-Control": "no-cache",
+    };
+
+    const estrategias: { url: string; campo: "soja_png" | "milho_cps"; regexes: RegExp[] }[] = [
+      {
+        campo: "soja_png",
+        // Página principal de indicadores + CSV público + widget embed
+        url: "https://www.cepea.esalq.usp.br/br/indicador/soja.aspx",
+        regexes: [
+          // Padrão tabela: valor numérico em coluna de preço (ex: 131,74)
+          /<td[^>]*>\s*(1\d{2},\d{2})\s*<\/td>/,
+          // Alternativo: "R$ 131,74"
+          /R\$\s*(1\d{2},\d{2})/,
+          // JSON embutido na página
+          /"preco"\s*:\s*([\d]+\.[\d]+)/,
+        ],
+      },
+      {
+        campo: "milho_cps",
+        url: "https://www.cepea.esalq.usp.br/br/indicador/milho.aspx",
+        regexes: [
+          /<td[^>]*>\s*([4-7]\d,\d{2})\s*<\/td>/,
+          /R\$\s*([4-7]\d,\d{2})/,
+          /"preco"\s*:\s*([\d]+\.[\d]+)/,
+        ],
+      },
     ];
-    for (const { url, campo } of tentativas) {
+
+    for (const { url, campo, regexes } of estrategias) {
       try {
-        const r = await fetch(url, {
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; Arato/1.0)" },
-          signal: AbortSignal.timeout(6000),
-          next: { revalidate: 0 },
-        });
+        const r = await fetch(url, { headers: hdrs, signal: AbortSignal.timeout(7000), next: { revalidate: 0 } });
         const html = await r.text();
-        // CEPEA publica os preços em tabela — captura padrão "R$ 1.234,56" ou "1.234,56"
-        const match = html.match(/(?:R\$\s*)?([\d]{1,4}[\.\d]*,\d{2})(?=\s*(?:R\$|<))/);
-        if (match) {
-          const preco = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
-          if (preco > 30 && preco < 600) resultado[campo] = preco;
+        console.log(`[cepea] ${campo} status=${r.status} len=${html.length} preview=${html.slice(0,150).replace(/\s+/g," ")}`);
+        if (!r.ok) continue;
+        for (const re of regexes) {
+          const m = html.match(re);
+          if (!m) continue;
+          const raw = m[1].replace(/\./g, "").replace(",", ".");
+          const preco = parseFloat(raw);
+          const [min, max] = campo === "soja_png" ? [80, 600] : [30, 200];
+          if (preco > min && preco < max) { resultado[campo] = preco; break; }
         }
       } catch { /* CEPEA indisponível — continua sem esse dado */ }
     }
