@@ -8060,7 +8060,7 @@ CREATE TABLE IF NOT EXISTS raccotlo_usuario_contas (
 
 NOTIFY pgrst, 'reload schema';
 
--- ── Seção 85: Proteção de Margem & Hedge (Add-on) ─────────────────────────────
+-- Secao 85: Protecao de Margem e Hedge (Add-on) --
 
 -- Curva de mercado — bitemporal (data_referencia = a que dia o preço se refere,
 -- data_captura = quando entrou no sistema). Nunca sobrescrever, sempre nova linha.
