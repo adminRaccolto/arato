@@ -106,6 +106,11 @@ export default function HedgePage() {
   const [pFunrural, setPFunrural] = useState("true");
   const [pCultura, setPCultura]   = useState<"soja"|"milho">("soja");
 
+  // Precificador — bloco CME e rota
+  const [blocoVenc,  setBlocoVenc]  = useState("");  // ex: "X26"
+  const [rotaId,     setRotaId]     = useState("");  // id de estrutura_despesa_hedge
+  const [portoDest,  setPortoDest]  = useState("");  // ex: "Paranaguá (PNG)"
+
   // Sensibilidade
   const [sensiEixoX, setSensiEixoX] = useState<"cbot"|"cambio"|"premio">("cbot");
   const [sensiEixoY, setSensiEixoY] = useState<"cambio"|"cbot"|"frete">("cambio");
@@ -170,11 +175,56 @@ export default function HedgePage() {
     }
   }, [cicloId, ciclos, carregarCiclo]);
 
+  // Auto-fill CBOT quando bloco ou cultura mudam
+  useEffect(() => {
+    if (!blocoVenc || !curvas.length) return;
+    const inst = `CBOT_${pCultura.toUpperCase()}`;
+    const encontrado = [...curvas]
+      .filter(c => c.instrumento === inst && c.vencimento === blocoVenc)
+      .sort((a, b) => b.data_referencia.localeCompare(a.data_referencia))[0];
+    if (encontrado) setPCbot(String(encontrado.valor));
+  }, [blocoVenc, curvas, pCultura]);
+
+  // Auto-fill frete + porto quando rota muda
+  useEffect(() => {
+    if (!rotaId) { setPortoDest(""); return; }
+    const rota = despesas.find(d => d.id === rotaId);
+    if (!rota) return;
+    setPFrete(String(rota.valor_brl_sc));
+    setPortoDest(rota.destino ?? "");
+  }, [rotaId, despesas]);
+
+  // ─── Gerador de blocos CME ───────────────────────────────────────────────
+  function gerarBlocos(cult: "soja"|"milho") {
+    const SOJA  : Record<number,string> = { 1:"F", 3:"H", 5:"K", 7:"N", 8:"Q", 9:"U", 11:"X" };
+    const MILHO : Record<number,string> = { 3:"H", 5:"K", 7:"N", 9:"U", 12:"Z" };
+    const map = cult === "milho" ? MILHO : SOJA;
+    const now = new Date();
+    const res: { code: string; label: string }[] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i <= 20; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const mes = d.getMonth() + 1;
+      const letra = map[mes];
+      if (!letra) continue;
+      const code = `${letra}${String(d.getFullYear()).slice(-2)}`;
+      if (seen.has(code)) continue;
+      seen.add(code);
+      const nomeMes = d.toLocaleString("pt-BR", { month: "short" });
+      res.push({ code, label: `${code} — ${nomeMes.toUpperCase()}/${d.getFullYear()}` });
+    }
+    return res;
+  }
+
   // ─── Cálculos centrais ────────────────────────────────────────────────────
   function calcPreco(cbot: number, premio: number, cambio: number, frete: number, funrural: boolean, cultura: "soja"|"milho") {
     const fator = cultura === "milho" ? FATOR_MILHO : FATOR_SOJA;
     const precPorto = (cbot + premio) / 100 * fator * cambio;  // ¢/bu → USD/bu, × fator → USD/sc, × câmbio → R$/sc
-    const despOriginacao = despesas.filter(d => (!d.cultura || d.cultura === cultura) && d.tipo !== "frete").reduce((s, d) => s + d.valor_brl_sc, 0) || 6.5;
+    const despOriginacao = despesas.filter(d =>
+      (!d.cultura || d.cultura === cultura) &&
+      d.tipo !== "frete" &&
+      (!portoDest || !d.destino || d.destino === portoDest)
+    ).reduce((s, d) => s + d.valor_brl_sc, 0) || 6.5;
     const precLiquido    = precPorto - frete - despOriginacao;
     const descFunrural   = funrural ? precLiquido * (FUNRURAL_PF + SENAR) : 0;
     const precLiqFinal   = precLiquido - descFunrural;
@@ -243,7 +293,7 @@ export default function HedgePage() {
   // Inverter: precoAlvo = (cbot+premio)/100 * fator * cambio - frete - desp - funrural*(precoAlvo - frete - desp)
   // Simplificado: cbot necessário
   const fator = pCultura === "milho" ? FATOR_MILHO : FATOR_SOJA;
-  const despOrig = despesas.filter(d => (!d.cultura || d.cultura === pCultura) && d.tipo !== "frete").reduce((s,d) => s + d.valor_brl_sc, 0) || 6.5;
+  const despOrig = despesas.filter(d => (!d.cultura || d.cultura === pCultura) && d.tipo !== "frete" && (!portoDest || !d.destino || d.destino === portoDest)).reduce((s,d) => s + d.valor_brl_sc, 0) || 6.5;
   const precAlvoLiq = funr ? precoAlvo / (1 - FUNRURAL_PF - SENAR) : precoAlvo;
   const cbotNecessario  = ((precAlvoLiq + frete_n + despOrig) / (cambio_n * fator)) * 100 - premio_n;
   const cambioNecessario = ((precAlvoLiq + frete_n + despOrig) / ((cbot_n + premio_n) / 100 * fator));
@@ -494,11 +544,68 @@ export default function HedgePage() {
                 </div>
               </div>
 
+              {/* Bloco de vencimento CME */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={lbl}>Bloco / Vencimento CME</label>
+                <select style={inp} value={blocoVenc} onChange={e => setBlocoVenc(e.target.value)}>
+                  <option value="">— Manual (sem auto-fill CBOT) —</option>
+                  {gerarBlocos(pCultura).map(b => <option key={b.code} value={b.code}>{b.label}</option>)}
+                </select>
+                {blocoVenc && (
+                  <div style={{ fontSize: 10, marginTop: 2, color: curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoVenc) ? "#16A34A" : "#888" }}>
+                    {curvas.some(c => c.instrumento === `CBOT_${pCultura.toUpperCase()}` && c.vencimento === blocoVenc)
+                      ? `Cotação do histórico preenchida automaticamente`
+                      : `Sem histórico para ${blocoVenc} — insira CBOT manualmente`}
+                  </div>
+                )}
+              </div>
+
+              {/* Rota / Região */}
+              {(() => {
+                const rotas = despesas.filter(d => d.tipo === "frete" && (!d.cultura || d.cultura === pCultura));
+                if (!rotas.length) return (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: "#888", background: "#F4F6FA", padding: "6px 10px", borderRadius: 6 }}>
+                      Nenhuma rota cadastrada. Adicione em <strong>Despesas</strong> com tipo = frete.
+                    </div>
+                  </div>
+                );
+                return (
+                  <div style={{ marginBottom: 10 }}>
+                    <label style={lbl}>Rota / Região</label>
+                    <select style={inp} value={rotaId} onChange={e => setRotaId(e.target.value)}>
+                      <option value="">— Manual (sem auto-fill frete) —</option>
+                      {rotas.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.descricao}{r.destino ? ` → ${r.destino}` : ""} — R$ {r.valor_brl_sc.toFixed(2)}/sc
+                        </option>
+                      ))}
+                    </select>
+                    {portoDest && <div style={{ fontSize: 10, color: "#16A34A", marginTop: 2 }}>Porto: {portoDest} · frete e despesas preenchidos automaticamente</div>}
+                  </div>
+                );
+              })()}
+
+              <div style={{ borderBottom: "0.5px solid var(--border-table,#DDE2EE)", margin: "4px 0 12px" }} />
+
+              {/* 4 Pernas */}
               {[
-                { id:"cbot",   label:"BOARD — CBOT Futuro (¢/bu)", val:pCbot,   set:setPCbot,   step:"10",  hint: precoAoVivo ? `Spot hoje: ${(precoAoVivo.cbot_soja).toFixed(0)} ¢` : "" },
-                { id:"premio", label:"PRÊMIO — Base Paranaguá (¢/bu)", val:pPremio, set:setPPremio, step:"1",   hint:"Negativo = desconto. Entrada manual ou boletim." },
-                { id:"cambio", label:"CÂMBIO — USD/BRL", val:pCambio, set:setPCambio, step:"0.05", hint: precoAoVivo ? `PTAX hoje: ${precoAoVivo.usd_brl.toFixed(4)}` : "" },
-                { id:"frete",  label:"FRETE — Fazenda → Porto (R$/sc)", val:pFrete,  set:setPFrete,  step:"1",   hint:"Rota ativa: Sorriso → Paranaguá" },
+                { id:"cbot",   label:"BOARD — CBOT Futuro (¢/bu)",
+                  val:pCbot,   set:setPCbot,   step:"10",
+                  hint: blocoVenc
+                    ? `Bloco ${blocoVenc}${precoAoVivo ? ` · Spot: ${precoAoVivo.cbot_soja.toFixed(0)} ¢` : ""}`
+                    : precoAoVivo ? `Spot hoje: ${precoAoVivo.cbot_soja.toFixed(0)} ¢` : "" },
+                { id:"premio", label:`PRÊMIO — Base ${portoDest || "Paranaguá"} (¢/bu)`,
+                  val:pPremio, set:setPPremio, step:"1",
+                  hint:"Negativo = desconto. Entrada manual ou boletim." },
+                { id:"cambio", label:"CÂMBIO — USD/BRL",
+                  val:pCambio, set:setPCambio, step:"0.05",
+                  hint: precoAoVivo ? `PTAX hoje: ${precoAoVivo.usd_brl.toFixed(4)}` : "" },
+                { id:"frete",  label:"FRETE — Fazenda → Porto (R$/sc)",
+                  val:pFrete,  set:setPFrete,  step:"1",
+                  hint: rotaId
+                    ? `${despesas.find(d => d.id === rotaId)?.descricao ?? "Rota"} → ${portoDest}`
+                    : "Selecione uma rota acima ou insira manualmente" },
               ].map(f => (
                 <div key={f.id} style={{ marginBottom: 10 }}>
                   <label style={lbl}>{f.label}</label>
