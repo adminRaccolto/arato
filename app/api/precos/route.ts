@@ -107,63 +107,23 @@ export async function GET() {
     erro:             "Usando valores de fallback",
   };
 
-  // CEPEA/ESALQ — soja Paranaguá e milho Campinas
-  // Tenta múltiplas estratégias de scraping em cascata
-  async function fetchCepea(): Promise<{ soja_png: number | null; milho_cps: number | null }> {
-    const resultado = { soja_png: null as number | null, milho_cps: null as number | null };
-
-    // Headers que simulam navegador real
-    const hdrs = {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-      "Accept-Encoding": "gzip, deflate, br",
-      "Referer": "https://www.google.com.br/",
-      "Cache-Control": "no-cache",
-    };
-
-    const estrategias: { url: string; campo: "soja_png" | "milho_cps"; regexes: RegExp[] }[] = [
-      {
-        campo: "soja_png",
-        // Página principal de indicadores + CSV público + widget embed
-        url: "https://www.cepea.esalq.usp.br/br/indicador/soja.aspx",
-        regexes: [
-          // Padrão tabela: valor numérico em coluna de preço (ex: 131,74)
-          /<td[^>]*>\s*(1\d{2},\d{2})\s*<\/td>/,
-          // Alternativo: "R$ 131,74"
-          /R\$\s*(1\d{2},\d{2})/,
-          // JSON embutido na página
-          /"preco"\s*:\s*([\d]+\.[\d]+)/,
-        ],
-      },
-      {
-        campo: "milho_cps",
-        url: "https://www.cepea.esalq.usp.br/br/indicador/milho.aspx",
-        regexes: [
-          /<td[^>]*>\s*([4-7]\d,\d{2})\s*<\/td>/,
-          /R\$\s*([4-7]\d,\d{2})/,
-          /"preco"\s*:\s*([\d]+\.[\d]+)/,
-        ],
-      },
-    ];
-
-    for (const { url, campo, regexes } of estrategias) {
-      try {
-        const r = await fetch(url, { headers: hdrs, signal: AbortSignal.timeout(7000), next: { revalidate: 0 } });
-        const html = await r.text();
-        console.log(`[cepea] ${campo} status=${r.status} len=${html.length} preview=${html.slice(0,150).replace(/\s+/g," ")}`);
-        if (!r.ok) continue;
-        for (const re of regexes) {
-          const m = html.match(re);
-          if (!m) continue;
-          const raw = m[1].replace(/\./g, "").replace(",", ".");
-          const preco = parseFloat(raw);
-          const [min, max] = campo === "soja_png" ? [80, 600] : [30, 200];
-          if (preco > min && preco < max) { resultado[campo] = preco; break; }
-        }
-      } catch { /* CEPEA indisponível — continua sem esse dado */ }
-    }
-    return resultado;
+  // CEPEA/ESALQ — lê do banco (populado pelo cron diário /api/cron/curva-mercado)
+  // Scraping direto do Vercel não funciona: CEPEA bloqueia IPs de cloud na camada TCP
+  async function fetchCepeaDoBanco(): Promise<{ soja_png: number | null; milho_cps: number | null }> {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      const { data } = await sb
+        .from("curva_mercado")
+        .select("instrumento,valor")
+        .is("fazenda_id", null)
+        .in("instrumento", ["CEPEA_SOJA_PNG", "CEPEA_MILHO_CPS"])
+        .order("data_referencia", { ascending: false })
+        .limit(2);
+      const soja = data?.find(r => r.instrumento === "CEPEA_SOJA_PNG")?.valor ?? null;
+      const milho = data?.find(r => r.instrumento === "CEPEA_MILHO_CPS")?.valor ?? null;
+      return { soja_png: soja, milho_cps: milho };
+    } catch { return { soja_png: null, milho_cps: null }; }
   }
 
   // PTAX Banco Central — tenta hoje, cai para D-1 se não publicado ainda
@@ -194,7 +154,7 @@ export async function GET() {
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZC=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/CT=F?interval=1d&range=5d"),
       fetchPtax(),
-      fetchCepea(),
+      fetchCepeaDoBanco(),
       // Tenta os primeiros 3 tickers B3 em paralelo
       ...b3MilhoTickers.slice(0, 3).map(t =>
         fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=5d`)
