@@ -94,7 +94,10 @@ export default function HedgePage() {
   const [despesas, setDespesas]   = useState<EstruturaDespesa[]>([]);
   const [metas, setMetas]         = useState<MetaCiclo[]>([]);
   const [moeda, setMoeda]         = useState<"BRL"|"USD">("BRL");
-  const [precoAoVivo, setPrecoAoVivo] = useState<{ cbot_soja: number; cbot_milho: number; usd_brl: number } | null>(null);
+  const [precoAoVivo, setPrecoAoVivo] = useState<{
+    cbot_soja: number; cbot_milho: number; usd_brl: number;
+    premio_implicito: number | null; cepea_soja_png: number | null;
+  } | null>(null);
   const [carregando, setCarregando] = useState(false);
 
   // Precificador manual
@@ -137,7 +140,15 @@ export default function HedgePage() {
   // ─── Carga de dados ───────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/precos").then(r => r.json()).then(d => {
-      if (d?.cbot_soja && d?.usd_brl) setPrecoAoVivo({ cbot_soja: d.cbot_soja, cbot_milho: d.cbot_milho ?? 500, usd_brl: d.usd_brl });
+      // API retorna campos aninhados (soja.cbot, usdBrl) — normaliza aqui
+      const cbot_soja  = d?.soja?.cbot  ?? d?.cbot_soja  ?? 0;
+      const cbot_milho = d?.milho?.cbot ?? d?.cbot_milho ?? 500;
+      const usd_brl    = d?.usdBrl      ?? d?.usd_brl    ?? 0;
+      if (cbot_soja && usd_brl) setPrecoAoVivo({
+        cbot_soja, cbot_milho, usd_brl,
+        premio_implicito: d?.premio_implicito ?? null,
+        cepea_soja_png:   d?.cepea_soja_png  ?? null,
+      });
     }).catch(() => {});
   }, []);
 
@@ -589,30 +600,52 @@ export default function HedgePage() {
               <div style={{ borderBottom: "0.5px solid var(--border-table,#DDE2EE)", margin: "4px 0 12px" }} />
 
               {/* 4 Pernas */}
-              {[
-                { id:"cbot",   label:"BOARD — CBOT Futuro (¢/bu)",
-                  val:pCbot,   set:setPCbot,   step:"10",
-                  hint: blocoVenc
-                    ? `Bloco ${blocoVenc}${precoAoVivo ? ` · Spot: ${precoAoVivo.cbot_soja.toFixed(0)} ¢` : ""}`
-                    : precoAoVivo ? `Spot hoje: ${precoAoVivo.cbot_soja.toFixed(0)} ¢` : "" },
-                { id:"premio", label:`PRÊMIO — Base ${portoDest || "Paranaguá"} (¢/bu)`,
-                  val:pPremio, set:setPPremio, step:"1",
-                  hint:"Negativo = desconto. Entrada manual ou boletim." },
-                { id:"cambio", label:"CÂMBIO — USD/BRL",
-                  val:pCambio, set:setPCambio, step:"0.05",
-                  hint: precoAoVivo ? `PTAX hoje: ${precoAoVivo.usd_brl.toFixed(4)}` : "" },
-                { id:"frete",  label:"FRETE — Fazenda → Porto (R$/sc)",
-                  val:pFrete,  set:setPFrete,  step:"1",
-                  hint: rotaId
-                    ? `${despesas.find(d => d.id === rotaId)?.descricao ?? "Rota"} → ${portoDest}`
-                    : "Selecione uma rota acima ou insira manualmente" },
-              ].map(f => (
-                <div key={f.id} style={{ marginBottom: 10 }}>
-                  <label style={lbl}>{f.label}</label>
-                  <input type="number" step={f.step} style={inp} value={f.val} onChange={e => f.set(e.target.value)} />
-                  {f.hint && <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{f.hint}</div>}
+              {/* BOARD */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={lbl}>BOARD — CBOT Futuro (¢/bu)</label>
+                <input type="number" step="10" style={inp} value={pCbot} onChange={e => setPCbot(e.target.value)} />
+                <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                  {blocoVenc ? `Bloco ${blocoVenc}` : "Spot"}{precoAoVivo ? ` · Referência: ${precoAoVivo.cbot_soja.toFixed(0)} ¢` : ""}
                 </div>
-              ))}
+              </div>
+
+              {/* PRÊMIO — com sugestão CEPEA */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={lbl}>PRÊMIO — Base {portoDest || "Paranaguá"} (¢/bu)</label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input type="number" step="1" style={{ ...inp, flex: 1 }} value={pPremio} onChange={e => setPPremio(e.target.value)} />
+                  {precoAoVivo?.premio_implicito != null && (
+                    <button
+                      style={{ ...btnM, whiteSpace: "nowrap", fontSize: 11 }}
+                      onClick={() => setPPremio(String(precoAoVivo.premio_implicito))}
+                      title="Usar prêmio implícito derivado do CEPEA"
+                    >
+                      Usar CEPEA
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                  {precoAoVivo?.premio_implicito != null
+                    ? `CEPEA PNG R$ ${precoAoVivo.cepea_soja_png?.toFixed(2)}/sc → prêmio implícito ${precoAoVivo.premio_implicito > 0 ? "+" : ""}${precoAoVivo.premio_implicito.toFixed(1)} ¢/bu`
+                    : "Negativo = desconto. Entrada manual ou boletim."}
+                </div>
+              </div>
+
+              {/* CÂMBIO */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={lbl}>CÂMBIO — USD/BRL</label>
+                <input type="number" step="0.05" style={inp} value={pCambio} onChange={e => setPCambio(e.target.value)} />
+                {precoAoVivo && <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>PTAX hoje: {precoAoVivo.usd_brl.toFixed(4)}</div>}
+              </div>
+
+              {/* FRETE */}
+              <div style={{ marginBottom: 10 }}>
+                <label style={lbl}>FRETE — Fazenda → Porto (R$/sc)</label>
+                <input type="number" step="1" style={inp} value={pFrete} onChange={e => setPFrete(e.target.value)} />
+                <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>
+                  {rotaId ? `${despesas.find(d => d.id === rotaId)?.descricao ?? "Rota"} → ${portoDest}` : "Selecione uma rota acima ou insira manualmente"}
+                </div>
+              </div>
 
               <div style={{ borderTop: "0.5px solid var(--border-table,#DDE2EE)", paddingTop: 12, marginTop: 4 }}>
                 <label style={lbl}>Custo de produção (R$/sc)</label>

@@ -7,13 +7,16 @@ let cache: { data: PrecosData; ts: number } | null = null;
 const CACHE_TTL = 30 * 1000; // 30 segundos
 
 export interface PrecosData {
-  usdBrl:       number;          // Dólar Spot (taxa comercial)
-  usdPtax:      number | null;   // Dólar PTAX (Banco Central — publicado ~13h em dias úteis)
-  soja:         { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
-  milho:        { cbot: number; brl: number; variacao: number; fonte: "B3" | "CBOT_EST" };
-  algodao:      { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
-  atualizadoEm: string;
-  erro?:        string;
+  usdBrl:          number;          // Dólar Spot (taxa comercial)
+  usdPtax:         number | null;   // Dólar PTAX (Banco Central — publicado ~13h em dias úteis)
+  soja:            { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
+  milho:           { cbot: number; brl: number; variacao: number; fonte: "B3" | "CBOT_EST" };
+  algodao:         { cbot: number; brl: number; variacao: number; fonte: "CBOT" };
+  cepea_soja_png:  number | null;   // Soja Paranaguá R$/sc (CEPEA/ESALQ)
+  cepea_milho_cps: number | null;   // Milho Campinas R$/sc (CEPEA/ESALQ)
+  premio_implicito: number | null;  // ¢/bu = (CEPEA/câmbio/fator - CBOT) × 100
+  atualizadoEm:    string;
+  erro?:           string;
 }
 
 // Conversão CBOT → R$/sc (60 kg)
@@ -92,14 +95,44 @@ export async function GET() {
   const usdFallback   = 5.90;
 
   const FALLBACK: PrecosData = {
-    usdBrl:       usdFallback,
-    usdPtax:      null,
-    soja:         { cbot: 1030, brl: cbotParaBRL(1030, FATOR_SOJA,    usdFallback), variacao: 0, fonte: "CBOT" },
-    milho:        { cbot: 435,  brl: cbotParaBRL(435,  FATOR_MILHO,   usdFallback), variacao: 0, fonte: "CBOT_EST" },
-    algodao:      { cbot: 72,   brl: cbotParaBRL(72,   FATOR_ALGODAO, usdFallback), variacao: 0, fonte: "CBOT" },
-    atualizadoEm: new Date().toISOString(),
-    erro:         "Usando valores de fallback",
+    usdBrl:           usdFallback,
+    usdPtax:          null,
+    soja:             { cbot: 1030, brl: cbotParaBRL(1030, FATOR_SOJA,    usdFallback), variacao: 0, fonte: "CBOT" },
+    milho:            { cbot: 435,  brl: cbotParaBRL(435,  FATOR_MILHO,   usdFallback), variacao: 0, fonte: "CBOT_EST" },
+    algodao:          { cbot: 72,   brl: cbotParaBRL(72,   FATOR_ALGODAO, usdFallback), variacao: 0, fonte: "CBOT" },
+    cepea_soja_png:   null,
+    cepea_milho_cps:  null,
+    premio_implicito: null,
+    atualizadoEm:     new Date().toISOString(),
+    erro:             "Usando valores de fallback",
   };
+
+  // CEPEA/ESALQ — soja Paranaguá e milho Campinas
+  // Faz parse do HTML público da página de indicadores
+  async function fetchCepea(): Promise<{ soja_png: number | null; milho_cps: number | null }> {
+    const resultado = { soja_png: null as number | null, milho_cps: null as number | null };
+    const tentativas = [
+      { url: "https://www.cepea.esalq.usp.br/br/indicador/soja.aspx",  campo: "soja_png"  as const },
+      { url: "https://www.cepea.esalq.usp.br/br/indicador/milho.aspx", campo: "milho_cps" as const },
+    ];
+    for (const { url, campo } of tentativas) {
+      try {
+        const r = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Arato/1.0)" },
+          signal: AbortSignal.timeout(6000),
+          next: { revalidate: 0 },
+        });
+        const html = await r.text();
+        // CEPEA publica os preços em tabela — captura padrão "R$ 1.234,56" ou "1.234,56"
+        const match = html.match(/(?:R\$\s*)?([\d]{1,4}[\.\d]*,\d{2})(?=\s*(?:R\$|<))/);
+        if (match) {
+          const preco = parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+          if (preco > 30 && preco < 600) resultado[campo] = preco;
+        }
+      } catch { /* CEPEA indisponível — continua sem esse dado */ }
+    }
+    return resultado;
+  }
 
   // PTAX Banco Central — tenta hoje, cai para D-1 se não publicado ainda
   async function fetchPtax(): Promise<number | null> {
@@ -121,13 +154,15 @@ export async function GET() {
 
   try {
     const b3MilhoTickers = milhoB3Tickers();
+    console.log("[precos] iniciando fetch paralelo");
 
-    const [cambioRes, sojaRes, milhoCbotRes, algodaoRes, ptaxRes, ...milhoB3Results] = await Promise.allSettled([
+    const [cambioRes, sojaRes, milhoCbotRes, algodaoRes, ptaxRes, cepeaRes, ...milhoB3Results] = await Promise.allSettled([
       fetchJSON("https://economia.awesomeapi.com.br/json/last/USD-BRL"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZS=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/ZC=F?interval=1d&range=5d"),
       fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/CT=F?interval=1d&range=5d"),
       fetchPtax(),
+      fetchCepea(),
       // Tenta os primeiros 3 tickers B3 em paralelo
       ...b3MilhoTickers.slice(0, 3).map(t =>
         fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=5d`)
@@ -148,6 +183,10 @@ export async function GET() {
       usdBrl = usdPtax;
       usdBrlFonte = "ptax";
     }
+
+    // CEPEA
+    const cepea = cepeaRes.status === "fulfilled" ? cepeaRes.value : { soja_png: null, milho_cps: null };
+    console.log("[precos] cepea", cepea);
 
     // Commodities
     const sojaPrices      = sojaRes.status     === "fulfilled" ? yahooPrice(sojaRes.value)     : { last: 0, prev: 0 };
@@ -173,11 +212,17 @@ export async function GET() {
       ? variacao(milhoB3Prices.last, milhoB3Prices.prev)
       : variacao(milhoCbotPrices.last, milhoCbotPrices.prev);
 
+    // Prêmio implícito: (CEPEA_PNG / câmbio / fator_soja) × 100 − CBOT
+    const sojaCbot = Math.round(sojaPrices.last * 10) / 10;
+    const premioImplicito = (cepea.soja_png && sojaCbot > 0 && usdBrl > 0)
+      ? Math.round(((cepea.soja_png / usdBrl / FATOR_SOJA) * 100 - sojaCbot) * 10) / 10
+      : null;
+
     const data: PrecosData = {
       usdBrl,
       usdPtax,
       soja: {
-        cbot:     Math.round(sojaPrices.last * 10) / 10,
+        cbot:     sojaCbot,
         brl:      cbotParaBRL(sojaPrices.last, FATOR_SOJA, usdBrl),
         variacao: variacao(sojaPrices.last, sojaPrices.prev),
         fonte:    "CBOT",
@@ -194,9 +239,13 @@ export async function GET() {
         variacao: variacao(algodaoPrices.last, algodaoPrices.prev),
         fonte:    "CBOT",
       },
+      cepea_soja_png:  cepea.soja_png,
+      cepea_milho_cps: cepea.milho_cps,
+      premio_implicito: premioImplicito,
       atualizadoEm: new Date().toISOString(),
       erro: usdBrlFonte === "fallback" ? "Dólar: usando valor fixo (APIs indisponíveis)" : usdBrlFonte === "ptax" ? "Dólar Spot indisponível — usando PTAX" : undefined,
     };
+    console.log("[precos] ok", { usdBrl, sojaCbot, cepea_soja_png: cepea.soja_png, premioImplicito });
 
     cache = { data, ts: Date.now() };
     return NextResponse.json(data);
