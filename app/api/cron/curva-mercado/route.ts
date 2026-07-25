@@ -5,57 +5,64 @@ import { NextRequest, NextResponse } from "next/server";
 const SOJA_MESES:  Record<number, string> = { 1:"F", 3:"H", 5:"K", 7:"N", 8:"Q", 9:"U", 11:"X" };
 const MILHO_MESES: Record<number, string> = { 3:"H", 5:"K", 7:"N", 9:"U", 12:"Z" };
 
-interface BarchartQuote {
-  symbol:    string;
-  lastPrice: number | null;
-  tradeTime: string | null;
-  volume:    number | null;
-}
+interface Simbolo { yahoo: string; instrumento: string; vencimento: string; }
 
-function gerarSimbolos() {
-  const now = new Date();
-  const simbolos: { barchart: string; instrumento: string; vencimento: string }[] = [];
+function gerarSimbolos(): Simbolo[] {
+  const now  = new Date();
+  const res: Simbolo[] = [];
   const seen = new Set<string>();
 
   for (let i = 0; i <= 18; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const d   = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const mes = d.getMonth() + 1;
     const yy  = String(d.getFullYear()).slice(-2);
 
     const letraSoja = SOJA_MESES[mes];
     if (letraSoja) {
       const venc = `${letraSoja}${yy}`;
-      const key  = `S${venc}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        simbolos.push({ barchart: `ZS${venc}`, instrumento: "CBOT_SOJA", vencimento: venc });
+      if (!seen.has(`S${venc}`)) {
+        seen.add(`S${venc}`);
+        // Yahoo Finance: ZSX26=F, ZSH27=F …
+        res.push({ yahoo: `ZS${venc}=F`, instrumento: "CBOT_SOJA", vencimento: venc });
       }
     }
 
     const letraMilho = MILHO_MESES[mes];
     if (letraMilho) {
       const venc = `${letraMilho}${yy}`;
-      const key  = `C${venc}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        simbolos.push({ barchart: `ZC${venc}`, instrumento: "CBOT_MILHO", vencimento: venc });
+      if (!seen.has(`C${venc}`)) {
+        seen.add(`C${venc}`);
+        res.push({ yahoo: `ZC${venc}=F`, instrumento: "CBOT_MILHO", vencimento: venc });
       }
     }
   }
 
-  return simbolos;
+  return res;
+}
+
+async function fetchYahoo(symbols: string[]): Promise<Record<string, number>> {
+  // Yahoo Finance v7 aceita até ~10 símbolos por chamada
+  const syms = symbols.join(",");
+  const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice`;
+  const r = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+    signal: AbortSignal.timeout(10000),
+    cache:  "no-store",
+  });
+  if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
+  const json = await r.json() as { quoteResponse?: { result?: { symbol: string; regularMarketPrice?: number }[] } };
+  const result: Record<string, number> = {};
+  for (const q of json?.quoteResponse?.result ?? []) {
+    if (q.regularMarketPrice && q.regularMarketPrice > 0) result[q.symbol] = q.regularMarketPrice;
+  }
+  return result;
 }
 
 export async function GET(req: NextRequest) {
-  // Verificar autorização (Vercel injeta automaticamente em produção)
+  // Autorização (Vercel injeta header automaticamente em produção)
   const secret = req.headers.get("authorization")?.replace("Bearer ", "");
   if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const apiKey = process.env.BARCHART_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "BARCHART_API_KEY não configurada" }, { status: 500 });
   }
 
   const sb = createClient(
@@ -65,76 +72,60 @@ export async function GET(req: NextRequest) {
 
   const hoje     = new Date().toISOString().slice(0, 10);
   const simbolos = gerarSimbolos();
+  const inicio   = Date.now();
+  console.log("[curva-mercado] inicio", { hoje, fonte: "YAHOO", total: simbolos.length });
 
-  // Limpar dados globais de hoje antes de reinserir (evita duplicatas)
+  // Limpa dados globais de hoje antes de reinserir
   await sb.from("curva_mercado")
     .delete()
     .is("fazenda_id", null)
     .eq("data_referencia", hoje)
-    .eq("fonte", "BARCHART");
+    .in("fonte", ["YAHOO", "BARCHART"]);
 
-  // Barchart free: buscar em lotes de 10 para respeitar rate limits
-  const chunks: typeof simbolos[] = [];
+  // Busca em lotes de 10 (Yahoo suporta bem até esse limite)
+  let inseridos = 0;
+  const semCotacao: string[] = [];
+  const erros:      string[] = [];
+
+  const chunks: Simbolo[][] = [];
   for (let i = 0; i < simbolos.length; i += 10) chunks.push(simbolos.slice(i, i + 10));
 
-  let inseridos = 0;
-  const erros: string[] = [];
-  const semCotacao: string[] = [];
-  const inicio = Date.now();
-  console.log("[curva-mercado] inicio", { hoje, totalSimbolos: simbolos.length });
-
   for (const chunk of chunks) {
-    const syms = chunk.map(s => s.barchart).join(",");
     try {
-      const res = await fetch(
-        `https://ondemand.websol.barchart.com/getQuote.json?apikey=${apiKey}&symbols=${syms}&fields=lastPrice,tradeTime,volume`,
-        { cache: "no-store" }
-      );
+      const precos = await fetchYahoo(chunk.map(s => s.yahoo));
 
-      if (!res.ok) {
-        erros.push(`HTTP ${res.status} para símbolos ${syms}`);
-        continue;
-      }
-
-      const json = await res.json();
-      const quotes: BarchartQuote[] = json?.results ?? [];
-
-      for (const q of quotes) {
-        const meta = chunk.find(s => s.barchart === q.symbol);
-        if (!meta) continue;
-
-        if (!q.lastPrice || q.lastPrice <= 0) {
-          semCotacao.push(q.symbol);
-          continue;
-        }
+      for (const sim of chunk) {
+        const preco = precos[sim.yahoo];
+        if (!preco) { semCotacao.push(sim.yahoo); continue; }
 
         const { error } = await sb.from("curva_mercado").insert({
-          fazenda_id:     null,           // dado global, não por fazenda
-          instrumento:    meta.instrumento,
-          vencimento:     meta.vencimento,
+          fazenda_id:      null,
+          instrumento:     sim.instrumento,
+          vencimento:      sim.vencimento,
           data_referencia: hoje,
-          valor:          q.lastPrice,
-          unidade:        "cents_bu",
-          fonte:          "BARCHART",
-          boletim:        "fechamento",
+          valor:           preco,
+          unidade:         "cents_bu",
+          fonte:           "YAHOO",
+          boletim:         "fechamento",
         });
 
-        if (error) erros.push(`${q.symbol}: ${error.message}`);
+        if (error) erros.push(`${sim.yahoo}: ${error.message}`);
         else inseridos++;
       }
     } catch (e) {
-      erros.push(`Fetch falhou para ${syms}: ${String(e)}`);
+      erros.push(`Lote ${chunk.map(s => s.yahoo).join(",")}: ${String(e)}`);
     }
   }
 
   const resultado = {
-    ok:            erros.length === 0,
-    data:          hoje,
+    ok:          erros.length === 0,
+    data:        hoje,
+    fonte:       "YAHOO",
     inseridos,
     semCotacao,
     erros,
     totalSimbolos: simbolos.length,
-    duracaoMs:     Date.now() - inicio,
+    duracaoMs:   Date.now() - inicio,
   };
   console.log("[curva-mercado] fim", resultado);
   return NextResponse.json(resultado);
