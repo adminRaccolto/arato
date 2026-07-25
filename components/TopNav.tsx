@@ -435,6 +435,8 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
   // Verifica se algum link dentro de um subgroup está ativo
   const subgroupAtivo = (sg: NavSubgroup) => sg.children.some(c => isAtivo(c.path));
 
+  const isRaccotloStaff = ["raccotlo","raccotlo_gestor","raccotlo_seletor","raccotlo_operacional"].includes(userRole ?? "");
+
   const nomeIdentidade = produtorNome ?? fazenda?.nome ?? null;
   const iniciaisFazenda = nomeIdentidade
     ? nomeIdentidade.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase()
@@ -445,7 +447,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
     if (child.type !== "divider") {
       const mid = (child as NavLink | NavSubgroup).moduleId;
       if (mid && !podeAcessar(mid)) return null;
-      if (mid && !podeAcessarPlano(mid)) return null;
+      if (mid && !isRaccotloStaff && !podeAcessarPlano(mid)) return null;
     }
 
     // Divider
@@ -500,7 +502,7 @@ export default function TopNav({ automacoesAtivas = 5 }: TopNavProps) {
               <div style={{ padding: "6px 14px 4px", fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 {sg.label}
               </div>
-              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || podeAcessarPlano(gc.moduleId))).map(gc => {
+              {sg.children.filter(gc => (!gc.moduleId || podeAcessar(gc.moduleId)) && (!gc.moduleId || isRaccotloStaff || podeAcessarPlano(gc.moduleId))).map(gc => {
                 const ativoGc = isAtivo(gc.path);
                 return (
                   <Link
