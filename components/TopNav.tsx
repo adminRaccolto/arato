@@ -87,6 +87,12 @@ const NAV: NavItem[] = [
           { id: "com-migrar-nf",     label: "Migrar NF entre Contratos", path: "/contratos/migrar-nf",   moduleId: "contratos"   },
         ],
       },
+      {
+        type: "subgroup", id: "sg-hedge", label: "Proteção de Margem", moduleId: "protecao_margem",
+        children: [
+          { id: "com-hedge", label: "Hedge & Precificação", path: "/comercial/hedge", moduleId: "protecao_margem" },
+        ],
+      },
     ],
   },
 
@@ -292,7 +298,7 @@ const NAV: NavItem[] = [
 // Grupos sem entrada no mapa são sempre visíveis (dashboard, mapa, ajuda).
 const NAV_MODULE_MAP: Record<string, string[]> = {
   "cadastros":     ["cadastros"],
-  "comercial":     ["contratos", "expedicao", "arrendamento"],
+  "comercial":     ["contratos", "expedicao", "arrendamento", "protecao_margem"],
   "transporte":    ["transporte"],
   "compras":       ["compras", "nf_entrada", "nf_servico"],
   "estoque":       ["estoque"],

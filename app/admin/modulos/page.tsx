@@ -49,6 +49,7 @@ const MODULOS_LABEL: Record<string, string> = {
   apoio_financeiro: "💼 Apoio Financeiro (Add-on)",
   ia_cedula:             "🤖 IA — Extração de Cédula (Add-on)",
   ia_contrato_venda:     "🤖 IA — Extração de Contrato de Venda (Add-on)",
+  protecao_margem:       "📊 Proteção de Margem & Hedge (Add-on)",
 };
 
 const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
@@ -74,7 +75,7 @@ const GRUPOS_MODULOS: { label: string; modulos: string[] }[] = [
   },
   {
     label: "Add-ons Opcionais",
-    modulos: ["algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda"],
+    modulos: ["algodao", "cerealista", "sementes", "pecuaria", "apoio_financeiro", "ia_cedula", "ia_contrato_venda", "protecao_margem"],
   },
 ];
 

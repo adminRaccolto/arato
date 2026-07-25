@@ -8059,3 +8059,78 @@ CREATE TABLE IF NOT EXISTS raccotlo_usuario_contas (
 -- Sem RLS: acessado exclusivamente via service_role_key nas API routes de admin.
 
 NOTIFY pgrst, 'reload schema';
+
+-- ── Seção 85: Proteção de Margem & Hedge (Add-on) ─────────────────────────────
+
+-- Curva de mercado — bitemporal (data_referencia = a que dia o preço se refere,
+-- data_captura = quando entrou no sistema). Nunca sobrescrever, sempre nova linha.
+CREATE TABLE IF NOT EXISTS curva_mercado (
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id       uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  instrumento      text NOT NULL,   -- 'CBOT_SOJA'|'CBOT_MILHO'|'PREMIO_PNG'|'PREMIO_SFZ'|'DOL_FUT'|'FRETE_ROTA'
+  vencimento       date,            -- null = spot; '2027-03-01' = contrato março/27
+  data_referencia  date NOT NULL,   -- a que dia este preço se refere
+  data_captura     timestamptz DEFAULT now(),
+  valor            numeric NOT NULL,
+  unidade          text NOT NULL,   -- 'cents_bu'|'brl_usd'|'brl_sc'|'usd_bu'
+  fonte            text DEFAULT 'MANUAL', -- 'MANUAL'|'BCB_PTAX'|'BARCHART'|'YAHOO'
+  boletim          text,            -- para PTAX: 'abertura'|'intermediario'|'fechamento'
+  revisao          int  DEFAULT 1,
+  created_at       timestamptz DEFAULT now()
+);
+
+-- Estrutura de despesas por rota/porto (frete, taxas, quebra, comissão)
+CREATE TABLE IF NOT EXISTS estrutura_despesa_hedge (
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id       uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  tipo             text NOT NULL,   -- 'frete'|'taxa_porto'|'classificacao'|'quebra'|'comissao'|'seguro'
+  descricao        text NOT NULL,
+  cultura          text,            -- 'soja'|'milho'|null (todos)
+  origem           text,            -- cidade de origem (frete)
+  destino          text,            -- porto ou destino final
+  valor_brl_sc     numeric NOT NULL,
+  vigencia_inicio  date,
+  vigencia_fim     date,
+  ativo            boolean DEFAULT true,
+  created_at       timestamptz DEFAULT now()
+);
+
+-- Metas de comercialização por milestone do ciclo
+CREATE TABLE IF NOT EXISTS comercializacao_metas (
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id       uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  ciclo_id         uuid REFERENCES ciclos(id) ON DELETE CASCADE,
+  milestone        text NOT NULL,   -- 'pre_plantio'|'plantio'|'floracao'|'colheita'|'pos_colheita'
+  meta_pct         numeric NOT NULL,
+  data_referencia  date,
+  created_at       timestamptz DEFAULT now(),
+  UNIQUE(ciclo_id, milestone)
+);
+
+-- Fixações por componente — o coração do módulo.
+-- Um contrato pode ter BOARD 100% fixado, CAMBIO 0% fixado.
+CREATE TABLE IF NOT EXISTS fixacoes_hedge (
+  id               uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  fazenda_id       uuid REFERENCES fazendas(id) ON DELETE CASCADE,
+  contrato_id      uuid REFERENCES contratos(id) ON DELETE SET NULL,
+  ciclo_id         uuid REFERENCES ciclos(id) ON DELETE SET NULL,
+  componente       text NOT NULL,   -- 'BOARD'|'PREMIO'|'CAMBIO'|'FRETE'
+  quantidade_sc    numeric NOT NULL,
+  valor            numeric NOT NULL,
+  unidade          text NOT NULL,   -- 'cents_bu'|'brl_usd'|'brl_sc'
+  vencimento_ref   text,            -- 'SX26'|'ZX26' etc
+  data_fixacao     date NOT NULL,
+  instrumento_hedge text,           -- 'fisico'|'ndf'|'call'|'put'|'futuro_dol'
+  observacao       text,
+  created_at       timestamptz DEFAULT now()
+);
+
+-- Índices de performance
+CREATE INDEX IF NOT EXISTS idx_curva_mercado_instrumento_data ON curva_mercado(instrumento, data_referencia DESC);
+CREATE INDEX IF NOT EXISTS idx_fixacoes_hedge_ciclo ON fixacoes_hedge(ciclo_id, componente);
+CREATE INDEX IF NOT EXISTS idx_fixacoes_hedge_contrato ON fixacoes_hedge(contrato_id);
+
+-- Add-on protecao_margem desabilitado por padrão (não inserir nada — ausência = desabilitado)
+-- Para habilitar para uma conta: INSERT INTO conta_modulos(conta_id, modulo, habilitado) VALUES (..., 'protecao_margem', true)
+
+NOTIFY pgrst, 'reload schema';
