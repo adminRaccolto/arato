@@ -146,14 +146,18 @@ export type Insumo = {
   tipo: "insumo" | "produto";
   nome: string;
   categoria:
-    // insumos agrícolas
-    | "semente" | "fertilizante" | "defensivo" | "corretivo" | "micronutriente" | "biologico" | "inoculante"
+    // insumos agrícolas (os 4 grupos principais)
+    | "semente" | "fertilizante" | "defensivo" | "corretivo"
+    // legado — ainda lidos do DB, mapeados para subgrupos nas novas telas
+    | "micronutriente" | "biologico" | "inoculante"
+    // combustíveis e lubrificantes — ambiente próprio
+    | "combustivel" | "lubrificante"
+    // itens gerais
+    | "geral"
+    // legado — ainda lidos do DB, exibidos em Gerais
+    | "peca" | "material" | "uso_consumo" | "escritorio" | "outros"
     // produtos que a fazenda produz
-    | "produto_agricola"
-    // itens gerais (peças, materiais, consumo)
-    | "combustivel" | "peca" | "material" | "uso_consumo" | "escritorio"
-    // shared
-    | "outros";
+    | "produto_agricola";
   subgrupo?: string;
   grupo_id?: string;     // FK grupos_insumos
   cultura_id?: string | null;  // FK culturas.id — só para categoria=produto_agricola

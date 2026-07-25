@@ -82,11 +82,13 @@ const CAT_META: Record<Insumo["categoria"], { bg: string; cl: string; label: str
   inoculante:      { bg: "#E6F1FB", cl: "#0C447C", label: "Inoculante"       },
   produto_agricola:{ bg: "#EDE9FC", cl: "#7A5A12", label: "Produto Agrícola" },
   combustivel:     { bg: "#FFF3E0", cl: "#7B4A00", label: "Combustível"      },
+  lubrificante:    { bg: "#FEF3E2", cl: "#7A4300", label: "Lubrificante"     },
+  geral:           { bg: "#F1F5F9", cl: "#475569", label: "Geral"            },
   peca:            { bg: "#F1EFE8", cl: "#374151", label: "Peça / Manutenção"},
   material:        { bg: "#E8F5E9", cl: "#1A6B3C", label: "Material"         },
   uso_consumo:     { bg: "#F3E8FF", cl: "#6B21A8", label: "Uso e Consumo"    },
   escritorio:      { bg: "#F0F9FF", cl: "#0369A1", label: "Escritório"       },
-  outros:          { bg: "#F1EFE8", cl: "var(--text-2)",    label: "Outros"           },
+  outros:          { bg: "#F1EFE8", cl: "var(--text-2)",    label: "Outros"  },
 };
 
 type Aba = "posicao" | "nf_entrada" | "terceiros" | "movimentacoes" | "relatorios";

@@ -114,7 +114,7 @@ const TAB_GROUPS: TabGroup[] = [
     { key: "produtos",                label: "Produtos Agrícolas"        },
     { key: "itens",                   label: "Itens Gerais"              },
     { key: "depositos",               label: "Depósitos & Armazéns"      },
-    { key: "combustivel",             label: "Combustíveis & Bombas"     },
+    { key: "combustivel",             label: "Combustíveis & Lubrificantes" },
     { key: "grupos_insumo",           label: "Grupos de Insumos"         },
     { key: "culturas",                 label: "Culturas"                  },
     { key: "padroes_classificacao",   label: "Padrões de Classificação"  },
@@ -439,6 +439,11 @@ function CadastrosInner() {
   const [insumos, setInsumos]         = useState<Insumo[]>([]);
   const [filtroIns, setFiltroIns]     = useState("todos");
   const [buscaIns, setBuscaIns]       = useState("");
+  const [subAbaComb, setSubAbaComb]   = useState<"bombas"|"combustiveis"|"lubrificantes">("bombas");
+  const [filtroComb, setFiltroComb]   = useState("todos");
+  const [buscaComb, setBuscaComb]     = useState("");
+  const [filtroLubri, setFiltroLubri] = useState("todos");
+  const [buscaLubri, setBuscaLubri]   = useState("");
   const [filtroCult, setFiltroCult]   = useState("todos");
   const [buscaProd, setBuscaProd]     = useState("");
   const [filtroIt, setFiltroIt]       = useState("todos");
@@ -2840,52 +2845,309 @@ function CadastrosInner() {
             );
           })()}
 
-          {/* ══ COMBUSTÍVEIS ══ */}
-          {aba === "combustivel" && (
-            <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
-              <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Bombas de Combustível <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({bombas.length})</span></div>
-                <button style={btnV} onClick={() => abrirModalBomba()}>+ Nova Bomba</button>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <TH cols={["Nome / Localização", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Controle", "Status", ""]} />
-                <tbody>
-                  {bombas.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
-                  {bombas.map((b, i) => {
-                    const pct = b.capacidade_l ? Math.round(b.estoque_atual_l / b.capacidade_l * 100) : null;
-                    const corComb: Record<string, [string,string]> = { diesel_s10: ["#E6F1FB","#0C447C"], diesel_s500: ["#E6F1FB","#0B2D50"], gasolina: ["#FAEEDA","#633806"], etanol: ["#D5E8F5","#0B2D50"], arla: ["#FBF0D8","#7A5A12"] };
-                    const [bg, cl] = corComb[b.combustivel] ?? ["#F1EFE8","var(--text-2)"];
-                    return (
-                      <tr key={b.id} style={{ borderBottom: i < bombas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
-                        <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{b.nome}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.combustivel.replace("_"," ").toUpperCase(), bg, cl)}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{b.capacidade_l?.toLocaleString("pt-BR") ?? "—"}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{b.estoque_atual_l.toLocaleString("pt-BR")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                          {pct !== null ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-                              <div style={{ width: 60, height: 6, background: "var(--border-row)", borderRadius: 3, overflow: "hidden" }}>
-                                <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : pct < 40 ? "#EF9F27" : "#1A4870", borderRadius: 3 }} />
-                              </div>
-                              <span style={{ fontSize: 11, color: "var(--text-2)" }}>{pct}%</span>
-                            </div>
-                          ) : "—"}
-                        </td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.consume_estoque !== false ? "Estoque" : "Posto externo", b.consume_estoque !== false ? "#D5E8F5" : "#FBF3E0", b.consume_estoque !== false ? "#0B2D50" : "#7A5A12")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#D5E8F5" : "#F1EFE8", b.ativa ? "#0B2D50" : "var(--text-2)")}</td>
-                        <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            <button style={btnE} onClick={() => abrirModalBomba(b)}>Editar</button>
-                            <button style={btnX} onClick={() => { if (confirm("Excluir bomba?")) excluirBomba(b.id).then(() => setBombas(x => x.filter(r => r.id !== b.id))); }}>✕</button>
+          {/* ══ COMBUSTÍVEIS & LUBRIFICANTES ══ */}
+          {aba === "combustivel" && (() => {
+            const combBase  = insumos.filter(i => i.categoria === "combustivel");
+            const lubriBase = insumos.filter(i => i.categoria === "lubrificante");
+
+            const combFiltr  = combBase.filter(i => {
+              const matchSub  = filtroComb  === "todos" || i.subgrupo === filtroComb;
+              const matchBusca = !buscaComb  || i.nome.toLowerCase().includes(buscaComb.toLowerCase());
+              return matchSub && matchBusca;
+            });
+            const lubriFiltr = lubriBase.filter(i => {
+              const matchSub  = filtroLubri === "todos" || i.subgrupo === filtroLubri;
+              const matchBusca = !buscaLubri || i.nome.toLowerCase().includes(buscaLubri.toLowerCase());
+              return matchSub && matchBusca;
+            });
+
+            const abrirModalComb = (cat: "combustivel"|"lubrificante", ins?: Insumo) => {
+              setEditIns(ins ?? null);
+              const defaultUnit = cat === "lubrificante" ? "L" : "L";
+              setFIns(ins ? {
+                nome: ins.nome, categoria: ins.categoria, subgrupo: ins.subgrupo ?? "",
+                cultura_id: "", ncm: "", unidade: ins.unidade, fabricante: ins.fabricante ?? "",
+                estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
+                valor_unitario: String(ins.valor_unitario), lote: "", validade: "",
+                deposito_id: ins.deposito_id ?? "", bomba_id: "", principio_ativo_id: "",
+              } : { nome: "", categoria: cat, subgrupo: "", cultura_id: "", ncm: "", unidade: defaultUnit as Insumo["unidade"], fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              setModalIns(true);
+            };
+
+            const salvarCombLubri = async () => {
+              if (!fIns.nome.trim()) { setErro("Informe o nome do item."); return; }
+              setSalvando(true); setErro("");
+              try {
+                const payload: Omit<Insumo,"id"|"created_at"> = {
+                  fazenda_id:     (fazTrabalho || fazIdEff)!,
+                  nome:           fIns.nome.trim(),
+                  categoria:      fIns.categoria,
+                  subgrupo:       fIns.subgrupo || undefined,
+                  unidade:        fIns.unidade,
+                  fabricante:     fIns.fabricante || undefined,
+                  estoque:        parseFloat(fIns.estoque)       || 0,
+                  estoque_minimo: parseFloat(fIns.estoque_minimo)|| 0,
+                  valor_unitario: parseFloat(fIns.valor_unitario)|| 0,
+                  deposito_id:    fIns.deposito_id || undefined,
+                  tipo:           "produto",
+                };
+                if (editIns) {
+                  await atualizarInsumo(editIns.id, payload);
+                  setInsumos(x => x.map(r => r.id === editIns.id ? { ...r, ...payload } : r));
+                } else {
+                  const n = await criarInsumo(payload);
+                  setInsumos(x => [...x, n].sort((a,b) => a.nome.localeCompare(b.nome)));
+                }
+                setModalIns(false);
+              } catch (e: unknown) { setErro((e as {message?:string})?.message || JSON.stringify(e)); }
+              finally { setSalvando(false); }
+            };
+
+            const SUBG_COMB  = ["Diesel S10","Diesel S500","Gasolina Comum","Gasolina Aditivada","Etanol","ARLA 32"];
+            const SUBG_LUBRI = ["Óleo Motor","Óleo Hidráulico","Óleo Câmbio","Óleo Diferencial","Graxa","Fluido de Freio","Óleo 2T"];
+
+            const SUB_ABAS_COMB = [
+              { key: "bombas",       label: "Bombas & Tanques" },
+              { key: "combustiveis", label: `Catálogo Combustíveis (${combBase.length})`  },
+              { key: "lubrificantes",label: `Lubrificantes (${lubriBase.length})` },
+            ] as const;
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+                {/* Sub-abas */}
+                <div style={{ display: "flex", gap: 0, background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                  {SUB_ABAS_COMB.map(a => (
+                    <button key={a.key} onClick={() => setSubAbaComb(a.key)}
+                      style={{ flex: 1, padding: "11px 16px", border: "none", borderBottom: subAbaComb === a.key ? "2px solid #1A4870" : "2px solid transparent", background: "transparent", fontSize: 13, fontWeight: subAbaComb === a.key ? 600 : 400, color: subAbaComb === a.key ? "#1A4870" : "var(--text-2)", cursor: "pointer" }}>
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ─── Bombas & Tanques ─── */}
+                {subAbaComb === "bombas" && (
+                  <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                    <div style={{ padding: "14px 18px", borderBottom: "0.5px solid var(--border-row)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ color: "var(--text-1)", fontWeight: 600, fontSize: 14 }}>Bombas de Combustível <span style={{ fontSize: 11, color: "#444", fontWeight: 400 }}>({bombas.length})</span></div>
+                      <button style={btnV} onClick={() => abrirModalBomba()}>+ Nova Bomba</button>
+                    </div>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <TH cols={["Nome / Localização", "Combustível", "Capacidade (L)", "Estoque atual (L)", "% Cheio", "Controle", "Status", ""]} />
+                      <tbody>
+                        {bombas.length === 0 && <tr><td colSpan={8} style={{ padding: 32, textAlign: "center", color: "#444" }}>Nenhuma bomba cadastrada</td></tr>}
+                        {bombas.map((b, i) => {
+                          const pct = b.capacidade_l ? Math.round(b.estoque_atual_l / b.capacidade_l * 100) : null;
+                          const corComb: Record<string, [string,string]> = { diesel_s10: ["#E6F1FB","#0C447C"], diesel_s500: ["#E6F1FB","#0B2D50"], gasolina: ["#FAEEDA","#633806"], etanol: ["#D5E8F5","#0B2D50"], arla: ["#FBF0D8","#7A5A12"] };
+                          const [bg, cl] = corComb[b.combustivel] ?? ["#F1EFE8","var(--text-2)"];
+                          return (
+                            <tr key={b.id} style={{ borderBottom: i < bombas.length - 1 ? "0.5px solid var(--border-row)" : "none" }}>
+                              <td style={{ padding: "10px 14px", color: "var(--text-1)", fontWeight: 600 }}>{b.nome}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.combustivel.replace("_"," ").toUpperCase(), bg, cl)}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)" }}>{b.capacidade_l?.toLocaleString("pt-BR") ?? "—"}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center", color: "var(--text-1)", fontWeight: 600 }}>{b.estoque_atual_l.toLocaleString("pt-BR")}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                                {pct !== null ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                                    <div style={{ width: 60, height: 6, background: "var(--border-row)", borderRadius: 3, overflow: "hidden" }}>
+                                      <div style={{ height: "100%", width: `${pct}%`, background: pct < 20 ? "#E24B4A" : pct < 40 ? "#EF9F27" : "#1A4870", borderRadius: 3 }} />
+                                    </div>
+                                    <span style={{ fontSize: 11, color: "var(--text-2)" }}>{pct}%</span>
+                                  </div>
+                                ) : "—"}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.consume_estoque !== false ? "Estoque" : "Posto externo", b.consume_estoque !== false ? "#D5E8F5" : "#FBF3E0", b.consume_estoque !== false ? "#0B2D50" : "#7A5A12")}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "center" }}>{badge(b.ativa ? "Ativa" : "Inativa", b.ativa ? "#D5E8F5" : "#F1EFE8", b.ativa ? "#0B2D50" : "var(--text-2)")}</td>
+                              <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                  <button style={btnE} onClick={() => abrirModalBomba(b)}>Editar</button>
+                                  <button style={btnX} onClick={() => { if (confirm("Excluir bomba?")) excluirBomba(b.id).then(() => setBombas(x => x.filter(r => r.id !== b.id))); }}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* ─── Catálogo Combustíveis ─── */}
+                {subAbaComb === "combustiveis" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                      <input style={{ ...inp, width: 200 }} placeholder="Buscar…" value={buscaComb} onChange={e => setBuscaComb(e.target.value)} />
+                      <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
+                        <button onClick={() => setFiltroComb("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroComb === "todos" ? "#0C447C" : "var(--border-table)", background: filtroComb === "todos" ? "#E6F1FB" : "transparent", color: filtroComb === "todos" ? "#0C447C" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroComb === "todos" ? 600 : 400 }}>Todos ({combBase.length})</button>
+                        {SUBG_COMB.filter(s => combBase.some(i => i.subgrupo === s)).map(s => (
+                          <button key={s} onClick={() => setFiltroComb(s)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroComb === s ? "#0C447C" : "var(--border-table)", background: filtroComb === s ? "#E6F1FB" : "transparent", color: filtroComb === s ? "#0C447C" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroComb === s ? 600 : 400 }}>
+                            {s} ({combBase.filter(i => i.subgrupo === s).length})
+                          </button>
+                        ))}
+                      </div>
+                      <button style={btnV} onClick={() => abrirModalComb("combustivel")}>+ Novo Combustível</button>
+                    </div>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                      {combFiltr.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>Nenhum combustível cadastrado. Ex: Diesel S10, Gasolina, ARLA 32.</div>
+                      ) : (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <TH cols={["Nome", "Tipo", "Unid.", "Estoque (L)", "Mín.", "Valor (R$/L)", "Total", ""]} />
+                          <tbody>
+                            {combFiltr.map((ins, i) => {
+                              const abaixo = ins.estoque < ins.estoque_minimo;
+                              return (
+                                <tr key={ins.id} style={{ borderBottom: i < combFiltr.length - 1 ? "0.5px solid var(--border-row)" : "none", background: abaixo ? "#FFFAF5" : "transparent" }}>
+                                  <td style={{ padding: "10px 14px", fontWeight: 600 }}>{ins.nome}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{ins.subgrupo ? badge(ins.subgrupo, "#E6F1FB","#0C447C") : "—"}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600, color: abaixo ? "#E24B4A" : "var(--text-1)" }}>
+                                    {ins.estoque.toLocaleString("pt-BR",{maximumFractionDigits:1})}
+                                    {abaixo && <span style={{ marginLeft:5,fontSize:9,background:"#FCEBEB",color:"#791F1F",padding:"1px 5px",borderRadius:6 }}>⚠ baixo</span>}
+                                  </td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.estoque_minimo.toLocaleString("pt-BR",{maximumFractionDigits:1})}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12 }}>{(ins.estoque*ins.valor_unitario).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                      <button style={btnE} onClick={() => abrirModalComb("combustivel", ins)}>Editar</button>
+                                      <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── Lubrificantes ─── */}
+                {subAbaComb === "lubrificantes" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                      <input style={{ ...inp, width: 200 }} placeholder="Buscar…" value={buscaLubri} onChange={e => setBuscaLubri(e.target.value)} />
+                      <div style={{ display: "flex", gap: 6, flex: 1, flexWrap: "wrap" }}>
+                        <button onClick={() => setFiltroLubri("todos")} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroLubri === "todos" ? "#7A4300" : "var(--border-table)", background: filtroLubri === "todos" ? "#FEF3E2" : "transparent", color: filtroLubri === "todos" ? "#7A4300" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroLubri === "todos" ? 600 : 400 }}>Todos ({lubriBase.length})</button>
+                        {SUBG_LUBRI.filter(s => lubriBase.some(i => i.subgrupo === s)).map(s => (
+                          <button key={s} onClick={() => setFiltroLubri(s)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroLubri === s ? "#7A4300" : "var(--border-table)", background: filtroLubri === s ? "#FEF3E2" : "transparent", color: filtroLubri === s ? "#7A4300" : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroLubri === s ? 600 : 400 }}>
+                            {s} ({lubriBase.filter(i => i.subgrupo === s).length})
+                          </button>
+                        ))}
+                      </div>
+                      <button style={btnV} onClick={() => abrirModalComb("lubrificante")}>+ Novo Lubrificante</button>
+                    </div>
+                    <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
+                      {lubriFiltr.length === 0 ? (
+                        <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>Nenhum lubrificante cadastrado. Ex: Óleo Motor, Óleo Hidráulico, Graxa.</div>
+                      ) : (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <TH cols={["Nome / Fabricante", "Tipo", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", ""]} />
+                          <tbody>
+                            {lubriFiltr.map((ins, i) => {
+                              const abaixo = ins.estoque < ins.estoque_minimo;
+                              return (
+                                <tr key={ins.id} style={{ borderBottom: i < lubriFiltr.length - 1 ? "0.5px solid var(--border-row)" : "none", background: abaixo ? "#FFFAF5" : "transparent" }}>
+                                  <td style={{ padding: "10px 14px" }}>
+                                    <div style={{ fontWeight: 600 }}>{ins.nome}</div>
+                                    {ins.fabricante && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{ins.fabricante}</div>}
+                                  </td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center" }}>{ins.subgrupo ? badge(ins.subgrupo, "#FEF3E2","#7A4300") : "—"}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600, color: abaixo ? "#E24B4A" : "var(--text-1)" }}>
+                                    {ins.estoque.toLocaleString("pt-BR",{maximumFractionDigits:2})}
+                                    {abaixo && <span style={{ marginLeft:5,fontSize:9,background:"#FCEBEB",color:"#791F1F",padding:"1px 5px",borderRadius:6 }}>⚠ baixo</span>}
+                                  </td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.estoque_minimo.toLocaleString("pt-BR",{maximumFractionDigits:2})}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 12 }}>{ins.valor_unitario.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12 }}>{(ins.estoque*ins.valor_unitario).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td>
+                                  <td style={{ padding: "10px 14px", textAlign: "right" }}>
+                                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                                      <button style={btnE} onClick={() => abrirModalComb("lubrificante", ins)}>Editar</button>
+                                      <button style={btnX} onClick={() => { if (confirm(`Excluir "${ins.nome}"?`)) excluirInsumo(ins.id).then(() => setInsumos(x => x.filter(r => r.id !== ins.id))); }}>✕</button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Modal Combustível / Lubrificante */}
+                {modalIns && (fIns.categoria === "combustivel" || fIns.categoria === "lubrificante") && (() => {
+                  const isLubri = fIns.categoria === "lubrificante";
+                  const sugestoes = isLubri ? SUBG_LUBRI : SUBG_COMB;
+                  return (
+                    <Modal titulo={editIns ? `Editar: ${editIns.nome}` : isLubri ? "Novo Lubrificante" : "Novo Combustível"} onClose={() => setModalIns(false)} width={680}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                        <div>
+                          <label style={lbl}>Nome *</label>
+                          <input style={inp} placeholder={isLubri ? "Ex: Shell Helix HX7 15W40" : "Ex: Diesel S10"} value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>{isLubri ? "Tipo" : "Tipo de Combustível"}</label>
+                          <input list={`subg-comb-list-${fIns.categoria}`} style={inp} placeholder={`Ex: ${sugestoes[0]}`} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
+                          <datalist id={`subg-comb-list-${fIns.categoria}`}>{sugestoes.map(s => <option key={s} value={s} />)}</datalist>
+                        </div>
+                        {isLubri && (
+                          <div>
+                            <label style={lbl}>Fabricante / Marca</label>
+                            <input style={inp} placeholder="Ex: Shell, Mobil, Castrol" value={fIns.fabricante} onChange={e => setFIns(p => ({ ...p, fabricante: e.target.value }))} />
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        )}
+                        <div>
+                          <label style={lbl}>Unidade</label>
+                          <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                            <option value="L">L (litros)</option>
+                            <option value="kg">kg (graxas em kg)</option>
+                            <option value="un">un (galões/latas)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={lbl}>Estoque atual ({fIns.unidade})</label>
+                          {editIns ? (
+                            <div style={{ padding: "8px 10px", background: "var(--bg-page)", borderRadius: 7, border: "0.5px solid var(--border)", fontSize: 13, color: "var(--text-3)" }}>
+                              {fIns.estoque} {fIns.unidade} — altere via Ajuste de Estoque
+                            </div>
+                          ) : (
+                            <InputMonetario style={inp} value={fIns.estoque} onChange={v => setFIns(p => ({ ...p, estoque: String(v) }))} />
+                          )}
+                        </div>
+                        <div>
+                          <label style={lbl}>Estoque mínimo (alerta)</label>
+                          <InputMonetario style={inp} value={fIns.estoque_minimo} onChange={v => setFIns(p => ({ ...p, estoque_minimo: String(v) }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Valor unitário (R$/{fIns.unidade})</label>
+                          <InputMonetario style={inp} value={fIns.valor_unitario} onChange={v => setFIns(p => ({ ...p, valor_unitario: String(v) }))} />
+                        </div>
+                        <div>
+                          <label style={lbl}>Depósito padrão</label>
+                          <select style={inp} value={fIns.deposito_id} onChange={e => setFIns(p => ({ ...p, deposito_id: e.target.value }))}>
+                            <option value="">— Selecione —</option>
+                            {depositos.filter(d => d.ativo).map(d => <option key={d.id} value={d.id}>{d.nome}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
+                        <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
+                        <button style={{ ...btnV, opacity: salvando || !fIns.nome.trim() ? 0.5 : 1 }} disabled={salvando || !fIns.nome.trim()} onClick={salvarCombLubri}>
+                          {salvando ? "Salvando…" : "Salvar"}
+                        </button>
+                      </div>
+                    </Modal>
+                  );
+                })()}
+
+              </div>
+            );
+          })()}
 
           {/* ══ GRUPOS DE INSUMOS ══ */}
           {aba === "grupos_insumo" && (
@@ -3656,21 +3918,31 @@ function CadastrosInner() {
 
           {/* ══ INSUMOS ══ */}
           {aba === "insumos" && (() => {
+            // Os 4 grupos canônicos de insumos
             const CATS: { key: Insumo["categoria"]; label: string; bg: string; cl: string }[] = [
-              { key: "semente",        label: "Semente",        bg: "#D5E8F5", cl: "#0B2D50" },
-              { key: "fertilizante",   label: "Fertilizante",   bg: "#E6F1FB", cl: "#0C447C" },
-              { key: "defensivo",      label: "Defensivo",      bg: "#FAEEDA", cl: "#633806" },
-              { key: "corretivo",      label: "Corretivo",      bg: "#E8F5EB", cl: "#1A5C35" },
-              { key: "micronutriente", label: "Micronutriente", bg: "#EDE9FB", cl: "#4B3B9B" },
-              { key: "biologico",      label: "Biológico",      bg: "#F0F9F2", cl: "#167A3C" },
-              { key: "inoculante",     label: "Inoculante",     bg: "#FBF3E0", cl: "#8B5E14" },
+              { key: "semente",      label: "Sementes",      bg: "#D5E8F5", cl: "#0B2D50" },
+              { key: "fertilizante", label: "Fertilizantes", bg: "#E6F1FB", cl: "#0C447C" },
+              { key: "defensivo",    label: "Defensivos",    bg: "#FAEEDA", cl: "#633806" },
+              { key: "corretivo",    label: "Corretivos",    bg: "#E8F5EB", cl: "#1A5C35" },
             ];
-            const catMap = Object.fromEntries(CATS.map(c => [c.key, c]));
+            // Legado: micronutriente/biologico/inoculante mapeados para o grupo pai
+            const LEGACY_CAT_MAP: Record<string, Insumo["categoria"]> = {
+              micronutriente: "fertilizante",
+              biologico:      "defensivo",
+              inoculante:     "semente",
+            };
+            const catMap: Record<string, { label: string; bg: string; cl: string }> = {
+              ...Object.fromEntries(CATS.map(c => [c.key, c])),
+              micronutriente: { label: "Fertilizante ↩",  bg: "#E6F1FB", cl: "#0C447C" },
+              biologico:      { label: "Defensivo ↩",     bg: "#FAEEDA", cl: "#633806" },
+              inoculante:     { label: "Semente ↩",       bg: "#D5E8F5", cl: "#0B2D50" },
+            };
 
-            const CATS_INSUMO_KEYS = CATS.map(c => c.key);
+            const CATS_INSUMO_KEYS = [...CATS.map(c => c.key), "micronutriente", "biologico", "inoculante"];
             const insBase = insumos.filter(i => CATS_INSUMO_KEYS.includes(i.categoria));
             const insFiltr = insBase.filter(i => {
-              const matchCat  = filtroIns === "todos" || i.categoria === filtroIns;
+              const catEfetiva = LEGACY_CAT_MAP[i.categoria] ?? i.categoria;
+              const matchCat   = filtroIns === "todos" || catEfetiva === filtroIns || i.categoria === filtroIns;
               const matchBusca = !buscaIns || i.nome.toLowerCase().includes(buscaIns.toLowerCase()) || (i.fabricante ?? "").toLowerCase().includes(buscaIns.toLowerCase());
               return matchCat && matchBusca;
             });
@@ -3693,7 +3965,8 @@ function CadastrosInner() {
             };
 
             const salvarIns = async () => {
-              const isPA = ["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria);
+              // Apenas defensivo e fertilizante exigem Princípio Ativo
+              const isPA = ["defensivo","fertilizante"].includes(fIns.categoria);
               if (isPA && !fIns.principio_ativo_id) {
                 setErro("Selecione o princípio ativo antes de salvar."); return;
               }
@@ -3718,7 +3991,7 @@ function CadastrosInner() {
                   validade:            isComb ? undefined : (fIns.validade || undefined),
                   deposito_id:         isComb ? undefined : (fIns.deposito_id || undefined),
                   principio_ativo_id:  (!isComb && fIns.principio_ativo_id) ? fIns.principio_ativo_id : undefined,
-                  tipo:                (["produto_agricola","peca","material","uso_consumo","escritorio","combustivel"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
+                  tipo:                (["produto_agricola","peca","material","uso_consumo","escritorio","combustivel","lubrificante","geral","outros"] as string[]).includes(fIns.categoria) ? "produto" as const : "insumo" as const,
                 };
                 if (editIns) {
                   await atualizarInsumo(editIns.id, payload);
@@ -3767,7 +4040,11 @@ function CadastrosInner() {
                       Todos ({insBase.length})
                     </button>
                     {CATS.map(c => {
-                      const qtd = insBase.filter(i => i.categoria === c.key).length;
+                      // Conta itens do grupo + legados mapeados para ele
+                      const qtd = insBase.filter(i => {
+                        const ef = LEGACY_CAT_MAP[i.categoria] ?? i.categoria;
+                        return ef === c.key;
+                      }).length;
                       if (qtd === 0) return null;
                       return (
                         <button key={c.key} onClick={() => setFiltroIns(c.key)} style={{ padding: "5px 12px", borderRadius: 20, border: "0.5px solid", borderColor: filtroIns === c.key ? c.cl : "var(--border-table)", background: filtroIns === c.key ? c.bg : "transparent", color: filtroIns === c.key ? c.cl : "#666", fontSize: 12, cursor: "pointer", fontWeight: filtroIns === c.key ? 600 : 400 }}>
@@ -3783,7 +4060,7 @@ function CadastrosInner() {
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {insFiltr.length === 0 ? (
                     <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
-                      {buscaIns ? `Nenhum insumo encontrado para "${buscaIns}"` : "Nenhum insumo cadastrado. Use '+ Novo Insumo' para cadastrar sementes, fertilizantes, defensivos, corretivos, micronutrientes ou biológicos."}
+                      {buscaIns ? `Nenhum insumo encontrado para "${buscaIns}"` : "Nenhum insumo cadastrado. Use '+ Novo Insumo' para cadastrar Sementes, Fertilizantes, Defensivos ou Corretivos."}
                     </div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -3848,40 +4125,49 @@ function CadastrosInner() {
 
                 {/* Modal Insumo */}
                 {modalIns && (() => {
+                  // Subgrupos sugeridos por categoria
+                  const SUBGRUPOS_SUGERIDOS: Record<string, string[]> = {
+                    defensivo:    ["Herbicida","Fungicida","Inseticida","Nematicida","Biológico","Adjuvante","Regulador de Crescimento"],
+                    fertilizante: ["NPK Simples","NPK Complexo","Organomineral","Micronutriente","Inoculante","Líquido / Foliar","Orgânico"],
+                    semente:      ["Convencional","Certificada","Híbrida","Tratada"],
+                    corretivo:    ["Calcário Calcítico","Calcário Dolomítico","Gesso Agrícola","Silicato de Cálcio"],
+                  };
+                  const sugestoes = SUBGRUPOS_SUGERIDOS[fIns.categoria] ?? [];
                   const isComb = fIns.categoria === "combustivel";
                   return (
                   <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Insumo"} onClose={() => setModalIns(false)} width={720}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                      {/* Categoria sempre primeiro */}
+                      {/* Categoria */}
                       <div>
-                        <label style={lbl}>Categoria *</label>
+                        <label style={lbl}>Grupo *</label>
                         <select style={inp} value={fIns.categoria} onChange={e => {
                           const cat = e.target.value as Insumo["categoria"];
                           setFIns(p => ({ ...p, categoria: cat, subgrupo: "", unidade: cat === "semente" ? "kg" : p.unidade, principio_ativo_id: "", nome: "" }));
                         }}>
-                          <option value="corretivo">Corretivo de Solo</option>
-                          <option value="fertilizante">Fertilizante</option>
-                          <option value="semente">Semente</option>
-                          <option value="defensivo">Defensivo</option>
+                          <option value="defensivo">Defensivos</option>
+                          <option value="fertilizante">Fertilizantes</option>
+                          <option value="corretivo">Corretivos de Solo</option>
+                          <option value="semente">Sementes</option>
                         </select>
                       </div>
-                      {/* Subgrupo */}
+                      {/* Subgrupo com sugestões contextuais */}
                       <div>
                         <label style={lbl}>Subgrupo</label>
-                        {subgruposDoCadastro.length > 0 ? (
-                          <select style={inp} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))}>
-                            <option value="">— Selecione —</option>
-                            {subgruposDoCadastro.map(s => {
-                              const g = gruposDaCategoria.find(x => x.id === s.grupo_id);
-                              return <option key={s.id} value={s.nome}>{g ? `${g.nome} › ` : ""}{s.nome}</option>;
-                            })}
-                          </select>
-                        ) : (
-                          <input style={inp} placeholder={isComb ? "Ex: Diesel, Gasolina" : "Ex: Herbicida"} value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
+                        <input
+                          list={`subgrupo-sugestoes-${fIns.categoria}`}
+                          style={inp}
+                          placeholder={`Ex: ${sugestoes[0] ?? "Herbicida"}`}
+                          value={fIns.subgrupo}
+                          onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))}
+                        />
+                        {sugestoes.length > 0 && (
+                          <datalist id={`subgrupo-sugestoes-${fIns.categoria}`}>
+                            {sugestoes.map(s => <option key={s} value={s} />)}
+                          </datalist>
                         )}
                       </div>
 
-                      {/* ── Defensivos / Fertilizantes: PA é o nome canônico ── */}
+                      {/* ── Defensivos / Fertilizantes exigem Princípio Ativo ── */}
                       {["defensivo","fertilizante"].includes(fIns.categoria) ? (
                         <>
                           {/* Seletor de PA — o nome do insumo deriva daqui */}
@@ -3905,10 +4191,9 @@ function CadastrosInner() {
                                 <option value="">— Selecione o princípio ativo —</option>
                                 {principios
                                   .filter(pa => {
-                                    if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida"].includes(pa.categoria);
-                                    if (fIns.categoria === "biologico" || fIns.categoria === "inoculante") return pa.categoria === "inoculante" || pa.categoria === "outro";
-                                    if (fIns.categoria === "micronutriente") return pa.categoria === "fertilizante" || pa.categoria === "outro";
-                                    return pa.categoria === fIns.categoria;
+                                    if (fIns.categoria === "defensivo") return ["herbicida","fungicida","inseticida","acaricida","outro"].includes(pa.categoria);
+                                    if (fIns.categoria === "fertilizante") return ["fertilizante","inoculante","outro"].includes(pa.categoria);
+                                    return true;
                                   })
                                   .map(pa => <option key={pa.id} value={pa.id}>{pa.nome}</option>)}
                               </select>
@@ -3930,12 +4215,12 @@ function CadastrosInner() {
                           </div>
                         </>
                       ) : (
-                        /* ── Semente / Combustível / Outros: nome livre ── */
+                        /* ── Semente / Corretivo: nome livre ── */
                         <>
                           <div style={{ gridColumn: "1/-1" }}>
                             <label style={lbl}>Nome *</label>
                             <input style={inp}
-                              placeholder={isComb ? "Ex: Diesel S10, Gasolina" : fIns.categoria === "semente" ? "Ex: Soja TMG 3770 IPRO" : "Ex: Calcário Dolomítico"}
+                              placeholder={fIns.categoria === "semente" ? "Ex: Soja TMG 3770 IPRO" : "Ex: Calcário Dolomítico AG"}
                               value={fIns.nome}
                               onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
                           </div>
@@ -4037,7 +4322,7 @@ function CadastrosInner() {
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 20 }}>
                       <button style={btnR} onClick={() => setModalIns(false)}>Cancelar</button>
-                      <button style={{ ...btnV, opacity: salvando || (["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (["defensivo","fertilizante","inoculante","biologico","micronutriente"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
+                      <button style={{ ...btnV, opacity: salvando || (["defensivo","fertilizante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim()) ? 0.5 : 1 }} disabled={salvando || (["defensivo","fertilizante"].includes(fIns.categoria) ? !fIns.principio_ativo_id : !fIns.nome.trim())} onClick={salvarIns}>
                         {salvando ? "Salvando…" : "Salvar"}
                       </button>
                     </div>
@@ -4340,16 +4625,18 @@ function CadastrosInner() {
 
           {/* ══ ITENS GERAIS ══ */}
           {aba === "itens" && (() => {
+            // Categorias canônicas — "geral" é a nova padrão; legados continuam exibidos
             const CATS_IT: { key: Insumo["categoria"]; label: string; bg: string; cl: string }[] = [
+              { key: "geral",       label: "Geral",         bg: "#F1F5F9", cl: "#475569" },
               { key: "peca",        label: "Peça",          bg: "#EDE9FB", cl: "#4B3B9B" },
               { key: "material",    label: "Material",      bg: "#FEF3E2", cl: "#7A4300" },
               { key: "uso_consumo", label: "Uso/Consumo",   bg: "#FBF3E0", cl: "#8B5E14" },
               { key: "escritorio",  label: "Escritório",    bg: "#F0F9F2", cl: "#167A3C" },
-              { key: "combustivel", label: "Combustível",   bg: "#FCEBEB", cl: "#791F1F" },
               { key: "outros",      label: "Outros",        bg: "#F1EFE8", cl: "#666"    },
             ];
             const catItMap = Object.fromEntries(CATS_IT.map(c => [c.key, c]));
-            const CATS_IT_KEYS = CATS_IT.map(c => c.key);
+            // inclui legados no filtro — combustivel está na própria aba, não aparece aqui
+            const CATS_IT_KEYS: Insumo["categoria"][] = ["geral","peca","material","uso_consumo","escritorio","outros"];
 
             const itBase = insumos.filter(i => CATS_IT_KEYS.includes(i.categoria));
 
@@ -4362,6 +4649,8 @@ function CadastrosInner() {
             const totalValorIt = itFiltr.reduce((s, i) => s + (i.estoque * i.valor_unitario), 0);
             const abaixoMinIt  = itBase.filter(i => i.estoque < i.estoque_minimo).length;
 
+            const SUBCAT_GERAIS = ["Peças e Manutenção","Materiais de Obra","Uso e Consumo","Escritório e Papelaria","Ferramentas","EPI / Segurança","Outros"];
+
             const abrirModalIt = (ins?: Insumo) => {
               setEditIns(ins ?? null);
               setFIns(ins ? {
@@ -4371,7 +4660,7 @@ function CadastrosInner() {
                 estoque: String(ins.estoque), estoque_minimo: String(ins.estoque_minimo),
                 valor_unitario: String(ins.valor_unitario), lote: ins.lote ?? "", validade: ins.validade ?? "",
                 deposito_id: ins.deposito_id ?? "", bomba_id: ins.bomba_id ?? "", principio_ativo_id: "",
-              } : { nome: "", categoria: "material" as Insumo["categoria"], subgrupo: "", cultura_id: "", ncm: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
+              } : { nome: "", categoria: "geral" as Insumo["categoria"], subgrupo: "", cultura_id: "", ncm: "", unidade: "un", fabricante: "", estoque: "0", estoque_minimo: "0", valor_unitario: "0", lote: "", validade: "", deposito_id: "", bomba_id: "", principio_ativo_id: "" });
               setModalIns(true);
             };
 
@@ -4379,11 +4668,11 @@ function CadastrosInner() {
               if (!fIns.nome.trim()) { setErro("Informe o nome do item."); return; }
               setSalvando(true); setErro("");
               try {
-                const isComb = fIns.categoria === "combustivel";
                 const payload: Omit<Insumo, "id" | "created_at"> = {
-                  fazenda_id: (fazTrabalho || fazIdEff)!, nome: fIns.nome.trim(), categoria: fIns.categoria,
+                  fazenda_id: (fazTrabalho || fazIdEff)!, nome: fIns.nome.trim(),
+                  categoria: fIns.categoria,
                   subgrupo: fIns.subgrupo || undefined,
-                  unidade: isComb ? "L" : fIns.unidade,
+                  unidade: fIns.unidade,
                   fabricante: fIns.fabricante || undefined,
                   estoque: parseFloat(fIns.estoque) || 0,
                   estoque_minimo: parseFloat(fIns.estoque_minimo) || 0,
@@ -4442,14 +4731,14 @@ function CadastrosInner() {
                 <div style={{ background: "var(--bg-card)", border: "0.5px solid var(--border-table)", borderRadius: 12, overflow: "hidden" }}>
                   {itFiltr.length === 0 ? (
                     <div style={{ padding: 40, textAlign: "center", color: "#444", fontSize: 13 }}>
-                      {buscaIt ? `Nenhum item encontrado para "${buscaIt}"` : "Nenhum item geral cadastrado. Use '+ Novo Item' para peças, materiais, combustíveis, escritório, etc."}
+                      {buscaIt ? `Nenhum item encontrado para "${buscaIt}"` : "Nenhum item geral cadastrado. Use '+ Novo Item' para peças, materiais, escritório, ferramentas, etc."}
                     </div>
                   ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <TH cols={["Nome / Fabricante", "Categoria", "Subgrupo", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", ""]} />
+                      <TH cols={["Nome / Fabricante", "Subcategoria", "Unid.", "Estoque", "Mín.", "Valor Unit.", "Total", ""]} />
                       <tbody>
                         {itFiltr.map((ins, i) => {
-                          const cat = catItMap[ins.categoria];
+                          const cat = catItMap[ins.categoria] ?? { label: ins.categoria, bg: "#F1F5F9", cl: "#475569" };
                           const abaixo = ins.estoque < ins.estoque_minimo;
                           const total  = ins.estoque * ins.valor_unitario;
                           return (
@@ -4459,9 +4748,10 @@ function CadastrosInner() {
                                 {ins.fabricante && <div style={{ fontSize: 11, color: "var(--text-2)" }}>{ins.fabricante}</div>}
                               </td>
                               <td style={{ padding: "10px 14px", textAlign: "center" }}>
-                                {cat && <span style={{ fontSize: 10, background: cat.bg, color: cat.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{cat.label}</span>}
+                                {ins.subgrupo
+                                  ? <span style={{ fontSize: 11, background: "#F1F5F9", color: "#475569", padding: "2px 8px", borderRadius: 8 }}>{ins.subgrupo}</span>
+                                  : <span style={{ fontSize: 10, background: cat.bg, color: cat.cl, padding: "2px 8px", borderRadius: 8, fontWeight: 600 }}>{cat.label}</span>}
                               </td>
-                              <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.subgrupo || "—"}</td>
                               <td style={{ padding: "10px 14px", textAlign: "center", fontSize: 12 }}>{ins.unidade}</td>
                               <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600, color: abaixo ? "#E24B4A" : "var(--text-1)" }}>
                                 {ins.estoque.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
@@ -4482,7 +4772,7 @@ function CadastrosInner() {
                       </tbody>
                       <tfoot>
                         <tr style={{ background: "var(--bg-page)" }}>
-                          <td colSpan={7} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{itFiltr.length} itens</td>
+                          <td colSpan={6} style={{ padding: "8px 14px", fontSize: 11, color: "var(--text-2)" }}>{itFiltr.length} itens</td>
                           <td style={{ padding: "8px 14px", textAlign: "right", fontWeight: 700, color: "#1A4870" }}>
                             {totalValorIt.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                           </td>
@@ -4493,49 +4783,31 @@ function CadastrosInner() {
                   )}
                 </div>
 
-                {modalIns && !["produto_agricola","semente","fertilizante","defensivo","corretivo"].includes(fIns.categoria) && (
+                {modalIns && CATS_IT_KEYS.includes(fIns.categoria) && (
                   <Modal titulo={editIns ? `Editar: ${editIns.nome}` : "Novo Item Geral"} onClose={() => setModalIns(false)} width={680}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                      <div style={{ gridColumn: "1/-1" }}>
+                        <label style={lbl}>Nome *</label>
+                        <input style={inp} placeholder="Ex: Filtro de óleo, Graxeira, Resma de papel" value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
+                      </div>
                       <div>
-                        <label style={lbl}>Categoria *</label>
-                        <select style={inp} value={fIns.categoria} onChange={e => {
-                          const cat = e.target.value as Insumo["categoria"];
-                          setFIns(p => ({ ...p, categoria: cat, unidade: cat === "combustivel" ? "L" : cat === "semente" ? "kg" : p.unidade }));
-                        }}>
-                          <option value="combustivel">Combustível</option>
-                          <option value="biologico">Biológico / Inoculante</option>
-                          <option value="peca">Peça / Manutenção</option>
-                          <option value="material">Material</option>
-                          <option value="uso_consumo">Uso e Consumo</option>
-                          <option value="escritorio">Escritório</option>
-                          <option value="outros">Outros</option>
-                        </select>
+                        <label style={lbl}>Subcategoria</label>
+                        <input list="subcat-gerais-list" style={inp} placeholder="Ex: Peças e Manutenção" value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
+                        <datalist id="subcat-gerais-list">{SUBCAT_GERAIS.map(s => <option key={s} value={s} />)}</datalist>
                       </div>
                       <div>
                         <label style={lbl}>Unidade *</label>
-                        {fIns.categoria === "combustivel" ? (
-                          <input style={{ ...inp, background: "var(--bg-page)", color: "var(--text-2)" }} value="L (litros)" readOnly />
-                        ) : (
-                          <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
-                            <option value="un">un (unidade)</option>
-                            <option value="kg">kg</option>
-                            <option value="L">L (litros)</option>
-                            <option value="m">m (metro)</option>
-                            <option value="m2">m² (metro quadrado)</option>
-                            <option value="cx">cx (caixa)</option>
-                            <option value="pc">pc (peça)</option>
-                            <option value="par">par</option>
-                            <option value="outros">outros</option>
-                          </select>
-                        )}
-                      </div>
-                      <div style={{ gridColumn: "1/-1" }}>
-                        <label style={lbl}>Nome *</label>
-                        <input style={inp} placeholder={fIns.categoria === "combustivel" ? "Ex: Diesel S10, Gasolina" : "Ex: Filtro de óleo, Graxeira"} value={fIns.nome} onChange={e => setFIns(p => ({ ...p, nome: e.target.value }))} />
-                      </div>
-                      <div>
-                        <label style={lbl}>Subgrupo</label>
-                        <input style={inp} placeholder="Ex: Manutenção, Lubrificantes" value={fIns.subgrupo} onChange={e => setFIns(p => ({ ...p, subgrupo: e.target.value }))} />
+                        <select style={inp} value={fIns.unidade} onChange={e => setFIns(p => ({ ...p, unidade: e.target.value as Insumo["unidade"] }))}>
+                          <option value="un">un (unidade)</option>
+                          <option value="kg">kg</option>
+                          <option value="L">L (litros)</option>
+                          <option value="m">m (metro)</option>
+                          <option value="m2">m² (metro quadrado)</option>
+                          <option value="cx">cx (caixa)</option>
+                          <option value="pc">pc (peça)</option>
+                          <option value="par">par</option>
+                          <option value="outros">outros</option>
+                        </select>
                       </div>
                       <div>
                         <label style={lbl}>Fabricante / Marca</label>
